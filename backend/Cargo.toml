@@ -35,6 +35,8 @@ open = "5.3.2"
 ignore = "0.4"
 command-group = { version = "5.0", features = ["with-tokio"] }
 openssl-sys = { workspace = true }
+rmcp = { git = "https://github.com/modelcontextprotocol/rust-sdk", version = "0.1.5", features = ["server", "transport-io"] }
+schemars = "0.8"
 
 [build-dependencies]
 ts-rs = { version = "9.0", features = ["uuid-impl", "chrono-impl"] }

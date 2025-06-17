@@ -17,6 +17,7 @@ mod app_state;
 mod execution_monitor;
 mod executor;
 mod executors;
+mod mcp;
 mod models;
 mod routes;
 mod utils;
