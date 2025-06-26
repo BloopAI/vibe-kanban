@@ -112,7 +112,7 @@ export function TaskDetailsHeader({
                 <TooltipContent>
                   <p>Close panel</p>
                 </TooltipContent>
-                </Tooltip>
+              </Tooltip>
             </TooltipProvider>
           </div>
         </div>

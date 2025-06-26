@@ -19,7 +19,6 @@ permissions:
 env:
   NODE_VERSION: 22
   PNPM_VERSION: 10.8.1
-  RUST_TOOLCHAIN: nightly-2025-05-18
   TAG_REGEX: '^v[0-9]+\.[0-9]+\.[0-9]+$'
 
 jobs:
@@ -72,10 +71,15 @@ jobs:
       - name: Build frontend
         run: npm run frontend:build
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@${{ env.RUST_TOOLCHAIN }}
+      - name: Install rust
+        run: |
+          rustup update
+          rustup install
+          rustup component add rustfmt clippy
+          
+      - uses: Swatinem/rust-cache@v2
         with:
-          components: rustfmt, clippy
+          cache-all-crates: "true"
 
       - name: Format
         run: cargo fmt --all -- --check
@@ -90,7 +94,7 @@ jobs:
         run: cargo build --release --manifest-path backend/Cargo.toml
 
   release:
-    needs: [test, tag-check]
+    needs: [tag-check, test]
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag'
     outputs:

@@ -12,7 +12,6 @@ env:
   CARGO_TERM_COLOR: always
   NODE_VERSION: 22
   PNPM_VERSION: 10.8.1
-  RUST_TOOLCHAIN: nightly-2025-05-18
 
 jobs:
   test:
@@ -35,10 +34,15 @@ jobs:
       - name: Type check frontend
         run: cd frontend && npx tsc --noEmit
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@${{ env.RUST_TOOLCHAIN }}
+      - name: Install rust
+        run: |
+          rustup update
+          rustup install
+          rustup component add rustfmt clippy
+
+      - uses: Swatinem/rust-cache@v2
         with:
-          components: rustfmt, clippy
+          cache-all-crates: "true"
 
       - name: Format backend
         run: cargo fmt --all -- --check

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -90,7 +90,7 @@ export function ProjectTasks() {
     }
   }, [taskId, tasks]);
 
-  const fetchProject = async () => {
+  const fetchProject = useCallback(async () => {
     try {
       const response = await makeRequest(
         `/api/projects/${projectId}/with-branch`
@@ -108,9 +108,9 @@ export function ProjectTasks() {
     } catch (err) {
       setError('Failed to load project');
     }
-  };
+  }, [projectId, navigate]);
 
-  const fetchTasks = async (skipLoading = false) => {
+  const fetchTasks = useCallback(async (skipLoading = false) => {
     try {
       if (!skipLoading) {
         setLoading(true);
@@ -154,7 +154,7 @@ export function ProjectTasks() {
         setLoading(false);
       }
     }
-  };
+  }, [projectId, selectedTask]);
 
   const handleCreateTask = async (title: string, description: string) => {
     try {

@@ -66,9 +66,7 @@ export function TaskFollowUpSection({
             <Button
               onClick={onSendFollowUp}
               disabled={
-                !canSendFollowUp ||
-                !followUpMessage.trim() ||
-                isSendingFollowUp
+                !canSendFollowUp || !followUpMessage.trim() || isSendingFollowUp
               }
               size="sm"
             >

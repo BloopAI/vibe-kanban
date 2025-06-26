@@ -86,9 +86,7 @@ export function TaskActivityHistory({
 
   return (
     <div>
-      <Label className="text-sm font-medium mb-3 block">
-        Activity History
-      </Label>
+      <Label className="text-sm font-medium mb-3 block">Activity History</Label>
       {activities.length === 0 ? (
         <div className="text-center py-4 text-muted-foreground">
           No activities found

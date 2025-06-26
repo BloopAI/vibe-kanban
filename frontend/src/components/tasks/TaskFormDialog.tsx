@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -103,7 +103,7 @@ export function TaskFormDialog({
     }
   };
 
-  const handleCreateAndStart = async () => {
+  const handleCreateAndStart = useCallback(async () => {
     if (!title.trim()) return;
 
     setIsSubmittingAndStart(true);
@@ -121,9 +121,9 @@ export function TaskFormDialog({
     } finally {
       setIsSubmittingAndStart(false);
     }
-  };
+  }, [title, description, config?.executor, isEditMode, onCreateAndStartTask, onOpenChange]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     // Reset form state when canceling
     if (task) {
       setTitle(task.title);
@@ -135,7 +135,7 @@ export function TaskFormDialog({
       setStatus('todo');
     }
     onOpenChange(false);
-  };
+  }, [task, onOpenChange]);
 
   // Handle keyboard shortcuts
   useEffect(() => {

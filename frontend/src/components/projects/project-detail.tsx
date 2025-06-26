@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,7 +36,7 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
   const [showEditForm, setShowEditForm] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchProject = async () => {
+  const fetchProject = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -55,7 +55,7 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
 
   const handleDelete = async () => {
     if (!project) return;
@@ -86,7 +86,7 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
 
   useEffect(() => {
     fetchProject();
-  }, [projectId]);
+  }, [fetchProject]);
 
   if (loading) {
     return (

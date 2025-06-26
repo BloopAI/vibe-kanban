@@ -56,7 +56,10 @@ export function useTaskDetails(
       return false;
     }
 
-    const latestActivitiesByProcess = new Map<string, TaskAttemptActivityWithPrompt>();
+    const latestActivitiesByProcess = new Map<
+      string,
+      TaskAttemptActivityWithPrompt
+    >();
 
     attemptData.activities.forEach((activity) => {
       const existing = latestActivitiesByProcess.get(
@@ -110,112 +113,10 @@ export function useTaskDetails(
     const lines = allOutput.split('\n').filter((line) => line.trim());
     const lastLines = lines.slice(-10);
     return lastLines.length > 0 ? lastLines.join('\n') : 'No output yet...';
-  }, [devServerDetails?.stdout, devServerDetails?.stderr]);
+  }, [devServerDetails]);
 
-  // Set default executor from config
-  useEffect(() => {
-    if (config) {
-      setSelectedExecutor(config.executor.type);
-    }
-  }, [config]);
-
-  useEffect(() => {
-    if (task && isOpen) {
-      fetchTaskAttempts();
-    }
-  }, [task, isOpen]);
-
-  // Polling for updates when attempt is running
-  useEffect(() => {
-    if (!isAttemptRunning || !task) return;
-
-    const interval = setInterval(() => {
-      if (selectedAttempt) {
-        fetchAttemptData(selectedAttempt.id, true);
-      }
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [isAttemptRunning, task?.id, selectedAttempt?.id]);
-
-  // Fetch dev server details when hovering
-  const fetchDevServerDetails = useCallback(async () => {
-    if (!runningDevServer || !task || !selectedAttempt) return;
-
-    try {
-      const response = await makeRequest(
-        `/api/projects/${projectId}/execution-processes/${runningDevServer.id}`
-      );
-      if (response.ok) {
-        const result: ApiResponse<ExecutionProcess> = await response.json();
-        if (result.success && result.data) {
-          setDevServerDetails(result.data);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to fetch dev server details:', err);
-    }
-  }, [runningDevServer?.id, task?.id, selectedAttempt?.id, projectId]);
-
-  // Poll dev server details while hovering
-  useEffect(() => {
-    if (!isHoveringDevServer || !runningDevServer) {
-      setDevServerDetails(null);
-      return;
-    }
-
-    fetchDevServerDetails();
-    const interval = setInterval(fetchDevServerDetails, 2000);
-    return () => clearInterval(interval);
-  }, [
-    isHoveringDevServer,
-    runningDevServer?.id,
-    fetchDevServerDetails,
-  ]);
-
-  const fetchTaskAttempts = async () => {
-    if (!task) return;
-
-    try {
-      setLoading(true);
-      const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${task.id}/attempts`
-      );
-
-      if (response.ok) {
-        const result: ApiResponse<TaskAttempt[]> = await response.json();
-        if (result.success && result.data) {
-          setTaskAttempts(result.data);
-
-          if (result.data.length > 0) {
-            const latestAttempt = result.data.reduce((latest, current) =>
-              new Date(current.created_at) > new Date(latest.created_at)
-                ? current
-                : latest
-            );
-            setSelectedAttempt(latestAttempt);
-            fetchAttemptData(latestAttempt.id);
-          } else {
-            setSelectedAttempt(null);
-            setAttemptData({
-              activities: [],
-              processes: [],
-              runningProcessDetails: {},
-            });
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Failed to fetch task attempts:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchAttemptData = async (
-    attemptId: string,
-    _isBackgroundUpdate = false
-  ) => {
+  // Define callbacks first
+  const fetchAttemptData = useCallback(async (attemptId: string) => {
     if (!task) return;
 
     try {
@@ -278,7 +179,103 @@ export function useTaskDetails(
     } catch (err) {
       console.error('Failed to fetch attempt data:', err);
     }
-  };
+  }, [task, projectId]);
+
+  const fetchTaskAttempts = useCallback(async () => {
+    if (!task) return;
+
+    try {
+      setLoading(true);
+      const response = await makeRequest(
+        `/api/projects/${projectId}/tasks/${task.id}/attempts`
+      );
+
+      if (response.ok) {
+        const result: ApiResponse<TaskAttempt[]> = await response.json();
+        if (result.success && result.data) {
+          setTaskAttempts(result.data);
+
+          if (result.data.length > 0) {
+            const latestAttempt = result.data.reduce((latest, current) =>
+              new Date(current.created_at) > new Date(latest.created_at)
+                ? current
+                : latest
+            );
+            setSelectedAttempt(latestAttempt);
+            fetchAttemptData(latestAttempt.id);
+          } else {
+            setSelectedAttempt(null);
+            setAttemptData({
+              activities: [],
+              processes: [],
+              runningProcessDetails: {},
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch task attempts:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [task, projectId, fetchAttemptData]);
+
+  // Fetch dev server details when hovering
+  const fetchDevServerDetails = useCallback(async () => {
+    if (!runningDevServer || !task || !selectedAttempt) return;
+
+    try {
+      const response = await makeRequest(
+        `/api/projects/${projectId}/execution-processes/${runningDevServer.id}`
+      );
+      if (response.ok) {
+        const result: ApiResponse<ExecutionProcess> = await response.json();
+        if (result.success && result.data) {
+          setDevServerDetails(result.data);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch dev server details:', err);
+    }
+  }, [runningDevServer, task, selectedAttempt, projectId]);
+
+  // Set default executor from config
+  useEffect(() => {
+    if (config) {
+      setSelectedExecutor(config.executor.type);
+    }
+  }, [config]);
+
+  useEffect(() => {
+    if (task && isOpen) {
+      fetchTaskAttempts();
+    }
+  }, [task, isOpen, fetchTaskAttempts]);
+
+  // Polling for updates when attempt is running
+  useEffect(() => {
+    if (!isAttemptRunning || !task) return;
+
+    const interval = setInterval(() => {
+      if (selectedAttempt) {
+        fetchAttemptData(selectedAttempt.id);
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [isAttemptRunning, task, selectedAttempt, fetchAttemptData]);
+
+  // Poll dev server details while hovering
+  useEffect(() => {
+    if (!isHoveringDevServer || !runningDevServer) {
+      setDevServerDetails(null);
+      return;
+    }
+
+    fetchDevServerDetails();
+    const interval = setInterval(fetchDevServerDetails, 2000);
+    return () => clearInterval(interval);
+  }, [isHoveringDevServer, runningDevServer, fetchDevServerDetails]);
 
   const handleAttemptChange = (attemptId: string) => {
     const attempt = taskAttempts.find((a) => a.id === attemptId);
@@ -482,13 +479,13 @@ export function useTaskDetails(
     isStartingDevServer,
     devServerDetails,
     isHoveringDevServer,
-    
+
     // Computed
     runningDevServer,
     isAttemptRunning,
     canSendFollowUp,
     processedDevServerLogs,
-    
+
     // Actions
     setSelectedExecutor,
     setFollowUpMessage,

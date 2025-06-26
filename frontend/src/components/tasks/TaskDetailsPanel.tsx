@@ -9,11 +9,7 @@ import {
   getTaskPanelClasses,
   getBackdropClasses,
 } from '@/lib/responsive-config';
-import type {
-  TaskWithAttemptStatus,
-  EditorType,
-  Project,
-} from 'shared/types';
+import type { TaskWithAttemptStatus, EditorType, Project } from 'shared/types';
 
 interface TaskDetailsPanelProps {
   task: TaskWithAttemptStatus | null;

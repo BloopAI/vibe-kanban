@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,14 +59,8 @@ export function TaskAttemptComparePage() {
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
   const [showUncommittedWarning, setShowUncommittedWarning] = useState(false);
 
-  useEffect(() => {
-    if (projectId && taskId && attemptId) {
-      fetchDiff();
-      fetchBranchStatus();
-    }
-  }, [projectId, taskId, attemptId]);
-
-  const fetchDiff = async () => {
+  // Define callbacks first
+  const fetchDiff = useCallback(async () => {
     if (!projectId || !taskId || !attemptId) return;
 
     try {
@@ -90,9 +84,9 @@ export function TaskAttemptComparePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId, taskId, attemptId]);
 
-  const fetchBranchStatus = async () => {
+  const fetchBranchStatus = useCallback(async () => {
     if (!projectId || !taskId || !attemptId) return;
 
     try {
@@ -116,7 +110,14 @@ export function TaskAttemptComparePage() {
     } finally {
       setBranchStatusLoading(false);
     }
-  };
+  }, [projectId, taskId, attemptId]);
+
+  useEffect(() => {
+    if (projectId && taskId && attemptId) {
+      fetchDiff();
+      fetchBranchStatus();
+    }
+  }, [projectId, taskId, attemptId, fetchDiff, fetchBranchStatus]);
 
   const handleBackClick = () => {
     navigate(`/projects/${projectId}/tasks/${taskId}`);
