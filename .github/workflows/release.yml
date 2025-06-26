@@ -78,21 +78,21 @@ jobs:
       - name: Type check frontend
         run: cd frontend && npx tsc --noEmit
 
-      - name: Install rust
-        run: |
-          rustup update
-          rustup install
-          rustup component add rustfmt clippy
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly-2025-05-18
+          components: rustfmt, clippy
 
       - name: Build frontend
         run: npm run frontend:build
           
-      - uses: Swatinem/rust-cache@v2
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        env:
+          RUST_CACHE_DEBUG: true
         with:
-          # Point to the backend subdirectory
-          workspaces: "backend"
-          # Shared cache key for dependency reuse across jobs
-          shared-key: "rust-cache"
+          workspaces: "backend -> target"
 
       - name: Format
         run: cargo fmt --all -- --check
@@ -152,11 +152,6 @@ jobs:
 
       - name: Build project
         run: npm run build
-
-      - name: Update npx-cli version
-        run: |
-          cd npx-cli
-          npm version ${{ needs.release.outputs.version }} --no-git-tag-version
 
       - name: Publish to npm
         run: |
