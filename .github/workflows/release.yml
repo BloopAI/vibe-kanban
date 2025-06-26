@@ -1,0 +1,149 @@
+# To release:
+# ```
+# git tag -a vibe-v0.1.0 -m "Release 0.1.0"
+# git push origin vibe-v0.1.0
+# ```
+
+name: Release and publish
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+      
+permissions:
+  contents: write
+  packages: write
+  pull-requests: write
+
+env:
+  NODE_VERSION: 22
+  PNPM_VERSION: 10.8.1
+  RUST_TOOLCHAIN: nightly-2025-05-18
+  TAG_REGEX: '^v[0-9]+\.[0-9]+\.[0-9]+$'
+
+jobs:
+  tag-check:
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate tag matches package.json version
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::group::Tag validation"
+
+          # 1. Must be a tag and match the regex
+          [[ "${GITHUB_REF_TYPE}" == "tag" ]] \
+            || { echo "❌  Not a tag push"; exit 1; }
+          [[ "${GITHUB_REF_NAME}" =~ ${TAG_REGEX} ]] \
+            || { echo "❌  Tag '${GITHUB_REF_NAME}' != ${TAG_REGEX}"; exit 1; }
+
+          # 2. Extract versions
+          tag_ver="${GITHUB_REF_NAME#v}"
+          package_ver="$(node -p "require('./package.json').version")"
+
+          # 3. Compare
+          [[ "${tag_ver}" == "${package_ver}" ]] \
+            || { echo "❌  Tag ${tag_ver} ≠ package.json ${package_ver}"; exit 1; }
+
+          echo "✅  Tag and package.json agree (${tag_ver})"
+          echo "::endgroup::"
+  
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Lint frontend
+        run: cd frontend && npm run lint
+
+      - name: Type check frontend
+        run: cd frontend && npx tsc --noEmit
+
+      - name: Build frontend
+        run: npm run frontend:build
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@${{ env.RUST_TOOLCHAIN }}
+        with:
+          components: rustfmt, clippy
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --all --all-targets --all-features -- -D warnings
+
+      - name: Test backend
+        run: cargo test --workspace
+        
+      - name: Build backend
+        run: cargo build --release --manifest-path backend/Cargo.toml
+
+  release:
+    needs: [test, tag-check]
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build project
+        run: npm run build
+
+      - name: Get version from tag
+        id: get-version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            dist/**
+
+  publish-npm:
+    needs: release
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build project
+        run: npm run build
+
+      - name: Update npx-cli version
+        run: |
+          cd npx-cli
+          npm version ${{ needs.release.outputs.version }} --no-git-tag-version
+
+      - name: Publish to npm
+        run: |
+          cd npx-cli
+          npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

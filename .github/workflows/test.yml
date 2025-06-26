@@ -1,0 +1,50 @@
+name: Test
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  NODE_VERSION: 22
+  PNPM_VERSION: 10.8.1
+  RUST_TOOLCHAIN: nightly-2025-05-18
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Lint frontend
+        run: cd frontend && npm run lint
+
+      - name: Format check frontend
+        run: cd frontend && npm run format:check
+
+      - name: Type check frontend
+        run: cd frontend && npx tsc --noEmit
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@${{ env.RUST_TOOLCHAIN }}
+        with:
+          components: rustfmt, clippy
+
+      - name: Format backend
+        run: cargo fmt --all -- --check
+
+      - name: Clippy backend
+        run: cargo clippy --all --all-targets --all-features -- -D warnings
+
+      - name: Test backend
+        run: cargo test --workspace
