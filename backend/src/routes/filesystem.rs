@@ -31,7 +31,17 @@ pub async fn list_directory(
     let path_str = query.path.unwrap_or_else(|| {
         // Default to user's home directory
         dirs::home_dir()
-            .unwrap_or_else(|| PathBuf::from("/"))
+            .or_else(dirs::desktop_dir)
+            .or_else(dirs::document_dir)
+            .unwrap_or_else(|| {
+                if cfg!(windows) {
+                    std::env::var("USERPROFILE")
+                        .map(PathBuf::from)
+                        .unwrap_or_else(|_| PathBuf::from("C:\\"))
+                } else {
+                    PathBuf::from("/")
+                }
+            })
             .to_string_lossy()
             .to_string()
     });

@@ -11,7 +11,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{project::Project, task::Task};
-use crate::executor::Executor;
+use crate::{executor::Executor, utils::shell::get_shell_command};
 
 #[derive(Debug)]
 pub enum TaskAttemptError {
@@ -176,9 +176,10 @@ impl TaskAttempt {
             .await?
             .ok_or(TaskAttemptError::ProjectNotFound)?;
 
-        // Generate worktree path automatically
-        let worktree_path_str = format!("/tmp/mission-control-worktree-{}", attempt_id);
-        let worktree_path = Path::new(&worktree_path_str);
+        // Generate worktree path automatically using cross-platform temporary directory
+        let temp_dir = std::env::temp_dir();
+        let worktree_path = temp_dir.join(format!("mission-control-worktree-{}", attempt_id));
+        let worktree_path_str = worktree_path.to_string_lossy().to_string();
 
         // Create the worktree using git2
         let repo = Repository::open(&project.git_repo_path)?;
@@ -193,7 +194,7 @@ impl TaskAttempt {
 
         // Create the worktree at the specified path
         let branch_name = format!("attempt-{}", attempt_id);
-        repo.worktree(&branch_name, worktree_path, None)?;
+        repo.worktree(&branch_name, &worktree_path, None)?;
 
         // Insert the record into the database
         Ok(sqlx::query_as!(
@@ -712,15 +713,16 @@ impl TaskAttempt {
     ) -> Result<crate::models::execution_process::ExecutionProcess, TaskAttemptError> {
         use crate::models::execution_process::{CreateExecutionProcess, ExecutionProcess};
 
+        let (shell_cmd, shell_arg) = get_shell_command();
         let (command, args, executor_type_string) = match executor_type {
             crate::executor::ExecutorType::SetupScript(_) => (
-                "bash".to_string(),
-                Some(serde_json::to_string(&["-c", "setup_script"]).unwrap()),
+                shell_cmd.to_string(),
+                Some(serde_json::to_string(&[shell_arg, "setup_script"]).unwrap()),
                 None, // Setup scripts don't have an executor type
             ),
             crate::executor::ExecutorType::DevServer(_) => (
-                "bash".to_string(),
-                Some(serde_json::to_string(&["-c", "dev_server"]).unwrap()),
+                shell_cmd.to_string(),
+                Some(serde_json::to_string(&[shell_arg, "dev_server"]).unwrap()),
                 None, // Dev servers don't have an executor type
             ),
             crate::executor::ExecutorType::CodingAgent(config) => {
@@ -830,7 +832,7 @@ impl TaskAttempt {
         attempt_id: Uuid,
         process_id: Uuid,
         worktree_path: &str,
-    ) -> Result<tokio::process::Child, TaskAttemptError> {
+    ) -> Result<command_group::AsyncGroupChild, TaskAttemptError> {
         use crate::executors::{DevServerExecutor, SetupScriptExecutor};
 
         let result = match executor_type {
@@ -917,7 +919,7 @@ impl TaskAttempt {
         process_id: Uuid,
         attempt_id: Uuid,
         process_type: &crate::models::execution_process::ExecutionProcessType,
-        child: tokio::process::Child,
+        child: command_group::AsyncGroupChild,
     ) {
         let execution_type = match process_type {
             crate::models::execution_process::ExecutionProcessType::SetupScript => {

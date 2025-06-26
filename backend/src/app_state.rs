@@ -14,7 +14,7 @@ pub enum ExecutionType {
 pub struct RunningExecution {
     pub task_attempt_id: Uuid,
     pub _execution_type: ExecutionType,
-    pub child: tokio::process::Child,
+    pub child: command_group::AsyncGroupChild,
 }
 
 #[derive(Debug, Clone)]
@@ -96,29 +96,6 @@ impl AppState {
         let mut executions = self.running_executions.lock().await;
 
         if let Some(mut execution) = executions.remove(&execution_id) {
-            // Kill the process group to ensure all child processes are terminated
-            let process_id = execution.child.id();
-
-            #[cfg(unix)]
-            {
-                if let Some(pid) = process_id {
-                    // Kill the entire process group
-                    unsafe {
-                        let result = libc::killpg(pid as i32, libc::SIGTERM);
-                        if result != 0 {
-                            tracing::warn!(
-                                "Failed to send SIGTERM to process group {}, trying SIGKILL",
-                                pid
-                            );
-                            let kill_result = libc::killpg(pid as i32, libc::SIGKILL);
-                            if kill_result != 0 {
-                                tracing::error!("Failed to send SIGKILL to process group {}", pid);
-                            }
-                        }
-                    }
-                }
-            }
-
             // Also kill the direct child process as fallback
             match execution.child.kill().await {
                 Ok(_) => {

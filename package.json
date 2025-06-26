@@ -13,7 +13,7 @@
     "backend:run": "cargo run --manifest-path backend/Cargo.toml",
     "backend:test": "cargo test --lib",
     "generate-types": "cd backend && cargo run --bin generate_types",
-    "prepare-db": "./prepare_db.sh"
+    "prepare-db": "node scripts/prepare-db.js"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

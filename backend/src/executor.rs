@@ -1,9 +1,6 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use tokio::{
-    io::{AsyncBufReadExt, BufReader},
-    process::Child,
-};
+use tokio::io::{AsyncBufReadExt, BufReader};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -43,7 +40,7 @@ pub trait Executor: Send + Sync {
         pool: &sqlx::SqlitePool,
         task_id: Uuid,
         worktree_path: &str,
-    ) -> Result<Child, ExecutorError>;
+    ) -> Result<command_group::AsyncGroupChild, ExecutorError>;
 
     /// Execute the command and stream output to database in real-time
     async fn execute_streaming(
@@ -53,15 +50,17 @@ pub trait Executor: Send + Sync {
         attempt_id: Uuid,
         execution_process_id: Uuid,
         worktree_path: &str,
-    ) -> Result<Child, ExecutorError> {
+    ) -> Result<command_group::AsyncGroupChild, ExecutorError> {
         let mut child = self.spawn(pool, task_id, worktree_path).await?;
 
         // Take stdout and stderr pipes for streaming
         let stdout = child
+            .inner()
             .stdout
             .take()
             .expect("Failed to take stdout from child process");
         let stderr = child
+            .inner()
             .stderr
             .take()
             .expect("Failed to take stderr from child process");

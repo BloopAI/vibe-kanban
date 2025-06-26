@@ -1,10 +1,12 @@
 use async_trait::async_trait;
-use tokio::process::{Child, Command};
+use command_group::{AsyncCommandGroup, AsyncGroupChild};
+use tokio::process::Command;
 use uuid::Uuid;
 
 use crate::{
     executor::{Executor, ExecutorError},
     models::{project::Project, task::Task},
+    utils::shell::get_shell_command,
 };
 
 /// Executor for running project setup scripts
@@ -19,7 +21,7 @@ impl Executor for SetupScriptExecutor {
         pool: &sqlx::SqlitePool,
         task_id: Uuid,
         worktree_path: &str,
-    ) -> Result<Child, ExecutorError> {
+    ) -> Result<AsyncGroupChild, ExecutorError> {
         // Validate the task and project exist
         let task = Task::find_by_id(pool, task_id)
             .await?
@@ -29,15 +31,15 @@ impl Executor for SetupScriptExecutor {
             .await?
             .ok_or(ExecutorError::TaskNotFound)?; // Reuse TaskNotFound for simplicity
 
-        let child = Command::new("bash")
+        let (shell_cmd, shell_arg) = get_shell_command();
+        let child = Command::new(shell_cmd)
             .kill_on_drop(true)
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
-            .arg("-c")
+            .arg(shell_arg)
             .arg(&self.script)
             .current_dir(worktree_path)
-            .process_group(0)
-            .spawn()
+            .group_spawn()
             .map_err(ExecutorError::SpawnFailed)?;
 
         Ok(child)

@@ -117,6 +117,13 @@ Vibe Kanban supports customization through its configuration system:
 - Git (for repository operations)
 - Your preferred code editor (optional, for opening task worktrees)
 
+## Supported Platforms
+
+- Linux x64
+- Windows x64
+- macOS x64 (Intel)
+- macOS ARM64 (Apple Silicon)
+
 ## Use Cases
 
 **🔧 Bug Fixes**

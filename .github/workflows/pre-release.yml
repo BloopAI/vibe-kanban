@@ -10,11 +10,11 @@ on:
   push:
     tags:
       - "v*.*.*"
-      
+
 concurrency:
   group: release
   cancel-in-progress: true
-      
+
 permissions:
   contents: write
   packages: write
@@ -24,6 +24,7 @@ env:
   NODE_VERSION: 22
   PNPM_VERSION: 10.8.1
   TAG_REGEX: '^v[0-9]+\.[0-9]+\.[0-9]+$'
+  RUST_TOOLCHAIN: nightly-2025-05-18
 
 jobs:
   tag-check:
@@ -59,8 +60,8 @@ jobs:
 
           echo "✅  Tag and package.json agree (${tag_ver})"
           echo "::endgroup::"
-  
-  create-prerelease:
+
+  build-frontend:
     needs: tag-check
     runs-on: ubuntu-latest
     steps:
@@ -78,52 +79,182 @@ jobs:
       - name: Type check frontend
         run: cd frontend && npx tsc --noEmit
 
+      - name: Build frontend
+        run: npm run frontend:build
+
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 1
+
+  build-backend:
+    needs: [tag-check, build-frontend]
+    runs-on: ${{ matrix.os }}
+    if: github.ref_type == 'tag'
+    strategy:
+      # Platform matrix - keep target/name in sync with package-npx-cli job
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            name: linux-x64
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            name: windows-x64
+          - target: x86_64-apple-darwin
+            os: macos-13
+            name: macos-x64
+          - target: aarch64-apple-darwin
+            os: macos-14
+            name: macos-arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly-2025-05-18
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: ${{ matrix.target }}
           components: rustfmt, clippy
 
-      - name: Build frontend
-        run: npm run frontend:build
-          
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         env:
           RUST_CACHE_DEBUG: true
         with:
           workspaces: "backend"
+          key: ${{ matrix.target }}-${{ matrix.os }}
+
+      - name: Install system dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libssl-dev
 
       - name: Checks
         run: |
           cargo fmt --all -- --check
           cargo test --workspace
           cargo clippy --all --all-targets --all-features -- -D warnings
-          
-      - name: Build backend
-        run: cargo build --release --manifest-path backend/Cargo.toml
-        
+
+      - name: Build backend for target
+        run: cargo build --release --target ${{ matrix.target }} --manifest-path backend/Cargo.toml
+
+      - name: Prepare binary
+        shell: bash
+        run: |
+          mkdir -p dist
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            cp target/${{ matrix.target }}/release/vibe-kanban.exe dist/vibe-kanban-${{ matrix.name }}.exe
+          else
+            cp target/${{ matrix.target }}/release/vibe-kanban dist/vibe-kanban-${{ matrix.name }}
+          fi
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-binary-${{ matrix.name }}
+          path: dist/
+          retention-days: 1
+
+  package-npx-cli:
+    needs: [build-frontend, build-backend]
+    runs-on: ubuntu-latest
+    strategy:
+      # NOTE: This matrix must be kept in sync with build-backend job above
+      # GitHub Actions doesn't support YAML anchors, so duplication is unavoidable
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            name: linux-x64
+            binary: vibe-kanban
+          - target: x86_64-pc-windows-msvc
+            name: windows-x64
+            binary: vibe-kanban.exe
+          - target: x86_64-apple-darwin
+            name: macos-x64
+            binary: vibe-kanban
+          - target: aarch64-apple-darwin
+            name: macos-arm64
+            binary: vibe-kanban
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+
+      - name: Download backend binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-binary-${{ matrix.name }}
+          path: dist/
+
+      - name: Create platform package
+        run: |
+          mkdir -p npx-cli/dist/${{ matrix.name }}
+          mkdir vibe-kanban-${{ matrix.name }}
+          cp dist/vibe-kanban-${{ matrix.name }}* vibe-kanban-${{ matrix.name }}/${{ matrix.binary }}
+          cp -r frontend/dist vibe-kanban-${{ matrix.name }}/
+          zip -r npx-cli/dist/${{ matrix.name }}/vibe-kanban.zip vibe-kanban-${{ matrix.name }}
+
+      - name: Upload platform package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: npx-platform-${{ matrix.name }}
+          path: npx-cli/dist/${{ matrix.name }}/
+          retention-days: 1
+
+  create-prerelease:
+    needs: [build-frontend, build-backend, package-npx-cli]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Get version from tag
         id: get-version
         run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
 
-      - name: Zip backend
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+
+      - name: Download backend npx-cli zips
+        uses: actions/download-artifact@v4
+        with:
+          pattern: npx-platform-*
+          path: npx-cli/dist/
+          merge-multiple: true
+
+      - name: Zip frontend
         run: |
           mkdir vibe-kanban-${{ github.ref_name }}
-          mv target/release/vibe-kanban vibe-kanban-${{ github.ref_name }}
           mv frontend/dist vibe-kanban-${{ github.ref_name }}
           zip -r vibe-kanban-${{ github.ref_name }}.zip vibe-kanban-${{ github.ref_name }}
-          
+
       - name: Code sign
         run: echo "pass"
-      
+
+      - name: Setup Node for npm pack
+        uses: ./.github/actions/setup-node
+
       - name: Pack
         run: |
-          mkdir -p npx-cli/dist/linux-x64
-          mv vibe-kanban-${{ github.ref_name }}.zip npx-cli/dist/linux-x64
           cd npx-cli
           npm pack
-        
+
       - name: Create GitHub Pre-Release
         uses: softprops/action-gh-release@v2
         with:

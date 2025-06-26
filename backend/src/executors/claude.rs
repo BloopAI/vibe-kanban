@@ -1,5 +1,6 @@
 use async_trait::async_trait;
-use tokio::process::{Child, Command};
+use command_group::{AsyncCommandGroup, AsyncGroupChild};
+use tokio::process::Command;
 use uuid::Uuid;
 
 use crate::{
@@ -23,7 +24,7 @@ impl Executor for ClaudeExecutor {
         pool: &sqlx::SqlitePool,
         task_id: Uuid,
         worktree_path: &str,
-    ) -> Result<Child, ExecutorError> {
+    ) -> Result<AsyncGroupChild, ExecutorError> {
         // Get the task to fetch its description
         let task = Task::find_by_id(pool, task_id)
             .await?
@@ -50,8 +51,7 @@ impl Executor for ClaudeExecutor {
             .arg("--dangerously-skip-permissions")
             .arg("--verbose")
             .arg("--output-format=stream-json")
-            .process_group(0) // Create new process group so we can kill entire tree
-            .spawn()
+            .group_spawn() // Create new process group so we can kill entire tree
             .map_err(ExecutorError::SpawnFailed)?;
 
         Ok(child)
@@ -65,7 +65,7 @@ impl Executor for ClaudeFollowupExecutor {
         _pool: &sqlx::SqlitePool,
         _task_id: Uuid,
         worktree_path: &str,
-    ) -> Result<Child, ExecutorError> {
+    ) -> Result<AsyncGroupChild, ExecutorError> {
         // Use Claude CLI with --resume flag to continue the session
         let child = Command::new("claude")
             .kill_on_drop(true)
@@ -79,8 +79,7 @@ impl Executor for ClaudeFollowupExecutor {
             .arg("--verbose")
             .arg("--output-format=stream-json")
             .arg(format!("--resume={}", self.session_id))
-            .process_group(0) // Create new process group so we can kill entire tree
-            .spawn()
+            .group_spawn() // Create new process group so we can kill entire tree
             .map_err(ExecutorError::SpawnFailed)?;
 
         Ok(child)

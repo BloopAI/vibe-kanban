@@ -1,3 +1,9 @@
 [env]
 # Set macOS deployment target to avoid linker warnings
-MACOSX_DEPLOYMENT_TARGET = "15.1"
+# Use Rust project defaults: 10.12 for x86_64, 11.0 for aarch64
+
+[target.x86_64-apple-darwin.env]
+MACOSX_DEPLOYMENT_TARGET = "10.12"
+
+[target.aarch64-apple-darwin.env]
+MACOSX_DEPLOYMENT_TARGET = "11.0"
