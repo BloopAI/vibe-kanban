@@ -6,6 +6,8 @@
     "dev": "concurrently \"cargo watch -w backend -x 'run --manifest-path backend/Cargo.toml'\" \"npm run frontend:dev\"",
     "build": "npm run frontend:build && cargo build --release --manifest-path backend/Cargo.toml && cargo build --release --bin mcp_task_server --manifest-path backend/Cargo.toml",
     "build:single": "npm run frontend:build && cargo build --release --manifest-path backend/Cargo.toml",
+    "build:npm": "./build-npm-package.sh",
+    "test:npm": "./test-npm-package.sh",
     "frontend:dev": "cd frontend && npm run dev",
     "frontend:build": "cd frontend && npm run build",
     "backend:dev": "cargo watch -w backend -x 'run --manifest-path backend/Cargo.toml'",
