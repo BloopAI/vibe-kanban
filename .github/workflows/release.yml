@@ -47,10 +47,15 @@ jobs:
           # 2. Extract versions
           tag_ver="${GITHUB_REF_NAME#v}"
           package_ver="$(node -p "require('./package.json').version")"
+          cli_package_ver="$(node -p "require('./npx-cli/package.json').version")"
 
           # 3. Compare
           [[ "${tag_ver}" == "${package_ver}" ]] \
             || { echo "❌  Tag ${tag_ver} ≠ package.json ${package_ver}"; exit 1; }
+            
+          # 4. Compare tag with npx-cli package.json
+          [[ "${tag_ver}" == "${cli_package_ver}" ]] \
+            || { echo "❌  Tag ${tag_ver} ≠ npx-cli package.json ${cli_package_ver}"; exit 1; }
 
           echo "✅  Tag and package.json agree (${tag_ver})"
           echo "::endgroup::"
