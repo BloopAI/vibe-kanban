@@ -68,18 +68,21 @@ jobs:
       - name: Type check frontend
         run: cd frontend && npx tsc --noEmit
 
-      - name: Build frontend
-        run: npm run frontend:build
-
       - name: Install rust
         run: |
           rustup update
           rustup install
           rustup component add rustfmt clippy
+
+      - name: Build frontend
+        run: npm run frontend:build
           
       - uses: Swatinem/rust-cache@v2
         with:
-          cache-all-crates: "true"
+          # Point to the backend subdirectory
+          workspaces: "backend"
+          # Shared cache key for dependency reuse across jobs
+          shared-key: "rust-cache"
 
       - name: Format
         run: cargo fmt --all -- --check
