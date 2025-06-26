@@ -14,7 +14,6 @@ uninlined-format-args = "allow"
 [dependencies]
 tokio = { workspace = true }
 axum = { workspace = true }
-tower = { workspace = true }
 tower-http = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -24,20 +23,16 @@ tracing-subscriber = { workspace = true }
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
-bcrypt = "0.15"
-jsonwebtoken = "9.2"
 ts-rs = { version = "9.0", features = ["uuid-impl", "chrono-impl"] }
 dirs = "5.0"
 git2 = "0.18"
 async-trait = "0.1"
-dissimilar = "1.0"
 libc = "0.2"
 rust-embed = "8.2"
 mime_guess = "2.0"
 directories = "6.0.0"
 open = "5.3.2"
 ignore = "0.4"
-openssl = { workspace = true }
 openssl-sys = { workspace = true }
 
 [build-dependencies]
