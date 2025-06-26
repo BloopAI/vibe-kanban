@@ -36,6 +36,7 @@ pub struct TaskAttemptActivityWithPrompt {
 }
 
 impl TaskAttemptActivity {
+    #[allow(dead_code)]
     pub async fn find_by_execution_process_id(
         pool: &SqlitePool,
         execution_process_id: Uuid,
@@ -73,6 +74,7 @@ impl TaskAttemptActivity {
         .await
     }
 
+    #[allow(dead_code)]
     pub async fn find_processes_with_latest_running_status(
         pool: &SqlitePool,
     ) -> Result<Vec<uuid::Uuid>, sqlx::Error> {

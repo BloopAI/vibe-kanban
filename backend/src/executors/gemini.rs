@@ -60,8 +60,8 @@ impl Executor for GeminiExecutor {
 impl Executor for GeminiFollowupExecutor {
     async fn spawn(
         &self,
-        pool: &sqlx::SqlitePool,
-        task_id: Uuid,
+        _pool: &sqlx::SqlitePool,
+        _task_id: Uuid,
         worktree_path: &str,
     ) -> Result<Child, ExecutorError> {
         // Use Gemini CLI with session resumption (if supported)

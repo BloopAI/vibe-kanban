@@ -67,8 +67,8 @@ impl Executor for AmpExecutor {
 impl Executor for AmpFollowupExecutor {
     async fn spawn(
         &self,
-        pool: &sqlx::SqlitePool,
-        task_id: Uuid,
+        _pool: &sqlx::SqlitePool,
+        _task_id: Uuid,
         worktree_path: &str,
     ) -> Result<Child, ExecutorError> {
         use std::process::Stdio;

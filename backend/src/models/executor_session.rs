@@ -26,6 +26,7 @@ pub struct CreateExecutorSession {
 
 #[derive(Debug, Deserialize, TS)]
 #[ts(export)]
+#[allow(dead_code)]
 pub struct UpdateExecutorSession {
     pub session_id: Option<String>,
     pub prompt: Option<String>,
@@ -33,6 +34,7 @@ pub struct UpdateExecutorSession {
 
 impl ExecutorSession {
     /// Find executor session by ID
+    #[allow(dead_code)]
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             ExecutorSession,
@@ -76,6 +78,7 @@ impl ExecutorSession {
     }
 
     /// Find all executor sessions for a task attempt
+    #[allow(dead_code)]
     pub async fn find_by_task_attempt_id(
         pool: &SqlitePool,
         task_attempt_id: Uuid,
@@ -154,6 +157,7 @@ impl ExecutorSession {
     }
 
     /// Update executor session prompt
+    #[allow(dead_code)]
     pub async fn update_prompt(
         pool: &SqlitePool,
         id: Uuid,
@@ -173,6 +177,7 @@ impl ExecutorSession {
     }
 
     /// Delete executor sessions for a task attempt (cleanup)
+    #[allow(dead_code)]
     pub async fn delete_by_task_attempt_id(
         pool: &SqlitePool,
         task_attempt_id: Uuid,

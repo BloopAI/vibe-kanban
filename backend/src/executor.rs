@@ -124,25 +124,6 @@ pub struct ExecutorConstants {
     pub executor_labels: Vec<String>,
 }
 
-impl ExecutorConstants {
-    pub fn new() -> Self {
-        Self {
-            executor_types: vec![
-                ExecutorConfig::Echo,
-                ExecutorConfig::Claude,
-                ExecutorConfig::Amp,
-                ExecutorConfig::Gemini,
-            ],
-            executor_labels: vec![
-                "Echo (Test Mode)".to_string(),
-                "Claude".to_string(),
-                "Amp".to_string(),
-                "Gemini".to_string(),
-            ],
-        }
-    }
-}
-
 impl ExecutorConfig {
     pub fn create_executor(&self) -> Box<dyn Executor> {
         match self {

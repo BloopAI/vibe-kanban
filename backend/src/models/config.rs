@@ -97,6 +97,12 @@ impl EditorConstants {
     }
 }
 
+impl Default for EditorConstants {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SoundConstants {
     pub fn new() -> Self {
         Self {
@@ -119,6 +125,12 @@ impl SoundConstants {
                 "Rooster Call".to_string(),
             ],
         }
+    }
+}
+
+impl Default for SoundConstants {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

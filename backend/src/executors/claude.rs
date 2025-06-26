@@ -62,8 +62,8 @@ impl Executor for ClaudeExecutor {
 impl Executor for ClaudeFollowupExecutor {
     async fn spawn(
         &self,
-        pool: &sqlx::SqlitePool,
-        task_id: Uuid,
+        _pool: &sqlx::SqlitePool,
+        _task_id: Uuid,
         worktree_path: &str,
     ) -> Result<Child, ExecutorError> {
         // Use Claude CLI with --resume flag to continue the session

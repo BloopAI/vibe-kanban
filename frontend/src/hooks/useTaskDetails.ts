@@ -116,70 +116,73 @@ export function useTaskDetails(
   }, [devServerDetails]);
 
   // Define callbacks first
-  const fetchAttemptData = useCallback(async (attemptId: string) => {
-    if (!task) return;
+  const fetchAttemptData = useCallback(
+    async (attemptId: string) => {
+      if (!task) return;
 
-    try {
-      const [activitiesResponse, processesResponse] = await Promise.all([
-        makeRequest(
-          `/api/projects/${projectId}/tasks/${task.id}/attempts/${attemptId}/activities`
-        ),
-        makeRequest(
-          `/api/projects/${projectId}/tasks/${task.id}/attempts/${attemptId}/execution-processes`
-        ),
-      ]);
+      try {
+        const [activitiesResponse, processesResponse] = await Promise.all([
+          makeRequest(
+            `/api/projects/${projectId}/tasks/${task.id}/attempts/${attemptId}/activities`
+          ),
+          makeRequest(
+            `/api/projects/${projectId}/tasks/${task.id}/attempts/${attemptId}/execution-processes`
+          ),
+        ]);
 
-      if (activitiesResponse.ok && processesResponse.ok) {
-        const activitiesResult: ApiResponse<TaskAttemptActivityWithPrompt[]> =
-          await activitiesResponse.json();
-        const processesResult: ApiResponse<ExecutionProcessSummary[]> =
-          await processesResponse.json();
+        if (activitiesResponse.ok && processesResponse.ok) {
+          const activitiesResult: ApiResponse<TaskAttemptActivityWithPrompt[]> =
+            await activitiesResponse.json();
+          const processesResult: ApiResponse<ExecutionProcessSummary[]> =
+            await processesResponse.json();
 
-        if (
-          activitiesResult.success &&
-          processesResult.success &&
-          activitiesResult.data &&
-          processesResult.data
-        ) {
-          const runningActivities = activitiesResult.data.filter(
-            (activity) =>
-              activity.status === 'setuprunning' ||
-              activity.status === 'executorrunning'
-          );
+          if (
+            activitiesResult.success &&
+            processesResult.success &&
+            activitiesResult.data &&
+            processesResult.data
+          ) {
+            const runningActivities = activitiesResult.data.filter(
+              (activity) =>
+                activity.status === 'setuprunning' ||
+                activity.status === 'executorrunning'
+            );
 
-          const runningProcessDetails: Record<string, ExecutionProcess> = {};
-          for (const activity of runningActivities) {
-            try {
-              const detailResponse = await makeRequest(
-                `/api/projects/${projectId}/execution-processes/${activity.execution_process_id}`
-              );
-              if (detailResponse.ok) {
-                const detailResult: ApiResponse<ExecutionProcess> =
-                  await detailResponse.json();
-                if (detailResult.success && detailResult.data) {
-                  runningProcessDetails[activity.execution_process_id] =
-                    detailResult.data;
+            const runningProcessDetails: Record<string, ExecutionProcess> = {};
+            for (const activity of runningActivities) {
+              try {
+                const detailResponse = await makeRequest(
+                  `/api/projects/${projectId}/execution-processes/${activity.execution_process_id}`
+                );
+                if (detailResponse.ok) {
+                  const detailResult: ApiResponse<ExecutionProcess> =
+                    await detailResponse.json();
+                  if (detailResult.success && detailResult.data) {
+                    runningProcessDetails[activity.execution_process_id] =
+                      detailResult.data;
+                  }
                 }
+              } catch (err) {
+                console.error(
+                  `Failed to fetch execution process ${activity.execution_process_id}:`,
+                  err
+                );
               }
-            } catch (err) {
-              console.error(
-                `Failed to fetch execution process ${activity.execution_process_id}:`,
-                err
-              );
             }
-          }
 
-          setAttemptData({
-            activities: activitiesResult.data,
-            processes: processesResult.data,
-            runningProcessDetails,
-          });
+            setAttemptData({
+              activities: activitiesResult.data,
+              processes: processesResult.data,
+              runningProcessDetails,
+            });
+          }
         }
+      } catch (err) {
+        console.error('Failed to fetch attempt data:', err);
       }
-    } catch (err) {
-      console.error('Failed to fetch attempt data:', err);
-    }
-  }, [task, projectId]);
+    },
+    [task, projectId]
+  );
 
   const fetchTaskAttempts = useCallback(async () => {
     if (!task) return;

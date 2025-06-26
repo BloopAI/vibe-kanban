@@ -8,6 +8,9 @@ default-run = "vibe-kanban"
 name = "vibe_kanban"
 path = "src/lib.rs"
 
+[lints.clippy]
+uninlined-format-args = "allow"
+
 [dependencies]
 tokio = { workspace = true }
 axum = { workspace = true }

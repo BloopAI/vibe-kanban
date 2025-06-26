@@ -121,7 +121,14 @@ export function TaskFormDialog({
     } finally {
       setIsSubmittingAndStart(false);
     }
-  }, [title, description, config?.executor, isEditMode, onCreateAndStartTask, onOpenChange]);
+  }, [
+    title,
+    description,
+    config?.executor,
+    isEditMode,
+    onCreateAndStartTask,
+    onOpenChange,
+  ]);
 
   const handleCancel = useCallback(() => {
     // Reset form state when canceling

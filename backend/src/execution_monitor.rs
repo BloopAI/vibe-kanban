@@ -81,14 +81,16 @@ async fn play_sound_notification(sound_file: &crate::models::config::SoundFile) 
     } else if cfg!(target_os = "linux") {
         // Try different Linux notification sounds
         let sound_path = sound_file.to_path();
-        if let Ok(_) = tokio::process::Command::new("paplay")
+        if tokio::process::Command::new("paplay")
             .arg(&sound_path)
             .spawn()
+            .is_ok()
         {
             // Success with paplay
-        } else if let Ok(_) = tokio::process::Command::new("aplay")
+        } else if tokio::process::Command::new("aplay")
             .arg(&sound_path)
             .spawn()
+            .is_ok()
         {
             // Success with aplay
         } else {

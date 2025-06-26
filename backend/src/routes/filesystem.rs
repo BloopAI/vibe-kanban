@@ -58,31 +58,29 @@ pub async fn list_directory(
         Ok(entries) => {
             let mut directory_entries = Vec::new();
 
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    let path = entry.path();
-                    let metadata = entry.metadata().ok();
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let metadata = entry.metadata().ok();
 
-                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                        // Skip hidden files/directories
-                        if name.starts_with('.') && name != ".." {
-                            continue;
-                        }
-
-                        let is_directory = metadata.is_some_and(|m| m.is_dir());
-                        let is_git_repo = if is_directory {
-                            path.join(".git").exists()
-                        } else {
-                            false
-                        };
-
-                        directory_entries.push(DirectoryEntry {
-                            name: name.to_string(),
-                            path: path.to_string_lossy().to_string(),
-                            is_directory,
-                            is_git_repo,
-                        });
+                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                    // Skip hidden files/directories
+                    if name.starts_with('.') && name != ".." {
+                        continue;
                     }
+
+                    let is_directory = metadata.is_some_and(|m| m.is_dir());
+                    let is_git_repo = if is_directory {
+                        path.join(".git").exists()
+                    } else {
+                        false
+                    };
+
+                    directory_entries.push(DirectoryEntry {
+                        name: name.to_string(),
+                        path: path.to_string_lossy().to_string(),
+                        is_directory,
+                        is_git_repo,
+                    });
                 }
             }
 

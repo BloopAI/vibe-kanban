@@ -80,6 +80,7 @@ pub struct CreateExecutionProcess {
 
 #[derive(Debug, Deserialize, TS)]
 #[ts(export)]
+#[allow(dead_code)]
 pub struct UpdateExecutionProcess {
     pub status: Option<ExecutionProcessStatus>,
     pub exit_code: Option<i64>,
@@ -392,6 +393,7 @@ impl ExecutionProcess {
     }
 
     /// Delete execution processes for a task attempt (cleanup)
+    #[allow(dead_code)]
     pub async fn delete_by_task_attempt_id(
         pool: &SqlitePool,
         task_attempt_id: Uuid,

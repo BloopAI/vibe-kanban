@@ -620,6 +620,7 @@ impl TaskAttempt {
     }
 
     /// Unified function to start any type of process execution
+    #[allow(clippy::too_many_arguments)]
     async fn start_process_execution(
         pool: &SqlitePool,
         app_state: &crate::app_state::AppState,
@@ -935,7 +936,7 @@ impl TaskAttempt {
                 process_id,
                 crate::app_state::RunningExecution {
                     task_attempt_id: attempt_id,
-                    execution_type,
+                    _execution_type: execution_type,
                     child,
                 },
             )
