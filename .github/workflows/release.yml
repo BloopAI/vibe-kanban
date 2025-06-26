@@ -103,7 +103,7 @@ jobs:
       - name: Build backend
         run: cargo build --release --manifest-path backend/Cargo.toml
 
-  release:
+  release-and-publish:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag'
@@ -117,6 +117,19 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly-2025-05-18
+          components: rustfmt, clippy
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        env:
+          RUST_CACHE_DEBUG: true
+        with:
+          workspaces: "backend"
 
       - name: Build project
         run: npm run build
@@ -133,23 +146,7 @@ jobs:
           generate_release_notes: true
           files: |
             dist/**
-
-  publish-npm:
-    needs: release
-    runs-on: ubuntu-latest
-    if: github.ref_type == 'tag'
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: ./.github/actions/setup-node
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Build project
-        run: npm run build
-
+            
       - name: Publish to npm
         run: |
           cd npx-cli
