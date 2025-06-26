@@ -92,16 +92,13 @@ jobs:
         env:
           RUST_CACHE_DEBUG: true
         with:
-          workspaces: "backend -> target"
+          workspaces: "backend"
 
-      - name: Format
-        run: cargo fmt --all -- --check
-
-      - name: Clippy
-        run: cargo clippy --all --all-targets --all-features -- -D warnings
-
-      - name: Test backend
-        run: cargo test --workspace
+      - name: Checks
+        run: |
+          cargo fmt --all -- --check
+          cargo test --workspace
+          cargo clippy --all --all-targets --all-features -- -D warnings
         
       - name: Build backend
         run: cargo build --release --manifest-path backend/Cargo.toml
