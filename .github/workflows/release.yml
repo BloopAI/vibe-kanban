@@ -1,7 +1,7 @@
 # To release:
 # ```
-# git tag -a vibe-v0.1.0 -m "Release 0.1.0"
-# git push origin vibe-v0.1.0
+# git tag -a v0.1.0 -m "Release 0.1.0"
+# git push origin v0.1.0
 # ```
 
 name: Release and publish
@@ -10,6 +10,10 @@ on:
   push:
     tags:
       - "v*.*.*"
+      
+concurrency:
+  group: release
+  cancel-in-progress: true
       
 permissions:
   contents: write
@@ -52,6 +56,7 @@ jobs:
           echo "::endgroup::"
   
   test:
+    needs: tag-check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -97,7 +102,7 @@ jobs:
         run: cargo build --release --manifest-path backend/Cargo.toml
 
   release:
-    needs: [tag-check, test]
+    needs: test
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag'
     outputs:
