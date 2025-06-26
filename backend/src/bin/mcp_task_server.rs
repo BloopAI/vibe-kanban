@@ -1,9 +1,7 @@
 use directories::ProjectDirs;
 use rmcp::{transport::stdio, ServiceExt};
 use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
-use std::env;
 use std::str::FromStr;
-use uuid::Uuid;
 
 use vibe_kanban::mcp::task_server::TaskServer;
 
@@ -16,11 +14,6 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::debug!("[MCP] Starting MCP task server...");
 
-    let project_id = env::var("MCP_PROJECT_ID")
-        .expect("MCP_PROJECT_ID must be set")
-        .parse::<Uuid>()
-        .expect("MCP_PROJECT_ID must be a valid UUID");
-
     // Database connection
     let database_url = format!(
         "sqlite://{}",
@@ -31,7 +24,7 @@ async fn main() -> anyhow::Result<()> {
     let pool = SqlitePool::connect_with(options).await?;
     sqlx::migrate!("./migrations").run(&pool).await?;
 
-    let service = TaskServer::new(pool, project_id)
+    let service = TaskServer::new(pool)
         .serve(stdio())
         .await
         .inspect_err(|e| {

@@ -15,6 +15,8 @@ use crate::models::{
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CreateTaskRequest {
+    #[schemars(description = "The ID of the project to create the task in")]
+    pub project_id: String,
     #[schemars(description = "The title of the task")]
     pub title: String,
     #[schemars(description = "Optional description of the task")]
@@ -31,12 +33,11 @@ pub struct CreateTaskResponse {
 #[derive(Debug, Clone)]
 pub struct TaskServer {
     pub pool: SqlitePool,
-    pub project_id: Uuid,
 }
 
 impl TaskServer {
-    pub fn new(pool: SqlitePool, project_id: Uuid) -> Self {
-        Self { pool, project_id }
+    pub fn new(pool: SqlitePool) -> Self {
+        Self { pool }
     }
 }
 
@@ -45,12 +46,22 @@ impl TaskServer {
     #[tool(description = "Create a new task in a project")]
     async fn create_task(
         &self,
-        #[tool(aggr)] CreateTaskRequest { title, description }: CreateTaskRequest,
+        #[tool(aggr)] CreateTaskRequest { project_id, title, description }: CreateTaskRequest,
     ) -> Result<CallToolResult, RmcpError> {
-        match Project::exists(&self.pool, self.project_id).await {
+        let project_uuid = match Uuid::parse_str(&project_id) {
+            Ok(uuid) => uuid,
+            Err(e) => {
+                return Ok(CallToolResult::error(vec![Content::text(
+                    format!("Invalid project ID format: {project_id}. Must be a valid UUID: {e:?}"),
+                )]));
+            }
+        };
+
+        // Check if project exists
+        match Project::exists(&self.pool, project_uuid).await {
             Ok(false) => {
                 return Ok(CallToolResult::error(vec![Content::text(
-                    "Project not found".to_string(),
+                    format!("Project with ID {} not found", project_id),
                 )]));
             }
             Err(e) => {
@@ -64,14 +75,14 @@ impl TaskServer {
 
         let task_id = Uuid::new_v4();
         let create_task_data = CreateTask {
-            project_id: self.project_id,
+            project_id: project_uuid,
             title,
             description,
         };
 
         match Task::create(&self.pool, &create_task_data, task_id).await {
             Ok(task) => Ok(CallToolResult::success(vec![Content::text(
-                task.id.to_string(),
+                format!("Task created successfully with ID: {}", task.id),
             )])),
             Err(e) => Ok(CallToolResult::error(vec![Content::text(format!(
                 "Failed to create task: {}",
@@ -93,7 +104,7 @@ impl ServerHandler for TaskServer {
                 name: "task-manager".to_string(),
                 version: "1.0.0".to_string(),
             },
-            instructions: Some("A task management server that allows autonomous creation and management of tasks in projects".to_string()),
+            instructions: Some("A task management server that allows autonomous creation and management of tasks across multiple projects. Each request requires a project_id parameter.".to_string()),
         }
     }
 }
