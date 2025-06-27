@@ -20,9 +20,8 @@ async fn main() -> anyhow::Result<()> {
         asset_dir().join("db.sqlite").to_string_lossy()
     );
 
-    let options = SqliteConnectOptions::from_str(&database_url)?.create_if_missing(true);
+    let options = SqliteConnectOptions::from_str(&database_url)?.create_if_missing(false);
     let pool = SqlitePool::connect_with(options).await?;
-    sqlx::migrate!("./migrations").run(&pool).await?;
 
     let service = TaskServer::new(pool)
         .serve(stdio())
