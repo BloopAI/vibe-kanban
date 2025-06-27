@@ -101,10 +101,27 @@ async fn play_sound_notification(sound_file: &crate::models::config::SoundFile) 
                 .spawn();
         }
     } else if cfg!(target_os = "windows") {
-        let _ = tokio::process::Command::new("powershell")
-            .arg("-c")
-            .arg("[System.Media.SystemSounds]::Beep.Play()")
-            .spawn();
+        let sound_path = sound_file.to_path();
+        let absolute_path = std::env::current_dir()
+            .unwrap_or_else(|_| std::path::PathBuf::from("."))
+            .join(&sound_path);
+
+        if absolute_path.exists() {
+            let path_str = absolute_path.to_string_lossy().to_string();
+            let _ = tokio::process::Command::new("powershell")
+                .arg("-c")
+                .arg(format!(
+                    r#"(New-Object Media.SoundPlayer "{}").PlaySync()"#,
+                    path_str
+                ))
+                .spawn();
+        } else {
+            // Fallback to system beep if sound file doesn't exist
+            let _ = tokio::process::Command::new("powershell")
+                .arg("-c")
+                .arg("[System.Media.SystemSounds]::Beep.Play()")
+                .spawn();
+        }
     }
 }
 
