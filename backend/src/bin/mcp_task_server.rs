@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use directories::ProjectDirs;
 use rmcp::{transport::stdio, ServiceExt};
 use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
 use vibe_kanban::{mcp::task_server::TaskServer, utils::asset_dir};

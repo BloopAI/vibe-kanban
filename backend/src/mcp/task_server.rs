@@ -267,6 +267,7 @@ pub struct TaskServer {
 }
 
 impl TaskServer {
+    #[allow(dead_code)]
     pub fn new(pool: SqlitePool) -> Self {
         Self { pool }
     }
@@ -482,7 +483,7 @@ impl TaskServer {
             }
         };
 
-        let task_limit = limit.unwrap_or(50).max(1).min(200); // Reasonable limits
+        let task_limit = limit.unwrap_or(50).clamp(1, 200); // Reasonable limits
 
         let tasks_result =
             Task::find_by_project_id_with_attempt_status(&self.pool, project_uuid).await;
