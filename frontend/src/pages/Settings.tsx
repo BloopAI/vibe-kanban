@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Volume2 } from 'lucide-react';
 import type { ThemeMode, EditorType, SoundFile } from 'shared/types';
 import {
@@ -36,6 +37,8 @@ export function Settings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [mcpServers, setMcpServers] = useState('{}');
+  const [mcpError, setMcpError] = useState<string | null>(null);
   const { setTheme } = useTheme();
 
   const playSound = async (soundFile: SoundFile) => {
@@ -44,6 +47,50 @@ export function Settings() {
       await audio.play();
     } catch (err) {
       console.error('Failed to play sound:', err);
+    }
+  };
+
+  const handleMcpServersChange = (value: string) => {
+    setMcpServers(value);
+    setMcpError(null);
+    
+    // Validate JSON on change
+    if (value.trim()) {
+      try {
+        JSON.parse(value);
+      } catch (err) {
+        setMcpError('Invalid JSON format');
+      }
+    }
+  };
+
+  const saveMcpServers = async () => {
+    if (!mcpServers.trim()) return;
+    
+    try {
+      const mcpConfig = JSON.parse(mcpServers);
+      
+      const response = await fetch('/api/mcp-servers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(mcpConfig),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save MCP servers');
+      }
+      
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      if (err instanceof SyntaxError) {
+        setMcpError('Invalid JSON format');
+      } else {
+        setMcpError(err instanceof Error ? err.message : 'Failed to save MCP servers');
+      }
     }
   };
 
@@ -201,6 +248,43 @@ export function Settings() {
                   Choose the default executor for running tasks.
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>MCP Servers</CardTitle>
+              <CardDescription>
+                Configure MCP (Model Context Protocol) servers to extend Claude's capabilities.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="mcp-servers">MCP Server Configuration</Label>
+                <Textarea
+                  id="mcp-servers"
+                  placeholder='{\n  "server-name": {\n    "type": "stdio",\n    "command": "your-command",\n    "args": ["arg1", "arg2"]\n  }\n}'
+                  value={mcpServers}
+                  onChange={(e) => handleMcpServersChange(e.target.value)}
+                  className="font-mono text-sm min-h-[120px]"
+                />
+                {mcpError && (
+                  <p className="text-sm text-red-600 dark:text-red-400">
+                    {mcpError}
+                  </p>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  Enter MCP server configurations as JSON. These will be merged with your existing ~/.claude.json configuration.
+                </p>
+              </div>
+              <Button 
+                onClick={saveMcpServers}
+                disabled={!!mcpError || !mcpServers.trim() || mcpServers.trim() === '{}'}
+                variant="outline"
+                size="sm"
+              >
+                Apply MCP Configuration
+              </Button>
             </CardContent>
           </Card>
 
