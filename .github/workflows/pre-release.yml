@@ -99,19 +99,30 @@ jobs:
           cargo fmt --all -- --check
           cargo test --workspace
           cargo clippy --all --all-targets --all-features -- -D warnings
+          
+      - name: Build backend
+        run: cargo build --release --manifest-path backend/Cargo.toml
         
-      - name: Build package
-        run: npm run build
-
       - name: Get version from tag
         id: get-version
         run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
 
-      - name: Pack npm package
+      - name: Zip backend
         run: |
+          mkdir vibe-kanban-${{ github.ref_name }}
+          mv target/release/vibe-kanban vibe-kanban-${{ github.ref_name }}
+          mv frontend/dist vibe-kanban-${{ github.ref_name }}
+          zip -r vibe-kanban-${{ github.ref_name }}.zip vibe-kanban-${{ github.ref_name }}
+          
+      - name: Code sign
+        run: echo "pass"
+      
+      - name: Pack
+        run: |
+          mkdir -p npx-cli/dist/linux-x64
+          mv vibe-kanban-${{ github.ref_name }}.zip npx-cli/dist/linux-x64
           cd npx-cli
           npm pack
-          ls -la *.tgz
         
       - name: Create GitHub Pre-Release
         uses: softprops/action-gh-release@v2
@@ -121,5 +132,5 @@ jobs:
           prerelease: true
           generate_release_notes: true
           files: |
-            dist/**
-            npx-cli/*.tgz
+            vibe-kanban-${{ github.ref_name }}.zip
+            npx-cli/vibe-kanban-*.tgz
