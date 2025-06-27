@@ -6,6 +6,7 @@ use uuid::Uuid;
 use crate::{
     executor::{Executor, ExecutorError},
     models::task::Task,
+    utils::shell::get_shell_command,
 };
 
 /// An executor that uses Gemini CLI to process tasks
@@ -39,17 +40,22 @@ impl Executor for GeminiExecutor {
                 .unwrap_or("No description provided")
         );
 
-        // Use Gemini CLI to process the task
-        let mut command = Command::new("npx");
+        // Use shell command for cross-platform compatibility
+        let (shell_cmd, shell_arg) = get_shell_command();
+        let gemini_command = format!(
+            "npx @bloopai/gemini-cli-interactive -p \"{}\"",
+            prompt.replace("\"", "\\\"")
+        );
+
+        let mut command = Command::new(shell_cmd);
         command
             .kill_on_drop(true)
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .current_dir(worktree_path)
-            .arg("@bloopai/gemini-cli-interactive")
-            .arg("-p")
-            .arg(&prompt);
+            .arg(shell_arg)
+            .arg(&gemini_command);
 
         let child = command
             .group_spawn() // Create new process group so we can kill entire tree
@@ -72,18 +78,23 @@ impl Executor for GeminiFollowupExecutor {
         _task_id: Uuid,
         worktree_path: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
-        // Use Gemini CLI with session resumption (if supported)
-        let mut command = Command::new("npx");
+        // Use shell command for cross-platform compatibility
+        let (shell_cmd, shell_arg) = get_shell_command();
+        let gemini_command = format!(
+            "npx https://github.com/google-gemini/gemini-cli -p \"{}\" --resume={}",
+            self.prompt.replace("\"", "\\\""),
+            self.session_id
+        );
+
+        let mut command = Command::new(shell_cmd);
         command
             .kill_on_drop(true)
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .current_dir(worktree_path)
-            .arg("https://github.com/google-gemini/gemini-cli")
-            .arg("-p")
-            .arg(&self.prompt)
-            .arg(format!("--resume={}", self.session_id));
+            .arg(shell_arg)
+            .arg(&gemini_command);
 
         let child = command
             .group_spawn() // Create new process group so we can kill entire tree

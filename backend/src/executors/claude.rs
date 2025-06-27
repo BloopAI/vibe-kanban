@@ -6,6 +6,7 @@ use uuid::Uuid;
 use crate::{
     executor::{Executor, ExecutorError},
     models::task::Task,
+    utils::shell::get_shell_command,
 };
 
 /// An executor that uses Claude CLI to process tasks
@@ -39,19 +40,22 @@ impl Executor for ClaudeExecutor {
                 .unwrap_or("No description provided")
         );
 
-        // Use Claude CLI to process the task
-        let mut command = Command::new("claude");
+        // Use shell command for cross-platform compatibility
+        let (shell_cmd, shell_arg) = get_shell_command();
+        let claude_command = format!(
+            "claude \"{}\" -p --dangerously-skip-permissions --verbose --output-format=stream-json",
+            prompt.replace("\"", "\\\"")
+        );
+
+        let mut command = Command::new(shell_cmd);
         command
             .kill_on_drop(true)
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .current_dir(worktree_path)
-            .arg(&prompt)
-            .arg("-p")
-            .arg("--dangerously-skip-permissions")
-            .arg("--verbose")
-            .arg("--output-format=stream-json");
+            .arg(shell_arg)
+            .arg(&claude_command);
 
         let child = command
             .group_spawn() // Create new process group so we can kill entire tree
@@ -74,20 +78,23 @@ impl Executor for ClaudeFollowupExecutor {
         _task_id: Uuid,
         worktree_path: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
-        // Use Claude CLI with --resume flag to continue the session
-        let mut command = Command::new("claude");
+        // Use shell command for cross-platform compatibility
+        let (shell_cmd, shell_arg) = get_shell_command();
+        let claude_command = format!(
+            "claude \"{}\" -p --dangerously-skip-permissions --verbose --output-format=stream-json --resume={}",
+            self.prompt.replace("\"", "\\\""),
+            self.session_id
+        );
+
+        let mut command = Command::new(shell_cmd);
         command
             .kill_on_drop(true)
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .current_dir(worktree_path)
-            .arg(&self.prompt)
-            .arg("-p")
-            .arg("--dangerously-skip-permissions")
-            .arg("--verbose")
-            .arg("--output-format=stream-json")
-            .arg(format!("--resume={}", self.session_id));
+            .arg(shell_arg)
+            .arg(&claude_command);
 
         let child = command
             .group_spawn() // Create new process group so we can kill entire tree

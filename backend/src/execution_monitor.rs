@@ -103,7 +103,7 @@ async fn play_sound_notification(sound_file: &crate::models::config::SoundFile) 
     } else if cfg!(target_os = "windows") {
         let _ = tokio::process::Command::new("powershell")
             .arg("-c")
-            .arg("[console]::beep(800, 300)")
+            .arg("[System.Media.SystemSounds]::Beep.Play()")
             .spawn();
     }
 }

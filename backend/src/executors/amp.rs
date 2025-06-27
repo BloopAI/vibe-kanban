@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::{
     executor::{Executor, ExecutorError},
     models::task::Task,
+    utils::shell::get_shell_command,
 };
 
 /// An executor that uses Amp to process tasks
@@ -41,15 +42,19 @@ impl Executor for AmpExecutor {
                 .unwrap_or("No description provided")
         );
 
-        let mut command = Command::new("npx");
+        // Use shell command for cross-platform compatibility
+        let (shell_cmd, shell_arg) = get_shell_command();
+        let amp_command = "npx @sourcegraph/amp --format=jsonl";
+
+        let mut command = Command::new(shell_cmd);
         command
             .kill_on_drop(true)
             .stdin(Stdio::piped()) // <-- open a pipe
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(worktree_path)
-            .arg("@sourcegraph/amp")
-            .arg("--format=jsonl");
+            .arg(shell_arg)
+            .arg(amp_command);
 
         let mut child = command
             .group_spawn() // Create new process group so we can kill entire tree
@@ -82,18 +87,22 @@ impl Executor for AmpFollowupExecutor {
 
         use tokio::{io::AsyncWriteExt, process::Command};
 
-        let mut command = Command::new("npx");
+        // Use shell command for cross-platform compatibility
+        let (shell_cmd, shell_arg) = get_shell_command();
+        let amp_command = format!(
+            "npx @sourcegraph/amp threads continue {} --format=jsonl",
+            self.thread_id
+        );
+
+        let mut command = Command::new(shell_cmd);
         command
             .kill_on_drop(true)
             .stdin(Stdio::piped()) // <-- open a pipe
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(worktree_path)
-            .arg("@sourcegraph/amp")
-            .arg("threads")
-            .arg("continue")
-            .arg(&self.thread_id)
-            .arg("--format=jsonl");
+            .arg(shell_arg)
+            .arg(&amp_command);
 
         let mut child = command
             .group_spawn() // Create new process group so we can kill entire tree
