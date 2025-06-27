@@ -4,8 +4,7 @@
   "version": "0.0.20",
   "main": "index.js",
   "bin": {
-    "vibe-kanban": "bin/cli.js",
-    "vibe-kanban-mcp": "bin/mcp-server.js"
+    "vibe-kanban": "bin/cli.js"
   },
   "keywords": [],
   "author": "bloop",
