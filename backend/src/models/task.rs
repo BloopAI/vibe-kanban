@@ -244,4 +244,22 @@ impl Task {
         .await?;
         Ok(result.is_some())
     }
+
+    pub async fn find_task_by_title(
+        pool: &SqlitePool,
+        project_id: Uuid,
+        title: &str,
+    ) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Task,
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+               FROM tasks 
+               WHERE project_id = $1 AND title = $2
+               LIMIT 1"#,
+            project_id,
+            title
+        )
+        .fetch_optional(pool)
+        .await
+    }
 }
