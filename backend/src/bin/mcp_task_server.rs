@@ -1,9 +1,9 @@
+use std::str::FromStr;
+
 use directories::ProjectDirs;
 use rmcp::{transport::stdio, ServiceExt};
 use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
-use std::str::FromStr;
-
-use vibe_kanban::mcp::task_server::TaskServer;
+use vibe_kanban::{mcp::task_server::TaskServer, utils::asset_dir};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -33,16 +33,4 @@ async fn main() -> anyhow::Result<()> {
 
     service.waiting().await?;
     Ok(())
-}
-
-fn asset_dir() -> std::path::PathBuf {
-    let proj = if cfg!(debug_assertions) {
-        ProjectDirs::from("ai", "bloop-dev", env!("CARGO_PKG_NAME"))
-            .expect("OS didn't give us a home directory")
-    } else {
-        ProjectDirs::from("ai", "bloop", env!("CARGO_PKG_NAME"))
-            .expect("OS didn't give us a home directory")
-    };
-
-    proj.data_dir().to_path_buf()
 }
