@@ -1,10 +1,10 @@
-# To release:
+# To pre-release:
 # ```
 # git tag -a v0.1.0 -m "Release 0.1.0"
 # git push origin v0.1.0
 # ```
 
-name: Release and publish
+name: Create GitHub Pre-Release
 
 on:
   push:
@@ -60,7 +60,7 @@ jobs:
           echo "✅  Tag and package.json agree (${tag_ver})"
           echo "::endgroup::"
   
-  test:
+  create-prerelease:
     needs: tag-check
     runs-on: ubuntu-latest
     steps:
@@ -100,56 +100,26 @@ jobs:
           cargo test --workspace
           cargo clippy --all --all-targets --all-features -- -D warnings
         
-      - name: Build backend
-        run: cargo build --release --manifest-path backend/Cargo.toml
-
-  release-and-publish:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref_type == 'tag'
-    outputs:
-      version: ${{ steps.get-version.outputs.version }}
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node
-        uses: ./.github/actions/setup-node
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: nightly-2025-05-18
-          components: rustfmt, clippy
-
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
-        env:
-          RUST_CACHE_DEBUG: true
-        with:
-          workspaces: "backend"
-
-      - name: Build project
+      - name: Build package
         run: npm run build
 
       - name: Get version from tag
         id: get-version
         run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release
+      - name: Pack npm package
+        run: |
+          cd npx-cli
+          npm pack
+          ls -la *.tgz
+        
+      - name: Create GitHub Pre-Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
+          name: Pre-release ${{ github.ref_name }}
+          prerelease: true
           generate_release_notes: true
           files: |
             dist/**
-            
-      - name: Publish to npm
-        run: |
-          cd npx-cli
-          npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+            npx-cli/*.tgz

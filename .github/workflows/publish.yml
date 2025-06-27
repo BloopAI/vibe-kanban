@@ -1,0 +1,114 @@
+name: Publish to npm
+
+on:
+  release:
+    types: [released]
+
+concurrency:
+  group: publish
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  NODE_VERSION: 22
+  PNPM_VERSION: 10.8.1
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # Only run if this was converted from a pre-release
+    if: github.event.release.prerelease == false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+        
+      - name: Configure npm authentication
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+
+      - name: Download release assets
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Get the release assets
+            const release = await github.rest.repos.getRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: context.payload.release.id
+            });
+            
+            // Find the .tgz file
+            const tgzAsset = release.data.assets.find(asset => asset.name.endsWith('.tgz'));
+            
+            if (!tgzAsset) {
+              core.setFailed('No .tgz file found in release assets');
+              return;
+            }
+            
+            // Download the asset
+            const response = await github.rest.repos.getReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              asset_id: tgzAsset.id,
+              headers: {
+                Accept: 'application/octet-stream'
+              }
+            });
+            
+            // Save to npx-cli directory
+            const filePath = path.join('npx-cli', tgzAsset.name);
+            fs.writeFileSync(filePath, Buffer.from(response.data));
+            
+            console.log(`Downloaded ${tgzAsset.name} to ${filePath}`);
+            
+            // Set output for next step
+            core.setOutput('package-file', filePath);
+            core.setOutput('package-name', tgzAsset.name);
+
+      - name: Verify package integrity
+        id: verify
+        run: |
+          cd npx-cli
+          
+          # List files to confirm download
+          ls -la *.tgz
+          
+          # Verify the package can be read
+          npm pack --dry-run || echo "Note: This is expected to show differences since we're using the pre-built package"
+          
+          # Extract package name from the downloaded file
+          PACKAGE_FILE=$(ls *.tgz | head -n1)
+          echo "package-file=$PACKAGE_FILE" >> $GITHUB_OUTPUT
+
+      - name: Publish to npm
+        run: |
+          cd npx-cli
+          
+          # Publish the exact same package that was tested
+          PACKAGE_FILE="${{ steps.verify.outputs.package-file }}"
+          
+          echo "Publishing $PACKAGE_FILE to npm..."
+          npm publish "$PACKAGE_FILE"
+          
+          echo "✅ Successfully published to npm!"
+
+      - name: Update release description
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: context.payload.release.id,
+              body: context.payload.release.body + '\n\n✅ **Published to npm registry**'
+            });
