@@ -15,7 +15,7 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
       - uses: actions/checkout@v4
 
@@ -49,6 +49,7 @@ jobs:
           RUST_CACHE_DEBUG: true
         with:
           workspaces: "backend"
+          cache-provider: "buildjet"
 
       - name: Checks
         run: |
