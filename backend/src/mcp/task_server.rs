@@ -10,11 +10,9 @@ use sqlx::SqlitePool;
 use uuid::Uuid;
 
 use crate::models::{
-    project::Project,
-    task::{CreateTask, Task},
+    project::{CreateProject, Project},
+    task::{CreateTask, Task, TaskStatus},
 };
-use crate::models::project::CreateProject;
-use crate::models::task::TaskStatus;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CreateTaskRequest {
@@ -69,7 +67,9 @@ pub struct ListProjectsResponse {
 pub struct ListTasksRequest {
     #[schemars(description = "The ID of the project to list tasks from")]
     pub project_id: String,
-    #[schemars(description = "Optional status filter: 'todo', 'inprogress', 'inreview', 'done', 'cancelled'")]
+    #[schemars(
+        description = "Optional status filter: 'todo', 'inprogress', 'inreview', 'done', 'cancelled'"
+    )]
     pub status: Option<String>,
     #[schemars(description = "Maximum number of tasks to return (default: 50)")]
     pub limit: Option<i32>,
@@ -182,7 +182,9 @@ pub struct SetTaskStatusRequest {
     pub project_id: String,
     #[schemars(description = "The title of the task to update")]
     pub task_title: String,
-    #[schemars(description = "New status: 'todo', 'in-progress', 'in-review', 'done', 'cancelled'")]
+    #[schemars(
+        description = "New status: 'todo', 'in-progress', 'in-review', 'done', 'cancelled'"
+    )]
     pub status: String,
 }
 
@@ -275,7 +277,11 @@ impl TaskServer {
     #[tool(description = "Create a new task in a project")]
     async fn create_task(
         &self,
-        #[tool(aggr)] CreateTaskRequest { project_id, title, description }: CreateTaskRequest,
+        #[tool(aggr)] CreateTaskRequest {
+            project_id,
+            title,
+            description,
+        }: CreateTaskRequest,
     ) -> Result<CallToolResult, RmcpError> {
         // Parse project_id from string to UUID
         let project_uuid = match Uuid::parse_str(&project_id) {
@@ -287,7 +293,8 @@ impl TaskServer {
                     "project_id": project_id
                 });
                 return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap_or_else(|_| "Invalid project ID format".to_string())
+                    serde_json::to_string_pretty(&error_response)
+                        .unwrap_or_else(|_| "Invalid project ID format".to_string()),
                 )]));
             }
         };
@@ -301,7 +308,8 @@ impl TaskServer {
                     "project_id": project_id
                 });
                 return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap_or_else(|_| "Project not found".to_string())
+                    serde_json::to_string_pretty(&error_response)
+                        .unwrap_or_else(|_| "Project not found".to_string()),
                 )]));
             }
             Err(e) => {
@@ -312,7 +320,8 @@ impl TaskServer {
                     "project_id": project_id
                 });
                 return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap_or_else(|_| "Database error".to_string())
+                    serde_json::to_string_pretty(&error_response)
+                        .unwrap_or_else(|_| "Database error".to_string()),
                 )]));
             }
             Ok(true) => {}
@@ -333,7 +342,8 @@ impl TaskServer {
                     message: "Task created successfully".to_string(),
                 };
                 Ok(CallToolResult::success(vec![Content::text(
-                    serde_json::to_string_pretty(&success_response).unwrap_or_else(|_| "Task created successfully".to_string())
+                    serde_json::to_string_pretty(&success_response)
+                        .unwrap_or_else(|_| "Task created successfully".to_string()),
                 )]))
             }
             Err(e) => {
@@ -345,7 +355,8 @@ impl TaskServer {
                     "title": title
                 });
                 Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap_or_else(|_| "Failed to create task".to_string())
+                    serde_json::to_string_pretty(&error_response)
+                        .unwrap_or_else(|_| "Failed to create task".to_string()),
                 )]))
             }
         }
@@ -383,7 +394,8 @@ impl TaskServer {
                 };
 
                 Ok(CallToolResult::success(vec![Content::text(
-                    serde_json::to_string_pretty(&response).unwrap_or_else(|_| "Failed to serialize projects".to_string())
+                    serde_json::to_string_pretty(&response)
+                        .unwrap_or_else(|_| "Failed to serialize projects".to_string()),
                 )]))
             }
             Err(e) => {
@@ -393,7 +405,8 @@ impl TaskServer {
                     "details": e.to_string()
                 });
                 Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap_or_else(|_| "Database error".to_string())
+                    serde_json::to_string_pretty(&error_response)
+                        .unwrap_or_else(|_| "Database error".to_string()),
                 )]))
             }
         }
@@ -417,7 +430,8 @@ impl TaskServer {
                     "project_id": project_id
                 });
                 return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap_or_else(|_| "Invalid project ID format".to_string())
+                    serde_json::to_string_pretty(&error_response)
+                        .unwrap_or_else(|_| "Invalid project ID format".to_string()),
                 )]));
             }
         };
@@ -432,7 +446,8 @@ impl TaskServer {
                         "provided_status": status_str
                     });
                     return Ok(CallToolResult::error(vec![Content::text(
-                        serde_json::to_string_pretty(&error_response).unwrap_or_else(|_| "Invalid status filter".to_string())
+                        serde_json::to_string_pretty(&error_response)
+                            .unwrap_or_else(|_| "Invalid status filter".to_string()),
                     )]));
                 }
             }
@@ -449,7 +464,8 @@ impl TaskServer {
                     "project_id": project_id
                 });
                 return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap_or_else(|_| "Project not found".to_string())
+                    serde_json::to_string_pretty(&error_response)
+                        .unwrap_or_else(|_| "Project not found".to_string()),
                 )]));
             }
             Err(e) => {
@@ -460,18 +476,21 @@ impl TaskServer {
                     "project_id": project_id
                 });
                 return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap_or_else(|_| "Database error".to_string())
+                    serde_json::to_string_pretty(&error_response)
+                        .unwrap_or_else(|_| "Database error".to_string()),
                 )]));
             }
         };
 
         let task_limit = limit.unwrap_or(50).max(1).min(200); // Reasonable limits
 
-        let tasks_result = Task::find_by_project_id_with_attempt_status(&self.pool, project_uuid).await;
+        let tasks_result =
+            Task::find_by_project_id_with_attempt_status(&self.pool, project_uuid).await;
 
         match tasks_result {
             Ok(tasks) => {
-                let filtered_tasks: Vec<_> = tasks.into_iter()
+                let filtered_tasks: Vec<_> = tasks
+                    .into_iter()
                     .filter(|task| {
                         if let Some(ref filter_status) = status_filter {
                             &task.status == filter_status
@@ -510,7 +529,8 @@ impl TaskServer {
                 };
 
                 Ok(CallToolResult::success(vec![Content::text(
-                    serde_json::to_string_pretty(&response).unwrap_or_else(|_| "Failed to serialize tasks".to_string())
+                    serde_json::to_string_pretty(&response)
+                        .unwrap_or_else(|_| "Failed to serialize tasks".to_string()),
                 )]))
             }
             Err(e) => {
@@ -521,7 +541,8 @@ impl TaskServer {
                     "project_id": project_id
                 });
                 Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap_or_else(|_| "Database error".to_string())
+                    serde_json::to_string_pretty(&error_response)
+                        .unwrap_or_else(|_| "Database error".to_string()),
                 )]))
             }
         }
@@ -535,7 +556,7 @@ impl TaskServer {
             task_id,
             title,
             description,
-            status
+            status,
         }: UpdateTaskRequest,
     ) -> Result<CallToolResult, RmcpError> {
         let project_uuid = match Uuid::parse_str(&project_id) {
@@ -547,7 +568,7 @@ impl TaskServer {
                     "project_id": project_id
                 });
                 return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]));
             }
         };
@@ -561,7 +582,7 @@ impl TaskServer {
                     "task_id": task_id
                 });
                 return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]));
             }
         };
@@ -576,7 +597,7 @@ impl TaskServer {
                         "provided_status": status_str
                     });
                     return Ok(CallToolResult::error(vec![Content::text(
-                        serde_json::to_string_pretty(&error_response).unwrap()
+                        serde_json::to_string_pretty(&error_response).unwrap(),
                     )]));
                 }
             }
@@ -584,36 +605,46 @@ impl TaskServer {
             None
         };
 
-        let current_task = match Task::find_by_id_and_project_id(&self.pool, task_uuid, project_uuid).await {
-            Ok(Some(task)) => task,
-            Ok(None) => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": "Task not found in the specified project",
-                    "task_id": task_id,
-                    "project_id": project_id
-                });
-                return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
-                )]));
-            }
-            Err(e) => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": "Failed to retrieve task",
-                    "details": e.to_string()
-                });
-                return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
-                )]));
-            }
-        };
+        let current_task =
+            match Task::find_by_id_and_project_id(&self.pool, task_uuid, project_uuid).await {
+                Ok(Some(task)) => task,
+                Ok(None) => {
+                    let error_response = serde_json::json!({
+                        "success": false,
+                        "error": "Task not found in the specified project",
+                        "task_id": task_id,
+                        "project_id": project_id
+                    });
+                    return Ok(CallToolResult::error(vec![Content::text(
+                        serde_json::to_string_pretty(&error_response).unwrap(),
+                    )]));
+                }
+                Err(e) => {
+                    let error_response = serde_json::json!({
+                        "success": false,
+                        "error": "Failed to retrieve task",
+                        "details": e.to_string()
+                    });
+                    return Ok(CallToolResult::error(vec![Content::text(
+                        serde_json::to_string_pretty(&error_response).unwrap(),
+                    )]));
+                }
+            };
 
         let new_title = title.unwrap_or(current_task.title);
         let new_description = description.or(current_task.description);
         let new_status = status_enum.unwrap_or(current_task.status);
 
-        match Task::update(&self.pool, task_uuid, project_uuid, new_title, new_description, new_status).await {
+        match Task::update(
+            &self.pool,
+            task_uuid,
+            project_uuid,
+            new_title,
+            new_description,
+            new_status,
+        )
+        .await
+        {
             Ok(updated_task) => {
                 let task_summary = TaskSummary {
                     id: updated_task.id.to_string(),
@@ -633,7 +664,7 @@ impl TaskServer {
                 };
 
                 Ok(CallToolResult::success(vec![Content::text(
-                    serde_json::to_string_pretty(&response).unwrap()
+                    serde_json::to_string_pretty(&response).unwrap(),
                 )]))
             }
             Err(e) => {
@@ -643,7 +674,7 @@ impl TaskServer {
                     "details": e.to_string()
                 });
                 Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]))
             }
         }
@@ -652,7 +683,10 @@ impl TaskServer {
     #[tool(description = "Mark a task as completed by its title")]
     async fn complete_task(
         &self,
-        #[tool(aggr)] CompleteTaskRequest { project_id, task_title }: CompleteTaskRequest,
+        #[tool(aggr)] CompleteTaskRequest {
+            project_id,
+            task_title,
+        }: CompleteTaskRequest,
     ) -> Result<CallToolResult, RmcpError> {
         let project_uuid = match Uuid::parse_str(&project_id) {
             Ok(uuid) => uuid,
@@ -663,14 +697,15 @@ impl TaskServer {
                     "hint": "Try using 'list_projects' first to get the correct project ID"
                 });
                 return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]));
             }
         };
 
         match Task::find_task_by_title(&self.pool, project_uuid, &task_title).await {
             Ok(Some(task)) => {
-                match Task::update_status(&self.pool, task.id, project_uuid, TaskStatus::Done).await {
+                match Task::update_status(&self.pool, task.id, project_uuid, TaskStatus::Done).await
+                {
                     Ok(_) => {
                         let response = SimpleTaskResponse {
                             success: true,
@@ -679,7 +714,7 @@ impl TaskServer {
                             new_status: Some("done".to_string()),
                         };
                         Ok(CallToolResult::success(vec![Content::text(
-                            serde_json::to_string_pretty(&response).unwrap()
+                            serde_json::to_string_pretty(&response).unwrap(),
                         )]))
                     }
                     Err(e) => {
@@ -689,7 +724,7 @@ impl TaskServer {
                             "details": e.to_string()
                         });
                         Ok(CallToolResult::error(vec![Content::text(
-                            serde_json::to_string_pretty(&error_response).unwrap()
+                            serde_json::to_string_pretty(&error_response).unwrap(),
                         )]))
                     }
                 }
@@ -701,7 +736,7 @@ impl TaskServer {
                     "hint": "Use 'list_tasks' to see available tasks in the project"
                 });
                 Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]))
             }
             Err(e) => {
@@ -711,7 +746,7 @@ impl TaskServer {
                     "details": e.to_string()
                 });
                 Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]))
             }
         }
@@ -720,7 +755,11 @@ impl TaskServer {
     #[tool(description = "Set a task's status by its title")]
     async fn set_task_status(
         &self,
-        #[tool(aggr)] SetTaskStatusRequest { project_id, task_title, status }: SetTaskStatusRequest,
+        #[tool(aggr)] SetTaskStatusRequest {
+            project_id,
+            task_title,
+            status,
+        }: SetTaskStatusRequest,
     ) -> Result<CallToolResult, RmcpError> {
         let project_uuid = match Uuid::parse_str(&project_id) {
             Ok(uuid) => uuid,
@@ -731,7 +770,7 @@ impl TaskServer {
                     "hint": "Use 'list_projects' to get the correct project ID"
                 });
                 return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]));
             }
         };
@@ -747,7 +786,7 @@ impl TaskServer {
                     "hint": "Use one of the valid status options"
                 });
                 return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]));
             }
         };
@@ -758,12 +797,15 @@ impl TaskServer {
                     Ok(_) => {
                         let response = SimpleTaskResponse {
                             success: true,
-                            message: format!("Task '{}' status updated to '{}'", task_title, status),
+                            message: format!(
+                                "Task '{}' status updated to '{}'",
+                                task_title, status
+                            ),
                             task_title: task_title.clone(),
                             new_status: Some(status.clone()),
                         };
                         Ok(CallToolResult::success(vec![Content::text(
-                            serde_json::to_string_pretty(&response).unwrap()
+                            serde_json::to_string_pretty(&response).unwrap(),
                         )]))
                     }
                     Err(e) => {
@@ -773,7 +815,7 @@ impl TaskServer {
                             "details": e.to_string()
                         });
                         Ok(CallToolResult::error(vec![Content::text(
-                            serde_json::to_string_pretty(&error_response).unwrap()
+                            serde_json::to_string_pretty(&error_response).unwrap(),
                         )]))
                     }
                 }
@@ -785,7 +827,7 @@ impl TaskServer {
                     "hint": "Use 'list_tasks' to see available tasks"
                 });
                 Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]))
             }
             Err(e) => {
@@ -795,7 +837,7 @@ impl TaskServer {
                     "details": e.to_string()
                 });
                 Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]))
             }
         }
@@ -804,7 +846,10 @@ impl TaskServer {
     #[tool(description = "Delete a task by its title")]
     async fn delete_task_by_title(
         &self,
-        #[tool(aggr)] DeleteTaskByTitleRequest { project_id, task_title }: DeleteTaskByTitleRequest,
+        #[tool(aggr)] DeleteTaskByTitleRequest {
+            project_id,
+            task_title,
+        }: DeleteTaskByTitleRequest,
     ) -> Result<CallToolResult, RmcpError> {
         let project_uuid = match Uuid::parse_str(&project_id) {
             Ok(uuid) => uuid,
@@ -815,37 +860,35 @@ impl TaskServer {
                     "hint": "Use 'list_projects' to get the correct project ID"
                 });
                 return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]));
             }
         };
 
         match Task::find_task_by_title(&self.pool, project_uuid, &task_title).await {
-            Ok(Some(task)) => {
-                match Task::delete(&self.pool, task.id, project_uuid).await {
-                    Ok(_) => {
-                        let response = SimpleTaskResponse {
-                            success: true,
-                            message: format!("Task '{}' deleted successfully", task_title),
-                            task_title: task_title.clone(),
-                            new_status: None,
-                        };
-                        Ok(CallToolResult::success(vec![Content::text(
-                            serde_json::to_string_pretty(&response).unwrap()
-                        )]))
-                    }
-                    Err(e) => {
-                        let error_response = serde_json::json!({
-                            "success": false,
-                            "error": "Failed to delete task",
-                            "details": e.to_string()
-                        });
-                        Ok(CallToolResult::error(vec![Content::text(
-                            serde_json::to_string_pretty(&error_response).unwrap()
-                        )]))
-                    }
+            Ok(Some(task)) => match Task::delete(&self.pool, task.id, project_uuid).await {
+                Ok(_) => {
+                    let response = SimpleTaskResponse {
+                        success: true,
+                        message: format!("Task '{}' deleted successfully", task_title),
+                        task_title: task_title.clone(),
+                        new_status: None,
+                    };
+                    Ok(CallToolResult::success(vec![Content::text(
+                        serde_json::to_string_pretty(&response).unwrap(),
+                    )]))
                 }
-            }
+                Err(e) => {
+                    let error_response = serde_json::json!({
+                        "success": false,
+                        "error": "Failed to delete task",
+                        "details": e.to_string()
+                    });
+                    Ok(CallToolResult::error(vec![Content::text(
+                        serde_json::to_string_pretty(&error_response).unwrap(),
+                    )]))
+                }
+            },
             Ok(None) => {
                 let error_response = serde_json::json!({
                     "success": false,
@@ -853,7 +896,7 @@ impl TaskServer {
                     "hint": "Use 'list_tasks' to see available tasks"
                 });
                 Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]))
             }
             Err(e) => {
@@ -863,7 +906,7 @@ impl TaskServer {
                     "details": e.to_string()
                 });
                 Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]))
             }
         }
@@ -875,7 +918,7 @@ impl TaskServer {
         #[tool(aggr)] UpdateTaskTitleRequest {
             project_id,
             current_title,
-            new_title
+            new_title,
         }: UpdateTaskTitleRequest,
     ) -> Result<CallToolResult, RmcpError> {
         let project_uuid = match Uuid::parse_str(&project_id) {
@@ -887,7 +930,7 @@ impl TaskServer {
                     "hint": "Use 'list_projects' to get the correct project ID"
                 });
                 return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]));
             }
         };
@@ -901,8 +944,10 @@ impl TaskServer {
                     project_uuid,
                     new_title.clone(),
                     task.description,
-                    task.status
-                ).await {
+                    task.status,
+                )
+                .await
+                {
                     Ok(updated_task) => {
                         let response = serde_json::json!({
                             "success": true,
@@ -912,7 +957,7 @@ impl TaskServer {
                             "task_id": updated_task.id.to_string()
                         });
                         Ok(CallToolResult::success(vec![Content::text(
-                            serde_json::to_string_pretty(&response).unwrap()
+                            serde_json::to_string_pretty(&response).unwrap(),
                         )]))
                     }
                     Err(e) => {
@@ -922,7 +967,7 @@ impl TaskServer {
                             "details": e.to_string()
                         });
                         Ok(CallToolResult::error(vec![Content::text(
-                            serde_json::to_string_pretty(&error_response).unwrap()
+                            serde_json::to_string_pretty(&error_response).unwrap(),
                         )]))
                     }
                 }
@@ -934,7 +979,7 @@ impl TaskServer {
                     "hint": "Use 'list_tasks' to see available tasks with exact titles"
                 });
                 Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]))
             }
             Err(e) => {
@@ -944,7 +989,7 @@ impl TaskServer {
                     "details": e.to_string()
                 });
                 Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]))
             }
         }
@@ -956,7 +1001,7 @@ impl TaskServer {
         #[tool(aggr)] UpdateTaskDescriptionRequest {
             project_id,
             task_title,
-            description
+            description,
         }: UpdateTaskDescriptionRequest,
     ) -> Result<CallToolResult, RmcpError> {
         let project_uuid = match Uuid::parse_str(&project_id) {
@@ -968,7 +1013,7 @@ impl TaskServer {
                     "hint": "Use 'list_projects' to get the correct project ID"
                 });
                 return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]));
             }
         };
@@ -982,8 +1027,10 @@ impl TaskServer {
                     project_uuid,
                     task.title.clone(),
                     Some(description.clone()),
-                    task.status
-                ).await {
+                    task.status,
+                )
+                .await
+                {
                     Ok(updated_task) => {
                         let response = serde_json::json!({
                             "success": true,
@@ -993,7 +1040,7 @@ impl TaskServer {
                             "task_id": updated_task.id.to_string()
                         });
                         Ok(CallToolResult::success(vec![Content::text(
-                            serde_json::to_string_pretty(&response).unwrap()
+                            serde_json::to_string_pretty(&response).unwrap(),
                         )]))
                     }
                     Err(e) => {
@@ -1003,7 +1050,7 @@ impl TaskServer {
                             "details": e.to_string()
                         });
                         Ok(CallToolResult::error(vec![Content::text(
-                            serde_json::to_string_pretty(&error_response).unwrap()
+                            serde_json::to_string_pretty(&error_response).unwrap(),
                         )]))
                     }
                 }
@@ -1015,7 +1062,7 @@ impl TaskServer {
                     "hint": "Use 'list_tasks' to see available tasks with exact titles"
                 });
                 Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]))
             }
             Err(e) => {
@@ -1025,7 +1072,7 @@ impl TaskServer {
                     "details": e.to_string()
                 });
                 Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]))
             }
         }
@@ -1034,7 +1081,10 @@ impl TaskServer {
     #[tool(description = "Delete a task from a project")]
     async fn delete_task(
         &self,
-        #[tool(aggr)] DeleteTaskRequest { project_id, task_id }: DeleteTaskRequest,
+        #[tool(aggr)] DeleteTaskRequest {
+            project_id,
+            task_id,
+        }: DeleteTaskRequest,
     ) -> Result<CallToolResult, RmcpError> {
         let project_uuid = match Uuid::parse_str(&project_id) {
             Ok(uuid) => uuid,
@@ -1044,7 +1094,7 @@ impl TaskServer {
                     "error": "Invalid project ID format"
                 });
                 return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]));
             }
         };
@@ -1057,7 +1107,7 @@ impl TaskServer {
                     "error": "Invalid task ID format"
                 });
                 return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]));
             }
         };
@@ -1074,7 +1124,7 @@ impl TaskServer {
                                 deleted_task_id: Some(task_id),
                             };
                             Ok(CallToolResult::success(vec![Content::text(
-                                serde_json::to_string_pretty(&response).unwrap()
+                                serde_json::to_string_pretty(&response).unwrap(),
                             )]))
                         } else {
                             let error_response = serde_json::json!({
@@ -1082,7 +1132,7 @@ impl TaskServer {
                                 "error": "Task not found or already deleted"
                             });
                             Ok(CallToolResult::error(vec![Content::text(
-                                serde_json::to_string_pretty(&error_response).unwrap()
+                                serde_json::to_string_pretty(&error_response).unwrap(),
                             )]))
                         }
                     }
@@ -1093,7 +1143,7 @@ impl TaskServer {
                             "details": e.to_string()
                         });
                         Ok(CallToolResult::error(vec![Content::text(
-                            serde_json::to_string_pretty(&error_response).unwrap()
+                            serde_json::to_string_pretty(&error_response).unwrap(),
                         )]))
                     }
                 }
@@ -1104,7 +1154,7 @@ impl TaskServer {
                     "error": "Task not found in the specified project"
                 });
                 Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]))
             }
             Err(e) => {
@@ -1114,7 +1164,7 @@ impl TaskServer {
                     "details": e.to_string()
                 });
                 Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]))
             }
         }
@@ -1123,7 +1173,10 @@ impl TaskServer {
     #[tool(description = "Get detailed information about a specific task")]
     async fn get_task(
         &self,
-        #[tool(aggr)] GetTaskRequest { project_id, task_id }: GetTaskRequest,
+        #[tool(aggr)] GetTaskRequest {
+            project_id,
+            task_id,
+        }: GetTaskRequest,
     ) -> Result<CallToolResult, RmcpError> {
         let project_uuid = match Uuid::parse_str(&project_id) {
             Ok(uuid) => uuid,
@@ -1133,7 +1186,7 @@ impl TaskServer {
                     "error": "Invalid project ID format"
                 });
                 return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]));
             }
         };
@@ -1146,12 +1199,13 @@ impl TaskServer {
                     "error": "Invalid task ID format"
                 });
                 return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]));
             }
         };
 
-        let task_result = Task::find_by_id_and_project_id(&self.pool, task_uuid, project_uuid).await;
+        let task_result =
+            Task::find_by_id_and_project_id(&self.pool, task_uuid, project_uuid).await;
         let project_result = Project::find_by_id(&self.pool, project_uuid).await;
 
         match (task_result, project_result) {
@@ -1174,7 +1228,7 @@ impl TaskServer {
                 };
 
                 Ok(CallToolResult::success(vec![Content::text(
-                    serde_json::to_string_pretty(&response).unwrap()
+                    serde_json::to_string_pretty(&response).unwrap(),
                 )]))
             }
             (Ok(None), _) | (_, Ok(None)) => {
@@ -1183,7 +1237,7 @@ impl TaskServer {
                     "error": "Task or project not found"
                 });
                 Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]))
             }
             (Err(e), _) | (_, Err(e)) => {
@@ -1193,7 +1247,7 @@ impl TaskServer {
                     "details": e.to_string()
                 });
                 Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]))
             }
         }
@@ -1207,7 +1261,7 @@ impl TaskServer {
             git_repo_path,
             use_existing_repo,
             setup_script,
-            dev_script
+            dev_script,
         }: CreateProjectRequest,
     ) -> Result<CallToolResult, RmcpError> {
         let project_id = Uuid::new_v4();
@@ -1242,7 +1296,7 @@ impl TaskServer {
                 };
 
                 Ok(CallToolResult::success(vec![Content::text(
-                    serde_json::to_string_pretty(&response).unwrap()
+                    serde_json::to_string_pretty(&response).unwrap(),
                 )]))
             }
             Err(e) => {
@@ -1253,7 +1307,7 @@ impl TaskServer {
                     "project_name": name
                 });
                 Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap()
+                    serde_json::to_string_pretty(&error_response).unwrap(),
                 )]))
             }
         }
