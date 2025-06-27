@@ -3,6 +3,7 @@ name = "vibe-kanban"
 version = "0.1.0"
 edition = "2021"
 default-run = "vibe-kanban"
+build = "build.rs"
 
 [lib]
 name = "vibe_kanban"
