@@ -19,9 +19,7 @@ function getPlatformDir() {
   } else if (platform === "darwin" && arch === "arm64") {
     return "macos-arm64";
   } else {
-    console.error(
-      `❌ Unsupported platform: ${platform}-${arch}`
-    );
+    console.error(`❌ Unsupported platform: ${platform}-${arch}`);
     console.error("Supported platforms:");
     console.error("  - Linux x64");
     console.error("  - Windows x64");
@@ -31,39 +29,68 @@ function getPlatformDir() {
   }
 }
 
-function getBinaryName() {
-  return platform === "win32" ? "vibe-kanban.exe" : "vibe-kanban";
+function getBinaryName(base_name) {
+  return platform === "win32" ? `${base_name}.exe` : base_name;
 }
 
 const platformDir = getPlatformDir();
 const extractDir = path.join(__dirname, "..", "dist", platformDir);
 
-const isMcpMode = process.argv.includes('--mcp');
+const isMcpMode = process.argv.includes("--mcp");
+
+if (!fs.existsSync(extractDir)) {
+  fs.mkdirSync(extractDir, { recursive: true });
+}
 
 if (isMcpMode) {
-  const mcpServerPath = path.join(extractDir, "mcp-server");
+  const baseName = "vibe-kanban-mcp";
+  const binaryName = getBinaryName(baseName);
+  const binaryPath = path.join(extractDir, binaryName);
+  const zipName = `${baseName}.zip`;
+  const zipPath = path.join(extractDir, zipName);
 
-  // Check if MCP server binary exists
-  if (!fs.existsSync(mcpServerPath)) {
-    console.error("❌ MCP server binary not found at:", mcpServerPath);
-    console.error("💡 Make sure to run 'npx vibe-kanban' first to extract binaries");
+  // Check if binary exists, delete if it does
+  if (fs.existsSync(binaryPath)) {
+    fs.unlinkSync(binaryPath);
+  }
+
+  // Check if zip file exists
+  if (!fs.existsSync(zipPath)) {
+    // console.error(`❌ ${zipName} not found at: ${zipPath}`);
+    // console.error(`Current platform: ${platform}-${arch} (${platformDir})`);
     process.exit(1);
+  }
+
+  // Unzip the file
+  // console.log(`📦 Extracting ${baseName}...`);
+  if (platform === "win32") {
+    // Use PowerShell on Windows
+    execSync(
+      `powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${extractDir}' -Force"`,
+      { stdio: "inherit" }
+    );
+  } else {
+    // Use unzip on Unix-like systems
+    execSync(`unzip -qq -o "${zipPath}" -d "${extractDir}"`, {
+      stdio: "inherit",
+    });
   }
 
   // Make sure it's executable
   try {
-    fs.chmodSync(mcpServerPath, 0o755);
+    fs.chmodSync(binaryPath, 0o755);
   } catch (error) {
-    console.error("⚠️ Warning: Could not set executable permissions:", error.message);
+    // console.error(
+    //   "⚠️ Warning: Could not set executable permissions:",
+    //   error.message
+    // );
   }
 
   // Launch MCP server
-  console.error("🚀 Starting Vibe Kanban MCP server...");
-  console.error("💡 This server shares the database with the main Vibe Kanban application");
-  console.error("");
+  // console.error(`🚀 Starting ${baseName}...`);
 
-  const mcpProcess = spawn(mcpServerPath, [], {
-    stdio: ['pipe', 'pipe', 'inherit'] // stdin/stdout for MCP, stderr for logs
+  const mcpProcess = spawn(binaryPath, [], {
+    stdio: ["pipe", "pipe", "inherit"], // stdin/stdout for MCP, stderr for logs
   });
 
   // Forward stdin to MCP server
@@ -73,92 +100,62 @@ if (isMcpMode) {
   mcpProcess.stdout.pipe(process.stdout);
 
   // Handle process termination
-  mcpProcess.on('exit', (code) => {
+  mcpProcess.on("exit", (code) => {
     process.exit(code || 0);
   });
 
-  mcpProcess.on('error', (error) => {
+  mcpProcess.on("error", (error) => {
     console.error("❌ MCP server error:", error.message);
     process.exit(1);
   });
 
   // Handle Ctrl+C
-  process.on('SIGINT', () => {
+  process.on("SIGINT", () => {
     console.error("\n🛑 Shutting down MCP server...");
-    mcpProcess.kill('SIGINT');
+    mcpProcess.kill("SIGINT");
   });
 
-  process.on('SIGTERM', () => {
-    mcpProcess.kill('SIGTERM');
+  process.on("SIGTERM", () => {
+    mcpProcess.kill("SIGTERM");
   });
 } else {
-  const zipName = "vibe-kanban.zip";
+  const baseName = "vibe-kanban";
+  const binaryName = getBinaryName(baseName);
+  const binaryPath = path.join(extractDir, binaryName);
+  const zipName = `${baseName}.zip`;
   const zipPath = path.join(extractDir, zipName);
+
+  // Check if binary exists, delete if it does
+  if (fs.existsSync(binaryPath)) {
+    fs.unlinkSync(binaryPath);
+  }
 
   // Check if zip file exists
   if (!fs.existsSync(zipPath)) {
-    console.error(`❌ vibe-kanban.zip not found at: ${zipPath}`);
+    console.error(`❌ ${zipName} not found at: ${zipPath}`);
     console.error(`Current platform: ${platform}-${arch} (${platformDir})`);
     process.exit(1);
   }
 
-  // Check if already extracted
-  const binaryName = getBinaryName();
-  const binaryPath = path.join(extractDir, binaryName);
-  if (fs.existsSync(binaryPath)) {
-    return binaryPath;
-  }
-
-  // Clean out any previous extraction (but keep the zip and mcp-server)
-  console.log("🧹 Cleaning up old files…");
-  if (fs.existsSync(extractDir)) {
-    fs.readdirSync(extractDir).forEach((name) => {
-      if (name !== zipName && name !== "mcp-server") {
-        fs.rmSync(path.join(extractDir, name), { recursive: true, force: true });
-      }
-    });
-  }
-
   // Unzip the file
-  console.log("📦 Extracting vibe-kanban...");
+  console.log(`📦 Extracting ${baseName}...`);
   if (platform === "win32") {
     // Use PowerShell on Windows
-    execSync(`powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${extractDir}' -Force"`, { stdio: "inherit" });
+    execSync(
+      `powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${extractDir}' -Force"`,
+      { stdio: "inherit" }
+    );
   } else {
     // Use unzip on Unix-like systems
     execSync(`unzip -o "${zipPath}" -d "${extractDir}"`, { stdio: "inherit" });
   }
 
-  // Find the extracted directory (should match the zip structure)
-  const extractedDirs = fs.readdirSync(extractDir).filter(name =>
-    name !== zipName && fs.statSync(path.join(extractDir, name)).isDirectory()
-  );
-
-  if (extractedDirs.length === 0) {
-    console.error("❌ No extracted directory found");
-    process.exit(1);
-  }
-
-  try {
-    if (!fs.existsSync(binaryPath)) {
-      console.error(`❌ Binary not found at: ${binaryPath}`);
-      process.exit(1);
-    }
-
-    console.log("🚀 Launching vibe-kanban...");
-    console.log("💡 After starting, you can use MCP integration with:");
-    console.log("   npx vibe-kanban-mcp");
-    console.log("");
-
-    if (platform === "win32") {
-      execSync(`"${binaryPath}"`, { stdio: "inherit" });
-    } else {
-      // Make sure binary is executable on Unix-like systems
-      execSync(`chmod +x "${binaryPath}"`);
-      execSync(`"${binaryPath}"`, { stdio: "inherit" });
-    }
-  } catch (error) {
-    console.error("❌ Error running vibe-kanban:", error.message);
-    process.exit(1);
+  console.log(`🚀 Launching ${baseName}...`);
+  if (platform === "win32") {
+    execSync(`"${binaryPath}"`, { stdio: "inherit" });
+  } else {
+    // Make sure binary is executable on Unix-like systems
+    execSync(`chmod +x "${binaryPath}"`);
+    execSync(`"${binaryPath}"`, { stdio: "inherit" });
   }
 }

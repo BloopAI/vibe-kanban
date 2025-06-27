@@ -1,7 +1,7 @@
 {
   "name": "vibe-kanban",
   "private": false,
-  "version": "0.0.20",
+  "version": "0.0.24",
   "main": "index.js",
   "bin": {
     "vibe-kanban": "bin/cli.js"
@@ -9,7 +9,7 @@
   "keywords": [],
   "author": "bloop",
   "license": "",
-  "description": "NPX wrapper around vibe-kanban and MCP server",
+  "description": "NPX wrapper around vibe-kanban and vibe-kanban-mcp",
   "files": [
     "dist",
     "bin"

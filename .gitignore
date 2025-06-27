@@ -71,6 +71,6 @@ coverage/
 frontend/dist
 backend/bindings
 
-build_codesign_release.sh
+build-npm-package-codesign.sh
 
 npx-cli/dist
