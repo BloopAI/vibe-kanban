@@ -101,7 +101,7 @@ jobs:
             os: ubuntu-latest
             name: linux-x64
           - target: x86_64-pc-windows-msvc
-            os: windows-latest
+            os: windows-latest-l
             name: windows-x64
           - target: x86_64-apple-darwin
             os: macos-13
@@ -146,7 +146,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+          if [[ "${{ matrix.os }}" == "windows-latest-l" ]]; then
             cp target/${{ matrix.target }}/release/vibe-kanban.exe dist/vibe-kanban-${{ matrix.name }}.exe
           else
             cp target/${{ matrix.target }}/release/vibe-kanban dist/vibe-kanban-${{ matrix.name }}
