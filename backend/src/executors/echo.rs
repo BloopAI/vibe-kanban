@@ -57,14 +57,22 @@ echo "Task completed: {}""#,
             )
         };
 
-        let child = Command::new(shell_cmd)
+        let mut command = Command::new(shell_cmd);
+        command
             .kill_on_drop(true)
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .arg(shell_arg)
-            .arg(&script)
+            .arg(&script);
+
+        let child = command
             .group_spawn() // Create new process group so we can kill entire tree
-            .map_err(ExecutorError::SpawnFailed)?;
+            .map_err(|e| {
+                crate::executor::SpawnContext::from_command(&command, "Echo")
+                    .with_task(task_id, Some(task.title.clone()))
+                    .with_context("Shell script execution for echo demo")
+                    .spawn_error(e)
+            })?;
 
         Ok(child)
     }

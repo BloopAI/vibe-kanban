@@ -40,7 +40,8 @@ impl Executor for ClaudeExecutor {
         );
 
         // Use Claude CLI to process the task
-        let child = Command::new("claude")
+        let mut command = Command::new("claude");
+        command
             .kill_on_drop(true)
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::piped())
@@ -50,9 +51,16 @@ impl Executor for ClaudeExecutor {
             .arg("-p")
             .arg("--dangerously-skip-permissions")
             .arg("--verbose")
-            .arg("--output-format=stream-json")
+            .arg("--output-format=stream-json");
+
+        let child = command
             .group_spawn() // Create new process group so we can kill entire tree
-            .map_err(ExecutorError::SpawnFailed)?;
+            .map_err(|e| {
+                crate::executor::SpawnContext::from_command(&command, "Claude")
+                    .with_task(task_id, Some(task.title.clone()))
+                    .with_context("Claude CLI execution for new task")
+                    .spawn_error(e)
+            })?;
 
         Ok(child)
     }
@@ -67,7 +75,8 @@ impl Executor for ClaudeFollowupExecutor {
         worktree_path: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         // Use Claude CLI with --resume flag to continue the session
-        let child = Command::new("claude")
+        let mut command = Command::new("claude");
+        command
             .kill_on_drop(true)
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::piped())
@@ -78,9 +87,18 @@ impl Executor for ClaudeFollowupExecutor {
             .arg("--dangerously-skip-permissions")
             .arg("--verbose")
             .arg("--output-format=stream-json")
-            .arg(format!("--resume={}", self.session_id))
+            .arg(format!("--resume={}", self.session_id));
+
+        let child = command
             .group_spawn() // Create new process group so we can kill entire tree
-            .map_err(ExecutorError::SpawnFailed)?;
+            .map_err(|e| {
+                crate::executor::SpawnContext::from_command(&command, "Claude")
+                    .with_context(format!(
+                        "Claude CLI followup execution for session {}",
+                        self.session_id
+                    ))
+                    .spawn_error(e)
+            })?;
 
         Ok(child)
     }

@@ -6,9 +6,81 @@ use uuid::Uuid;
 
 use crate::executors::{AmpExecutor, ClaudeExecutor, EchoExecutor, GeminiExecutor};
 
+/// Context information for spawn failures to provide comprehensive error details
+#[derive(Debug, Clone)]
+pub struct SpawnContext {
+    /// The type of executor that failed (e.g., "Claude", "Amp", "Echo")
+    pub executor_type: String,
+    /// The command that failed to spawn
+    pub command: String,
+    /// Command line arguments
+    pub args: Vec<String>,
+    /// Working directory where the command was executed
+    pub working_dir: String,
+    /// Task ID if available
+    pub task_id: Option<Uuid>,
+    /// Task title for user-friendly context
+    pub task_title: Option<String>,
+    /// Additional executor-specific context
+    pub additional_context: Option<String>,
+}
+
+impl SpawnContext {
+    /// Set the executor type (required field not available in Command)
+    pub fn with_executor_type(mut self, executor_type: impl Into<String>) -> Self {
+        self.executor_type = executor_type.into();
+        self
+    }
+
+    /// Add task context (optional, not available in Command)
+    pub fn with_task(mut self, task_id: Uuid, task_title: Option<String>) -> Self {
+        self.task_id = Some(task_id);
+        self.task_title = task_title;
+        self
+    }
+
+    /// Add additional context information (optional, not available in Command)
+    pub fn with_context(mut self, context: impl Into<String>) -> Self {
+        self.additional_context = Some(context.into());
+        self
+    }
+}
+
+/// Extract SpawnContext from a tokio::process::Command
+/// This automatically captures all available information from the Command object
+impl From<&tokio::process::Command> for SpawnContext {
+    fn from(command: &tokio::process::Command) -> Self {
+        let program = command.as_std().get_program().to_string_lossy().to_string();
+        let args = command
+            .as_std()
+            .get_args()
+            .map(|s| s.to_string_lossy().to_string())
+            .collect();
+
+        let working_dir = command
+            .as_std()
+            .get_current_dir()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| "current_dir".to_string());
+
+        Self {
+            executor_type: "Unknown".to_string(), // Must be set using with_executor_type()
+            command: program,
+            args,
+            working_dir,
+            task_id: None,
+            task_title: None,
+            additional_context: None,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum ExecutorError {
-    SpawnFailed(std::io::Error),
+    SpawnFailed {
+        error: std::io::Error,
+        context: SpawnContext,
+    },
     TaskNotFound,
     DatabaseError(sqlx::Error),
 }
@@ -16,7 +88,33 @@ pub enum ExecutorError {
 impl std::fmt::Display for ExecutorError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ExecutorError::SpawnFailed(e) => write!(f, "Failed to spawn process: {}", e),
+            ExecutorError::SpawnFailed { error, context } => {
+                write!(f, "Failed to spawn {} process", context.executor_type)?;
+
+                // Add task context if available
+                if let Some(ref title) = context.task_title {
+                    write!(f, " for task '{}'", title)?;
+                } else if let Some(task_id) = context.task_id {
+                    write!(f, " for task {}", task_id)?;
+                }
+
+                // Add command details
+                write!(f, ": command '{}' ", context.command)?;
+                if !context.args.is_empty() {
+                    write!(f, "with args [{}] ", context.args.join(", "))?;
+                }
+
+                // Add working directory
+                write!(f, "in directory '{}' ", context.working_dir)?;
+
+                // Add additional context if provided
+                if let Some(ref additional) = context.additional_context {
+                    write!(f, "({}) ", additional)?;
+                }
+
+                // Finally, add the underlying error
+                write!(f, "- {}", error)
+            }
             ExecutorError::TaskNotFound => write!(f, "Task not found"),
             ExecutorError::DatabaseError(e) => write!(f, "Database error: {}", e),
         }
@@ -28,6 +126,29 @@ impl std::error::Error for ExecutorError {}
 impl From<sqlx::Error> for ExecutorError {
     fn from(err: sqlx::Error) -> Self {
         ExecutorError::DatabaseError(err)
+    }
+}
+
+impl ExecutorError {
+    /// Create a new SpawnFailed error with context
+    pub fn spawn_failed(error: std::io::Error, context: SpawnContext) -> Self {
+        ExecutorError::SpawnFailed { error, context }
+    }
+}
+
+/// Helper to create SpawnContext from Command with builder pattern
+impl SpawnContext {
+    /// Create SpawnContext from Command, then use builder methods for additional context
+    pub fn from_command(
+        command: &tokio::process::Command,
+        executor_type: impl Into<String>,
+    ) -> Self {
+        Self::from(command).with_executor_type(executor_type)
+    }
+
+    /// Finalize the context and create an ExecutorError
+    pub fn spawn_error(self, error: std::io::Error) -> ExecutorError {
+        ExecutorError::spawn_failed(error, self)
     }
 }
 

@@ -40,7 +40,8 @@ impl Executor for GeminiExecutor {
         );
 
         // Use Gemini CLI to process the task
-        let child = Command::new("npx")
+        let mut command = Command::new("npx");
+        command
             .kill_on_drop(true)
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::piped())
@@ -48,9 +49,16 @@ impl Executor for GeminiExecutor {
             .current_dir(worktree_path)
             .arg("@bloopai/gemini-cli-interactive")
             .arg("-p")
-            .arg(&prompt)
+            .arg(&prompt);
+
+        let child = command
             .group_spawn() // Create new process group so we can kill entire tree
-            .map_err(ExecutorError::SpawnFailed)?;
+            .map_err(|e| {
+                crate::executor::SpawnContext::from_command(&command, "Gemini")
+                    .with_task(task_id, Some(task.title.clone()))
+                    .with_context("Gemini CLI execution for new task")
+                    .spawn_error(e)
+            })?;
 
         Ok(child)
     }
@@ -65,7 +73,8 @@ impl Executor for GeminiFollowupExecutor {
         worktree_path: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         // Use Gemini CLI with session resumption (if supported)
-        let child = Command::new("npx")
+        let mut command = Command::new("npx");
+        command
             .kill_on_drop(true)
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::piped())
@@ -74,9 +83,18 @@ impl Executor for GeminiFollowupExecutor {
             .arg("https://github.com/google-gemini/gemini-cli")
             .arg("-p")
             .arg(&self.prompt)
-            .arg(format!("--resume={}", self.session_id))
+            .arg(format!("--resume={}", self.session_id));
+
+        let child = command
             .group_spawn() // Create new process group so we can kill entire tree
-            .map_err(ExecutorError::SpawnFailed)?;
+            .map_err(|e| {
+                crate::executor::SpawnContext::from_command(&command, "Gemini")
+                    .with_context(format!(
+                        "Gemini CLI followup execution for session {}",
+                        self.session_id
+                    ))
+                    .spawn_error(e)
+            })?;
 
         Ok(child)
     }

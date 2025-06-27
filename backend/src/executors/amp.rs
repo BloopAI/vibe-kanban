@@ -41,16 +41,24 @@ impl Executor for AmpExecutor {
                 .unwrap_or("No description provided")
         );
 
-        let mut child = Command::new("npx")
+        let mut command = Command::new("npx");
+        command
             .kill_on_drop(true)
             .stdin(Stdio::piped()) // <-- open a pipe
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(worktree_path)
             .arg("@sourcegraph/amp")
-            .arg("--format=jsonl")
+            .arg("--format=jsonl");
+
+        let mut child = command
             .group_spawn() // Create new process group so we can kill entire tree
-            .map_err(ExecutorError::SpawnFailed)?;
+            .map_err(|e| {
+                crate::executor::SpawnContext::from_command(&command, "Amp")
+                    .with_task(task_id, Some(task.title.clone()))
+                    .with_context("Amp CLI execution for new task")
+                    .spawn_error(e)
+            })?;
 
         // feed the prompt in, then close the pipe so `amp` sees EOF
         if let Some(mut stdin) = child.inner().stdin.take() {
@@ -74,7 +82,8 @@ impl Executor for AmpFollowupExecutor {
 
         use tokio::{io::AsyncWriteExt, process::Command};
 
-        let mut child = Command::new("npx")
+        let mut command = Command::new("npx");
+        command
             .kill_on_drop(true)
             .stdin(Stdio::piped()) // <-- open a pipe
             .stdout(Stdio::piped())
@@ -84,9 +93,18 @@ impl Executor for AmpFollowupExecutor {
             .arg("threads")
             .arg("continue")
             .arg(&self.thread_id)
-            .arg("--format=jsonl")
+            .arg("--format=jsonl");
+
+        let mut child = command
             .group_spawn() // Create new process group so we can kill entire tree
-            .map_err(ExecutorError::SpawnFailed)?;
+            .map_err(|e| {
+                crate::executor::SpawnContext::from_command(&command, "Amp")
+                    .with_context(format!(
+                        "Amp CLI followup execution for thread {}",
+                        self.thread_id
+                    ))
+                    .spawn_error(e)
+            })?;
 
         // feed the prompt in, then close the pipe so `amp` sees EOF
         if let Some(mut stdin) = child.inner().stdin.take() {

@@ -32,15 +32,21 @@ impl Executor for SetupScriptExecutor {
             .ok_or(ExecutorError::TaskNotFound)?; // Reuse TaskNotFound for simplicity
 
         let (shell_cmd, shell_arg) = get_shell_command();
-        let child = Command::new(shell_cmd)
+        let mut command = Command::new(shell_cmd);
+        command
             .kill_on_drop(true)
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .arg(shell_arg)
             .arg(&self.script)
-            .current_dir(worktree_path)
-            .group_spawn()
-            .map_err(ExecutorError::SpawnFailed)?;
+            .current_dir(worktree_path);
+
+        let child = command.group_spawn().map_err(|e| {
+            crate::executor::SpawnContext::from_command(&command, "SetupScript")
+                .with_task(task_id, Some(task.title.clone()))
+                .with_context("Setup script execution")
+                .spawn_error(e)
+        })?;
 
         Ok(child)
     }
