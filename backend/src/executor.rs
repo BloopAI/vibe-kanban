@@ -277,6 +277,7 @@ impl ExecutorConfig {
     pub fn config_path(&self) -> Option<std::path::PathBuf> {
         match self {
             ExecutorConfig::Echo => None,
+            ExecutorConfig::Opencode => None,
             ExecutorConfig::Claude => dirs::home_dir().map(|home| home.join(".claude.json")),
             ExecutorConfig::Amp => {
                 dirs::config_dir().map(|config| config.join("amp").join("settings.json"))
@@ -290,7 +291,8 @@ impl ExecutorConfig {
     /// Get the JSON attribute path for MCP servers in the config file
     pub fn mcp_attribute_path(&self) -> Option<Vec<&'static str>> {
         match self {
-            ExecutorConfig::Echo => None, // Echo doesn't support MCP
+            ExecutorConfig::Opencode => None, // TODO: Implement MCP for Opencode
+            ExecutorConfig::Echo => None,     // Echo doesn't support MCP
             ExecutorConfig::Claude => Some(vec!["mcpServers"]),
             ExecutorConfig::Amp => Some(vec!["amp", "mcpServers"]), // Nested path for Amp
             ExecutorConfig::Gemini => Some(vec!["mcpServers"]),
@@ -306,6 +308,7 @@ impl ExecutorConfig {
     pub fn display_name(&self) -> &'static str {
         match self {
             ExecutorConfig::Echo => "Echo (Test Mode)",
+            ExecutorConfig::Opencode => "Opencode",
             ExecutorConfig::Claude => "Claude",
             ExecutorConfig::Amp => "Amp",
             ExecutorConfig::Gemini => "Gemini",
