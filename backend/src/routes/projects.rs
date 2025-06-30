@@ -12,7 +12,8 @@ use uuid::Uuid;
 
 use crate::models::{
     project::{
-        CreateProject, GitBranch, Project, ProjectWithBranch, SearchMatchType, SearchResult, UpdateProject,
+        CreateProject, GitBranch, Project, ProjectWithBranch, SearchMatchType, SearchResult,
+        UpdateProject,
     },
     ApiResponse,
 };
@@ -74,17 +75,15 @@ pub async fn get_project_branches(
     Extension(pool): Extension<SqlitePool>,
 ) -> Result<ResponseJson<ApiResponse<Vec<GitBranch>>>, StatusCode> {
     match Project::find_by_id(&pool, id).await {
-        Ok(Some(project)) => {
-            match project.get_all_branches() {
-                Ok(branches) => Ok(ResponseJson(ApiResponse {
-                    success: true,
-                    data: Some(branches),
-                    message: None,
-                })),
-                Err(e) => {
-                    tracing::error!("Failed to get branches for project {}: {}", id, e);
-                    Err(StatusCode::INTERNAL_SERVER_ERROR)
-                }
+        Ok(Some(project)) => match project.get_all_branches() {
+            Ok(branches) => Ok(ResponseJson(ApiResponse {
+                success: true,
+                data: Some(branches),
+                message: None,
+            })),
+            Err(e) => {
+                tracing::error!("Failed to get branches for project {}: {}", id, e);
+                Err(StatusCode::INTERNAL_SERVER_ERROR)
             }
         },
         Ok(None) => Err(StatusCode::NOT_FOUND),
