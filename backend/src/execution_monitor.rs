@@ -110,13 +110,10 @@ async fn play_sound_notification(sound_file: &crate::models::config::SoundFile) 
         let absolute_path = current_dir.join(&sound_path);
 
         if absolute_path.exists() {
-            let path_str = absolute_path.to_string_lossy().to_string();
             let _ = tokio::process::Command::new("powershell")
-                .arg("-c")
-                .arg(format!(
-                    r#"(New-Object Media.SoundPlayer "{}").PlaySync()"#,
-                    path_str
-                ))
+                .arg("-Command")
+                .arg("(New-Object Media.SoundPlayer $args[0]).PlaySync()")
+                .arg(absolute_path.to_string_lossy().as_ref())
                 .spawn();
         } else {
             // Fallback to system beep if sound file doesn't exist
