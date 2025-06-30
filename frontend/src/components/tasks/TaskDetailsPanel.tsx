@@ -191,7 +191,6 @@ export function TaskDetailsPanel({
                   followUpError={followUpError}
                   setFollowUpError={setFollowUpError}
                   canSendFollowUp={canSendFollowUp}
-                  isAttemptRunning={isAttemptRunning}
                   projectId={projectId}
                   onSendFollowUp={handleSendFollowUp}
                 />

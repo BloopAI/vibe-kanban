@@ -1,7 +1,6 @@
 import { Send, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Label } from '@/components/ui/label';
 import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
 
 interface TaskFollowUpSectionProps {
@@ -11,7 +10,6 @@ interface TaskFollowUpSectionProps {
   followUpError: string | null;
   setFollowUpError: (error: string | null) => void;
   canSendFollowUp: boolean;
-  isAttemptRunning: boolean;
   projectId: string;
   onSendFollowUp: () => void;
 }
@@ -23,7 +21,6 @@ export function TaskFollowUpSection({
   followUpError,
   setFollowUpError,
   canSendFollowUp,
-  isAttemptRunning,
   projectId,
   onSendFollowUp,
 }: TaskFollowUpSectionProps) {
@@ -78,7 +75,6 @@ export function TaskFollowUpSection({
             )}
           </Button>
         </div>
-
       </div>
     </div>
   );
