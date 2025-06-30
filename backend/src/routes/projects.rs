@@ -245,13 +245,18 @@ pub async fn update_project(
         }
     }
 
-    // Use existing values if not provided in update
-    let name = payload.name.unwrap_or(existing_project.name);
-    let git_repo_path = payload
-        .git_repo_path
-        .unwrap_or(existing_project.git_repo_path.clone());
-    let setup_script = payload.setup_script.or(existing_project.setup_script);
-    let dev_script = payload.dev_script.or(existing_project.dev_script);
+    // Destructure payload to handle field updates.
+    // This allows us to treat `None` from the payload as an explicit `null` to clear a field,
+    // as the frontend currently sends all fields on update.
+    let UpdateProject {
+        name,
+        git_repo_path,
+        setup_script,
+        dev_script,
+    } = payload;
+
+    let name = name.unwrap_or(existing_project.name);
+    let git_repo_path = git_repo_path.unwrap_or(existing_project.git_repo_path);
 
     match Project::update(&pool, id, name, git_repo_path, setup_script, dev_script).await {
         Ok(project) => Ok(ResponseJson(ApiResponse {
