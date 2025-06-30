@@ -86,13 +86,16 @@ export function ProjectList() {
 
   const handleOpenInIDE = async (projectId: string) => {
     try {
-      const response = await makeRequest(`/api/projects/${projectId}/open-editor`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(null),
-      });
+      const response = await makeRequest(
+        `/api/projects/${projectId}/open-editor`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(null),
+        }
+      );
 
       if (!response.ok) {
         throw new Error('Failed to open project in IDE');
