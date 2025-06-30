@@ -102,9 +102,11 @@ async fn play_sound_notification(sound_file: &crate::models::config::SoundFile) 
         }
     } else if cfg!(target_os = "windows") {
         let sound_path = sound_file.to_path();
-        let absolute_path = std::env::current_dir()
-            .unwrap_or_else(|_| std::path::PathBuf::from("."))
-            .join(&sound_path);
+        let current_dir = std::env::current_dir().unwrap_or_else(|e| {
+            tracing::error!("Failed to get current directory: {}", e);
+            std::path::PathBuf::from(".")
+        });
+        let absolute_path = current_dir.join(&sound_path);
 
         if absolute_path.exists() {
             let path_str = absolute_path.to_string_lossy().to_string();
