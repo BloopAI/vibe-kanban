@@ -111,7 +111,7 @@ export function TaskDetailsToolbar({
     if (!branchSearchTerm.trim()) {
       return branches;
     }
-    return branches.filter(branch =>
+    return branches.filter((branch) =>
       branch.name.toLowerCase().includes(branchSearchTerm.toLowerCase())
     );
   }, [branches, branchSearchTerm]);
@@ -121,7 +121,7 @@ export function TaskDetailsToolbar({
     if (!baseBranchSearchTerm.trim()) {
       return branches;
     }
-    return branches.filter(branch =>
+    return branches.filter((branch) =>
       branch.name.toLowerCase().includes(baseBranchSearchTerm.toLowerCase())
     );
   }, [branches, baseBranchSearchTerm]);
@@ -129,7 +129,7 @@ export function TaskDetailsToolbar({
   // Get display name for selected branch
   const selectedBranchDisplayName = useMemo(() => {
     if (!selectedBranch) return 'current';
-    
+
     // For remote branches, show just the branch name without the remote prefix
     if (selectedBranch.includes('/')) {
       const parts = selectedBranch.split('/');
@@ -141,7 +141,7 @@ export function TaskDetailsToolbar({
   // Get display name for base branch
   const baseBranchDisplayName = useMemo(() => {
     if (!baseBranchForNew) return 'Current branch';
-    
+
     // For remote branches, show just the branch name without the remote prefix
     if (baseBranchForNew.includes('/')) {
       const parts = baseBranchForNew.split('/');
@@ -153,7 +153,7 @@ export function TaskDetailsToolbar({
   // Handle creating new branch
   const handleCreateBranch = async () => {
     if (!newBranchName.trim()) return;
-    
+
     try {
       const response = await fetch(`/api/projects/${projectId}/branches`, {
         method: 'POST',
@@ -167,7 +167,7 @@ export function TaskDetailsToolbar({
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         // Select the newly created branch
         onSetSelectedBranch(result.data.name);
@@ -346,7 +346,9 @@ export function TaskDetailsToolbar({
                             <Input
                               placeholder="Search branches..."
                               value={branchSearchTerm}
-                              onChange={(e) => setBranchSearchTerm(e.target.value)}
+                              onChange={(e) =>
+                                setBranchSearchTerm(e.target.value)
+                              }
                               className="pl-8"
                             />
                           </div>
@@ -358,7 +360,7 @@ export function TaskDetailsToolbar({
                             e.stopPropagation();
                             setIsCreatingBranch(true);
                             setBaseBranchForNew(
-                              branches.find(b => b.is_current)?.name || ''
+                              branches.find((b) => b.is_current)?.name || ''
                             );
                           }}
                           className="text-blue-600 hover:text-blue-700"
@@ -381,12 +383,16 @@ export function TaskDetailsToolbar({
                                   setBranchSearchTerm('');
                                 }}
                                 className={
-                                  selectedBranch === branch.name ? 'bg-accent' : ''
+                                  selectedBranch === branch.name
+                                    ? 'bg-accent'
+                                    : ''
                                 }
                               >
                                 <div className="flex items-center justify-between w-full">
                                   <span
-                                    className={branch.is_current ? 'font-medium' : ''}
+                                    className={
+                                      branch.is_current ? 'font-medium' : ''
+                                    }
                                   >
                                     {branch.name}
                                   </span>
@@ -414,7 +420,9 @@ export function TaskDetailsToolbar({
                         <DropdownMenuSeparator />
                         <div className="p-3 space-y-3">
                           <div>
-                            <label className="text-sm font-medium">Branch name</label>
+                            <label className="text-sm font-medium">
+                              Branch name
+                            </label>
                             <Input
                               placeholder="feature/my-feature"
                               value={newBranchName}
@@ -431,9 +439,11 @@ export function TaskDetailsToolbar({
                             />
                           </div>
                           <div>
-                            <label className="text-sm font-medium">Base branch</label>
-                            <DropdownMenu 
-                              open={showBaseBranchDropdown} 
+                            <label className="text-sm font-medium">
+                              Base branch
+                            </label>
+                            <DropdownMenu
+                              open={showBaseBranchDropdown}
                               onOpenChange={setShowBaseBranchDropdown}
                             >
                               <DropdownMenuTrigger asChild>
@@ -445,7 +455,9 @@ export function TaskDetailsToolbar({
                                     e.stopPropagation();
                                   }}
                                 >
-                                  <span className="truncate">{baseBranchDisplayName}</span>
+                                  <span className="truncate">
+                                    {baseBranchDisplayName}
+                                  </span>
                                   <GitBranchIcon className="h-4 w-4 ml-2 flex-shrink-0" />
                                 </Button>
                               </DropdownMenuTrigger>
@@ -456,7 +468,9 @@ export function TaskDetailsToolbar({
                                     <Input
                                       placeholder="Search branches..."
                                       value={baseBranchSearchTerm}
-                                      onChange={(e) => setBaseBranchSearchTerm(e.target.value)}
+                                      onChange={(e) =>
+                                        setBaseBranchSearchTerm(e.target.value)
+                                      }
                                       className="pl-8"
                                     />
                                   </div>
@@ -470,10 +484,14 @@ export function TaskDetailsToolbar({
                                     setShowBaseBranchDropdown(false);
                                     setBaseBranchSearchTerm('');
                                   }}
-                                  className={!baseBranchForNew ? 'bg-accent' : ''}
+                                  className={
+                                    !baseBranchForNew ? 'bg-accent' : ''
+                                  }
                                 >
                                   <div className="flex items-center justify-between w-full">
-                                    <span className="font-medium">Current branch</span>
+                                    <span className="font-medium">
+                                      Current branch
+                                    </span>
                                     <span className="text-xs bg-green-100 text-green-800 px-1 rounded">
                                       default
                                     </span>
@@ -497,12 +515,18 @@ export function TaskDetailsToolbar({
                                           setBaseBranchSearchTerm('');
                                         }}
                                         className={
-                                          baseBranchForNew === branch.name ? 'bg-accent' : ''
+                                          baseBranchForNew === branch.name
+                                            ? 'bg-accent'
+                                            : ''
                                         }
                                       >
                                         <div className="flex items-center justify-between w-full">
                                           <span
-                                            className={branch.is_current ? 'font-medium' : ''}
+                                            className={
+                                              branch.is_current
+                                                ? 'font-medium'
+                                                : ''
+                                            }
                                           >
                                             {branch.name}
                                           </span>
