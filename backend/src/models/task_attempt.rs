@@ -171,6 +171,7 @@ impl TaskAttempt {
         task_id: Uuid,
     ) -> Result<Self, TaskAttemptError> {
         let attempt_id = Uuid::new_v4();
+        let prefixed_id = format!("vibe-kanban-{}", attempt_id);
 
         // First, get the task to get the project_id
         let task = Task::find_by_id(pool, task_id)
@@ -184,18 +185,19 @@ impl TaskAttempt {
 
         // Generate worktree path automatically using cross-platform temporary directory
         let temp_dir = std::env::temp_dir();
-        let worktree_path = temp_dir.join(format!("mission-control-worktree-{}", attempt_id));
+        let worktree_path = temp_dir.join(&prefixed_id);
         let worktree_path_str = worktree_path.to_string_lossy().to_string();
 
+        // Solve scoping issues
         {
             // Create the worktree using git2
             let repo = Repository::open(&project.git_repo_path)?;
 
             let mut worktree_opts = WorktreeAddOptions::new();
-            let base_ref: Reference;
+            let new_base_ref: Reference;
 
             if let Some(base_branch) = data.base_branch.clone() {
-                let base_ref_inner = Some(base_branch.as_str())
+                let base_ref = Some(base_branch.as_str())
                     .map(str::trim) // chop off any whitespace
                     .filter(|b| !b.is_empty()) // ditch empty strings
                     .and_then(|branch| {
@@ -215,8 +217,11 @@ impl TaskAttempt {
                     })
                     .ok_or(TaskAttemptError::BranchNotFound(base_branch))?;
 
-                base_ref = base_ref_inner;
-                worktree_opts.reference(Some(&base_ref));
+                let target_commit = base_ref.peel_to_commit()?;
+                repo.branch(&prefixed_id, &target_commit, false)?;
+                new_base_ref = repo.find_reference(&format!("refs/heads/{}", prefixed_id))?;
+
+                worktree_opts.reference(Some(&new_base_ref));
             }
 
             // Create the worktree directory if it doesn't exist
