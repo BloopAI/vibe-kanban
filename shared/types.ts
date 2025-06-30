@@ -38,6 +38,8 @@ export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
 export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
 
+export type CreateBranch = { name: string, base_branch: string | null, };
+
 export type CreateTask = { project_id: string, title: string, description: string | null, };
 
 export type CreateTaskAndStart = { project_id: string, title: string, description: string | null, executor: ExecutorConfig | null, };

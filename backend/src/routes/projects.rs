@@ -4,7 +4,7 @@ use axum::{
     extract::{Extension, Path, Query},
     http::StatusCode,
     response::Json as ResponseJson,
-    routing::get,
+    routing::{get, post},
     Json, Router,
 };
 use sqlx::SqlitePool;
@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use crate::models::{
     project::{
-        CreateProject, GitBranch, Project, ProjectWithBranch, SearchMatchType, SearchResult,
+        CreateProject, CreateBranch, GitBranch, Project, ProjectWithBranch, SearchMatchType, SearchResult,
         UpdateProject,
     },
     ApiResponse,
@@ -84,6 +84,55 @@ pub async fn get_project_branches(
             Err(e) => {
                 tracing::error!("Failed to get branches for project {}: {}", id, e);
                 Err(StatusCode::INTERNAL_SERVER_ERROR)
+            }
+        },
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to fetch project: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+pub async fn create_project_branch(
+    Path(id): Path<Uuid>,
+    Extension(pool): Extension<SqlitePool>,
+    Json(payload): Json<CreateBranch>,
+) -> Result<ResponseJson<ApiResponse<GitBranch>>, StatusCode> {
+    // Validate branch name
+    if payload.name.trim().is_empty() {
+        return Ok(ResponseJson(ApiResponse {
+            success: false,
+            data: None,
+            message: Some("Branch name cannot be empty".to_string()),
+        }));
+    }
+
+    // Check if branch name contains invalid characters
+    if payload.name.contains(' ') || payload.name.contains('/') && !payload.name.starts_with("refs/") {
+        return Ok(ResponseJson(ApiResponse {
+            success: false,
+            data: None,
+            message: Some("Branch name contains invalid characters".to_string()),
+        }));
+    }
+
+    match Project::find_by_id(&pool, id).await {
+        Ok(Some(project)) => {
+            match project.create_branch(&payload.name, payload.base_branch.as_deref()) {
+                Ok(branch) => Ok(ResponseJson(ApiResponse {
+                    success: true,
+                    data: Some(branch),
+                    message: Some(format!("Branch '{}' created successfully", payload.name)),
+                })),
+                Err(e) => {
+                    tracing::error!("Failed to create branch '{}' for project {}: {}", payload.name, id, e);
+                    Ok(ResponseJson(ApiResponse {
+                        success: false,
+                        data: None,
+                        message: Some(format!("Failed to create branch: {}", e)),
+                    }))
+                }
             }
         },
         Ok(None) => Err(StatusCode::NOT_FOUND),
@@ -436,6 +485,6 @@ pub fn projects_router() -> Router {
             get(get_project).put(update_project).delete(delete_project),
         )
         .route("/projects/:id/with-branch", get(get_project_with_branch))
-        .route("/projects/:id/branches", get(get_project_branches))
+        .route("/projects/:id/branches", get(get_project_branches).post(create_project_branch))
         .route("/projects/:id/search", get(search_project_files))
 }

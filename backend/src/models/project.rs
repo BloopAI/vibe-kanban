@@ -81,6 +81,13 @@ pub struct GitBranch {
     pub last_commit_date: DateTime<Utc>,
 }
 
+#[derive(Debug, Deserialize, TS)]
+#[ts(export)]
+pub struct CreateBranch {
+    pub name: String,
+    pub base_branch: Option<String>,
+}
+
 impl Project {
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
@@ -278,5 +285,46 @@ impl Project {
         });
 
         Ok(branches)
+    }
+
+    pub fn create_branch(&self, branch_name: &str, base_branch: Option<&str>) -> Result<GitBranch, git2::Error> {
+        let repo = Repository::open(&self.git_repo_path)?;
+        
+        // Get the base branch reference - default to current branch if not specified
+        let base_branch_name = match base_branch {
+            Some(name) => name.to_string(),
+            None => self.get_current_branch().unwrap_or_else(|_| "HEAD".to_string())
+        };
+
+        // Find the base commit
+        let base_commit = if base_branch_name == "HEAD" {
+            repo.head()?.peel_to_commit()?
+        } else {
+            // Try to find the branch as local first, then remote
+            let base_ref = if let Ok(local_ref) = repo.find_reference(&format!("refs/heads/{}", base_branch_name)) {
+                local_ref
+            } else if let Ok(remote_ref) = repo.find_reference(&format!("refs/remotes/{}", base_branch_name)) {
+                remote_ref
+            } else {
+                return Err(git2::Error::from_str(&format!("Base branch '{}' not found", base_branch_name)));
+            };
+            base_ref.peel_to_commit()?
+        };
+
+        // Create the new branch
+        let _new_branch = repo.branch(branch_name, &base_commit, false)?;
+        
+        // Get the commit date for the new branch (same as base commit)
+        let last_commit_date = {
+            let timestamp = base_commit.time().seconds();
+            DateTime::from_timestamp(timestamp, 0).unwrap_or_else(|| Utc::now())
+        };
+
+        Ok(GitBranch {
+            name: branch_name.to_string(),
+            is_current: false,
+            is_remote: false,
+            last_commit_date,
+        })
     }
 }

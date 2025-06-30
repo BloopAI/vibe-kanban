@@ -9,6 +9,9 @@ import {
   ExternalLink,
   GitBranch as GitBranchIcon,
   Search,
+  Plus,
+  Check,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import {
   Tooltip,
@@ -96,6 +100,9 @@ export function TaskDetailsToolbar({
 }: TaskDetailsToolbarProps) {
   const { config } = useConfig();
   const [branchSearchTerm, setBranchSearchTerm] = useState('');
+  const [isCreatingBranch, setIsCreatingBranch] = useState(false);
+  const [newBranchName, setNewBranchName] = useState('');
+  const [baseBranchForNew, setBaseBranchForNew] = useState<string>('');
 
   // Filter branches based on search term
   const filteredBranches = useMemo(() => {
@@ -118,6 +125,48 @@ export function TaskDetailsToolbar({
     }
     return selectedBranch;
   }, [selectedBranch]);
+
+  // Handle creating new branch
+  const handleCreateBranch = async () => {
+    if (!newBranchName.trim()) return;
+    
+    try {
+      const response = await fetch(`/api/projects/${projectId}/branches`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newBranchName.trim(),
+          base_branch: baseBranchForNew || null,
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Select the newly created branch
+        onSetSelectedBranch(result.data.name);
+        // Reset form
+        setIsCreatingBranch(false);
+        setNewBranchName('');
+        setBaseBranchForNew('');
+        setBranchSearchTerm('');
+      } else {
+        alert(`Failed to create branch: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Failed to create branch:', error);
+      alert('Failed to create branch. Please try again.');
+    }
+  };
+
+  // Cancel creating branch
+  const handleCancelCreateBranch = () => {
+    setIsCreatingBranch(false);
+    setNewBranchName('');
+    setBaseBranchForNew('');
+  };
 
   return (
     <div className="px-6 pb-4">
@@ -261,58 +310,134 @@ export function TaskDetailsToolbar({
                     </Tooltip>
                   </TooltipProvider>
                   <DropdownMenuContent align="center" className="w-80">
-                    <div className="p-2">
-                      <div className="relative">
-                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Search branches..."
-                          value={branchSearchTerm}
-                          onChange={(e) => setBranchSearchTerm(e.target.value)}
-                          className="pl-8"
-                        />
-                      </div>
-                    </div>
-                    <DropdownMenuSeparator />
-                    <div className="max-h-64 overflow-y-auto">
-                      {filteredBranches.length === 0 ? (
-                        <div className="p-2 text-sm text-muted-foreground text-center">
-                          No branches found
+                    {!isCreatingBranch ? (
+                      <>
+                        <div className="p-2">
+                          <div className="relative">
+                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              placeholder="Search branches..."
+                              value={branchSearchTerm}
+                              onChange={(e) => setBranchSearchTerm(e.target.value)}
+                              className="pl-8"
+                            />
+                          </div>
                         </div>
-                      ) : (
-                        filteredBranches.map((branch) => (
-                          <DropdownMenuItem
-                            key={branch.name}
-                            onClick={() => {
-                              onSetSelectedBranch(branch.name);
-                              setBranchSearchTerm('');
-                            }}
-                            className={
-                              selectedBranch === branch.name ? 'bg-accent' : ''
-                            }
-                          >
-                            <div className="flex items-center justify-between w-full">
-                              <span
-                                className={branch.is_current ? 'font-medium' : ''}
-                              >
-                                {branch.name}
-                              </span>
-                              <div className="flex gap-1">
-                                {branch.is_current && (
-                                  <span className="text-xs bg-green-100 text-green-800 px-1 rounded">
-                                    current
-                                  </span>
-                                )}
-                                {branch.is_remote && (
-                                  <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">
-                                    remote
-                                  </span>
-                                )}
-                              </div>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setIsCreatingBranch(true);
+                            setBaseBranchForNew(
+                              branches.find(b => b.is_current)?.name || ''
+                            );
+                          }}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create new branch...
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <div className="max-h-64 overflow-y-auto">
+                          {filteredBranches.length === 0 ? (
+                            <div className="p-2 text-sm text-muted-foreground text-center">
+                              No branches found
                             </div>
-                          </DropdownMenuItem>
-                        ))
-                      )}
-                    </div>
+                          ) : (
+                            filteredBranches.map((branch) => (
+                              <DropdownMenuItem
+                                key={branch.name}
+                                onClick={() => {
+                                  onSetSelectedBranch(branch.name);
+                                  setBranchSearchTerm('');
+                                }}
+                                className={
+                                  selectedBranch === branch.name ? 'bg-accent' : ''
+                                }
+                              >
+                                <div className="flex items-center justify-between w-full">
+                                  <span
+                                    className={branch.is_current ? 'font-medium' : ''}
+                                  >
+                                    {branch.name}
+                                  </span>
+                                  <div className="flex gap-1">
+                                    {branch.is_current && (
+                                      <span className="text-xs bg-green-100 text-green-800 px-1 rounded">
+                                        current
+                                      </span>
+                                    )}
+                                    {branch.is_remote && (
+                                      <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">
+                                        remote
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </DropdownMenuItem>
+                            ))
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <DropdownMenuLabel>Create New Branch</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <div className="p-3 space-y-3">
+                          <div>
+                            <label className="text-sm font-medium">Branch name</label>
+                            <Input
+                              placeholder="feature/my-feature"
+                              value={newBranchName}
+                              onChange={(e) => setNewBranchName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleCreateBranch();
+                                } else if (e.key === 'Escape') {
+                                  handleCancelCreateBranch();
+                                }
+                              }}
+                              className="mt-1"
+                              autoFocus
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium">Base branch</label>
+                            <select
+                              value={baseBranchForNew}
+                              onChange={(e) => setBaseBranchForNew(e.target.value)}
+                              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            >
+                              <option value="">Current branch</option>
+                              {branches.map((branch) => (
+                                <option key={branch.name} value={branch.name}>
+                                  {branch.name}
+                                  {branch.is_current && ' (current)'}
+                                  {branch.is_remote && ' (remote)'}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex gap-2 pt-2">
+                            <Button
+                              size="sm"
+                              onClick={handleCreateBranch}
+                              disabled={!newBranchName.trim()}
+                              className="flex-1"
+                            >
+                              <Check className="h-4 w-4 mr-1" />
+                              Create
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={handleCancelCreateBranch}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <DropdownMenu>
