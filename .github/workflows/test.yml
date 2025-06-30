@@ -3,6 +3,7 @@ name: Test
 on:
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -33,7 +34,7 @@ jobs:
 
       - name: Type check frontend
         run: cd frontend && npx tsc --noEmit
-        
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
