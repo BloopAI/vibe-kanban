@@ -43,7 +43,7 @@ impl Executor for GeminiExecutor {
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
         let gemini_command = format!(
-            "npx @bloopai/gemini-cli-interactive -p \"{}\"",
+            "npx @google/gemini-cli -p \"{}\"",
             prompt.replace("\"", "\\\"")
         );
 
