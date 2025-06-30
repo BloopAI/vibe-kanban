@@ -56,8 +56,6 @@ interface TaskDetailsToolbarProps {
   onAttemptChange: (attemptId: string) => void;
   onCreateNewAttempt: (executor?: string, baseBranch?: string) => void;
   onStopAllExecutions: () => void;
-  onSetSelectedExecutor: (executor: string) => void;
-  onSetSelectedBranch: (branch: string) => void;
   onStartDevServer: () => void;
   onStopDevServer: () => void;
   onOpenInEditor: () => void;
@@ -90,8 +88,6 @@ export function TaskDetailsToolbar({
   onAttemptChange,
   onCreateNewAttempt,
   onStopAllExecutions,
-  onSetSelectedExecutor,
-  onSetSelectedBranch,
   onStartDevServer,
   onStopDevServer,
   onOpenInEditor,
@@ -501,8 +497,6 @@ export function TaskDetailsToolbar({
                           </Tooltip>
                         </TooltipProvider>
                       </div>
-
-
 
                       <Button
                         variant="outline"

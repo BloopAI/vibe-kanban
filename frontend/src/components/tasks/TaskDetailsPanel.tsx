@@ -56,11 +56,9 @@ export function TaskDetailsPanel({
     isAttemptRunning,
     canSendFollowUp,
     processedDevServerLogs,
-    setSelectedExecutor,
     setFollowUpMessage,
     setFollowUpError,
     setIsHoveringDevServer,
-    setSelectedBranch,
     handleAttemptChange,
     createNewAttempt,
     stopAllExecutions,
@@ -158,8 +156,6 @@ export function TaskDetailsPanel({
                 onAttemptChange={handleAttemptChange}
                 onCreateNewAttempt={createNewAttempt}
                 onStopAllExecutions={stopAllExecutions}
-                onSetSelectedExecutor={setSelectedExecutor}
-                onSetSelectedBranch={setSelectedBranch}
                 onStartDevServer={startDevServer}
                 onStopDevServer={stopDevServer}
                 onOpenInEditor={handleOpenInEditor}
