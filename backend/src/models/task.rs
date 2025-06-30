@@ -74,36 +74,61 @@ impl Task {
     ) -> Result<Vec<TaskWithAttemptStatus>, sqlx::Error> {
         let records = sqlx::query!(
             r#"SELECT 
-                t.id as "id!: Uuid", 
-                t.project_id as "project_id!: Uuid", 
+                t.id                  AS "id!: Uuid", 
+                t.project_id          AS "project_id!: Uuid", 
                 t.title, 
                 t.description, 
-                t.status as "status!: TaskStatus", 
-                t.created_at as "created_at!: DateTime<Utc>", 
-                t.updated_at as "updated_at!: DateTime<Utc>",
-                CASE WHEN in_progress_attempts.task_id IS NOT NULL THEN true ELSE false END as "has_in_progress_attempt!: i64",
-                CASE WHEN merged_attempts.task_id IS NOT NULL THEN true ELSE false END as "has_merged_attempt!"
-               FROM tasks t
-               LEFT JOIN (
-               SELECT DISTINCT ta.task_id 
-               FROM task_attempts ta
-               INNER JOIN execution_processes ep ON ta.id = ep.task_attempt_id
-               INNER JOIN (
-               SELECT execution_process_id, MAX(created_at) as latest_created_at
-               FROM task_attempt_activities
-                   GROUP BY execution_process_id
-               ) latest_activity ON ep.id = latest_activity.execution_process_id
-               INNER JOIN task_attempt_activities taa ON ep.id = taa.execution_process_id 
-                   AND taa.created_at = latest_activity.latest_created_at
-                   WHERE taa.status IN ('setuprunning', 'executorrunning')
-                ) in_progress_attempts ON t.id = in_progress_attempts.task_id
-               LEFT JOIN (
-                   SELECT DISTINCT ta.task_id 
-                   FROM task_attempts ta
-                   WHERE ta.merge_commit IS NOT NULL
-               ) merged_attempts ON t.id = merged_attempts.task_id
-               WHERE t.project_id = $1 
-               ORDER BY t.created_at DESC"#,
+                t.status              AS "status!: TaskStatus", 
+                t.created_at          AS "created_at!: DateTime<Utc>", 
+                t.updated_at          AS "updated_at!: DateTime<Utc>",
+                CASE 
+                WHEN in_progress_attempts.task_id IS NOT NULL THEN true 
+                ELSE false 
+                END                   AS "has_in_progress_attempt!: i64",
+                CASE 
+                WHEN merged_attempts.task_id IS NOT NULL THEN true 
+                ELSE false 
+                END                   AS "has_merged_attempt!"
+            FROM tasks t
+            LEFT JOIN (
+                SELECT DISTINCT ta.task_id
+                FROM task_attempts ta
+                JOIN execution_processes ep 
+                ON ta.id = ep.task_attempt_id
+                JOIN (
+                    -- pick exactly one “latest” activity per process,
+                    -- tiebreaking so that running‐states are lower priority
+                    SELECT execution_process_id, status
+                    FROM (
+                        SELECT
+                            execution_process_id,
+                            status,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY execution_process_id
+                                ORDER BY
+                                    created_at DESC,
+                                    CASE 
+                                    WHEN status IN ('setuprunning','executorrunning') THEN 1 
+                                    ELSE 0 
+                                    END
+                            ) AS rn
+                        FROM task_attempt_activities
+                    ) sub
+                    WHERE rn = 1
+                ) latest_act 
+                ON ep.id = latest_act.execution_process_id
+                WHERE latest_act.status IN ('setuprunning','executorrunning')
+            ) in_progress_attempts 
+            ON t.id = in_progress_attempts.task_id
+            LEFT JOIN (
+                SELECT DISTINCT ta.task_id
+                FROM task_attempts ta
+                WHERE ta.merge_commit IS NOT NULL
+            ) merged_attempts 
+            ON t.id = merged_attempts.task_id
+            WHERE t.project_id = $1
+            ORDER BY t.created_at DESC;
+            "#,
             project_id
         )
         .fetch_all(pool)
