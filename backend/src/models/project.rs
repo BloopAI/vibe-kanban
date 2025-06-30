@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use git2::Repository;
+use git2::{BranchType, Repository};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 use ts_rs::TS;
@@ -69,6 +69,14 @@ pub enum SearchMatchType {
     FileName,
     DirectoryName,
     FullPath,
+}
+
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
+pub struct GitBranch {
+    pub name: String,
+    pub is_current: bool,
+    pub is_remote: bool,
 }
 
 impl Project {
@@ -204,5 +212,57 @@ impl Project {
             created_at: self.created_at,
             updated_at: self.updated_at,
         }
+    }
+
+    pub fn get_all_branches(&self) -> Result<Vec<GitBranch>, git2::Error> {
+        let repo = Repository::open(&self.git_repo_path)?;
+        let current_branch = self.get_current_branch().unwrap_or_default();
+        let mut branches = Vec::new();
+
+        // Get local branches
+        let local_branches = repo.branches(Some(BranchType::Local))?;
+        for branch_result in local_branches {
+            let (branch, _) = branch_result?;
+            if let Some(name) = branch.name()? {
+                branches.push(GitBranch {
+                    name: name.to_string(),
+                    is_current: name == current_branch,
+                    is_remote: false,
+                });
+            }
+        }
+
+        // Get remote branches
+        let remote_branches = repo.branches(Some(BranchType::Remote))?;
+        for branch_result in remote_branches {
+            let (branch, _) = branch_result?;
+            if let Some(name) = branch.name()? {
+                // Skip remote HEAD references
+                if !name.ends_with("/HEAD") {
+                    branches.push(GitBranch {
+                        name: name.to_string(),
+                        is_current: false,
+                        is_remote: true,
+                    });
+                }
+            }
+        }
+
+        // Sort branches: current first, then local, then remote
+        branches.sort_by(|a, b| {
+            if a.is_current && !b.is_current {
+                std::cmp::Ordering::Less
+            } else if !a.is_current && b.is_current {
+                std::cmp::Ordering::Greater
+            } else if !a.is_remote && b.is_remote {
+                std::cmp::Ordering::Less
+            } else if a.is_remote && !b.is_remote {
+                std::cmp::Ordering::Greater
+            } else {
+                a.name.cmp(&b.name)
+            }
+        });
+
+        Ok(branches)
     }
 }

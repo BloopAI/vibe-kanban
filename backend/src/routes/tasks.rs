@@ -146,6 +146,7 @@ pub async fn create_task_and_start(
     });
     let attempt_payload = CreateTaskAttempt {
         executor: executor_string,
+        base_branch: None, // Not supported in task creation endpoint, only in task attempts
     };
 
     match TaskAttempt::create(&pool, &attempt_payload, attempt_id, task_id).await {

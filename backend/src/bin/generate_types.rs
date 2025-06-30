@@ -89,6 +89,7 @@ fn main() {
         vibe_kanban::models::project::UpdateProject::decl(),
         vibe_kanban::models::project::SearchResult::decl(),
         vibe_kanban::models::project::SearchMatchType::decl(),
+        vibe_kanban::models::project::GitBranch::decl(),
         vibe_kanban::models::task::CreateTask::decl(),
         vibe_kanban::models::task::CreateTaskAndStart::decl(),
         vibe_kanban::models::task::TaskStatus::decl(),

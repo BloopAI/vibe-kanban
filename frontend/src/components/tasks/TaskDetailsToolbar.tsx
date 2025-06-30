@@ -6,6 +6,7 @@ import {
   Play,
   GitCompare,
   ExternalLink,
+  GitBranch as GitBranchIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,6 +28,7 @@ import type {
   ExecutionProcessSummary,
   ExecutionProcess,
   Project,
+  GitBranch,
 } from 'shared/types';
 
 interface TaskDetailsToolbarProps {
@@ -42,10 +44,13 @@ interface TaskDetailsToolbarProps {
   isStartingDevServer: boolean;
   devServerDetails: ExecutionProcess | null;
   processedDevServerLogs: string;
+  branches: GitBranch[];
+  selectedBranch: string | null;
   onAttemptChange: (attemptId: string) => void;
-  onCreateNewAttempt: (executor?: string) => void;
+  onCreateNewAttempt: (executor?: string, baseBranch?: string) => void;
   onStopAllExecutions: () => void;
   onSetSelectedExecutor: (executor: string) => void;
+  onSetSelectedBranch: (branch: string) => void;
   onStartDevServer: () => void;
   onStopDevServer: () => void;
   onOpenInEditor: () => void;
@@ -73,10 +78,13 @@ export function TaskDetailsToolbar({
   isStartingDevServer,
   devServerDetails,
   processedDevServerLogs,
+  branches,
+  selectedBranch,
   onAttemptChange,
   onCreateNewAttempt,
   onStopAllExecutions,
   onSetSelectedExecutor,
+  onSetSelectedBranch,
   onStartDevServer,
   onStopDevServer,
   onOpenInEditor,
@@ -183,7 +191,7 @@ export function TaskDetailsToolbar({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => onCreateNewAttempt()}
+                        onClick={() => onCreateNewAttempt(selectedExecutor, selectedBranch || undefined)}
                         className="rounded-r-none border-r-0"
                       >
                         {selectedAttempt ? 'New Attempt' : 'Start Attempt'}
@@ -192,12 +200,61 @@ export function TaskDetailsToolbar({
                     <TooltipContent>
                       <p>
                         {selectedAttempt
-                          ? 'Create new attempt with current executor'
-                          : 'Start new attempt with current executor'}
+                          ? 'Create new attempt with current settings'
+                          : 'Start new attempt with current settings'}
                       </p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
+                <DropdownMenu>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-none border-x-0 px-2"
+                          >
+                            <GitBranchIcon className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Choose base branch: {selectedBranch || 'current'}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <DropdownMenuContent align="center" className="w-56">
+                    {branches.map((branch) => (
+                      <DropdownMenuItem
+                        key={branch.name}
+                        onClick={() => onSetSelectedBranch(branch.name)}
+                        className={
+                          selectedBranch === branch.name ? 'bg-accent' : ''
+                        }
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className={branch.is_current ? 'font-medium' : ''}>
+                            {branch.name}
+                          </span>
+                          <div className="flex gap-1">
+                            {branch.is_current && (
+                              <span className="text-xs bg-green-100 text-green-800 px-1 rounded">
+                                current
+                              </span>
+                            )}
+                            {branch.is_remote && (
+                              <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">
+                                remote
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <DropdownMenu>
                   <TooltipProvider>
                     <Tooltip>
@@ -213,7 +270,7 @@ export function TaskDetailsToolbar({
                         </DropdownMenuTrigger>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Choose executor</p>
+                        <p>Choose executor: {selectedExecutor}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>

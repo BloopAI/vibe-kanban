@@ -9,6 +9,7 @@ import type {
   ExecutionProcess,
   ExecutionProcessSummary,
   EditorType,
+  GitBranch,
 } from 'shared/types';
 
 export function useTaskDetails(
@@ -39,6 +40,8 @@ export function useTaskDetails(
   const [devServerDetails, setDevServerDetails] =
     useState<ExecutionProcess | null>(null);
   const [isHoveringDevServer, setIsHoveringDevServer] = useState(false);
+  const [branches, setBranches] = useState<GitBranch[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
 
   const { config } = useConfig();
 
@@ -242,6 +245,26 @@ export function useTaskDetails(
     }
   }, [runningDevServer, task, selectedAttempt, projectId]);
 
+  // Fetch project branches
+  const fetchProjectBranches = useCallback(async () => {
+    try {
+      const response = await makeRequest(`/api/projects/${projectId}/branches`);
+      if (response.ok) {
+        const result: ApiResponse<GitBranch[]> = await response.json();
+        if (result.success && result.data) {
+          setBranches(result.data);
+          // Set current branch as default
+          const currentBranch = result.data.find(b => b.is_current);
+          if (currentBranch && !selectedBranch) {
+            setSelectedBranch(currentBranch.name);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch project branches:', err);
+    }
+  }, [projectId, selectedBranch]);
+
   // Set default executor from config
   useEffect(() => {
     if (config) {
@@ -252,8 +275,9 @@ export function useTaskDetails(
   useEffect(() => {
     if (task && isOpen) {
       fetchTaskAttempts();
+      fetchProjectBranches();
     }
-  }, [task, isOpen, fetchTaskAttempts]);
+  }, [task, isOpen, fetchTaskAttempts, fetchProjectBranches]);
 
   // Polling for updates when attempt is running
   useEffect(() => {
@@ -288,7 +312,7 @@ export function useTaskDetails(
     }
   };
 
-  const createNewAttempt = async (executor?: string) => {
+  const createNewAttempt = async (executor?: string, baseBranch?: string) => {
     if (!task) return;
 
     try {
@@ -301,6 +325,7 @@ export function useTaskDetails(
           },
           body: JSON.stringify({
             executor: executor || selectedExecutor,
+            base_branch: baseBranch || selectedBranch,
           }),
         }
       );
@@ -482,6 +507,8 @@ export function useTaskDetails(
     isStartingDevServer,
     devServerDetails,
     isHoveringDevServer,
+    branches,
+    selectedBranch,
 
     // Computed
     runningDevServer,
@@ -494,6 +521,7 @@ export function useTaskDetails(
     setFollowUpMessage,
     setFollowUpError,
     setIsHoveringDevServer,
+    setSelectedBranch,
     handleAttemptChange,
     createNewAttempt,
     stopAllExecutions,

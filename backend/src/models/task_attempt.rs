@@ -77,6 +77,7 @@ pub struct TaskAttempt {
 #[ts(export)]
 pub struct CreateTaskAttempt {
     pub executor: Option<String>, // Optional executor name (defaults to "echo")
+    pub base_branch: Option<String>, // Optional base branch to checkout (defaults to current HEAD)
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -184,7 +185,45 @@ impl TaskAttempt {
         // Create the worktree using git2
         let repo = Repository::open(&project.git_repo_path)?;
 
-        // We no longer store base_commit in the database - it's retrieved live via git2
+        // If a base branch is specified, check it out first
+        if let Some(ref base_branch) = data.base_branch {
+            if !base_branch.trim().is_empty() {
+                // Try to find the branch reference
+                let branch_ref = if base_branch.starts_with("origin/") || base_branch.contains('/') {
+                    // Remote branch reference
+                    format!("refs/remotes/{}", base_branch)
+                } else {
+                    // Try local branch first, then remote
+                    let local_ref = format!("refs/heads/{}", base_branch);
+                    if repo.find_reference(&local_ref).is_ok() {
+                        local_ref
+                    } else {
+                        format!("refs/remotes/origin/{}", base_branch)
+                    }
+                };
+
+                // Get the target commit from the branch
+                let target_commit = if let Ok(reference) = repo.find_reference(&branch_ref) {
+                    reference.peel_to_commit()?
+                } else {
+                    // Try to resolve as a commit hash
+                    let oid = git2::Oid::from_str(base_branch)
+                        .map_err(|_| TaskAttemptError::ValidationError(
+                            format!("Branch '{}' not found", base_branch)
+                        ))?;
+                    repo.find_commit(oid)?
+                };
+
+                // Checkout the target commit
+                let tree = target_commit.tree()?;
+                let mut checkout_builder = CheckoutBuilder::new();
+                checkout_builder.force();
+                repo.checkout_tree(tree.as_object(), Some(&mut checkout_builder))?;
+                
+                // Update HEAD to point to the target commit
+                repo.set_head_detached(target_commit.id())?;
+            }
+        }
 
         // Create the worktree directory if it doesn't exist
         if let Some(parent) = worktree_path.parent() {

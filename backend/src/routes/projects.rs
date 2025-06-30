@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use crate::models::{
     project::{
-        CreateProject, Project, ProjectWithBranch, SearchMatchType, SearchResult, UpdateProject,
+        CreateProject, GitBranch, Project, ProjectWithBranch, SearchMatchType, SearchResult, UpdateProject,
     },
     ApiResponse,
 };
@@ -61,6 +61,32 @@ pub async fn get_project_with_branch(
             data: Some(project.with_branch_info()),
             message: None,
         })),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to fetch project: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+pub async fn get_project_branches(
+    Path(id): Path<Uuid>,
+    Extension(pool): Extension<SqlitePool>,
+) -> Result<ResponseJson<ApiResponse<Vec<GitBranch>>>, StatusCode> {
+    match Project::find_by_id(&pool, id).await {
+        Ok(Some(project)) => {
+            match project.get_all_branches() {
+                Ok(branches) => Ok(ResponseJson(ApiResponse {
+                    success: true,
+                    data: Some(branches),
+                    message: None,
+                })),
+                Err(e) => {
+                    tracing::error!("Failed to get branches for project {}: {}", id, e);
+                    Err(StatusCode::INTERNAL_SERVER_ERROR)
+                }
+            }
+        },
         Ok(None) => Err(StatusCode::NOT_FOUND),
         Err(e) => {
             tracing::error!("Failed to fetch project: {}", e);
@@ -411,5 +437,6 @@ pub fn projects_router() -> Router {
             get(get_project).put(update_project).delete(delete_project),
         )
         .route("/projects/:id/with-branch", get(get_project_with_branch))
+        .route("/projects/:id/branches", get(get_project_branches))
         .route("/projects/:id/search", get(search_project_files))
 }

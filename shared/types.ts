@@ -36,6 +36,8 @@ export type SearchResult = { path: string, is_file: boolean, match_type: SearchM
 
 export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
+export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, };
+
 export type CreateTask = { project_id: string, title: string, description: string | null, };
 
 export type CreateTaskAndStart = { project_id: string, title: string, description: string | null, executor: ExecutorConfig | null, };
@@ -52,7 +54,7 @@ export type TaskAttemptStatus = "setuprunning" | "setupcomplete" | "setupfailed"
 
 export type TaskAttempt = { id: string, task_id: string, worktree_path: string, merge_commit: string | null, executor: string | null, created_at: string, updated_at: string, };
 
-export type CreateTaskAttempt = { executor: string | null, };
+export type CreateTaskAttempt = { executor: string | null, base_branch: string | null, };
 
 export type UpdateTaskAttempt = Record<string, never>;
 
