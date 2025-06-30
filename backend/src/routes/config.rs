@@ -8,7 +8,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tokio::sync::RwLock;
+use tokio::{fs, sync::RwLock};
 use ts_rs::TS;
 
 use crate::{
@@ -96,8 +96,9 @@ fn resolve_executor_config(
     saved_config: &ExecutorConfig,
 ) -> Result<ExecutorConfig, String> {
     let executor_config = match query_executor {
-        Some(executor_type) => ExecutorConfig::from_str(&executor_type)
-            .ok_or_else(|| format!("Unknown executor type: {}", executor_type))?,
+        Some(executor_type) => executor_type
+            .parse::<ExecutorConfig>()
+            .map_err(|e| e.to_string())?,
         None => saved_config.clone(),
     };
 
@@ -209,8 +210,6 @@ async fn update_mcp_servers_in_config(
     executor_config: &ExecutorConfig,
     new_servers: HashMap<String, Value>,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-    use tokio::fs;
-
     // Ensure parent directory exists
     if let Some(parent) = file_path.parent() {
         fs::create_dir_all(parent).await?;
@@ -253,8 +252,6 @@ async fn read_mcp_servers_from_config(
     file_path: &std::path::Path,
     executor_config: &ExecutorConfig,
 ) -> Result<HashMap<String, Value>, Box<dyn std::error::Error + Send + Sync>> {
-    use tokio::fs;
-
     // Read the config file, return empty if it doesn't exist
     let file_content = fs::read_to_string(file_path)
         .await

@@ -62,7 +62,9 @@ export function Settings() {
       try {
         // Temporarily update the config to use the selected executor for the API call
         // We'll send the executor type as a query parameter instead of relying on saved config
-        const response = await fetch(`/api/mcp-servers?executor=${executorType}`);
+        const response = await fetch(
+          `/api/mcp-servers?executor=${executorType}`
+        );
         if (response.ok) {
           const result = await response.json();
           if (result.success) {
@@ -73,7 +75,10 @@ export function Settings() {
           }
         } else {
           const result = await response.json();
-          if (result.message && result.message.includes('does not support MCP')) {
+          if (
+            result.message &&
+            result.message.includes('does not support MCP')
+          ) {
             // This executor doesn't support MCP - show warning message
             setMcpError(result.message);
           } else {
@@ -121,13 +126,16 @@ export function Settings() {
         try {
           const mcpConfig = JSON.parse(mcpServers);
 
-          const mcpResponse = await fetch(`/api/mcp-servers?executor=${config.executor.type}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(mcpConfig),
-          });
+          const mcpResponse = await fetch(
+            `/api/mcp-servers?executor=${config.executor.type}`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(mcpConfig),
+            }
+          );
 
           if (!mcpResponse.ok) {
             const errorData = await mcpResponse.json();
@@ -138,7 +146,9 @@ export function Settings() {
             setMcpError('Invalid JSON format');
           } else {
             setMcpError(
-              mcpErr instanceof Error ? mcpErr.message : 'Failed to save MCP servers'
+              mcpErr instanceof Error
+                ? mcpErr.message
+                : 'Failed to save MCP servers'
             );
           }
           setSaving(false);
@@ -217,7 +227,9 @@ export function Settings() {
 
         {mcpError && (
           <Alert variant="destructive">
-            <AlertDescription>MCP Configuration Error: {mcpError}</AlertDescription>
+            <AlertDescription>
+              MCP Configuration Error: {mcpError}
+            </AlertDescription>
           </Alert>
         )}
 
@@ -306,7 +318,8 @@ export function Settings() {
             <CardHeader>
               <CardTitle>MCP Servers</CardTitle>
               <CardDescription>
-                Configure MCP servers to extend the default executor's capabilities.
+                Configure MCP servers to extend the default executor's
+                capabilities.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -320,7 +333,9 @@ export function Settings() {
                       <div className="mt-2 text-sm text-amber-700 dark:text-amber-300">
                         <p>{mcpError}</p>
                         <p className="mt-1">
-                          To use MCP servers, please select a different executor (Claude, Amp, or Gemini) in the Task Execution section above.
+                          To use MCP servers, please select a different executor
+                          (Claude, Amp, or Gemini) in the Task Execution section
+                          above.
                         </p>
                       </div>
                     </div>
@@ -331,7 +346,11 @@ export function Settings() {
                   <Label htmlFor="mcp-servers">MCP Server Configuration</Label>
                   <Textarea
                     id="mcp-servers"
-                    placeholder={mcpLoading ? 'Loading current configuration...' : '{\n  "server-name": {\n    "type": "stdio",\n    "command": "your-command",\n    "args": ["arg1", "arg2"]\n  }\n}'}
+                    placeholder={
+                      mcpLoading
+                        ? 'Loading current configuration...'
+                        : '{\n  "server-name": {\n    "type": "stdio",\n    "command": "your-command",\n    "args": ["arg1", "arg2"]\n  }\n}'
+                    }
                     value={mcpLoading ? 'Loading...' : mcpServers}
                     onChange={(e) => handleMcpServersChange(e.target.value)}
                     disabled={mcpLoading}
@@ -345,8 +364,7 @@ export function Settings() {
                   <p className="text-sm text-muted-foreground">
                     {mcpLoading
                       ? 'Loading current MCP server configuration...'
-                      : `Changes will be saved to the default executor's configuration file when settings are saved.`
-                    }
+                      : `Changes will be saved to the default executor's configuration file when settings are saved.`}
                   </p>
                 </div>
               )}

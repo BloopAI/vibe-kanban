@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -247,18 +249,21 @@ pub struct ExecutorConstants {
     pub executor_labels: Vec<String>,
 }
 
-impl ExecutorConfig {
-    /// Parse executor type from string
-    pub fn from_str(s: &str) -> Option<Self> {
+impl FromStr for ExecutorConfig {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "echo" => Some(ExecutorConfig::Echo),
-            "claude" => Some(ExecutorConfig::Claude),
-            "amp" => Some(ExecutorConfig::Amp),
-            "gemini" => Some(ExecutorConfig::Gemini),
-            _ => None,
+            "echo" => Ok(ExecutorConfig::Echo),
+            "claude" => Ok(ExecutorConfig::Claude),
+            "amp" => Ok(ExecutorConfig::Amp),
+            "gemini" => Ok(ExecutorConfig::Gemini),
+            _ => Err(format!("Unknown executor type: {}", s)),
         }
     }
+}
 
+impl ExecutorConfig {
     pub fn create_executor(&self) -> Box<dyn Executor> {
         match self {
             ExecutorConfig::Echo => Box::new(EchoExecutor),
