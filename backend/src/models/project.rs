@@ -233,7 +233,7 @@ impl Project {
             if let Some(target) = branch.get().target() {
                 if let Ok(commit) = repo.find_commit(target) {
                     let timestamp = commit.time().seconds();
-                    return Ok(DateTime::from_timestamp(timestamp, 0).unwrap_or_else(|| Utc::now()));
+                    return Ok(DateTime::from_timestamp(timestamp, 0).unwrap_or_else(Utc::now));
                 }
             }
             Ok(Utc::now()) // Default to now if we can't get the commit date
@@ -330,7 +330,7 @@ impl Project {
         // Get the commit date for the new branch (same as base commit)
         let last_commit_date = {
             let timestamp = base_commit.time().seconds();
-            DateTime::from_timestamp(timestamp, 0).unwrap_or_else(|| Utc::now())
+            DateTime::from_timestamp(timestamp, 0).unwrap_or_else(Utc::now)
         };
 
         Ok(GitBranch {

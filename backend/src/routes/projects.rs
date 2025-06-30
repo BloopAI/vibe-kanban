@@ -4,7 +4,7 @@ use axum::{
     extract::{Extension, Path, Query},
     http::StatusCode,
     response::Json as ResponseJson,
-    routing::{get, post},
+    routing::get,
     Json, Router,
 };
 use sqlx::SqlitePool;
