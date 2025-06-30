@@ -78,11 +78,7 @@ export function TaskFollowUpSection({
             )}
           </Button>
         </div>
-        {!canSendFollowUp && (
-          <p className="text-xs text-muted-foreground w-full">
-            Complete at least one execution to enable follow-up questions
-          </p>
-        )}
+
       </div>
     </div>
   );
