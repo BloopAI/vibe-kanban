@@ -191,7 +191,12 @@ export function TaskDetailsToolbar({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => onCreateNewAttempt(selectedExecutor, selectedBranch || undefined)}
+                        onClick={() =>
+                          onCreateNewAttempt(
+                            selectedExecutor,
+                            selectedBranch || undefined
+                          )
+                        }
                         className="rounded-r-none border-r-0"
                       >
                         {selectedAttempt ? 'New Attempt' : 'Start Attempt'}
@@ -235,7 +240,9 @@ export function TaskDetailsToolbar({
                         }
                       >
                         <div className="flex items-center justify-between w-full">
-                          <span className={branch.is_current ? 'font-medium' : ''}>
+                          <span
+                            className={branch.is_current ? 'font-medium' : ''}
+                          >
                             {branch.name}
                           </span>
                           <div className="flex gap-1">

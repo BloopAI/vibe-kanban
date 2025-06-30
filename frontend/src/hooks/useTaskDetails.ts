@@ -254,7 +254,7 @@ export function useTaskDetails(
         if (result.success && result.data) {
           setBranches(result.data);
           // Set current branch as default
-          const currentBranch = result.data.find(b => b.is_current);
+          const currentBranch = result.data.find((b) => b.is_current);
           if (currentBranch && !selectedBranch) {
             setSelectedBranch(currentBranch.name);
           }
