@@ -41,16 +41,19 @@ jobs:
           toolchain: nightly-2025-05-18
           components: rustfmt, clippy
 
-      - name: Build frontend
-        run: cd frontend && npm run build
-
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         env:
           RUST_CACHE_DEBUG: true
         with:
-          workspaces: "backend"
+          workspaces: "."
           cache-provider: "buildjet"
+          cache-on-failure: true
+          shared-key: "shared"
+          cache-all-crates: true
+
+      - name: Build frontend
+        run: cd frontend && npm run build
 
       - name: Checks
         run: |
