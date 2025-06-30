@@ -28,18 +28,17 @@ export function TaskFollowUpSection({
   onSendFollowUp,
 }: TaskFollowUpSectionProps) {
   return (
-    <div className="border-t p-6">
-      <div className="space-y-3">
-        <Label className="text-sm font-medium">Follow-up question</Label>
+    <div className="border-t p-4">
+      <div className="space-y-2">
         {followUpError && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{followUpError}</AlertDescription>
           </Alert>
         )}
-        <div className="space-y-3">
+        <div className="flex gap-2 items-start">
           <FileSearchTextarea
-            placeholder="Ask a follow-up question about this task... Type @ to search files."
+            placeholder="Ask a follow-up question... Type @ to search files."
             value={followUpMessage}
             onChange={(value) => {
               setFollowUpMessage(value);
@@ -57,35 +56,33 @@ export function TaskFollowUpSection({
                 }
               }
             }}
-            className="w-full min-h-[80px] resize-none"
+            className="flex-1 min-h-[40px] resize-none"
             disabled={!canSendFollowUp}
             projectId={projectId}
-            rows={4}
+            rows={1}
           />
-          <div className="flex justify-end">
-            <Button
-              onClick={onSendFollowUp}
-              disabled={
-                !canSendFollowUp || !followUpMessage.trim() || isSendingFollowUp
-              }
-              size="sm"
-            >
-              {isSendingFollowUp ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
-              ) : (
-                <>
-                  <Send className="h-4 w-4 mr-2" />
-                  Send
-                </>
-              )}
-            </Button>
-          </div>
+          <Button
+            onClick={onSendFollowUp}
+            disabled={
+              !canSendFollowUp || !followUpMessage.trim() || isSendingFollowUp
+            }
+            size="sm"
+          >
+            {isSendingFollowUp ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+            ) : (
+              <>
+                <Send className="h-4 w-4 mr-2" />
+                Send
+              </>
+            )}
+          </Button>
         </div>
         <p className="text-xs text-muted-foreground">
           {!canSendFollowUp
             ? isAttemptRunning
-              ? 'Wait for current execution to complete before asking follow-up questions'
-              : 'Complete at least one coding agent execution to enable follow-up questions'
+              ? 'Wait for current execution to complete'
+              : 'Complete at least one execution to enable follow-up questions'
             : 'Continue the conversation with the most recent executor session'}
         </p>
       </div>
