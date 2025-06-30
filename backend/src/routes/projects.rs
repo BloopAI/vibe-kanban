@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use axum::{
     extract::{Extension, Path, Query},
@@ -8,6 +8,7 @@ use axum::{
     Json, Router,
 };
 use sqlx::SqlitePool;
+use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::models::{
@@ -343,6 +344,89 @@ pub async fn delete_project(
     }
 }
 
+#[derive(serde::Deserialize)]
+pub struct OpenEditorRequest {
+    editor_type: Option<String>,
+}
+
+pub async fn open_project_in_editor(
+    Path(id): Path<Uuid>,
+    Extension(pool): Extension<SqlitePool>,
+    Extension(config): Extension<Arc<RwLock<crate::models::config::Config>>>,
+    Json(payload): Json<Option<OpenEditorRequest>>,
+) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
+    // Get the project
+    let project = match Project::find_by_id(&pool, id).await {
+        Ok(Some(project)) => project,
+        Ok(None) => return Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to fetch project {}: {}", id, e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    // Get editor command from config or override
+    let editor_command = {
+        let config_guard = config.read().await;
+        if let Some(ref request) = payload {
+            if let Some(ref editor_type) = request.editor_type {
+                // Create a temporary editor config with the override
+                use crate::models::config::{EditorConfig, EditorType};
+                let override_editor_type = match editor_type.as_str() {
+                    "vscode" => EditorType::VSCode,
+                    "cursor" => EditorType::Cursor,
+                    "windsurf" => EditorType::Windsurf,
+                    "intellij" => EditorType::IntelliJ,
+                    "zed" => EditorType::Zed,
+                    "custom" => EditorType::Custom,
+                    _ => config_guard.editor.editor_type.clone(),
+                };
+                let temp_config = EditorConfig {
+                    editor_type: override_editor_type,
+                    custom_command: config_guard.editor.custom_command.clone(),
+                };
+                temp_config.get_command()
+            } else {
+                config_guard.editor.get_command()
+            }
+        } else {
+            config_guard.editor.get_command()
+        }
+    };
+
+    // Open editor in the project directory
+    let mut cmd = std::process::Command::new(&editor_command[0]);
+    for arg in &editor_command[1..] {
+        cmd.arg(arg);
+    }
+    cmd.arg(&project.git_repo_path);
+
+    match cmd.spawn() {
+        Ok(_) => {
+            tracing::info!(
+                "Opened editor ({}) for project {} at path: {}",
+                editor_command.join(" "),
+                id,
+                project.git_repo_path
+            );
+            Ok(ResponseJson(ApiResponse {
+                success: true,
+                data: None,
+                message: Some("Editor opened successfully".to_string()),
+            }))
+        }
+        Err(e) => {
+            tracing::error!(
+                "Failed to open editor ({}) for project {}: {}",
+                editor_command.join(" "),
+                id,
+                e
+            );
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
 pub async fn search_project_files(
     Path(id): Path<Uuid>,
     Query(params): Query<HashMap<String, String>>,
@@ -483,6 +567,8 @@ async fn search_files_in_repo(
 }
 
 pub fn projects_router() -> Router {
+    use axum::routing::post;
+
     Router::new()
         .route("/projects", get(get_projects).post(create_project))
         .route(
@@ -495,4 +581,5 @@ pub fn projects_router() -> Router {
             get(get_project_branches).post(create_project_branch),
         )
         .route("/projects/:id/search", get(search_project_files))
+        .route("/projects/:id/open-editor", post(open_project_in_editor))
 }
