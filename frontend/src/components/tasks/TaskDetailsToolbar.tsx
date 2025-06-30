@@ -394,6 +394,32 @@ export function TaskDetailsToolbar({
                       ./worktrees/task-{task.id}/attempt-{selectedAttempt.id}
                     </div>
                   </div>
+
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Merge Status
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {selectedAttempt.merge_commit ? (
+                        <div className="flex items-center gap-1.5">
+                          <div className="h-2 w-2 bg-green-500 rounded-full" />
+                          <span className="text-sm font-medium text-green-700">
+                            Merged
+                          </span>
+                          <span className="text-xs font-mono text-muted-foreground">
+                            ({selectedAttempt.merge_commit.slice(0, 8)})
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <div className="h-2 w-2 bg-yellow-500 rounded-full" />
+                          <span className="text-sm font-medium text-yellow-700">
+                            Not merged
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </>
             ) : (
