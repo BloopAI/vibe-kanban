@@ -51,7 +51,7 @@ export function TaskDetailsHeader({
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   return (
-    <div className="border-b">
+    <div>
       {/* Title and Task Actions */}
       <div className="p-6 pb-4">
         <div className="flex items-start justify-between">
