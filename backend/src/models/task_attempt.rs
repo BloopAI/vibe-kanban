@@ -196,8 +196,7 @@ impl TaskAttempt {
             let new_base_ref: Reference;
 
             if let Some(base_branch) = data.base_branch.clone() {
-                let base_ref = Some(base_branch.as_str())
-                    .map(str::trim) // chop off any whitespace
+                let base_ref = Some(str::trim(base_branch.as_str())) // chop off any whitespace
                     .filter(|b| !b.is_empty()) // ditch empty strings
                     .and_then(|branch| {
                         // pick the right ref name
