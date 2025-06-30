@@ -73,6 +73,7 @@ async fn commit_execution_changes(
 /// Play a system sound notification
 async fn play_sound_notification(sound_file: &crate::models::config::SoundFile) {
     // Use platform-specific sound notification
+    // Note: spawn() calls are intentionally not awaited - sound notifications should be fire-and-forget
     if cfg!(target_os = "macos") {
         let sound_path = sound_file.to_path();
         let _ = tokio::process::Command::new("afplay")
