@@ -265,7 +265,7 @@ export function FileSearchTextarea({
   const dropdownPosition = getDropdownPosition();
 
   return (
-    <div className="relative">
+    <div className={`relative ${className?.includes('flex-1') ? 'flex-1' : ''}`}>
       <Textarea
         ref={textareaRef}
         value={value}
