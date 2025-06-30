@@ -168,9 +168,10 @@ impl TaskAttempt {
     pub async fn create(
         pool: &SqlitePool,
         data: &CreateTaskAttempt,
-        attempt_id: Uuid,
         task_id: Uuid,
     ) -> Result<Self, TaskAttemptError> {
+        let attempt_id = Uuid::new_v4();
+
         // First, get the task to get the project_id
         let task = Task::find_by_id(pool, task_id)
             .await?

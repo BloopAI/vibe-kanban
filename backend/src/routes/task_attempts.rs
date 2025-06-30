@@ -99,9 +99,7 @@ pub async fn create_task_attempt(
         Ok(true) => {}
     }
 
-    let id = Uuid::new_v4();
-
-    match TaskAttempt::create(&pool, &payload, id, task_id).await {
+    match TaskAttempt::create(&pool, &payload, task_id).await {
         Ok(attempt) => {
             // Start execution asynchronously (don't block the response)
             let pool_clone = pool.clone();

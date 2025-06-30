@@ -136,7 +136,6 @@ pub async fn create_task_and_start(
     };
 
     // Create task attempt
-    let attempt_id = Uuid::new_v4();
     let executor_string = payload.executor.as_ref().map(|exec| match exec {
         crate::executor::ExecutorConfig::Echo => "echo".to_string(),
         crate::executor::ExecutorConfig::Claude => "claude".to_string(),
@@ -149,7 +148,7 @@ pub async fn create_task_and_start(
         base_branch: None, // Not supported in task creation endpoint, only in task attempts
     };
 
-    match TaskAttempt::create(&pool, &attempt_payload, attempt_id, task_id).await {
+    match TaskAttempt::create(&pool, &attempt_payload, task_id).await {
         Ok(attempt) => {
             // Start execution asynchronously (don't block the response)
             let pool_clone = pool.clone();
