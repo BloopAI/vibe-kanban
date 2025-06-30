@@ -25,6 +25,7 @@ pub fn config_router() -> Router {
         .route("/config", get(get_config))
         .route("/config", post(update_config))
         .route("/config/constants", get(get_config_constants))
+        .route("/mcp-servers", get(get_mcp_servers))
         .route("/mcp-servers", post(update_mcp_servers))
 }
 
@@ -84,6 +85,23 @@ async fn get_config_constants() -> ResponseJson<ApiResponse<ConfigConstants>> {
     })
 }
 
+async fn get_mcp_servers() -> ResponseJson<ApiResponse<HashMap<String, Value>>> {
+    let claude_config_path = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string()) + "/.claude.json";
+    
+    match read_claude_json_mcp_servers(&claude_config_path).await {
+        Ok(servers) => ResponseJson(ApiResponse {
+            success: true,
+            data: Some(servers),
+            message: Some("MCP servers retrieved successfully".to_string()),
+        }),
+        Err(e) => ResponseJson(ApiResponse {
+            success: false,
+            data: None,
+            message: Some(format!("Failed to read MCP servers: {}", e)),
+        }),
+    }
+}
+
 async fn update_mcp_servers(
     Json(new_servers): Json<HashMap<String, Value>>,
 ) -> ResponseJson<ApiResponse<String>> {
@@ -113,35 +131,48 @@ async fn update_claude_json_mcp_servers(
     let file_content = fs::read_to_string(file_path).await?;
     let mut claude_config: Value = serde_json::from_str(&file_content)?;
     
-    // Get or create the mcpServers object
-    let mcp_servers = claude_config
-        .get_mut("mcpServers")
-        .and_then(|v| v.as_object_mut())
-        .ok_or("mcpServers field not found or not an object")?;
+    // Get the current mcpServers for comparison
+    let old_servers = claude_config
+        .get("mcpServers")
+        .and_then(|v| v.as_object())
+        .map(|obj| obj.len())
+        .unwrap_or(0);
     
-    let mut added_count = 0;
-    let mut updated_count = 0;
-    
-    // Merge new servers, detecting duplicates
-    for (server_name, server_config) in new_servers {
-        if mcp_servers.contains_key(&server_name) {
-            updated_count += 1;
-        } else {
-            added_count += 1;
-        }
-        mcp_servers.insert(server_name, server_config);
-    }
+    // Replace the entire mcpServers object
+    claude_config["mcpServers"] = serde_json::to_value(&new_servers)?;
     
     // Write the updated config back to file
     let updated_content = serde_json::to_string_pretty(&claude_config)?;
     fs::write(file_path, updated_content).await?;
     
-    let message = match (added_count, updated_count) {
-        (0, 0) => "No MCP servers to update".to_string(),
-        (added, 0) => format!("Added {} new MCP server(s)", added),
-        (0, updated) => format!("Updated {} existing MCP server(s)", updated),
-        (added, updated) => format!("Added {} new and updated {} existing MCP server(s)", added, updated),
+    let new_count = new_servers.len();
+    let message = match (old_servers, new_count) {
+        (0, 0) => "No MCP servers configured".to_string(),
+        (0, n) => format!("Added {} MCP server(s)", n),
+        (old, new) if old == new => format!("Updated MCP server configuration ({} server(s))", new),
+        (old, new) => format!("Updated MCP server configuration (was {}, now {})", old, new),
     };
     
     Ok(message)
+}
+
+async fn read_claude_json_mcp_servers(
+    file_path: &str,
+) -> Result<HashMap<String, Value>, Box<dyn std::error::Error + Send + Sync>> {
+    use tokio::fs;
+    
+    // Read the existing ~/.claude.json file
+    let file_content = fs::read_to_string(file_path).await?;
+    let claude_config: Value = serde_json::from_str(&file_content)?;
+    
+    // Get the mcpServers object, or return empty if not found
+    let servers: HashMap<String, Value> = match claude_config.get("mcpServers").and_then(|v| v.as_object()) {
+        Some(mcp_servers) => mcp_servers
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect(),
+        None => HashMap::new(),
+    };
+    
+    Ok(servers)
 }

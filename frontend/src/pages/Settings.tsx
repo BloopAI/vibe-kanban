@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -39,6 +39,7 @@ export function Settings() {
   const [success, setSuccess] = useState(false);
   const [mcpServers, setMcpServers] = useState('{}');
   const [mcpError, setMcpError] = useState<string | null>(null);
+  const [mcpLoading, setMcpLoading] = useState(true);
   const { setTheme } = useTheme();
 
   const playSound = async (soundFile: SoundFile) => {
@@ -50,10 +51,36 @@ export function Settings() {
     }
   };
 
+  // Load existing MCP configuration on component mount
+  useEffect(() => {
+    const loadMcpServers = async () => {
+      try {
+        const response = await fetch('/api/mcp-servers');
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            // Handle empty or null data by showing empty object
+            const servers = result.data || {};
+            const serversJson = JSON.stringify(servers, null, 2);
+            setMcpServers(serversJson);
+          }
+        } else {
+          console.warn('Failed to load MCP servers:', response.statusText);
+        }
+      } catch (err) {
+        console.error('Error loading MCP servers:', err);
+      } finally {
+        setMcpLoading(false);
+      }
+    };
+
+    loadMcpServers();
+  }, []);
+
   const handleMcpServersChange = (value: string) => {
     setMcpServers(value);
     setMcpError(null);
-    
+
     // Validate JSON on change
     if (value.trim()) {
       try {
@@ -64,44 +91,46 @@ export function Settings() {
     }
   };
 
-  const saveMcpServers = async () => {
-    if (!mcpServers.trim()) return;
-    
-    try {
-      const mcpConfig = JSON.parse(mcpServers);
-      
-      const response = await fetch('/api/mcp-servers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(mcpConfig),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save MCP servers');
-      }
-      
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (err) {
-      if (err instanceof SyntaxError) {
-        setMcpError('Invalid JSON format');
-      } else {
-        setMcpError(err instanceof Error ? err.message : 'Failed to save MCP servers');
-      }
-    }
-  };
-
   const handleSave = async () => {
     if (!config) return;
 
     setSaving(true);
     setError(null);
+    setMcpError(null);
     setSuccess(false);
 
     try {
+      // First validate and save MCP configuration if provided
+      if (mcpServers.trim() && mcpServers.trim() !== '{}') {
+        try {
+          const mcpConfig = JSON.parse(mcpServers);
+
+          const mcpResponse = await fetch('/api/mcp-servers', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(mcpConfig),
+          });
+
+          if (!mcpResponse.ok) {
+            const errorData = await mcpResponse.json();
+            throw new Error(errorData.message || 'Failed to save MCP servers');
+          }
+        } catch (mcpErr) {
+          if (mcpErr instanceof SyntaxError) {
+            setMcpError('Invalid JSON format');
+          } else {
+            setMcpError(
+              mcpErr instanceof Error ? mcpErr.message : 'Failed to save MCP servers'
+            );
+          }
+          setSaving(false);
+          return;
+        }
+      }
+
+      // Then save the main configuration
       const success = await saveConfig();
 
       if (success) {
@@ -167,6 +196,12 @@ export function Settings() {
         {error && (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {mcpError && (
+          <Alert variant="destructive">
+            <AlertDescription>MCP Configuration Error: {mcpError}</AlertDescription>
           </Alert>
         )}
 
@@ -255,7 +290,7 @@ export function Settings() {
             <CardHeader>
               <CardTitle>MCP Servers</CardTitle>
               <CardDescription>
-                Configure MCP (Model Context Protocol) servers to extend Claude's capabilities.
+                Configure MCP servers to extend the default executor's capabilities.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -263,9 +298,10 @@ export function Settings() {
                 <Label htmlFor="mcp-servers">MCP Server Configuration</Label>
                 <Textarea
                   id="mcp-servers"
-                  placeholder='{\n  "server-name": {\n    "type": "stdio",\n    "command": "your-command",\n    "args": ["arg1", "arg2"]\n  }\n}'
-                  value={mcpServers}
+                  placeholder={mcpLoading ? 'Loading current configuration...' : '{\n  "server-name": {\n    "type": "stdio",\n    "command": "your-command",\n    "args": ["arg1", "arg2"]\n  }\n}'}
+                  value={mcpLoading ? 'Loading...' : mcpServers}
                   onChange={(e) => handleMcpServersChange(e.target.value)}
+                  disabled={mcpLoading}
                   className="font-mono text-sm min-h-[120px]"
                 />
                 {mcpError && (
@@ -274,17 +310,12 @@ export function Settings() {
                   </p>
                 )}
                 <p className="text-sm text-muted-foreground">
-                  Enter MCP server configurations as JSON. These will be merged with your existing ~/.claude.json configuration.
+                  {mcpLoading
+                    ? 'Loading current MCP server configuration...'
+                    : 'Edit your MCP server configurations as JSON. Changes will replace the current configuration when settings are saved.'
+                  }
                 </p>
               </div>
-              <Button 
-                onClick={saveMcpServers}
-                disabled={!!mcpError || !mcpServers.trim() || mcpServers.trim() === '{}'}
-                variant="outline"
-                size="sm"
-              >
-                Apply MCP Configuration
-              </Button>
             </CardContent>
           </Card>
 
