@@ -214,6 +214,14 @@ export function TaskDetailsToolbar({
                 <span className="text-muted-foreground ml-2">
                   ({selectedAttempt.executor || 'executor'})
                 </span>
+                {(isAttemptRunning || isStopping) && selectedBranch && (
+                  <span className="text-muted-foreground ml-2">
+                    on{' '}
+                    <span className="font-medium text-foreground">
+                      {selectedBranchDisplayName}
+                    </span>
+                  </span>
+                )}
               </div>
               <div className="h-4 w-px bg-border" />
             </>
