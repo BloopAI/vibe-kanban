@@ -12,8 +12,8 @@ use uuid::Uuid;
 
 use crate::models::{
     project::{
-        CreateProject, CreateBranch, GitBranch, Project, ProjectWithBranch, SearchMatchType, SearchResult,
-        UpdateProject,
+        CreateBranch, CreateProject, GitBranch, Project, ProjectWithBranch, SearchMatchType,
+        SearchResult, UpdateProject,
     },
     ApiResponse,
 };
@@ -126,7 +126,12 @@ pub async fn create_project_branch(
                     message: Some(format!("Branch '{}' created successfully", payload.name)),
                 })),
                 Err(e) => {
-                    tracing::error!("Failed to create branch '{}' for project {}: {}", payload.name, id, e);
+                    tracing::error!(
+                        "Failed to create branch '{}' for project {}: {}",
+                        payload.name,
+                        id,
+                        e
+                    );
                     Ok(ResponseJson(ApiResponse {
                         success: false,
                         data: None,
@@ -134,7 +139,7 @@ pub async fn create_project_branch(
                     }))
                 }
             }
-        },
+        }
         Ok(None) => Err(StatusCode::NOT_FOUND),
         Err(e) => {
             tracing::error!("Failed to fetch project: {}", e);
@@ -485,6 +490,9 @@ pub fn projects_router() -> Router {
             get(get_project).put(update_project).delete(delete_project),
         )
         .route("/projects/:id/with-branch", get(get_project_with_branch))
-        .route("/projects/:id/branches", get(get_project_branches).post(create_project_branch))
+        .route(
+            "/projects/:id/branches",
+            get(get_project_branches).post(create_project_branch),
+        )
         .route("/projects/:id/search", get(search_project_files))
 }
