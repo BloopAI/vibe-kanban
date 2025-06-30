@@ -22,6 +22,7 @@ import {
   Loader2,
   MoreHorizontal,
   ExternalLink,
+  FolderOpen,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -81,6 +82,25 @@ export function ProjectList() {
   const handleEdit = (project: Project) => {
     setEditingProject(project);
     setShowForm(true);
+  };
+
+  const handleOpenInIDE = async (projectId: string) => {
+    try {
+      const response = await makeRequest(`/api/projects/${projectId}/open-editor`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(null),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to open project in IDE');
+      }
+    } catch (error) {
+      console.error('Failed to open project in IDE:', error);
+      setError('Failed to open project in IDE');
+    }
   };
 
   const handleFormSuccess = () => {
@@ -171,6 +191,15 @@ export function ProjectList() {
                         >
                           <ExternalLink className="mr-2 h-4 w-4" />
                           View Project
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenInIDE(project.id);
+                          }}
+                        >
+                          <FolderOpen className="mr-2 h-4 w-4" />
+                          Open in IDE
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={(e) => {

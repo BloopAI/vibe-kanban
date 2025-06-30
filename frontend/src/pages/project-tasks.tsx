@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Settings } from 'lucide-react';
+import { Plus, Settings, FolderOpen } from 'lucide-react';
 import { makeRequest } from '@/lib/api';
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
 import { ProjectForm } from '@/components/projects/project-form';
@@ -53,6 +53,27 @@ export function ProjectTasks() {
   const handleCreateNewTask = () => {
     setEditingTask(null);
     setIsTaskDialogOpen(true);
+  };
+
+  const handleOpenInIDE = async () => {
+    if (!projectId) return;
+
+    try {
+      const response = await makeRequest(`/api/projects/${projectId}/open-editor`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(null),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to open project in IDE');
+      }
+    } catch (error) {
+      console.error('Failed to open project in IDE:', error);
+      setError('Failed to open project in IDE');
+    }
   };
 
   // Setup keyboard shortcuts
@@ -362,8 +383,18 @@ export function ProjectTasks() {
             <Button
               variant="ghost"
               size="sm"
+              onClick={handleOpenInIDE}
+              className="h-8 w-8 p-0"
+              title="Open in IDE"
+            >
+              <FolderOpen className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setIsProjectSettingsOpen(true)}
               className="h-8 w-8 p-0"
+              title="Project Settings"
             >
               <Settings className="h-4 w-4" />
             </Button>
