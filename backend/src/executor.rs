@@ -257,6 +257,45 @@ impl ExecutorConfig {
             ExecutorConfig::Opencode => Box::new(OpencodeExecutor),
         }
     }
+
+    /// Get the configuration file path for this executor, if it supports MCP
+    pub fn config_path(&self) -> Option<std::path::PathBuf> {
+        match self {
+            ExecutorConfig::Echo => None, // Echo doesn't support MCP
+            ExecutorConfig::Claude => dirs::home_dir().map(|home| home.join(".claude.json")),
+            ExecutorConfig::Amp => {
+                dirs::config_dir().map(|config| config.join("amp").join("settings.json"))
+            }
+            ExecutorConfig::Gemini => {
+                dirs::home_dir().map(|home| home.join(".gemini").join("settings.json"))
+            }
+        }
+    }
+
+    /// Get the JSON attribute name for MCP servers in the config file
+    pub fn mcp_attribute(&self) -> Option<&'static str> {
+        match self {
+            ExecutorConfig::Echo => None, // Echo doesn't support MCP
+            ExecutorConfig::Claude => Some("mcpServers"),
+            ExecutorConfig::Amp => Some("amp.mcpServers"), // Special nested format for Amp
+            ExecutorConfig::Gemini => Some("mcpServers"),
+        }
+    }
+
+    /// Check if this executor supports MCP configuration
+    pub fn supports_mcp(&self) -> bool {
+        !matches!(self, ExecutorConfig::Echo)
+    }
+
+    /// Get the display name for this executor
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            ExecutorConfig::Echo => "Echo (Test Mode)",
+            ExecutorConfig::Claude => "Claude",
+            ExecutorConfig::Amp => "Amp",
+            ExecutorConfig::Gemini => "Gemini",
+        }
+    }
 }
 
 /// Stream output from a child process to the database

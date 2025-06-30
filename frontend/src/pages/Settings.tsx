@@ -51,11 +51,18 @@ export function Settings() {
     }
   };
 
-  // Load existing MCP configuration on component mount
+  // Load existing MCP configuration on component mount and when executor changes
   useEffect(() => {
-    const loadMcpServers = async () => {
+    const loadMcpServersForExecutor = async (executorType: string) => {
+      // Reset state when loading
+      setMcpLoading(true);
+      setMcpError(null);
+      setMcpServers('{}');
+
       try {
-        const response = await fetch('/api/mcp-servers');
+        // Temporarily update the config to use the selected executor for the API call
+        // We'll send the executor type as a query parameter instead of relying on saved config
+        const response = await fetch(`/api/mcp-servers?executor=${executorType}`);
         if (response.ok) {
           const result = await response.json();
           if (result.success) {
@@ -65,7 +72,13 @@ export function Settings() {
             setMcpServers(serversJson);
           }
         } else {
-          console.warn('Failed to load MCP servers:', response.statusText);
+          const result = await response.json();
+          if (result.message && result.message.includes('does not support MCP')) {
+            // This executor doesn't support MCP - show warning message
+            setMcpError(result.message);
+          } else {
+            console.warn('Failed to load MCP servers:', response.statusText);
+          }
         }
       } catch (err) {
         console.error('Error loading MCP servers:', err);
@@ -74,8 +87,11 @@ export function Settings() {
       }
     };
 
-    loadMcpServers();
-  }, []);
+    // Load MCP servers for the currently selected executor (even if not saved)
+    if (config?.executor?.type) {
+      loadMcpServersForExecutor(config.executor.type);
+    }
+  }, [config?.executor?.type]);
 
   const handleMcpServersChange = (value: string) => {
     setMcpServers(value);
@@ -105,7 +121,7 @@ export function Settings() {
         try {
           const mcpConfig = JSON.parse(mcpServers);
 
-          const mcpResponse = await fetch('/api/mcp-servers', {
+          const mcpResponse = await fetch(`/api/mcp-servers?executor=${config.executor.type}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -294,28 +310,46 @@ export function Settings() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="mcp-servers">MCP Server Configuration</Label>
-                <Textarea
-                  id="mcp-servers"
-                  placeholder={mcpLoading ? 'Loading current configuration...' : '{\n  "server-name": {\n    "type": "stdio",\n    "command": "your-command",\n    "args": ["arg1", "arg2"]\n  }\n}'}
-                  value={mcpLoading ? 'Loading...' : mcpServers}
-                  onChange={(e) => handleMcpServersChange(e.target.value)}
-                  disabled={mcpLoading}
-                  className="font-mono text-sm min-h-[120px]"
-                />
-                {mcpError && (
-                  <p className="text-sm text-red-600 dark:text-red-400">
-                    {mcpError}
+              {mcpError && mcpError.includes('does not support MCP') ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
+                  <div className="flex">
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                        MCP Not Supported
+                      </h3>
+                      <div className="mt-2 text-sm text-amber-700 dark:text-amber-300">
+                        <p>{mcpError}</p>
+                        <p className="mt-1">
+                          To use MCP servers, please select a different executor (Claude, Amp, or Gemini) in the Task Execution section above.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="mcp-servers">MCP Server Configuration</Label>
+                  <Textarea
+                    id="mcp-servers"
+                    placeholder={mcpLoading ? 'Loading current configuration...' : '{\n  "server-name": {\n    "type": "stdio",\n    "command": "your-command",\n    "args": ["arg1", "arg2"]\n  }\n}'}
+                    value={mcpLoading ? 'Loading...' : mcpServers}
+                    onChange={(e) => handleMcpServersChange(e.target.value)}
+                    disabled={mcpLoading}
+                    className="font-mono text-sm min-h-[120px]"
+                  />
+                  {mcpError && !mcpError.includes('does not support MCP') && (
+                    <p className="text-sm text-red-600 dark:text-red-400">
+                      {mcpError}
+                    </p>
+                  )}
+                  <p className="text-sm text-muted-foreground">
+                    {mcpLoading
+                      ? 'Loading current MCP server configuration...'
+                      : `Changes will be saved to the default executor's configuration file when settings are saved.`
+                    }
                   </p>
-                )}
-                <p className="text-sm text-muted-foreground">
-                  {mcpLoading
-                    ? 'Loading current MCP server configuration...'
-                    : 'Edit your MCP server configurations as JSON. Changes will replace the current configuration when settings are saved.'
-                  }
-                </p>
-              </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
