@@ -1,6 +1,5 @@
 use std::path::Path;
 
-use anyhow::anyhow;
 use chrono::{DateTime, Utc};
 use git2::{
     build::CheckoutBuilder, Error as GitError, MergeOptions, Oid, RebaseOptions, Reference,
