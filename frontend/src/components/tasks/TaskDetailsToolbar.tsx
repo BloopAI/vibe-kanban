@@ -565,7 +565,18 @@ export function TaskDetailsToolbar({
                         </DropdownMenu>
                       )}
 
-                      {!isAttemptRunning && !isStopping && (
+                      {isAttemptRunning || isStopping ? (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={onStopAllExecutions}
+                          disabled={isStopping}
+                          className="gap-2"
+                        >
+                          <StopCircle className="h-4 w-4" />
+                          {isStopping ? 'Stopping...' : 'Stop Attempt'}
+                        </Button>
+                      ) : (
                         <Button
                           variant="outline"
                           size="sm"
@@ -593,33 +604,16 @@ export function TaskDetailsToolbar({
           </div>
 
           {/* Special Actions */}
-          {(isAttemptRunning ||
-            isStopping ||
-            (!selectedAttempt && !isAttemptRunning && !isStopping)) && (
+          {!selectedAttempt && !isAttemptRunning && !isStopping && (
             <div className="space-y-2 pt-3 border-t">
-              {(isAttemptRunning || isStopping) && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={onStopAllExecutions}
-                  disabled={isStopping}
-                  className="w-full gap-2"
-                >
-                  <StopCircle className="h-4 w-4" />
-                  {isStopping ? 'Stopping...' : 'Stop Attempt'}
-                </Button>
-              )}
-
-              {!selectedAttempt && !isAttemptRunning && !isStopping && (
-                <Button
-                  onClick={handleEnterCreateAttemptMode}
-                  size="sm"
-                  className="w-full gap-2"
-                >
-                  <Play className="h-4 w-4" />
-                  Start Attempt
-                </Button>
-              )}
+              <Button
+                onClick={handleEnterCreateAttemptMode}
+                size="sm"
+                className="w-full gap-2"
+              >
+                <Play className="h-4 w-4" />
+                Start Attempt
+              </Button>
             </div>
           )}
         </div>
