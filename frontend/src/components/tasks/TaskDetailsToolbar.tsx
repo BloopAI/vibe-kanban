@@ -422,7 +422,7 @@ export function TaskDetailsToolbar({
                       </TooltipProvider>
                     </div>
                     <div className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded break-all">
-                      ./worktrees/task-{task.id}/attempt-{selectedAttempt.id}
+                      {selectedAttempt.worktree_path}
                     </div>
                   </div>
 
