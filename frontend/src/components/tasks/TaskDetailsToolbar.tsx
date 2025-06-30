@@ -565,7 +565,7 @@ export function TaskDetailsToolbar({
                         </DropdownMenu>
                       )}
 
-                      {isAttemptRunning || isStopping ? (
+                      {isStopping || isAttemptRunning ? (
                         <Button
                           variant="destructive"
                           size="sm"
