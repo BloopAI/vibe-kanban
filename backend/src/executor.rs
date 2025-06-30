@@ -248,6 +248,17 @@ pub struct ExecutorConstants {
 }
 
 impl ExecutorConfig {
+    /// Parse executor type from string
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "echo" => Some(ExecutorConfig::Echo),
+            "claude" => Some(ExecutorConfig::Claude),
+            "amp" => Some(ExecutorConfig::Amp),
+            "gemini" => Some(ExecutorConfig::Gemini),
+            _ => None,
+        }
+    }
+
     pub fn create_executor(&self) -> Box<dyn Executor> {
         match self {
             ExecutorConfig::Echo => Box::new(EchoExecutor),
@@ -258,10 +269,9 @@ impl ExecutorConfig {
         }
     }
 
-    /// Get the configuration file path for this executor, if it supports MCP
     pub fn config_path(&self) -> Option<std::path::PathBuf> {
         match self {
-            ExecutorConfig::Echo => None, // Echo doesn't support MCP
+            ExecutorConfig::Echo => None,
             ExecutorConfig::Claude => dirs::home_dir().map(|home| home.join(".claude.json")),
             ExecutorConfig::Amp => {
                 dirs::config_dir().map(|config| config.join("amp").join("settings.json"))
@@ -272,13 +282,13 @@ impl ExecutorConfig {
         }
     }
 
-    /// Get the JSON attribute name for MCP servers in the config file
-    pub fn mcp_attribute(&self) -> Option<&'static str> {
+    /// Get the JSON attribute path for MCP servers in the config file
+    pub fn mcp_attribute_path(&self) -> Option<Vec<&'static str>> {
         match self {
             ExecutorConfig::Echo => None, // Echo doesn't support MCP
-            ExecutorConfig::Claude => Some("mcpServers"),
-            ExecutorConfig::Amp => Some("amp.mcpServers"), // Special nested format for Amp
-            ExecutorConfig::Gemini => Some("mcpServers"),
+            ExecutorConfig::Claude => Some(vec!["mcpServers"]),
+            ExecutorConfig::Amp => Some(vec!["amp", "mcpServers"]), // Nested path for Amp
+            ExecutorConfig::Gemini => Some(vec!["mcpServers"]),
         }
     }
 
