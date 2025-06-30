@@ -43,7 +43,7 @@ impl Executor for GeminiExecutor {
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
         let gemini_command = format!(
-            "npx @google/gemini-cli -p \"{}\"",
+            "npx @google/gemini-cli --yolo -p \"{}\"",
             prompt.replace("\"", "\\\"")
         );
 
@@ -55,7 +55,8 @@ impl Executor for GeminiExecutor {
             .stderr(std::process::Stdio::piped())
             .current_dir(worktree_path)
             .arg(shell_arg)
-            .arg(&gemini_command);
+            .arg(&gemini_command)
+            .env("NODE_NO_WARNINGS", "1");
 
         let child = command
             .group_spawn() // Create new process group so we can kill entire tree
@@ -78,10 +79,13 @@ impl Executor for GeminiFollowupExecutor {
         _task_id: Uuid,
         worktree_path: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
+        // --resume is currently not supported by the gemini-cli. This will error!
+        // TODO: Check again when this issue has been addressed: https://github.com/google-gemini/gemini-cli/issues/2222
+
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
         let gemini_command = format!(
-            "npx https://github.com/google-gemini/gemini-cli -p \"{}\" --resume={}",
+            "npx @google/gemini-cli --yolo -p \"{}\" --resume={}",
             self.prompt.replace("\"", "\\\""),
             self.session_id
         );
@@ -94,7 +98,8 @@ impl Executor for GeminiFollowupExecutor {
             .stderr(std::process::Stdio::piped())
             .current_dir(worktree_path)
             .arg(shell_arg)
-            .arg(&gemini_command);
+            .arg(&gemini_command)
+            .env("NODE_NO_WARNINGS", "1");
 
         let child = command
             .group_spawn() // Create new process group so we can kill entire tree
