@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   History,
   Settings2,
@@ -101,14 +101,17 @@ export function TaskDetailsToolbar({
   const [branchSearchTerm, setBranchSearchTerm] = useState('');
 
   // State for create attempt mode
-  const [isInCreateAttemptMode, setIsInCreateAttemptMode] = useState(
-    taskAttempts.length === 0
-  );
+  const [isInCreateAttemptMode, setIsInCreateAttemptMode] = useState(false);
   const [createAttemptBranch, setCreateAttemptBranch] = useState<string | null>(
     selectedBranch
   );
   const [createAttemptExecutor, setCreateAttemptExecutor] =
     useState<string>(selectedExecutor);
+
+  // Set create attempt mode when there are no attempts
+  useEffect(() => {
+    setIsInCreateAttemptMode(taskAttempts.length === 0);
+  }, [taskAttempts.length]);
 
   // Filter branches based on search term
   const filteredBranches = useMemo(() => {
