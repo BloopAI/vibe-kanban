@@ -1,8 +1,10 @@
 use std::path::Path;
 
+use anyhow::anyhow;
 use chrono::{DateTime, Utc};
 use git2::{
-    build::CheckoutBuilder, Error as GitError, MergeOptions, Oid, RebaseOptions, Repository,
+    build::CheckoutBuilder, Error as GitError, MergeOptions, Oid, RebaseOptions, Reference,
+    Repository, WorktreeAddOptions,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool, Type};
@@ -20,6 +22,7 @@ pub enum TaskAttemptError {
     TaskNotFound,
     ProjectNotFound,
     ValidationError(String),
+    BranchNotFound(String),
 }
 
 impl std::fmt::Display for TaskAttemptError {
@@ -30,6 +33,7 @@ impl std::fmt::Display for TaskAttemptError {
             TaskAttemptError::TaskNotFound => write!(f, "Task not found"),
             TaskAttemptError::ProjectNotFound => write!(f, "Project not found"),
             TaskAttemptError::ValidationError(e) => write!(f, "Validation error: {}", e),
+            TaskAttemptError::BranchNotFound(e) => write!(f, "Branch not found: {}", e),
         }
     }
 }
@@ -182,58 +186,48 @@ impl TaskAttempt {
         let worktree_path = temp_dir.join(format!("mission-control-worktree-{}", attempt_id));
         let worktree_path_str = worktree_path.to_string_lossy().to_string();
 
-        // Create the worktree using git2
-        let repo = Repository::open(&project.git_repo_path)?;
+        {
+            // Create the worktree using git2
+            let repo = Repository::open(&project.git_repo_path)?;
 
-        // If a base branch is specified, check it out first
-        if let Some(ref base_branch) = data.base_branch {
-            if !base_branch.trim().is_empty() {
-                // Try to find the branch reference
-                let branch_ref = if base_branch.starts_with("origin/") || base_branch.contains('/') {
-                    // Remote branch reference
-                    format!("refs/remotes/{}", base_branch)
-                } else {
-                    // Try local branch first, then remote
-                    let local_ref = format!("refs/heads/{}", base_branch);
-                    if repo.find_reference(&local_ref).is_ok() {
-                        local_ref
-                    } else {
-                        format!("refs/remotes/origin/{}", base_branch)
-                    }
-                };
+            let mut worktree_opts = WorktreeAddOptions::new();
+            let base_ref: Reference;
 
-                // Get the target commit from the branch
-                let target_commit = if let Ok(reference) = repo.find_reference(&branch_ref) {
-                    reference.peel_to_commit()?
-                } else {
-                    // Try to resolve as a commit hash
-                    let oid = git2::Oid::from_str(base_branch)
-                        .map_err(|_| TaskAttemptError::ValidationError(
-                            format!("Branch '{}' not found", base_branch)
-                        ))?;
-                    repo.find_commit(oid)?
-                };
+            if let Some(base_branch) = data.base_branch.clone() {
+                let base_ref_inner = Some(base_branch.as_str())
+                    .map(str::trim) // chop off any whitespace
+                    .filter(|b| !b.is_empty()) // ditch empty strings
+                    .and_then(|branch| {
+                        // pick the right ref name
+                        let candidate = if branch.starts_with("origin/") || branch.contains('/') {
+                            format!("refs/remotes/{}", branch)
+                        } else {
+                            let local = format!("refs/heads/{}", branch);
+                            if repo.find_reference(&local).is_ok() {
+                                local
+                            } else {
+                                format!("refs/remotes/origin/{}", branch)
+                            }
+                        };
+                        // try to look it up, turning Ok(r) → Some(r), Err(_) → None
+                        repo.find_reference(&candidate).ok()
+                    })
+                    .ok_or(TaskAttemptError::BranchNotFound(base_branch))?;
 
-                // Checkout the target commit
-                let tree = target_commit.tree()?;
-                let mut checkout_builder = CheckoutBuilder::new();
-                checkout_builder.force();
-                repo.checkout_tree(tree.as_object(), Some(&mut checkout_builder))?;
-                
-                // Update HEAD to point to the target commit
-                repo.set_head_detached(target_commit.id())?;
+                base_ref = base_ref_inner;
+                worktree_opts.reference(Some(&base_ref));
             }
-        }
 
-        // Create the worktree directory if it doesn't exist
-        if let Some(parent) = worktree_path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| TaskAttemptError::Git(GitError::from_str(&e.to_string())))?;
-        }
+            // Create the worktree directory if it doesn't exist
+            if let Some(parent) = worktree_path.parent() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|e| TaskAttemptError::Git(GitError::from_str(&e.to_string())))?;
+            }
 
-        // Create the worktree at the specified path
-        let branch_name = format!("attempt-{}", attempt_id);
-        repo.worktree(&branch_name, &worktree_path, None)?;
+            // Create the worktree at the specified path
+            let branch_name = format!("attempt-{}", attempt_id);
+            repo.worktree(&branch_name, &worktree_path, Some(&worktree_opts))?;
+        }
 
         // Insert the record into the database
         Ok(sqlx::query_as!(
