@@ -403,67 +403,35 @@ export function TaskDetailsToolbar({
                   </div>
 
                   <div className="col-span-4">
-                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                      Worktree Path
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Worktree Path
+                      </div>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onOpenInEditor()}
+                              className="h-4 w-4 p-0 hover:bg-muted"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Open in editor</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                     <div className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded break-all">
                       ./worktrees/task-{task.id}/attempt-{selectedAttempt.id}
                     </div>
                   </div>
 
-                  <div className="col-span-4 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      {taskAttempts.length > 1 && (
-                        <DropdownMenu>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="gap-2"
-                                  >
-                                    <History className="h-4 w-4" />
-                                    History
-                                  </Button>
-                                </DropdownMenuTrigger>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>View attempt history</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          <DropdownMenuContent align="start" className="w-64">
-                            {taskAttempts.map((attempt) => (
-                              <DropdownMenuItem
-                                key={attempt.id}
-                                onClick={() => onAttemptChange(attempt.id)}
-                                className={
-                                  selectedAttempt?.id === attempt.id
-                                    ? 'bg-accent'
-                                    : ''
-                                }
-                              >
-                                <div className="flex flex-col w-full">
-                                  <span className="font-medium text-sm">
-                                    {new Date(
-                                      attempt.created_at
-                                    ).toLocaleDateString()}{' '}
-                                    {new Date(
-                                      attempt.created_at
-                                    ).toLocaleTimeString()}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {attempt.executor || 'executor'}
-                                  </span>
-                                </div>
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-
+                  <div className="col-span-4 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <div
                         className={
                           !project?.dev_script ? 'cursor-not-allowed' : ''
@@ -534,15 +502,7 @@ export function TaskDetailsToolbar({
                         </TooltipProvider>
                       </div>
 
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onOpenInEditor()}
-                        className="gap-1"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        Editor
-                      </Button>
+
 
                       <Button
                         variant="outline"
@@ -559,7 +519,58 @@ export function TaskDetailsToolbar({
                       </Button>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {taskAttempts.length > 1 && (
+                        <DropdownMenu>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-2"
+                                  >
+                                    <History className="h-4 w-4" />
+                                    History
+                                  </Button>
+                                </DropdownMenuTrigger>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>View attempt history</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <DropdownMenuContent align="start" className="w-64">
+                            {taskAttempts.map((attempt) => (
+                              <DropdownMenuItem
+                                key={attempt.id}
+                                onClick={() => onAttemptChange(attempt.id)}
+                                className={
+                                  selectedAttempt?.id === attempt.id
+                                    ? 'bg-accent'
+                                    : ''
+                                }
+                              >
+                                <div className="flex flex-col w-full">
+                                  <span className="font-medium text-sm">
+                                    {new Date(
+                                      attempt.created_at
+                                    ).toLocaleDateString()}{' '}
+                                    {new Date(
+                                      attempt.created_at
+                                    ).toLocaleTimeString()}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {attempt.executor || 'executor'}
+                                  </span>
+                                </div>
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+
                       {!isAttemptRunning && !isStopping && (
                         <Button
                           variant="outline"
