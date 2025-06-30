@@ -109,11 +109,11 @@ pub async fn create_project_branch(
     }
 
     // Check if branch name contains invalid characters
-    if payload.name.contains(' ') || payload.name.contains('/') && !payload.name.starts_with("refs/") {
+    if payload.name.contains(' ') {
         return Ok(ResponseJson(ApiResponse {
             success: false,
             data: None,
-            message: Some("Branch name contains invalid characters".to_string()),
+            message: Some("Branch name cannot contain spaces".to_string()),
         }));
     }
 

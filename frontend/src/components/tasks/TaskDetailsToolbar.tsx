@@ -103,6 +103,8 @@ export function TaskDetailsToolbar({
   const [isCreatingBranch, setIsCreatingBranch] = useState(false);
   const [newBranchName, setNewBranchName] = useState('');
   const [baseBranchForNew, setBaseBranchForNew] = useState<string>('');
+  const [showBaseBranchDropdown, setShowBaseBranchDropdown] = useState(false);
+  const [baseBranchSearchTerm, setBaseBranchSearchTerm] = useState('');
 
   // Filter branches based on search term
   const filteredBranches = useMemo(() => {
@@ -113,6 +115,16 @@ export function TaskDetailsToolbar({
       branch.name.toLowerCase().includes(branchSearchTerm.toLowerCase())
     );
   }, [branches, branchSearchTerm]);
+
+  // Filter branches for base branch selection
+  const filteredBaseBranches = useMemo(() => {
+    if (!baseBranchSearchTerm.trim()) {
+      return branches;
+    }
+    return branches.filter(branch =>
+      branch.name.toLowerCase().includes(baseBranchSearchTerm.toLowerCase())
+    );
+  }, [branches, baseBranchSearchTerm]);
 
   // Get display name for selected branch
   const selectedBranchDisplayName = useMemo(() => {
@@ -125,6 +137,18 @@ export function TaskDetailsToolbar({
     }
     return selectedBranch;
   }, [selectedBranch]);
+
+  // Get display name for base branch
+  const baseBranchDisplayName = useMemo(() => {
+    if (!baseBranchForNew) return 'Current branch';
+    
+    // For remote branches, show just the branch name without the remote prefix
+    if (baseBranchForNew.includes('/')) {
+      const parts = baseBranchForNew.split('/');
+      return parts[parts.length - 1];
+    }
+    return baseBranchForNew;
+  }, [baseBranchForNew]);
 
   // Handle creating new branch
   const handleCreateBranch = async () => {
@@ -152,6 +176,8 @@ export function TaskDetailsToolbar({
         setNewBranchName('');
         setBaseBranchForNew('');
         setBranchSearchTerm('');
+        setShowBaseBranchDropdown(false);
+        setBaseBranchSearchTerm('');
       } else {
         alert(`Failed to create branch: ${result.message}`);
       }
@@ -166,6 +192,8 @@ export function TaskDetailsToolbar({
     setIsCreatingBranch(false);
     setNewBranchName('');
     setBaseBranchForNew('');
+    setShowBaseBranchDropdown(false);
+    setBaseBranchSearchTerm('');
   };
 
   return (
@@ -325,7 +353,9 @@ export function TaskDetailsToolbar({
                         </div>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
                             setIsCreatingBranch(true);
                             setBaseBranchForNew(
                               branches.find(b => b.is_current)?.name || ''
@@ -402,20 +432,99 @@ export function TaskDetailsToolbar({
                           </div>
                           <div>
                             <label className="text-sm font-medium">Base branch</label>
-                            <select
-                              value={baseBranchForNew}
-                              onChange={(e) => setBaseBranchForNew(e.target.value)}
-                              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            <DropdownMenu 
+                              open={showBaseBranchDropdown} 
+                              onOpenChange={setShowBaseBranchDropdown}
                             >
-                              <option value="">Current branch</option>
-                              {branches.map((branch) => (
-                                <option key={branch.name} value={branch.name}>
-                                  {branch.name}
-                                  {branch.is_current && ' (current)'}
-                                  {branch.is_remote && ' (remote)'}
-                                </option>
-                              ))}
-                            </select>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  className="mt-1 w-full justify-between"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                  }}
+                                >
+                                  <span className="truncate">{baseBranchDisplayName}</span>
+                                  <GitBranchIcon className="h-4 w-4 ml-2 flex-shrink-0" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent className="w-80">
+                                <div className="p-2">
+                                  <div className="relative">
+                                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                      placeholder="Search branches..."
+                                      value={baseBranchSearchTerm}
+                                      onChange={(e) => setBaseBranchSearchTerm(e.target.value)}
+                                      className="pl-8"
+                                    />
+                                  </div>
+                                </div>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setBaseBranchForNew('');
+                                    setShowBaseBranchDropdown(false);
+                                    setBaseBranchSearchTerm('');
+                                  }}
+                                  className={!baseBranchForNew ? 'bg-accent' : ''}
+                                >
+                                  <div className="flex items-center justify-between w-full">
+                                    <span className="font-medium">Current branch</span>
+                                    <span className="text-xs bg-green-100 text-green-800 px-1 rounded">
+                                      default
+                                    </span>
+                                  </div>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <div className="max-h-48 overflow-y-auto">
+                                  {filteredBaseBranches.length === 0 ? (
+                                    <div className="p-2 text-sm text-muted-foreground text-center">
+                                      No branches found
+                                    </div>
+                                  ) : (
+                                    filteredBaseBranches.map((branch) => (
+                                      <DropdownMenuItem
+                                        key={branch.name}
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          setBaseBranchForNew(branch.name);
+                                          setShowBaseBranchDropdown(false);
+                                          setBaseBranchSearchTerm('');
+                                        }}
+                                        className={
+                                          baseBranchForNew === branch.name ? 'bg-accent' : ''
+                                        }
+                                      >
+                                        <div className="flex items-center justify-between w-full">
+                                          <span
+                                            className={branch.is_current ? 'font-medium' : ''}
+                                          >
+                                            {branch.name}
+                                          </span>
+                                          <div className="flex gap-1">
+                                            {branch.is_current && (
+                                              <span className="text-xs bg-green-100 text-green-800 px-1 rounded">
+                                                current
+                                              </span>
+                                            )}
+                                            {branch.is_remote && (
+                                              <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">
+                                                remote
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </DropdownMenuItem>
+                                    ))
+                                  )}
+                                </div>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                           <div className="flex gap-2 pt-2">
                             <Button
