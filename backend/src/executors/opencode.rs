@@ -44,7 +44,10 @@ impl Executor for OpencodeExecutor {
 
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
-        let opencode_command = format!("opencode -p \"{}\" --output-format=json", prompt.replace('"', "\\\""));
+        let opencode_command = format!(
+            "opencode -p \"{}\" --output-format=json",
+            prompt.replace('"', "\\\"")
+        );
 
         let mut command = Command::new(shell_cmd);
         command
@@ -82,7 +85,10 @@ impl Executor for OpencodeFollowupExecutor {
 
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
-        let opencode_command = format!("opencode -p \"{}\" --output-format=json", self.prompt.replace('"', "\\\""));
+        let opencode_command = format!(
+            "opencode -p \"{}\" --output-format=json",
+            self.prompt.replace('"', "\\\"")
+        );
 
         let mut command = Command::new(shell_cmd);
         command

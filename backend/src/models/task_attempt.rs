@@ -867,7 +867,8 @@ impl TaskAttempt {
                 prompt,
             } => {
                 use crate::executors::{
-                    AmpFollowupExecutor, ClaudeFollowupExecutor, GeminiFollowupExecutor, OpencodeFollowupExecutor,
+                    AmpFollowupExecutor, ClaudeFollowupExecutor, GeminiFollowupExecutor,
+                    OpencodeFollowupExecutor,
                 };
 
                 let executor: Box<dyn crate::executor::Executor> = match config {
