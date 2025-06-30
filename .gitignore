@@ -74,3 +74,4 @@ backend/bindings
 build-npm-package-codesign.sh
 
 npx-cli/dist
+db.sqlite
