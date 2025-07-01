@@ -436,6 +436,53 @@ pub async fn stream_output_to_db(
     }
 }
 
+/// Parse assistant message from executor logs (JSONL format)
+pub fn parse_assistant_message_from_logs(logs: &str) -> Option<String> {
+    use serde_json::Value;
+    
+    let mut last_assistant_message = None;
+    
+    for line in logs.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        
+        // Try to parse as JSON
+        if let Ok(json) = serde_json::from_str::<Value>(trimmed) {
+            // Look for messages array with assistant content
+            if let Some(messages) = json.get("messages").and_then(|m| m.as_array()) {
+                for message_entry in messages {
+                    if let Some(message_data) = message_entry.as_array().and_then(|arr| arr.get(1)) {
+                        if let Some(role) = message_data.get("role").and_then(|r| r.as_str()) {
+                            if role == "assistant" {
+                                if let Some(content) = message_data.get("content").and_then(|c| c.as_array()) {
+                                    // Extract text content from assistant message
+                                    let mut text_parts = Vec::new();
+                                    for content_item in content {
+                                        if let Some(content_type) = content_item.get("type").and_then(|t| t.as_str()) {
+                                            if content_type == "text" {
+                                                if let Some(text) = content_item.get("text").and_then(|t| t.as_str()) {
+                                                    text_parts.push(text);
+                                                }
+                                            }
+                                        }
+                                    }
+                                    if !text_parts.is_empty() {
+                                        last_assistant_message = Some(text_parts.join("\n"));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    last_assistant_message
+}
+
 /// Parse session_id from Claude or thread_id from Amp from the first JSONL line
 fn parse_session_id_from_line(line: &str) -> Option<String> {
     use serde_json::Value;
@@ -501,5 +548,19 @@ mod tests {
     fn test_parse_empty_line() {
         assert_eq!(parse_session_id_from_line(""), None);
         assert_eq!(parse_session_id_from_line("   "), None);
+    }
+
+    #[test]
+    fn test_parse_assistant_message_from_logs() {
+        let logs = r#"{"type":"initial","threadID":"T-e7af5516-e5a5-4754-8e34-810dc658716e"}
+{"type":"messages","messages":[[0,{"role":"user","content":[{"type":"text","text":"Task title: Test task"}],"meta":{"sentAt":1751385490573}}]],"toolResults":[]}
+{"type":"messages","messages":[[1,{"role":"assistant","content":[{"type":"thinking","thinking":"Testing"},{"type":"text","text":"The Pythagorean theorem states that in a right triangle, the square of the hypotenuse equals the sum of squares of the other two sides: **a² + b² = c²**."}],"state":{"type":"complete","stopReason":"end_turn"}}]],"toolResults":[]}
+{"type":"state","state":"idle"}
+{"type":"shutdown"}"#;
+
+        let result = parse_assistant_message_from_logs(logs);
+        assert!(result.is_some());
+        assert!(result.as_ref().unwrap().contains("Pythagorean theorem"));
+        assert!(result.as_ref().unwrap().contains("a² + b² = c²"));
     }
 }

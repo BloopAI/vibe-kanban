@@ -17,9 +17,11 @@ use crate::{
 async fn commit_execution_changes(
     worktree_path: &str,
     attempt_id: Uuid,
+    assistant_message: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Run git operations in a blocking task since git2 is synchronous
     let worktree_path = worktree_path.to_string();
+    let assistant_message = assistant_message.map(|s| s.to_string());
     tokio::task::spawn_blocking(move || {
         let worktree_repo = Repository::open(&worktree_path)?;
 
@@ -55,7 +57,11 @@ async fn commit_execution_changes(
         let tree = worktree_repo.find_tree(tree_id)?;
 
         // Create commit for the changes
-        let commit_message = format!("Task attempt {} - Final changes", attempt_id);
+        let commit_message = if let Some(ref assistant_msg) = assistant_message {
+            format!("Task attempt {} - {}", attempt_id, assistant_msg)
+        } else {
+            format!("Task attempt {} - Final changes", attempt_id)
+        };
         worktree_repo.commit(
             Some("HEAD"),
             &signature,
@@ -580,7 +586,7 @@ async fn handle_coding_agent_completion(
     app_state: &AppState,
     task_attempt_id: Uuid,
     execution_process_id: Uuid,
-    _execution_process: ExecutionProcess,
+    execution_process: ExecutionProcess,
     success: bool,
     exit_code: Option<i64>,
 ) {
@@ -588,6 +594,36 @@ async fn handle_coding_agent_completion(
         format!(" with exit code {}", code)
     } else {
         String::new()
+    };
+
+    // Extract and store assistant message from execution logs
+    let assistant_message = if let Some(stdout) = &execution_process.stdout {
+        if let Some(assistant_message) = crate::executor::parse_assistant_message_from_logs(stdout) {
+            if let Err(e) = crate::models::executor_session::ExecutorSession::update_assistant_message(
+                &app_state.db_pool,
+                execution_process_id,
+                &assistant_message,
+            )
+            .await
+            {
+                tracing::error!(
+                    "Failed to update assistant message for execution process {}: {}",
+                    execution_process_id,
+                    e
+                );
+                None
+            } else {
+                tracing::info!(
+                    "Successfully stored assistant message for execution process {}",
+                    execution_process_id
+                );
+                Some(assistant_message)
+            }
+        } else {
+            None
+        }
+    } else {
+        None
     };
 
     // Play sound notification if enabled
@@ -612,7 +648,7 @@ async fn handle_coding_agent_completion(
         TaskAttempt::find_by_id(&app_state.db_pool, task_attempt_id).await
     {
         // Commit any unstaged changes after execution completion
-        if let Err(e) = commit_execution_changes(&task_attempt.worktree_path, task_attempt_id).await
+        if let Err(e) = commit_execution_changes(&task_attempt.worktree_path, task_attempt_id, assistant_message.as_deref()).await
         {
             tracing::error!(
                 "Failed to commit execution changes for attempt {}: {}",
