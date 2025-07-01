@@ -42,6 +42,7 @@ export function Settings() {
   const [mcpLoading, setMcpLoading] = useState(true);
   const [selectedMcpExecutor, setSelectedMcpExecutor] = useState<string>('');
   const [mcpApplying, setMcpApplying] = useState(false);
+  const [mcpConfigPath, setMcpConfigPath] = useState<string>('');
   const { setTheme } = useTheme();
 
   const playSound = async (soundFile: SoundFile) => {
@@ -67,6 +68,7 @@ export function Settings() {
       setMcpLoading(true);
       setMcpError(null);
       setMcpServers('{}');
+      setMcpConfigPath('');
 
       try {
         // Load MCP servers for the selected executor
@@ -76,10 +78,14 @@ export function Settings() {
         if (response.ok) {
           const result = await response.json();
           if (result.success) {
-            // Handle empty or null data by showing empty object
-            const servers = result.data || {};
+            // Handle new response format with servers and config_path
+            const data = result.data || {};
+            const servers = data.servers || {};
+            const configPath = data.config_path || '';
+
             const serversJson = JSON.stringify(servers, null, 2);
             setMcpServers(serversJson);
+            setMcpConfigPath(configPath);
           }
         } else {
           const result = await response.json();
@@ -407,11 +413,20 @@ export function Settings() {
                     </p>
                   )}
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">
-                      {mcpLoading
-                        ? 'Loading current MCP server configuration...'
-                        : `Configure MCP servers for ${EXECUTOR_LABELS[selectedMcpExecutor as keyof typeof EXECUTOR_LABELS] || selectedMcpExecutor}.`}
-                    </p>
+                    <div className="text-sm text-muted-foreground">
+                      {mcpLoading ? (
+                        'Loading current MCP server configuration...'
+                      ) : (
+                        <span>
+                          Changes will be saved to:
+                          {mcpConfigPath && (
+                            <span className="ml-2 font-mono text-xs">
+                              {mcpConfigPath}
+                            </span>
+                          )}
+                        </span>
+                      )}
+                    </div>
                     <Button
                       onClick={handleApplyMcpServers}
                       disabled={mcpApplying || mcpLoading || !!mcpError}

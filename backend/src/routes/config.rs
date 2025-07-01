@@ -115,7 +115,7 @@ fn resolve_executor_config(
 async fn get_mcp_servers(
     Extension(config): Extension<Arc<RwLock<Config>>>,
     Query(query): Query<McpServerQuery>,
-) -> ResponseJson<ApiResponse<HashMap<String, Value>>> {
+) -> ResponseJson<ApiResponse<Value>> {
     let saved_config = {
         let config = config.read().await;
         config.executor.clone()
@@ -145,11 +145,17 @@ async fn get_mcp_servers(
     };
 
     match read_mcp_servers_from_config(&config_path, &executor_config).await {
-        Ok(servers) => ResponseJson(ApiResponse {
-            success: true,
-            data: Some(servers),
-            message: Some("MCP servers retrieved successfully".to_string()),
-        }),
+        Ok(servers) => {
+            let response_data = serde_json::json!({
+                "servers": servers,
+                "config_path": config_path.to_string_lossy().to_string()
+            });
+            ResponseJson(ApiResponse {
+                success: true,
+                data: Some(response_data),
+                message: Some("MCP servers retrieved successfully".to_string()),
+            })
+        },
         Err(e) => ResponseJson(ApiResponse {
             success: false,
             data: None,
