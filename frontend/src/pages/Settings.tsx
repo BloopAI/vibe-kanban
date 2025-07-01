@@ -346,7 +346,7 @@ export function Settings() {
                     htmlFor="push-notifications"
                     className="cursor-pointer"
                   >
-                    Push Notifications (macOS)
+                    Push Notifications
                   </Label>
                   <p className="text-sm text-muted-foreground">
                     Show system notifications when task attempts finish running.
