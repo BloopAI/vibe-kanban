@@ -3,6 +3,7 @@ name: Publish to npm
 on:
   release:
     types: [released]
+  workflow_dispatch:
 
 concurrency:
   group: publish
