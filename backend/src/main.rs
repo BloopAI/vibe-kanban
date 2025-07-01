@@ -11,7 +11,7 @@ use axum::{
 use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
 use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
-use vibe_kanban::{Assets, ScriptAssets, SoundAssets};
+use vibe_kanban::{services::PrMonitorService, Assets, ScriptAssets, SoundAssets};
 
 mod app_state;
 mod execution_monitor;
@@ -145,6 +145,15 @@ async fn main() -> anyhow::Result<()> {
     let state_clone = app_state.clone();
     tokio::spawn(async move {
         execution_monitor(state_clone).await;
+    });
+
+    // Start PR monitoring service
+    let pr_monitor = PrMonitorService::new(pool.clone());
+    // TODO: Add GitHub tokens from config or environment variables
+    // pr_monitor.add_github_token("owner/repo".to_string(), "github_token".to_string());
+    
+    tokio::spawn(async move {
+        pr_monitor.start().await;
     });
 
     // Public routes (no auth required)
