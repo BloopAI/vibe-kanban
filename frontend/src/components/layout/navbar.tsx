@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, Settings, HelpCircle } from 'lucide-react';
+import { FolderOpen, Settings, HelpCircle, Server } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { SupportDialog } from '@/components/support-dialog';
 
@@ -24,6 +24,18 @@ export function Navbar() {
                 <Link to="/projects">
                   <FolderOpen className="mr-2 h-4 w-4" />
                   Projects
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant={
+                  location.pathname === '/mcp-servers' ? 'default' : 'ghost'
+                }
+                size="sm"
+              >
+                <Link to="/mcp-servers">
+                  <Server className="mr-2 h-4 w-4" />
+                  MCP Servers
                 </Link>
               </Button>
               <Button

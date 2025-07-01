@@ -5,6 +5,7 @@ import { Projects } from '@/pages/projects';
 import { ProjectTasks } from '@/pages/project-tasks';
 import { TaskAttemptComparePage } from '@/pages/task-attempt-compare';
 import { Settings } from '@/pages/Settings';
+import { McpServers } from '@/pages/McpServers';
 import { DisclaimerDialog } from '@/components/DisclaimerDialog';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { ConfigProvider, useConfig } from '@/components/config-provider';
@@ -131,6 +132,7 @@ function AppContent() {
               element={<TaskAttemptComparePage />}
             />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/mcp-servers" element={<McpServers />} />
           </Routes>
         </div>
       </div>
