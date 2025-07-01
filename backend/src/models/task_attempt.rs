@@ -1581,7 +1581,7 @@ impl TaskAttempt {
         let remote = repo.find_remote("origin").map_err(|_| {
             TaskAttemptError::ValidationError("No 'origin' remote found".to_string())
         })?;
-        
+
         let url = remote.url().ok_or_else(|| {
             TaskAttemptError::ValidationError("Remote origin has no URL".to_string())
         })?;
@@ -1589,7 +1589,7 @@ impl TaskAttempt {
         // Parse GitHub URL (supports both HTTPS and SSH formats)
         let github_regex = regex::Regex::new(r"github\.com[:/]([^/]+)/(.+?)(?:\.git)?/?$")
             .map_err(|e| TaskAttemptError::ValidationError(format!("Regex error: {}", e)))?;
-        
+
         if let Some(captures) = github_regex.captures(url) {
             let owner = captures.get(1).unwrap().as_str().to_string();
             let repo_name = captures.get(2).unwrap().as_str().to_string();
@@ -1603,9 +1603,13 @@ impl TaskAttempt {
     }
 
     /// Push the branch to GitHub remote
-    fn push_branch_to_github(worktree_path: &str, branch_name: &str, github_token: &str) -> Result<(), TaskAttemptError> {
+    fn push_branch_to_github(
+        worktree_path: &str,
+        branch_name: &str,
+        github_token: &str,
+    ) -> Result<(), TaskAttemptError> {
         let repo = Repository::open(worktree_path)?;
-        
+
         // Get the remote
         let remote = repo.find_remote("origin")?;
         let remote_url = remote.url().ok_or_else(|| {
@@ -1617,7 +1621,7 @@ impl TaskAttempt {
             // Convert git@github.com:owner/repo.git to https://github.com/owner/repo.git
             remote_url.replace("git@github.com:", "https://github.com/")
         } else if remote_url.starts_with("ssh://git@github.com/") {
-            // Convert ssh://git@github.com/owner/repo.git to https://github.com/owner/repo.git  
+            // Convert ssh://git@github.com/owner/repo.git to https://github.com/owner/repo.git
             remote_url.replace("ssh://git@github.com/", "https://github.com/")
         } else {
             remote_url.to_string()
@@ -1625,39 +1629,34 @@ impl TaskAttempt {
 
         // Create a temporary remote with HTTPS URL for pushing
         let temp_remote_name = "temp_https_origin";
-        
+
         // Remove any existing temp remote
         let _ = repo.remote_delete(temp_remote_name);
-        
+
         // Create temporary HTTPS remote
         let mut temp_remote = repo.remote(temp_remote_name, &https_url)?;
-        
+
         // Create refspec for pushing the branch
         let refspec = format!("refs/heads/{}:refs/heads/{}", branch_name, branch_name);
-        
+
         // Set up authentication callback using the GitHub token
         let mut callbacks = git2::RemoteCallbacks::new();
         callbacks.credentials(|_url, username_from_url, _allowed_types| {
-            git2::Cred::userpass_plaintext(
-                username_from_url.unwrap_or("git"),
-                github_token,
-            )
+            git2::Cred::userpass_plaintext(username_from_url.unwrap_or("git"), github_token)
         });
-        
+
         // Configure push options
         let mut push_options = git2::PushOptions::new();
         push_options.remote_callbacks(callbacks);
-        
+
         // Push the branch
         let push_result = temp_remote.push(&[&refspec], Some(&mut push_options));
-        
+
         // Clean up the temporary remote
         let _ = repo.remote_delete(temp_remote_name);
-        
+
         // Check push result
-        push_result.map_err(|e| {
-            TaskAttemptError::Git(e)
-        })?;
+        push_result.map_err(|e| TaskAttemptError::Git(e))?;
 
         info!("Pushed branch {} to GitHub using HTTPS", branch_name);
         Ok(())
@@ -1676,16 +1675,31 @@ impl TaskAttempt {
         let octocrab = octocrab::OctocrabBuilder::new()
             .personal_token(github_token.to_string())
             .build()
-            .map_err(|e| TaskAttemptError::ValidationError(format!("Failed to create GitHub client: {}", e)))?;
+            .map_err(|e| {
+                TaskAttemptError::ValidationError(format!("Failed to create GitHub client: {}", e))
+            })?;
 
         // Verify repository access
-        octocrab.repos(owner, repo_name).get().await
-            .map_err(|e| TaskAttemptError::ValidationError(format!("Cannot access repository {}/{}: {}", owner, repo_name, e)))?;
+        octocrab.repos(owner, repo_name).get().await.map_err(|e| {
+            TaskAttemptError::ValidationError(format!(
+                "Cannot access repository {}/{}: {}",
+                owner, repo_name, e
+            ))
+        })?;
 
         // Check if the base branch exists
-        octocrab.repos(owner, repo_name)
-            .get_ref(&octocrab::params::repos::Reference::Branch(base_branch.to_string())).await
-            .map_err(|e| TaskAttemptError::ValidationError(format!("Base branch '{}' does not exist: {}", base_branch, e)))?;
+        octocrab
+            .repos(owner, repo_name)
+            .get_ref(&octocrab::params::repos::Reference::Branch(
+                base_branch.to_string(),
+            ))
+            .await
+            .map_err(|e| {
+                TaskAttemptError::ValidationError(format!(
+                    "Base branch '{}' does not exist: {}",
+                    base_branch, e
+                ))
+            })?;
 
         // Check if the head branch exists
         octocrab.repos(owner, repo_name)
@@ -1698,19 +1712,24 @@ impl TaskAttempt {
             .body(body.unwrap_or(""))
             .send()
             .await
-            .map_err(|e| {
-                match e {
-                    octocrab::Error::GitHub { source, .. } => {
-                        TaskAttemptError::ValidationError(format!("GitHub API error: {} (status: {})", 
-                            source.message, 
-                            source.status_code.as_u16()
-                        ))
-                    }
-                    _ => TaskAttemptError::ValidationError(format!("Failed to create PR: {}", e))
+            .map_err(|e| match e {
+                octocrab::Error::GitHub { source, .. } => {
+                    TaskAttemptError::ValidationError(format!(
+                        "GitHub API error: {} (status: {})",
+                        source.message,
+                        source.status_code.as_u16()
+                    ))
                 }
+                _ => TaskAttemptError::ValidationError(format!("Failed to create PR: {}", e)),
             })?;
 
-        info!("Created GitHub PR #{} for branch {}", pr.number, head_branch);
-        Ok(pr.html_url.map(|url| url.to_string()).unwrap_or_else(|| "".to_string()))
+        info!(
+            "Created GitHub PR #{} for branch {}",
+            pr.number, head_branch
+        );
+        Ok(pr
+            .html_url
+            .map(|url| url.to_string())
+            .unwrap_or_else(|| "".to_string()))
     }
 }

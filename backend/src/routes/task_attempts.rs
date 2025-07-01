@@ -295,12 +295,16 @@ pub async fn create_github_pr(
             return Ok(ResponseJson(ApiResponse {
                 success: false,
                 data: None,
-                message: Some("GitHub token not configured. Please set your GitHub token in settings.".to_string()),
+                message: Some(
+                    "GitHub token not configured. Please set your GitHub token in settings."
+                        .to_string(),
+                ),
             }));
         }
     };
 
-    let base_branch = request.base_branch
+    let base_branch = request
+        .base_branch
         .or(config.github.default_pr_base)
         .unwrap_or_else(|| "main".to_string());
 
@@ -313,16 +317,20 @@ pub async fn create_github_pr(
         &request.title,
         request.body.as_deref(),
         Some(&base_branch),
-    ).await {
-        Ok(pr_url) => {
-            Ok(ResponseJson(ApiResponse {
-                success: true,
-                data: Some(pr_url),
-                message: Some("GitHub PR created successfully".to_string()),
-            }))
-        }
+    )
+    .await
+    {
+        Ok(pr_url) => Ok(ResponseJson(ApiResponse {
+            success: true,
+            data: Some(pr_url),
+            message: Some("GitHub PR created successfully".to_string()),
+        })),
         Err(e) => {
-            tracing::error!("Failed to create GitHub PR for attempt {}: {}", attempt_id, e);
+            tracing::error!(
+                "Failed to create GitHub PR for attempt {}: {}",
+                attempt_id,
+                e
+            );
             Ok(ResponseJson(ApiResponse {
                 success: false,
                 data: None,
