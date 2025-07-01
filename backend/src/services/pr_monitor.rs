@@ -159,17 +159,27 @@ impl PrMonitorService {
 
         // Update the PR status in the database
         if new_status != "open" {
+            // Extract merge commit SHA if the PR was merged
+            let merge_commit_sha = if new_status == "merged" {
+                pr.merge_commit_sha.as_deref()
+            } else {
+                None
+            };
+
             TaskAttempt::update_pr_status(
                 &self.pool,
                 pr_info.attempt_id,
                 new_status,
                 pr.merged_at.map(|dt| dt.with_timezone(&Utc)),
+                merge_commit_sha,
             ).await?;
 
             // If the PR was merged, update the task status to done
             if new_status == "merged" {
-                info!("PR #{} was merged, updating task {} to done", 
-                      pr_info.pr_number, pr_info.task_id);
+                info!("PR #{} was merged with commit {}, updating task {} to done", 
+                      pr_info.pr_number, 
+                      merge_commit_sha.unwrap_or("unknown"), 
+                      pr_info.task_id);
                 
                 Task::update_status(
                     &self.pool,

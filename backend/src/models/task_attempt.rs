@@ -1765,17 +1765,19 @@ impl TaskAttempt {
             .unwrap_or_else(|| "".to_string()))
     }
 
-    /// Update PR status
+    /// Update PR status and merge commit
     pub async fn update_pr_status(
         pool: &SqlitePool,
         attempt_id: Uuid,
         status: &str,
         merged_at: Option<DateTime<Utc>>,
+        merge_commit_sha: Option<&str>,
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "UPDATE task_attempts SET pr_status = $1, pr_merged_at = $2, updated_at = datetime('now') WHERE id = $3",
+            "UPDATE task_attempts SET pr_status = $1, pr_merged_at = $2, merge_commit = $3, updated_at = datetime('now') WHERE id = $4",
             status,
             merged_at,
+            merge_commit_sha,
             attempt_id
         )
         .execute(pool)
