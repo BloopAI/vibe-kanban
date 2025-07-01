@@ -230,8 +230,7 @@ export function FileSearchTextarea({
         textareaRect.top +
         paddingTop +
         currentLine * lineHeight -
-        maxDropdownHeight -
-        8;
+        maxDropdownHeight;
       maxHeight = maxDropdownHeight;
     } else if (
       wouldBeClippedBelow &&
@@ -242,8 +241,7 @@ export function FileSearchTextarea({
         textareaRect.top +
         paddingTop +
         currentLine * lineHeight -
-        availableSpaceAbove -
-        8;
+        availableSpaceAbove;
       maxHeight = Math.max(availableSpaceAbove, minDropdownHeight);
     } else {
       // Position below the cursor line
