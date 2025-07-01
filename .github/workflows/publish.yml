@@ -4,6 +4,13 @@ on:
   release:
     types: [released]
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag (e.g., v1.2.3)"
+        required: true
+      release_id:
+        description: "GitHub release ID"
+        required: true
 
 concurrency:
   group: publish
@@ -25,27 +32,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name }}
-      
-      - name: Setup Node
-        uses: ./.github/actions/setup-node
-        
-      - name: Configure npm authentication
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+          ref: ${{ github.event.release.tag_name || inputs.tag_name }}
 
       - name: Download release assets
         uses: actions/github-script@v7
+        env:
+          RELEASE_ID: ${{ inputs.release_id }}
         with:
           script: |
             const fs = require('fs');
             const path = require('path');
-            
-            // Get the release assets
+
+            const releaseId = context.payload.release?.id || process.env.RELEASE_ID;
+
+            if (!releaseId) {
+              core.setFailed('No release ID found.');
+              return;
+            }
+
             const release = await github.rest.repos.getRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              release_id: context.payload.release.id
+              release_id: releaseId
             });
             
             // Find the .tgz file
@@ -107,11 +115,23 @@ jobs:
 
       - name: Update release description
         uses: actions/github-script@v7
+        env:
+          RELEASE_ID: ${{ inputs.release_id }}
         with:
           script: |
+            const releaseId = context.payload.release?.id || process.env.RELEASE_ID;;
+
+            // Fetch the release to get the current body
+            const release = await github.rest.repos.getRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: releaseId
+            });
+
+            const currentBody = release.data.body || '';
             await github.rest.repos.updateRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              release_id: context.payload.release.id,
-              body: context.payload.release.body + '\n\n✅ **Published to npm registry**'
+              release_id: releaseId,
+              body: currentBody + '\n\n✅ **Published to npm registry**'
             });
