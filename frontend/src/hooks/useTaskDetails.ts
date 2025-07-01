@@ -17,6 +17,7 @@ export function useTaskDetails(
   projectId: string,
   isOpen: boolean
 ) {
+  const { config } = useConfig();
   const [taskAttempts, setTaskAttempts] = useState<TaskAttempt[]>([]);
   const [selectedAttempt, setSelectedAttempt] = useState<TaskAttempt | null>(
     null
@@ -31,7 +32,9 @@ export function useTaskDetails(
     runningProcessDetails: {},
   });
   const [loading, setLoading] = useState(false);
-  const [selectedExecutor, setSelectedExecutor] = useState<string>('claude');
+  const [selectedExecutor, setSelectedExecutor] = useState<string>(
+    config?.executor.type || 'claude'
+  );
   const [isStopping, setIsStopping] = useState(false);
   const [followUpMessage, setFollowUpMessage] = useState('');
   const [isSendingFollowUp, setIsSendingFollowUp] = useState(false);
@@ -42,8 +45,6 @@ export function useTaskDetails(
   const [isHoveringDevServer, setIsHoveringDevServer] = useState(false);
   const [branches, setBranches] = useState<GitBranch[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
-
-  const { config } = useConfig();
 
   // Find running dev server in current project
   const runningDevServer = useMemo(() => {
@@ -267,10 +268,10 @@ export function useTaskDetails(
 
   // Set default executor from config
   useEffect(() => {
-    if (config) {
+    if (config && config.executor.type !== selectedExecutor) {
       setSelectedExecutor(config.executor.type);
     }
-  }, [config]);
+  }, [config, selectedExecutor]);
 
   useEffect(() => {
     if (task && isOpen) {
