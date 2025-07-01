@@ -1559,7 +1559,7 @@ impl TaskAttempt {
         let (owner, repo_name) = Self::extract_github_repo_info(&project.git_repo_path)?;
 
         // Push the branch to GitHub first
-        Self::push_branch_to_github(&attempt.worktree_path, &attempt.branch)?;
+        Self::push_branch_to_github(&attempt.worktree_path, &attempt.branch, github_token)?;
 
         // Create the PR using Octocrab
         Self::create_pr_with_octocrab(
@@ -1603,7 +1603,7 @@ impl TaskAttempt {
     }
 
     /// Push the branch to GitHub remote
-    fn push_branch_to_github(worktree_path: &str, branch_name: &str) -> Result<(), TaskAttemptError> {
+    fn push_branch_to_github(worktree_path: &str, branch_name: &str, github_token: &str) -> Result<(), TaskAttemptError> {
         let repo = Repository::open(worktree_path)?;
         
         // Get the remote
@@ -1612,8 +1612,21 @@ impl TaskAttempt {
         // Create refspec for pushing the branch
         let refspec = format!("refs/heads/{}:refs/heads/{}", branch_name, branch_name);
         
+        // Set up authentication callback using the GitHub token
+        let mut callbacks = git2::RemoteCallbacks::new();
+        callbacks.credentials(|_url, username_from_url, _allowed_types| {
+            git2::Cred::userpass_plaintext(
+                username_from_url.unwrap_or("git"),
+                github_token,
+            )
+        });
+        
+        // Configure push options
+        let mut push_options = git2::PushOptions::new();
+        push_options.remote_callbacks(callbacks);
+        
         // Push the branch
-        remote.push(&[&refspec], None).map_err(|e| {
+        remote.push(&[&refspec], Some(&mut push_options)).map_err(|e| {
             TaskAttemptError::Git(e)
         })?;
 
