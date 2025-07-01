@@ -258,6 +258,7 @@ impl FromStr for ExecutorConfig {
             "claude" => Ok(ExecutorConfig::Claude),
             "amp" => Ok(ExecutorConfig::Amp),
             "gemini" => Ok(ExecutorConfig::Gemini),
+            "opencode" => Ok(ExecutorConfig::Opencode),
             _ => Err(format!("Unknown executor type: {}", s)),
         }
     }
@@ -277,7 +278,7 @@ impl ExecutorConfig {
     pub fn config_path(&self) -> Option<std::path::PathBuf> {
         match self {
             ExecutorConfig::Echo => None,
-            ExecutorConfig::Opencode => None,
+            ExecutorConfig::Opencode => dirs::home_dir().map(|home| home.join(".opencode.json")),
             ExecutorConfig::Claude => dirs::home_dir().map(|home| home.join(".claude.json")),
             ExecutorConfig::Amp => {
                 dirs::config_dir().map(|config| config.join("amp").join("settings.json"))
@@ -291,8 +292,8 @@ impl ExecutorConfig {
     /// Get the JSON attribute path for MCP servers in the config file
     pub fn mcp_attribute_path(&self) -> Option<Vec<&'static str>> {
         match self {
-            ExecutorConfig::Opencode => None, // TODO: Implement MCP for Opencode
-            ExecutorConfig::Echo => None,     // Echo doesn't support MCP
+            ExecutorConfig::Echo => None, // Echo doesn't support MCP
+            ExecutorConfig::Opencode => Some(vec!["mcpServers"]),
             ExecutorConfig::Claude => Some(vec!["mcpServers"]),
             ExecutorConfig::Amp => Some(vec!["amp", "mcpServers"]), // Nested path for Amp
             ExecutorConfig::Gemini => Some(vec!["mcpServers"]),

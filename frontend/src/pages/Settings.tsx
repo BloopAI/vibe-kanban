@@ -40,6 +40,8 @@ export function Settings() {
   const [mcpServers, setMcpServers] = useState('{}');
   const [mcpError, setMcpError] = useState<string | null>(null);
   const [mcpLoading, setMcpLoading] = useState(true);
+  const [selectedMcpExecutor, setSelectedMcpExecutor] = useState<string>('');
+  const [mcpApplying, setMcpApplying] = useState(false);
   const { setTheme } = useTheme();
 
   const playSound = async (soundFile: SoundFile) => {
@@ -51,7 +53,14 @@ export function Settings() {
     }
   };
 
-  // Load existing MCP configuration on component mount and when executor changes
+  // Initialize selected MCP executor when config loads
+  useEffect(() => {
+    if (config?.executor?.type && !selectedMcpExecutor) {
+      setSelectedMcpExecutor(config.executor.type);
+    }
+  }, [config?.executor?.type, selectedMcpExecutor]);
+
+  // Load existing MCP configuration when selected executor changes
   useEffect(() => {
     const loadMcpServersForExecutor = async (executorType: string) => {
       // Reset state when loading
@@ -60,8 +69,7 @@ export function Settings() {
       setMcpServers('{}');
 
       try {
-        // Temporarily update the config to use the selected executor for the API call
-        // We'll send the executor type as a query parameter instead of relying on saved config
+        // Load MCP servers for the selected executor
         const response = await fetch(
           `/api/mcp-servers?executor=${executorType}`
         );
@@ -92,11 +100,11 @@ export function Settings() {
       }
     };
 
-    // Load MCP servers for the currently selected executor (even if not saved)
-    if (config?.executor?.type) {
-      loadMcpServersForExecutor(config.executor.type);
+    // Load MCP servers for the selected MCP executor
+    if (selectedMcpExecutor) {
+      loadMcpServersForExecutor(selectedMcpExecutor);
     }
-  }, [config?.executor?.type]);
+  }, [selectedMcpExecutor]);
 
   const handleMcpServersChange = (value: string) => {
     setMcpServers(value);
@@ -112,22 +120,20 @@ export function Settings() {
     }
   };
 
-  const handleSave = async () => {
-    if (!config) return;
+  const handleApplyMcpServers = async () => {
+    if (!selectedMcpExecutor) return;
 
-    setSaving(true);
-    setError(null);
+    setMcpApplying(true);
     setMcpError(null);
-    setSuccess(false);
 
     try {
-      // First validate and save MCP configuration if provided
-      if (mcpServers.trim() && mcpServers.trim() !== '{}') {
+      // Validate and save MCP configuration
+      if (mcpServers.trim()) {
         try {
           const mcpConfig = JSON.parse(mcpServers);
 
           const mcpResponse = await fetch(
-            `/api/mcp-servers?executor=${config.executor.type}`,
+            `/api/mcp-servers?executor=${selectedMcpExecutor}`,
             {
               method: 'POST',
               headers: {
@@ -141,6 +147,10 @@ export function Settings() {
             const errorData = await mcpResponse.json();
             throw new Error(errorData.message || 'Failed to save MCP servers');
           }
+
+          // Show success feedback
+          setSuccess(true);
+          setTimeout(() => setSuccess(false), 3000);
         } catch (mcpErr) {
           if (mcpErr instanceof SyntaxError) {
             setMcpError('Invalid JSON format');
@@ -151,12 +161,25 @@ export function Settings() {
                 : 'Failed to save MCP servers'
             );
           }
-          setSaving(false);
-          return;
         }
       }
+    } catch (err) {
+      setMcpError('Failed to apply MCP server configuration');
+      console.error('Error applying MCP servers:', err);
+    } finally {
+      setMcpApplying(false);
+    }
+  };
 
-      // Then save the main configuration
+  const handleSave = async () => {
+    if (!config) return;
+
+    setSaving(true);
+    setError(null);
+    setSuccess(false);
+
+    try {
+      // Save the main configuration
       const success = await saveConfig();
 
       if (success) {
@@ -318,11 +341,34 @@ export function Settings() {
             <CardHeader>
               <CardTitle>MCP Servers</CardTitle>
               <CardDescription>
-                Configure MCP servers to extend the default executor's
-                capabilities.
+                Configure MCP servers to extend executor capabilities.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="mcp-executor">Executor</Label>
+                <Select
+                  value={selectedMcpExecutor}
+                  onValueChange={(value: string) =>
+                    setSelectedMcpExecutor(value)
+                  }
+                >
+                  <SelectTrigger id="mcp-executor">
+                    <SelectValue placeholder="Select executor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EXECUTOR_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {EXECUTOR_LABELS[type]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  Choose which executor to configure MCP servers for.
+                </p>
+              </div>
+
               {mcpError && mcpError.includes('does not support MCP') ? (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
                   <div className="flex">
@@ -334,8 +380,7 @@ export function Settings() {
                         <p>{mcpError}</p>
                         <p className="mt-1">
                           To use MCP servers, please select a different executor
-                          (Claude, Amp, or Gemini) in the Task Execution section
-                          above.
+                          (Claude, Amp, or Gemini) above.
                         </p>
                       </div>
                     </div>
@@ -361,11 +406,24 @@ export function Settings() {
                       {mcpError}
                     </p>
                   )}
-                  <p className="text-sm text-muted-foreground">
-                    {mcpLoading
-                      ? 'Loading current MCP server configuration...'
-                      : `Changes will be saved to the default executor's configuration file when settings are saved.`}
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      {mcpLoading
+                        ? 'Loading current MCP server configuration...'
+                        : `Configure MCP servers for ${EXECUTOR_LABELS[selectedMcpExecutor as keyof typeof EXECUTOR_LABELS] || selectedMcpExecutor}.`}
+                    </p>
+                    <Button
+                      onClick={handleApplyMcpServers}
+                      disabled={mcpApplying || mcpLoading || !!mcpError}
+                      variant="outline"
+                      size="sm"
+                    >
+                      {mcpApplying && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      Apply
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>
