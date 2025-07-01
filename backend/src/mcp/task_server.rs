@@ -10,7 +10,7 @@ use sqlx::SqlitePool;
 use uuid::Uuid;
 
 use crate::models::{
-    project::{CreateProject, Project},
+    project::Project,
     task::{CreateTask, Task, TaskStatus},
 };
 
@@ -241,28 +241,6 @@ pub struct GetTaskResponse {
     pub project_name: Option<String>,
 }
 
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct CreateProjectRequest {
-    #[schemars(description = "Name of the project")]
-    pub name: String,
-    #[schemars(description = "Path to the git repository")]
-    pub git_repo_path: String,
-    #[schemars(description = "Whether to use existing repo (true) or create new (false)")]
-    pub use_existing_repo: Option<bool>,
-    #[schemars(description = "Optional setup script command")]
-    pub setup_script: Option<String>,
-    #[schemars(description = "Optional development script command")]
-    pub dev_script: Option<String>,
-}
-
-#[derive(Debug, Serialize, schemars::JsonSchema)]
-pub struct CreateProjectResponse {
-    pub success: bool,
-    pub message: String,
-    pub project_id: Option<String>,
-    pub project: Option<ProjectSummary>,
-}
-
 #[derive(Debug, Clone)]
 pub struct TaskServer {
     pub pool: SqlitePool,
@@ -277,7 +255,7 @@ impl TaskServer {
 
 #[tool(tool_box)]
 impl TaskServer {
-    #[tool(description = "Create a new task in a project")]
+    #[tool(description = "Create a new task/ticket in a project")]
     async fn create_task(
         &self,
         #[tool(aggr)] CreateTaskRequest {
@@ -415,7 +393,9 @@ impl TaskServer {
         }
     }
 
-    #[tool(description = "List tasks in a project with optional filtering and execution status")]
+    #[tool(
+        description = "List task/tickets in a project with optional filtering and execution status"
+    )]
     async fn list_tasks(
         &self,
         #[tool(aggr)] ListTasksRequest {
@@ -552,7 +532,7 @@ impl TaskServer {
         }
     }
 
-    #[tool(description = "Update an existing task's title, description, or status")]
+    #[tool(description = "Update an existing task/ticket's title, description, or status")]
     async fn update_task(
         &self,
         #[tool(aggr)] UpdateTaskRequest {
@@ -685,7 +665,7 @@ impl TaskServer {
         }
     }
 
-    #[tool(description = "Mark a task as completed by its title")]
+    #[tool(description = "Mark a task/ticket as completed by its title")]
     async fn complete_task(
         &self,
         #[tool(aggr)] CompleteTaskRequest {
@@ -757,7 +737,7 @@ impl TaskServer {
         }
     }
 
-    #[tool(description = "Set a task's status by its title")]
+    #[tool(description = "Set a task/ticket's status by its title")]
     async fn set_task_status(
         &self,
         #[tool(aggr)] SetTaskStatusRequest {
@@ -848,7 +828,7 @@ impl TaskServer {
         }
     }
 
-    #[tool(description = "Delete a task by its title")]
+    #[tool(description = "Delete a task/ticket by its title")]
     async fn delete_task_by_title(
         &self,
         #[tool(aggr)] DeleteTaskByTitleRequest {
@@ -917,7 +897,7 @@ impl TaskServer {
         }
     }
 
-    #[tool(description = "Update a task's title by finding it with the current title")]
+    #[tool(description = "Update a task/ticket's title by finding it with the current title")]
     async fn update_task_title(
         &self,
         #[tool(aggr)] UpdateTaskTitleRequest {
@@ -1000,7 +980,7 @@ impl TaskServer {
         }
     }
 
-    #[tool(description = "Update a task's description by its title")]
+    #[tool(description = "Update a task/ticket's description by its title")]
     async fn update_task_description(
         &self,
         #[tool(aggr)] UpdateTaskDescriptionRequest {
@@ -1083,7 +1063,7 @@ impl TaskServer {
         }
     }
 
-    #[tool(description = "Delete a task from a project")]
+    #[tool(description = "Delete a task/ticket from a project")]
     async fn delete_task(
         &self,
         #[tool(aggr)] DeleteTaskRequest {
@@ -1175,7 +1155,7 @@ impl TaskServer {
         }
     }
 
-    #[tool(description = "Get detailed information about a specific task")]
+    #[tool(description = "Get detailed information about a specific task/ticket")]
     async fn get_task(
         &self,
         #[tool(aggr)] GetTaskRequest {
@@ -1251,66 +1231,6 @@ impl TaskServer {
                     "success": false,
                     "error": "Failed to retrieve task or project",
                     "details": e.to_string()
-                });
-                Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap(),
-                )]))
-            }
-        }
-    }
-
-    #[tool(description = "Create a new project")]
-    async fn create_project(
-        &self,
-        #[tool(aggr)] CreateProjectRequest {
-            name,
-            git_repo_path,
-            use_existing_repo,
-            setup_script,
-            dev_script,
-        }: CreateProjectRequest,
-    ) -> Result<CallToolResult, RmcpError> {
-        let project_id = Uuid::new_v4();
-
-        let create_project_data = CreateProject {
-            name: name.clone(),
-            git_repo_path,
-            use_existing_repo: use_existing_repo.unwrap_or(true),
-            setup_script,
-            dev_script,
-        };
-
-        match Project::create(&self.pool, &create_project_data, project_id).await {
-            Ok(project) => {
-                let current_branch = project.get_current_branch().ok();
-                let project_summary = ProjectSummary {
-                    id: project.id.to_string(),
-                    name: project.name,
-                    git_repo_path: project.git_repo_path,
-                    setup_script: project.setup_script,
-                    dev_script: project.dev_script,
-                    current_branch,
-                    created_at: project.created_at.to_rfc3339(),
-                    updated_at: project.updated_at.to_rfc3339(),
-                };
-
-                let response = CreateProjectResponse {
-                    success: true,
-                    message: "Project created successfully".to_string(),
-                    project_id: Some(project.id.to_string()),
-                    project: Some(project_summary),
-                };
-
-                Ok(CallToolResult::success(vec![Content::text(
-                    serde_json::to_string_pretty(&response).unwrap(),
-                )]))
-            }
-            Err(e) => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": "Failed to create project",
-                    "details": e.to_string(),
-                    "project_name": name
                 });
                 Ok(CallToolResult::error(vec![Content::text(
                     serde_json::to_string_pretty(&error_response).unwrap(),

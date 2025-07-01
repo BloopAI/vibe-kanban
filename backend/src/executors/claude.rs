@@ -35,8 +35,12 @@ impl Executor for ClaudeExecutor {
             .ok_or(ExecutorError::TaskNotFound)?;
 
         let prompt = format!(
-            "Task title: {}
-            Task description: {}",
+            r#"project_id: {}
+            
+            Task title: {}
+            Task description: {}
+            "#,
+            task.project_id,
             task.title,
             task.description
                 .as_deref()

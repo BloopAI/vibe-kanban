@@ -34,7 +34,12 @@ impl Executor for GeminiExecutor {
             .ok_or(ExecutorError::TaskNotFound)?;
 
         let prompt = format!(
-            "Task title: {}\nTask description: {}",
+            r#"project_id: {}
+            
+            Task title: {}
+            Task description: {}
+            "#,
+            task.project_id,
             task.title,
             task.description
                 .as_deref()

@@ -35,7 +35,12 @@ impl Executor for OpencodeExecutor {
         use tokio::process::Command;
 
         let prompt = format!(
-            "Task title: {}\nTask description: {}",
+            r#"project_id: {}
+            
+            Task title: {}
+            Task description: {}
+            "#,
+            task.project_id,
             task.title,
             task.description
                 .as_deref()
