@@ -450,14 +450,39 @@ pub fn parse_assistant_message_from_logs(logs: &str) -> Option<String> {
         
         // Try to parse as JSON
         if let Ok(json) = serde_json::from_str::<Value>(trimmed) {
-            // Look for messages array with assistant content
+            // Check for Claude format: {"type":"assistant","message":{"content":[...]}}
+            if let Some(msg_type) = json.get("type").and_then(|t| t.as_str()) {
+                if msg_type == "assistant" {
+                    if let Some(message) = json.get("message") {
+                        if let Some(content) = message.get("content").and_then(|c| c.as_array()) {
+                            // Extract text content from Claude assistant message
+                            let mut text_parts = Vec::new();
+                            for content_item in content {
+                                if let Some(content_type) = content_item.get("type").and_then(|t| t.as_str()) {
+                                    if content_type == "text" {
+                                        if let Some(text) = content_item.get("text").and_then(|t| t.as_str()) {
+                                            text_parts.push(text);
+                                        }
+                                    }
+                                }
+                            }
+                            if !text_parts.is_empty() {
+                                last_assistant_message = Some(text_parts.join("\n"));
+                            }
+                        }
+                    }
+                    continue;
+                }
+            }
+            
+            // Check for AMP format: {"type":"messages","messages":[[1,{"role":"assistant",...}]]}
             if let Some(messages) = json.get("messages").and_then(|m| m.as_array()) {
                 for message_entry in messages {
                     if let Some(message_data) = message_entry.as_array().and_then(|arr| arr.get(1)) {
                         if let Some(role) = message_data.get("role").and_then(|r| r.as_str()) {
                             if role == "assistant" {
                                 if let Some(content) = message_data.get("content").and_then(|c| c.as_array()) {
-                                    // Extract text content from assistant message
+                                    // Extract text content from AMP assistant message
                                     let mut text_parts = Vec::new();
                                     for content_item in content {
                                         if let Some(content_type) = content_item.get("type").and_then(|t| t.as_str()) {
@@ -552,15 +577,29 @@ mod tests {
 
     #[test]
     fn test_parse_assistant_message_from_logs() {
-        let logs = r#"{"type":"initial","threadID":"T-e7af5516-e5a5-4754-8e34-810dc658716e"}
+        // Test AMP format
+        let amp_logs = r#"{"type":"initial","threadID":"T-e7af5516-e5a5-4754-8e34-810dc658716e"}
 {"type":"messages","messages":[[0,{"role":"user","content":[{"type":"text","text":"Task title: Test task"}],"meta":{"sentAt":1751385490573}}]],"toolResults":[]}
 {"type":"messages","messages":[[1,{"role":"assistant","content":[{"type":"thinking","thinking":"Testing"},{"type":"text","text":"The Pythagorean theorem states that in a right triangle, the square of the hypotenuse equals the sum of squares of the other two sides: **a² + b² = c²**."}],"state":{"type":"complete","stopReason":"end_turn"}}]],"toolResults":[]}
 {"type":"state","state":"idle"}
 {"type":"shutdown"}"#;
 
-        let result = parse_assistant_message_from_logs(logs);
+        let result = parse_assistant_message_from_logs(amp_logs);
         assert!(result.is_some());
         assert!(result.as_ref().unwrap().contains("Pythagorean theorem"));
         assert!(result.as_ref().unwrap().contains("a² + b² = c²"));
+    }
+
+    #[test]
+    fn test_parse_claude_assistant_message_from_logs() {
+        // Test Claude format
+        let claude_logs = r#"{"type":"system","subtype":"init","cwd":"/private/tmp","session_id":"e988eeea-3712-46a1-82d4-84fbfaa69114","tools":[],"model":"claude-sonnet-4-20250514"}
+{"type":"assistant","message":{"id":"msg_123","type":"message","role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"text","text":"I'll explain the Pythagorean theorem for you.\n\nThe Pythagorean theorem states that in a right triangle, the square of the hypotenuse equals the sum of the squares of the other two sides.\n\n**Formula:** a² + b² = c²"}],"stop_reason":null},"session_id":"e988eeea-3712-46a1-82d4-84fbfaa69114"}
+{"type":"result","subtype":"success","is_error":false,"duration_ms":6059,"result":"Final result"}"#;
+
+        let result = parse_assistant_message_from_logs(claude_logs);
+        assert!(result.is_some());
+        assert!(result.as_ref().unwrap().contains("Pythagorean theorem"));
+        assert!(result.as_ref().unwrap().contains("**Formula:** a² + b² = c²"));
     }
 }
