@@ -8,10 +8,10 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use rust_embed::RustEmbed;
 use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
 use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
+use vibe_kanban::{Assets, ScriptAssets, SoundAssets};
 
 mod app_state;
 mod execution_monitor;
@@ -26,10 +26,6 @@ use app_state::AppState;
 use execution_monitor::execution_monitor;
 use models::{ApiResponse, Config};
 use routes::{config, filesystem, health, projects, task_attempts, tasks};
-
-#[derive(RustEmbed)]
-#[folder = "../frontend/dist"]
-struct Assets;
 
 async fn echo_handler(
     Json(payload): Json<serde_json::Value>,
@@ -87,10 +83,6 @@ async fn serve_file(path: &str) -> impl IntoResponse {
 async fn serve_sound_file(
     axum::extract::Path(filename): axum::extract::Path<String>,
 ) -> impl IntoResponse {
-    use std::path::Path;
-
-    use tokio::fs;
-
     // Validate filename contains only expected sound files
     let valid_sounds = [
         "abstract-sound1.wav",
@@ -109,15 +101,13 @@ async fn serve_sound_file(
             .unwrap();
     }
 
-    let sound_path = Path::new("backend/sounds").join(&filename);
-
-    match fs::read(&sound_path).await {
-        Ok(content) => Response::builder()
+    match SoundAssets::get(&filename) {
+        Some(content) => Response::builder()
             .status(StatusCode::OK)
-            .header(header::CONTENT_TYPE, HeaderValue::from_static("audio/mpeg"))
-            .body(Body::from(content))
+            .header(header::CONTENT_TYPE, HeaderValue::from_static("audio/wav"))
+            .body(Body::from(content.data.into_owned()))
             .unwrap(),
-        Err(_) => Response::builder()
+        None => Response::builder()
             .status(StatusCode::NOT_FOUND)
             .body(Body::from("Sound file not found"))
             .unwrap(),

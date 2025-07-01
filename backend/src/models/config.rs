@@ -195,8 +195,42 @@ impl SoundFile {
         }
     }
 
-    pub fn to_path(&self) -> PathBuf {
-        PathBuf::from("backend/sounds").join(self.to_filename())
+    /// Get or create a cached sound file with the embedded sound data
+    pub async fn get_path(&self) -> Result<PathBuf, Box<dyn std::error::Error + Send + Sync>> {
+        use std::io::Write;
+
+        let filename = self.to_filename();
+        let cache_dir = crate::utils::cache_dir();
+        let cached_path = cache_dir.join(format!("sound-{}", filename));
+
+        // Check if cached file already exists and is valid
+        if cached_path.exists() {
+            // Verify file has content (basic validation)
+            if let Ok(metadata) = std::fs::metadata(&cached_path) {
+                if metadata.len() > 0 {
+                    return Ok(cached_path);
+                }
+            }
+        }
+
+        // File doesn't exist or is invalid, create it
+        let sound_data = crate::SoundAssets::get(filename)
+            .ok_or_else(|| format!("Embedded sound file not found: {}", filename))?
+            .data;
+
+        // Ensure cache directory exists
+        std::fs::create_dir_all(&cache_dir)
+            .map_err(|e| format!("Failed to create cache directory: {}", e))?;
+
+        let mut file = std::fs::File::create(&cached_path)
+            .map_err(|e| format!("Failed to create cached sound file: {}", e))?;
+
+        file.write_all(&sound_data)
+            .map_err(|e| format!("Failed to write sound data to cached file: {}", e))?;
+
+        drop(file); // Ensure file is closed
+
+        Ok(cached_path)
     }
 }
 
