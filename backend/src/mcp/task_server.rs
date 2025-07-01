@@ -255,7 +255,9 @@ impl TaskServer {
 
 #[tool(tool_box)]
 impl TaskServer {
-    #[tool(description = "Create a new task/ticket in a project")]
+    #[tool(
+        description = "Create a new task/ticket in a project. Always pass the `project_id` of project you want to create the task in."
+    )]
     async fn create_task(
         &self,
         #[tool(aggr)] CreateTaskRequest {
@@ -1249,7 +1251,7 @@ impl ServerHandler for TaskServer {
                 .enable_tools()
                 .build(),
             server_info: Implementation {
-                name: "task-manager".to_string(),
+                name: "vibe-kanban".to_string(),
                 version: "1.0.0".to_string(),
             },
             instructions: Some("A task and project management server. AGENT-FRIENDLY TOOLS (use task titles): 'complete_task', 'set_task_status', 'update_task_title', 'update_task_description', 'delete_task_by_title'. STANDARD TOOLS: 'list_projects', 'create_project', 'list_tasks', 'create_task', 'get_task'. ADVANCED TOOLS (use UUIDs): 'update_task', 'delete_task'. Always use exact task titles from list_tasks results.".to_string()),
