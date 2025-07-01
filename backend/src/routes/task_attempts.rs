@@ -7,6 +7,7 @@ use axum::{
     routing::get,
     Json, Router,
 };
+use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -23,6 +24,11 @@ use crate::models::{
     },
     ApiResponse,
 };
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct RebaseTaskAttemptRequest {
+    pub new_base_branch: Option<String>,
+}
 
 pub async fn get_task_attempts(
     Path((project_id, task_id)): Path<(Uuid, Uuid)>,
@@ -369,6 +375,7 @@ pub async fn get_task_attempt_branch_status(
 pub async fn rebase_task_attempt(
     Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
     Extension(pool): Extension<SqlitePool>,
+    request_body: Option<Json<RebaseTaskAttemptRequest>>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
     // Verify task attempt exists and belongs to the correct task
     match TaskAttempt::exists_for_task(&pool, attempt_id, task_id, project_id).await {
@@ -380,7 +387,13 @@ pub async fn rebase_task_attempt(
         Ok(true) => {}
     }
 
-    match TaskAttempt::rebase_onto_main(&pool, attempt_id, task_id, project_id).await {
+    // Extract new base branch from request body if provided
+    let new_base_branch = request_body
+        .map(|body| body.new_base_branch.clone())
+        .flatten();
+
+    match TaskAttempt::rebase_attempt(&pool, attempt_id, task_id, project_id, new_base_branch).await
+    {
         Ok(_new_base_commit) => Ok(ResponseJson(ApiResponse {
             success: true,
             data: None,

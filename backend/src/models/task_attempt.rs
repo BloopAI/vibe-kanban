@@ -1,13 +1,10 @@
 use std::path::Path;
 
 use chrono::{DateTime, Utc};
-use git2::{
-    build::CheckoutBuilder, BranchType, Error as GitError, MergeOptions, Oid, RebaseOptions,
-    Repository, WorktreeAddOptions,
-};
+use git2::{BranchType, Error as GitError, RebaseOptions, Repository, WorktreeAddOptions};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool, Type};
-use tracing::{debug, error, info};
+use tracing::{debug, info};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -363,6 +360,82 @@ impl TaskAttempt {
 
             Ok(merge_commit_id.to_string())
         }
+    }
+
+    /// Perform the actual git rebase operations (synchronous)
+    fn perform_rebase_operation(
+        worktree_path: &str,
+        main_repo_path: &str,
+        new_base_branch: Option<String>,
+    ) -> Result<String, TaskAttemptError> {
+        // Open the worktree repository
+        let worktree_repo = Repository::open(worktree_path)?;
+
+        // Open the main repository to get the target base commit
+        let main_repo = Repository::open(main_repo_path)?;
+
+        // Get the target base branch reference
+        let base_branch_name = new_base_branch.unwrap_or_else(|| {
+            main_repo
+                .head()
+                .ok()
+                .and_then(|head| head.shorthand().map(|s| s.to_string()))
+                .unwrap_or_else(|| "main".to_string())
+        });
+
+        // Check if the specified base branch exists in the main repo
+        let base_branch = main_repo
+            .find_branch(&base_branch_name, BranchType::Local)
+            .map_err(|_| TaskAttemptError::BranchNotFound(base_branch_name.clone()))?;
+
+        let base_commit_id = base_branch.get().peel_to_commit()?.id();
+
+        // Get the HEAD commit of the worktree (the changes to rebase)
+        let head = worktree_repo.head()?;
+
+        // Set up rebase
+        let mut rebase_opts = RebaseOptions::new();
+        let signature = worktree_repo.signature()?;
+
+        // Start the rebase
+        let head_annotated = worktree_repo.reference_to_annotated_commit(&head)?;
+        let base_annotated = worktree_repo.find_annotated_commit(base_commit_id)?;
+
+        let mut rebase = worktree_repo.rebase(
+            Some(&head_annotated),
+            Some(&base_annotated),
+            None, // onto (use upstream if None)
+            Some(&mut rebase_opts),
+        )?;
+
+        // Process each rebase operation
+        while let Some(operation) = rebase.next() {
+            let _operation = operation?;
+
+            // Check for conflicts
+            let index = worktree_repo.index()?;
+            if index.has_conflicts() {
+                // For now, abort the rebase on conflicts
+                rebase.abort()?;
+                return Err(TaskAttemptError::Git(GitError::from_str(
+                    "Rebase failed due to conflicts. Please resolve conflicts manually.",
+                )));
+            }
+
+            // Commit the rebased operation
+            rebase.commit(None, &signature, None)?;
+        }
+
+        // Finish the rebase
+        rebase.finish(None)?;
+
+        // Get the final commit ID after rebase
+        let final_head = worktree_repo.head()?;
+        let final_commit = final_head.peel_to_commit()?;
+
+        info!("Rebase completed. New HEAD: {}", final_commit.id());
+
+        Ok(final_commit.id().to_string())
     }
 
     /// Merge the worktree changes back to the main repository
@@ -1388,73 +1461,13 @@ impl TaskAttempt {
         })
     }
 
-    /// Perform the actual git rebase operations (synchronous)
-    fn perform_rebase_operation(
-        worktree_path: &str,
-        main_repo_path: &str,
-    ) -> Result<String, TaskAttemptError> {
-        let main_repo = Repository::open(main_repo_path)?;
-        let repo = Repository::open(worktree_path)?;
-
-        // 1️⃣ get main HEAD oid
-        let main_oid = main_repo.head()?.peel_to_commit()?.id();
-
-        // 2️⃣ early exit if up-to-date
-        let orig_oid = repo.head()?.peel_to_commit()?.id();
-        if orig_oid == main_oid {
-            return Ok(orig_oid.to_string());
-        }
-
-        // 3️⃣ prepare upstream
-        let main_annot = repo.find_annotated_commit(main_oid)?;
-
-        // 4️⃣ set up in-memory rebase
-        let mut opts = RebaseOptions::new();
-        opts.inmemory(true).merge_options(MergeOptions::new());
-
-        // 5️⃣ start rebase of HEAD onto main
-        let mut reb = repo.rebase(None, Some(&main_annot), None, Some(&mut opts))?;
-
-        // 6️⃣ replay commits, remember last OID
-        let sig = repo.signature()?;
-        let mut last_oid: Option<Oid> = None;
-        while let Some(res) = reb.next() {
-            match res {
-                Ok(_op) => {
-                    let new_oid = reb.commit(None, &sig, None)?;
-                    last_oid = Some(new_oid);
-                }
-                Err(e) => {
-                    error!("rebase op failed: {}", e);
-                    reb.abort()?;
-                    return Err(TaskAttemptError::Git(e));
-                }
-            }
-        }
-
-        // 7️⃣ finish (still in-memory)
-        reb.finish(Some(&sig))?;
-
-        // 8️⃣ repoint your branch ref (HEAD is a symbolic to this ref)
-        if let Some(target) = last_oid {
-            let head_ref = repo.head()?; // symbolic HEAD
-            let branch_name = head_ref.name().unwrap(); // e.g. "refs/heads/feature"
-            let mut r = repo.find_reference(branch_name)?;
-            r.set_target(target, "rebase: update branch")?;
-        }
-
-        // 9️⃣ update working tree
-        repo.checkout_head(Some(CheckoutBuilder::new().force()))?;
-
-        Ok(main_oid.to_string())
-    }
-
-    /// Rebase the worktree branch onto main
-    pub async fn rebase_onto_main(
+    /// Rebase the worktree branch onto specified base branch (or current HEAD if none specified)
+    pub async fn rebase_attempt(
         pool: &SqlitePool,
         attempt_id: Uuid,
         task_id: Uuid,
         project_id: Uuid,
+        new_base_branch: Option<String>,
     ) -> Result<String, TaskAttemptError> {
         // Get the task attempt with validation
         let attempt = sqlx::query_as!(
@@ -1477,8 +1490,11 @@ impl TaskAttempt {
             .ok_or(TaskAttemptError::ProjectNotFound)?;
 
         // Perform the git rebase operations (synchronous)
-        let new_base_commit =
-            Self::perform_rebase_operation(&attempt.worktree_path, &project.git_repo_path)?;
+        let new_base_commit = Self::perform_rebase_operation(
+            &attempt.worktree_path,
+            &project.git_repo_path,
+            new_base_branch,
+        )?;
 
         // No need to update database as we now get base_commit live from git
         Ok(new_base_commit)
