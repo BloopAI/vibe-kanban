@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                execution_process_id as \"execution_process_id!: Uuid\", \n                session_id, \n                prompt,\n                assistant_message,\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM executor_sessions \n               WHERE execution_process_id = $1",
+  "query": "SELECT \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                execution_process_id as \"execution_process_id!: Uuid\", \n                session_id, \n                prompt,\n                summary,\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM executor_sessions \n               WHERE execution_process_id = $1",
   "describe": {
     "columns": [
       {
@@ -29,7 +29,7 @@
         "type_info": "Text"
       },
       {
-        "name": "assistant_message",
+        "name": "summary",
         "ordinal": 5,
         "type_info": "Text"
       },
@@ -58,5 +58,5 @@
       false
     ]
   },
-  "hash": "0efc9afbe1abfe27e806bf893747c1fd65f410bb39856d4eeef4671ab88d2c38"
+  "hash": "89a6db6a4b318736dca5c1b8921631a2ba93d95a27bcbbef0058d4726af8a733"
 }

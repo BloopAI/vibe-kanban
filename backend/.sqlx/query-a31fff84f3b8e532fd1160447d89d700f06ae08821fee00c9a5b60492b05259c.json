@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO executor_sessions (\n                id, task_attempt_id, execution_process_id, session_id, prompt, assistant_message,\n                created_at, updated_at\n               ) \n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8) \n               RETURNING \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                execution_process_id as \"execution_process_id!: Uuid\", \n                session_id, \n                prompt,\n                assistant_message,\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                execution_process_id as \"execution_process_id!: Uuid\", \n                session_id, \n                prompt,\n                summary,\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM executor_sessions \n               WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -29,7 +29,7 @@
         "type_info": "Text"
       },
       {
-        "name": "assistant_message",
+        "name": "summary",
         "ordinal": 5,
         "type_info": "Text"
       },
@@ -45,7 +45,7 @@
       }
     ],
     "parameters": {
-      "Right": 8
+      "Right": 1
     },
     "nullable": [
       true,
@@ -58,5 +58,5 @@
       false
     ]
   },
-  "hash": "135a78d5612a64269e13e4f1e19ccdeb0623ed95bb50c24f6ee345f39ab82fa3"
+  "hash": "a31fff84f3b8e532fd1160447d89d700f06ae08821fee00c9a5b60492b05259c"
 }
