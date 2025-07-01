@@ -1587,7 +1587,10 @@ impl TaskAttempt {
         .await?;
 
         // Extract PR number from URL (GitHub URLs are in format: https://github.com/owner/repo/pull/123)
-        let pr_number = pr_url.split('/').last().and_then(|n| n.parse::<i64>().ok());
+        let pr_number = pr_url
+            .split('/')
+            .next_back()
+            .and_then(|n| n.parse::<i64>().ok());
 
         // Update the task attempt with PR information
         sqlx::query!(
