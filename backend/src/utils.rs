@@ -1,9 +1,34 @@
-use std::env;
+use std::{env, sync::OnceLock};
 
 use directories::ProjectDirs;
 
 pub mod shell;
 pub mod text;
+
+/// Cache for WSL2 detection result
+static WSL2_CACHE: OnceLock<bool> = OnceLock::new();
+
+/// Check if running in WSL2 (cached)
+pub fn is_wsl2() -> bool {
+    *WSL2_CACHE.get_or_init(|| {
+        // Check for WSL environment variables
+        if std::env::var("WSL_DISTRO_NAME").is_ok() || std::env::var("WSLENV").is_ok() {
+            tracing::debug!("WSL2 detected via environment variables");
+            return true;
+        }
+
+        // Check /proc/version for WSL2 signature
+        if let Ok(version) = std::fs::read_to_string("/proc/version") {
+            if version.contains("WSL2") || version.contains("microsoft") {
+                tracing::debug!("WSL2 detected via /proc/version");
+                return true;
+            }
+        }
+
+        tracing::debug!("WSL2 not detected");
+        false
+    })
+}
 
 pub fn asset_dir() -> std::path::PathBuf {
     let proj = if cfg!(debug_assertions) {
@@ -75,4 +100,19 @@ pub async fn get_powershell_script(
     drop(file); // Ensure file is closed
 
     Ok(script_path)
+}
+
+/// Open URL in browser with WSL2 support
+pub async fn open_browser(url: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    if is_wsl2() {
+        // In WSL2, use PowerShell to open the browser
+        tokio::process::Command::new("powershell.exe")
+            .arg("-Command")
+            .arg(format!("Start-Process '{}'", url))
+            .spawn()?;
+        Ok(())
+    } else {
+        // Use the standard open crate for other platforms
+        open::that(url).map_err(|e| e.into())
+    }
 }

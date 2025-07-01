@@ -189,7 +189,9 @@ async fn main() -> anyhow::Result<()> {
 
     if !cfg!(debug_assertions) {
         tracing::info!("Opening browser...");
-        open::that(format!("http://127.0.0.1:{actual_port}"))?;
+        if let Err(e) = utils::open_browser(&format!("http://127.0.0.1:{actual_port}")).await {
+            tracing::warn!("Failed to open browser automatically: {}. Please open http://127.0.0.1:{} manually.", e, actual_port);
+        }
     }
 
     axum::serve(listener, app).await?;

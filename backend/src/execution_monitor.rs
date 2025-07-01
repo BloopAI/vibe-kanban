@@ -72,32 +72,8 @@ async fn commit_execution_changes(
     Ok(())
 }
 
-/// Cache for WSL2 detection result
-static WSL2_CACHE: OnceLock<bool> = OnceLock::new();
 /// Cache for WSL root path from PowerShell
 static WSL_ROOT_PATH_CACHE: OnceLock<Option<String>> = OnceLock::new();
-
-/// Check if running in WSL2 (cached)
-fn is_wsl2() -> bool {
-    *WSL2_CACHE.get_or_init(|| {
-        // Check for WSL environment variables
-        if std::env::var("WSL_DISTRO_NAME").is_ok() || std::env::var("WSLENV").is_ok() {
-            tracing::debug!("WSL2 detected via environment variables");
-            return true;
-        }
-
-        // Check /proc/version for WSL2 signature
-        if let Ok(version) = std::fs::read_to_string("/proc/version") {
-            if version.contains("WSL2") || version.contains("microsoft") {
-                tracing::debug!("WSL2 detected via /proc/version");
-                return true;
-            }
-        }
-
-        tracing::debug!("WSL2 not detected");
-        false
-    })
-}
 
 /// Get WSL root path via PowerShell (cached)
 async fn get_wsl_root_path() -> Option<String> {
@@ -178,7 +154,7 @@ async fn play_sound_notification(sound_file: &crate::models::config::SoundFile) 
         let _ = tokio::process::Command::new("afplay")
             .arg(&file_path)
             .spawn();
-    } else if cfg!(target_os = "linux") && !is_wsl2() {
+    } else if cfg!(target_os = "linux") && !crate::utils::is_wsl2() {
         // Try different Linux audio players
         if tokio::process::Command::new("paplay")
             .arg(&file_path)
@@ -199,9 +175,10 @@ async fn play_sound_notification(sound_file: &crate::models::config::SoundFile) 
                 .arg("\\a")
                 .spawn();
         }
-    } else if cfg!(target_os = "windows") || (cfg!(target_os = "linux") && is_wsl2()) {
+    } else if cfg!(target_os = "windows") || (cfg!(target_os = "linux") && crate::utils::is_wsl2())
+    {
         // Convert WSL path to Windows path if in WSL2
-        let file_path = if is_wsl2() {
+        let file_path = if crate::utils::is_wsl2() {
             if let Some(windows_path) = wsl_to_windows_path(&file_path).await {
                 windows_path
             } else {
@@ -234,7 +211,7 @@ async fn send_push_notification(title: &str, message: &str) {
             .arg("-e")
             .arg(script)
             .spawn();
-    } else if cfg!(target_os = "linux") && !is_wsl2() {
+    } else if cfg!(target_os = "linux") && !crate::utils::is_wsl2() {
         // Linux: Use notify-rust crate - fire and forget
         use notify_rust::Notification;
 
@@ -252,7 +229,8 @@ async fn send_push_notification(title: &str, message: &str) {
             }
         });
         drop(_handle); // Don't await, fire-and-forget
-    } else if cfg!(target_os = "windows") || (cfg!(target_os = "linux") && is_wsl2()) {
+    } else if cfg!(target_os = "windows") || (cfg!(target_os = "linux") && crate::utils::is_wsl2())
+    {
         // Windows and WSL2: Use PowerShell toast notification script
         let script_path = match crate::utils::get_powershell_script().await {
             Ok(path) => path,
@@ -263,7 +241,7 @@ async fn send_push_notification(title: &str, message: &str) {
         };
 
         // Convert WSL path to Windows path if in WSL2
-        let script_path_str = if is_wsl2() {
+        let script_path_str = if crate::utils::is_wsl2() {
             if let Some(windows_path) = wsl_to_windows_path(&script_path).await {
                 windows_path
             } else {
