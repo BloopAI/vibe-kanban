@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Plus, Settings, FolderOpen } from 'lucide-react';
 import { makeRequest } from '@/lib/api';
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
@@ -44,6 +45,7 @@ export function ProjectTasks() {
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isProjectSettingsOpen, setIsProjectSettingsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Panel state
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -402,10 +404,19 @@ export function ProjectTasks() {
               <Settings className="h-4 w-4" />
             </Button>
           </div>
-          <Button onClick={handleCreateNewTask}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Task
-          </Button>
+          <div className="flex items-center gap-3">
+            <Input
+              type="text"
+              placeholder="Search tasks..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-64"
+            />
+            <Button onClick={handleCreateNewTask}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Task
+            </Button>
+          </div>
         </div>
 
         {/* Tasks View */}
@@ -428,6 +439,7 @@ export function ProjectTasks() {
             <div className="min-w-[900px] max-w-[2000px] relative py-1">
               <TaskKanbanBoard
                 tasks={tasks}
+                searchQuery={searchQuery}
                 onDragEnd={handleDragEnd}
                 onEditTask={handleEditTask}
                 onDeleteTask={handleDeleteTask}

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   KanbanProvider,
   KanbanBoard,
@@ -6,7 +5,6 @@ import {
   KanbanCards,
   type DragEndEvent,
 } from '@/components/ui/shadcn-io/kanban';
-import { Input } from '@/components/ui/input';
 import { TaskCard } from './TaskCard';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 
@@ -14,6 +12,7 @@ type Task = TaskWithAttemptStatus;
 
 interface TaskKanbanBoardProps {
   tasks: Task[];
+  searchQuery?: string;
   onDragEnd: (event: DragEndEvent) => void;
   onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
@@ -46,13 +45,12 @@ const statusBoardColors: Record<TaskStatus, string> = {
 
 export function TaskKanbanBoard({
   tasks,
+  searchQuery = '',
   onDragEnd,
   onEditTask,
   onDeleteTask,
   onViewTaskDetails,
 }: TaskKanbanBoardProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-
   const filterTasks = (tasks: Task[]) => {
     if (!searchQuery.trim()) {
       return tasks;
@@ -90,18 +88,8 @@ export function TaskKanbanBoard({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="w-full max-w-sm">
-        <Input
-          type="text"
-          placeholder="Search tasks..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full"
-        />
-      </div>
-      <KanbanProvider onDragEnd={onDragEnd}>
-        {Object.entries(groupTasksByStatus()).map(([status, statusTasks]) => (
+    <KanbanProvider onDragEnd={onDragEnd}>
+      {Object.entries(groupTasksByStatus()).map(([status, statusTasks]) => (
         <KanbanBoard key={status} id={status as TaskStatus}>
           <KanbanHeader
             name={statusLabels[status as TaskStatus]}
@@ -121,8 +109,7 @@ export function TaskKanbanBoard({
             ))}
           </KanbanCards>
         </KanbanBoard>
-        ))}
-      </KanbanProvider>
-    </div>
+      ))}
+    </KanbanProvider>
   );
 }
