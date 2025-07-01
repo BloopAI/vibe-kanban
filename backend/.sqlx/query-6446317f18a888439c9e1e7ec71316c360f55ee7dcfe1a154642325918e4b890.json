@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO executor_sessions (\n                id, task_attempt_id, execution_process_id, session_id, prompt, \n                created_at, updated_at\n               ) \n               VALUES ($1, $2, $3, $4, $5, $6, $7) \n               RETURNING \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                execution_process_id as \"execution_process_id!: Uuid\", \n                session_id, \n                prompt,\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                execution_process_id as \"execution_process_id!: Uuid\", \n                session_id, \n                prompt,\n                assistant_message,\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM executor_sessions \n               WHERE task_attempt_id = $1 \n               ORDER BY created_at ASC",
   "describe": {
     "columns": [
       {
@@ -29,18 +29,23 @@
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "assistant_message",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 7,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 7
+      "Right": 1
     },
     "nullable": [
       true,
@@ -48,9 +53,10 @@
       false,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "a528a9926fab1c819a5a1fa1cde87ea9d354da0873af22e888d0bf8e0c7f306a"
+  "hash": "6446317f18a888439c9e1e7ec71316c360f55ee7dcfe1a154642325918e4b890"
 }

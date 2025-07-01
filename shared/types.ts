@@ -94,11 +94,11 @@ export type CreateExecutionProcess = { task_attempt_id: string, process_type: Ex
 
 export type UpdateExecutionProcess = { status: ExecutionProcessStatus | null, exit_code: bigint | null, completed_at: string | null, };
 
-export type ExecutorSession = { id: string, task_attempt_id: string, execution_process_id: string, session_id: string | null, prompt: string | null, created_at: string, updated_at: string, };
+export type ExecutorSession = { id: string, task_attempt_id: string, execution_process_id: string, session_id: string | null, prompt: string | null, assistant_message: string | null, created_at: string, updated_at: string, };
 
 export type CreateExecutorSession = { task_attempt_id: string, execution_process_id: string, prompt: string | null, };
 
-export type UpdateExecutorSession = { session_id: string | null, prompt: string | null, };
+export type UpdateExecutorSession = { session_id: string | null, prompt: string | null, assistant_message: string | null, };
 
 // Generated constants
 export const EXECUTOR_TYPES: string[] = [
