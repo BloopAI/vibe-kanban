@@ -58,7 +58,7 @@ async fn commit_execution_changes(
 
         // Create commit for the changes
         let commit_message = if let Some(ref summary_msg) = summary {
-            format!("Task attempt {} - {}", attempt_id, summary_msg)
+            summary_msg.clone()
         } else {
             format!("Task attempt {} - Final changes", attempt_id)
         };
