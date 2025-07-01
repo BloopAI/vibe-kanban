@@ -155,7 +155,7 @@ async fn get_mcp_servers(
                 data: Some(response_data),
                 message: Some("MCP servers retrieved successfully".to_string()),
             })
-        },
+        }
         Err(e) => ResponseJson(ApiResponse {
             success: false,
             data: None,
@@ -282,7 +282,7 @@ fn get_mcp_servers_from_config_path(config: &Value, path: &[&str]) -> HashMap<St
             Some(val) => val,
             None => return HashMap::new(),
         };
-        
+
         // Extract the servers object
         match current.as_object() {
             Some(servers) => servers
