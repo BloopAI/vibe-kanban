@@ -264,102 +264,53 @@ impl TaskAttempt {
         Ok(result.is_some())
     }
 
-    /// Perform the actual git merge operations (synchronous)
+    /// Perform the actual merge operation (synchronous)
     fn perform_merge_operation(
         worktree_path: &str,
         main_repo_path: &str,
-        attempt_id: Uuid,
+        branch_name: &str,
         task_title: &str,
     ) -> Result<String, TaskAttemptError> {
-        // Open the worktree repository
-        let worktree_repo = Repository::open(worktree_path)?;
-
         // Open the main repository
         let main_repo = Repository::open(main_repo_path)?;
 
-        // Get the current signature for commits
+        // Open the worktree repository to get the latest commit
+        let worktree_repo = Repository::open(worktree_path)?;
+        let worktree_head = worktree_repo.head()?;
+        let worktree_commit = worktree_head.peel_to_commit()?;
+
+        // Verify the branch exists in the main repo
+        main_repo
+            .find_branch(branch_name, BranchType::Local)
+            .map_err(|_| TaskAttemptError::BranchNotFound(branch_name.to_string()))?;
+
+        // Get the current HEAD of the main repo (usually main/master)
+        let main_head = main_repo.head()?;
+        let main_commit = main_head.peel_to_commit()?;
+
+        // Get the signature for the merge commit
         let signature = main_repo.signature()?;
 
-        // Get the current HEAD commit in the worktree (changes should already be committed by execution monitor)
-        let head = worktree_repo.head()?;
-        let parent_commit = head.peel_to_commit()?;
-        let final_commit = parent_commit.id();
+        // Get the tree from the worktree commit and find it in the main repo
+        let worktree_tree_id = worktree_commit.tree_id();
+        let main_tree = main_repo.find_tree(worktree_tree_id)?;
 
-        // Now we need to merge the worktree branch into the main repository
-        let branch_name = format!("attempt-{}", attempt_id);
+        // Find the worktree commit in the main repo
+        let main_worktree_commit = main_repo.find_commit(worktree_commit.id())?;
 
-        // Get the current base branch name (e.g., "main", "master", "develop", etc.)
-        let main_branch = main_repo.head()?.shorthand().unwrap_or("main").to_string();
-
-        // Fetch the worktree branch into the main repository
-        let worktree_branch_ref = format!("refs/heads/{}", branch_name);
-        let main_branch_ref = format!("refs/heads/{}", main_branch);
-
-        // Create the branch in main repo pointing to the final commit
-        let branch_oid = main_repo.odb()?.write(
-            git2::ObjectType::Commit,
-            worktree_repo.odb()?.read(final_commit)?.data(),
+        // Create a merge commit
+        let merge_commit_id = main_repo.commit(
+            Some("HEAD"),                                    // Update HEAD
+            &signature,                                      // Author
+            &signature,                                      // Committer
+            &format!("Merge: {} (vibe-kanban)", task_title), // Message using task title
+            &main_tree,                                      // Use the tree from main repo
+            &[&main_commit, &main_worktree_commit], // Parents: main HEAD and worktree commit
         )?;
 
-        // Create reference in main repo
-        main_repo.reference(
-            &worktree_branch_ref,
-            branch_oid,
-            true,
-            "Import worktree changes",
-        )?;
+        info!("Created merge commit: {}", merge_commit_id);
 
-        // Now merge the branch into the base branch
-        let main_branch_commit = main_repo
-            .reference_to_annotated_commit(&main_repo.find_reference(&main_branch_ref)?)?;
-        let worktree_branch_commit = main_repo
-            .reference_to_annotated_commit(&main_repo.find_reference(&worktree_branch_ref)?)?;
-
-        // Perform the merge
-        let mut merge_opts = git2::MergeOptions::new();
-        merge_opts.file_favor(git2::FileFavor::Theirs); // Prefer worktree changes in conflicts
-
-        let mut checkout_opts = git2::build::CheckoutBuilder::new();
-        checkout_opts.conflict_style_merge(true);
-
-        main_repo.merge(
-            &[&worktree_branch_commit],
-            Some(&mut merge_opts),
-            Some(&mut checkout_opts),
-        )?;
-
-        // Check if merge was successful (no conflicts)
-        let merge_head_path = main_repo.path().join("MERGE_HEAD");
-        if merge_head_path.exists() {
-            // Complete the merge by creating a merge commit
-            let mut index = main_repo.index()?;
-            let tree_id = index.write_tree()?;
-            let tree = main_repo.find_tree(tree_id)?;
-
-            let main_commit = main_repo.find_commit(main_branch_commit.id())?;
-            let worktree_commit = main_repo.find_commit(worktree_branch_commit.id())?;
-
-            let merge_commit_message = format!("Merge task: {} into {}", task_title, main_branch);
-            let merge_commit_id = main_repo.commit(
-                Some(&main_branch_ref),
-                &signature,
-                &signature,
-                &merge_commit_message,
-                &tree,
-                &[&main_commit, &worktree_commit],
-            )?;
-
-            // Clean up merge state
-            main_repo.cleanup_state()?;
-
-            Ok(merge_commit_id.to_string())
-        } else {
-            // Fast-forward merge completed
-            let head_commit = main_repo.head()?.peel_to_commit()?;
-            let merge_commit_id = head_commit.id();
-
-            Ok(merge_commit_id.to_string())
-        }
+        Ok(merge_commit_id.to_string())
     }
 
     /// Perform the actual git rebase operations (synchronous)
@@ -469,11 +420,11 @@ impl TaskAttempt {
             .await?
             .ok_or(TaskAttemptError::ProjectNotFound)?;
 
-        // Perform the git merge operations (synchronous)
+        // Perform the actual merge operation
         let merge_commit_id = Self::perform_merge_operation(
             &attempt.worktree_path,
             &project.git_repo_path,
-            attempt_id,
+            &attempt.branch,
             &task.title,
         )?;
 
