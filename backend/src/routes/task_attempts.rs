@@ -17,8 +17,8 @@ use crate::models::{
     execution_process::{ExecutionProcess, ExecutionProcessSummary},
     task::Task,
     task_attempt::{
-        BranchStatus, CreateFollowUpAttempt, CreateTaskAttempt, TaskAttempt, TaskAttemptStatus,
-        WorktreeDiff,
+        BranchStatus, CreateFollowUpAttempt, CreatePrParams, CreateTaskAttempt, TaskAttempt,
+        TaskAttemptStatus, WorktreeDiff,
     },
     task_attempt_activity::{
         CreateTaskAttemptActivity, TaskAttemptActivity, TaskAttemptActivityWithPrompt,
@@ -310,13 +310,15 @@ pub async fn create_github_pr(
 
     match TaskAttempt::create_github_pr(
         &pool,
-        attempt_id,
-        task_id,
-        project_id,
-        &github_token,
-        &request.title,
-        request.body.as_deref(),
-        Some(&base_branch),
+        CreatePrParams {
+            attempt_id,
+            task_id,
+            project_id,
+            github_token: &github_token,
+            title: &request.title,
+            body: request.body.as_deref(),
+            base_branch: Some(&base_branch),
+        },
     )
     .await
     {

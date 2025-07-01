@@ -87,6 +87,17 @@ pub struct UpdateTaskAttempt {
     // Currently no updateable fields, but keeping struct for API compatibility
 }
 
+/// GitHub PR creation parameters
+pub struct CreatePrParams<'a> {
+    pub attempt_id: Uuid,
+    pub task_id: Uuid,
+    pub project_id: Uuid,
+    pub github_token: &'a str,
+    pub title: &'a str,
+    pub body: Option<&'a str>,
+    pub base_branch: Option<&'a str>,
+}
+
 #[derive(Debug, Deserialize, TS)]
 #[ts(export)]
 pub struct CreateFollowUpAttempt {
@@ -403,9 +414,9 @@ impl TaskAttempt {
                FROM task_attempts ta 
                JOIN tasks t ON ta.task_id = t.id 
                WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
-            attempt_id,
-            task_id,
-            project_id
+               attempt_id,
+               task_id,
+               project_id
         )
         .fetch_optional(pool)
         .await?
@@ -1527,13 +1538,7 @@ impl TaskAttempt {
     /// Create a GitHub PR for this task attempt
     pub async fn create_github_pr(
         pool: &SqlitePool,
-        attempt_id: Uuid,
-        task_id: Uuid,
-        project_id: Uuid,
-        github_token: &str,
-        title: &str,
-        body: Option<&str>,
-        base_branch: Option<&str>,
+        params: CreatePrParams<'_>,
     ) -> Result<String, TaskAttemptError> {
         // Get the task attempt with validation
         let attempt = sqlx::query_as!(
@@ -1542,16 +1547,16 @@ impl TaskAttempt {
                FROM task_attempts ta 
                JOIN tasks t ON ta.task_id = t.id 
                WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
-            attempt_id,
-            task_id,
-            project_id
+            params.attempt_id,
+            params.task_id,
+            params.project_id
         )
         .fetch_optional(pool)
         .await?
         .ok_or(TaskAttemptError::TaskNotFound)?;
 
         // Get the project to access the repository path
-        let project = Project::find_by_id(pool, project_id)
+        let project = Project::find_by_id(pool, params.project_id)
             .await?
             .ok_or(TaskAttemptError::ProjectNotFound)?;
 
@@ -1559,17 +1564,17 @@ impl TaskAttempt {
         let (owner, repo_name) = Self::extract_github_repo_info(&project.git_repo_path)?;
 
         // Push the branch to GitHub first
-        Self::push_branch_to_github(&attempt.worktree_path, &attempt.branch, github_token)?;
+        Self::push_branch_to_github(&attempt.worktree_path, &attempt.branch, params.github_token)?;
 
         // Create the PR using Octocrab
         Self::create_pr_with_octocrab(
-            github_token,
+            params.github_token,
             &owner,
             &repo_name,
             &attempt.branch,
-            base_branch.unwrap_or("main"),
-            title,
-            body,
+            params.base_branch.unwrap_or("main"),
+            params.title,
+            params.body,
         )
         .await
     }
@@ -1656,7 +1661,7 @@ impl TaskAttempt {
         let _ = repo.remote_delete(temp_remote_name);
 
         // Check push result
-        push_result.map_err(|e| TaskAttemptError::Git(e))?;
+        push_result.map_err(TaskAttemptError::Git)?;
 
         info!("Pushed branch {} to GitHub using HTTPS", branch_name);
         Ok(())
