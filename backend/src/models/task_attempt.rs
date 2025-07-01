@@ -1607,7 +1607,30 @@ impl TaskAttempt {
         let repo = Repository::open(worktree_path)?;
         
         // Get the remote
-        let mut remote = repo.find_remote("origin")?;
+        let remote = repo.find_remote("origin")?;
+        let remote_url = remote.url().ok_or_else(|| {
+            TaskAttemptError::ValidationError("Remote origin has no URL".to_string())
+        })?;
+
+        // Convert SSH URL to HTTPS URL if necessary
+        let https_url = if remote_url.starts_with("git@github.com:") {
+            // Convert git@github.com:owner/repo.git to https://github.com/owner/repo.git
+            remote_url.replace("git@github.com:", "https://github.com/")
+        } else if remote_url.starts_with("ssh://git@github.com/") {
+            // Convert ssh://git@github.com/owner/repo.git to https://github.com/owner/repo.git  
+            remote_url.replace("ssh://git@github.com/", "https://github.com/")
+        } else {
+            remote_url.to_string()
+        };
+
+        // Create a temporary remote with HTTPS URL for pushing
+        let temp_remote_name = "temp_https_origin";
+        
+        // Remove any existing temp remote
+        let _ = repo.remote_delete(temp_remote_name);
+        
+        // Create temporary HTTPS remote
+        let mut temp_remote = repo.remote(temp_remote_name, &https_url)?;
         
         // Create refspec for pushing the branch
         let refspec = format!("refs/heads/{}:refs/heads/{}", branch_name, branch_name);
@@ -1626,11 +1649,17 @@ impl TaskAttempt {
         push_options.remote_callbacks(callbacks);
         
         // Push the branch
-        remote.push(&[&refspec], Some(&mut push_options)).map_err(|e| {
+        let push_result = temp_remote.push(&[&refspec], Some(&mut push_options));
+        
+        // Clean up the temporary remote
+        let _ = repo.remote_delete(temp_remote_name);
+        
+        // Check push result
+        push_result.map_err(|e| {
             TaskAttemptError::Git(e)
         })?;
 
-        info!("Pushed branch {} to GitHub", branch_name);
+        info!("Pushed branch {} to GitHub using HTTPS", branch_name);
         Ok(())
     }
 
