@@ -40,6 +40,7 @@ openssl-sys = { workspace = true }
 rmcp = { version = "0.1.5", features = ["server", "transport-io"] }
 schemars = "0.8"
 regex = "1.11.1"
+notify-rust = "4.11"
 
 [build-dependencies]
 ts-rs = { version = "9.0", features = ["uuid-impl", "chrono-impl"] }

@@ -247,7 +247,7 @@ async fn play_sound_notification(sound_file: &crate::models::config::SoundFile) 
     }
 }
 
-/// Send a macOS push notification
+/// Send a cross-platform push notification
 async fn send_push_notification(title: &str, message: &str) {
     if cfg!(target_os = "macos") {
         let script = format!(
@@ -259,6 +259,48 @@ async fn send_push_notification(title: &str, message: &str) {
         let _ = tokio::process::Command::new("osascript")
             .arg("-e")
             .arg(script)
+            .spawn();
+    } else if cfg!(target_os = "linux") && !is_wsl2() {
+        // Linux: Use notify-rust crate - fire and forget
+        use notify_rust::Notification;
+
+        let title = title.to_string();
+        let message = message.to_string();
+
+        let _ = tokio::task::spawn_blocking(move || {
+            if let Err(e) = Notification::new()
+                .summary(&title)
+                .body(&message)
+                .timeout(10000)
+                .show()
+            {
+                tracing::error!("Failed to send Linux notification: {}", e);
+            }
+        });
+    } else if cfg!(target_os = "windows") || (cfg!(target_os = "linux") && is_wsl2()) {
+        // Windows and WSL2: Use PowerShell toast notifications
+        let escaped_title = title.replace('"', r#"\""#).replace('\'', "''");
+        let escaped_message = message.replace('"', r#"\""#).replace('\'', "''");
+
+        let powershell_script = format!(
+            r#"
+[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
+$template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)
+$toastXml = [xml] $template.GetXml()
+$toastXml.GetElementsByTagName("text")[0].AppendChild($toastXml.CreateTextNode('{}')) | Out-Null
+$toastXml.GetElementsByTagName("text")[1].AppendChild($toastXml.CreateTextNode('{}')) | Out-Null
+$toast = [Windows.UI.Notifications.ToastNotification]::new($toastXml)
+[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Vibe Kanban').Show($toast)
+"#,
+            escaped_title, escaped_message
+        );
+
+        let _ = tokio::process::Command::new("powershell.exe")
+            .arg("-NoProfile")
+            .arg("-ExecutionPolicy")
+            .arg("Bypass")
+            .arg("-Command")
+            .arg(powershell_script)
             .spawn();
     }
 }
