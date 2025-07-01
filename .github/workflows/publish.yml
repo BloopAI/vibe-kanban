@@ -44,6 +44,7 @@ jobs:
             const path = require('path');
 
             const releaseId = context.payload.release?.id || process.env.RELEASE_ID;
+            console.log("releaseId:", releaseId);
 
             if (!releaseId) {
               core.setFailed('No release ID found.');
