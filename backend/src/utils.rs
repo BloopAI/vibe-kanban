@@ -3,6 +3,7 @@ use std::env;
 use directories::ProjectDirs;
 
 pub mod shell;
+pub mod text;
 
 pub fn asset_dir() -> std::path::PathBuf {
     let proj = if cfg!(debug_assertions) {
