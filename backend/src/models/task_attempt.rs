@@ -3,7 +3,7 @@ use std::path::Path;
 use chrono::{DateTime, Utc};
 use git2::{
     build::CheckoutBuilder, BranchType, Error as GitError, MergeOptions, Oid, RebaseOptions,
-    Reference, Repository, WorktreeAddOptions,
+    Repository, WorktreeAddOptions,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool, Type};
@@ -70,6 +70,7 @@ pub struct TaskAttempt {
     pub id: Uuid,
     pub task_id: Uuid, // Foreign key to Task
     pub worktree_path: String,
+    pub branch: String, // Git branch name for this task attempt
     pub merge_commit: Option<String>,
     pub executor: Option<String>, // Name of the executor to use
     pub created_at: DateTime<Utc>,
@@ -139,7 +140,7 @@ impl TaskAttempt {
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             TaskAttempt,
-            r#"SELECT id as "id!: Uuid", task_id as "task_id!: Uuid", worktree_path, merge_commit, executor, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", task_id as "task_id!: Uuid", worktree_path, branch, merge_commit, executor, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM task_attempts 
                WHERE id = $1"#,
             id
@@ -154,7 +155,7 @@ impl TaskAttempt {
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             TaskAttempt,
-            r#"SELECT id as "id!: Uuid", task_id as "task_id!: Uuid", worktree_path, merge_commit, executor, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", task_id as "task_id!: Uuid", worktree_path, branch, merge_commit, executor, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM task_attempts 
                WHERE task_id = $1 
                ORDER BY created_at DESC"#,
@@ -233,12 +234,13 @@ impl TaskAttempt {
         // Insert the record into the database
         Ok(sqlx::query_as!(
             TaskAttempt,
-            r#"INSERT INTO task_attempts (id, task_id, worktree_path, merge_commit, executor) 
-               VALUES ($1, $2, $3, $4, $5) 
-               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", worktree_path, merge_commit, executor, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO task_attempts (id, task_id, worktree_path, branch, merge_commit, executor) 
+               VALUES ($1, $2, $3, $4, $5, $6) 
+               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", worktree_path, branch, merge_commit, executor, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             attempt_id,
             task_id,
             worktree_path_str,
+            task_attempt_branch,
             Option::<String>::None, // merge_commit is always None during creation
             data.executor
         )
@@ -373,7 +375,7 @@ impl TaskAttempt {
         // Get the task attempt with validation
         let attempt = sqlx::query_as!(
             TaskAttempt,
-            r#"SELECT ta.id as "id!: Uuid", ta.task_id as "task_id!: Uuid", ta.worktree_path, ta.merge_commit, ta.executor, ta.created_at as "created_at!: DateTime<Utc>", ta.updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT ta.id as "id!: Uuid", ta.task_id as "task_id!: Uuid", ta.worktree_path, ta.branch, ta.merge_commit, ta.executor, ta.created_at as "created_at!: DateTime<Utc>", ta.updated_at as "updated_at!: DateTime<Utc>"
                FROM task_attempts ta 
                JOIN tasks t ON ta.task_id = t.id 
                WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
@@ -1003,7 +1005,7 @@ impl TaskAttempt {
         // Get the task attempt with validation
         let attempt = sqlx::query_as!(
             TaskAttempt,
-            r#"SELECT ta.id as "id!: Uuid", ta.task_id as "task_id!: Uuid", ta.worktree_path, ta.merge_commit, ta.executor, ta.created_at as "created_at!: DateTime<Utc>", ta.updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT ta.id as "id!: Uuid", ta.task_id as "task_id!: Uuid", ta.worktree_path, ta.branch, ta.merge_commit, ta.executor, ta.created_at as "created_at!: DateTime<Utc>", ta.updated_at as "updated_at!: DateTime<Utc>"
                FROM task_attempts ta 
                JOIN tasks t ON ta.task_id = t.id 
                WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
@@ -1299,7 +1301,7 @@ impl TaskAttempt {
         // Get the task attempt with validation
         let attempt = sqlx::query_as!(
             TaskAttempt,
-            r#"SELECT ta.id as "id!: Uuid", ta.task_id as "task_id!: Uuid", ta.worktree_path, ta.merge_commit, ta.executor, ta.created_at as "created_at!: DateTime<Utc>", ta.updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT ta.id as "id!: Uuid", ta.task_id as "task_id!: Uuid", ta.worktree_path, ta.branch, ta.merge_commit, ta.executor, ta.created_at as "created_at!: DateTime<Utc>", ta.updated_at as "updated_at!: DateTime<Utc>"
                FROM task_attempts ta 
                JOIN tasks t ON ta.task_id = t.id 
                WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
@@ -1457,7 +1459,7 @@ impl TaskAttempt {
         // Get the task attempt with validation
         let attempt = sqlx::query_as!(
             TaskAttempt,
-            r#"SELECT ta.id as "id!: Uuid", ta.task_id as "task_id!: Uuid", ta.worktree_path, ta.merge_commit, ta.executor, ta.created_at as "created_at!: DateTime<Utc>", ta.updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT ta.id as "id!: Uuid", ta.task_id as "task_id!: Uuid", ta.worktree_path, ta.branch, ta.merge_commit, ta.executor, ta.created_at as "created_at!: DateTime<Utc>", ta.updated_at as "updated_at!: DateTime<Utc>"
                FROM task_attempts ta 
                JOIN tasks t ON ta.task_id = t.id 
                WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
@@ -1493,7 +1495,7 @@ impl TaskAttempt {
         // Get the task attempt with validation
         let attempt = sqlx::query_as!(
             TaskAttempt,
-            r#"SELECT ta.id as "id!: Uuid", ta.task_id as "task_id!: Uuid", ta.worktree_path, ta.merge_commit, ta.executor, ta.created_at as "created_at!: DateTime<Utc>", ta.updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT ta.id as "id!: Uuid", ta.task_id as "task_id!: Uuid", ta.worktree_path, ta.branch, ta.merge_commit, ta.executor, ta.created_at as "created_at!: DateTime<Utc>", ta.updated_at as "updated_at!: DateTime<Utc>"
                FROM task_attempts ta 
                JOIN tasks t ON ta.task_id = t.id 
                WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\", task_id as \"task_id!: Uuid\", worktree_path, merge_commit, executor, created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM task_attempts \n               WHERE id = $1",
+  "query": "SELECT ta.id as \"id!: Uuid\", ta.task_id as \"task_id!: Uuid\", ta.worktree_path, ta.branch, ta.merge_commit, ta.executor, ta.created_at as \"created_at!: DateTime<Utc>\", ta.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM task_attempts ta \n               JOIN tasks t ON ta.task_id = t.id \n               WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3",
   "describe": {
     "columns": [
       {
@@ -19,31 +19,37 @@
         "type_info": "Text"
       },
       {
-        "name": "merge_commit",
+        "name": "branch",
         "ordinal": 3,
         "type_info": "Text"
       },
       {
-        "name": "executor",
+        "name": "merge_commit",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "executor",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 7,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 3
     },
     "nullable": [
       true,
+      false,
       false,
       false,
       true,
@@ -52,5 +58,5 @@
       false
     ]
   },
-  "hash": "a6058c6a30c6e3011e02b0ad81b2a98c5eca3bd88dec9632284ef7489f784fcd"
+  "hash": "1be393764ab52d9fc12a786783a088c89bf61b1aa97505d91a9a94fede58bb46"
 }

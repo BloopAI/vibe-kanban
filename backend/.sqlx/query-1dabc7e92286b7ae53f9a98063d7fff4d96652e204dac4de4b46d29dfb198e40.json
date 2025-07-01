@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO task_attempts (id, task_id, worktree_path, merge_commit, executor) \n               VALUES ($1, $2, $3, $4, $5) \n               RETURNING id as \"id!: Uuid\", task_id as \"task_id!: Uuid\", worktree_path, merge_commit, executor, created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "INSERT INTO task_attempts (id, task_id, worktree_path, branch, merge_commit, executor) \n               VALUES ($1, $2, $3, $4, $5, $6) \n               RETURNING id as \"id!: Uuid\", task_id as \"task_id!: Uuid\", worktree_path, branch, merge_commit, executor, created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -19,31 +19,37 @@
         "type_info": "Text"
       },
       {
-        "name": "merge_commit",
+        "name": "branch",
         "ordinal": 3,
         "type_info": "Text"
       },
       {
-        "name": "executor",
+        "name": "merge_commit",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "executor",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 7,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 5
+      "Right": 6
     },
     "nullable": [
       true,
+      false,
       false,
       false,
       true,
@@ -52,5 +58,5 @@
       false
     ]
   },
-  "hash": "0fc0dec5876cbe904d288a8e3bef15e0b7f75eb8e3c0fc1aeccd533ae73aab05"
+  "hash": "1dabc7e92286b7ae53f9a98063d7fff4d96652e204dac4de4b46d29dfb198e40"
 }
