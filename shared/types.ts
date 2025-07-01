@@ -4,11 +4,13 @@
 
 export type ApiResponse<T> = { success: boolean, data: T | null, message: string | null, };
 
-export type Config = { theme: ThemeMode, executor: ExecutorConfig, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, sound_alerts: boolean, sound_file: SoundFile, push_notifications: boolean, editor: EditorConfig, };
+export type Config = { theme: ThemeMode, executor: ExecutorConfig, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, sound_alerts: boolean, sound_file: SoundFile, push_notifications: boolean, editor: EditorConfig, github: GitHubConfig, };
 
 export type ThemeMode = "light" | "dark" | "system" | "purple" | "green" | "blue" | "orange" | "red";
 
 export type EditorConfig = { editor_type: EditorType, custom_command: string | null, };
+
+export type GitHubConfig = { token: string | null, default_pr_base: string | null, };
 
 export type EditorType = "vscode" | "cursor" | "windsurf" | "intellij" | "zed" | "custom";
 

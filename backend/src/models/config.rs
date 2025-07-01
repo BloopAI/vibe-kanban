@@ -16,6 +16,7 @@ pub struct Config {
     pub sound_file: SoundFile,
     pub push_notifications: bool,
     pub editor: EditorConfig,
+    pub github: GitHubConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -37,6 +38,13 @@ pub enum ThemeMode {
 pub struct EditorConfig {
     pub editor_type: EditorType,
     pub custom_command: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct GitHubConfig {
+    pub token: Option<String>,
+    pub default_pr_base: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -150,6 +158,7 @@ impl Default for Config {
             sound_file: SoundFile::AbstractSound4,
             push_notifications: true,
             editor: EditorConfig::default(),
+            github: GitHubConfig::default(),
         }
     }
 }
@@ -159,6 +168,15 @@ impl Default for EditorConfig {
         Self {
             editor_type: EditorType::VSCode,
             custom_command: None,
+        }
+    }
+}
+
+impl Default for GitHubConfig {
+    fn default() -> Self {
+        Self {
+            token: None,
+            default_pr_base: Some("main".to_string()),
         }
     }
 }

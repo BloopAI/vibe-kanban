@@ -1523,4 +1523,128 @@ impl TaskAttempt {
 
         Ok(commit_id.to_string())
     }
+
+    /// Create a GitHub PR for this task attempt
+    pub async fn create_github_pr(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+        task_id: Uuid,
+        project_id: Uuid,
+        github_token: &str,
+        title: &str,
+        body: Option<&str>,
+        base_branch: Option<&str>,
+    ) -> Result<String, TaskAttemptError> {
+        // Get the task attempt with validation
+        let attempt = sqlx::query_as!(
+            TaskAttempt,
+            r#"SELECT ta.id as "id!: Uuid", ta.task_id as "task_id!: Uuid", ta.worktree_path, ta.branch, ta.merge_commit, ta.executor, ta.created_at as "created_at!: DateTime<Utc>", ta.updated_at as "updated_at!: DateTime<Utc>"
+               FROM task_attempts ta 
+               JOIN tasks t ON ta.task_id = t.id 
+               WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
+            attempt_id,
+            task_id,
+            project_id
+        )
+        .fetch_optional(pool)
+        .await?
+        .ok_or(TaskAttemptError::TaskNotFound)?;
+
+        // Get the project to access the repository path
+        let project = Project::find_by_id(pool, project_id)
+            .await?
+            .ok_or(TaskAttemptError::ProjectNotFound)?;
+
+        // Extract GitHub repository information from the project path
+        let (owner, repo_name) = Self::extract_github_repo_info(&project.git_repo_path)?;
+
+        // Push the branch to GitHub first
+        Self::push_branch_to_github(&attempt.worktree_path, &attempt.branch)?;
+
+        // Create the PR using Octocrab
+        Self::create_pr_with_octocrab(
+            github_token,
+            &owner,
+            &repo_name,
+            &attempt.branch,
+            base_branch.unwrap_or("main"),
+            title,
+            body,
+        )
+        .await
+    }
+
+    /// Extract GitHub owner and repo name from git repo path
+    fn extract_github_repo_info(git_repo_path: &str) -> Result<(String, String), TaskAttemptError> {
+        // Try to extract from remote origin URL
+        let repo = Repository::open(git_repo_path)?;
+        let remote = repo.find_remote("origin").map_err(|_| {
+            TaskAttemptError::ValidationError("No 'origin' remote found".to_string())
+        })?;
+        
+        let url = remote.url().ok_or_else(|| {
+            TaskAttemptError::ValidationError("Remote origin has no URL".to_string())
+        })?;
+
+        // Parse GitHub URL (supports both HTTPS and SSH formats)
+        let github_regex = regex::Regex::new(r"github\.com[:/]([^/]+)/(.+?)(?:\.git)?/?$")
+            .map_err(|e| TaskAttemptError::ValidationError(format!("Regex error: {}", e)))?;
+        
+        if let Some(captures) = github_regex.captures(url) {
+            let owner = captures.get(1).unwrap().as_str().to_string();
+            let repo_name = captures.get(2).unwrap().as_str().to_string();
+            Ok((owner, repo_name))
+        } else {
+            Err(TaskAttemptError::ValidationError(format!(
+                "Not a GitHub repository: {}",
+                url
+            )))
+        }
+    }
+
+    /// Push the branch to GitHub remote
+    fn push_branch_to_github(worktree_path: &str, branch_name: &str) -> Result<(), TaskAttemptError> {
+        let repo = Repository::open(worktree_path)?;
+        
+        // Get the remote
+        let mut remote = repo.find_remote("origin")?;
+        
+        // Create refspec for pushing the branch
+        let refspec = format!("refs/heads/{}:refs/heads/{}", branch_name, branch_name);
+        
+        // Push the branch
+        remote.push(&[&refspec], None).map_err(|e| {
+            TaskAttemptError::Git(e)
+        })?;
+
+        info!("Pushed branch {} to GitHub", branch_name);
+        Ok(())
+    }
+
+    /// Create a PR using Octocrab
+    async fn create_pr_with_octocrab(
+        github_token: &str,
+        owner: &str,
+        repo_name: &str,
+        head_branch: &str,
+        base_branch: &str,
+        title: &str,
+        body: Option<&str>,
+    ) -> Result<String, TaskAttemptError> {
+        let octocrab = octocrab::OctocrabBuilder::new()
+            .personal_token(github_token.to_string())
+            .build()
+            .map_err(|e| TaskAttemptError::ValidationError(format!("Failed to create GitHub client: {}", e)))?;
+
+        let pr = octocrab
+            .pulls(owner, repo_name)
+            .create(title, head_branch, base_branch)
+            .body(body.unwrap_or(""))
+            .send()
+            .await
+            .map_err(|e| TaskAttemptError::ValidationError(format!("Failed to create PR: {}", e)))?;
+
+        info!("Created GitHub PR #{} for branch {}", pr.number, head_branch);
+        Ok(pr.html_url.map(|url| url.to_string()).unwrap_or_else(|| "".to_string()))
+    }
 }

@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Loader2, Volume2 } from 'lucide-react';
+import { Loader2, Volume2, Key } from 'lucide-react';
 import type { ThemeMode, EditorType, SoundFile } from 'shared/types';
 import {
   EXECUTOR_TYPES,
@@ -268,6 +268,68 @@ export function Settings() {
                   </p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                GitHub Integration
+              </CardTitle>
+              <CardDescription>
+                Configure GitHub settings for creating pull requests from task attempts.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="github-token">Personal Access Token</Label>
+                <Input
+                  id="github-token"
+                  type="password"
+                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                  value={config.github.token || ''}
+                  onChange={(e) =>
+                    updateConfig({
+                      github: {
+                        ...config.github,
+                        token: e.target.value || null,
+                      },
+                    })
+                  }
+                />
+                <p className="text-sm text-muted-foreground">
+                  GitHub Personal Access Token with 'repo' permissions. Required for creating pull requests.{' '}
+                  <a
+                    href="https://github.com/settings/tokens"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    Create token here
+                  </a>
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="default-pr-base">Default PR Base Branch</Label>
+                <Input
+                  id="default-pr-base"
+                  placeholder="main"
+                  value={config.github.default_pr_base || ''}
+                  onChange={(e) =>
+                    updateConfig({
+                      github: {
+                        ...config.github,
+                        default_pr_base: e.target.value || null,
+                      },
+                    })
+                  }
+                />
+                <p className="text-sm text-muted-foreground">
+                  Default base branch for pull requests. Defaults to 'main' if not specified.
+                </p>
+              </div>
             </CardContent>
           </Card>
 

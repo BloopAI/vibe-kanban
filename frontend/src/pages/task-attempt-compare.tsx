@@ -10,6 +10,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import {
   ArrowLeft,
   FileText,
@@ -20,6 +23,7 @@ import {
   Trash2,
   Eye,
   EyeOff,
+  GitPullRequest,
 } from 'lucide-react';
 import { makeRequest } from '@/lib/api';
 import type {
@@ -58,6 +62,11 @@ export function TaskAttemptComparePage() {
   const [deletingFiles, setDeletingFiles] = useState<Set<string>>(new Set());
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
   const [showUncommittedWarning, setShowUncommittedWarning] = useState(false);
+  const [creatingPR, setCreatingPR] = useState(false);
+  const [showCreatePRDialog, setShowCreatePRDialog] = useState(false);
+  const [prTitle, setPrTitle] = useState('');
+  const [prBody, setPrBody] = useState('');
+  const [prBaseBranch, setPrBaseBranch] = useState('main');
 
   // Define callbacks first
   const fetchDiff = useCallback(async () => {
@@ -205,6 +214,68 @@ export function TaskAttemptComparePage() {
     } finally {
       setRebasing(false);
     }
+  };
+
+  const handleCreatePRClick = async () => {
+    if (!projectId || !taskId || !attemptId) return;
+
+    // Use task title as default PR title if not set
+    if (!prTitle) {
+      // For now, we'll use a generic title. In a real app, you might want to fetch the task details
+      setPrTitle('Task completion from vibe-kanban');
+    }
+
+    setShowCreatePRDialog(true);
+  };
+
+  const handleConfirmCreatePR = async () => {
+    if (!projectId || !taskId || !attemptId) return;
+
+    try {
+      setCreatingPR(true);
+      const response = await makeRequest(
+        `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/create-pr`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            title: prTitle,
+            body: prBody || null,
+            base_branch: prBaseBranch || null,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        const result: ApiResponse<string> = await response.json();
+        if (result.success && result.data) {
+          // Open the PR URL in a new tab
+          window.open(result.data, '_blank');
+          setShowCreatePRDialog(false);
+          // Reset form
+          setPrTitle('');
+          setPrBody('');
+          setPrBaseBranch('main');
+        } else {
+          setError(result.message || 'Failed to create GitHub PR');
+        }
+      } else {
+        setError('Failed to create GitHub PR');
+      }
+    } catch (err) {
+      setError('Failed to create GitHub PR');
+    } finally {
+      setCreatingPR(false);
+    }
+  };
+
+  const handleCancelCreatePR = () => {
+    setShowCreatePRDialog(false);
+    setPrTitle('');
+    setPrBody('');
+    setPrBaseBranch('main');
   };
 
   const getChunkClassName = (chunkType: DiffChunkType) => {
@@ -547,18 +618,34 @@ export function TaskAttemptComparePage() {
                 </Button>
               )}
             {!branchStatus?.merged && (
-              <Button
-                onClick={handleMergeClick}
-                disabled={
-                  merging ||
-                  !diff ||
-                  diff.files.length === 0 ||
-                  Boolean(branchStatus?.is_behind)
-                }
-                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400"
-              >
-                {merging ? 'Merging...' : 'Merge Changes'}
-              </Button>
+              <>
+                <Button
+                  onClick={handleCreatePRClick}
+                  disabled={
+                    creatingPR ||
+                    !diff ||
+                    diff.files.length === 0 ||
+                    Boolean(branchStatus?.is_behind)
+                  }
+                  variant="outline"
+                  className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                >
+                  <GitPullRequest className="mr-2 h-4 w-4" />
+                  {creatingPR ? 'Creating PR...' : 'Create PR'}
+                </Button>
+                <Button
+                  onClick={handleMergeClick}
+                  disabled={
+                    merging ||
+                    !diff ||
+                    diff.files.length === 0 ||
+                    Boolean(branchStatus?.is_behind)
+                  }
+                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400"
+                >
+                  {merging ? 'Merging...' : 'Merge Changes'}
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -784,6 +871,63 @@ export function TaskAttemptComparePage() {
               className="bg-yellow-600 hover:bg-yellow-700"
             >
               {merging ? 'Merging...' : 'Merge Anyway'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create PR Dialog */}
+      <Dialog
+        open={showCreatePRDialog}
+        onOpenChange={() => handleCancelCreatePR()}
+      >
+        <DialogContent className="sm:max-w-[525px]">
+          <DialogHeader>
+            <DialogTitle>Create GitHub Pull Request</DialogTitle>
+            <DialogDescription>
+              Create a pull request for this task attempt on GitHub.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="pr-title">Title</Label>
+              <Input
+                id="pr-title"
+                value={prTitle}
+                onChange={(e) => setPrTitle(e.target.value)}
+                placeholder="Enter PR title"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pr-body">Description (optional)</Label>
+              <Textarea
+                id="pr-body"
+                value={prBody}
+                onChange={(e) => setPrBody(e.target.value)}
+                placeholder="Enter PR description"
+                rows={4}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pr-base">Base Branch</Label>
+              <Input
+                id="pr-base"
+                value={prBaseBranch}
+                onChange={(e) => setPrBaseBranch(e.target.value)}
+                placeholder="main"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelCreatePR}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmCreatePR}
+              disabled={creatingPR || !prTitle.trim()}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {creatingPR ? 'Creating...' : 'Create PR'}
             </Button>
           </DialogFooter>
         </DialogContent>

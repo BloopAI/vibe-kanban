@@ -76,6 +76,7 @@ fn main() {
         vibe_kanban::models::config::Config::decl(),
         vibe_kanban::models::config::ThemeMode::decl(),
         vibe_kanban::models::config::EditorConfig::decl(),
+        vibe_kanban::models::config::GitHubConfig::decl(),
         vibe_kanban::models::config::EditorType::decl(),
         vibe_kanban::models::config::EditorConstants::decl(),
         vibe_kanban::models::config::SoundFile::decl(),

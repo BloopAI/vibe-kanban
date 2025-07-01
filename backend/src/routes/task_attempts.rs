@@ -13,6 +13,7 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::models::{
+    config::Config,
     execution_process::{ExecutionProcess, ExecutionProcessSummary},
     task::Task,
     task_attempt::{
@@ -28,6 +29,13 @@ use crate::models::{
 #[derive(Debug, Deserialize, Serialize)]
 pub struct RebaseTaskAttemptRequest {
     pub new_base_branch: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CreateGitHubPRRequest {
+    pub title: String,
+    pub body: Option<String>,
+    pub base_branch: Option<String>,
 }
 
 pub async fn get_task_attempts(
@@ -253,6 +261,73 @@ pub async fn merge_task_attempt(
         Err(e) => {
             tracing::error!("Failed to merge task attempt {}: {}", attempt_id, e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+pub async fn create_github_pr(
+    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    Extension(pool): Extension<SqlitePool>,
+    Json(request): Json<CreateGitHubPRRequest>,
+) -> Result<ResponseJson<ApiResponse<String>>, StatusCode> {
+    // Verify task attempt exists and belongs to the correct task
+    match TaskAttempt::exists_for_task(&pool, attempt_id, task_id, project_id).await {
+        Ok(false) => return Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to check task attempt existence: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+        Ok(true) => {}
+    }
+
+    // Load the user's GitHub configuration
+    let config = match Config::load(&crate::utils::config_path()) {
+        Ok(config) => config,
+        Err(e) => {
+            tracing::error!("Failed to load config: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    let github_token = match config.github.token {
+        Some(token) => token,
+        None => {
+            return Ok(ResponseJson(ApiResponse {
+                success: false,
+                data: None,
+                message: Some("GitHub token not configured. Please set your GitHub token in settings.".to_string()),
+            }));
+        }
+    };
+
+    let base_branch = request.base_branch
+        .or(config.github.default_pr_base)
+        .unwrap_or_else(|| "main".to_string());
+
+    match TaskAttempt::create_github_pr(
+        &pool,
+        attempt_id,
+        task_id,
+        project_id,
+        &github_token,
+        &request.title,
+        request.body.as_deref(),
+        Some(&base_branch),
+    ).await {
+        Ok(pr_url) => {
+            Ok(ResponseJson(ApiResponse {
+                success: true,
+                data: Some(pr_url),
+                message: Some("GitHub PR created successfully".to_string()),
+            }))
+        }
+        Err(e) => {
+            tracing::error!("Failed to create GitHub PR for attempt {}: {}", attempt_id, e);
+            Ok(ResponseJson(ApiResponse {
+                success: false,
+                data: None,
+                message: Some(format!("Failed to create PR: {}", e)),
+            }))
         }
     }
 }
@@ -899,6 +974,10 @@ pub fn task_attempts_router() -> Router {
         .route(
             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/delete-file",
             post(delete_task_attempt_file),
+        )
+        .route(
+            "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/create-pr",
+            post(create_github_pr),
         )
         .route(
             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/execution-processes",
