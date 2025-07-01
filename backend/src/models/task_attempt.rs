@@ -1675,12 +1675,47 @@ impl TaskAttempt {
         title: &str,
         body: Option<&str>,
     ) -> Result<String, TaskAttemptError> {
+        info!("Creating PR: {} -> {} in {}/{}", head_branch, base_branch, owner, repo_name);
+        info!("PR title: {}", title);
+        info!("PR body: {:?}", body);
+
         let octocrab = octocrab::OctocrabBuilder::new()
             .personal_token(github_token.to_string())
             .build()
             .map_err(|e| TaskAttemptError::ValidationError(format!("Failed to create GitHub client: {}", e)))?;
 
-        info!("Creating PR: {} -> {} in {}/{}", head_branch, base_branch, owner, repo_name);
+        // First, let's try to get repository info to verify access
+        match octocrab.repos(owner, repo_name).get().await {
+            Ok(repo_info) => {
+                info!("Repository access verified: {}", repo_info.full_name.unwrap_or_default());
+            }
+            Err(e) => {
+                error!("Failed to access repository {}/{}: {}", owner, repo_name, e);
+                return Err(TaskAttemptError::ValidationError(format!("Cannot access repository {}/{}: {}", owner, repo_name, e)));
+            }
+        }
+
+        // Check if the base branch exists
+        match octocrab.repos(owner, repo_name).get_ref(&octocrab::params::repos::Reference::Branch(base_branch.to_string())).await {
+            Ok(_) => {
+                info!("Base branch {} exists", base_branch);
+            }
+            Err(e) => {
+                error!("Base branch {} does not exist: {}", base_branch, e);
+                return Err(TaskAttemptError::ValidationError(format!("Base branch '{}' does not exist: {}", base_branch, e)));
+            }
+        }
+
+        // Check if the head branch exists
+        match octocrab.repos(owner, repo_name).get_ref(&octocrab::params::repos::Reference::Branch(head_branch.to_string())).await {
+            Ok(_) => {
+                info!("Head branch {} exists", head_branch);
+            }
+            Err(e) => {
+                error!("Head branch {} does not exist: {}", head_branch, e);
+                return Err(TaskAttemptError::ValidationError(format!("Head branch '{}' does not exist. Make sure the branch was pushed successfully: {}", head_branch, e)));
+            }
+        }
 
         let pr = octocrab
             .pulls(owner, repo_name)
@@ -1689,8 +1724,16 @@ impl TaskAttempt {
             .send()
             .await
             .map_err(|e| {
-                error!("GitHub API error: {:?}", e);
-                TaskAttemptError::ValidationError(format!("Failed to create PR: GitHub API error: {}", e))
+                error!("GitHub API error creating PR: {:?}", e);
+                match e {
+                    octocrab::Error::GitHub { source, .. } => {
+                        TaskAttemptError::ValidationError(format!("GitHub API error: {} (status: {})", 
+                            source.message, 
+                            source.status_code.as_u16()
+                        ))
+                    }
+                    _ => TaskAttemptError::ValidationError(format!("Failed to create PR: {}", e))
+                }
             })?;
 
         info!("Created GitHub PR #{} for branch {}", pr.number, head_branch);
