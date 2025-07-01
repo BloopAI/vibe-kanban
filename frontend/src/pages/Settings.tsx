@@ -67,11 +67,12 @@ export function Settings() {
       // Reset state when loading
       setMcpLoading(true);
       setMcpError(null);
-      
+
       // Set default empty config based on executor type
-      const defaultConfig = executorType === 'amp' 
-        ? '{\n  "amp.mcpServers": {\n  }\n}'
-        : '{\n  "mcpServers": {\n  }\n}';
+      const defaultConfig =
+        executorType === 'amp'
+          ? '{\n  "amp.mcpServers": {\n  }\n}'
+          : '{\n  "mcpServers": {\n  }\n}';
       setMcpServers(defaultConfig);
       setMcpConfigPath('');
 
@@ -97,7 +98,7 @@ export function Settings() {
               // For other executors, use the standard mcpServers structure
               fullConfig = { mcpServers: servers };
             }
-            
+
             const configJson = JSON.stringify(fullConfig, null, 2);
             setMcpServers(configJson);
             setMcpConfigPath(configPath);
@@ -137,8 +138,13 @@ export function Settings() {
         const config = JSON.parse(value);
         // Validate that the config has the expected structure based on executor type
         if (selectedMcpExecutor === 'amp') {
-          if (!config['amp.mcpServers'] || typeof config['amp.mcpServers'] !== 'object') {
-            setMcpError('AMP configuration must contain an "amp.mcpServers" object');
+          if (
+            !config['amp.mcpServers'] ||
+            typeof config['amp.mcpServers'] !== 'object'
+          ) {
+            setMcpError(
+              'AMP configuration must contain an "amp.mcpServers" object'
+            );
           }
         } else {
           if (!config.mcpServers || typeof config.mcpServers !== 'object') {
@@ -162,18 +168,28 @@ export function Settings() {
       if (mcpServers.trim()) {
         try {
           const fullConfig = JSON.parse(mcpServers);
-          
+
           // Validate that the config has the expected structure based on executor type
           let mcpServersConfig;
           if (selectedMcpExecutor === 'amp') {
-            if (!fullConfig['amp.mcpServers'] || typeof fullConfig['amp.mcpServers'] !== 'object') {
-              throw new Error('AMP configuration must contain an "amp.mcpServers" object');
+            if (
+              !fullConfig['amp.mcpServers'] ||
+              typeof fullConfig['amp.mcpServers'] !== 'object'
+            ) {
+              throw new Error(
+                'AMP configuration must contain an "amp.mcpServers" object'
+              );
             }
             // Extract just the inner servers object for the API - backend will handle nesting
             mcpServersConfig = fullConfig['amp.mcpServers'];
           } else {
-            if (!fullConfig.mcpServers || typeof fullConfig.mcpServers !== 'object') {
-              throw new Error('Configuration must contain an "mcpServers" object');
+            if (
+              !fullConfig.mcpServers ||
+              typeof fullConfig.mcpServers !== 'object'
+            ) {
+              throw new Error(
+                'Configuration must contain an "mcpServers" object'
+              );
             }
             // Extract just the mcpServers part for the API
             mcpServersConfig = fullConfig.mcpServers;
