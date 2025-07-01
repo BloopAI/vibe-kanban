@@ -1,5 +1,10 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
+#[cfg(unix)]
+use nix::{
+    sys::signal::{kill, Signal},
+    unistd::Pid,
+};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -96,7 +101,62 @@ impl AppState {
         let mut executions = self.running_executions.lock().await;
 
         if let Some(mut execution) = executions.remove(&execution_id) {
-            // Also kill the direct child process as fallback
+            // Graceful shutdown sequence: SIGTERM -> SIGKILL -> kill()
+            let process_id = execution.child.id();
+
+            #[cfg(unix)]
+            {
+                if let Some(pid) = process_id {
+                    let pid = Pid::from_raw(pid as i32);
+
+                    // Step 1: Send SIGTERM for graceful shutdown
+                    tracing::info!("Sending SIGTERM to execution process {}", execution_id);
+                    if let Err(e) = kill(pid, Signal::SIGTERM) {
+                        tracing::warn!("Failed to send SIGTERM to process {}: {}", execution_id, e);
+                    } else {
+                        // Wait 2 seconds for graceful shutdown
+                        tokio::time::sleep(Duration::from_secs(2)).await;
+
+                        // Check if process is still running
+                        if execution
+                            .child
+                            .try_wait()
+                            .is_ok_and(|status| status.is_some())
+                        {
+                            tracing::info!(
+                                "Process {} exited gracefully after SIGTERM",
+                                execution_id
+                            );
+                            return Ok(true);
+                        }
+                    }
+
+                    // Step 2: Send SIGKILL for forceful termination
+                    tracing::info!("Sending SIGKILL to execution process {}", execution_id);
+                    if let Err(e) = kill(pid, Signal::SIGKILL) {
+                        tracing::warn!("Failed to send SIGKILL to process {}: {}", execution_id, e);
+                    } else {
+                        // Wait 1 second for SIGKILL to take effect
+                        tokio::time::sleep(Duration::from_secs(1)).await;
+
+                        // Check if process is still running
+                        if execution
+                            .child
+                            .try_wait()
+                            .is_ok_and(|status| status.is_some())
+                        {
+                            tracing::info!("Process {} terminated after SIGKILL", execution_id);
+                            return Ok(true);
+                        }
+                    }
+                }
+            }
+
+            // Step 3: Fallback to kill() method
+            tracing::info!(
+                "Using fallback kill() for execution process {}",
+                execution_id
+            );
             match execution.child.kill().await {
                 Ok(_) => {
                     tracing::info!(
