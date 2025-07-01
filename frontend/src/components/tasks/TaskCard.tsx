@@ -12,6 +12,7 @@ import {
   Edit,
   Loader2,
   CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 
@@ -56,6 +57,10 @@ export function TaskCard({
             {/* Merged Indicator */}
             {task.has_merged_attempt && (
               <CheckCircle className="h-3 w-3 text-green-500" />
+            )}
+            {/* Failed Indicator */}
+            {task.has_failed_attempt && !task.has_merged_attempt && (
+              <XCircle className="h-3 w-3 text-red-500" />
             )}
             {/* Actions Menu */}
             <div

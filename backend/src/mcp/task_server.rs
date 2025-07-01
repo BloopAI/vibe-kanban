@@ -93,6 +93,8 @@ pub struct TaskSummary {
     pub has_in_progress_attempt: Option<bool>,
     #[schemars(description = "Whether the task has a merged execution attempt")]
     pub has_merged_attempt: Option<bool>,
+    #[schemars(description = "Whether the task has a failed execution attempt")]
+    pub has_failed_attempt: Option<bool>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -513,6 +515,7 @@ impl TaskServer {
                         updated_at: task.updated_at.to_rfc3339(),
                         has_in_progress_attempt: Some(task.has_in_progress_attempt),
                         has_merged_attempt: Some(task.has_merged_attempt),
+                        has_failed_attempt: Some(task.has_failed_attempt),
                     })
                     .collect();
 
@@ -656,6 +659,7 @@ impl TaskServer {
                     updated_at: updated_task.updated_at.to_rfc3339(),
                     has_in_progress_attempt: None,
                     has_merged_attempt: None,
+                    has_failed_attempt: None,
                 };
 
                 let response = UpdateTaskResponse {
@@ -1220,6 +1224,7 @@ impl TaskServer {
                     updated_at: task.updated_at.to_rfc3339(),
                     has_in_progress_attempt: None,
                     has_merged_attempt: None,
+                    has_failed_attempt: None,
                 };
 
                 let response = GetTaskResponse {

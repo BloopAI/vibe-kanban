@@ -40,6 +40,7 @@ pub struct TaskWithAttemptStatus {
     pub updated_at: DateTime<Utc>,
     pub has_in_progress_attempt: bool,
     pub has_merged_attempt: bool,
+    pub has_failed_attempt: bool,
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -88,7 +89,11 @@ impl Task {
                 CASE 
                 WHEN merged_attempts.task_id IS NOT NULL THEN true 
                 ELSE false 
-                END                   AS "has_merged_attempt!"
+                END                   AS "has_merged_attempt!",
+                CASE 
+                WHEN failed_attempts.task_id IS NOT NULL THEN true 
+                ELSE false 
+                END                   AS "has_failed_attempt!"
             FROM tasks t
             LEFT JOIN (
                 SELECT DISTINCT ta.task_id
@@ -126,6 +131,37 @@ impl Task {
                 WHERE ta.merge_commit IS NOT NULL
             ) merged_attempts 
             ON t.id = merged_attempts.task_id
+            LEFT JOIN (
+                SELECT DISTINCT ta.task_id
+                FROM task_attempts ta
+                JOIN execution_processes ep 
+                ON ta.id = ep.task_attempt_id
+                JOIN (
+                    -- pick exactly one "latest" activity per process,
+                    -- tiebreaking so that running‐states are lower priority
+                    SELECT execution_process_id, status
+                    FROM (
+                        SELECT
+                            execution_process_id,
+                            status,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY execution_process_id
+                                ORDER BY
+                                    created_at DESC,
+                                    CASE 
+                                    WHEN status IN ('setuprunning','executorrunning') THEN 1 
+                                    ELSE 0 
+                                    END
+                            ) AS rn
+                        FROM task_attempt_activities
+                    ) sub
+                    WHERE rn = 1
+                ) latest_act 
+                ON ep.id = latest_act.execution_process_id
+                WHERE latest_act.status IN ('setupfailed','executorfailed')
+                  AND ta.merge_commit IS NULL  -- Don't show as failed if already merged
+            ) failed_attempts 
+            ON t.id = failed_attempts.task_id
             WHERE t.project_id = $1
             ORDER BY t.created_at DESC;
             "#,
@@ -146,6 +182,7 @@ impl Task {
                 updated_at: record.updated_at,
                 has_in_progress_attempt: record.has_in_progress_attempt != 0,
                 has_merged_attempt: record.has_merged_attempt != 0,
+                has_failed_attempt: record.has_failed_attempt != 0,
             })
             .collect();
 

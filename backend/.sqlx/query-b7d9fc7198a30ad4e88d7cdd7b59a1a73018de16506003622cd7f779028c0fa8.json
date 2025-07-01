@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT \n                t.id                  AS \"id!: Uuid\", \n                t.project_id          AS \"project_id!: Uuid\", \n                t.title, \n                t.description, \n                t.status              AS \"status!: TaskStatus\", \n                t.created_at          AS \"created_at!: DateTime<Utc>\", \n                t.updated_at          AS \"updated_at!: DateTime<Utc>\",\n                CASE \n                WHEN in_progress_attempts.task_id IS NOT NULL THEN true \n                ELSE false \n                END                   AS \"has_in_progress_attempt!: i64\",\n                CASE \n                WHEN merged_attempts.task_id IS NOT NULL THEN true \n                ELSE false \n                END                   AS \"has_merged_attempt!\",\n                CASE \n                WHEN failed_attempts.task_id IS NOT NULL THEN true \n                ELSE false \n                END                   AS \"has_failed_attempt!\"\n            FROM tasks t\n            LEFT JOIN (\n                SELECT DISTINCT ta.task_id\n                FROM task_attempts ta\n                JOIN execution_processes ep \n                ON ta.id = ep.task_attempt_id\n                JOIN (\n                    -- pick exactly one “latest” activity per process,\n                    -- tiebreaking so that running‐states are lower priority\n                    SELECT execution_process_id, status\n                    FROM (\n                        SELECT\n                            execution_process_id,\n                            status,\n                            ROW_NUMBER() OVER (\n                                PARTITION BY execution_process_id\n                                ORDER BY\n                                    created_at DESC,\n                                    CASE \n                                    WHEN status IN ('setuprunning','executorrunning') THEN 1 \n                                    ELSE 0 \n                                    END\n                            ) AS rn\n                        FROM task_attempt_activities\n                    ) sub\n                    WHERE rn = 1\n                ) latest_act \n                ON ep.id = latest_act.execution_process_id\n                WHERE latest_act.status IN ('setuprunning','executorrunning')\n            ) in_progress_attempts \n            ON t.id = in_progress_attempts.task_id\n            LEFT JOIN (\n                SELECT DISTINCT ta.task_id\n                FROM task_attempts ta\n                WHERE ta.merge_commit IS NOT NULL\n            ) merged_attempts \n            ON t.id = merged_attempts.task_id\n            LEFT JOIN (\n                SELECT DISTINCT ta.task_id\n                FROM task_attempts ta\n                JOIN execution_processes ep \n                ON ta.id = ep.task_attempt_id\n                JOIN (\n                    -- pick exactly one \"latest\" activity per process,\n                    -- tiebreaking so that running‐states are lower priority\n                    SELECT execution_process_id, status\n                    FROM (\n                        SELECT\n                            execution_process_id,\n                            status,\n                            ROW_NUMBER() OVER (\n                                PARTITION BY execution_process_id\n                                ORDER BY\n                                    created_at DESC,\n                                    CASE \n                                    WHEN status IN ('setuprunning','executorrunning') THEN 1 \n                                    ELSE 0 \n                                    END\n                            ) AS rn\n                        FROM task_attempt_activities\n                    ) sub\n                    WHERE rn = 1\n                ) latest_act \n                ON ep.id = latest_act.execution_process_id\n                WHERE latest_act.status IN ('setupfailed','executorfailed')\n                  AND ta.merge_commit IS NULL  -- Don't show as failed if already merged\n            ) failed_attempts \n            ON t.id = failed_attempts.task_id\n            WHERE t.project_id = $1\n            ORDER BY t.created_at DESC;\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "project_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "description",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "status!: TaskStatus",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "has_in_progress_attempt!: i64",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "has_merged_attempt!",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "has_failed_attempt!",
+        "ordinal": 9,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b7d9fc7198a30ad4e88d7cdd7b59a1a73018de16506003622cd7f779028c0fa8"
+}

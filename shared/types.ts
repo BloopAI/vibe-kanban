@@ -50,7 +50,7 @@ export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelle
 
 export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, created_at: string, updated_at: string, };
 
-export type TaskWithAttemptStatus = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, created_at: string, updated_at: string, has_in_progress_attempt: boolean, has_merged_attempt: boolean, };
+export type TaskWithAttemptStatus = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, created_at: string, updated_at: string, has_in_progress_attempt: boolean, has_merged_attempt: boolean, has_failed_attempt: boolean, };
 
 export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, };
 
