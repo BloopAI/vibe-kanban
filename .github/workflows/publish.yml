@@ -34,6 +34,13 @@ jobs:
         with:
           ref: ${{ github.event.release.tag_name || inputs.tag_name }}
 
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Configure npm authentication
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+
       - name: Download release assets
         uses: actions/github-script@v7
         env:
