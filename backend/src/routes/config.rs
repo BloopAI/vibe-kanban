@@ -275,23 +275,41 @@ async fn read_mcp_servers_from_config(
 
 /// Helper function to get MCP servers from config using a path
 fn get_mcp_servers_from_config_path(config: &Value, path: &[&str]) -> HashMap<String, Value> {
-    let mut current = config;
-
-    // Navigate to the target location
-    for &part in path {
-        current = match current.get(part) {
+    // Special handling for AMP - use flat key structure
+    if path.len() == 2 && path[0] == "amp" && path[1] == "mcpServers" {
+        let flat_key = format!("{}.{}", path[0], path[1]);
+        let current = match config.get(&flat_key) {
             Some(val) => val,
             None => return HashMap::new(),
         };
-    }
+        
+        // Extract the servers object
+        match current.as_object() {
+            Some(servers) => servers
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect(),
+            None => HashMap::new(),
+        }
+    } else {
+        let mut current = config;
 
-    // Extract the servers object
-    match current.as_object() {
-        Some(servers) => servers
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect(),
-        None => HashMap::new(),
+        // Navigate to the target location
+        for &part in path {
+            current = match current.get(part) {
+                Some(val) => val,
+                None => return HashMap::new(),
+            };
+        }
+
+        // Extract the servers object
+        match current.as_object() {
+            Some(servers) => servers
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect(),
+            None => HashMap::new(),
+        }
     }
 }
 
@@ -304,6 +322,16 @@ fn set_mcp_servers_in_config_path(
     // Ensure config is an object
     if !config.is_object() {
         *config = serde_json::json!({});
+    }
+
+    // Special handling for AMP - use flat key structure
+    if path.len() == 2 && path[0] == "amp" && path[1] == "mcpServers" {
+        let flat_key = format!("{}.{}", path[0], path[1]);
+        config
+            .as_object_mut()
+            .unwrap()
+            .insert(flat_key, serde_json::to_value(servers)?);
+        return Ok(());
     }
 
     let mut current = config;

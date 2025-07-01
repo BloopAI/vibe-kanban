@@ -67,7 +67,12 @@ export function Settings() {
       // Reset state when loading
       setMcpLoading(true);
       setMcpError(null);
-      setMcpServers('{}');
+      
+      // Set default empty config based on executor type
+      const defaultConfig = executorType === 'amp' 
+        ? '{\n  "amp.mcpServers": {\n  }\n}'
+        : '{\n  "mcpServers": {\n  }\n}';
+      setMcpServers(defaultConfig);
       setMcpConfigPath('');
 
       try {
@@ -83,8 +88,18 @@ export function Settings() {
             const servers = data.servers || {};
             const configPath = data.config_path || '';
 
-            const serversJson = JSON.stringify(servers, null, 2);
-            setMcpServers(serversJson);
+            // Create the full configuration structure based on executor type
+            let fullConfig;
+            if (executorType === 'amp') {
+              // For AMP, use the amp.mcpServers structure
+              fullConfig = { 'amp.mcpServers': servers };
+            } else {
+              // For other executors, use the standard mcpServers structure
+              fullConfig = { mcpServers: servers };
+            }
+            
+            const configJson = JSON.stringify(fullConfig, null, 2);
+            setMcpServers(configJson);
             setMcpConfigPath(configPath);
           }
         } else {
@@ -119,7 +134,17 @@ export function Settings() {
     // Validate JSON on change
     if (value.trim()) {
       try {
-        JSON.parse(value);
+        const config = JSON.parse(value);
+        // Validate that the config has the expected structure based on executor type
+        if (selectedMcpExecutor === 'amp') {
+          if (!config['amp.mcpServers'] || typeof config['amp.mcpServers'] !== 'object') {
+            setMcpError('AMP configuration must contain an "amp.mcpServers" object');
+          }
+        } else {
+          if (!config.mcpServers || typeof config.mcpServers !== 'object') {
+            setMcpError('Configuration must contain an "mcpServers" object');
+          }
+        }
       } catch (err) {
         setMcpError('Invalid JSON format');
       }
@@ -136,7 +161,23 @@ export function Settings() {
       // Validate and save MCP configuration
       if (mcpServers.trim()) {
         try {
-          const mcpConfig = JSON.parse(mcpServers);
+          const fullConfig = JSON.parse(mcpServers);
+          
+          // Validate that the config has the expected structure based on executor type
+          let mcpServersConfig;
+          if (selectedMcpExecutor === 'amp') {
+            if (!fullConfig['amp.mcpServers'] || typeof fullConfig['amp.mcpServers'] !== 'object') {
+              throw new Error('AMP configuration must contain an "amp.mcpServers" object');
+            }
+            // Extract just the inner servers object for the API - backend will handle nesting
+            mcpServersConfig = fullConfig['amp.mcpServers'];
+          } else {
+            if (!fullConfig.mcpServers || typeof fullConfig.mcpServers !== 'object') {
+              throw new Error('Configuration must contain an "mcpServers" object');
+            }
+            // Extract just the mcpServers part for the API
+            mcpServersConfig = fullConfig.mcpServers;
+          }
 
           const mcpResponse = await fetch(
             `/api/mcp-servers?executor=${selectedMcpExecutor}`,
@@ -145,7 +186,7 @@ export function Settings() {
               headers: {
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify(mcpConfig),
+              body: JSON.stringify(mcpServersConfig),
             }
           );
 
