@@ -30,6 +30,25 @@ export function McpServers() {
   const [mcpApplying, setMcpApplying] = useState(false);
   const [mcpConfigPath, setMcpConfigPath] = useState<string>('');
   const [success, setSuccess] = useState(false);
+  const [projectInfo, setProjectInfo] = useState<{ root_path: string } | null>(null);
+
+  // Load project info on component mount
+  useEffect(() => {
+    const loadProjectInfo = async () => {
+      try {
+        const response = await fetch('/api/config/project-info');
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            setProjectInfo(result.data);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading project info:', err);
+      }
+    };
+    loadProjectInfo();
+  }, []);
 
   // Initialize selected MCP executor when config loads
   useEffect(() => {
@@ -131,6 +150,55 @@ export function McpServers() {
       } catch (err) {
         setMcpError('Invalid JSON format');
       }
+    }
+  };
+
+  const handleConfigureVibeKanban = async () => {
+    if (!selectedMcpExecutor || !projectInfo) return;
+
+    try {
+      // Parse existing configuration
+      const existingConfig = mcpServers.trim() ? JSON.parse(mcpServers) : {};
+
+      // Determine which command to use based on dev vs release mode
+      const isDev = import.meta.env.DEV;
+      const isWindows = navigator.platform.toLowerCase().includes('win');
+      const binaryName = isWindows ? 'mcp_task_server.exe' : 'mcp_task_server';
+      const debugBinaryPath = isDev
+        ? `${projectInfo.root_path}/target/debug/${binaryName}`
+        : "npx vibe-kanban-mcp";
+
+      const vibeKanbanConfig = {
+        command: debugBinaryPath
+      };
+
+      // Add task_manager to the existing configuration
+      let updatedConfig;
+      if (selectedMcpExecutor === 'amp') {
+        updatedConfig = {
+          ...existingConfig,
+          'amp.mcpServers': {
+            ...(existingConfig['amp.mcpServers'] || {}),
+            task_manager: vibeKanbanConfig
+          }
+        };
+      } else {
+        updatedConfig = {
+          ...existingConfig,
+          mcpServers: {
+            ...(existingConfig.mcpServers || {}),
+            task_manager: vibeKanbanConfig
+          }
+        };
+      }
+
+      // Update the textarea with the new configuration
+      const configJson = JSON.stringify(updatedConfig, null, 2);
+      setMcpServers(configJson);
+      setMcpError(null);
+    } catch (err) {
+      setMcpError('Failed to configure vibe-kanban MCP server');
+      console.error('Error configuring vibe-kanban:', err);
     }
   };
 
@@ -329,10 +397,24 @@ export function McpServers() {
                     </span>
                   )}
                 </div>
+
+                <div className="pt-4">
+                  <Button
+                    onClick={handleConfigureVibeKanban}
+                    disabled={mcpApplying || mcpLoading || !selectedMcpExecutor}
+                    className="w-64"
+                  >
+                    Add Vibe-Kanban MCP
+                  </Button>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Automatically adds the Vibe-Kanban MCP server for the selected executor.
+                  </p>
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
+
 
         {/* Sticky save button */}
         <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm border-t p-4 z-10">
