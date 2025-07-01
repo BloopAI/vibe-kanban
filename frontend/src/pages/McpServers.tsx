@@ -162,15 +162,14 @@ export function McpServers() {
 
       // Determine which command to use based on dev vs release mode
       const isDev = import.meta.env.DEV;
-      const isWindows = navigator.platform.toLowerCase().includes('win');
-      const binaryName = isWindows ? 'mcp_task_server.exe' : 'mcp_task_server';
-      const debugBinaryPath = isDev
-        ? `${projectInfo.root_path}/target/debug/${binaryName}`
-        : "npx vibe-kanban-mcp";
-
-      const vibeKanbanConfig = {
-        command: debugBinaryPath
-      };
+      const vibeKanbanConfig = isDev
+        ? {
+          command: `${projectInfo.root_path}/target/debug/${navigator.platform.toLowerCase().includes('win') ? 'mcp_task_server.exe' : 'mcp_task_server'}`
+        }
+        : {
+          command: "npx",
+          args: ["vibe-kanban", "--mcp"]
+        };
 
       // Add task_manager to the existing configuration
       let updatedConfig;
