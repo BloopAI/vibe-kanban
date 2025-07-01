@@ -388,9 +388,7 @@ pub async fn rebase_task_attempt(
     }
 
     // Extract new base branch from request body if provided
-    let new_base_branch = request_body
-        .map(|body| body.new_base_branch.clone())
-        .flatten();
+    let new_base_branch = request_body.and_then(|body| body.new_base_branch.clone());
 
     match TaskAttempt::rebase_attempt(&pool, attempt_id, task_id, project_id, new_base_branch).await
     {
