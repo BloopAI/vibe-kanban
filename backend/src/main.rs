@@ -152,7 +152,7 @@ async fn main() -> anyhow::Result<()> {
     // Start PR monitoring service
     let pr_monitor = PrMonitorService::new(pool.clone());
     let config_for_monitor = config_arc.clone();
-    
+
     tokio::spawn(async move {
         pr_monitor.start_with_config(config_for_monitor).await;
     });

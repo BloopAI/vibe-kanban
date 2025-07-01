@@ -69,9 +69,9 @@ pub struct TaskAttempt {
     pub worktree_path: String,
     pub branch: String, // Git branch name for this task attempt
     pub merge_commit: Option<String>,
-    pub executor: Option<String>, // Name of the executor to use
-    pub pr_url: Option<String>, // GitHub PR URL
-    pub pr_number: Option<i64>, // GitHub PR number
+    pub executor: Option<String>,  // Name of the executor to use
+    pub pr_url: Option<String>,    // GitHub PR URL
+    pub pr_number: Option<i64>,    // GitHub PR number
     pub pr_status: Option<String>, // open, closed, merged
     pub pr_merged_at: Option<DateTime<Utc>>, // When PR was merged
     pub created_at: DateTime<Utc>,
@@ -1587,10 +1587,7 @@ impl TaskAttempt {
         .await?;
 
         // Extract PR number from URL (GitHub URLs are in format: https://github.com/owner/repo/pull/123)
-        let pr_number = pr_url
-            .split('/')
-            .last()
-            .and_then(|n| n.parse::<i64>().ok());
+        let pr_number = pr_url.split('/').last().and_then(|n| n.parse::<i64>().ok());
 
         // Update the task attempt with PR information
         sqlx::query!(
