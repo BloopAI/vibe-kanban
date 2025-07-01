@@ -12,7 +12,7 @@ pub struct ExecutorSession {
     pub execution_process_id: Uuid,
     pub session_id: Option<String>, // External session ID from Claude/Amp
     pub prompt: Option<String>,     // The prompt sent to the executor
-    pub summary: Option<String>, // Final assistant message/summary
+    pub summary: Option<String>,    // Final assistant message/summary
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -137,8 +137,8 @@ impl ExecutorSession {
             None::<String>, // session_id initially None until parsed from output
             data.prompt,
             None::<String>, // summary initially None
-            now, // created_at
-            now  // updated_at
+            now,            // created_at
+            now             // updated_at
         )
         .fetch_one(pool)
         .await

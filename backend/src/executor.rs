@@ -439,15 +439,15 @@ pub async fn stream_output_to_db(
 /// Parse assistant message from executor logs (JSONL format)
 pub fn parse_assistant_message_from_logs(logs: &str) -> Option<String> {
     use serde_json::Value;
-    
+
     let mut last_assistant_message = None;
-    
+
     for line in logs.lines() {
         let trimmed = line.trim();
         if trimmed.is_empty() {
             continue;
         }
-        
+
         // Try to parse as JSON
         if let Ok(json) = serde_json::from_str::<Value>(trimmed) {
             // Check for Claude format: {"type":"assistant","message":{"content":[...]}}
@@ -458,9 +458,13 @@ pub fn parse_assistant_message_from_logs(logs: &str) -> Option<String> {
                             // Extract text content from Claude assistant message
                             let mut text_parts = Vec::new();
                             for content_item in content {
-                                if let Some(content_type) = content_item.get("type").and_then(|t| t.as_str()) {
+                                if let Some(content_type) =
+                                    content_item.get("type").and_then(|t| t.as_str())
+                                {
                                     if content_type == "text" {
-                                        if let Some(text) = content_item.get("text").and_then(|t| t.as_str()) {
+                                        if let Some(text) =
+                                            content_item.get("text").and_then(|t| t.as_str())
+                                        {
                                             text_parts.push(text);
                                         }
                                     }
@@ -474,20 +478,28 @@ pub fn parse_assistant_message_from_logs(logs: &str) -> Option<String> {
                     continue;
                 }
             }
-            
+
             // Check for AMP format: {"type":"messages","messages":[[1,{"role":"assistant",...}]]}
             if let Some(messages) = json.get("messages").and_then(|m| m.as_array()) {
                 for message_entry in messages {
-                    if let Some(message_data) = message_entry.as_array().and_then(|arr| arr.get(1)) {
+                    if let Some(message_data) = message_entry.as_array().and_then(|arr| arr.get(1))
+                    {
                         if let Some(role) = message_data.get("role").and_then(|r| r.as_str()) {
                             if role == "assistant" {
-                                if let Some(content) = message_data.get("content").and_then(|c| c.as_array()) {
+                                if let Some(content) =
+                                    message_data.get("content").and_then(|c| c.as_array())
+                                {
                                     // Extract text content from AMP assistant message
                                     let mut text_parts = Vec::new();
                                     for content_item in content {
-                                        if let Some(content_type) = content_item.get("type").and_then(|t| t.as_str()) {
+                                        if let Some(content_type) =
+                                            content_item.get("type").and_then(|t| t.as_str())
+                                        {
                                             if content_type == "text" {
-                                                if let Some(text) = content_item.get("text").and_then(|t| t.as_str()) {
+                                                if let Some(text) = content_item
+                                                    .get("text")
+                                                    .and_then(|t| t.as_str())
+                                                {
                                                     text_parts.push(text);
                                                 }
                                             }
@@ -504,7 +516,7 @@ pub fn parse_assistant_message_from_logs(logs: &str) -> Option<String> {
             }
         }
     }
-    
+
     last_assistant_message
 }
 
@@ -600,6 +612,9 @@ mod tests {
         let result = parse_assistant_message_from_logs(claude_logs);
         assert!(result.is_some());
         assert!(result.as_ref().unwrap().contains("Pythagorean theorem"));
-        assert!(result.as_ref().unwrap().contains("**Formula:** a² + b² = c²"));
+        assert!(result
+            .as_ref()
+            .unwrap()
+            .contains("**Formula:** a² + b² = c²"));
     }
 }

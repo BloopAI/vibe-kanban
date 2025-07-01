@@ -598,7 +598,8 @@ async fn handle_coding_agent_completion(
 
     // Extract and store assistant message from execution logs
     let summary = if let Some(stdout) = &execution_process.stdout {
-        if let Some(assistant_message) = crate::executor::parse_assistant_message_from_logs(stdout) {
+        if let Some(assistant_message) = crate::executor::parse_assistant_message_from_logs(stdout)
+        {
             if let Err(e) = crate::models::executor_session::ExecutorSession::update_summary(
                 &app_state.db_pool,
                 execution_process_id,
@@ -648,7 +649,12 @@ async fn handle_coding_agent_completion(
         TaskAttempt::find_by_id(&app_state.db_pool, task_attempt_id).await
     {
         // Commit any unstaged changes after execution completion
-        if let Err(e) = commit_execution_changes(&task_attempt.worktree_path, task_attempt_id, summary.as_deref()).await
+        if let Err(e) = commit_execution_changes(
+            &task_attempt.worktree_path,
+            task_attempt_id,
+            summary.as_deref(),
+        )
+        .await
         {
             tracing::error!(
                 "Failed to commit execution changes for attempt {}: {}",
