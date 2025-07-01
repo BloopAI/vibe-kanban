@@ -1765,19 +1765,6 @@ impl TaskAttempt {
             .unwrap_or_else(|| "".to_string()))
     }
 
-    /// Find all task attempts with open PRs for monitoring
-    pub async fn find_open_prs(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            TaskAttempt,
-            r#"SELECT id as "id!: Uuid", task_id as "task_id!: Uuid", worktree_path, branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at as "pr_merged_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM task_attempts 
-               WHERE pr_status = 'open' AND pr_number IS NOT NULL
-               ORDER BY created_at DESC"#
-        )
-        .fetch_all(pool)
-        .await
-    }
-
     /// Update PR status
     pub async fn update_pr_status(
         pool: &SqlitePool,

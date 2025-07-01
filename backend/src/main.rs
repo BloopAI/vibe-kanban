@@ -11,7 +11,7 @@ use axum::{
 use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
 use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
-use vibe_kanban::{services::PrMonitorService, Assets, ScriptAssets, SoundAssets};
+use vibe_kanban::{Assets, ScriptAssets, SoundAssets};
 
 mod app_state;
 mod execution_monitor;
@@ -20,12 +20,14 @@ mod executors;
 mod mcp;
 mod models;
 mod routes;
+mod services;
 mod utils;
 
 use app_state::AppState;
 use execution_monitor::execution_monitor;
 use models::{ApiResponse, Config};
 use routes::{config, filesystem, health, projects, task_attempts, tasks};
+use services::PrMonitorService;
 
 async fn echo_handler(
     Json(payload): Json<serde_json::Value>,
@@ -149,11 +151,10 @@ async fn main() -> anyhow::Result<()> {
 
     // Start PR monitoring service
     let pr_monitor = PrMonitorService::new(pool.clone());
-    // TODO: Add GitHub tokens from config or environment variables
-    // pr_monitor.add_github_token("owner/repo".to_string(), "github_token".to_string());
+    let config_for_monitor = config_arc.clone();
     
     tokio::spawn(async move {
-        pr_monitor.start().await;
+        pr_monitor.start_with_config(config_for_monitor).await;
     });
 
     // Public routes (no auth required)
