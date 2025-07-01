@@ -101,6 +101,8 @@ jobs:
           npm publish "$PACKAGE_FILE"
           
           echo "✅ Successfully published to npm!"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Update release description
         uses: actions/github-script@v7
