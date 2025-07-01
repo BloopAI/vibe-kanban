@@ -215,8 +215,10 @@ impl TaskAttempt {
                 false,
             )?;
 
+            let branch = repo.find_branch(&task_attempt_branch, BranchType::Local)?;
+            let branch_ref = branch.into_reference();
             let mut worktree_opts = WorktreeAddOptions::new();
-            worktree_opts.reference(Some(&base_reference));
+            worktree_opts.reference(Some(&branch_ref));
 
             // Create the worktree directory if it doesn't exist
             if let Some(parent) = worktree_path.parent() {
