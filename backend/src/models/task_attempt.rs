@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use git2::{BranchType, Error as GitError, RebaseOptions, Repository, WorktreeAddOptions};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool, Type};
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -1557,9 +1557,11 @@ impl TaskAttempt {
 
         // Extract GitHub repository information from the project path
         let (owner, repo_name) = Self::extract_github_repo_info(&project.git_repo_path)?;
+        info!("Extracted GitHub repo: {}/{}", owner, repo_name);
 
         // Push the branch to GitHub first
         Self::push_branch_to_github(&attempt.worktree_path, &attempt.branch, github_token)?;
+        info!("Successfully pushed branch {} to GitHub", attempt.branch);
 
         // Create the PR using Octocrab
         Self::create_pr_with_octocrab(
@@ -1678,13 +1680,18 @@ impl TaskAttempt {
             .build()
             .map_err(|e| TaskAttemptError::ValidationError(format!("Failed to create GitHub client: {}", e)))?;
 
+        info!("Creating PR: {} -> {} in {}/{}", head_branch, base_branch, owner, repo_name);
+
         let pr = octocrab
             .pulls(owner, repo_name)
             .create(title, head_branch, base_branch)
             .body(body.unwrap_or(""))
             .send()
             .await
-            .map_err(|e| TaskAttemptError::ValidationError(format!("Failed to create PR: {}", e)))?;
+            .map_err(|e| {
+                error!("GitHub API error: {:?}", e);
+                TaskAttemptError::ValidationError(format!("Failed to create PR: GitHub API error: {}", e))
+            })?;
 
         info!("Created GitHub PR #{} for branch {}", pr.number, head_branch);
         Ok(pr.html_url.map(|url| url.to_string()).unwrap_or_else(|| "".to_string()))
