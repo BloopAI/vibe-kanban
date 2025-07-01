@@ -278,7 +278,8 @@ export function Settings() {
                 GitHub Integration
               </CardTitle>
               <CardDescription>
-                Configure GitHub settings for creating pull requests from task attempts.
+                Configure GitHub settings for creating pull requests from task
+                attempts.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -299,7 +300,8 @@ export function Settings() {
                   }
                 />
                 <p className="text-sm text-muted-foreground">
-                  GitHub Personal Access Token with 'repo' permissions. Required for creating pull requests.{' '}
+                  GitHub Personal Access Token with 'repo' permissions. Required
+                  for creating pull requests.{' '}
                   <a
                     href="https://github.com/settings/tokens"
                     target="_blank"
@@ -327,7 +329,8 @@ export function Settings() {
                   }
                 />
                 <p className="text-sm text-muted-foreground">
-                  Default base branch for pull requests. Defaults to 'main' if not specified.
+                  Default base branch for pull requests. Defaults to 'main' if
+                  not specified.
                 </p>
               </div>
             </CardContent>

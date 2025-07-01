@@ -67,14 +67,19 @@ export function TaskAttemptComparePage() {
   const [prTitle, setPrTitle] = useState('');
   const [prBody, setPrBody] = useState('');
   const [prBaseBranch, setPrBaseBranch] = useState('main');
-  const [taskDetails, setTaskDetails] = useState<{ title: string; description: string | null } | null>(null);
+  const [taskDetails, setTaskDetails] = useState<{
+    title: string;
+    description: string | null;
+  } | null>(null);
 
   // Define callbacks first
   const fetchTaskDetails = useCallback(async () => {
     if (!projectId || !taskId) return;
 
     try {
-      const response = await makeRequest(`/api/projects/${projectId}/tasks/${taskId}`);
+      const response = await makeRequest(
+        `/api/projects/${projectId}/tasks/${taskId}`
+      );
       if (response.ok) {
         const result: ApiResponse<any> = await response.json();
         if (result.success && result.data) {
@@ -147,7 +152,14 @@ export function TaskAttemptComparePage() {
       fetchDiff();
       fetchBranchStatus();
     }
-  }, [projectId, taskId, attemptId, fetchTaskDetails, fetchDiff, fetchBranchStatus]);
+  }, [
+    projectId,
+    taskId,
+    attemptId,
+    fetchTaskDetails,
+    fetchDiff,
+    fetchBranchStatus,
+  ]);
 
   const handleBackClick = () => {
     navigate(`/projects/${projectId}/tasks/${taskId}`);
