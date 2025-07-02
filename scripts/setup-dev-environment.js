@@ -139,21 +139,12 @@ async function getPorts() {
  */
 function copyDevAssets() {
   try {
-    if (fs.existsSync(DEV_ASSETS_SEED)) {
-      // Remove existing dev_assets if it exists
-      if (fs.existsSync(DEV_ASSETS)) {
-        fs.rmSync(DEV_ASSETS, { recursive: true, force: true });
-      }
-      
+    if (!fs.existsSync(DEV_ASSETS)) {
       // Copy dev_assets_seed to dev_assets
       fs.cpSync(DEV_ASSETS_SEED, DEV_ASSETS, { recursive: true });
-      
+
       if (process.argv[2] === "get") {
         console.log("Copied dev_assets_seed to dev_assets");
-      }
-    } else {
-      if (process.argv[2] === "get") {
-        console.warn("dev_assets_seed folder not found, skipping copy");
       }
     }
   } catch (error) {
@@ -221,7 +212,9 @@ if (require.main === module) {
       console.log(
         "  node setup-dev-environment.js backend  - Get backend port only"
       );
-      console.log("  node setup-dev-environment.js clear    - Clear saved ports");
+      console.log(
+        "  node setup-dev-environment.js clear    - Clear saved ports"
+      );
       break;
   }
 }
