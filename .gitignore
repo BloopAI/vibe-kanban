@@ -78,3 +78,5 @@ backend/db.sqlite
 
 # Development ports file
 .dev-ports.json
+
+dev_assets
