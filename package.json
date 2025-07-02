@@ -3,20 +3,20 @@
   "version": "0.0.32",
   "private": true,
   "scripts": {
-    "dev": "export FRONTEND_PORT=$(node scripts/manage-dev-ports.js frontend) && export BACKEND_PORT=$(node scripts/manage-dev-ports.js backend) && concurrently \"cargo watch -w backend -x 'run --manifest-path backend/Cargo.toml'\" \"npm run frontend:dev\"",
+    "dev": "export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && concurrently \"cargo watch -w backend -x 'run --manifest-path backend/Cargo.toml'\" \"npm run frontend:dev\"",
     "build": "npm run frontend:build && cargo build --release --manifest-path backend/Cargo.toml && cargo build --release --bin mcp_task_server --manifest-path backend/Cargo.toml",
     "build:single": "npm run frontend:build && cargo build --release --manifest-path backend/Cargo.toml",
     "build:npm": "./build-npm-package.sh",
     "test:npm": "./test-npm-package.sh",
     "frontend:dev": "cd frontend && npm run dev -- --port ${FRONTEND_PORT:-3000} --open",
     "frontend:build": "cd frontend && npm run build",
-    "backend:dev": "BACKEND_PORT=$(node scripts/manage-dev-ports.js backend) cargo watch -w backend -x 'run --manifest-path backend/Cargo.toml'",
+    "backend:dev": "BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) cargo watch -w backend -x 'run --manifest-path backend/Cargo.toml'",
     "backend:build": "cargo build --release --manifest-path backend/Cargo.toml",
     "backend:run": "cargo run --manifest-path backend/Cargo.toml",
     "backend:test": "cargo test --lib",
     "generate-types": "cd backend && cargo run --bin generate_types",
     "prepare-db": "node scripts/prepare-db.js",
-    "dev:clear-ports": "node scripts/manage-dev-ports.js clear"
+    "dev:clear-ports": "node scripts/setup-dev-environment.js clear"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
