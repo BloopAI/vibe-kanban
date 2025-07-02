@@ -3,7 +3,7 @@
   "version": "0.0.32",
   "private": true,
   "scripts": {
-    "dev": "node scripts/manage-dev-ports.js get && concurrently \"BACKEND_PORT=$(node scripts/manage-dev-ports.js backend) cargo watch -w backend -x 'run --manifest-path backend/Cargo.toml'\" \"FRONTEND_PORT=$(node scripts/manage-dev-ports.js frontend) npm run frontend:dev\"",
+    "dev": "export FRONTEND_PORT=$(node scripts/manage-dev-ports.js frontend) && export BACKEND_PORT=$(node scripts/manage-dev-ports.js backend) && concurrently \"cargo watch -w backend -x 'run --manifest-path backend/Cargo.toml'\" \"npm run frontend:dev\"",
     "build": "npm run frontend:build && cargo build --release --manifest-path backend/Cargo.toml && cargo build --release --bin mcp_task_server --manifest-path backend/Cargo.toml",
     "build:single": "npm run frontend:build && cargo build --release --manifest-path backend/Cargo.toml",
     "build:npm": "./build-npm-package.sh",
