@@ -55,11 +55,12 @@ export function TaskKanbanBoard({
     if (!searchQuery.trim()) {
       return tasks;
     }
-    
+
     const query = searchQuery.toLowerCase();
-    return tasks.filter(task => 
-      task.title.toLowerCase().includes(query) ||
-      (task.description && task.description.toLowerCase().includes(query))
+    return tasks.filter(
+      (task) =>
+        task.title.toLowerCase().includes(query) ||
+        (task.description && task.description.toLowerCase().includes(query))
     );
   };
 
@@ -72,7 +73,7 @@ export function TaskKanbanBoard({
     });
 
     const filteredTasks = filterTasks(tasks);
-    
+
     filteredTasks.forEach((task) => {
       // Convert old capitalized status to lowercase if needed
       const normalizedStatus = task.status.toLowerCase() as TaskStatus;
