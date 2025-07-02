@@ -5,6 +5,8 @@ use directories::ProjectDirs;
 pub mod shell;
 pub mod text;
 
+const PROJECT_ROOT: &str = env!("CARGO_MANIFEST_DIR");
+
 /// Cache for WSL2 detection result
 static WSL2_CACHE: OnceLock<bool> = OnceLock::new();
 
@@ -31,18 +33,18 @@ pub fn is_wsl2() -> bool {
 }
 
 pub fn asset_dir() -> std::path::PathBuf {
-    let proj = if cfg!(debug_assertions) {
-        ProjectDirs::from("ai", "bloop-dev", env!("CARGO_PKG_NAME"))
-            .expect("OS didn't give us a home directory")
+    if cfg!(debug_assertions) {
+        std::path::PathBuf::from(PROJECT_ROOT).join("../dev_assets")
     } else {
         ProjectDirs::from("ai", "bloop", env!("CARGO_PKG_NAME"))
             .expect("OS didn't give us a home directory")
-    };
+            .data_dir()
+            .to_path_buf()
+    }
 
     // ✔ macOS → ~/Library/Application Support/MyApp
     // ✔ Linux → ~/.local/share/myapp   (respects XDG_DATA_HOME)
     // ✔ Windows → %APPDATA%\Example\MyApp
-    proj.data_dir().to_path_buf()
 }
 
 pub fn config_path() -> std::path::PathBuf {

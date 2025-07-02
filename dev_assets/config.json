@@ -1,0 +1,19 @@
+{
+  "theme": "light",
+  "executor": {
+    "type": "claude"
+  },
+  "disclaimer_acknowledged": true,
+  "onboarding_acknowledged": true,
+  "sound_alerts": true,
+  "sound_file": "abstract-sound4",
+  "push_notifications": true,
+  "editor": {
+    "editor_type": "vscode",
+    "custom_command": null
+  },
+  "github": {
+    "token": "",
+    "default_pr_base": "main"
+  }
+}
