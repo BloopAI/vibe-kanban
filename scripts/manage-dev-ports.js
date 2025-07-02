@@ -11,7 +11,7 @@ const PORTS_FILE = path.join(__dirname, "..", ".dev-ports.json");
  */
 function isPortAvailable(port) {
   return new Promise((resolve) => {
-    const sock = net.createConnection({ port, host: "127.0.0.1" });
+    const sock = net.createConnection({ port, host: "localhost" });
     sock.on("connect", () => {
       sock.destroy();
       resolve(false);
