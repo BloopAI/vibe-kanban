@@ -80,6 +80,8 @@ interface JSONLLine {
         }>
       | string;
   };
+  messageKey?: number;
+  isStreaming?: boolean;
   // Tool rejection message (string format)
   rejectionMessage?: string;
   usage?: {
@@ -207,6 +209,7 @@ export function ConversationViewer({ jsonlOutput }: ConversationViewerProps) {
   }, [jsonlOutput]);
 
   const conversation = useMemo(() => {
+    const streamingMessageMap = new Map<number, any>();
     const items: Array<{
       type: 'message' | 'tool-rejection' | 'parse-error' | 'unknown';
       role?: 'user' | 'assistant';
@@ -253,14 +256,38 @@ export function ConversationViewer({ jsonlOutput }: ConversationViewerProps) {
         ) {
           // Amp format
           for (const [messageIndex, message] of line.messages) {
-            items.push({
-              type: 'message',
+            const messageItem = {
+              type: 'message' as const,
               role: message.role,
               content: message.content,
               timestamp: message.meta?.sentAt,
               messageIndex,
               lineIndex: line._lineIndex,
-            });
+            };
+
+            // Handle Gemini streaming via top-level messageKey and isStreaming
+            if (line.isStreaming && line.messageKey !== undefined) {
+              const existingMessage = streamingMessageMap.get(line.messageKey);
+              if (existingMessage) {
+                // Append new content to existing message
+                if (
+                  existingMessage.content &&
+                  existingMessage.content[0] &&
+                  messageItem.content &&
+                  messageItem.content[0]
+                ) {
+                  existingMessage.content[0].text =
+                    (existingMessage.content[0].text || '') +
+                    (messageItem.content[0].text || '');
+                  existingMessage.timestamp = messageItem.timestamp; // Update timestamp
+                }
+              } else {
+                // First segment for this message
+                streamingMessageMap.set(line.messageKey, messageItem);
+              }
+            } else {
+              items.push(messageItem);
+            }
           }
         } else if (
           (line.type === 'user' ||
@@ -342,8 +369,11 @@ export function ConversationViewer({ jsonlOutput }: ConversationViewerProps) {
       }
     }
 
+    const streamingMessages = Array.from(streamingMessageMap.values());
+    const finalItems = [...items, ...streamingMessages];
+
     // Sort by messageIndex for messages, then by lineIndex for everything else
-    items.sort((a, b) => {
+    finalItems.sort((a, b) => {
       if (a.type === 'message' && b.type === 'message') {
         return (a.messageIndex || 0) - (b.messageIndex || 0);
       }
@@ -351,7 +381,7 @@ export function ConversationViewer({ jsonlOutput }: ConversationViewerProps) {
     });
 
     return {
-      items,
+      items: finalItems,
       tokenUsages,
       states,
     };
