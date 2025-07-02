@@ -8,7 +8,7 @@
     "build:single": "npm run frontend:build && cargo build --release --manifest-path backend/Cargo.toml",
     "build:npm": "./build-npm-package.sh",
     "test:npm": "./test-npm-package.sh",
-    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:dev": "cd frontend && npm run dev -- --port 0",
     "frontend:build": "cd frontend && npm run build",
     "backend:dev": "cargo watch -w backend -x 'run --manifest-path backend/Cargo.toml'",
     "backend:build": "cargo build --release --manifest-path backend/Cargo.toml",

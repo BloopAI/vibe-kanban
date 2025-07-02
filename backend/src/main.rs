@@ -190,7 +190,7 @@ async fn main() -> anyhow::Result<()> {
     let port: u16 = std::env::var("PORT")
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(if cfg!(debug_assertions) { 3001 } else { 0 });
+        .unwrap_or(0);
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
     let actual_port = listener.local_addr()?.port(); // get → 53427 (example)
