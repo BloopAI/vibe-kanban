@@ -168,7 +168,7 @@ export function McpServers() {
         }
         : {
           command: "npx",
-          args: ["vibe-kanban", "--mcp"]
+          args: ["-y", "vibe-kanban", "--mcp"]
         };
 
       // Add task_manager to the existing configuration
