@@ -379,4 +379,3 @@ fn set_mcp_servers_in_config_path(
 
     Ok(())
 }
-
