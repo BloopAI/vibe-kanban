@@ -75,3 +75,6 @@ build-npm-package-codesign.sh
 
 npx-cli/dist
 backend/db.sqlite
+
+# Development ports file
+.dev-ports.json

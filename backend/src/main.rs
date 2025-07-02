@@ -187,10 +187,11 @@ async fn main() -> anyhow::Result<()> {
         .layer(Extension(app_state))
         .layer(CorsLayer::permissive());
 
-    let port: u16 = std::env::var("PORT")
+    let port: u16 = std::env::var("BACKEND_PORT")
+        .or_else(|_| std::env::var("PORT"))
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(0);
+        .unwrap_or(0); // Use 0 to find free port if no specific port provided
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
     let actual_port = listener.local_addr()?.port(); // get → 53427 (example)
