@@ -136,8 +136,6 @@ export function TaskDetailsToolbar({
     setIsInCreateAttemptMode(taskAttempts.length === 0);
   }, [taskAttempts.length]);
 
-
-
   // Git operations
   const handleMergeClick = async () => {
     if (!projectId || !task.id || !selectedAttempt?.id) return;
@@ -175,8 +173,6 @@ export function TaskDetailsToolbar({
       setMerging(false);
     }
   };
-
-
 
   const handleRebaseClick = async () => {
     if (!projectId || !task.id || !selectedAttempt?.id) return;
@@ -750,8 +746,8 @@ export function TaskDetailsToolbar({
                               {selectedAttempt.pr_url
                                 ? 'Open PR'
                                 : creatingPR
-                                ? 'Creating...'
-                                : 'Create PR'}
+                                  ? 'Creating...'
+                                  : 'Create PR'}
                             </Button>
                             <Button
                               onClick={handleMergeClick}
@@ -819,8 +815,6 @@ export function TaskDetailsToolbar({
           </div>
         )}
       </div>
-
-
 
       {/* Create PR Dialog */}
       <Dialog
