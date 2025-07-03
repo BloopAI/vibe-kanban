@@ -601,19 +601,19 @@ export function TaskAttemptComparePage() {
                 <GitBranch className="h-4 w-4" />
                 {branchStatus.up_to_date ? (
                   <span className="text-green-600">Up to date</span>
-                ) : branchStatus.is_behind === true ? (
+                ) : branchStatus.is_behind === true && !branchStatus.merged ? (
                   <span className="text-orange-600">
                     {branchStatus.commits_behind} commit
                     {branchStatus.commits_behind !== 1 ? 's' : ''} behind{' '}
                     {branchStatus.base_branch_name}
                   </span>
-                ) : (
+                ) : !branchStatus.merged ? (
                   <span className="text-blue-600">
                     {branchStatus.commits_ahead} commit
                     {branchStatus.commits_ahead !== 1 ? 's' : ''} ahead of{' '}
                     {branchStatus.base_branch_name}
                   </span>
-                )}
+                ) : null}
               </div>
               {branchStatus.has_uncommitted_changes && (
                 <div className="flex items-center gap-1 text-yellow-600">
