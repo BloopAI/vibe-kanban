@@ -1241,9 +1241,154 @@ impl TaskAttempt {
                 None,
                 None,
             )?;
+
+            // Now also get unstaged changes (working directory changes)
+            let current_tree = worktree_repo.head()?.peel_to_tree()?;
+            
+            // Create diff from HEAD to working directory for unstaged changes
+            let mut unstaged_diff_opts = git2::DiffOptions::new();
+            unstaged_diff_opts.context_lines(10);
+            unstaged_diff_opts.interhunk_lines(0);
+            unstaged_diff_opts.include_untracked(true); // Include untracked files
+            
+            let unstaged_diff = worktree_repo.diff_tree_to_workdir_with_index(
+                Some(&current_tree),
+                Some(&mut unstaged_diff_opts),
+            )?;
+
+            // Process unstaged changes
+            unstaged_diff.foreach(
+                &mut |delta, _progress| {
+                    if let Some(path_str) = delta.new_file().path().and_then(|p| p.to_str()) {
+                        if let Err(e) = Self::process_unstaged_file(&mut files, &worktree_repo, base_oid, &attempt.worktree_path, path_str, &delta) {
+                            eprintln!("Error processing unstaged file {}: {:?}", path_str, e);
+                        }
+                    }
+                    true
+                },
+                None,
+                None,
+                None,
+            )?;
         }
 
         Ok(WorktreeDiff { files })
+    }
+
+    fn process_unstaged_file(
+        files: &mut Vec<FileDiff>,
+        worktree_repo: &Repository,
+        base_oid: git2::Oid,
+        worktree_path: &str,
+        path_str: &str,
+        delta: &git2::DiffDelta,
+    ) -> Result<(), TaskAttemptError> {
+        let old_file = delta.old_file();
+        let new_file = delta.new_file();
+
+        // Check if we already have a diff for this file from committed changes
+        if let Some(existing_file) = files.iter_mut().find(|f| f.path == path_str) {
+            // File already has committed changes, need to create a combined diff
+            // from the base branch to the current working directory (including unstaged changes)
+            
+            // Get the base content (from the fork point)
+            let base_content = if let Ok(base_commit) = worktree_repo.find_commit(base_oid) {
+                if let Ok(base_tree) = base_commit.tree() {
+                    match base_tree.get_path(std::path::Path::new(path_str)) {
+                        Ok(entry) => {
+                            if let Ok(blob) = worktree_repo.find_blob(entry.id()) {
+                                String::from_utf8_lossy(blob.content()).to_string()
+                            } else {
+                                String::new()
+                            }
+                        },
+                        Err(_) => String::new(),
+                    }
+                } else {
+                    String::new()
+                }
+            } else {
+                String::new()
+            };
+
+            // Get the working directory content
+            let working_content = if delta.status() != git2::Delta::Deleted {
+                let file_path = std::path::Path::new(worktree_path).join(path_str);
+                match std::fs::read_to_string(&file_path) {
+                    Ok(content) => content,
+                    Err(_) => String::new(),
+                }
+            } else {
+                String::new()
+            };
+
+            // Create a combined diff from base to working directory
+            if base_content != working_content {
+                // Use git's patch generation with the content directly
+                let mut diff_opts = git2::DiffOptions::new();
+                diff_opts.context_lines(10);
+                diff_opts.interhunk_lines(0);
+
+                if let Ok(patch) = git2::Patch::from_buffers(
+                    base_content.as_bytes(),
+                    Some(std::path::Path::new(path_str)),
+                    working_content.as_bytes(), 
+                    Some(std::path::Path::new(path_str)),
+                    Some(&mut diff_opts),
+                ) {
+                    let mut combined_chunks = Vec::new();
+                    
+                    // Process the patch hunks
+                    for hunk_idx in 0..patch.num_hunks() {
+                        if let Ok((_hunk, hunk_lines)) = patch.hunk(hunk_idx) {
+                            // Process each line in the hunk
+                            for line_idx in 0..hunk_lines {
+                                if let Ok(line) = patch.line_in_hunk(hunk_idx, line_idx) {
+                                    let content = String::from_utf8_lossy(line.content()).to_string();
+                                    
+                                    let chunk_type = match line.origin() {
+                                        ' ' => DiffChunkType::Equal,
+                                        '+' => DiffChunkType::Insert,
+                                        '-' => DiffChunkType::Delete,
+                                        _ => continue, // Skip other line types
+                                    };
+                                    
+                                    combined_chunks.push(DiffChunk {
+                                        chunk_type,
+                                        content,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    
+                    if !combined_chunks.is_empty() {
+                        existing_file.chunks = combined_chunks;
+                    }
+                }
+            }
+        } else {
+            // File only has unstaged changes (new file or uncommitted changes only)
+            match Self::generate_git_diff_chunks(
+                worktree_repo,
+                &old_file,
+                &new_file,
+                path_str,
+            ) {
+                Ok(diff_chunks) if !diff_chunks.is_empty() => {
+                    files.push(FileDiff {
+                        path: path_str.to_string(),
+                        chunks: diff_chunks,
+                    });
+                }
+                Err(e) => {
+                    eprintln!("Error generating unstaged diff for {}: {:?}", path_str, e);
+                }
+                _ => {}
+            }
+        }
+        
+        Ok(())
     }
 
     /// Generate diff chunks using Git's native diff algorithm
