@@ -597,16 +597,50 @@ export function TaskDetailsPanel({
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
                         <p className="text-muted-foreground">Loading...</p>
                       </div>
-                    ) : selectedAttempt && attemptData.runningProcessDetails && Object.keys(attemptData.runningProcessDetails).length > 0 ? (
-                      <NormalizedConversationViewer
-                        executionProcess={Object.values(attemptData.runningProcessDetails)[0]}
-                        projectId={projectId}
-                      />
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <p>No active conversation to display</p>
-                      </div>
-                    )}
+                    ) : (() => {
+                        // First, look for a running coding agent process
+                        let codingAgentProcess = Object.values(attemptData.runningProcessDetails).find(
+                          process => process.process_type === 'codingagent'
+                        );
+                        
+                        // If no running process, look for any coding agent process in the summaries
+                        if (!codingAgentProcess) {
+                          const codingAgentSummary = attemptData.processes.find(
+                            process => process.process_type === 'codingagent'
+                          );
+                          
+                          if (codingAgentSummary) {
+                            // Try to find it in running processes by ID (it might be there but completed)
+                            codingAgentProcess = Object.values(attemptData.runningProcessDetails).find(
+                              process => process.id === codingAgentSummary.id
+                            );
+                            
+                            // If still not found, create a minimal ExecutionProcess from the summary
+                            if (!codingAgentProcess) {
+                              codingAgentProcess = {
+                                ...codingAgentSummary,
+                                stdout: null,
+                                stderr: null,
+                              } as any; // Cast since we're missing some fields but NormalizedConversationViewer only needs the ID
+                            }
+                          }
+                        }
+                        
+                        if (codingAgentProcess) {
+                          return (
+                            <NormalizedConversationViewer
+                              executionProcess={codingAgentProcess}
+                              projectId={projectId}
+                            />
+                          );
+                        }
+                        
+                        return (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <p>No coding agent conversation to display</p>
+                          </div>
+                        );
+                      })()}
                   </div>
                 </div>
               </div>
