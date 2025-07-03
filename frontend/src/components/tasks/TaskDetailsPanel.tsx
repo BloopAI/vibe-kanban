@@ -226,9 +226,9 @@ export function TaskDetailsPanel({
 
     switch (chunkType) {
       case 'Insert':
-        return `${baseClass} text-green-700 dark:text-green-200 bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-600`;
+        return `${baseClass} text-green-700 dark:text-green-200 bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-600`;
       case 'Delete':
-        return `${baseClass} text-red-700 dark:text-red-200 bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-600`;
+        return `${baseClass} text-red-700 dark:text-red-200 bg-red-100 dark:bg-red-900/40 border-red-300 dark:border-red-600`;
       case 'Equal':
       default:
         return `${baseClass} text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700`;
