@@ -208,7 +208,7 @@ export function TaskDetailsPanel({
 
   // Diff processing functions
   const getChunkClassName = (chunkType: DiffChunkType) => {
-    const baseClass = 'font-mono text-sm whitespace-nowrap py-1 flex min-w-max';
+    const baseClass = 'font-mono text-sm whitespace-nowrap flex min-w-max';
 
     switch (chunkType) {
       case 'Insert':
@@ -222,7 +222,7 @@ export function TaskDetailsPanel({
   };
 
   const getLineNumberClassName = (chunkType: DiffChunkType) => {
-    const baseClass = 'flex-shrink-0 w-16 px-2 py-1 text-xs border-r select-none';
+    const baseClass = 'flex-shrink-0 w-16 px-2 text-xs border-r select-none min-h-[1.75rem] flex items-center';
 
     switch (chunkType) {
       case 'Insert':
@@ -543,7 +543,7 @@ export function TaskDetailsPanel({
                                           onClick={() =>
                                             toggleExpandSection(section.expandKey!)
                                           }
-                                          className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none"
+                                          className="w-full min-w-max h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none"
                                         >
                                           <ChevronDown className="h-3 w-3 mr-1" />
                                           Show {lineCount} more lines
@@ -562,7 +562,7 @@ export function TaskDetailsPanel({
                                             onClick={() =>
                                               toggleExpandSection(section.expandKey!)
                                             }
-                                            className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none"
+                                            className="w-full min-w-max h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none"
                                           >
                                             <ChevronUp className="h-3 w-3 mr-1" />
                                             Hide expanded lines
@@ -581,7 +581,7 @@ export function TaskDetailsPanel({
                                               {line.newLineNumber || ''}
                                             </span>
                                           </div>
-                                          <div className="flex-1 px-3 py-1">
+                                          <div className="flex-1 px-3 min-h-[1.75rem] flex items-center">
                                             <span className="inline-block w-4">
                                               {getChunkPrefix(line.chunkType)}
                                             </span>
