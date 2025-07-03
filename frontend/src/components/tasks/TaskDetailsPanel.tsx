@@ -80,6 +80,7 @@ export function TaskDetailsPanel({
   const [shouldAutoScrollLogs, setShouldAutoScrollLogs] = useState(true);
   const [conversationUpdateTrigger, setConversationUpdateTrigger] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const setupScrollRef = useRef<HTMLDivElement>(null);
   
   // Diff-related state
   const [diff, setDiff] = useState<WorktreeDiff | null>(null);
@@ -208,6 +209,13 @@ export function TaskDetailsPanel({
         scrollContainerRef.current.scrollHeight;
     }
   }, [attemptData.activities, attemptData.processes, conversationUpdateTrigger, shouldAutoScrollLogs]);
+
+  // Auto-scroll setup script logs to bottom
+  useEffect(() => {
+    if (setupScrollRef.current) {
+      setupScrollRef.current.scrollTop = setupScrollRef.current.scrollHeight;
+    }
+  }, [attemptData.runningProcessDetails]);
 
   // Handle scroll events to detect manual scrolling (for logs section)
   const handleLogsScroll = useCallback(() => {
@@ -485,7 +493,7 @@ export function TaskDetailsPanel({
           );
 
       return (
-        <div className="flex-1 min-h-0 p-6 overflow-y-auto">
+        <div className="flex-1 min-h-0 p-6 overflow-y-auto" ref={setupScrollRef}>
           <div className="mb-4">
             <p className="text-lg font-semibold mb-2">Setup Script Running</p>
             <p className="text-muted-foreground mb-4">
