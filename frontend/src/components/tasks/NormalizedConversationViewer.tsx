@@ -59,6 +59,16 @@ const getEntryIcon = (entryType: NormalizedEntryType) => {
 };
 
 
+const getContentClassName = (entryType: NormalizedEntryType) => {
+  const baseClasses = "text-sm whitespace-pre-wrap break-words";
+  
+  if (entryType.type === 'tool_use' && entryType.action_type.action === 'command_run') {
+    return `${baseClasses} font-mono`;
+  }
+  
+  return baseClasses;
+};
+
 export function NormalizedConversationViewer({ 
   executionProcess, 
   projectId 
@@ -130,7 +140,7 @@ export function NormalizedConversationViewer({
             {getEntryIcon(entry.entry_type)}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm whitespace-pre-wrap break-words">
+            <div className={getContentClassName(entry.entry_type)}>
               {entry.content}
             </div>
           </div>
