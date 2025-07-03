@@ -30,7 +30,7 @@ echo "✅ Main app started successfully"
 
 echo "🧪 Testing MCP command with complete handshake..."
 
-node ../mcp_test.js
+node ../scripts/mcp_test.js
 
 echo "🧹 Cleaning up..."
 npm uninstall -g vibe-kanban

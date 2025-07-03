@@ -16,6 +16,9 @@ import type {
   ExecutorConfig,
   EditorType,
 } from 'shared/types';
+import * as Sentry from '@sentry/react';
+
+const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
   const { config, updateConfig, loading } = useConfig();
@@ -115,7 +118,7 @@ function AppContent() {
         />
         {showNavbar && <Navbar />}
         <div className="flex-1 overflow-y-scroll">
-          <Routes>
+          <SentryRoutes>
             <Route path="/" element={<Projects />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/projects/:projectId" element={<Projects />} />
@@ -130,7 +133,7 @@ function AppContent() {
 
             <Route path="/settings" element={<Settings />} />
             <Route path="/mcp-servers" element={<McpServers />} />
-          </Routes>
+          </SentryRoutes>
         </div>
       </div>
     </ThemeProvider>

@@ -12,6 +12,10 @@ use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
 use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
 use vibe_kanban::{Assets, ScriptAssets, SoundAssets};
+use sentry_tower::NewSentryLayer;
+use sentry_tracing::layer as sentry_tracing_layer;
+use tracing_subscriber::filter::LevelFilter;
+use tracing_subscriber::prelude::*;
 
 mod app_state;
 mod execution_monitor;
@@ -116,96 +120,118 @@ async fn serve_sound_file(
     }
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt().init();
-
-    // Create asset directory if it doesn't exist
-    if !utils::asset_dir().exists() {
-        std::fs::create_dir_all(utils::asset_dir())?;
-    }
-
-    // Database connection
-    let database_url = format!(
-        "sqlite://{}",
-        utils::asset_dir().join("db.sqlite").to_string_lossy()
-    );
-
-    let options = SqliteConnectOptions::from_str(&database_url)?.create_if_missing(true);
-    let pool = SqlitePool::connect_with(options).await?;
-    sqlx::migrate!("./migrations").run(&pool).await?;
-
-    // Load configuration
-    let config_path = utils::config_path();
-    let config = Config::load(&config_path)?;
-    let config_arc = Arc::new(RwLock::new(config));
-
-    // Create app state
-    let app_state = AppState::new(pool.clone(), config_arc.clone());
-
-    // Start background task to check for init status and spawn processes
-    let state_clone = app_state.clone();
-    tokio::spawn(async move {
-        execution_monitor(state_clone).await;
+fn main() -> anyhow::Result<()> {
+    let environment = if cfg!(debug_assertions) {
+        "dev"
+    } else {
+        "prod"
+    };
+    let _guard = sentry::init(("https://57267b883c0c76a9b636f3f227809417@o4509603705192449.ingest.de.sentry.io/4509603708207184", sentry::ClientOptions {
+        release: sentry::release_name!(),
+        environment: Some(environment.into()),
+        ..Default::default()
+    }));
+    sentry::configure_scope(|scope| {
+        scope.set_tag("source", "server");
     });
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+            tracing_subscriber::registry()
+                .with(tracing_subscriber::fmt::layer().with_filter(LevelFilter::INFO))
+                .with(sentry_tracing_layer())
+                .init();
 
-    // Start PR monitoring service
-    let pr_monitor = PrMonitorService::new(pool.clone());
-    let config_for_monitor = config_arc.clone();
+            // Create asset directory if it doesn't exist
+            if !utils::asset_dir().exists() {
+                std::fs::create_dir_all(utils::asset_dir())?;
+            }
 
-    tokio::spawn(async move {
-        pr_monitor.start_with_config(config_for_monitor).await;
-    });
+            // Database connection
+            let database_url = format!(
+                "sqlite://{}",
+                utils::asset_dir().join("db.sqlite").to_string_lossy()
+            );
 
-    // Public routes (no auth required)
-    let public_routes = Router::new()
-        .route("/api/health", get(health::health_check))
-        .route("/api/echo", post(echo_handler));
+            let options = SqliteConnectOptions::from_str(&database_url)?.create_if_missing(true);
+            let pool = SqlitePool::connect_with(options).await?;
+            sqlx::migrate!("./migrations").run(&pool).await?;
 
-    // All routes (no auth required)
-    let app_routes = Router::new()
-        .nest(
-            "/api",
-            Router::new()
-                .merge(projects::projects_router())
-                .merge(tasks::tasks_router())
-                .merge(task_attempts::task_attempts_router())
-                .merge(filesystem::filesystem_router())
-                .merge(config::config_router())
-                .route("/sounds/:filename", get(serve_sound_file)),
-        )
-        .layer(Extension(pool.clone()))
-        .layer(Extension(config_arc));
+            // Load configuration
+            let config_path = utils::config_path();
+            let config = Config::load(&config_path)?;
+            let config_arc = Arc::new(RwLock::new(config));
 
-    let app = Router::new()
-        .merge(public_routes)
-        .merge(app_routes)
-        // Static file serving routes
-        .route("/", get(index_handler))
-        .route("/*path", get(static_handler))
-        .layer(Extension(pool))
-        .layer(Extension(app_state))
-        .layer(CorsLayer::permissive());
+            // Create app state
+            let app_state = AppState::new(pool.clone(), config_arc.clone());
 
-    let port: u16 = std::env::var("BACKEND_PORT")
-        .or_else(|_| std::env::var("PORT"))
-        .ok()
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(0); // Use 0 to find free port if no specific port provided
+            // Start background task to check for init status and spawn processes
+            let state_clone = app_state.clone();
+            tokio::spawn(async move {
+                execution_monitor(state_clone).await;
+            });
 
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
-    let actual_port = listener.local_addr()?.port(); // get → 53427 (example)
+            // Start PR monitoring service
+            let pr_monitor = PrMonitorService::new(pool.clone());
+            let config_for_monitor = config_arc.clone();
 
-    tracing::info!("Server running on http://0.0.0.0:{actual_port}");
+            tokio::spawn(async move {
+                pr_monitor.start_with_config(config_for_monitor).await;
+            });
 
-    if !cfg!(debug_assertions) {
-        tracing::info!("Opening browser...");
-        if let Err(e) = utils::open_browser(&format!("http://127.0.0.1:{actual_port}")).await {
-            tracing::warn!("Failed to open browser automatically: {}. Please open http://127.0.0.1:{} manually.", e, actual_port);
-        }
-    }
+            // Public routes (no auth required)
+            let public_routes = Router::new()
+                .route("/api/health", get(health::health_check))
+                .route("/api/echo", post(echo_handler));
 
-    axum::serve(listener, app).await?;
+            // All routes (no auth required)
+            let app_routes = Router::new()
+                .nest(
+                    "/api",
+                    Router::new()
+                        .merge(projects::projects_router())
+                        .merge(tasks::tasks_router())
+                        .merge(task_attempts::task_attempts_router())
+                        .merge(filesystem::filesystem_router())
+                        .merge(config::config_router())
+                        .route("/sounds/:filename", get(serve_sound_file)),
+                )
+                .layer(Extension(pool.clone()))
+                .layer(Extension(config_arc));
 
-    Ok(())
+            let app = Router::new()
+                .merge(public_routes)
+                .merge(app_routes)
+                // Static file serving routes
+                .route("/", get(index_handler))
+                .route("/*path", get(static_handler))
+                .layer(Extension(pool))
+                .layer(Extension(app_state))
+                .layer(CorsLayer::permissive())
+                .layer(NewSentryLayer::new_from_top());
+
+            let port: u16 = std::env::var("BACKEND_PORT")
+                .or_else(|_| std::env::var("PORT"))
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(0); // Use 0 to find free port if no specific port provided
+
+            let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
+            let actual_port = listener.local_addr()?.port(); // get → 53427 (example)
+
+            tracing::info!("Server running on http://0.0.0.0:{actual_port}");
+
+            if !cfg!(debug_assertions) {
+                tracing::info!("Opening browser...");
+                if let Err(e) = utils::open_browser(&format!("http://127.0.0.1:{actual_port}")).await {
+                    tracing::warn!("Failed to open browser automatically: {}. Please open http://127.0.0.1:{} manually.", e, actual_port);
+                }
+            }
+
+            axum::serve(listener, app).await?;
+
+            Ok(())
+        })
 }

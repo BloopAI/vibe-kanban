@@ -3,12 +3,33 @@ use std::str::FromStr;
 use rmcp::{transport::stdio, ServiceExt};
 use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
 use vibe_kanban::{mcp::task_server::TaskServer, utils::asset_dir};
+use sentry_tracing::layer as sentry_tracing_layer;
+use tracing_subscriber::EnvFilter;
+use tracing_subscriber::prelude::*;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter("debug")
-        .with_writer(std::io::stderr)
+    let environment = if cfg!(debug_assertions) {
+        "dev"
+    } else {
+        "prod"
+    };
+    let _guard = sentry::init(("https://57267b883c0c76a9b636f3f227809417@o4509603705192449.ingest.de.sentry.io/4509603708207184", sentry::ClientOptions {
+        release: sentry::release_name!(),
+        environment: Some(environment.into()),
+        ..Default::default()
+    }));
+    sentry::configure_scope(|scope| {
+        scope.set_tag("source", "mcp");
+    });
+
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_writer(std::io::stderr)
+                .with_filter(EnvFilter::new("debug")),
+        )
+        .with(sentry_tracing_layer())
         .init();
 
     tracing::debug!("[MCP] Starting MCP task server...");
@@ -27,6 +48,7 @@ async fn main() -> anyhow::Result<()> {
         .await
         .inspect_err(|e| {
             tracing::error!("serving error: {:?}", e);
+            sentry::capture_error(e);
         })?;
 
     service.waiting().await?;

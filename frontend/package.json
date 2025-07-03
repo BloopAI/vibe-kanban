@@ -22,6 +22,7 @@
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tooltip": "^1.2.7",
+    "@sentry/react": "^9.34.0",
     "class-variance-authority": "^0.7.0",
     "click-to-react-component": "^1.1.2",
     "clsx": "^2.0.0",
