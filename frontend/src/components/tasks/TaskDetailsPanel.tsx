@@ -208,13 +208,13 @@ export function TaskDetailsPanel({
 
   // Diff processing functions
   const getChunkClassName = (chunkType: DiffChunkType) => {
-    const baseClass = 'font-mono text-sm whitespace-pre py-1 flex';
+    const baseClass = 'font-mono text-sm whitespace-pre py-1 flex min-w-max';
 
     switch (chunkType) {
       case 'Insert':
-        return `${baseClass} bg-green-100 dark:bg-green-900/40 text-green-900 dark:text-green-100 border-l-2 border-green-500`;
+        return `${baseClass} bg-green-50 dark:bg-green-900/20 text-green-900 dark:text-green-100`;
       case 'Delete':
-        return `${baseClass} bg-red-100 dark:bg-red-900/40 text-red-900 dark:text-red-100 border-l-2 border-red-500`;
+        return `${baseClass} bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-100`;
       case 'Equal':
       default:
         return `${baseClass} text-muted-foreground`;
@@ -226,9 +226,9 @@ export function TaskDetailsPanel({
 
     switch (chunkType) {
       case 'Insert':
-        return `${baseClass} text-green-700 dark:text-green-200 bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-600`;
+        return `${baseClass} text-green-800 dark:text-green-200 bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-600`;
       case 'Delete':
-        return `${baseClass} text-red-700 dark:text-red-200 bg-red-100 dark:bg-red-900/40 border-red-300 dark:border-red-600`;
+        return `${baseClass} text-red-800 dark:text-red-200 bg-red-100 dark:bg-red-900/40 border-red-300 dark:border-red-600`;
       case 'Equal':
       default:
         return `${baseClass} text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700`;
@@ -523,7 +523,7 @@ export function TaskDetailsPanel({
                               </span>
                             </Button>
                           </div>
-                          <div>
+                          <div className="overflow-x-auto">
                             {processFileChunks(file.chunks, fileIndex).map(
                               (section, sectionIndex) => {
                                 if (
