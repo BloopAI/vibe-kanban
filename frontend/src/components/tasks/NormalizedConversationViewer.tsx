@@ -160,6 +160,15 @@ export function NormalizedConversationViewer({
   }
 
   if (!conversation || conversation.entries.length === 0) {
+    // If the execution process is still running, show loading instead of "no data"
+    if (executionProcess.status === 'running') {
+      return (
+        <div className="text-xs text-muted-foreground italic text-center">
+          Waiting for logs...
+        </div>
+      );
+    }
+    
     return (
       <div className="text-xs text-muted-foreground italic text-center">
         No conversation data available
