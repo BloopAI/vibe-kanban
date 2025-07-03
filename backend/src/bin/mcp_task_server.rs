@@ -11,7 +11,7 @@ async fn main() -> anyhow::Result<()> {
     let environment = if cfg!(debug_assertions) {
         "dev"
     } else {
-        "prod"
+        "production"
     };
     let _guard = sentry::init(("https://57267b883c0c76a9b636f3f227809417@o4509603705192449.ingest.de.sentry.io/4509603708207184", sentry::ClientOptions {
         release: sentry::release_name!(),
