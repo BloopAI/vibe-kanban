@@ -130,6 +130,7 @@ export function TaskDetailsToolbar({
   const [rebasing, setRebasing] = useState(false);
   const [rebaseSuccess, setRebaseSuccess] = useState(false);
   const [showUncommittedWarning, setShowUncommittedWarning] = useState(false);
+  const [showMergeConfirmDialog, setShowMergeConfirmDialog] = useState(false);
   const [creatingPR, setCreatingPR] = useState(false);
   const [showCreatePRDialog, setShowCreatePRDialog] = useState(false);
   const [prTitle, setPrTitle] = useState('');
@@ -186,7 +187,8 @@ export function TaskDetailsToolbar({
       return;
     }
 
-    await performMerge();
+    // Show confirmation dialog for regular merge
+    setShowMergeConfirmDialog(true);
   };
 
   const performMerge = async () => {
@@ -226,6 +228,15 @@ export function TaskDetailsToolbar({
 
   const handleCancelMergeWithUncommitted = () => {
     setShowUncommittedWarning(false);
+  };
+
+  const handleConfirmMerge = async () => {
+    setShowMergeConfirmDialog(false);
+    await performMerge();
+  };
+
+  const handleCancelMerge = () => {
+    setShowMergeConfirmDialog(false);
   };
 
   const handleRebaseClick = async () => {
@@ -922,6 +933,43 @@ export function TaskDetailsToolbar({
           </div>
         )}
       </div>
+
+      {/* Merge Confirmation Dialog */}
+      <Dialog
+        open={showMergeConfirmDialog}
+        onOpenChange={() => handleCancelMerge()}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Merge</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to merge the changes from this task branch into {branchStatus?.base_branch_name || 'the base branch'}?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+              <p className="text-sm text-blue-800">
+                This will merge all committed changes from the task branch into {branchStatus?.base_branch_name || 'the base branch'}. This action cannot be undone.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCancelMerge}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmMerge}
+              disabled={merging}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {merging ? 'Merging...' : 'Confirm Merge'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Uncommitted Changes Warning Dialog */}
       <Dialog
