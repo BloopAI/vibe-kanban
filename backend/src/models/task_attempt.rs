@@ -1267,13 +1267,13 @@ impl TaskAttempt {
 
             // Now also get unstaged changes (working directory changes)
             let current_tree = worktree_repo.head()?.peel_to_tree()?;
-            
+
             // Create diff from HEAD to working directory for unstaged changes
             let mut unstaged_diff_opts = git2::DiffOptions::new();
             unstaged_diff_opts.context_lines(10);
             unstaged_diff_opts.interhunk_lines(0);
             unstaged_diff_opts.include_untracked(true); // Include untracked files
-            
+
             let unstaged_diff = worktree_repo.diff_tree_to_workdir_with_index(
                 Some(&current_tree),
                 Some(&mut unstaged_diff_opts),
@@ -1283,7 +1283,14 @@ impl TaskAttempt {
             unstaged_diff.foreach(
                 &mut |delta, _progress| {
                     if let Some(path_str) = delta.new_file().path().and_then(|p| p.to_str()) {
-                        if let Err(e) = Self::process_unstaged_file(&mut files, &worktree_repo, base_oid, &attempt.worktree_path, path_str, &delta) {
+                        if let Err(e) = Self::process_unstaged_file(
+                            &mut files,
+                            &worktree_repo,
+                            base_oid,
+                            &attempt.worktree_path,
+                            path_str,
+                            &delta,
+                        ) {
                             eprintln!("Error processing unstaged file {}: {:?}", path_str, e);
                         }
                     }
@@ -1313,7 +1320,7 @@ impl TaskAttempt {
         if let Some(existing_file) = files.iter_mut().find(|f| f.path == path_str) {
             // File already has committed changes, need to create a combined diff
             // from the base branch to the current working directory (including unstaged changes)
-            
+
             // Get the base content (from the fork point)
             let base_content = if let Ok(base_commit) = worktree_repo.find_commit(base_oid) {
                 if let Ok(base_tree) = base_commit.tree() {
@@ -1324,7 +1331,7 @@ impl TaskAttempt {
                             } else {
                                 String::new()
                             }
-                        },
+                        }
                         Err(_) => String::new(),
                     }
                 } else {
@@ -1355,27 +1362,28 @@ impl TaskAttempt {
                 if let Ok(patch) = git2::Patch::from_buffers(
                     base_content.as_bytes(),
                     Some(std::path::Path::new(path_str)),
-                    working_content.as_bytes(), 
+                    working_content.as_bytes(),
                     Some(std::path::Path::new(path_str)),
                     Some(&mut diff_opts),
                 ) {
                     let mut combined_chunks = Vec::new();
-                    
+
                     // Process the patch hunks
                     for hunk_idx in 0..patch.num_hunks() {
                         if let Ok((_hunk, hunk_lines)) = patch.hunk(hunk_idx) {
                             // Process each line in the hunk
                             for line_idx in 0..hunk_lines {
                                 if let Ok(line) = patch.line_in_hunk(hunk_idx, line_idx) {
-                                    let content = String::from_utf8_lossy(line.content()).to_string();
-                                    
+                                    let content =
+                                        String::from_utf8_lossy(line.content()).to_string();
+
                                     let chunk_type = match line.origin() {
                                         ' ' => DiffChunkType::Equal,
                                         '+' => DiffChunkType::Insert,
                                         '-' => DiffChunkType::Delete,
                                         _ => continue, // Skip other line types
                                     };
-                                    
+
                                     combined_chunks.push(DiffChunk {
                                         chunk_type,
                                         content,
@@ -1384,7 +1392,7 @@ impl TaskAttempt {
                             }
                         }
                     }
-                    
+
                     if !combined_chunks.is_empty() {
                         existing_file.chunks = combined_chunks;
                     }
@@ -1392,12 +1400,7 @@ impl TaskAttempt {
             }
         } else {
             // File only has unstaged changes (new file or uncommitted changes only)
-            match Self::generate_git_diff_chunks(
-                worktree_repo,
-                &old_file,
-                &new_file,
-                path_str,
-            ) {
+            match Self::generate_git_diff_chunks(worktree_repo, &old_file, &new_file, path_str) {
                 Ok(diff_chunks) if !diff_chunks.is_empty() => {
                     files.push(FileDiff {
                         path: path_str.to_string(),
@@ -1410,7 +1413,7 @@ impl TaskAttempt {
                 _ => {}
             }
         }
-        
+
         Ok(())
     }
 
@@ -1988,10 +1991,11 @@ impl TaskAttempt {
             .unwrap_or(false);
 
         // Get all execution processes for this attempt, ordered by created_at
-        let processes = crate::models::execution_process::ExecutionProcess::find_by_task_attempt_id(
-            pool, attempt_id,
-        )
-        .await?;
+        let processes =
+            crate::models::execution_process::ExecutionProcess::find_by_task_attempt_id(
+                pool, attempt_id,
+            )
+            .await?;
 
         // Find setup and coding agent processes
         let setup_process = processes.iter().find(|p| {
