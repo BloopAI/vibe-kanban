@@ -1,15 +1,21 @@
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), sentryVitePlugin({
+    org: "bloop-ai",
+    project: "vibe-kanban-fe"
+  })],
+
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "shared": path.resolve(__dirname, "../shared"),
     },
   },
+
   server: {
     port: parseInt(process.env.FRONTEND_PORT || '3000'),
     proxy: {
@@ -19,4 +25,8 @@ export default defineConfig({
       },
     },
   },
+
+  build: {
+    sourcemap: true
+  }
 })

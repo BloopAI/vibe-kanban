@@ -80,3 +80,4 @@ backend/db.sqlite
 .dev-ports.json
 
 dev_assets
+/frontend/.env.sentry-build-plugin

@@ -91,6 +91,8 @@ jobs:
 
       - name: Build frontend
         run: npm run frontend:build
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
       - name: Upload frontend artifact
         uses: actions/upload-artifact@v4
