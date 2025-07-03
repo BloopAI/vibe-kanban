@@ -112,21 +112,21 @@ impl Executor for ClaudeExecutor {
                                                 }
                                             }
                                             "tool_use" => {
-                                                if let Some(tool_name) = content_item.get("name").and_then(|n| n.as_str()) {
-                                                    let input = content_item.get("input").unwrap_or(&Value::Null);
-                                                    let action_type = self.extract_action_type(tool_name, input);
-                                                    let content = format!("Tool: {} with input: {}", tool_name, input);
-                                                    
-                                                    entries.push(NormalizedEntry {
-                                                        timestamp: None,
-                                                        entry_type: NormalizedEntryType::ToolUse {
-                                                            tool_name: tool_name.to_string(),
-                                                            action_type,
-                                                        },
-                                                        content,
-                                                        metadata: Some(content_item.clone()),
-                                                    });
-                                                }
+                                            if let Some(tool_name) = content_item.get("name").and_then(|n| n.as_str()) {
+                                            let input = content_item.get("input").unwrap_or(&Value::Null);
+                                            let action_type = self.extract_action_type(tool_name, input);
+                                            let content = self.generate_concise_content(tool_name, input, &action_type);
+                                            
+                                            entries.push(NormalizedEntry {
+                                            timestamp: None,
+                                            entry_type: NormalizedEntryType::ToolUse {
+                                            tool_name: tool_name.to_string(),
+                                            action_type,
+                                            },
+                                            content,
+                                            metadata: Some(content_item.clone()),
+                                            });
+                                            }
                                             }
                                             _ => {}
                                         }
@@ -182,6 +182,38 @@ impl Executor for ClaudeExecutor {
 }
 
 impl ClaudeExecutor {
+    fn generate_concise_content(&self, tool_name: &str, input: &serde_json::Value, action_type: &ActionType) -> String {
+        match action_type {
+            ActionType::FileRead { path } => path.clone(),
+            ActionType::FileWrite { path } => path.clone(),
+            ActionType::CommandRun { command } => command.clone(),
+            ActionType::Search { query } => query.clone(),
+            ActionType::WebFetch { url } => url.clone(),
+            ActionType::TaskCreate { description } => description.clone(),
+            ActionType::Other { description: _ } => {
+                // For other tools, try to extract key information or fall back to tool name
+                match tool_name.to_lowercase().as_str() {
+                    "todoread" | "todowrite" => "Managing TODO list".to_string(),
+                    "ls" => {
+                        if let Some(path) = input.get("path").and_then(|p| p.as_str()) {
+                            format!("List directory: {}", path)
+                        } else {
+                            "List directory".to_string()
+                        }
+                    }
+                    "codebase_search_agent" => {
+                        if let Some(query) = input.get("query").and_then(|q| q.as_str()) {
+                            format!("Search: {}", query)
+                        } else {
+                            "Codebase search".to_string()
+                        }
+                    }
+                    _ => format!("{}", tool_name)
+                }
+            }
+        }
+    }
+
     fn extract_action_type(&self, tool_name: &str, input: &serde_json::Value) -> ActionType {
         match tool_name.to_lowercase().as_str() {
             "read" => {

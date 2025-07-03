@@ -36,6 +36,17 @@ mod tests {
             .filter(|e| matches!(e.entry_type, NormalizedEntryType::ToolUse { .. }))
             .collect();
         assert!(tool_uses.len() > 0);
+        
+        // Check that tool use content is concise (not the old verbose format)
+        let todo_tool_use = tool_uses.iter()
+            .find(|e| match &e.entry_type {
+                NormalizedEntryType::ToolUse { tool_name, .. } => tool_name == "todo_write",
+                _ => false,
+            });
+        assert!(todo_tool_use.is_some());
+        let todo_tool_use = todo_tool_use.unwrap();
+        // Should be concise, not "Tool: todo_write with input: ..."
+        assert_eq!(todo_tool_use.content, "Managing TODO list");
     }
 
     #[test]
@@ -66,5 +77,16 @@ mod tests {
             .filter(|e| matches!(e.entry_type, NormalizedEntryType::ToolUse { .. }))
             .collect();
         assert!(tool_uses.len() > 0);
+        
+        // Check that tool use content is concise (not the old verbose format)
+        let task_tool_use = tool_uses.iter()
+            .find(|e| match &e.entry_type {
+                NormalizedEntryType::ToolUse { tool_name, .. } => tool_name == "Task",
+                _ => false,
+            });
+        assert!(task_tool_use.is_some());
+        let task_tool_use = task_tool_use.unwrap();
+        // Should be the task description, not "Tool: Task with input: ..."
+        assert_eq!(task_tool_use.content, "Find vibe-kanban projects");
     }
 }

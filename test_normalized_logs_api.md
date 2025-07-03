@@ -52,7 +52,7 @@ curl -X GET "http://localhost:3001/api/projects/{project_id}/execution-processes
             "description": "Tool: todo_write"
           }
         },
-        "content": "Tool: todo_write with input: {\"todos\":[{\"id\":\"1\",\"content\":\"Explore task creation dialog component\",\"status\":\"todo\",\"priority\":\"high\"}]}"
+        "content": "Managing TODO list"
       }
     ],
     "session_id": "T-f8f7fec0-b330-47ab-b63a-b72c42f1ef6a",
@@ -66,13 +66,24 @@ curl -X GET "http://localhost:3001/api/projects/{project_id}/execution-processes
 
 The normalized format extracts specific action types for common tool operations:
 
-- `file_read` - For reading files (includes the file path)
-- `file_write` - For writing/editing files (includes the file path)
-- `command_run` - For executing shell commands (includes the command)
-- `search` - For search operations (includes the query)
-- `web_fetch` - For web requests (includes the URL)
-- `task_create` - For creating tasks (includes the description)
-- `other` - For any other tool operations
+- `file_read` - For reading files (content shows the file path)
+- `file_write` - For writing/editing files (content shows the file path)
+- `command_run` - For executing shell commands (content shows the command)
+- `search` - For search operations (content shows the query)
+- `web_fetch` - For web requests (content shows the URL)
+- `task_create` - For creating tasks (content shows the description)
+- `other` - For any other tool operations (content shows concise description)
+
+## Content Format
+
+The `content` field now provides concise, actionable information:
+
+**Examples:**
+- File operations: `"src/components/TaskDialog.tsx"` (just the path)
+- Commands: `"npm run build"` (just the command)
+- Search: `"authentication headers"` (just the query)
+- Web fetch: `"https://api.example.com/data"` (just the URL)
+- Other tools: `"Managing TODO list"` (concise description)
 
 ## Entry Types
 
