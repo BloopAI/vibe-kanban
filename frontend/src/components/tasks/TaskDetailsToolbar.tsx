@@ -760,45 +760,45 @@ export function TaskDetailsToolbar({
 
                         {/* Git Operations */}
                         {selectedAttempt && branchStatus && (
-                        <>
-                        {branchStatus.is_behind === true &&
-                        !branchStatus.merged && (
-                          <Button
-                            onClick={handleRebaseClick}
-                            disabled={
-                              rebasing ||
-                                branchStatusLoading ||
-                              isAttemptRunning
-                          }
-                            variant="outline"
-                            size="sm"
-                              className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1"
-                            >
-                            <RefreshCw
-                              className={`h-3 w-3 ${rebasing ? 'animate-spin' : ''}`}
-                            />
-                            {rebasing ? 'Rebasing...' : `Rebase`}
-                          </Button>
-                          )}
-                        {!branchStatus.merged && (
-                        <>
-                        <Button
-                          onClick={handleCreatePRClick}
-                          disabled={
-                            creatingPR ||
-                                Boolean(branchStatus.is_behind) ||
-                                isAttemptRunning
-                            }
-                            variant="outline"
-                            size="sm"
-                            className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1"
-                            >
-                            <GitPullRequest className="h-3 w-3" />
-                            {selectedAttempt.pr_url
-                                ? 'Open PR'
-                                  : creatingPR
-                                    ? 'Creating...'
-                                    : 'Create PR'}
+                          <>
+                            {branchStatus.is_behind === true &&
+                              !branchStatus.merged && (
+                                <Button
+                                  onClick={handleRebaseClick}
+                                  disabled={
+                                    rebasing ||
+                                    branchStatusLoading ||
+                                    isAttemptRunning
+                                  }
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1"
+                                >
+                                  <RefreshCw
+                                    className={`h-3 w-3 ${rebasing ? 'animate-spin' : ''}`}
+                                  />
+                                  {rebasing ? 'Rebasing...' : `Rebase`}
+                                </Button>
+                              )}
+                            {!branchStatus.merged && (
+                              <>
+                                <Button
+                                  onClick={handleCreatePRClick}
+                                  disabled={
+                                    creatingPR ||
+                                    Boolean(branchStatus.is_behind) ||
+                                    isAttemptRunning
+                                  }
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1"
+                                >
+                                  <GitPullRequest className="h-3 w-3" />
+                                  {selectedAttempt.pr_url
+                                    ? 'Open PR'
+                                    : creatingPR
+                                      ? 'Creating...'
+                                      : 'Create PR'}
                                 </Button>
                                 <Button
                                   onClick={handleMergeClick}
