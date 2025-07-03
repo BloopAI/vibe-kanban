@@ -15,14 +15,14 @@ pub struct AnalyticsConfig {
 
 impl AnalyticsConfig {
     pub fn new(user_enabled: bool) -> Self {
-        let api_key = std::env::var("POSTHOG_API_KEY").unwrap_or_default();
-        let api_endpoint = std::env::var("POSTHOG_API_ENDPOINT").unwrap_or_default();
+        let api_key = option_env!("POSTHOG_API_KEY").unwrap_or_default();
+        let api_endpoint = option_env!("POSTHOG_API_ENDPOINT").unwrap_or_default();
 
         let enabled = user_enabled && !api_key.is_empty() && !api_endpoint.is_empty();
 
         Self {
-            posthog_api_key: api_key,
-            posthog_api_endpoint: api_endpoint,
+            posthog_api_key: api_key.to_string(),
+            posthog_api_endpoint: api_endpoint.to_string(),
             enabled,
         }
     }

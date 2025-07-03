@@ -160,7 +160,7 @@ impl Default for Config {
             push_notifications: true,
             editor: EditorConfig::default(),
             github: GitHubConfig::default(),
-            analytics_enabled: Some(false),
+            analytics_enabled: Some(true),
         }
     }
 }

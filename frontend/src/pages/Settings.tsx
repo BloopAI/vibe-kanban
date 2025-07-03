@@ -439,7 +439,7 @@ export function Settings() {
                 />
                 <div className="space-y-0.5">
                   <Label htmlFor="analytics-enabled" className="cursor-pointer">
-                    Enable Anonymous Analytics
+                    Enable Telemetry
                   </Label>
                   <p className="text-sm text-muted-foreground">
                     Enables anonymous usage events tracking to help improve the

@@ -199,6 +199,8 @@ jobs:
           cargo build --release --target ${{ matrix.target }} --bin mcp_task_server
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && 'aarch64-linux-gnu-gcc' || '' }}
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
 
       - name: Setup Sentry CLI
         uses: matbour/setup-sentry-cli@v2
