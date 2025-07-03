@@ -825,7 +825,7 @@ export function TaskDetailsToolbar({
                           {branchStatus.is_behind === true && !branchStatus.merged && (
                             <Button
                               onClick={handleRebaseClick}
-                              disabled={rebasing || branchStatusLoading}
+                              disabled={rebasing || branchStatusLoading || isAttemptRunning}
                               variant="outline"
                               size="sm"
                               className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1"
@@ -844,7 +844,8 @@ export function TaskDetailsToolbar({
                                 onClick={handleCreatePRClick}
                                 disabled={
                                   creatingPR ||
-                                  Boolean(branchStatus.is_behind)
+                                  Boolean(branchStatus.is_behind) ||
+                                  isAttemptRunning
                                 }
                                 variant="outline"
                                 size="sm"
@@ -857,7 +858,8 @@ export function TaskDetailsToolbar({
                                 onClick={handleMergeClick}
                                 disabled={
                                   merging ||
-                                  Boolean(branchStatus.is_behind)
+                                  Boolean(branchStatus.is_behind) ||
+                                  isAttemptRunning
                                 }
                                 size="sm"
                                 className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"
