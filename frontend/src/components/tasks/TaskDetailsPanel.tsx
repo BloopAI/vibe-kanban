@@ -221,6 +221,20 @@ export function TaskDetailsPanel({
     }
   };
 
+  const getLineNumberClassName = (chunkType: DiffChunkType) => {
+    const baseClass = 'flex-shrink-0 w-16 px-2 text-xs border-r select-none';
+
+    switch (chunkType) {
+      case 'Insert':
+        return `${baseClass} text-green-700 dark:text-green-200 bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-600`;
+      case 'Delete':
+        return `${baseClass} text-red-700 dark:text-red-200 bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-600`;
+      case 'Equal':
+      default:
+        return `${baseClass} text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700`;
+    }
+  };
+
   const getChunkPrefix = (chunkType: DiffChunkType) => {
     switch (chunkType) {
       case 'Insert':
@@ -558,7 +572,7 @@ export function TaskDetailsPanel({
                                         key={`${sectionIndex}-${lineIndex}`}
                                         className={getChunkClassName(line.chunkType)}
                                       >
-                                        <div className="flex-shrink-0 w-16 px-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 select-none">
+                                        <div className={getLineNumberClassName(line.chunkType)}>
                                           <span className="inline-block w-6 text-right">
                                             {line.oldLineNumber || ''}
                                           </span>
