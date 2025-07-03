@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { TaskDetailsHeader } from './TaskDetailsHeader';
 import { TaskDetailsToolbar } from './TaskDetailsToolbar';
-import { TaskActivityHistory } from './TaskActivityHistory';
+import { NormalizedConversationViewer } from './NormalizedConversationViewer';
 import { TaskFollowUpSection } from './TaskFollowUpSection';
 import { EditorSelectionDialog } from './EditorSelectionDialog';
 import { useTaskDetails } from '@/hooks/useTaskDetails';
@@ -10,7 +10,6 @@ import {
   getBackdropClasses,
 } from '@/lib/responsive-config';
 import { makeRequest } from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -25,8 +24,6 @@ import {
   ChevronDown,
   ChevronUp,
   Trash2,
-  Eye,
-  EyeOff,
 } from 'lucide-react';
 import type { 
   TaskWithAttemptStatus, 
@@ -88,7 +85,6 @@ export function TaskDetailsPanel({
   const [diffLoading, setDiffLoading] = useState(true);
   const [diffError, setDiffError] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
-  const [showAllUnchanged, setShowAllUnchanged] = useState(false);
   const [deletingFiles, setDeletingFiles] = useState<Set<string>>(new Set());
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
 
@@ -294,8 +290,7 @@ export function TaskDetailsPanel({
 
         if (
           contextLength <= CONTEXT_LINES * 2 ||
-          (!hasPrevChange && !hasNextChange) ||
-          showAllUnchanged
+          (!hasPrevChange && !hasNextChange)
         ) {
           sections.push({
             type: 'context',
@@ -316,8 +311,7 @@ export function TaskDetailsPanel({
 
             if (expandEnd > expandStart) {
               const expandKey = `${fileIndex}-${expandStart}-${expandEnd}`;
-              const isExpanded =
-                expandedSections.has(expandKey) || showAllUnchanged;
+              const isExpanded = expandedSections.has(expandKey);
 
               if (isExpanded) {
                 sections.push({
@@ -470,189 +464,149 @@ export function TaskDetailsPanel({
               {/* Main Content - Split into two sections */}
               <div className="flex-1 flex flex-col min-h-0">
                 {/* Top 2/3 - Code Changes */}
-                <div className="flex-1 min-h-0 p-6">
-                  <Card className="h-full flex flex-col">
-                    <CardHeader className="flex-shrink-0">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="text-lg">Code Changes</CardTitle>
-                          <p className="text-sm text-muted-foreground">
-                            Changes made in this task attempt
-                          </p>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowAllUnchanged(!showAllUnchanged)}
-                          className="flex items-center gap-2"
+                <div className="flex-1 min-h-0 p-6 overflow-y-auto">
+                  {diffLoading ? (
+                    <div className="flex items-center justify-center h-32">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
+                      <p className="text-muted-foreground ml-4">Loading changes...</p>
+                    </div>
+                  ) : diffError ? (
+                    <div className="text-center py-8 text-destructive">
+                      <p>{diffError}</p>
+                    </div>
+                  ) : !diff || diff.files.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No changes detected</p>
+                      <p className="text-sm">
+                        The worktree is identical to the base commit
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {diff.files.map((file, fileIndex) => (
+                        <div
+                          key={fileIndex}
+                          className="border rounded-lg overflow-hidden"
                         >
-                          {showAllUnchanged ? (
-                            <>
-                              <EyeOff className="h-4 w-4" />
-                              Hide Unchanged
-                            </>
-                          ) : (
-                            <>
-                              <Eye className="h-4 w-4" />
-                              Show All Unchanged
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="flex-1 overflow-y-auto min-h-0">
-                      {diffLoading ? (
-                        <div className="flex items-center justify-center h-32">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
-                          <p className="text-muted-foreground ml-4">Loading changes...</p>
-                        </div>
-                      ) : diffError ? (
-                        <div className="text-center py-8 text-destructive">
-                          <p>{diffError}</p>
-                        </div>
-                      ) : !diff || diff.files.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                          <p>No changes detected</p>
-                          <p className="text-sm">
-                            The worktree is identical to the base commit
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="space-y-6">
-                          {diff.files.map((file, fileIndex) => (
-                            <div
-                              key={fileIndex}
-                              className="border rounded-lg overflow-hidden"
+                          <div className="bg-muted px-3 py-2 border-b flex items-center justify-between">
+                            <p className="text-sm font-medium text-muted-foreground font-mono">
+                              {file.path}
+                            </p>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteFileClick(file.path)}
+                              disabled={deletingFiles.has(file.path)}
+                              className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 px-3 gap-1"
+                              title={`Delete ${file.path}`}
                             >
-                              <div className="bg-muted px-3 py-2 border-b flex items-center justify-between">
-                                <p className="text-sm font-medium text-muted-foreground font-mono">
-                                  {file.path}
-                                </p>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteFileClick(file.path)}
-                                  disabled={deletingFiles.has(file.path)}
-                                  className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 px-3 gap-1"
-                                  title={`Delete ${file.path}`}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                  <span className="text-xs">
-                                    {deletingFiles.has(file.path)
-                                      ? 'Deleting...'
-                                      : 'Delete File'}
-                                  </span>
-                                </Button>
-                              </div>
-                              <div className="max-h-[400px] overflow-y-auto">
-                                {processFileChunks(file.chunks, fileIndex).map(
-                                  (section, sectionIndex) => {
-                                    if (
-                                      section.type === 'context' &&
-                                      section.lines.length === 0 &&
-                                      section.expandKey &&
-                                      !showAllUnchanged
-                                    ) {
-                                      const lineCount =
-                                        parseInt(section.expandKey.split('-')[2]) -
-                                        parseInt(section.expandKey.split('-')[1]);
-                                      return (
-                                        <div key={`expand-${section.expandKey}`}>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() =>
-                                              toggleExpandSection(section.expandKey!)
-                                            }
-                                            className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none"
-                                          >
-                                            <ChevronDown className="h-3 w-3 mr-1" />
-                                            Show {lineCount} more lines
-                                          </Button>
-                                        </div>
-                                      );
-                                    }
+                              <Trash2 className="h-4 w-4" />
+                              <span className="text-xs">
+                                {deletingFiles.has(file.path)
+                                  ? 'Deleting...'
+                                  : 'Delete File'}
+                              </span>
+                            </Button>
+                          </div>
+                          <div className="max-h-[400px] overflow-y-auto">
+                            {processFileChunks(file.chunks, fileIndex).map(
+                              (section, sectionIndex) => {
+                                if (
+                                  section.type === 'context' &&
+                                  section.lines.length === 0 &&
+                                  section.expandKey
+                                ) {
+                                  const lineCount =
+                                    parseInt(section.expandKey.split('-')[2]) -
+                                    parseInt(section.expandKey.split('-')[1]);
+                                  return (
+                                    <div key={`expand-${section.expandKey}`}>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                          toggleExpandSection(section.expandKey!)
+                                        }
+                                        className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none"
+                                      >
+                                        <ChevronDown className="h-3 w-3 mr-1" />
+                                        Show {lineCount} more lines
+                                      </Button>
+                                    </div>
+                                  );
+                                }
 
-                                    return (
-                                      <div key={`section-${sectionIndex}`}>
-                                        {section.type === 'expanded' &&
-                                          section.expandKey &&
-                                          !showAllUnchanged && (
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() =>
-                                                toggleExpandSection(section.expandKey!)
-                                              }
-                                              className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none"
-                                            >
-                                              <ChevronUp className="h-3 w-3 mr-1" />
-                                              Hide expanded lines
-                                            </Button>
-                                          )}
-                                        {section.lines.map((line, lineIndex) => (
-                                          <div
-                                            key={`${sectionIndex}-${lineIndex}`}
-                                            className={getChunkClassName(line.chunkType)}
-                                          >
-                                            <div className="flex-shrink-0 w-16 px-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 select-none">
-                                              <span className="inline-block w-6 text-right">
-                                                {line.oldLineNumber || ''}
-                                              </span>
-                                              <span className="inline-block w-6 text-right ml-1">
-                                                {line.newLineNumber || ''}
-                                              </span>
-                                            </div>
-                                            <div className="flex-1 px-3">
-                                              <span className="inline-block w-4">
-                                                {getChunkPrefix(line.chunkType)}
-                                              </span>
-                                              <span>{line.content}</span>
-                                            </div>
-                                          </div>
-                                        ))}
+                                return (
+                                  <div key={`section-${sectionIndex}`}>
+                                    {section.type === 'expanded' &&
+                                      section.expandKey && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() =>
+                                            toggleExpandSection(section.expandKey!)
+                                          }
+                                          className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none"
+                                        >
+                                          <ChevronUp className="h-3 w-3 mr-1" />
+                                          Hide expanded lines
+                                        </Button>
+                                      )}
+                                    {section.lines.map((line, lineIndex) => (
+                                      <div
+                                        key={`${sectionIndex}-${lineIndex}`}
+                                        className={getChunkClassName(line.chunkType)}
+                                      >
+                                        <div className="flex-shrink-0 w-16 px-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 select-none">
+                                          <span className="inline-block w-6 text-right">
+                                            {line.oldLineNumber || ''}
+                                          </span>
+                                          <span className="inline-block w-6 text-right ml-1">
+                                            {line.newLineNumber || ''}
+                                          </span>
+                                        </div>
+                                        <div className="flex-1 px-3">
+                                          <span className="inline-block w-4">
+                                            {getChunkPrefix(line.chunkType)}
+                                          </span>
+                                          <span>{line.content}</span>
+                                        </div>
                                       </div>
-                                    );
-                                  }
-                                )}
-                              </div>
-                            </div>
-                          ))}
+                                    ))}
+                                  </div>
+                                );
+                              }
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Bottom 1/3 - Agent Logs */}
                 <div className="h-1/3 min-h-0 border-t bg-muted/30">
-                  <div className="h-full flex flex-col">
-                    <div className="flex-shrink-0 px-6 py-3 border-b bg-background">
-                      <h3 className="text-lg font-semibold">Agent Logs</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Activity history and coding agent output
-                      </p>
-                    </div>
-                    <div
-                      ref={scrollContainerRef}
-                      onScroll={handleLogsScroll}
-                      className="flex-1 overflow-y-auto p-6"
-                    >
-                      {loading ? (
-                        <div className="text-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
-                          <p className="text-muted-foreground">Loading...</p>
-                        </div>
-                      ) : (
-                        <TaskActivityHistory
-                          selectedAttempt={selectedAttempt}
-                          activities={attemptData.activities}
-                          runningProcessDetails={attemptData.runningProcessDetails}
-                          projectId={projectId}
-                        />
-                      )}
-                    </div>
+                  <div
+                    ref={scrollContainerRef}
+                    onScroll={handleLogsScroll}
+                    className="h-full overflow-y-auto p-6"
+                  >
+                    {loading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
+                        <p className="text-muted-foreground">Loading...</p>
+                      </div>
+                    ) : selectedAttempt && attemptData.runningProcessDetails && Object.keys(attemptData.runningProcessDetails).length > 0 ? (
+                      <NormalizedConversationViewer
+                        executionProcess={Object.values(attemptData.runningProcessDetails)[0]}
+                        projectId={projectId}
+                      />
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p>No active conversation to display</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
