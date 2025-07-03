@@ -194,9 +194,6 @@ jobs:
       - name: Upload source maps to Sentry
         run: |
           sentry-cli debug-files upload \
-          --org $SENTRY_ORG \
-          --project $SENTRY_PROJECT \
-          --release ${{ needs.bump-version.outputs.new_version }}
           --include-sources \
           target/${{ matrix.target }}/release
 
