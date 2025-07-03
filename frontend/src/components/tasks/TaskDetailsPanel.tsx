@@ -258,7 +258,7 @@ export function TaskDetailsPanel({
   };
 
   const getLineNumberClassName = (chunkType: DiffChunkType) => {
-    const baseClass = 'flex-shrink-0 w-16 px-2 text-xs border-r select-none min-h-[1.75rem] flex items-center';
+    const baseClass = 'flex-shrink-0 w-12 px-1.5 text-xs border-r select-none min-h-[1.25rem] flex items-center';
 
     switch (chunkType) {
       case 'Insert':
@@ -628,7 +628,7 @@ export function TaskDetailsPanel({
       return (
         <>
           {/* Top 2/3 - Code Changes */}
-          <div className="flex-1 min-h-0 p-6 overflow-y-auto">
+          <div className="flex-1 min-h-0 p-4 overflow-y-auto">
             {diffLoading ? (
               <div className="flex items-center justify-center h-32">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
@@ -647,13 +647,13 @@ export function TaskDetailsPanel({
                 </p>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-3">
                 {diff.files.map((file, fileIndex) => (
                   <div
                     key={fileIndex}
                     className="border rounded-lg overflow-hidden"
                   >
-                    <div className="bg-muted px-3 py-2 border-b flex items-center justify-between">
+                    <div className="bg-muted px-3 py-1.5 border-b flex items-center justify-between">
                       <p className="text-sm font-medium text-muted-foreground font-mono">
                         {file.path}
                       </p>
@@ -693,7 +693,7 @@ export function TaskDetailsPanel({
                                     onClick={() =>
                                       toggleExpandSection(section.expandKey!)
                                     }
-                                    className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none justify-start"
+                                    className="w-full h-6 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none justify-start"
                                   >
                                     <ChevronDown className="h-3 w-3 mr-1" />
                                     Show {lineCount} more lines
@@ -713,7 +713,7 @@ export function TaskDetailsPanel({
                                         onClick={() =>
                                           toggleExpandSection(section.expandKey!)
                                         }
-                                        className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none justify-start"
+                                        className="w-full h-6 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none justify-start"
                                       >
                                         <ChevronUp className="h-3 w-3 mr-1" />
                                         Hide expanded lines
@@ -727,14 +727,14 @@ export function TaskDetailsPanel({
                                     style={{ minWidth: 'max-content' }}
                                   >
                                     <div className={getLineNumberClassName(line.chunkType)}>
-                                      <span className="inline-block w-6 text-right">
-                                        {line.oldLineNumber || ''}
+                                      <span className="inline-block w-5 text-right">
+                                      {line.oldLineNumber || ''}
                                       </span>
-                                      <span className="inline-block w-6 text-right ml-1">
-                                        {line.newLineNumber || ''}
+                                      <span className="inline-block w-5 text-right ml-1">
+                                      {line.newLineNumber || ''}
                                       </span>
                                     </div>
-                                    <div className="flex-1 px-3 min-h-[1.75rem] flex items-center">
+                                    <div className="flex-1 px-2 min-h-[1.25rem] flex items-center">
                                       <span className="inline-block w-4">
                                         {getChunkPrefix(line.chunkType)}
                                       </span>
@@ -759,7 +759,7 @@ export function TaskDetailsPanel({
             <div
               ref={scrollContainerRef}
               onScroll={handleLogsScroll}
-              className="h-full overflow-y-auto p-6"
+              className="h-full overflow-y-auto p-4"
             >
               {loading ? (
                 <div className="text-center py-8">
