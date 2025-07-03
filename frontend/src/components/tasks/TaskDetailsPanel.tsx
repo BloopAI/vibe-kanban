@@ -208,7 +208,7 @@ export function TaskDetailsPanel({
 
   // Diff processing functions
   const getChunkClassName = (chunkType: DiffChunkType) => {
-    const baseClass = 'font-mono text-sm whitespace-nowrap flex w-full';
+    const baseClass = 'font-mono text-sm whitespace-pre flex w-full';
 
     switch (chunkType) {
       case 'Insert':
