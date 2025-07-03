@@ -586,9 +586,9 @@ export function TaskDetailsPanel({
                 
                 if (mainCodingAgentProcess || followUpProcesses.length > 0) {
                   return (
-                    <div className="space-y-0">
+                    <div className="space-y-8">
                       {mainCodingAgentProcess && (
-                        <div className="pb-6">
+                        <div>
                           <NormalizedConversationViewer
                             executionProcess={mainCodingAgentProcess}
                             projectId={projectId}
@@ -596,18 +596,14 @@ export function TaskDetailsPanel({
                           />
                         </div>
                       )}
-                      {followUpProcesses.map((followUpProcess, index) => (
+                      {followUpProcesses.map((followUpProcess) => (
                         <div key={followUpProcess.id}>
-                          {(mainCodingAgentProcess || index > 0) && (
-                            <div className="border-t border-border"></div>
-                          )}
-                          <div className="pt-6">
-                            <NormalizedConversationViewer
-                              executionProcess={followUpProcess}
-                              projectId={projectId}
-                              onConversationUpdate={handleConversationUpdate}
-                            />
-                          </div>
+                          <div className="border-t border-border mb-8"></div>
+                          <NormalizedConversationViewer
+                            executionProcess={followUpProcess}
+                            projectId={projectId}
+                            onConversationUpdate={handleConversationUpdate}
+                          />
                         </div>
                       ))}
                     </div>
@@ -812,9 +808,9 @@ export function TaskDetailsPanel({
                   
                   if (mainCodingAgentProcess || followUpProcesses.length > 0) {
                     return (
-                      <div className="space-y-0">
+                      <div className="space-y-8">
                         {mainCodingAgentProcess && (
-                          <div className="pb-6">
+                          <div>
                             <NormalizedConversationViewer
                               executionProcess={mainCodingAgentProcess}
                               projectId={projectId}
@@ -822,18 +818,14 @@ export function TaskDetailsPanel({
                             />
                           </div>
                         )}
-                        {followUpProcesses.map((followUpProcess, index) => (
+                        {followUpProcesses.map((followUpProcess) => (
                           <div key={followUpProcess.id}>
-                            {(mainCodingAgentProcess || index > 0) && (
-                              <div className="border-t border-border"></div>
-                            )}
-                            <div className="pt-6">
-                              <NormalizedConversationViewer
-                                executionProcess={followUpProcess}
-                                projectId={projectId}
-                                onConversationUpdate={handleConversationUpdate}
-                              />
-                            </div>
+                            <div className="border-t border-border mb-8"></div>
+                            <NormalizedConversationViewer
+                              executionProcess={followUpProcess}
+                              projectId={projectId}
+                              onConversationUpdate={handleConversationUpdate}
+                            />
                           </div>
                         ))}
                       </div>

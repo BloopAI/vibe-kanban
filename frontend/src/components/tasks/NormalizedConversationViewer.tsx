@@ -180,7 +180,7 @@ export function NormalizedConversationViewer({
     <div>
       {/* Display prompt if available */}
       {conversation.prompt && (
-        <div className="flex items-start gap-3 mb-4">
+        <div className="flex items-start gap-3 mb-6">
           <div className="flex-shrink-0 mt-1">
             <Hammer className="h-4 w-4 text-blue-600" />
           </div>
@@ -190,11 +190,6 @@ export function NormalizedConversationViewer({
             </div>
           </div>
         </div>
-      )}
-      
-      {/* Horizontal divider with proper spacing */}
-      {conversation.prompt && conversation.entries.length > 0 && (
-        <div className="border-t border-border mb-6"></div>
       )}
       
       {/* Display conversation entries */}
