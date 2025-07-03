@@ -166,12 +166,17 @@ export function TaskDetailsPanel({
     const isCodingAgentRunning = executionState.execution_state === 'CodingAgentRunning';
     
     if (isCodingAgentRunning) {
-      // Refresh diff every 3 seconds when coding agent is active
+      // Immediately refresh diff when coding agent starts running
+      fetchDiff();
+      
+      // Then refresh diff every 2 seconds while coding agent is active
       const interval = setInterval(() => {
         fetchDiff();
-      }, 3000);
+      }, 2000);
       
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+      };
     }
   }, [executionState, isOpen, selectedAttempt, fetchDiff]);
 
@@ -497,7 +502,12 @@ export function TaskDetailsPanel({
                 </div>
                 <div className="bg-black text-green-400 p-4 font-mono text-sm max-h-96 overflow-y-auto">
                   <pre className="whitespace-pre-wrap">
-                    {setupProcess.stdout || setupProcess.stderr || 'No output yet...'}
+                    {(() => {
+                      const stdout = setupProcess.stdout || '';
+                      const stderr = setupProcess.stderr || '';
+                      const combined = [stdout, stderr].filter(Boolean).join('\n');
+                      return combined || 'No output yet...';
+                    })()}
                   </pre>
                 </div>
               </div>
