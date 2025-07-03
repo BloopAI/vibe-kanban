@@ -19,15 +19,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  FileText,
-  ChevronDown,
-  ChevronUp,
-  Trash2,
-} from 'lucide-react';
-import type { 
-  TaskWithAttemptStatus, 
-  EditorType, 
+import { FileText, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import type {
+  TaskWithAttemptStatus,
+  EditorType,
   Project,
   WorktreeDiff,
   DiffChunkType,
@@ -81,12 +76,14 @@ export function TaskDetailsPanel({
   const [conversationUpdateTrigger, setConversationUpdateTrigger] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const setupScrollRef = useRef<HTMLDivElement>(null);
-  
+
   // Diff-related state
   const [diff, setDiff] = useState<WorktreeDiff | null>(null);
   const [diffLoading, setDiffLoading] = useState(true);
   const [diffError, setDiffError] = useState<string | null>(null);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    new Set()
+  );
   const [deletingFiles, setDeletingFiles] = useState<Set<string>>(new Set());
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
 
@@ -163,18 +160,19 @@ export function TaskDetailsPanel({
   // Refresh diff when coding agent is running and making changes
   useEffect(() => {
     if (!executionState || !isOpen || !selectedAttempt) return;
-    
-    const isCodingAgentRunning = executionState.execution_state === 'CodingAgentRunning';
-    
+
+    const isCodingAgentRunning =
+      executionState.execution_state === 'CodingAgentRunning';
+
     if (isCodingAgentRunning) {
       // Immediately refresh diff when coding agent starts running
       fetchDiff();
-      
+
       // Then refresh diff every 2 seconds while coding agent is active
       const interval = setInterval(() => {
         fetchDiff();
       }, 2000);
-      
+
       return () => {
         clearInterval(interval);
       };
@@ -199,7 +197,7 @@ export function TaskDetailsPanel({
 
   // Callback to trigger auto-scroll when conversation updates
   const handleConversationUpdate = useCallback(() => {
-    setConversationUpdateTrigger(prev => prev + 1);
+    setConversationUpdateTrigger((prev) => prev + 1);
   }, []);
 
   // Auto-scroll to bottom when activities, execution processes, or conversation changes (for logs section)
@@ -208,7 +206,12 @@ export function TaskDetailsPanel({
       scrollContainerRef.current.scrollTop =
         scrollContainerRef.current.scrollHeight;
     }
-  }, [attemptData.activities, attemptData.processes, conversationUpdateTrigger, shouldAutoScrollLogs]);
+  }, [
+    attemptData.activities,
+    attemptData.processes,
+    conversationUpdateTrigger,
+    shouldAutoScrollLogs,
+  ]);
 
   // Auto-scroll setup script logs to bottom
   useEffect(() => {
@@ -258,7 +261,8 @@ export function TaskDetailsPanel({
   };
 
   const getLineNumberClassName = (chunkType: DiffChunkType) => {
-    const baseClass = 'flex-shrink-0 w-12 px-1.5 text-xs border-r select-none min-h-[1.25rem] flex items-center';
+    const baseClass =
+      'flex-shrink-0 w-12 px-1.5 text-xs border-r select-none min-h-[1.25rem] flex items-center';
 
     switch (chunkType) {
       case 'Insert':
@@ -427,7 +431,8 @@ export function TaskDetailsPanel({
   };
 
   const handleConfirmDelete = async () => {
-    if (!fileToDelete || !projectId || !task?.id || !selectedAttempt?.id) return;
+    if (!fileToDelete || !projectId || !task?.id || !selectedAttempt?.id)
+      return;
 
     try {
       setDeletingFiles((prev) => new Set(prev).add(fileToDelete));
@@ -480,28 +485,33 @@ export function TaskDetailsPanel({
 
     const isSetupRunning = executionState.execution_state === 'SetupRunning';
     const isSetupFailed = executionState.execution_state === 'SetupFailed';
-    const isCodingAgentRunning = executionState.execution_state === 'CodingAgentRunning';
-    const isCodingAgentComplete = executionState.execution_state === 'CodingAgentComplete';
+    const isCodingAgentRunning =
+      executionState.execution_state === 'CodingAgentRunning';
+    const isCodingAgentComplete =
+      executionState.execution_state === 'CodingAgentComplete';
     const hasChanges = executionState.has_changes;
 
     // When setup script is running, show setup execution stdio
     if (isSetupRunning) {
       // Find the setup script process in runningProcessDetails first, then fallback to processes
-      const setupProcess = executionState.setup_process_id 
+      const setupProcess = executionState.setup_process_id
         ? attemptData.runningProcessDetails[executionState.setup_process_id]
         : Object.values(attemptData.runningProcessDetails).find(
-            process => process.process_type === 'setupscript'
+            (process) => process.process_type === 'setupscript'
           );
 
       return (
-        <div className="flex-1 min-h-0 p-6 overflow-y-auto" ref={setupScrollRef}>
+        <div
+          className="flex-1 min-h-0 p-6 overflow-y-auto"
+          ref={setupScrollRef}
+        >
           <div className="mb-4">
             <p className="text-lg font-semibold mb-2">Setup Script Running</p>
             <p className="text-muted-foreground mb-4">
               Preparing the environment for the coding agent...
             </p>
           </div>
-          
+
           {setupProcess && (
             <div className="font-mono text-sm whitespace-pre-wrap text-muted-foreground">
               {(() => {
@@ -544,22 +554,31 @@ export function TaskDetailsPanel({
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
                 <p className="text-muted-foreground">Loading...</p>
               </div>
-            ) : (() => {
+            ) : (
+              (() => {
                 // Find main coding agent process (command: "executor")
-                let mainCodingAgentProcess = Object.values(attemptData.runningProcessDetails).find(
-                  process => process.process_type === 'codingagent' && process.command === 'executor'
+                let mainCodingAgentProcess = Object.values(
+                  attemptData.runningProcessDetails
+                ).find(
+                  (process) =>
+                    process.process_type === 'codingagent' &&
+                    process.command === 'executor'
                 );
-                
+
                 if (!mainCodingAgentProcess) {
                   const mainCodingAgentSummary = attemptData.processes.find(
-                    process => process.process_type === 'codingagent' && process.command === 'executor'
+                    (process) =>
+                      process.process_type === 'codingagent' &&
+                      process.command === 'executor'
                   );
-                  
+
                   if (mainCodingAgentSummary) {
-                    mainCodingAgentProcess = Object.values(attemptData.runningProcessDetails).find(
-                      process => process.id === mainCodingAgentSummary.id
+                    mainCodingAgentProcess = Object.values(
+                      attemptData.runningProcessDetails
+                    ).find(
+                      (process) => process.id === mainCodingAgentSummary.id
                     );
-                    
+
                     if (!mainCodingAgentProcess) {
                       mainCodingAgentProcess = {
                         ...mainCodingAgentSummary,
@@ -572,18 +591,25 @@ export function TaskDetailsPanel({
 
                 // Find follow up executor processes (command: "followup_executor")
                 const followUpProcesses = attemptData.processes
-                  .filter(process => process.process_type === 'codingagent' && process.command === 'followup_executor')
-                  .map(summary => {
-                    const detailedProcess = Object.values(attemptData.runningProcessDetails).find(
-                      process => process.id === summary.id
+                  .filter(
+                    (process) =>
+                      process.process_type === 'codingagent' &&
+                      process.command === 'followup_executor'
+                  )
+                  .map((summary) => {
+                    const detailedProcess = Object.values(
+                      attemptData.runningProcessDetails
+                    ).find((process) => process.id === summary.id);
+                    return (
+                      detailedProcess ||
+                      ({
+                        ...summary,
+                        stdout: null,
+                        stderr: null,
+                      } as any)
                     );
-                    return detailedProcess || {
-                      ...summary,
-                      stdout: null,
-                      stderr: null,
-                    } as any;
                   });
-                
+
                 if (mainCodingAgentProcess || followUpProcesses.length > 0) {
                   return (
                     <div className="space-y-8">
@@ -609,15 +635,18 @@ export function TaskDetailsPanel({
                     </div>
                   );
                 }
-                
+
                 return (
                   <div className="text-center py-8 text-muted-foreground">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                    <p className="text-lg font-semibold mb-2">Coding Agent Starting</p>
+                    <p className="text-lg font-semibold mb-2">
+                      Coding Agent Starting
+                    </p>
                     <p>Initializing conversation...</p>
                   </div>
                 );
-              })()}
+              })()
+            )}
           </div>
         </div>
       );
@@ -686,7 +715,10 @@ export function TaskDetailsPanel({
                                 parseInt(section.expandKey.split('-')[2]) -
                                 parseInt(section.expandKey.split('-')[1]);
                               return (
-                                <div key={`expand-${section.expandKey}`} className="w-full">
+                                <div
+                                  key={`expand-${section.expandKey}`}
+                                  className="w-full"
+                                >
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -711,7 +743,9 @@ export function TaskDetailsPanel({
                                         variant="ghost"
                                         size="sm"
                                         onClick={() =>
-                                          toggleExpandSection(section.expandKey!)
+                                          toggleExpandSection(
+                                            section.expandKey!
+                                          )
                                         }
                                         className="w-full h-6 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none justify-start"
                                       >
@@ -723,15 +757,21 @@ export function TaskDetailsPanel({
                                 {section.lines.map((line, lineIndex) => (
                                   <div
                                     key={`${sectionIndex}-${lineIndex}`}
-                                    className={getChunkClassName(line.chunkType)}
+                                    className={getChunkClassName(
+                                      line.chunkType
+                                    )}
                                     style={{ minWidth: 'max-content' }}
                                   >
-                                    <div className={getLineNumberClassName(line.chunkType)}>
+                                    <div
+                                      className={getLineNumberClassName(
+                                        line.chunkType
+                                      )}
+                                    >
                                       <span className="inline-block w-5 text-right">
-                                      {line.oldLineNumber || ''}
+                                        {line.oldLineNumber || ''}
                                       </span>
                                       <span className="inline-block w-5 text-right ml-1">
-                                      {line.newLineNumber || ''}
+                                        {line.newLineNumber || ''}
                                       </span>
                                     </div>
                                     <div className="flex-1 px-2 min-h-[1.25rem] flex items-center">
@@ -766,22 +806,31 @@ export function TaskDetailsPanel({
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
                   <p className="text-muted-foreground">Loading...</p>
                 </div>
-              ) : (() => {
+              ) : (
+                (() => {
                   // Find main coding agent process (command: "executor")
-                  let mainCodingAgentProcess = Object.values(attemptData.runningProcessDetails).find(
-                    process => process.process_type === 'codingagent' && process.command === 'executor'
+                  let mainCodingAgentProcess = Object.values(
+                    attemptData.runningProcessDetails
+                  ).find(
+                    (process) =>
+                      process.process_type === 'codingagent' &&
+                      process.command === 'executor'
                   );
-                  
+
                   if (!mainCodingAgentProcess) {
                     const mainCodingAgentSummary = attemptData.processes.find(
-                      process => process.process_type === 'codingagent' && process.command === 'executor'
+                      (process) =>
+                        process.process_type === 'codingagent' &&
+                        process.command === 'executor'
                     );
-                    
+
                     if (mainCodingAgentSummary) {
-                      mainCodingAgentProcess = Object.values(attemptData.runningProcessDetails).find(
-                        process => process.id === mainCodingAgentSummary.id
+                      mainCodingAgentProcess = Object.values(
+                        attemptData.runningProcessDetails
+                      ).find(
+                        (process) => process.id === mainCodingAgentSummary.id
                       );
-                      
+
                       if (!mainCodingAgentProcess) {
                         mainCodingAgentProcess = {
                           ...mainCodingAgentSummary,
@@ -794,18 +843,25 @@ export function TaskDetailsPanel({
 
                   // Find follow up executor processes (command: "followup_executor")
                   const followUpProcesses = attemptData.processes
-                    .filter(process => process.process_type === 'codingagent' && process.command === 'followup_executor')
-                    .map(summary => {
-                      const detailedProcess = Object.values(attemptData.runningProcessDetails).find(
-                        process => process.id === summary.id
+                    .filter(
+                      (process) =>
+                        process.process_type === 'codingagent' &&
+                        process.command === 'followup_executor'
+                    )
+                    .map((summary) => {
+                      const detailedProcess = Object.values(
+                        attemptData.runningProcessDetails
+                      ).find((process) => process.id === summary.id);
+                      return (
+                        detailedProcess ||
+                        ({
+                          ...summary,
+                          stdout: null,
+                          stderr: null,
+                        } as any)
                       );
-                      return detailedProcess || {
-                        ...summary,
-                        stdout: null,
-                        stderr: null,
-                      } as any;
                     });
-                  
+
                   if (mainCodingAgentProcess || followUpProcesses.length > 0) {
                     return (
                       <div className="space-y-8">
@@ -831,13 +887,14 @@ export function TaskDetailsPanel({
                       </div>
                     );
                   }
-                  
+
                   return (
                     <div className="text-center py-8 text-muted-foreground">
                       <p>No coding agent conversation to display</p>
                     </div>
                   );
-                })()}
+                })()
+              )}
             </div>
           </div>
         </>
@@ -928,20 +985,27 @@ export function TaskDetailsPanel({
           />
 
           {/* Delete File Confirmation Dialog */}
-          <Dialog open={!!fileToDelete} onOpenChange={() => handleCancelDelete()}>
+          <Dialog
+            open={!!fileToDelete}
+            onOpenChange={() => handleCancelDelete()}
+          >
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Delete File</DialogTitle>
                 <DialogDescription>
                   Are you sure you want to delete the file{' '}
-                  <span className="font-mono font-medium">"{fileToDelete}"</span>?
+                  <span className="font-mono font-medium">
+                    "{fileToDelete}"
+                  </span>
+                  ?
                 </DialogDescription>
               </DialogHeader>
               <div className="py-4">
                 <div className="bg-red-50 border border-red-200 rounded-md p-3">
                   <p className="text-sm text-red-800">
-                    <strong>Warning:</strong> This action will permanently remove
-                    the entire file from the worktree. This cannot be undone.
+                    <strong>Warning:</strong> This action will permanently
+                    remove the entire file from the worktree. This cannot be
+                    undone.
                   </p>
                 </div>
               </div>

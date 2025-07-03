@@ -1,19 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  User, 
-  Bot, 
-  Eye, 
-  Edit, 
-  Terminal, 
-  Search, 
-  Globe, 
-  Plus, 
+import {
+  User,
+  Bot,
+  Eye,
+  Edit,
+  Terminal,
+  Search,
+  Globe,
+  Plus,
   Settings,
   Brain,
-  Hammer
+  Hammer,
 } from 'lucide-react';
 import { makeRequest } from '@/lib/api';
-import type { NormalizedConversation, NormalizedEntryType, ExecutionProcess, ApiResponse } from 'shared/types';
+import type {
+  NormalizedConversation,
+  NormalizedEntryType,
+  ExecutionProcess,
+  ApiResponse,
+} from 'shared/types';
 
 interface NormalizedConversationViewerProps {
   executionProcess: ExecutionProcess;
@@ -59,71 +64,81 @@ const getEntryIcon = (entryType: NormalizedEntryType) => {
   return <Settings className="h-4 w-4 text-gray-400" />;
 };
 
-
 const getContentClassName = (entryType: NormalizedEntryType) => {
-  const baseClasses = "text-sm whitespace-pre-wrap break-words";
-  
-  if (entryType.type === 'tool_use' && entryType.action_type.action === 'command_run') {
+  const baseClasses = 'text-sm whitespace-pre-wrap break-words';
+
+  if (
+    entryType.type === 'tool_use' &&
+    entryType.action_type.action === 'command_run'
+  ) {
     return `${baseClasses} font-mono`;
   }
-  
+
   return baseClasses;
 };
 
-export function NormalizedConversationViewer({ 
-  executionProcess, 
+export function NormalizedConversationViewer({
+  executionProcess,
   projectId,
-  onConversationUpdate 
+  onConversationUpdate,
 }: NormalizedConversationViewerProps) {
-  const [conversation, setConversation] = useState<NormalizedConversation | null>(null);
+  const [conversation, setConversation] =
+    useState<NormalizedConversation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-
-
-  const fetchNormalizedLogs = useCallback(async (isPolling = false) => {
-    try {
-      if (!isPolling) {
-        setLoading(true);
-        setError(null);
-      }
-      
-      const response = await makeRequest(
-        `/api/projects/${projectId}/execution-processes/${executionProcess.id}/normalized-logs`
-      );
-      
-      if (response.ok) {
-        const result: ApiResponse<NormalizedConversation> = await response.json();
-        if (result.success && result.data) {
-          setConversation(prev => {
-            // Only update if content actually changed
-            if (!prev || JSON.stringify(prev) !== JSON.stringify(result.data)) {
-              // Notify parent component of conversation update
-              if (onConversationUpdate) {
-                // Use setTimeout to ensure state update happens first
-                setTimeout(onConversationUpdate, 0);
-              }
-              return result.data;
-            }
-            return prev;
-          });
-        } else if (!isPolling) {
-          setError(result.message || 'Failed to fetch normalized logs');
+  const fetchNormalizedLogs = useCallback(
+    async (isPolling = false) => {
+      try {
+        if (!isPolling) {
+          setLoading(true);
+          setError(null);
         }
-      } else if (!isPolling) {
-        const errorText = await response.text();
-        setError(`Failed to fetch logs: ${errorText || response.statusText}`);
+
+        const response = await makeRequest(
+          `/api/projects/${projectId}/execution-processes/${executionProcess.id}/normalized-logs`
+        );
+
+        if (response.ok) {
+          const result: ApiResponse<NormalizedConversation> =
+            await response.json();
+          if (result.success && result.data) {
+            setConversation((prev) => {
+              // Only update if content actually changed
+              if (
+                !prev ||
+                JSON.stringify(prev) !== JSON.stringify(result.data)
+              ) {
+                // Notify parent component of conversation update
+                if (onConversationUpdate) {
+                  // Use setTimeout to ensure state update happens first
+                  setTimeout(onConversationUpdate, 0);
+                }
+                return result.data;
+              }
+              return prev;
+            });
+          } else if (!isPolling) {
+            setError(result.message || 'Failed to fetch normalized logs');
+          }
+        } else if (!isPolling) {
+          const errorText = await response.text();
+          setError(`Failed to fetch logs: ${errorText || response.statusText}`);
+        }
+      } catch (err) {
+        if (!isPolling) {
+          setError(
+            `Error fetching logs: ${err instanceof Error ? err.message : 'Unknown error'}`
+          );
+        }
+      } finally {
+        if (!isPolling) {
+          setLoading(false);
+        }
       }
-    } catch (err) {
-      if (!isPolling) {
-        setError(`Error fetching logs: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      }
-    } finally {
-      if (!isPolling) {
-        setLoading(false);
-      }
-    }
-  }, [executionProcess.id, projectId, onConversationUpdate]);
+    },
+    [executionProcess.id, projectId, onConversationUpdate]
+  );
 
   // Initial fetch
   useEffect(() => {
@@ -141,8 +156,6 @@ export function NormalizedConversationViewer({
     }
   }, [executionProcess.status, fetchNormalizedLogs]);
 
-
-
   if (loading) {
     return (
       <div className="text-xs text-muted-foreground italic text-center">
@@ -152,11 +165,7 @@ export function NormalizedConversationViewer({
   }
 
   if (error) {
-    return (
-      <div className="text-xs text-red-600 text-center">
-        {error}
-      </div>
-    );
+    return <div className="text-xs text-red-600 text-center">{error}</div>;
   }
 
   if (!conversation || conversation.entries.length === 0) {
@@ -168,7 +177,7 @@ export function NormalizedConversationViewer({
         </div>
       );
     }
-    
+
     return (
       <div className="text-xs text-muted-foreground italic text-center">
         No conversation data available
@@ -191,7 +200,7 @@ export function NormalizedConversationViewer({
           </div>
         </div>
       )}
-      
+
       {/* Display conversation entries */}
       <div className="space-y-2">
         {conversation.entries.map((entry, index) => (

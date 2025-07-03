@@ -46,7 +46,9 @@ export function useTaskDetails(
   const [isHoveringDevServer, setIsHoveringDevServer] = useState(false);
   const [branches, setBranches] = useState<GitBranch[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
-  const [executionState, setExecutionState] = useState<TaskAttemptState | null>(null);
+  const [executionState, setExecutionState] = useState<TaskAttemptState | null>(
+    null
+  );
 
   // Find running dev server in current project
   const runningDevServer = useMemo(() => {
@@ -155,7 +157,7 @@ export function useTaskDetails(
             );
 
             const runningProcessDetails: Record<string, ExecutionProcess> = {};
-            
+
             // Fetch details for running activities
             for (const activity of runningActivities) {
               try {
@@ -351,7 +353,13 @@ export function useTaskDetails(
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [isAttemptRunning, task, selectedAttempt, fetchAttemptData, fetchExecutionState]);
+  }, [
+    isAttemptRunning,
+    task,
+    selectedAttempt,
+    fetchAttemptData,
+    fetchExecutionState,
+  ]);
 
   // Poll dev server details while hovering
   useEffect(() => {
