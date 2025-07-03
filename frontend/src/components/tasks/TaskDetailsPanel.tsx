@@ -473,12 +473,34 @@ export function TaskDetailsPanel({
 
   // Determine what content to show based on execution state
   const renderMainContent = (): JSX.Element => {
-    if (!executionState) {
-      // Still loading execution state, show loading
+    // Show loading spinner only when we're actually loading data
+    if (loading) {
       return (
         <div className="flex items-center justify-center h-full">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
           <p className="text-muted-foreground ml-4">Loading...</p>
+        </div>
+      );
+    }
+
+    // If no attempt is selected, show message
+    if (!selectedAttempt) {
+      return (
+        <div className="flex-1 min-h-0 p-6 overflow-y-auto">
+          <div className="text-center py-8 text-muted-foreground">
+            <p>No attempt selected</p>
+          </div>
+        </div>
+      );
+    }
+
+    // If no execution state, execution hasn't started yet
+    if (!executionState) {
+      return (
+        <div className="flex-1 min-h-0 p-6 overflow-y-auto">
+          <div className="text-center py-8 text-muted-foreground">
+            <p>Task execution not started yet</p>
+          </div>
         </div>
       );
     }
@@ -901,11 +923,11 @@ export function TaskDetailsPanel({
       );
     }
 
-    // Default case - execution hasn't started or no specific state
+    // Default case - unexpected state
     return (
       <div className="flex-1 min-h-0 p-6 overflow-y-auto">
         <div className="text-center py-8 text-muted-foreground">
-          <p>Task execution not started yet</p>
+          <p>Unknown execution state</p>
         </div>
       </div>
     );
