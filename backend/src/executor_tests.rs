@@ -19,7 +19,7 @@ mod tests {
             result.session_id,
             Some("T-f8f7fec0-b330-47ab-b63a-b72c42f1ef6a".to_string())
         );
-        assert!(result.entries.len() > 0);
+        assert!(!result.entries.is_empty());
 
         // Check that we have user message, assistant message, thinking, and tool use entries
         let user_messages: Vec<_> = result
@@ -27,28 +27,28 @@ mod tests {
             .iter()
             .filter(|e| matches!(e.entry_type, NormalizedEntryType::UserMessage))
             .collect();
-        assert!(user_messages.len() > 0);
+        assert!(!user_messages.is_empty());
 
         let assistant_messages: Vec<_> = result
             .entries
             .iter()
             .filter(|e| matches!(e.entry_type, NormalizedEntryType::AssistantMessage))
             .collect();
-        assert!(assistant_messages.len() > 0);
+        assert!(!assistant_messages.is_empty());
 
         let thinking_entries: Vec<_> = result
             .entries
             .iter()
             .filter(|e| matches!(e.entry_type, NormalizedEntryType::Thinking))
             .collect();
-        assert!(thinking_entries.len() > 0);
+        assert!(!thinking_entries.is_empty());
 
         let tool_uses: Vec<_> = result
             .entries
             .iter()
             .filter(|e| matches!(e.entry_type, NormalizedEntryType::ToolUse { .. }))
             .collect();
-        assert!(tool_uses.len() > 0);
+        assert!(!tool_uses.is_empty());
 
         // Check that tool use content is concise (not the old verbose format)
         let todo_tool_use = tool_uses.iter().find(|e| match &e.entry_type {
@@ -75,7 +75,7 @@ mod tests {
             result.session_id,
             Some("499dcce4-04aa-4a3e-9e0c-ea0228fa87c9".to_string())
         );
-        assert!(result.entries.len() > 0);
+        assert!(!result.entries.is_empty());
 
         // Check that we have system, assistant message, and tool use entries
         let system_messages: Vec<_> = result
@@ -83,21 +83,21 @@ mod tests {
             .iter()
             .filter(|e| matches!(e.entry_type, NormalizedEntryType::SystemMessage))
             .collect();
-        assert!(system_messages.len() > 0);
+        assert!(!system_messages.is_empty());
 
         let assistant_messages: Vec<_> = result
             .entries
             .iter()
             .filter(|e| matches!(e.entry_type, NormalizedEntryType::AssistantMessage))
             .collect();
-        assert!(assistant_messages.len() > 0);
+        assert!(!assistant_messages.is_empty());
 
         let tool_uses: Vec<_> = result
             .entries
             .iter()
             .filter(|e| matches!(e.entry_type, NormalizedEntryType::ToolUse { .. }))
             .collect();
-        assert!(tool_uses.len() > 0);
+        assert!(!tool_uses.is_empty());
 
         // Check that tool use content is concise (not the old verbose format)
         let task_tool_use = tool_uses.iter().find(|e| match &e.entry_type {
