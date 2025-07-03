@@ -563,7 +563,9 @@ export function TaskDetailsPanel({
       return (
         <div className="flex-1 min-h-0 p-6 overflow-y-auto">
           <div className="mb-4">
-            <p className="text-lg font-semibold mb-2 text-destructive">Setup Script Failed</p>
+            <p className="text-lg font-semibold mb-2 text-destructive">
+              Setup Script Failed
+            </p>
             <p className="text-muted-foreground mb-4">
               The setup script encountered an error. Error details below:
             </p>
@@ -586,7 +588,9 @@ export function TaskDetailsPanel({
     // When coding agent failed, show error message and stderr
     if (isCodingAgentFailed) {
       const codingAgentProcess = executionState.coding_agent_process_id
-        ? attemptData.runningProcessDetails[executionState.coding_agent_process_id]
+        ? attemptData.runningProcessDetails[
+            executionState.coding_agent_process_id
+          ]
         : Object.values(attemptData.runningProcessDetails).find(
             (process) => process.process_type === 'agent'
           );
@@ -594,7 +598,9 @@ export function TaskDetailsPanel({
       return (
         <div className="flex-1 min-h-0 p-6 overflow-y-auto">
           <div className="mb-4">
-            <p className="text-lg font-semibold mb-2 text-destructive">Coding Agent Failed</p>
+            <p className="text-lg font-semibold mb-2 text-destructive">
+              Coding Agent Failed
+            </p>
             <p className="text-muted-foreground mb-4">
               The coding agent encountered an error. Error details below:
             </p>
@@ -615,7 +621,13 @@ export function TaskDetailsPanel({
     }
 
     // When setup is complete but coding agent hasn't started, show waiting state
-    if (isSetupComplete && !isCodingAgentRunning && !isCodingAgentComplete && !isCodingAgentFailed && !hasChanges) {
+    if (
+      isSetupComplete &&
+      !isCodingAgentRunning &&
+      !isCodingAgentComplete &&
+      !isCodingAgentFailed &&
+      !hasChanges
+    ) {
       return (
         <div className="flex-1 min-h-0 p-6 overflow-y-auto">
           <div className="text-center py-8 text-muted-foreground">
