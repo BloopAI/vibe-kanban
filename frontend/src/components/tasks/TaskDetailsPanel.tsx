@@ -544,38 +544,75 @@ export function TaskDetailsPanel({
                 <p className="text-muted-foreground">Loading...</p>
               </div>
             ) : (() => {
-                // Find coding agent process (same logic as before)
-                let codingAgentProcess = Object.values(attemptData.runningProcessDetails).find(
-                  process => process.process_type === 'codingagent'
+                // Find main coding agent process (command: "executor")
+                let mainCodingAgentProcess = Object.values(attemptData.runningProcessDetails).find(
+                  process => process.process_type === 'codingagent' && process.command === 'executor'
                 );
                 
-                if (!codingAgentProcess) {
-                  const codingAgentSummary = attemptData.processes.find(
-                    process => process.process_type === 'codingagent'
+                if (!mainCodingAgentProcess) {
+                  const mainCodingAgentSummary = attemptData.processes.find(
+                    process => process.process_type === 'codingagent' && process.command === 'executor'
                   );
                   
-                  if (codingAgentSummary) {
-                    codingAgentProcess = Object.values(attemptData.runningProcessDetails).find(
-                      process => process.id === codingAgentSummary.id
+                  if (mainCodingAgentSummary) {
+                    mainCodingAgentProcess = Object.values(attemptData.runningProcessDetails).find(
+                      process => process.id === mainCodingAgentSummary.id
                     );
                     
-                    if (!codingAgentProcess) {
-                      codingAgentProcess = {
-                        ...codingAgentSummary,
+                    if (!mainCodingAgentProcess) {
+                      mainCodingAgentProcess = {
+                        ...mainCodingAgentSummary,
                         stdout: null,
                         stderr: null,
                       } as any;
                     }
                   }
                 }
+
+                // Find follow up executor processes (command: "followup_executor")
+                const followUpProcesses = attemptData.processes
+                  .filter(process => process.process_type === 'codingagent' && process.command === 'followup_executor')
+                  .map(summary => {
+                    const detailedProcess = Object.values(attemptData.runningProcessDetails).find(
+                      process => process.id === summary.id
+                    );
+                    return detailedProcess || {
+                      ...summary,
+                      stdout: null,
+                      stderr: null,
+                    } as any;
+                  });
                 
-                if (codingAgentProcess) {
+                if (mainCodingAgentProcess || followUpProcesses.length > 0) {
                   return (
-                    <NormalizedConversationViewer
-                      executionProcess={codingAgentProcess}
-                      projectId={projectId}
-                      onConversationUpdate={handleConversationUpdate}
-                    />
+                    <div className="space-y-6">
+                      {mainCodingAgentProcess && (
+                        <div>
+                          <NormalizedConversationViewer
+                            executionProcess={mainCodingAgentProcess}
+                            projectId={projectId}
+                            onConversationUpdate={handleConversationUpdate}
+                          />
+                        </div>
+                      )}
+                      {followUpProcesses.map((followUpProcess, index) => (
+                        <div key={followUpProcess.id} className="border-t pt-6">
+                          <div className="mb-4">
+                            <h3 className="text-lg font-semibold text-muted-foreground">
+                              Follow-up #{index + 1}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              Started: {new Date(followUpProcess.started_at).toLocaleString()}
+                            </p>
+                          </div>
+                          <NormalizedConversationViewer
+                            executionProcess={followUpProcess}
+                            projectId={projectId}
+                            onConversationUpdate={handleConversationUpdate}
+                          />
+                        </div>
+                      ))}
+                    </div>
                   );
                 }
                 
@@ -736,38 +773,75 @@ export function TaskDetailsPanel({
                   <p className="text-muted-foreground">Loading...</p>
                 </div>
               ) : (() => {
-                  // Same logic as before to find coding agent process
-                  let codingAgentProcess = Object.values(attemptData.runningProcessDetails).find(
-                    process => process.process_type === 'codingagent'
+                  // Find main coding agent process (command: "executor")
+                  let mainCodingAgentProcess = Object.values(attemptData.runningProcessDetails).find(
+                    process => process.process_type === 'codingagent' && process.command === 'executor'
                   );
                   
-                  if (!codingAgentProcess) {
-                    const codingAgentSummary = attemptData.processes.find(
-                      process => process.process_type === 'codingagent'
+                  if (!mainCodingAgentProcess) {
+                    const mainCodingAgentSummary = attemptData.processes.find(
+                      process => process.process_type === 'codingagent' && process.command === 'executor'
                     );
                     
-                    if (codingAgentSummary) {
-                      codingAgentProcess = Object.values(attemptData.runningProcessDetails).find(
-                        process => process.id === codingAgentSummary.id
+                    if (mainCodingAgentSummary) {
+                      mainCodingAgentProcess = Object.values(attemptData.runningProcessDetails).find(
+                        process => process.id === mainCodingAgentSummary.id
                       );
                       
-                      if (!codingAgentProcess) {
-                        codingAgentProcess = {
-                          ...codingAgentSummary,
+                      if (!mainCodingAgentProcess) {
+                        mainCodingAgentProcess = {
+                          ...mainCodingAgentSummary,
                           stdout: null,
                           stderr: null,
                         } as any;
                       }
                     }
                   }
+
+                  // Find follow up executor processes (command: "followup_executor")
+                  const followUpProcesses = attemptData.processes
+                    .filter(process => process.process_type === 'codingagent' && process.command === 'followup_executor')
+                    .map(summary => {
+                      const detailedProcess = Object.values(attemptData.runningProcessDetails).find(
+                        process => process.id === summary.id
+                      );
+                      return detailedProcess || {
+                        ...summary,
+                        stdout: null,
+                        stderr: null,
+                      } as any;
+                    });
                   
-                  if (codingAgentProcess) {
+                  if (mainCodingAgentProcess || followUpProcesses.length > 0) {
                     return (
-                      <NormalizedConversationViewer
-                        executionProcess={codingAgentProcess}
-                        projectId={projectId}
-                        onConversationUpdate={handleConversationUpdate}
-                      />
+                      <div className="space-y-6">
+                        {mainCodingAgentProcess && (
+                          <div>
+                            <NormalizedConversationViewer
+                              executionProcess={mainCodingAgentProcess}
+                              projectId={projectId}
+                              onConversationUpdate={handleConversationUpdate}
+                            />
+                          </div>
+                        )}
+                        {followUpProcesses.map((followUpProcess, index) => (
+                          <div key={followUpProcess.id} className="border-t pt-6">
+                            <div className="mb-4">
+                              <h3 className="text-lg font-semibold text-muted-foreground">
+                                Follow-up #{index + 1}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                Started: {new Date(followUpProcess.started_at).toLocaleString()}
+                              </p>
+                            </div>
+                            <NormalizedConversationViewer
+                              executionProcess={followUpProcess}
+                              projectId={projectId}
+                              onConversationUpdate={handleConversationUpdate}
+                            />
+                          </div>
+                        ))}
+                      </div>
                     );
                   }
                   
