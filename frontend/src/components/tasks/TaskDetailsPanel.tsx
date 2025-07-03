@@ -543,7 +543,7 @@ export function TaskDetailsPanel({
                                           onClick={() =>
                                             toggleExpandSection(section.expandKey!)
                                           }
-                                          className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none"
+                                          className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none justify-end"
                                         >
                                           <ChevronDown className="h-3 w-3 mr-1" />
                                           Show {lineCount} more lines
@@ -563,7 +563,7 @@ export function TaskDetailsPanel({
                                               onClick={() =>
                                                 toggleExpandSection(section.expandKey!)
                                               }
-                                              className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none"
+                                              className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none justify-end"
                                             >
                                               <ChevronUp className="h-3 w-3 mr-1" />
                                               Hide expanded lines
