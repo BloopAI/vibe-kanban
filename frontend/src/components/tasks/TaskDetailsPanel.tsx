@@ -9,7 +9,33 @@ import {
   getTaskPanelClasses,
   getBackdropClasses,
 } from '@/lib/responsive-config';
-import type { TaskWithAttemptStatus, EditorType, Project } from 'shared/types';
+import { makeRequest } from '@/lib/api';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  FileText,
+  ChevronDown,
+  ChevronUp,
+  Trash2,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
+import type { 
+  TaskWithAttemptStatus, 
+  EditorType, 
+  Project,
+  WorktreeDiff,
+  DiffChunkType,
+  DiffChunk,
+} from 'shared/types';
 
 interface TaskDetailsPanelProps {
   task: TaskWithAttemptStatus | null;
@@ -19,7 +45,28 @@ interface TaskDetailsPanelProps {
   onClose: () => void;
   onEditTask?: (task: TaskWithAttemptStatus) => void;
   onDeleteTask?: (taskId: string) => void;
-  isDialogOpen?: boolean; // New prop to indicate if any dialog is open
+  isDialogOpen?: boolean;
+}
+
+interface ApiResponse<T> {
+  success: boolean;
+  data: T | null;
+  message: string | null;
+}
+
+interface ProcessedLine {
+  content: string;
+  chunkType: DiffChunkType;
+  oldLineNumber?: number;
+  newLineNumber?: number;
+}
+
+interface ProcessedSection {
+  type: 'context' | 'change' | 'expanded';
+  lines: ProcessedLine[];
+  expandKey?: string;
+  expandedAbove?: boolean;
+  expandedBelow?: boolean;
 }
 
 export function TaskDetailsPanel({
@@ -33,8 +80,17 @@ export function TaskDetailsPanel({
   isDialogOpen = false,
 }: TaskDetailsPanelProps) {
   const [showEditorDialog, setShowEditorDialog] = useState(false);
-  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const [shouldAutoScrollLogs, setShouldAutoScrollLogs] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Diff-related state
+  const [diff, setDiff] = useState<WorktreeDiff | null>(null);
+  const [diffLoading, setDiffLoading] = useState(true);
+  const [diffError, setDiffError] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [showAllUnchanged, setShowAllUnchanged] = useState(false);
+  const [deletingFiles, setDeletingFiles] = useState<Set<string>>(new Set());
+  const [fileToDelete, setFileToDelete] = useState<string | null>(null);
 
   // Use the custom hook for all task details logic
   const {
@@ -51,7 +107,6 @@ export function TaskDetailsPanel({
     devServerDetails,
     branches,
     selectedBranch,
-
     runningDevServer,
     isAttemptRunning,
     canSendFollowUp,
@@ -67,6 +122,44 @@ export function TaskDetailsPanel({
     openInEditor,
     handleSendFollowUp,
   } = useTaskDetails(task, projectId, isOpen);
+
+  // Fetch diff when attempt changes
+  const fetchDiff = useCallback(async () => {
+    if (!projectId || !task?.id || !selectedAttempt?.id) {
+      setDiff(null);
+      setDiffLoading(false);
+      return;
+    }
+
+    try {
+      setDiffLoading(true);
+      setDiffError(null);
+      const response = await makeRequest(
+        `/api/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttempt.id}/diff`
+      );
+
+      if (response.ok) {
+        const result: ApiResponse<WorktreeDiff> = await response.json();
+        if (result.success && result.data) {
+          setDiff(result.data);
+        } else {
+          setDiffError('Failed to load diff');
+        }
+      } else {
+        setDiffError('Failed to load diff');
+      }
+    } catch (err) {
+      setDiffError('Failed to load diff');
+    } finally {
+      setDiffLoading(false);
+    }
+  }, [projectId, task?.id, selectedAttempt?.id]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchDiff();
+    }
+  }, [isOpen, fetchDiff]);
 
   // Handle ESC key locally to prevent global navigation
   useEffect(() => {
@@ -84,28 +177,28 @@ export function TaskDetailsPanel({
     return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [isOpen, onClose, isDialogOpen]);
 
-  // Auto-scroll to bottom when activities or execution processes change
+  // Auto-scroll to bottom when activities or execution processes change (for logs section)
   useEffect(() => {
-    if (shouldAutoScroll && scrollContainerRef.current) {
+    if (shouldAutoScrollLogs && scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop =
         scrollContainerRef.current.scrollHeight;
     }
-  }, [attemptData.activities, attemptData.processes, shouldAutoScroll]);
+  }, [attemptData.activities, attemptData.processes, shouldAutoScrollLogs]);
 
-  // Handle scroll events to detect manual scrolling
-  const handleScroll = useCallback(() => {
+  // Handle scroll events to detect manual scrolling (for logs section)
+  const handleLogsScroll = useCallback(() => {
     if (scrollContainerRef.current) {
       const { scrollTop, scrollHeight, clientHeight } =
         scrollContainerRef.current;
       const isAtBottom = scrollTop + clientHeight >= scrollHeight - 5;
 
-      if (isAtBottom && !shouldAutoScroll) {
-        setShouldAutoScroll(true);
-      } else if (!isAtBottom && shouldAutoScroll) {
-        setShouldAutoScroll(false);
+      if (isAtBottom && !shouldAutoScrollLogs) {
+        setShouldAutoScrollLogs(true);
+      } else if (!isAtBottom && shouldAutoScrollLogs) {
+        setShouldAutoScrollLogs(false);
       }
     }
-  }, [shouldAutoScroll]);
+  }, [shouldAutoScrollLogs]);
 
   const handleOpenInEditor = async (editorType?: EditorType) => {
     try {
@@ -115,6 +208,218 @@ export function TaskDetailsPanel({
         setShowEditorDialog(true);
       }
     }
+  };
+
+  // Diff processing functions
+  const getChunkClassName = (chunkType: DiffChunkType) => {
+    const baseClass = 'font-mono text-sm whitespace-pre py-1 flex';
+
+    switch (chunkType) {
+      case 'Insert':
+        return `${baseClass} bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200 border-l-2 border-green-400 dark:border-green-500`;
+      case 'Delete':
+        return `${baseClass} bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 border-l-2 border-red-400 dark:border-red-500`;
+      case 'Equal':
+      default:
+        return `${baseClass} text-muted-foreground`;
+    }
+  };
+
+  const getChunkPrefix = (chunkType: DiffChunkType) => {
+    switch (chunkType) {
+      case 'Insert':
+        return '+';
+      case 'Delete':
+        return '-';
+      case 'Equal':
+      default:
+        return ' ';
+    }
+  };
+
+  const processFileChunks = (chunks: DiffChunk[], fileIndex: number) => {
+    const CONTEXT_LINES = 3;
+    const lines: ProcessedLine[] = [];
+    let oldLineNumber = 1;
+    let newLineNumber = 1;
+
+    // Convert chunks to lines with line numbers
+    chunks.forEach((chunk) => {
+      const chunkLines = chunk.content.split('\n');
+      chunkLines.forEach((line, index) => {
+        if (index < chunkLines.length - 1 || line !== '') {
+          const processedLine: ProcessedLine = {
+            content: line,
+            chunkType: chunk.chunk_type,
+          };
+
+          switch (chunk.chunk_type) {
+            case 'Equal':
+              processedLine.oldLineNumber = oldLineNumber++;
+              processedLine.newLineNumber = newLineNumber++;
+              break;
+            case 'Delete':
+              processedLine.oldLineNumber = oldLineNumber++;
+              break;
+            case 'Insert':
+              processedLine.newLineNumber = newLineNumber++;
+              break;
+          }
+
+          lines.push(processedLine);
+        }
+      });
+    });
+
+    const sections: ProcessedSection[] = [];
+    let i = 0;
+
+    while (i < lines.length) {
+      const line = lines[i];
+
+      if (line.chunkType === 'Equal') {
+        let nextChangeIndex = i + 1;
+        while (
+          nextChangeIndex < lines.length &&
+          lines[nextChangeIndex].chunkType === 'Equal'
+        ) {
+          nextChangeIndex++;
+        }
+
+        const contextLength = nextChangeIndex - i;
+        const hasNextChange = nextChangeIndex < lines.length;
+        const hasPrevChange =
+          sections.length > 0 &&
+          sections[sections.length - 1].type === 'change';
+
+        if (
+          contextLength <= CONTEXT_LINES * 2 ||
+          (!hasPrevChange && !hasNextChange) ||
+          showAllUnchanged
+        ) {
+          sections.push({
+            type: 'context',
+            lines: lines.slice(i, nextChangeIndex),
+          });
+        } else {
+          if (hasPrevChange) {
+            sections.push({
+              type: 'context',
+              lines: lines.slice(i, i + CONTEXT_LINES),
+            });
+            i += CONTEXT_LINES;
+          }
+
+          if (hasNextChange) {
+            const expandStart = hasPrevChange ? i : i + CONTEXT_LINES;
+            const expandEnd = nextChangeIndex - CONTEXT_LINES;
+
+            if (expandEnd > expandStart) {
+              const expandKey = `${fileIndex}-${expandStart}-${expandEnd}`;
+              const isExpanded =
+                expandedSections.has(expandKey) || showAllUnchanged;
+
+              if (isExpanded) {
+                sections.push({
+                  type: 'expanded',
+                  lines: lines.slice(expandStart, expandEnd),
+                  expandKey,
+                });
+              } else {
+                sections.push({
+                  type: 'context',
+                  lines: [],
+                  expandKey,
+                });
+              }
+            }
+
+            sections.push({
+              type: 'context',
+              lines: lines.slice(
+                nextChangeIndex - CONTEXT_LINES,
+                nextChangeIndex
+              ),
+            });
+          } else if (!hasPrevChange) {
+            sections.push({
+              type: 'context',
+              lines: lines.slice(i, i + CONTEXT_LINES),
+            });
+          }
+        }
+
+        i = nextChangeIndex;
+      } else {
+        const changeStart = i;
+        while (i < lines.length && lines[i].chunkType !== 'Equal') {
+          i++;
+        }
+
+        sections.push({
+          type: 'change',
+          lines: lines.slice(changeStart, i),
+        });
+      }
+    }
+
+    return sections;
+  };
+
+  const toggleExpandSection = (expandKey: string) => {
+    setExpandedSections((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(expandKey)) {
+        newSet.delete(expandKey);
+      } else {
+        newSet.add(expandKey);
+      }
+      return newSet;
+    });
+  };
+
+  const handleDeleteFileClick = (filePath: string) => {
+    setFileToDelete(filePath);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!fileToDelete || !projectId || !task?.id || !selectedAttempt?.id) return;
+
+    try {
+      setDeletingFiles((prev) => new Set(prev).add(fileToDelete));
+      const response = await makeRequest(
+        `/api/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttempt.id}/delete-file?file_path=${encodeURIComponent(
+          fileToDelete
+        )}`,
+        {
+          method: 'POST',
+        }
+      );
+
+      if (response.ok) {
+        const result: ApiResponse<null> = await response.json();
+        if (result.success) {
+          fetchDiff();
+        } else {
+          setDiffError(result.message || 'Failed to delete file');
+        }
+      } else {
+        setDiffError('Failed to delete file');
+      }
+    } catch (err) {
+      setDiffError('Failed to delete file');
+    } finally {
+      setDeletingFiles((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(fileToDelete);
+        return newSet;
+      });
+      setFileToDelete(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setFileToDelete(null);
   };
 
   if (!task) return null;
@@ -162,25 +467,194 @@ export function TaskDetailsPanel({
                 onSetIsHoveringDevServer={setIsHoveringDevServer}
               />
 
-              {/* Content */}
-              <div
-                ref={scrollContainerRef}
-                onScroll={handleScroll}
-                className="flex-1 overflow-y-auto p-6 space-y-6"
-              >
-                {loading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
-                    <p className="text-muted-foreground">Loading...</p>
+              {/* Main Content - Split into two sections */}
+              <div className="flex-1 flex flex-col min-h-0">
+                {/* Top 2/3 - Code Changes */}
+                <div className="flex-1 min-h-0 p-6">
+                  <Card className="h-full flex flex-col">
+                    <CardHeader className="flex-shrink-0">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-lg">Code Changes</CardTitle>
+                          <p className="text-sm text-muted-foreground">
+                            Changes made in this task attempt
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowAllUnchanged(!showAllUnchanged)}
+                          className="flex items-center gap-2"
+                        >
+                          {showAllUnchanged ? (
+                            <>
+                              <EyeOff className="h-4 w-4" />
+                              Hide Unchanged
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="h-4 w-4" />
+                              Show All Unchanged
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex-1 overflow-y-auto min-h-0">
+                      {diffLoading ? (
+                        <div className="flex items-center justify-center h-32">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
+                          <p className="text-muted-foreground ml-4">Loading changes...</p>
+                        </div>
+                      ) : diffError ? (
+                        <div className="text-center py-8 text-destructive">
+                          <p>{diffError}</p>
+                        </div>
+                      ) : !diff || diff.files.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p>No changes detected</p>
+                          <p className="text-sm">
+                            The worktree is identical to the base commit
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-6">
+                          {diff.files.map((file, fileIndex) => (
+                            <div
+                              key={fileIndex}
+                              className="border rounded-lg overflow-hidden"
+                            >
+                              <div className="bg-muted px-3 py-2 border-b flex items-center justify-between">
+                                <p className="text-sm font-medium text-muted-foreground font-mono">
+                                  {file.path}
+                                </p>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteFileClick(file.path)}
+                                  disabled={deletingFiles.has(file.path)}
+                                  className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 px-3 gap-1"
+                                  title={`Delete ${file.path}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span className="text-xs">
+                                    {deletingFiles.has(file.path)
+                                      ? 'Deleting...'
+                                      : 'Delete File'}
+                                  </span>
+                                </Button>
+                              </div>
+                              <div className="max-h-[400px] overflow-y-auto">
+                                {processFileChunks(file.chunks, fileIndex).map(
+                                  (section, sectionIndex) => {
+                                    if (
+                                      section.type === 'context' &&
+                                      section.lines.length === 0 &&
+                                      section.expandKey &&
+                                      !showAllUnchanged
+                                    ) {
+                                      const lineCount =
+                                        parseInt(section.expandKey.split('-')[2]) -
+                                        parseInt(section.expandKey.split('-')[1]);
+                                      return (
+                                        <div key={`expand-${section.expandKey}`}>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() =>
+                                              toggleExpandSection(section.expandKey!)
+                                            }
+                                            className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none"
+                                          >
+                                            <ChevronDown className="h-3 w-3 mr-1" />
+                                            Show {lineCount} more lines
+                                          </Button>
+                                        </div>
+                                      );
+                                    }
+
+                                    return (
+                                      <div key={`section-${sectionIndex}`}>
+                                        {section.type === 'expanded' &&
+                                          section.expandKey &&
+                                          !showAllUnchanged && (
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() =>
+                                                toggleExpandSection(section.expandKey!)
+                                              }
+                                              className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none"
+                                            >
+                                              <ChevronUp className="h-3 w-3 mr-1" />
+                                              Hide expanded lines
+                                            </Button>
+                                          )}
+                                        {section.lines.map((line, lineIndex) => (
+                                          <div
+                                            key={`${sectionIndex}-${lineIndex}`}
+                                            className={getChunkClassName(line.chunkType)}
+                                          >
+                                            <div className="flex-shrink-0 w-16 px-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 select-none">
+                                              <span className="inline-block w-6 text-right">
+                                                {line.oldLineNumber || ''}
+                                              </span>
+                                              <span className="inline-block w-6 text-right ml-1">
+                                                {line.newLineNumber || ''}
+                                              </span>
+                                            </div>
+                                            <div className="flex-1 px-3">
+                                              <span className="inline-block w-4">
+                                                {getChunkPrefix(line.chunkType)}
+                                              </span>
+                                              <span>{line.content}</span>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    );
+                                  }
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Bottom 1/3 - Agent Logs */}
+                <div className="h-1/3 min-h-0 border-t bg-muted/30">
+                  <div className="h-full flex flex-col">
+                    <div className="flex-shrink-0 px-6 py-3 border-b bg-background">
+                      <h3 className="text-lg font-semibold">Agent Logs</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Activity history and coding agent output
+                      </p>
+                    </div>
+                    <div
+                      ref={scrollContainerRef}
+                      onScroll={handleLogsScroll}
+                      className="flex-1 overflow-y-auto p-6"
+                    >
+                      {loading ? (
+                        <div className="text-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
+                          <p className="text-muted-foreground">Loading...</p>
+                        </div>
+                      ) : (
+                        <TaskActivityHistory
+                          selectedAttempt={selectedAttempt}
+                          activities={attemptData.activities}
+                          runningProcessDetails={attemptData.runningProcessDetails}
+                          projectId={projectId}
+                        />
+                      )}
+                    </div>
                   </div>
-                ) : (
-                  <TaskActivityHistory
-                    selectedAttempt={selectedAttempt}
-                    activities={attemptData.activities}
-                    runningProcessDetails={attemptData.runningProcessDetails}
-                    projectId={projectId}
-                  />
-                )}
+                </div>
               </div>
 
               {/* Footer - Follow-up section */}
@@ -205,6 +679,41 @@ export function TaskDetailsPanel({
             onClose={() => setShowEditorDialog(false)}
             onSelectEditor={handleOpenInEditor}
           />
+
+          {/* Delete File Confirmation Dialog */}
+          <Dialog open={!!fileToDelete} onOpenChange={() => handleCancelDelete()}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete File</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete the file{' '}
+                  <span className="font-mono font-medium">"{fileToDelete}"</span>?
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                  <p className="text-sm text-red-800">
+                    <strong>Warning:</strong> This action will permanently remove
+                    the entire file from the worktree. This cannot be undone.
+                  </p>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={handleCancelDelete}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleConfirmDelete}
+                  disabled={deletingFiles.has(fileToDelete || '')}
+                >
+                  {deletingFiles.has(fileToDelete || '')
+                    ? 'Deleting...'
+                    : 'Delete File'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </>
