@@ -506,11 +506,15 @@ export function TaskDetailsPanel({
     }
 
     const isSetupRunning = executionState.execution_state === 'SetupRunning';
+    const isSetupComplete = executionState.execution_state === 'SetupComplete';
     const isSetupFailed = executionState.execution_state === 'SetupFailed';
     const isCodingAgentRunning =
       executionState.execution_state === 'CodingAgentRunning';
     const isCodingAgentComplete =
       executionState.execution_state === 'CodingAgentComplete';
+    const isCodingAgentFailed =
+      executionState.execution_state === 'CodingAgentFailed';
+    const isComplete = executionState.execution_state === 'Complete';
     const hasChanges = executionState.has_changes;
 
     // When setup script is running, show setup execution stdio
@@ -556,6 +560,46 @@ export function TaskDetailsPanel({
             <p className="text-lg font-semibold mb-2">Setup Script Failed</p>
             <p className="text-muted-foreground">
               The setup script encountered an error. Check the logs for details.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // When coding agent failed, show error message
+    if (isCodingAgentFailed) {
+      return (
+        <div className="flex-1 min-h-0 p-6 overflow-y-auto">
+          <div className="text-center py-8 text-destructive">
+            <p className="text-lg font-semibold mb-2">Coding Agent Failed</p>
+            <p className="text-muted-foreground">
+              The coding agent encountered an error. Check the logs for details.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // When setup is complete but coding agent hasn't started, show waiting state
+    if (isSetupComplete && !isCodingAgentRunning && !isCodingAgentComplete && !isCodingAgentFailed && !hasChanges) {
+      return (
+        <div className="flex-1 min-h-0 p-6 overflow-y-auto">
+          <div className="text-center py-8 text-muted-foreground">
+            <p className="text-lg font-semibold mb-2">Setup Complete</p>
+            <p>Waiting for coding agent to start...</p>
+          </div>
+        </div>
+      );
+    }
+
+    // When task is complete, show completion message
+    if (isComplete) {
+      return (
+        <div className="flex-1 min-h-0 p-6 overflow-y-auto">
+          <div className="text-center py-8 text-green-600">
+            <p className="text-lg font-semibold mb-2">Task Complete</p>
+            <p className="text-muted-foreground">
+              The task has been completed successfully.
             </p>
           </div>
         </div>
