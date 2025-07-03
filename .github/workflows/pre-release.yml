@@ -94,6 +94,17 @@ jobs:
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
+      - name: Create Sentry release
+        uses: getsentry/action-release@v3
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        with:
+          version:  ${{ needs.bump-version.outputs.new_version }}
+          environment: production
+          sourcemaps: "./dist"
+
       - name: Upload frontend artifact
         uses: actions/upload-artifact@v4
         with:
