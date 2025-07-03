@@ -943,21 +943,21 @@ export function TaskDetailsToolbar({
           <DialogHeader>
             <DialogTitle>Confirm Merge</DialogTitle>
             <DialogDescription>
-              Are you sure you want to merge the changes from this task branch into {branchStatus?.base_branch_name || 'the base branch'}?
+              Are you sure you want to merge the changes from this task branch
+              into {branchStatus?.base_branch_name || 'the base branch'}?
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
               <p className="text-sm text-blue-800">
-                This will merge all committed changes from the task branch into {branchStatus?.base_branch_name || 'the base branch'}. This action cannot be undone.
+                This will merge all committed changes from the task branch into{' '}
+                {branchStatus?.base_branch_name || 'the base branch'}. This
+                action cannot be undone.
               </p>
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={handleCancelMerge}
-            >
+            <Button variant="outline" onClick={handleCancelMerge}>
               Cancel
             </Button>
             <Button
