@@ -208,7 +208,7 @@ export function TaskDetailsPanel({
 
   // Diff processing functions
   const getChunkClassName = (chunkType: DiffChunkType) => {
-    const baseClass = 'font-mono text-sm whitespace-pre py-1 flex min-w-max';
+    const baseClass = 'font-mono text-sm whitespace-nowrap py-1 flex min-w-max';
 
     switch (chunkType) {
       case 'Insert':
@@ -222,7 +222,7 @@ export function TaskDetailsPanel({
   };
 
   const getLineNumberClassName = (chunkType: DiffChunkType) => {
-    const baseClass = 'flex-shrink-0 w-16 px-2 text-xs border-r select-none py-1';
+    const baseClass = 'flex-shrink-0 w-16 px-2 py-1 text-xs border-r select-none';
 
     switch (chunkType) {
       case 'Insert':
@@ -581,7 +581,7 @@ export function TaskDetailsPanel({
                                               {line.newLineNumber || ''}
                                             </span>
                                           </div>
-                                          <div className="flex-1 px-3">
+                                          <div className="flex-1 px-3 py-1">
                                             <span className="inline-block w-4">
                                               {getChunkPrefix(line.chunkType)}
                                             </span>
