@@ -11,9 +11,8 @@ use axum::{
 use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
 use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
-use vibe_kanban::{Assets, ScriptAssets, SoundAssets};
+use vibe_kanban::{sentry_layer, Assets, ScriptAssets, SoundAssets};
 use sentry_tower::NewSentryLayer;
-use sentry_tracing::layer as sentry_tracing_layer;
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::prelude::*;
 
@@ -129,6 +128,7 @@ fn main() -> anyhow::Result<()> {
     let _guard = sentry::init(("https://57267b883c0c76a9b636f3f227809417@o4509603705192449.ingest.de.sentry.io/4509603708207184", sentry::ClientOptions {
         release: sentry::release_name!(),
         environment: Some(environment.into()),
+        attach_stacktrace: true,
         ..Default::default()
     }));
     sentry::configure_scope(|scope| {
@@ -142,7 +142,7 @@ fn main() -> anyhow::Result<()> {
         .block_on(async {
             tracing_subscriber::registry()
                 .with(tracing_subscriber::fmt::layer().with_filter(LevelFilter::INFO))
-                .with(sentry_tracing_layer())
+                .with(sentry_layer())
                 .init();
 
             // Create asset directory if it doesn't exist

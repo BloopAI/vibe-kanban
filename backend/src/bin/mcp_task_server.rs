@@ -2,8 +2,7 @@ use std::str::FromStr;
 
 use rmcp::{transport::stdio, ServiceExt};
 use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
-use vibe_kanban::{mcp::task_server::TaskServer, utils::asset_dir};
-use sentry_tracing::layer as sentry_tracing_layer;
+use vibe_kanban::{mcp::task_server::TaskServer, sentry_layer, utils::asset_dir};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::prelude::*;
 
@@ -30,7 +29,7 @@ async fn main() -> anyhow::Result<()> {
                 .with_writer(std::io::stderr)
                 .with_filter(EnvFilter::new("debug")),
         )
-        .with(sentry_tracing_layer())
+        .with(sentry_layer())
         .init();
 
     tracing::debug!("[MCP] Starting MCP task server...");
@@ -50,7 +49,7 @@ async fn main() -> anyhow::Result<()> {
         .inspect_err(|e| {
             tracing::error!("serving error: {:?}", e);
             sentry::capture_error(e);
-        })?;
+        }).expect("failed to serve");
 
     service.waiting().await?;
     Ok(())

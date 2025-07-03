@@ -42,9 +42,14 @@ schemars = "0.8"
 regex = "1.11.1"
 notify-rust = "4.11"
 octocrab = "0.44"
-sentry = { version = "0.41.0", features = ["anyhow"] }
+sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debug-images"] }
 sentry-tower = "0.41.0"
 sentry-tracing = { version = "0.41.0", features = ["backtrace"] }
 
 [build-dependencies]
 ts-rs = { version = "9.0", features = ["uuid-impl", "chrono-impl"] }
+
+[profile.release]
+debug = true
+split-debuginfo = "packed"
+strip = true

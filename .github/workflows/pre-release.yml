@@ -183,6 +183,23 @@ jobs:
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && 'aarch64-linux-gnu-gcc' || '' }}
 
+      - name: Setup Sentry CLI
+        uses: mathieu-bour/setup-sentry-cli@v2
+        with:
+          token: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          organization: ${{ secrets.SENTRY_ORG }}
+          project: ${{ secrets.SENTRY_PROJECT }}
+          version: 2.21.2
+
+      - name: Upload source maps to Sentry
+        run: |
+          sentry-cli debug-files upload \
+          --org $SENTRY_ORG \
+          --project $SENTRY_PROJECT \
+          --release ${{ needs.bump-version.outputs.new_version }}
+          --include-sources \
+          target/${{ matrix.target }}/release
+
       - name: Prepare binaries (non-macOS)
         if: runner.os != 'macOS'
         shell: bash
