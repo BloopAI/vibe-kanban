@@ -16,12 +16,10 @@ npm pack --dry-run
 echo "📦 Creating package tarball..."
 npm pack
 
-echo "🔗 Installing globally from tarball..."
-TARBALL=$(ls vibe-kanban-*.tgz | head -n1)
-npm install -g "./$TARBALL"
+TARBALL=$(pwd)/$(ls vibe-kanban-*.tgz | head -n1)
 
 echo "🧪 Testing main command..."
-vibe-kanban &
+npx -y --package=$TARBALL vibe-kanban &
 MAIN_PID=$!
 sleep 3
 kill $MAIN_PID 2>/dev/null || true
@@ -30,10 +28,9 @@ echo "✅ Main app started successfully"
 
 echo "🧪 Testing MCP command with complete handshake..."
 
-node ../scripts/mcp_test.js
+node ../scripts/mcp_test.js $TARBALL
 
 echo "🧹 Cleaning up..."
-npm uninstall -g vibe-kanban
 rm "$TARBALL"
 
 echo "✅ NPM package test completed successfully!"

@@ -11,7 +11,7 @@ fn main() -> anyhow::Result<()> {
     } else {
         "production"
     };
-    let _guard = sentry::init(("https://57267b883c0c76a9b636f3f227809417@o4509603705192449.ingest.de.sentry.io/4509603708207184", sentry::ClientOptions {
+    let _guard = sentry::init(("https://1065a1d276a581316999a07d5dffee26@o4509603705192449.ingest.de.sentry.io/4509605576441937", sentry::ClientOptions {
         release: sentry::release_name!(),
         environment: Some(environment.into()),
         ..Default::default()

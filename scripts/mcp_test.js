@@ -335,7 +335,7 @@ function executeNextStep() {
 }
 
 // Start MCP process
-const mcpProcess = spawn('vibe-kanban', ["--mcp"], {
+const mcpProcess = spawn('npx', [`--package=${process.argv[2]}`, "vibe-kanban", "--mcp"], {
   stdio: ['pipe', 'pipe', 'inherit'],
 });
 

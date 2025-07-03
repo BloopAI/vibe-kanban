@@ -12,7 +12,7 @@ import {
 } from 'react-router-dom';
 
 Sentry.init({
-  dsn: 'https://57267b883c0c76a9b636f3f227809417@o4509603705192449.ingest.de.sentry.io/4509603708207184',
+  dsn: 'https://1065a1d276a581316999a07d5dffee26@o4509603705192449.ingest.de.sentry.io/4509605576441937',
   tracesSampleRate: 1.0,
   environment: import.meta.env.MODE === 'development' ? 'dev' : 'production',
   integrations: [
