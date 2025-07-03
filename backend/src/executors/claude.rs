@@ -4,7 +4,7 @@ use tokio::process::Command;
 use uuid::Uuid;
 
 use crate::{
-    executor::{Executor, ExecutorError},
+    executor::{ActionType, Executor, ExecutorError, NormalizedConversation, NormalizedEntry, NormalizedEntryType},
     models::task::Task,
     utils::shell::get_shell_command,
 };
@@ -68,6 +68,178 @@ impl Executor for ClaudeExecutor {
 
         Ok(child)
     }
+
+    fn normalize_logs(&self, logs: &str) -> Result<NormalizedConversation, String> {
+        use serde_json::Value;
+
+        let mut entries = Vec::new();
+        let mut session_id = None;
+
+        for line in logs.lines() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            // Try to parse as JSON
+            let json: Value = serde_json::from_str(trimmed)
+                .map_err(|e| format!("Failed to parse JSON: {}", e))?;
+
+            // Extract session ID
+            if session_id.is_none() {
+                if let Some(sess_id) = json.get("session_id").and_then(|v| v.as_str()) {
+                    session_id = Some(sess_id.to_string());
+                }
+            }
+
+            // Process different message types
+            if let Some(msg_type) = json.get("type").and_then(|t| t.as_str()) {
+                match msg_type {
+                    "assistant" => {
+                        if let Some(message) = json.get("message") {
+                            if let Some(content) = message.get("content").and_then(|c| c.as_array()) {
+                                for content_item in content {
+                                    if let Some(content_type) = content_item.get("type").and_then(|t| t.as_str()) {
+                                        match content_type {
+                                            "text" => {
+                                                if let Some(text) = content_item.get("text").and_then(|t| t.as_str()) {
+                                                    entries.push(NormalizedEntry {
+                                                        timestamp: None,
+                                                        entry_type: NormalizedEntryType::AssistantMessage,
+                                                        content: text.to_string(),
+                                                        metadata: Some(content_item.clone()),
+                                                    });
+                                                }
+                                            }
+                                            "tool_use" => {
+                                                if let Some(tool_name) = content_item.get("name").and_then(|n| n.as_str()) {
+                                                    let input = content_item.get("input").unwrap_or(&Value::Null);
+                                                    let action_type = self.extract_action_type(tool_name, input);
+                                                    let content = format!("Tool: {} with input: {}", tool_name, input);
+                                                    
+                                                    entries.push(NormalizedEntry {
+                                                        timestamp: None,
+                                                        entry_type: NormalizedEntryType::ToolUse {
+                                                            tool_name: tool_name.to_string(),
+                                                            action_type,
+                                                        },
+                                                        content,
+                                                        metadata: Some(content_item.clone()),
+                                                    });
+                                                }
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    "user" => {
+                        if let Some(message) = json.get("message") {
+                            if let Some(content) = message.get("content").and_then(|c| c.as_array()) {
+                                for content_item in content {
+                                    if let Some(content_type) = content_item.get("type").and_then(|t| t.as_str()) {
+                                        if content_type == "text" {
+                                            if let Some(text) = content_item.get("text").and_then(|t| t.as_str()) {
+                                                entries.push(NormalizedEntry {
+                                                    timestamp: None,
+                                                    entry_type: NormalizedEntryType::UserMessage,
+                                                    content: text.to_string(),
+                                                    metadata: Some(content_item.clone()),
+                                                });
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    "system" => {
+                        if let Some(subtype) = json.get("subtype").and_then(|s| s.as_str()) {
+                            if subtype == "init" {
+                                entries.push(NormalizedEntry {
+                                    timestamp: None,
+                                    entry_type: NormalizedEntryType::SystemMessage,
+                                    content: format!("System initialized with model: {}", 
+                                        json.get("model").and_then(|m| m.as_str()).unwrap_or("unknown")),
+                                    metadata: Some(json.clone()),
+                                });
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        Ok(NormalizedConversation {
+            entries,
+            session_id,
+            executor_type: "claude".to_string(),
+        })
+    }
+}
+
+impl ClaudeExecutor {
+    fn extract_action_type(&self, tool_name: &str, input: &serde_json::Value) -> ActionType {
+        match tool_name.to_lowercase().as_str() {
+            "read" => {
+                if let Some(file_path) = input.get("file_path").and_then(|p| p.as_str()) {
+                    ActionType::FileRead { path: file_path.to_string() }
+                } else {
+                    ActionType::Other { description: "File read operation".to_string() }
+                }
+            }
+            "edit" | "write" | "multiedit" => {
+                if let Some(file_path) = input.get("file_path").and_then(|p| p.as_str()) {
+                    ActionType::FileWrite { path: file_path.to_string() }
+                } else if let Some(path) = input.get("path").and_then(|p| p.as_str()) {
+                    ActionType::FileWrite { path: path.to_string() }
+                } else {
+                    ActionType::Other { description: "File write operation".to_string() }
+                }
+            }
+            "bash" => {
+                if let Some(command) = input.get("command").and_then(|c| c.as_str()) {
+                    ActionType::CommandRun { command: command.to_string() }
+                } else {
+                    ActionType::Other { description: "Command execution".to_string() }
+                }
+            }
+            "grep" => {
+                if let Some(pattern) = input.get("pattern").and_then(|p| p.as_str()) {
+                    ActionType::Search { query: pattern.to_string() }
+                } else {
+                    ActionType::Other { description: "Search operation".to_string() }
+                }
+            }
+            "glob" => {
+                if let Some(file_pattern) = input.get("filePattern").and_then(|p| p.as_str()) {
+                    ActionType::Search { query: file_pattern.to_string() }
+                } else {
+                    ActionType::Other { description: "File pattern search".to_string() }
+                }
+            }
+            "webfetch" => {
+                if let Some(url) = input.get("url").and_then(|u| u.as_str()) {
+                    ActionType::WebFetch { url: url.to_string() }
+                } else {
+                    ActionType::Other { description: "Web fetch operation".to_string() }
+                }
+            }
+            "task" => {
+                if let Some(description) = input.get("description").and_then(|d| d.as_str()) {
+                    ActionType::TaskCreate { description: description.to_string() }
+                } else if let Some(prompt) = input.get("prompt").and_then(|p| p.as_str()) {
+                    ActionType::TaskCreate { description: prompt.to_string() }
+                } else {
+                    ActionType::Other { description: "Task creation".to_string() }
+                }
+            }
+            _ => ActionType::Other { description: format!("Tool: {}", tool_name) }
+        }
+    }
 }
 
 #[async_trait]
@@ -108,5 +280,11 @@ impl Executor for ClaudeFollowupExecutor {
             })?;
 
         Ok(child)
+    }
+
+    fn normalize_logs(&self, logs: &str) -> Result<NormalizedConversation, String> {
+        // Reuse the same logic as the main ClaudeExecutor
+        let main_executor = ClaudeExecutor;
+        main_executor.normalize_logs(logs)
     }
 }

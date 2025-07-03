@@ -100,6 +100,14 @@ export type CreateExecutorSession = { task_attempt_id: string, execution_process
 
 export type UpdateExecutorSession = { session_id: string | null, prompt: string | null, summary: string | null, };
 
+export type NormalizedConversation = { entries: Array<NormalizedEntry>, session_id: string | null, executor_type: string, };
+
+export type NormalizedEntry = { timestamp: string | null, entry_type: NormalizedEntryType, content: string, };
+
+export type NormalizedEntryType = { "type": "user_message" } | { "type": "assistant_message" } | { "type": "tool_use", tool_name: string, action_type: ActionType, } | { "type": "system_message" } | { "type": "thinking" };
+
+export type ActionType = { "action": "file_read", path: string, } | { "action": "file_write", path: string, } | { "action": "command_run", command: string, } | { "action": "search", query: string, } | { "action": "web_fetch", url: string, } | { "action": "task_create", description: string, } | { "action": "other", description: string, };
+
 // Generated constants
 export const EXECUTOR_TYPES: string[] = [
     "echo",

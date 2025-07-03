@@ -10,6 +10,55 @@ use crate::executors::{
     AmpExecutor, ClaudeExecutor, EchoExecutor, GeminiExecutor, OpencodeExecutor,
 };
 
+/// Normalized conversation representation for different executor formats
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct NormalizedConversation {
+    pub entries: Vec<NormalizedEntry>,
+    pub session_id: Option<String>,
+    pub executor_type: String,
+}
+
+/// Individual entry in a normalized conversation
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct NormalizedEntry {
+    pub timestamp: Option<String>,
+    pub entry_type: NormalizedEntryType,
+    pub content: String,
+    #[ts(skip)]
+    pub metadata: Option<serde_json::Value>,
+}
+
+/// Types of entries in a normalized conversation
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(tag = "type", rename_all = "snake_case")]
+#[ts(export)]
+pub enum NormalizedEntryType {
+    UserMessage,
+    AssistantMessage,
+    ToolUse {
+        tool_name: String,
+        action_type: ActionType,
+    },
+    SystemMessage,
+    Thinking,
+}
+
+/// Types of tool actions that can be performed
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(tag = "action", rename_all = "snake_case")]
+#[ts(export)]
+pub enum ActionType {
+    FileRead { path: String },
+    FileWrite { path: String },
+    CommandRun { command: String },
+    Search { query: String },
+    WebFetch { url: String },
+    TaskCreate { description: String },
+    Other { description: String },
+}
+
 /// Context information for spawn failures to provide comprehensive error details
 #[derive(Debug, Clone)]
 pub struct SpawnContext {
@@ -166,6 +215,16 @@ pub trait Executor: Send + Sync {
         task_id: Uuid,
         worktree_path: &str,
     ) -> Result<command_group::AsyncGroupChild, ExecutorError>;
+
+    /// Normalize executor logs into a standard format
+    fn normalize_logs(&self, _logs: &str) -> Result<NormalizedConversation, String> {
+        // Default implementation returns empty conversation
+        Ok(NormalizedConversation {
+            entries: vec![],
+            session_id: None,
+            executor_type: "unknown".to_string(),
+        })
+    }
 
     /// Execute the command and stream output to database in real-time
     async fn execute_streaming(
