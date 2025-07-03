@@ -10,7 +10,7 @@ import {
   Plus, 
   Settings,
   Brain,
-  MessageSquare 
+  Hammer
 } from 'lucide-react';
 import { makeRequest } from '@/lib/api';
 import type { NormalizedConversation, NormalizedEntryType, ExecutionProcess, ApiResponse } from 'shared/types';
@@ -56,7 +56,7 @@ const getEntryIcon = (entryType: NormalizedEntryType) => {
     }
     return <Settings className="h-4 w-4 text-gray-600" />;
   }
-  return <MessageSquare className="h-4 w-4 text-gray-400" />;
+  return <Settings className="h-4 w-4 text-gray-400" />;
 };
 
 
@@ -174,16 +174,16 @@ export function NormalizedConversationViewer({
         <>
           <div className="flex items-start gap-3 mb-4">
             <div className="flex-shrink-0 mt-1">
-              <MessageSquare className="h-4 w-4 text-blue-600" />
+              <Hammer className="h-4 w-4 text-orange-600" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-mono bg-blue-50 border border-blue-200 rounded p-3 whitespace-pre-wrap text-blue-800">
+              <div className="text-sm whitespace-pre-wrap text-foreground">
                 {conversation.prompt}
               </div>
             </div>
           </div>
           {conversation.entries.length > 0 && (
-            <div className="border-t border-border mb-4"></div>
+            <div className="border-t border-border mb-6"></div>
           )}
         </>
       )}
