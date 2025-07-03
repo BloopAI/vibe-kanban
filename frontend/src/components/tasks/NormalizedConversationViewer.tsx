@@ -58,38 +58,6 @@ const getEntryIcon = (entryType: NormalizedEntryType) => {
   return <MessageSquare className="h-4 w-4 text-gray-400" />;
 };
 
-const getEntryTypeDisplay = (entryType: NormalizedEntryType) => {
-  if (entryType.type === 'user_message') return 'User';
-  if (entryType.type === 'assistant_message') return 'Assistant';
-  if (entryType.type === 'system_message') return 'System';
-  if (entryType.type === 'thinking') return 'Thinking';
-  if (entryType.type === 'tool_use') {
-    const { tool_name, action_type } = entryType;
-    if (action_type.action === 'file_read') {
-      return `Read: ${action_type.path}`;
-    }
-    if (action_type.action === 'file_write') {
-      return `Write: ${action_type.path}`;
-    }
-    if (action_type.action === 'command_run') {
-      return `Command: ${action_type.command}`;
-    }
-    if (action_type.action === 'search') {
-      return `Search: ${action_type.query}`;
-    }
-    if (action_type.action === 'web_fetch') {
-      return `Fetch: ${action_type.url}`;
-    }
-    if (action_type.action === 'task_create') {
-      return `Task: ${action_type.description}`;
-    }
-    if (action_type.action === 'other') {
-      return `${tool_name}: ${action_type.description}`;
-    }
-    return tool_name;
-  }
-  return 'Message';
-};
 
 export function NormalizedConversationViewer({ 
   executionProcess, 
@@ -162,11 +130,6 @@ export function NormalizedConversationViewer({
             {getEntryIcon(entry.entry_type)}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-medium text-muted-foreground">
-                {getEntryTypeDisplay(entry.entry_type)}
-              </span>
-            </div>
             <div className="text-sm whitespace-pre-wrap break-words">
               {entry.content}
             </div>
