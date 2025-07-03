@@ -183,16 +183,27 @@ export function TaskDetailsPanel({
   useEffect(() => {
     if (!executionState || !isOpen || !selectedAttempt) return;
 
-    const isCodingAgentComplete = executionState.execution_state === 'CodingAgentComplete';
-    const isCodingAgentFailed = executionState.execution_state === 'CodingAgentFailed';
+    const isCodingAgentComplete =
+      executionState.execution_state === 'CodingAgentComplete';
+    const isCodingAgentFailed =
+      executionState.execution_state === 'CodingAgentFailed';
     const isComplete = executionState.execution_state === 'Complete';
     const hasChanges = executionState.has_changes;
 
     // Fetch diff when coding agent completes, fails, or task is complete and has changes
-    if ((isCodingAgentComplete || isCodingAgentFailed || isComplete) && hasChanges) {
+    if (
+      (isCodingAgentComplete || isCodingAgentFailed || isComplete) &&
+      hasChanges
+    ) {
       fetchDiff();
     }
-  }, [executionState?.execution_state, executionState?.has_changes, isOpen, selectedAttempt, fetchDiff]);
+  }, [
+    executionState?.execution_state,
+    executionState?.has_changes,
+    isOpen,
+    selectedAttempt,
+    fetchDiff,
+  ]);
 
   // Handle ESC key locally to prevent global navigation
   useEffect(() => {
