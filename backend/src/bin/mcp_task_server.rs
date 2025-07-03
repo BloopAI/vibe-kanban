@@ -2,9 +2,8 @@ use std::str::FromStr;
 
 use rmcp::{transport::stdio, ServiceExt};
 use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
+use tracing_subscriber::{prelude::*, EnvFilter};
 use vibe_kanban::{mcp::task_server::TaskServer, sentry_layer, utils::asset_dir};
-use tracing_subscriber::EnvFilter;
-use tracing_subscriber::prelude::*;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -48,7 +47,7 @@ async fn main() -> anyhow::Result<()> {
         .inspect_err(|e| {
             tracing::error!("serving error: {:?}", e);
             sentry::capture_error(e);
-        }).expect("failed to serve");
+        })?;
 
     service.waiting().await?;
     Ok(())

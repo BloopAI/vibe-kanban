@@ -8,13 +8,12 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use sentry_tower::NewSentryLayer;
 use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
 use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
+use tracing_subscriber::{filter::LevelFilter, prelude::*};
 use vibe_kanban::{sentry_layer, Assets, ScriptAssets, SoundAssets};
-use sentry_tower::NewSentryLayer;
-use tracing_subscriber::filter::LevelFilter;
-use tracing_subscriber::prelude::*;
 
 mod app_state;
 mod execution_monitor;
