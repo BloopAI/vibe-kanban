@@ -11,7 +11,7 @@ use crate::{
         task_attempt::{TaskAttempt, TaskAttemptStatus},
         task_attempt_activity::{CreateTaskAttemptActivity, TaskAttemptActivity},
     },
-    services::generate_user_id,
+    services,
 };
 
 /// Commit any unstaged changes in the worktree after execution completion
@@ -698,22 +698,18 @@ async fn handle_coding_agent_completion(
             {
                 // Track task completion event
                 if app_state.get_analytics_enabled().await {
-                    let user_id = generate_user_id();
-                    let event_name = if success { "task_completed" } else { "task_failed" };
                     let analytics = app_state.analytics.read().await;
-                    let _ = analytics
-                        .track_event(
-                            &user_id,
-                            event_name,
-                            Some(serde_json::json!({
-                                "task_id": task.id.to_string(),
-                                "project_id": task.project_id.to_string(),
-                                "attempt_id": task_attempt_id.to_string(),
-                                "execution_success": success,
-                                "exit_code": exit_code,
-                            })),
-                        )
-                        .await;
+                    analytics.track_event(
+                        &services::generate_user_id(),
+                        "task_finished",
+                        Some(serde_json::json!({
+                            "task_id": task.id.to_string(),
+                            "project_id": task.project_id.to_string(),
+                            "attempt_id": task_attempt_id.to_string(),
+                            "execution_success": success,
+                            "exit_code": exit_code,
+                        })),
+                    );
                 }
 
                 // Update task status to InReview

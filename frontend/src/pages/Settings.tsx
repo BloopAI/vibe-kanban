@@ -423,9 +423,9 @@ export function Settings() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Analytics</CardTitle>
+              <CardTitle>Privacy</CardTitle>
               <CardDescription>
-                Help improve the application by sharing anonymous usage data.
+                Help improve Vibe-Kanban by sharing anonymous usage data.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -442,7 +442,9 @@ export function Settings() {
                     Enable Anonymous Analytics
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Track task creation and completion events to help improve the application. No personal data is collected.
+                    Enables anonymous usage events tracking to help improve the
+                    application. No prompts or project information are
+                    collected.
                   </p>
                 </div>
               </div>

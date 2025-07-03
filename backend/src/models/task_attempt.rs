@@ -9,7 +9,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{project::Project, task::Task};
-use crate::{executor::Executor, utils::shell::get_shell_command};
+use crate::{executor::Executor, services, utils::shell::get_shell_command};
 
 #[derive(Debug)]
 pub enum TaskAttemptError {
@@ -659,7 +659,7 @@ impl TaskAttempt {
             ));
         }
 
-        Self::start_process_execution(
+        let result = Self::start_process_execution(
             pool,
             app_state,
             attempt_id,
@@ -670,7 +670,22 @@ impl TaskAttempt {
             crate::models::execution_process::ExecutionProcessType::DevServer,
             &task_attempt.worktree_path,
         )
-        .await
+        .await;
+
+        if result.is_ok() {
+            let analytics = app_state.analytics.read().await;
+            analytics.track_event(
+                &services::generate_user_id(),
+                "dev_server_started",
+                Some(serde_json::json!({
+                    "task_id": task_id.to_string(),
+                    "project_id": project_id.to_string(),
+                    "attempt_id": attempt_id.to_string()
+                })),
+            );
+        }
+
+        result
     }
 
     /// Start a follow-up execution using the same executor type as the first process

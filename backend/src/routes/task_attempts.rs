@@ -13,6 +13,7 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::{
+    app_state::AppState,
     executor::{ExecutorConfig, NormalizedConversation},
     models::{
         config::Config,
@@ -28,6 +29,7 @@ use crate::{
         },
         ApiResponse,
     },
+    services,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -230,6 +232,7 @@ pub async fn get_task_attempt_diff(
 pub async fn merge_task_attempt(
     Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
     Extension(pool): Extension<SqlitePool>,
+    Extension(app_state): Extension<Arc<AppState>>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
     // Verify task attempt exists and belongs to the correct task
     match TaskAttempt::exists_for_task(&pool, attempt_id, task_id, project_id).await {
@@ -242,7 +245,7 @@ pub async fn merge_task_attempt(
     }
 
     match TaskAttempt::merge_changes(&pool, attempt_id, task_id, project_id).await {
-        Ok(_merge_commit_id) => {
+        Ok(_) => {
             // Update task status to Done
             if let Err(e) = Task::update_status(
                 &pool,
@@ -255,6 +258,18 @@ pub async fn merge_task_attempt(
                 tracing::error!("Failed to update task status to Done after merge: {}", e);
                 return Err(StatusCode::INTERNAL_SERVER_ERROR);
             }
+
+            // Track task attempt merged event
+            let analytics = app_state.analytics.read().await;
+            analytics.track_event(
+                &services::analytics::generate_user_id(),
+                "task_attempt_merged",
+                Some(serde_json::json!({
+                    "task_id": task_id.to_string(),
+                    "project_id": project_id.to_string(),
+                    "attempt_id": attempt_id.to_string(),
+                })),
+            );
 
             Ok(ResponseJson(ApiResponse {
                 success: true,
@@ -272,6 +287,7 @@ pub async fn merge_task_attempt(
 pub async fn create_github_pr(
     Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
     Extension(pool): Extension<SqlitePool>,
+    Extension(app_state): Extension<Arc<AppState>>,
     Json(request): Json<CreateGitHubPRRequest>,
 ) -> Result<ResponseJson<ApiResponse<String>>, StatusCode> {
     // Verify task attempt exists and belongs to the correct task
@@ -326,11 +342,24 @@ pub async fn create_github_pr(
     )
     .await
     {
-        Ok(pr_url) => Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: Some(pr_url),
-            message: Some("GitHub PR created successfully".to_string()),
-        })),
+        Ok(pr_url) => {
+            let analytics = app_state.analytics.read().await;
+            analytics.track_event(
+                &services::generate_user_id(),
+                "github_pr_created",
+                Some(serde_json::json!({
+                    "task_id": task_id.to_string(),
+                    "project_id": project_id.to_string(),
+                    "attempt_id": attempt_id.to_string(),
+                })),
+            );
+
+            Ok(ResponseJson(ApiResponse {
+                success: true,
+                data: Some(pr_url),
+                message: Some("GitHub PR created successfully".to_string()),
+            }))
+        }
         Err(e) => {
             tracing::error!(
                 "Failed to create GitHub PR for attempt {}: {}",
@@ -732,6 +761,21 @@ pub async fn stop_execution_process(
             data: None,
             message: Some("Execution process was not running".to_string()),
         }));
+    }
+
+    // Track dev server stopped event if it was a dev server that was stopped
+    if process.process_type == crate::models::execution_process::ExecutionProcessType::DevServer {
+        let analytics = app_state.analytics.read().await;
+        analytics.track_event(
+            &crate::services::analytics::generate_user_id(),
+            "dev_server_stopped",
+            Some(serde_json::json!({
+                "task_id": task_id.to_string(),
+                "project_id": project_id.to_string(),
+                "attempt_id": attempt_id.to_string(),
+                "process_id": process_id.to_string()
+            })),
+        );
     }
 
     // Update the execution process status in the database

@@ -89,20 +89,16 @@ pub async fn create_task(
         Ok(task) => {
             // Track task creation event
             if app_state.get_analytics_enabled().await {
-                let _ = app_state
-                    .analytics
-                    .read()
-                    .await
-                    .track_event(
-                        &services::generate_user_id(),
-                        "task_created",
-                        Some(serde_json::json!({
-                            "task_id": task.id.to_string(),
-                            "project_id": project_id.to_string(),
-                            "has_description": task.description.is_some(),
-                        })),
-                    )
-                    .await;
+                let analytics = app_state.analytics.read().await;
+                analytics.track_event(
+                    &services::generate_user_id(),
+                    "task_created",
+                    Some(serde_json::json!({
+                        "task_id": task.id.to_string(),
+                        "project_id": project_id.to_string(),
+                        "has_description": task.description.is_some(),
+                    })),
+                );
             }
 
             Ok(ResponseJson(ApiResponse {
@@ -174,35 +170,30 @@ pub async fn create_task_and_start(
 
     match TaskAttempt::create(&pool, &attempt_payload, task_id).await {
         Ok(attempt) => {
-            // Track task creation and start events
             if app_state.get_analytics_enabled().await {
                 let analytics = app_state.analytics.read().await;
 
                 // Track task creation
-                let _ = analytics
-                    .track_event(
-                        &services::generate_user_id(),
-                        "task_created",
-                        Some(serde_json::json!({
-                            "task_id": task.id.to_string(),
-                            "project_id": project_id.to_string(),
-                            "has_description": task.description.is_some(),
-                        })),
-                    )
-                    .await;
+                analytics.track_event(
+                    &services::generate_user_id(),
+                    "task_created",
+                    Some(serde_json::json!({
+                        "task_id": task.id.to_string(),
+                        "project_id": project_id.to_string(),
+                        "has_description": task.description.is_some(),
+                    })),
+                );
 
                 // Track task start
-                let _ = analytics
-                    .track_event(
-                        &services::generate_user_id(),
-                        "task_started",
-                        Some(serde_json::json!({
-                            "task_id": task.id.to_string(),
-                            "executor_type": executor_string.as_deref().unwrap_or("default"),
-                            "attempt_id": attempt.id.to_string(),
-                        })),
-                    )
-                    .await;
+                analytics.track_event(
+                    &services::generate_user_id(),
+                    "task_started",
+                    Some(serde_json::json!({
+                        "task_id": task.id.to_string(),
+                        "executor_type": executor_string.as_deref().unwrap_or("default"),
+                        "attempt_id": attempt.id.to_string(),
+                    })),
+                );
             }
 
             // Start execution asynchronously (don't block the response)

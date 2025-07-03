@@ -256,21 +256,17 @@ pub async fn create_project(
         Ok(project) => {
             // Track project creation event
             if app_state.get_analytics_enabled().await {
-                let _ = app_state
-                    .analytics
-                    .read()
-                    .await
-                    .track_event(
-                        &services::generate_user_id(),
-                        "project_created",
-                        Some(serde_json::json!({
-                            "project_id": project.id.to_string(),
-                            "use_existing_repo": payload.use_existing_repo,
-                            "has_setup_script": payload.setup_script.is_some(),
-                            "has_dev_script": payload.dev_script.is_some(),
-                        })),
-                    )
-                    .await;
+                let analytics = app_state.analytics.read().await;
+                analytics.track_event(
+                    &services::generate_user_id(),
+                    "project_created",
+                    Some(serde_json::json!({
+                        "project_id": project.id.to_string(),
+                        "use_existing_repo": payload.use_existing_repo,
+                        "has_setup_script": payload.setup_script.is_some(),
+                        "has_dev_script": payload.dev_script.is_some(),
+                    })),
+                );
             }
 
             Ok(ResponseJson(ApiResponse {
