@@ -183,13 +183,13 @@ export function NormalizedConversationViewer({
             </div>
           </div>
           {conversation.entries.length > 0 && (
-            <div className="border-t border-border"></div>
+            <div className="border-t border-border mb-6"></div>
           )}
         </>
       )}
       
       {/* Display conversation entries */}
-      <div className={`space-y-2 ${conversation.prompt ? 'mt-6' : ''}`}>
+      <div className="space-y-2">
         {conversation.entries.map((entry, index) => (
           <div key={index} className="flex items-start gap-3">
             <div className="flex-shrink-0 mt-1">
