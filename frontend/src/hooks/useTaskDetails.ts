@@ -234,6 +234,7 @@ export function useTaskDetails(
             );
             setSelectedAttempt(latestAttempt);
             fetchAttemptData(latestAttempt.id);
+            fetchExecutionState(latestAttempt.id);
           } else {
             setSelectedAttempt(null);
             setAttemptData({
@@ -249,7 +250,7 @@ export function useTaskDetails(
     } finally {
       setLoading(false);
     }
-  }, [task, projectId, fetchAttemptData]);
+  }, [task, projectId, fetchAttemptData, fetchExecutionState]);
 
   // Fetch dev server details when hovering
   const fetchDevServerDetails = useCallback(async () => {
@@ -303,6 +304,14 @@ export function useTaskDetails(
       fetchProjectBranches();
     }
   }, [task, isOpen, fetchTaskAttempts, fetchProjectBranches]);
+
+  // Load attempt data when selectedAttempt changes
+  useEffect(() => {
+    if (selectedAttempt && task) {
+      fetchAttemptData(selectedAttempt.id);
+      fetchExecutionState(selectedAttempt.id);
+    }
+  }, [selectedAttempt, task, fetchAttemptData, fetchExecutionState]);
 
   // Polling for updates when attempt is running
   useEffect(() => {
