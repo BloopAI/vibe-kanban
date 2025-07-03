@@ -6,7 +6,7 @@ import path from 'path'
 export default defineConfig({
   plugins: [react(), sentryVitePlugin({
     org: "bloop-ai",
-    project: "vibe-kanban-fe"
+    project: "vibe-kanban"
   })],
 
   resolve: {
