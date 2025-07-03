@@ -222,7 +222,7 @@ export function TaskDetailsPanel({
   };
 
   const getLineNumberClassName = (chunkType: DiffChunkType) => {
-    const baseClass = 'flex-shrink-0 w-16 px-2 text-xs border-r select-none';
+    const baseClass = 'flex-shrink-0 w-16 px-2 text-xs border-r select-none py-1';
 
     switch (chunkType) {
       case 'Insert':
@@ -524,37 +524,19 @@ export function TaskDetailsPanel({
                             </Button>
                           </div>
                           <div className="overflow-x-auto">
-                            {processFileChunks(file.chunks, fileIndex).map(
-                              (section, sectionIndex) => {
-                                if (
-                                  section.type === 'context' &&
-                                  section.lines.length === 0 &&
-                                  section.expandKey
-                                ) {
-                                  const lineCount =
-                                    parseInt(section.expandKey.split('-')[2]) -
-                                    parseInt(section.expandKey.split('-')[1]);
-                                  return (
-                                    <div key={`expand-${section.expandKey}`}>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() =>
-                                          toggleExpandSection(section.expandKey!)
-                                        }
-                                        className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none"
-                                      >
-                                        <ChevronDown className="h-3 w-3 mr-1" />
-                                        Show {lineCount} more lines
-                                      </Button>
-                                    </div>
-                                  );
-                                }
-
-                                return (
-                                  <div key={`section-${sectionIndex}`}>
-                                    {section.type === 'expanded' &&
-                                      section.expandKey && (
+                            <div className="min-w-full">
+                              {processFileChunks(file.chunks, fileIndex).map(
+                                (section, sectionIndex) => {
+                                  if (
+                                    section.type === 'context' &&
+                                    section.lines.length === 0 &&
+                                    section.expandKey
+                                  ) {
+                                    const lineCount =
+                                      parseInt(section.expandKey.split('-')[2]) -
+                                      parseInt(section.expandKey.split('-')[1]);
+                                    return (
+                                      <div key={`expand-${section.expandKey}`}>
                                         <Button
                                           variant="ghost"
                                           size="sm"
@@ -563,35 +545,55 @@ export function TaskDetailsPanel({
                                           }
                                           className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none"
                                         >
-                                          <ChevronUp className="h-3 w-3 mr-1" />
-                                          Hide expanded lines
+                                          <ChevronDown className="h-3 w-3 mr-1" />
+                                          Show {lineCount} more lines
                                         </Button>
-                                      )}
-                                    {section.lines.map((line, lineIndex) => (
-                                      <div
-                                        key={`${sectionIndex}-${lineIndex}`}
-                                        className={getChunkClassName(line.chunkType)}
-                                      >
-                                        <div className={getLineNumberClassName(line.chunkType)}>
-                                          <span className="inline-block w-6 text-right">
-                                            {line.oldLineNumber || ''}
-                                          </span>
-                                          <span className="inline-block w-6 text-right ml-1">
-                                            {line.newLineNumber || ''}
-                                          </span>
-                                        </div>
-                                        <div className="flex-1 px-3">
-                                          <span className="inline-block w-4">
-                                            {getChunkPrefix(line.chunkType)}
-                                          </span>
-                                          <span>{line.content}</span>
-                                        </div>
                                       </div>
-                                    ))}
-                                  </div>
-                                );
-                              }
-                            )}
+                                    );
+                                  }
+
+                                  return (
+                                    <div key={`section-${sectionIndex}`}>
+                                      {section.type === 'expanded' &&
+                                        section.expandKey && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() =>
+                                              toggleExpandSection(section.expandKey!)
+                                            }
+                                            className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none"
+                                          >
+                                            <ChevronUp className="h-3 w-3 mr-1" />
+                                            Hide expanded lines
+                                          </Button>
+                                        )}
+                                      {section.lines.map((line, lineIndex) => (
+                                        <div
+                                          key={`${sectionIndex}-${lineIndex}`}
+                                          className={getChunkClassName(line.chunkType)}
+                                        >
+                                          <div className={getLineNumberClassName(line.chunkType)}>
+                                            <span className="inline-block w-6 text-right">
+                                              {line.oldLineNumber || ''}
+                                            </span>
+                                            <span className="inline-block w-6 text-right ml-1">
+                                              {line.newLineNumber || ''}
+                                            </span>
+                                          </div>
+                                          <div className="flex-1 px-3">
+                                            <span className="inline-block w-4">
+                                              {getChunkPrefix(line.chunkType)}
+                                            </span>
+                                            <span>{line.content}</span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  );
+                                }
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
