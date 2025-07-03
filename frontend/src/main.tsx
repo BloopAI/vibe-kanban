@@ -4,7 +4,12 @@ import App from './App.tsx';
 import './index.css';
 import { ClickToComponent } from 'click-to-react-component';
 import * as Sentry from '@sentry/react';
-import { useLocation, useNavigationType, createRoutesFromChildren, matchRoutes } from 'react-router-dom';
+import {
+  useLocation,
+  useNavigationType,
+  createRoutesFromChildren,
+  matchRoutes,
+} from 'react-router-dom';
 
 Sentry.init({
   dsn: 'https://57267b883c0c76a9b636f3f227809417@o4509603705192449.ingest.de.sentry.io/4509603708207184',

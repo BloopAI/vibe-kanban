@@ -134,7 +134,6 @@ fn main() -> anyhow::Result<()> {
     sentry::configure_scope(|scope| {
         scope.set_tag("source", "server");
     });
-    sentry::capture_message("Test error from Rust (startup)", sentry::Level::Error);
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()

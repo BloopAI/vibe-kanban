@@ -21,7 +21,6 @@ async fn main() -> anyhow::Result<()> {
     sentry::configure_scope(|scope| {
         scope.set_tag("source", "mcp");
     });
-    sentry::capture_message("Test error from MCP (startup)", sentry::Level::Error);
 
     tracing_subscriber::registry()
         .with(

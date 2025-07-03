@@ -39,7 +39,6 @@ export function Settings() {
   const { setTheme } = useTheme();
 
   const playSound = async (soundFile: SoundFile) => {
-    throw new Error("Test exception")
     const audio = new Audio(`/api/sounds/${soundFile}.wav`);
     try {
       await audio.play();
