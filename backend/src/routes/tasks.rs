@@ -8,11 +8,14 @@ use axum::{
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
-use crate::models::{
-    project::Project,
-    task::{CreateTask, CreateTaskAndStart, Task, TaskWithAttemptStatus, UpdateTask},
-    task_attempt::{CreateTaskAttempt, TaskAttempt},
-    ApiResponse,
+use crate::{
+    models::{
+        project::Project,
+        task::{CreateTask, CreateTaskAndStart, Task, TaskWithAttemptStatus, UpdateTask},
+        task_attempt::{CreateTaskAttempt, TaskAttempt},
+        ApiResponse,
+    },
+    services::generate_user_id,
 };
 
 pub async fn get_project_tasks(
@@ -58,6 +61,7 @@ pub async fn get_task(
 pub async fn create_task(
     Path(project_id): Path<Uuid>,
     Extension(pool): Extension<SqlitePool>,
+    Extension(app_state): Extension<crate::app_state::AppState>,
     Json(mut payload): Json<CreateTask>,
 ) -> Result<ResponseJson<ApiResponse<Task>>, StatusCode> {
     let id = Uuid::new_v4();
@@ -82,11 +86,30 @@ pub async fn create_task(
     );
 
     match Task::create(&pool, &payload, id).await {
-        Ok(task) => Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: Some(task),
-            message: Some("Task created successfully".to_string()),
-        })),
+        Ok(task) => {
+            // Track task creation event
+            if app_state.get_analytics_enabled().await {
+                let user_id = generate_user_id();
+                let analytics = app_state.analytics.read().await;
+                let _ = analytics
+                    .track_event(
+                        &user_id,
+                        "task_created",
+                        Some(serde_json::json!({
+                            "task_id": task.id.to_string(),
+                            "project_id": project_id.to_string(),
+                            "has_description": task.description.is_some(),
+                        })),
+                    )
+                    .await;
+            }
+
+            Ok(ResponseJson(ApiResponse {
+                success: true,
+                data: Some(task),
+                message: Some("Task created successfully".to_string()),
+            }))
+        }
         Err(e) => {
             tracing::error!("Failed to create task: {}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -144,12 +167,48 @@ pub async fn create_task_and_start(
         crate::executor::ExecutorConfig::Opencode => "opencode".to_string(),
     });
     let attempt_payload = CreateTaskAttempt {
-        executor: executor_string,
+        executor: executor_string.clone(),
         base_branch: None, // Not supported in task creation endpoint, only in task attempts
     };
 
     match TaskAttempt::create(&pool, &attempt_payload, task_id).await {
         Ok(attempt) => {
+            // Track task creation and start events
+            if app_state.get_analytics_enabled().await {
+                let user_id = generate_user_id();
+                let executor_type = executor_string.as_deref().unwrap_or("default");
+
+                let analytics = app_state.analytics.read().await;
+
+                // Track task creation
+                let _ = analytics
+                    .track_event(
+                        &user_id,
+                        "task_created",
+                        Some(serde_json::json!({
+                            "task_id": task.id.to_string(),
+                            "project_id": project_id.to_string(),
+                            "has_description": task.description.is_some(),
+                            "auto_started": true,
+                            "executor_type": executor_type,
+                        })),
+                    )
+                    .await;
+
+                // Track task start
+                let _ = analytics
+                    .track_event(
+                        &user_id,
+                        "task_started",
+                        Some(serde_json::json!({
+                            "task_id": task.id.to_string(),
+                            "executor_type": executor_type,
+                            "attempt_id": attempt.id.to_string(),
+                        })),
+                    )
+                    .await;
+            }
+
             // Start execution asynchronously (don't block the response)
             let pool_clone = pool.clone();
             let app_state_clone = app_state.clone();

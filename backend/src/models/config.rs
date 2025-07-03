@@ -17,6 +17,7 @@ pub struct Config {
     pub push_notifications: bool,
     pub editor: EditorConfig,
     pub github: GitHubConfig,
+    pub analytics_enabled: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -159,6 +160,7 @@ impl Default for Config {
             push_notifications: true,
             editor: EditorConfig::default(),
             github: GitHubConfig::default(),
+            analytics_enabled: Some(false),
         }
     }
 }

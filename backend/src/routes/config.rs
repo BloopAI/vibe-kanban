@@ -42,6 +42,7 @@ async fn get_config(
 
 async fn update_config(
     Extension(config_arc): Extension<Arc<RwLock<Config>>>,
+    Extension(app_state): Extension<crate::app_state::AppState>,
     Json(new_config): Json<Config>,
 ) -> ResponseJson<ApiResponse<Config>> {
     let config_path = utils::config_path();
@@ -50,6 +51,11 @@ async fn update_config(
         Ok(_) => {
             let mut config = config_arc.write().await;
             *config = new_config.clone();
+            drop(config);
+
+            app_state
+                .update_analytics_config(new_config.analytics_enabled.unwrap_or(false))
+                .await;
 
             ResponseJson(ApiResponse {
                 success: true,

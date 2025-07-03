@@ -5,8 +5,10 @@ use nix::{
     sys::signal::{kill, Signal},
     unistd::Pid,
 };
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock as TokioRwLock};
 use uuid::Uuid;
+
+use crate::services::{AnalyticsConfig, AnalyticsService};
 
 #[derive(Debug)]
 pub enum ExecutionType {
@@ -27,18 +29,36 @@ pub struct AppState {
     running_executions: Arc<Mutex<HashMap<Uuid, RunningExecution>>>,
     pub db_pool: sqlx::SqlitePool,
     config: Arc<tokio::sync::RwLock<crate::models::config::Config>>,
+    pub analytics: Arc<TokioRwLock<AnalyticsService>>,
 }
 
 impl AppState {
-    pub fn new(
+    pub async fn new(
         db_pool: sqlx::SqlitePool,
         config: Arc<tokio::sync::RwLock<crate::models::config::Config>>,
     ) -> Self {
+        // Initialize analytics with user preferences
+        let user_enabled = {
+            let config_guard = config.read().await;
+            config_guard.analytics_enabled.unwrap_or(false)
+        };
+
+        let analytics_config = AnalyticsConfig::new(None, user_enabled);
+        let analytics = Arc::new(TokioRwLock::new(AnalyticsService::new(analytics_config)));
+
         Self {
             running_executions: Arc::new(Mutex::new(HashMap::new())),
             db_pool,
             config,
+            analytics,
         }
+    }
+
+    pub async fn update_analytics_config(&self, user_enabled: bool) {
+        let new_config = AnalyticsConfig::new(None, user_enabled);
+        let new_service = AnalyticsService::new(new_config);
+        let mut analytics = self.analytics.write().await;
+        *analytics = new_service;
     }
 
     // Running executions getters
@@ -192,5 +212,14 @@ impl AppState {
     pub async fn get_sound_file(&self) -> crate::models::config::SoundFile {
         let config = self.config.read().await;
         config.sound_file.clone()
+    }
+
+    pub async fn get_analytics_enabled(&self) -> bool {
+        let config = self.config.read().await;
+        let user_enabled = config.analytics_enabled.unwrap_or(false);
+        drop(config);
+
+        let analytics = self.analytics.read().await;
+        analytics.is_enabled() && user_enabled
     }
 }
