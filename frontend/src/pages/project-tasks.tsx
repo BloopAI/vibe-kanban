@@ -228,7 +228,12 @@ export function ProjectTasks() {
       );
 
       if (response.ok) {
-        await fetchTasks();
+        const result: ApiResponse<Task> = await response.json();
+        if (result.success && result.data) {
+          await fetchTasks();
+          // Open the newly created task in the details panel
+          handleViewTaskDetails(result.data);
+        }
       } else {
         setError('Failed to create and start task');
       }
