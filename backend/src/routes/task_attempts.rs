@@ -16,7 +16,7 @@ use crate::{
     executor::{ExecutorConfig, NormalizedConversation},
     models::{
         config::Config,
-        execution_process::{ExecutionProcess, ExecutionProcessSummary},
+        execution_process::{ExecutionProcess, ExecutionProcessStatus, ExecutionProcessSummary},
         executor_session::ExecutorSession,
         task::Task,
         task_attempt::{
@@ -1022,6 +1022,30 @@ pub async fn get_execution_process_normalized_logs(
     let logs = match process.stdout {
         Some(stdout) => stdout,
         None => {
+            // If the process is still running, return empty logs instead of an error
+            if process.status == ExecutionProcessStatus::Running {
+                // Get executor session data for this execution process
+                let executor_session = match ExecutorSession::find_by_execution_process_id(&pool, process_id).await {
+                    Ok(session) => session,
+                    Err(e) => {
+                        tracing::error!("Failed to fetch executor session for process {}: {}", process_id, e);
+                        None
+                    }
+                };
+
+                return Ok(ResponseJson(ApiResponse {
+                    success: true,
+                    data: Some(NormalizedConversation {
+                        entries: vec![],
+                        session_id: None,
+                        executor_type: process.executor_type.clone().unwrap_or("unknown".to_string()),
+                        prompt: executor_session.as_ref().and_then(|s| s.prompt.clone()),
+                        summary: executor_session.as_ref().and_then(|s| s.summary.clone()),
+                    }),
+                    message: None,
+                }));
+            }
+            
             return Ok(ResponseJson(ApiResponse {
                 success: false,
                 data: None,
