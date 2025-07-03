@@ -30,27 +30,6 @@ export function McpServers() {
   const [mcpApplying, setMcpApplying] = useState(false);
   const [mcpConfigPath, setMcpConfigPath] = useState<string>('');
   const [success, setSuccess] = useState(false);
-  const [projectInfo, setProjectInfo] = useState<{ root_path: string } | null>(
-    null
-  );
-
-  // Load project info on component mount
-  useEffect(() => {
-    const loadProjectInfo = async () => {
-      try {
-        const response = await fetch('/api/config/project-info');
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.data) {
-            setProjectInfo(result.data);
-          }
-        }
-      } catch (err) {
-        console.error('Error loading project info:', err);
-      }
-    };
-    loadProjectInfo();
-  }, []);
 
   // Initialize selected MCP executor when config loads
   useEffect(() => {
@@ -156,31 +135,26 @@ export function McpServers() {
   };
 
   const handleConfigureVibeKanban = async () => {
-    if (!selectedMcpExecutor || !projectInfo) return;
+    if (!selectedMcpExecutor) return;
 
     try {
       // Parse existing configuration
       const existingConfig = mcpServers.trim() ? JSON.parse(mcpServers) : {};
 
-      // Determine which command to use based on dev vs release mode
-      const isDev = import.meta.env.DEV;
-      const vibeKanbanConfig = isDev
-        ? {
-            command: `${projectInfo.root_path}/target/debug/${navigator.platform.toLowerCase().includes('win') ? 'mcp_task_server.exe' : 'mcp_task_server'}`,
-          }
-        : {
-            command: 'npx',
-            args: ['-y', 'vibe-kanban', '--mcp'],
-          };
+      // Always use production MCP installation instructions
+      const vibeKanbanConfig = {
+        command: 'npx',
+        args: ['-y', 'vibe-kanban', '--mcp'],
+      };
 
-      // Add task_manager to the existing configuration
+      // Add vibe_kanban to the existing configuration
       let updatedConfig;
       if (selectedMcpExecutor === 'amp') {
         updatedConfig = {
           ...existingConfig,
           'amp.mcpServers': {
             ...(existingConfig['amp.mcpServers'] || {}),
-            task_manager: vibeKanbanConfig,
+            vibe_kanban: vibeKanbanConfig,
           },
         };
       } else {
@@ -188,7 +162,7 @@ export function McpServers() {
           ...existingConfig,
           mcpServers: {
             ...(existingConfig.mcpServers || {}),
-            task_manager: vibeKanbanConfig,
+            vibe_kanban: vibeKanbanConfig,
           },
         };
       }
@@ -408,8 +382,7 @@ export function McpServers() {
                     Add Vibe-Kanban MCP
                   </Button>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Automatically adds the Vibe-Kanban MCP server for the
-                    selected executor.
+                    Automatically adds the Vibe-Kanban MCP server.
                   </p>
                 </div>
               </div>

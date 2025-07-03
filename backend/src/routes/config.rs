@@ -25,7 +25,6 @@ pub fn config_router() -> Router {
         .route("/config", get(get_config))
         .route("/config", post(update_config))
         .route("/config/constants", get(get_config_constants))
-        .route("/config/project-info", get(get_project_info))
         .route("/mcp-servers", get(get_mcp_servers))
         .route("/mcp-servers", post(update_mcp_servers))
 }
@@ -73,12 +72,6 @@ pub struct ConfigConstants {
     pub sound: SoundConstants,
 }
 
-#[derive(Debug, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct ProjectInfo {
-    pub root_path: String,
-}
-
 async fn get_config_constants() -> ResponseJson<ApiResponse<ConfigConstants>> {
     let constants = ConfigConstants {
         editor: EditorConstants::new(),
@@ -89,19 +82,6 @@ async fn get_config_constants() -> ResponseJson<ApiResponse<ConfigConstants>> {
         success: true,
         data: Some(constants),
         message: Some("Config constants retrieved successfully".to_string()),
-    })
-}
-
-async fn get_project_info() -> ResponseJson<ApiResponse<ProjectInfo>> {
-    let current_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-    let project_info = ProjectInfo {
-        root_path: current_dir.to_string_lossy().to_string(),
-    };
-
-    ResponseJson(ApiResponse {
-        success: true,
-        data: Some(project_info),
-        message: Some("Project info retrieved successfully".to_string()),
     })
 }
 
