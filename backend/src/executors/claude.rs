@@ -244,7 +244,7 @@ impl ClaudeExecutor {
                             "Codebase search".to_string()
                         }
                     }
-                    _ => format!("{}", tool_name),
+                    _ => tool_name.to_string(),
                 }
             }
         }

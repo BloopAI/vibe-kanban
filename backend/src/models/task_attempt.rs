@@ -1344,10 +1344,7 @@ impl TaskAttempt {
             // Get the working directory content
             let working_content = if delta.status() != git2::Delta::Deleted {
                 let file_path = std::path::Path::new(worktree_path).join(path_str);
-                match std::fs::read_to_string(&file_path) {
-                    Ok(content) => content,
-                    Err(_) => String::new(),
-                }
+                std::fs::read_to_string(&file_path).unwrap_or_default()
             } else {
                 String::new()
             };
