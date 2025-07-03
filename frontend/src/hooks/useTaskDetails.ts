@@ -155,6 +155,8 @@ export function useTaskDetails(
             );
 
             const runningProcessDetails: Record<string, ExecutionProcess> = {};
+            
+            // Fetch details for running activities
             for (const activity of runningActivities) {
               try {
                 const detailResponse = await makeRequest(
@@ -171,6 +173,30 @@ export function useTaskDetails(
               } catch (err) {
                 console.error(
                   `Failed to fetch execution process ${activity.execution_process_id}:`,
+                  err
+                );
+              }
+            }
+
+            // Also fetch setup script process details if it exists in the processes
+            const setupProcess = processesResult.data.find(
+              (process) => process.process_type === 'setupscript'
+            );
+            if (setupProcess && !runningProcessDetails[setupProcess.id]) {
+              try {
+                const detailResponse = await makeRequest(
+                  `/api/projects/${projectId}/execution-processes/${setupProcess.id}`
+                );
+                if (detailResponse.ok) {
+                  const detailResult: ApiResponse<ExecutionProcess> =
+                    await detailResponse.json();
+                  if (detailResult.success && detailResult.data) {
+                    runningProcessDetails[setupProcess.id] = detailResult.data;
+                  }
+                }
+              } catch (err) {
+                console.error(
+                  `Failed to fetch setup process details ${setupProcess.id}:`,
                   err
                 );
               }

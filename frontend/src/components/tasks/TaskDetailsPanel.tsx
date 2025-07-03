@@ -159,6 +159,22 @@ export function TaskDetailsPanel({
     }
   }, [isOpen, fetchDiff]);
 
+  // Refresh diff when coding agent is running and making changes
+  useEffect(() => {
+    if (!executionState || !isOpen || !selectedAttempt) return;
+    
+    const isCodingAgentRunning = executionState.execution_state === 'CodingAgentRunning';
+    
+    if (isCodingAgentRunning) {
+      // Refresh diff every 3 seconds when coding agent is active
+      const interval = setInterval(() => {
+        fetchDiff();
+      }, 3000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [executionState, isOpen, selectedAttempt, fetchDiff]);
+
   // Handle ESC key locally to prevent global navigation
   useEffect(() => {
     if (!isOpen || isDialogOpen) return;
@@ -454,17 +470,38 @@ export function TaskDetailsPanel({
     const isCodingAgentRunning = executionState.execution_state === 'CodingAgentRunning';
     const hasChanges = executionState.has_changes;
 
-    // When setup script is running, show setup execution only
+    // When setup script is running, show setup execution stdio
     if (isSetupRunning) {
+      // Find the setup script process in runningProcessDetails first, then fallback to processes
+      const setupProcess = executionState.setup_process_id 
+        ? attemptData.runningProcessDetails[executionState.setup_process_id]
+        : Object.values(attemptData.runningProcessDetails).find(
+            process => process.process_type === 'setupscript'
+          );
+
       return (
         <div className="flex-1 min-h-0 p-6 overflow-y-auto">
-          {/* Setup Script Execution */}
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-lg font-semibold mb-2">Setup Script Running</p>
-            <p className="text-muted-foreground">
-              Preparing the environment for the coding agent...
-            </p>
+          <div className="space-y-4">
+            <div className="text-center py-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-lg font-semibold mb-2">Setup Script Running</p>
+              <p className="text-muted-foreground mb-4">
+                Preparing the environment for the coding agent...
+              </p>
+            </div>
+            
+            {setupProcess && (
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-muted px-3 py-2 border-b">
+                  <p className="text-sm font-medium text-muted-foreground">Setup Script Output</p>
+                </div>
+                <div className="bg-black text-green-400 p-4 font-mono text-sm max-h-96 overflow-y-auto">
+                  <pre className="whitespace-pre-wrap">
+                    {setupProcess.stdout || setupProcess.stderr || 'No output yet...'}
+                  </pre>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       );
