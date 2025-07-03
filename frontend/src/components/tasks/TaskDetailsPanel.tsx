@@ -592,7 +592,7 @@ export function TaskDetailsPanel({
             executionState.coding_agent_process_id
           ]
         : Object.values(attemptData.runningProcessDetails).find(
-            (process) => process.process_type === 'agent'
+            (process) => process.process_type === 'codingagent'
           );
 
       return (
