@@ -3,7 +3,7 @@ import { Clock, ChevronDown, ChevronUp, Code } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Chip } from '@/components/ui/chip';
-import { ExecutionOutputViewer } from './ExecutionOutputViewer';
+import { NormalizedConversationViewer } from './NormalizedConversationViewer';
 import type {
   TaskAttempt,
   TaskAttemptActivityWithPrompt,
@@ -15,6 +15,7 @@ interface TaskActivityHistoryProps {
   selectedAttempt: TaskAttempt | null;
   activities: TaskAttemptActivityWithPrompt[];
   runningProcessDetails: Record<string, ExecutionProcess>;
+  projectId: string;
 }
 
 const getAttemptStatusDisplay = (
@@ -63,6 +64,7 @@ export function TaskActivityHistory({
   selectedAttempt,
   activities,
   runningProcessDetails,
+  projectId,
 }: TaskActivityHistoryProps) {
   const [expandedOutputs, setExpandedOutputs] = useState<Set<string>>(
     new Set()
@@ -163,11 +165,11 @@ export function TaskActivityHistory({
                           : 'max-h-64 overflow-hidden flex flex-col justify-end'
                       }`}
                     >
-                      <ExecutionOutputViewer
+                      <NormalizedConversationViewer
                         executionProcess={
                           runningProcessDetails[activity.execution_process_id]
                         }
-                        executor={selectedAttempt?.executor || undefined}
+                        projectId={projectId}
                       />
                     </div>
                     <Button

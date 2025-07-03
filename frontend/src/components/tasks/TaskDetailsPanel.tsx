@@ -178,6 +178,7 @@ export function TaskDetailsPanel({
                     selectedAttempt={selectedAttempt}
                     activities={attemptData.activities}
                     runningProcessDetails={attemptData.runningProcessDetails}
+                    projectId={projectId}
                   />
                 )}
               </div>
