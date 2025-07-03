@@ -78,6 +78,7 @@ export function TaskDetailsPanel({
 }: TaskDetailsPanelProps) {
   const [showEditorDialog, setShowEditorDialog] = useState(false);
   const [shouldAutoScrollLogs, setShouldAutoScrollLogs] = useState(true);
+  const [conversationUpdateTrigger, setConversationUpdateTrigger] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   // Diff-related state
@@ -173,13 +174,18 @@ export function TaskDetailsPanel({
     return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [isOpen, onClose, isDialogOpen]);
 
-  // Auto-scroll to bottom when activities or execution processes change (for logs section)
+  // Callback to trigger auto-scroll when conversation updates
+  const handleConversationUpdate = useCallback(() => {
+    setConversationUpdateTrigger(prev => prev + 1);
+  }, []);
+
+  // Auto-scroll to bottom when activities, execution processes, or conversation changes (for logs section)
   useEffect(() => {
     if (shouldAutoScrollLogs && scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop =
         scrollContainerRef.current.scrollHeight;
     }
-  }, [attemptData.activities, attemptData.processes, shouldAutoScrollLogs]);
+  }, [attemptData.activities, attemptData.processes, conversationUpdateTrigger, shouldAutoScrollLogs]);
 
   // Handle scroll events to detect manual scrolling (for logs section)
   const handleLogsScroll = useCallback(() => {
@@ -650,6 +656,7 @@ export function TaskDetailsPanel({
                             <NormalizedConversationViewer
                               executionProcess={codingAgentProcess}
                               projectId={projectId}
+                              onConversationUpdate={handleConversationUpdate}
                             />
                           );
                         }

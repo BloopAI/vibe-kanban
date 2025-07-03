@@ -18,6 +18,7 @@ import type { NormalizedConversation, NormalizedEntryType, ExecutionProcess, Api
 interface NormalizedConversationViewerProps {
   executionProcess: ExecutionProcess;
   projectId: string;
+  onConversationUpdate?: () => void;
 }
 
 const getEntryIcon = (entryType: NormalizedEntryType) => {
@@ -71,7 +72,8 @@ const getContentClassName = (entryType: NormalizedEntryType) => {
 
 export function NormalizedConversationViewer({ 
   executionProcess, 
-  projectId 
+  projectId,
+  onConversationUpdate 
 }: NormalizedConversationViewerProps) {
   const [conversation, setConversation] = useState<NormalizedConversation | null>(null);
   const [loading, setLoading] = useState(true);
@@ -96,6 +98,11 @@ export function NormalizedConversationViewer({
           setConversation(prev => {
             // Only update if content actually changed
             if (!prev || JSON.stringify(prev) !== JSON.stringify(result.data)) {
+              // Notify parent component of conversation update
+              if (onConversationUpdate) {
+                // Use setTimeout to ensure state update happens first
+                setTimeout(onConversationUpdate, 0);
+              }
               return result.data;
             }
             return prev;
@@ -116,7 +123,7 @@ export function NormalizedConversationViewer({
         setLoading(false);
       }
     }
-  }, [executionProcess.id, projectId]);
+  }, [executionProcess.id, projectId, onConversationUpdate]);
 
   // Initial fetch
   useEffect(() => {
