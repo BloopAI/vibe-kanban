@@ -481,6 +481,7 @@ export function TaskDetailsPanel({
     const isSetupRunning = executionState.execution_state === 'SetupRunning';
     const isSetupFailed = executionState.execution_state === 'SetupFailed';
     const isCodingAgentRunning = executionState.execution_state === 'CodingAgentRunning';
+    const isCodingAgentComplete = executionState.execution_state === 'CodingAgentComplete';
     const hasChanges = executionState.has_changes;
 
     // When setup script is running, show setup execution stdio
@@ -529,8 +530,8 @@ export function TaskDetailsPanel({
       );
     }
 
-    // When coding agent is running but no changes yet, show just agent conversation (full height)
-    if (isCodingAgentRunning && !hasChanges) {
+    // When coding agent is running or complete but no changes yet, show just agent conversation (full height)
+    if ((isCodingAgentRunning || isCodingAgentComplete) && !hasChanges) {
       return (
         <div className="flex-1 min-h-0 border-t bg-muted/30">
           <div
