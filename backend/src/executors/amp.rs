@@ -173,6 +173,8 @@ impl Executor for AmpExecutor {
             entries,
             session_id,
             executor_type: "amp".to_string(),
+            prompt: None,
+            summary: None,
         })
     }
 }

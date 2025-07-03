@@ -17,6 +17,8 @@ pub struct NormalizedConversation {
     pub entries: Vec<NormalizedEntry>,
     pub session_id: Option<String>,
     pub executor_type: String,
+    pub prompt: Option<String>,
+    pub summary: Option<String>,
 }
 
 /// Individual entry in a normalized conversation
@@ -223,6 +225,8 @@ pub trait Executor: Send + Sync {
             entries: vec![],
             session_id: None,
             executor_type: "unknown".to_string(),
+            prompt: None,
+            summary: None,
         })
     }
 

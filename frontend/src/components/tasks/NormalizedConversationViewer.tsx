@@ -168,19 +168,41 @@ export function NormalizedConversationViewer({
   }
 
   return (
-    <div className="space-y-2">
-      {conversation.entries.map((entry, index) => (
-        <div key={index} className="flex items-start gap-3">
-          <div className="flex-shrink-0 mt-1">
-            {getEntryIcon(entry.entry_type)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className={getContentClassName(entry.entry_type)}>
-              {entry.content}
+    <div className="space-y-0">
+      {/* Display prompt if available */}
+      {conversation.prompt && (
+        <>
+          <div className="flex items-start gap-3 mb-4">
+            <div className="flex-shrink-0 mt-1">
+              <MessageSquare className="h-4 w-4 text-blue-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-mono bg-blue-50 border border-blue-200 rounded p-3 whitespace-pre-wrap text-blue-800">
+                {conversation.prompt}
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+          {conversation.entries.length > 0 && (
+            <div className="border-t border-border mb-4"></div>
+          )}
+        </>
+      )}
+      
+      {/* Display conversation entries */}
+      <div className="space-y-2">
+        {conversation.entries.map((entry, index) => (
+          <div key={index} className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-1">
+              {getEntryIcon(entry.entry_type)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className={getContentClassName(entry.entry_type)}>
+                {entry.content}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

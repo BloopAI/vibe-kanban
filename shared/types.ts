@@ -104,7 +104,7 @@ export type CreateExecutorSession = { task_attempt_id: string, execution_process
 
 export type UpdateExecutorSession = { session_id: string | null, prompt: string | null, summary: string | null, };
 
-export type NormalizedConversation = { entries: Array<NormalizedEntry>, session_id: string | null, executor_type: string, };
+export type NormalizedConversation = { entries: Array<NormalizedEntry>, session_id: string | null, executor_type: string, prompt: string | null, summary: string | null, };
 
 export type NormalizedEntry = { timestamp: string | null, entry_type: NormalizedEntryType, content: string, };
 

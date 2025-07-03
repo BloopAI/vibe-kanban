@@ -586,9 +586,9 @@ export function TaskDetailsPanel({
                 
                 if (mainCodingAgentProcess || followUpProcesses.length > 0) {
                   return (
-                    <div className="space-y-6">
+                    <div className="space-y-0">
                       {mainCodingAgentProcess && (
-                        <div>
+                        <div className="pb-6">
                           <NormalizedConversationViewer
                             executionProcess={mainCodingAgentProcess}
                             projectId={projectId}
@@ -597,20 +597,17 @@ export function TaskDetailsPanel({
                         </div>
                       )}
                       {followUpProcesses.map((followUpProcess, index) => (
-                        <div key={followUpProcess.id} className="border-t pt-6">
-                          <div className="mb-4">
-                            <h3 className="text-lg font-semibold text-muted-foreground">
-                              Follow-up #{index + 1}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              Started: {new Date(followUpProcess.started_at).toLocaleString()}
-                            </p>
+                        <div key={followUpProcess.id}>
+                          {(mainCodingAgentProcess || index > 0) && (
+                            <div className="border-t border-border"></div>
+                          )}
+                          <div className="pt-6">
+                            <NormalizedConversationViewer
+                              executionProcess={followUpProcess}
+                              projectId={projectId}
+                              onConversationUpdate={handleConversationUpdate}
+                            />
                           </div>
-                          <NormalizedConversationViewer
-                            executionProcess={followUpProcess}
-                            projectId={projectId}
-                            onConversationUpdate={handleConversationUpdate}
-                          />
                         </div>
                       ))}
                     </div>
@@ -815,9 +812,9 @@ export function TaskDetailsPanel({
                   
                   if (mainCodingAgentProcess || followUpProcesses.length > 0) {
                     return (
-                      <div className="space-y-6">
+                      <div className="space-y-0">
                         {mainCodingAgentProcess && (
-                          <div>
+                          <div className="pb-6">
                             <NormalizedConversationViewer
                               executionProcess={mainCodingAgentProcess}
                               projectId={projectId}
@@ -826,20 +823,17 @@ export function TaskDetailsPanel({
                           </div>
                         )}
                         {followUpProcesses.map((followUpProcess, index) => (
-                          <div key={followUpProcess.id} className="border-t pt-6">
-                            <div className="mb-4">
-                              <h3 className="text-lg font-semibold text-muted-foreground">
-                                Follow-up #{index + 1}
-                              </h3>
-                              <p className="text-sm text-muted-foreground">
-                                Started: {new Date(followUpProcess.started_at).toLocaleString()}
-                              </p>
+                          <div key={followUpProcess.id}>
+                            {(mainCodingAgentProcess || index > 0) && (
+                              <div className="border-t border-border"></div>
+                            )}
+                            <div className="pt-6">
+                              <NormalizedConversationViewer
+                                executionProcess={followUpProcess}
+                                projectId={projectId}
+                                onConversationUpdate={handleConversationUpdate}
+                              />
                             </div>
-                            <NormalizedConversationViewer
-                              executionProcess={followUpProcess}
-                              projectId={projectId}
-                              onConversationUpdate={handleConversationUpdate}
-                            />
                           </div>
                         ))}
                       </div>

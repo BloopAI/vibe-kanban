@@ -177,6 +177,8 @@ impl Executor for ClaudeExecutor {
             entries,
             session_id,
             executor_type: "claude".to_string(),
+            prompt: None,
+            summary: None,
         })
     }
 }

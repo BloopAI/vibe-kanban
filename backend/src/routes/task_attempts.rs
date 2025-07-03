@@ -17,6 +17,7 @@ use crate::{
     models::{
         config::Config,
         execution_process::{ExecutionProcess, ExecutionProcessSummary},
+        executor_session::ExecutorSession,
         task::Task,
         task_attempt::{
             BranchStatus, CreateFollowUpAttempt, CreatePrParams, CreateTaskAttempt, TaskAttempt,
@@ -1048,13 +1049,30 @@ pub async fn get_execution_process_normalized_logs(
 
     let executor = executor_config.create_executor();
 
+    // Get executor session data for this execution process
+    let executor_session = match ExecutorSession::find_by_execution_process_id(&pool, process_id).await {
+        Ok(session) => session,
+        Err(e) => {
+            tracing::error!("Failed to fetch executor session for process {}: {}", process_id, e);
+            None
+        }
+    };
+
     // Normalize the logs
     match executor.normalize_logs(&logs) {
-        Ok(normalized) => Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: Some(normalized),
-            message: None,
-        })),
+        Ok(mut normalized) => {
+            // Add prompt and summary from executor session
+            if let Some(session) = executor_session {
+                normalized.prompt = session.prompt;
+                normalized.summary = session.summary;
+            }
+            
+            Ok(ResponseJson(ApiResponse {
+                success: true,
+                data: Some(normalized),
+                message: None,
+            }))
+        }
         Err(e) => {
             tracing::error!("Failed to normalize logs for process {}: {}", process_id, e);
             Ok(ResponseJson(ApiResponse {
