@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   User, 
   Bot, 
@@ -76,37 +76,128 @@ export function NormalizedConversationViewer({
   const [conversation, setConversation] = useState<NormalizedConversation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isUserScrolling, setIsUserScrolling] = useState(false);
+  
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollTimeoutRef = useRef<number | null>(null);
+  const lastScrollTop = useRef<number>(0);
 
-  useEffect(() => {
-    const fetchNormalizedLogs = async () => {
-      try {
+  // Check if user is at the bottom of scroll
+  const isAtBottom = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return true;
+    
+    const threshold = 5; // 5px threshold
+    return container.scrollTop + container.clientHeight >= container.scrollHeight - threshold;
+  }, []);
+
+  // Auto-scroll to bottom
+  const scrollToBottom = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (container && !isUserScrolling) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, [isUserScrolling]);
+
+  // Handle scroll events
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const currentScrollTop = container.scrollTop;
+    const isAtBottomNow = isAtBottom();
+
+    // If user scrolled up from bottom, mark as manual scrolling
+    if (currentScrollTop < lastScrollTop.current && !isAtBottomNow) {
+      setIsUserScrolling(true);
+    }
+    
+    // If user scrolled back to bottom, resume auto-scrolling
+    if (isAtBottomNow && isUserScrolling) {
+      setIsUserScrolling(false);
+    }
+
+    lastScrollTop.current = currentScrollTop;
+
+    // Clear existing timeout
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+  }, [isAtBottom, isUserScrolling]);
+
+  const fetchNormalizedLogs = useCallback(async (isPolling = false) => {
+    try {
+      if (!isPolling) {
         setLoading(true);
         setError(null);
-        
-        const response = await makeRequest(
-          `/api/projects/${projectId}/execution-processes/${executionProcess.id}/normalized-logs`
-        );
-        
-        if (response.ok) {
-          const result: ApiResponse<NormalizedConversation> = await response.json();
-          if (result.success && result.data) {
-            setConversation(result.data);
-          } else {
-            setError(result.message || 'Failed to fetch normalized logs');
-          }
-        } else {
-          const errorText = await response.text();
-          setError(`Failed to fetch logs: ${errorText || response.statusText}`);
+      }
+      
+      const response = await makeRequest(
+        `/api/projects/${projectId}/execution-processes/${executionProcess.id}/normalized-logs`
+      );
+      
+      if (response.ok) {
+        const result: ApiResponse<NormalizedConversation> = await response.json();
+        if (result.success && result.data) {
+          setConversation(prev => {
+            // Only update if content actually changed
+            if (!prev || JSON.stringify(prev) !== JSON.stringify(result.data)) {
+              return result.data;
+            }
+            return prev;
+          });
+        } else if (!isPolling) {
+          setError(result.message || 'Failed to fetch normalized logs');
         }
-      } catch (err) {
+      } else if (!isPolling) {
+        const errorText = await response.text();
+        setError(`Failed to fetch logs: ${errorText || response.statusText}`);
+      }
+    } catch (err) {
+      if (!isPolling) {
         setError(`Error fetching logs: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      } finally {
+      }
+    } finally {
+      if (!isPolling) {
         setLoading(false);
       }
-    };
-
-    fetchNormalizedLogs();
+    }
   }, [executionProcess.id, projectId]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchNormalizedLogs();
+  }, [fetchNormalizedLogs]);
+
+  // Auto-refresh every 2 seconds when process is running
+  useEffect(() => {
+    if (executionProcess.status === 'running') {
+      const interval = setInterval(() => {
+        fetchNormalizedLogs(true);
+      }, 2000);
+
+      return () => clearInterval(interval);
+    }
+  }, [executionProcess.status, fetchNormalizedLogs]);
+
+  // Auto-scroll when conversation updates
+  useEffect(() => {
+    if (conversation && conversation.entries.length > 0) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        scrollToBottom();
+      }, 50);
+    }
+  }, [conversation, scrollToBottom]);
+
+  // Cleanup scroll timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -133,7 +224,11 @@ export function NormalizedConversationViewer({
   }
 
   return (
-    <div className="space-y-2">
+    <div 
+      ref={scrollContainerRef}
+      className="space-y-2 max-h-96 overflow-y-auto"
+      onScroll={handleScroll}
+    >
       {conversation.entries.map((entry, index) => (
         <div key={index} className="flex items-start gap-3">
           <div className="flex-shrink-0 mt-1">
