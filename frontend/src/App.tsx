@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Navbar } from '@/components/layout/navbar';
 import { Projects } from '@/pages/projects';
 import { ProjectTasks } from '@/pages/project-tasks';
-import { TaskAttemptComparePage } from '@/pages/task-attempt-compare';
+
 import { Settings } from '@/pages/Settings';
 import { McpServers } from '@/pages/McpServers';
 import { DisclaimerDialog } from '@/components/DisclaimerDialog';
@@ -127,10 +127,7 @@ function AppContent() {
               path="/projects/:projectId/tasks/:taskId"
               element={<ProjectTasks />}
             />
-            <Route
-              path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/compare"
-              element={<TaskAttemptComparePage />}
-            />
+
             <Route path="/settings" element={<Settings />} />
             <Route path="/mcp-servers" element={<McpServers />} />
           </Routes>

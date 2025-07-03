@@ -40,13 +40,6 @@ export const createKeyboardShortcuts = (
 
         // Navigate back based on current path
         if (
-          currentPath.includes('/attempts/') &&
-          currentPath.includes('/compare')
-        ) {
-          // From compare page, go back to task details
-          const taskPath = currentPath.split('/attempts/')[0];
-          context.navigate(taskPath);
-        } else if (
           currentPath.includes('/tasks/') &&
           !currentPath.endsWith('/tasks')
         ) {
