@@ -763,21 +763,6 @@ pub async fn stop_execution_process(
         }));
     }
 
-    // Track dev server stopped event if it was a dev server that was stopped
-    if process.process_type == crate::models::execution_process::ExecutionProcessType::DevServer {
-        let analytics = app_state.analytics.read().await;
-        analytics.track_event(
-            &crate::services::analytics::generate_user_id(),
-            "dev_server_stopped",
-            Some(serde_json::json!({
-                "task_id": task_id.to_string(),
-                "project_id": project_id.to_string(),
-                "attempt_id": attempt_id.to_string(),
-                "process_id": process_id.to_string()
-            })),
-        );
-    }
-
     // Update the execution process status in the database
     if let Err(e) = ExecutionProcess::update_completion(
         &pool,
