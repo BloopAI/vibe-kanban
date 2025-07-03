@@ -20,7 +20,7 @@ use crate::{
         task::Task,
         task_attempt::{
             BranchStatus, CreateFollowUpAttempt, CreatePrParams, CreateTaskAttempt, TaskAttempt,
-            TaskAttemptStatus, WorktreeDiff,
+            TaskAttemptState, TaskAttemptStatus, WorktreeDiff,
         },
         task_attempt_activity::{
             CreateTaskAttemptActivity, TaskAttemptActivity, TaskAttemptActivityWithPrompt,
@@ -951,6 +951,38 @@ pub async fn start_dev_server(
     }
 }
 
+pub async fn get_task_attempt_execution_state(
+    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    Extension(pool): Extension<SqlitePool>,
+) -> Result<ResponseJson<ApiResponse<TaskAttemptState>>, StatusCode> {
+    // Verify task attempt exists and belongs to the correct task
+    match TaskAttempt::exists_for_task(&pool, attempt_id, task_id, project_id).await {
+        Ok(false) => return Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to check task attempt existence: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+        Ok(true) => {}
+    }
+
+    // Get the execution state
+    match TaskAttempt::get_execution_state(&pool, attempt_id, task_id, project_id).await {
+        Ok(state) => Ok(ResponseJson(ApiResponse {
+            success: true,
+            data: Some(state),
+            message: None,
+        })),
+        Err(e) => {
+            tracing::error!(
+                "Failed to get execution state for task attempt {}: {}",
+                attempt_id,
+                e
+            );
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
 pub async fn get_execution_process_normalized_logs(
     Path((project_id, process_id)): Path<(Uuid, Uuid)>,
     Extension(pool): Extension<SqlitePool>,
@@ -1102,5 +1134,9 @@ pub fn task_attempts_router() -> Router {
         .route(
             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/start-dev-server",
             post(start_dev_server),
+        )
+        .route(
+            "/projects/:project_id/tasks/:task_id/attempts/:attempt_id",
+            get(get_task_attempt_execution_state),
         )
 }

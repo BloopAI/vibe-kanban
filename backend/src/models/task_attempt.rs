@@ -148,6 +148,29 @@ pub struct BranchStatus {
     pub base_branch_name: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub enum ExecutionState {
+    NotStarted,
+    SetupRunning,
+    SetupComplete,
+    SetupFailed,
+    CodingAgentRunning,
+    CodingAgentComplete,
+    CodingAgentFailed,
+    Complete,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct TaskAttemptState {
+    pub execution_state: ExecutionState,
+    pub has_changes: bool,
+    pub has_setup_script: bool,
+    pub setup_process_id: Option<String>,
+    pub coding_agent_process_id: Option<String>,
+}
+
 impl TaskAttempt {
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
@@ -1929,5 +1952,128 @@ impl TaskAttempt {
         .await?;
 
         Ok(())
+    }
+
+    /// Get the current execution state for a task attempt
+    pub async fn get_execution_state(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+        task_id: Uuid,
+        project_id: Uuid,
+    ) -> Result<TaskAttemptState, TaskAttemptError> {
+        // Get the task attempt with validation
+        let _attempt = sqlx::query_as!(
+            TaskAttempt,
+            r#"SELECT ta.id as "id!: Uuid", ta.task_id as "task_id!: Uuid", ta.worktree_path, ta.branch, ta.merge_commit, ta.executor, ta.pr_url, ta.pr_number, ta.pr_status, ta.pr_merged_at as "pr_merged_at: DateTime<Utc>", ta.created_at as "created_at!: DateTime<Utc>", ta.updated_at as "updated_at!: DateTime<Utc>"
+               FROM task_attempts ta 
+               JOIN tasks t ON ta.task_id = t.id 
+               WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
+            attempt_id,
+            task_id,
+            project_id
+        )
+        .fetch_optional(pool)
+        .await?
+        .ok_or(TaskAttemptError::TaskNotFound)?;
+
+        // Get the project to check if it has a setup script
+        let project = Project::find_by_id(pool, project_id)
+            .await?
+            .ok_or(TaskAttemptError::ProjectNotFound)?;
+
+        let has_setup_script = project
+            .setup_script
+            .as_ref()
+            .map(|script| !script.trim().is_empty())
+            .unwrap_or(false);
+
+        // Get all execution processes for this attempt, ordered by created_at
+        let processes = crate::models::execution_process::ExecutionProcess::find_by_task_attempt_id(
+            pool, attempt_id,
+        )
+        .await?;
+
+        // Find setup and coding agent processes
+        let setup_process = processes.iter().find(|p| {
+            matches!(
+                p.process_type,
+                crate::models::execution_process::ExecutionProcessType::SetupScript
+            )
+        });
+
+        let coding_agent_process = processes.iter().find(|p| {
+            matches!(
+                p.process_type,
+                crate::models::execution_process::ExecutionProcessType::CodingAgent
+            )
+        });
+
+        // Determine execution state based on processes
+        let execution_state = if let Some(setup) = setup_process {
+            match setup.status {
+                crate::models::execution_process::ExecutionProcessStatus::Running => {
+                    ExecutionState::SetupRunning
+                }
+                crate::models::execution_process::ExecutionProcessStatus::Completed => {
+                    if let Some(agent) = coding_agent_process {
+                        match agent.status {
+                            crate::models::execution_process::ExecutionProcessStatus::Running => {
+                                ExecutionState::CodingAgentRunning
+                            }
+                            crate::models::execution_process::ExecutionProcessStatus::Completed => {
+                                ExecutionState::CodingAgentComplete
+                            }
+                            crate::models::execution_process::ExecutionProcessStatus::Failed => {
+                                ExecutionState::CodingAgentFailed
+                            }
+                            crate::models::execution_process::ExecutionProcessStatus::Killed => {
+                                ExecutionState::CodingAgentFailed
+                            }
+                        }
+                    } else {
+                        ExecutionState::SetupComplete
+                    }
+                }
+                crate::models::execution_process::ExecutionProcessStatus::Failed => {
+                    ExecutionState::SetupFailed
+                }
+                crate::models::execution_process::ExecutionProcessStatus::Killed => {
+                    ExecutionState::SetupFailed
+                }
+            }
+        } else if let Some(agent) = coding_agent_process {
+            // No setup script, only coding agent
+            match agent.status {
+                crate::models::execution_process::ExecutionProcessStatus::Running => {
+                    ExecutionState::CodingAgentRunning
+                }
+                crate::models::execution_process::ExecutionProcessStatus::Completed => {
+                    ExecutionState::CodingAgentComplete
+                }
+                crate::models::execution_process::ExecutionProcessStatus::Failed => {
+                    ExecutionState::CodingAgentFailed
+                }
+                crate::models::execution_process::ExecutionProcessStatus::Killed => {
+                    ExecutionState::CodingAgentFailed
+                }
+            }
+        } else {
+            // No processes started yet
+            ExecutionState::NotStarted
+        };
+
+        // Check if there are any changes (quick diff check)
+        let has_changes = match Self::get_diff(pool, attempt_id, task_id, project_id).await {
+            Ok(diff) => !diff.files.is_empty(),
+            Err(_) => false, // If diff fails, assume no changes
+        };
+
+        Ok(TaskAttemptState {
+            execution_state,
+            has_changes,
+            has_setup_script,
+            setup_process_id: setup_process.map(|p| p.id.to_string()),
+            coding_agent_process_id: coding_agent_process.map(|p| p.id.to_string()),
+        })
     }
 }

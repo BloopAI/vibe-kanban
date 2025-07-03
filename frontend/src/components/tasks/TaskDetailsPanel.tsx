@@ -108,6 +108,7 @@ export function TaskDetailsPanel({
     isAttemptRunning,
     canSendFollowUp,
     processedDevServerLogs,
+    executionState,
     setFollowUpMessage,
     setFollowUpError,
     setIsHoveringDevServer,
@@ -436,6 +437,317 @@ export function TaskDetailsPanel({
     setFileToDelete(null);
   };
 
+  // Determine what content to show based on execution state
+  const renderMainContent = (): JSX.Element => {
+    if (!executionState) {
+      // Still loading execution state, show loading
+      return (
+        <div className="flex items-center justify-center h-full">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
+          <p className="text-muted-foreground ml-4">Loading...</p>
+        </div>
+      );
+    }
+
+    const isSetupRunning = executionState.execution_state === 'SetupRunning';
+    const isSetupFailed = executionState.execution_state === 'SetupFailed';
+    const isCodingAgentRunning = executionState.execution_state === 'CodingAgentRunning';
+    const hasChanges = executionState.has_changes;
+
+    // When setup script is running, show setup execution only
+    if (isSetupRunning) {
+      return (
+        <div className="flex-1 min-h-0 p-6 overflow-y-auto">
+          {/* Setup Script Execution */}
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-lg font-semibold mb-2">Setup Script Running</p>
+            <p className="text-muted-foreground">
+              Preparing the environment for the coding agent...
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // When setup failed, show error message
+    if (isSetupFailed) {
+      return (
+        <div className="flex-1 min-h-0 p-6 overflow-y-auto">
+          <div className="text-center py-8 text-destructive">
+            <p className="text-lg font-semibold mb-2">Setup Script Failed</p>
+            <p className="text-muted-foreground">
+              The setup script encountered an error. Check the logs for details.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // When coding agent is running but no changes yet, show just agent conversation (full height)
+    if (isCodingAgentRunning && !hasChanges) {
+      return (
+        <div className="flex-1 min-h-0 border-t bg-muted/30">
+          <div
+            ref={scrollContainerRef}
+            onScroll={handleLogsScroll}
+            className="h-full overflow-y-auto p-6"
+          >
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Loading...</p>
+              </div>
+            ) : (() => {
+                // Find coding agent process (same logic as before)
+                let codingAgentProcess = Object.values(attemptData.runningProcessDetails).find(
+                  process => process.process_type === 'codingagent'
+                );
+                
+                if (!codingAgentProcess) {
+                  const codingAgentSummary = attemptData.processes.find(
+                    process => process.process_type === 'codingagent'
+                  );
+                  
+                  if (codingAgentSummary) {
+                    codingAgentProcess = Object.values(attemptData.runningProcessDetails).find(
+                      process => process.id === codingAgentSummary.id
+                    );
+                    
+                    if (!codingAgentProcess) {
+                      codingAgentProcess = {
+                        ...codingAgentSummary,
+                        stdout: null,
+                        stderr: null,
+                      } as any;
+                    }
+                  }
+                }
+                
+                if (codingAgentProcess) {
+                  return (
+                    <NormalizedConversationViewer
+                      executionProcess={codingAgentProcess}
+                      projectId={projectId}
+                      onConversationUpdate={handleConversationUpdate}
+                    />
+                  );
+                }
+                
+                return (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <p className="text-lg font-semibold mb-2">Coding Agent Starting</p>
+                    <p>Initializing conversation...</p>
+                  </div>
+                );
+              })()}
+          </div>
+        </div>
+      );
+    }
+
+    // When changes appear, show them (2/3) and conversation (1/3) in split view
+    if (hasChanges) {
+      return (
+        <>
+          {/* Top 2/3 - Code Changes */}
+          <div className="flex-1 min-h-0 p-6 overflow-y-auto">
+            {diffLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
+                <p className="text-muted-foreground ml-4">Loading changes...</p>
+              </div>
+            ) : diffError ? (
+              <div className="text-center py-8 text-destructive">
+                <p>{diffError}</p>
+              </div>
+            ) : !diff || diff.files.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No changes detected</p>
+                <p className="text-sm">
+                  The worktree is identical to the base commit
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {diff.files.map((file, fileIndex) => (
+                  <div
+                    key={fileIndex}
+                    className="border rounded-lg overflow-hidden"
+                  >
+                    <div className="bg-muted px-3 py-2 border-b flex items-center justify-between">
+                      <p className="text-sm font-medium text-muted-foreground font-mono">
+                        {file.path}
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteFileClick(file.path)}
+                        disabled={deletingFiles.has(file.path)}
+                        className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 px-3 gap-1"
+                        title={`Delete ${file.path}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="text-xs">
+                          {deletingFiles.has(file.path)
+                            ? 'Deleting...'
+                            : 'Delete File'}
+                        </span>
+                      </Button>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <div className="inline-block min-w-full">
+                        {processFileChunks(file.chunks, fileIndex).map(
+                          (section, sectionIndex) => {
+                            if (
+                              section.type === 'context' &&
+                              section.lines.length === 0 &&
+                              section.expandKey
+                            ) {
+                              const lineCount =
+                                parseInt(section.expandKey.split('-')[2]) -
+                                parseInt(section.expandKey.split('-')[1]);
+                              return (
+                                <div key={`expand-${section.expandKey}`} className="w-full">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      toggleExpandSection(section.expandKey!)
+                                    }
+                                    className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none justify-start"
+                                  >
+                                    <ChevronDown className="h-3 w-3 mr-1" />
+                                    Show {lineCount} more lines
+                                  </Button>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <div key={`section-${sectionIndex}`}>
+                                {section.type === 'expanded' &&
+                                  section.expandKey && (
+                                    <div className="w-full">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                          toggleExpandSection(section.expandKey!)
+                                        }
+                                        className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none justify-start"
+                                      >
+                                        <ChevronUp className="h-3 w-3 mr-1" />
+                                        Hide expanded lines
+                                      </Button>
+                                    </div>
+                                  )}
+                                {section.lines.map((line, lineIndex) => (
+                                  <div
+                                    key={`${sectionIndex}-${lineIndex}`}
+                                    className={getChunkClassName(line.chunkType)}
+                                    style={{ minWidth: 'max-content' }}
+                                  >
+                                    <div className={getLineNumberClassName(line.chunkType)}>
+                                      <span className="inline-block w-6 text-right">
+                                        {line.oldLineNumber || ''}
+                                      </span>
+                                      <span className="inline-block w-6 text-right ml-1">
+                                        {line.newLineNumber || ''}
+                                      </span>
+                                    </div>
+                                    <div className="flex-1 px-3 min-h-[1.75rem] flex items-center">
+                                      <span className="inline-block w-4">
+                                        {getChunkPrefix(line.chunkType)}
+                                      </span>
+                                      <span>{line.content}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          }
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Bottom 1/3 - Agent Logs */}
+          <div className="h-1/3 min-h-0 border-t bg-muted/30">
+            <div
+              ref={scrollContainerRef}
+              onScroll={handleLogsScroll}
+              className="h-full overflow-y-auto p-6"
+            >
+              {loading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading...</p>
+                </div>
+              ) : (() => {
+                  // Same logic as before to find coding agent process
+                  let codingAgentProcess = Object.values(attemptData.runningProcessDetails).find(
+                    process => process.process_type === 'codingagent'
+                  );
+                  
+                  if (!codingAgentProcess) {
+                    const codingAgentSummary = attemptData.processes.find(
+                      process => process.process_type === 'codingagent'
+                    );
+                    
+                    if (codingAgentSummary) {
+                      codingAgentProcess = Object.values(attemptData.runningProcessDetails).find(
+                        process => process.id === codingAgentSummary.id
+                      );
+                      
+                      if (!codingAgentProcess) {
+                        codingAgentProcess = {
+                          ...codingAgentSummary,
+                          stdout: null,
+                          stderr: null,
+                        } as any;
+                      }
+                    }
+                  }
+                  
+                  if (codingAgentProcess) {
+                    return (
+                      <NormalizedConversationViewer
+                        executionProcess={codingAgentProcess}
+                        projectId={projectId}
+                        onConversationUpdate={handleConversationUpdate}
+                      />
+                    );
+                  }
+                  
+                  return (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>No coding agent conversation to display</p>
+                    </div>
+                  );
+                })()}
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    // Default case - execution hasn't started or no specific state
+    return (
+      <div className="flex-1 min-h-0 p-6 overflow-y-auto">
+        <div className="text-center py-8 text-muted-foreground">
+          <p>Task execution not started yet</p>
+        </div>
+      </div>
+    );
+  };
+
   if (!task) return null;
 
   return (
@@ -481,194 +793,9 @@ export function TaskDetailsPanel({
                 onSetIsHoveringDevServer={setIsHoveringDevServer}
               />
 
-              {/* Main Content - Split into two sections */}
+              {/* Main Content - Dynamic based on execution state */}
               <div className="flex-1 flex flex-col min-h-0">
-                {/* Top 2/3 - Code Changes */}
-                <div className="flex-1 min-h-0 p-6 overflow-y-auto">
-                  {diffLoading ? (
-                    <div className="flex items-center justify-center h-32">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
-                      <p className="text-muted-foreground ml-4">Loading changes...</p>
-                    </div>
-                  ) : diffError ? (
-                    <div className="text-center py-8 text-destructive">
-                      <p>{diffError}</p>
-                    </div>
-                  ) : !diff || diff.files.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No changes detected</p>
-                      <p className="text-sm">
-                        The worktree is identical to the base commit
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      {diff.files.map((file, fileIndex) => (
-                        <div
-                          key={fileIndex}
-                          className="border rounded-lg overflow-hidden"
-                        >
-                          <div className="bg-muted px-3 py-2 border-b flex items-center justify-between">
-                            <p className="text-sm font-medium text-muted-foreground font-mono">
-                              {file.path}
-                            </p>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteFileClick(file.path)}
-                              disabled={deletingFiles.has(file.path)}
-                              className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 px-3 gap-1"
-                              title={`Delete ${file.path}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              <span className="text-xs">
-                                {deletingFiles.has(file.path)
-                                  ? 'Deleting...'
-                                  : 'Delete File'}
-                              </span>
-                            </Button>
-                          </div>
-                          <div className="overflow-x-auto">
-                            <div className="inline-block min-w-full">
-                              {processFileChunks(file.chunks, fileIndex).map(
-                                (section, sectionIndex) => {
-                                  if (
-                                    section.type === 'context' &&
-                                    section.lines.length === 0 &&
-                                    section.expandKey
-                                  ) {
-                                    const lineCount =
-                                      parseInt(section.expandKey.split('-')[2]) -
-                                      parseInt(section.expandKey.split('-')[1]);
-                                    return (
-                                      <div key={`expand-${section.expandKey}`} className="w-full">
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() =>
-                                            toggleExpandSection(section.expandKey!)
-                                          }
-                                          className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none justify-start"
-                                        >
-                                          <ChevronDown className="h-3 w-3 mr-1" />
-                                          Show {lineCount} more lines
-                                        </Button>
-                                      </div>
-                                    );
-                                  }
-
-                                  return (
-                                    <div key={`section-${sectionIndex}`}>
-                                      {section.type === 'expanded' &&
-                                        section.expandKey && (
-                                          <div className="w-full">
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() =>
-                                                toggleExpandSection(section.expandKey!)
-                                              }
-                                              className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none justify-start"
-                                            >
-                                              <ChevronUp className="h-3 w-3 mr-1" />
-                                              Hide expanded lines
-                                            </Button>
-                                          </div>
-                                        )}
-                                      {section.lines.map((line, lineIndex) => (
-                                        <div
-                                          key={`${sectionIndex}-${lineIndex}`}
-                                          className={getChunkClassName(line.chunkType)}
-                                          style={{ minWidth: 'max-content' }}
-                                        >
-                                          <div className={getLineNumberClassName(line.chunkType)}>
-                                            <span className="inline-block w-6 text-right">
-                                              {line.oldLineNumber || ''}
-                                            </span>
-                                            <span className="inline-block w-6 text-right ml-1">
-                                              {line.newLineNumber || ''}
-                                            </span>
-                                          </div>
-                                          <div className="flex-1 px-3 min-h-[1.75rem] flex items-center">
-                                            <span className="inline-block w-4">
-                                              {getChunkPrefix(line.chunkType)}
-                                            </span>
-                                            <span>{line.content}</span>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  );
-                                }
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Bottom 1/3 - Agent Logs */}
-                <div className="h-1/3 min-h-0 border-t bg-muted/30">
-                  <div
-                    ref={scrollContainerRef}
-                    onScroll={handleLogsScroll}
-                    className="h-full overflow-y-auto p-6"
-                  >
-                    {loading ? (
-                      <div className="text-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
-                        <p className="text-muted-foreground">Loading...</p>
-                      </div>
-                    ) : (() => {
-                        // First, look for a running coding agent process
-                        let codingAgentProcess = Object.values(attemptData.runningProcessDetails).find(
-                          process => process.process_type === 'codingagent'
-                        );
-                        
-                        // If no running process, look for any coding agent process in the summaries
-                        if (!codingAgentProcess) {
-                          const codingAgentSummary = attemptData.processes.find(
-                            process => process.process_type === 'codingagent'
-                          );
-                          
-                          if (codingAgentSummary) {
-                            // Try to find it in running processes by ID (it might be there but completed)
-                            codingAgentProcess = Object.values(attemptData.runningProcessDetails).find(
-                              process => process.id === codingAgentSummary.id
-                            );
-                            
-                            // If still not found, create a minimal ExecutionProcess from the summary
-                            if (!codingAgentProcess) {
-                              codingAgentProcess = {
-                                ...codingAgentSummary,
-                                stdout: null,
-                                stderr: null,
-                              } as any; // Cast since we're missing some fields but NormalizedConversationViewer only needs the ID
-                            }
-                          }
-                        }
-                        
-                        if (codingAgentProcess) {
-                          return (
-                            <NormalizedConversationViewer
-                              executionProcess={codingAgentProcess}
-                              projectId={projectId}
-                              onConversationUpdate={handleConversationUpdate}
-                            />
-                          );
-                        }
-                        
-                        return (
-                          <div className="text-center py-8 text-muted-foreground">
-                            <p>No coding agent conversation to display</p>
-                          </div>
-                        );
-                      })()}
-                  </div>
-                </div>
+                {renderMainContent()}
               </div>
 
               {/* Footer - Follow-up section */}

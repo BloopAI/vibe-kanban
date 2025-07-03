@@ -10,6 +10,7 @@ import type {
   ExecutionProcessSummary,
   EditorType,
   GitBranch,
+  TaskAttemptState,
 } from 'shared/types';
 
 export function useTaskDetails(
@@ -45,6 +46,7 @@ export function useTaskDetails(
   const [isHoveringDevServer, setIsHoveringDevServer] = useState(false);
   const [branches, setBranches] = useState<GitBranch[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+  const [executionState, setExecutionState] = useState<TaskAttemptState | null>(null);
 
   // Find running dev server in current project
   const runningDevServer = useMemo(() => {
@@ -188,6 +190,28 @@ export function useTaskDetails(
     [task, projectId]
   );
 
+  const fetchExecutionState = useCallback(
+    async (attemptId: string) => {
+      if (!task) return;
+
+      try {
+        const response = await makeRequest(
+          `/api/projects/${projectId}/tasks/${task.id}/attempts/${attemptId}`
+        );
+
+        if (response.ok) {
+          const result: ApiResponse<TaskAttemptState> = await response.json();
+          if (result.success && result.data) {
+            setExecutionState(result.data);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch execution state:', err);
+      }
+    },
+    [task, projectId]
+  );
+
   const fetchTaskAttempts = useCallback(async () => {
     if (!task) return;
 
@@ -287,11 +311,12 @@ export function useTaskDetails(
     const interval = setInterval(() => {
       if (selectedAttempt) {
         fetchAttemptData(selectedAttempt.id);
+        fetchExecutionState(selectedAttempt.id);
       }
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [isAttemptRunning, task, selectedAttempt, fetchAttemptData]);
+  }, [isAttemptRunning, task, selectedAttempt, fetchAttemptData, fetchExecutionState]);
 
   // Poll dev server details while hovering
   useEffect(() => {
@@ -310,6 +335,7 @@ export function useTaskDetails(
     if (attempt) {
       setSelectedAttempt(attempt);
       fetchAttemptData(attempt.id);
+      fetchExecutionState(attempt.id);
     }
   };
 
@@ -510,6 +536,7 @@ export function useTaskDetails(
     isHoveringDevServer,
     branches,
     selectedBranch,
+    executionState,
 
     // Computed
     runningDevServer,
