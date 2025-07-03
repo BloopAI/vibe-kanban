@@ -45,6 +45,8 @@ octocrab = "0.44"
 sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debug-images"] }
 sentry-tower = "0.41.0"
 sentry-tracing = { version = "0.41.0", features = ["backtrace"] }
+reqwest = { version = "0.11", features = ["json"] }
+dotenv = "0.15"
 
 [build-dependencies]
 ts-rs = { version = "9.0", features = ["uuid-impl", "chrono-impl"] }

@@ -1,22 +1,25 @@
+use std::time::Duration;
+
 use anyhow::Result;
-use posthog_rs::{client, Event};
-use serde_json::Value;
+use serde_json::{json, Value};
 
 #[derive(Debug, Clone)]
 pub struct AnalyticsConfig {
     pub posthog_api_key: String,
+    pub posthog_api_endpoint: String,
     pub enabled: bool,
 }
 
 impl AnalyticsConfig {
-    pub fn new(posthog_api_key: Option<String>, user_enabled: bool) -> Self {
-        let api_key = posthog_api_key
-            .or_else(|| std::env::var("POSTHOG_API_KEY").ok())
-            .unwrap_or_default();
-        let enabled = user_enabled && !api_key.is_empty();
+    pub fn new(user_enabled: bool) -> Self {
+        let api_key = std::env::var("POSTHOG_API_KEY").unwrap_or_default();
+        let api_endpoint = std::env::var("POSTHOG_API_ENDPOINT").unwrap_or_default();
+
+        let enabled = user_enabled && !api_key.is_empty() && !api_endpoint.is_empty();
 
         Self {
             posthog_api_key: api_key,
+            posthog_api_endpoint: api_endpoint,
             enabled,
         }
     }
@@ -25,11 +28,17 @@ impl AnalyticsConfig {
 #[derive(Debug)]
 pub struct AnalyticsService {
     config: AnalyticsConfig,
+    client: reqwest::Client,
 }
 
 impl AnalyticsService {
     pub fn new(config: AnalyticsConfig) -> Self {
-        Self { config }
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()
+            .unwrap();
+
+        Self { config, client }
     }
 
     pub fn is_enabled(&self) -> bool {
@@ -43,40 +52,52 @@ impl AnalyticsService {
         properties: Option<Value>,
     ) -> Result<()> {
         if !self.is_enabled() {
+            tracing::warn!("Analytics are disabled");
             return Ok(());
         }
 
-        let analytics_client = client(self.config.posthog_api_key.as_str()).await;
-        let mut event = Event::new(event_name, user_id);
+        let endpoint = format!(
+            "{}/capture/",
+            self.config.posthog_api_endpoint.trim_end_matches('/')
+        );
 
-        if let Some(Value::Object(map)) = properties {
-            for (key, value) in map {
-                match value {
-                    Value::String(s) => {
-                        let _ = event.insert_prop(key, s);
-                    }
-                    Value::Number(n) => {
-                        if let Some(i) = n.as_i64() {
-                            let _ = event.insert_prop(key, i);
-                        } else if let Some(f) = n.as_f64() {
-                            let _ = event.insert_prop(key, f);
-                        }
-                    }
-                    Value::Bool(b) => {
-                        let _ = event.insert_prop(key, b);
-                    }
-                    _ => {
-                        let _ = event.insert_prop(key, value.to_string());
-                    }
-                }
-            }
+        let mut event_properties = properties.unwrap_or_else(|| json!({}));
+        if let Some(props) = event_properties.as_object_mut() {
+            props.insert(
+                "timestamp".to_string(),
+                json!(chrono::Utc::now().to_rfc3339()),
+            );
         }
 
-        match analytics_client.capture(event).await {
-            Ok(_) => {
-                tracing::info!("Sent analytics event");
+        match self
+            .client
+            .post(&endpoint)
+            .header("Content-Type", "application/json")
+            .json(&json!({
+                "api_key": self.config.posthog_api_key,
+                "event": event_name,
+                "distinct_id": user_id,
+                "properties": event_properties
+            }))
+            .send()
+            .await
+        {
+            Ok(response) => {
+                if response.status().is_success() {
+                    tracing::info!("Event '{}' sent successfully", event_name);
+                } else {
+                    let status = response.status();
+                    let response_text = response.text().await.unwrap_or_default();
+                    tracing::error!(
+                        "Failed to send event. Status: {}. Response: {}",
+                        status,
+                        response_text
+                    );
+                }
             }
-            Err(e) => tracing::warn!("Failed to send analytics event: {:?}", e),
+            Err(e) => {
+                tracing::error!("Error sending event: {}", e);
+            }
         }
 
         Ok(())

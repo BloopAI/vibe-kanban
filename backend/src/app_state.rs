@@ -43,7 +43,7 @@ impl AppState {
             config_guard.analytics_enabled.unwrap_or(false)
         };
 
-        let analytics_config = AnalyticsConfig::new(None, user_enabled);
+        let analytics_config = AnalyticsConfig::new(user_enabled);
         let analytics = Arc::new(TokioRwLock::new(AnalyticsService::new(analytics_config)));
 
         Self {
@@ -55,7 +55,7 @@ impl AppState {
     }
 
     pub async fn update_analytics_config(&self, user_enabled: bool) {
-        let new_config = AnalyticsConfig::new(None, user_enabled);
+        let new_config = AnalyticsConfig::new(user_enabled);
         let new_service = AnalyticsService::new(new_config);
         let mut analytics = self.analytics.write().await;
         *analytics = new_service;

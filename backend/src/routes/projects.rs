@@ -11,12 +11,15 @@ use sqlx::SqlitePool;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use crate::models::{
-    project::{
-        CreateBranch, CreateProject, GitBranch, Project, ProjectWithBranch, SearchMatchType,
-        SearchResult, UpdateProject,
+use crate::{
+    models::{
+        project::{
+            CreateBranch, CreateProject, GitBranch, Project, ProjectWithBranch, SearchMatchType,
+            SearchResult, UpdateProject,
+        },
+        ApiResponse,
     },
-    ApiResponse,
+    services,
 };
 
 pub async fn get_projects(
@@ -253,12 +256,12 @@ pub async fn create_project(
         Ok(project) => {
             // Track project creation event
             if app_state.get_analytics_enabled().await {
-                let user_id = crate::services::generate_user_id();
-                tracing::info!("Tracking project creation event for user: {}", user_id);
-                let analytics = app_state.analytics.read().await;
-                let _ = analytics
+                let _ = app_state
+                    .analytics
+                    .read()
+                    .await
                     .track_event(
-                        &user_id,
+                        &services::generate_user_id(),
                         "project_created",
                         Some(serde_json::json!({
                             "project_id": project.id.to_string(),

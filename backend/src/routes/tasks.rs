@@ -15,7 +15,7 @@ use crate::{
         task_attempt::{CreateTaskAttempt, TaskAttempt},
         ApiResponse,
     },
-    services::generate_user_id,
+    services,
 };
 
 pub async fn get_project_tasks(
@@ -89,11 +89,12 @@ pub async fn create_task(
         Ok(task) => {
             // Track task creation event
             if app_state.get_analytics_enabled().await {
-                let user_id = generate_user_id();
-                let analytics = app_state.analytics.read().await;
-                let _ = analytics
+                let _ = app_state
+                    .analytics
+                    .read()
+                    .await
                     .track_event(
-                        &user_id,
+                        &services::generate_user_id(),
                         "task_created",
                         Some(serde_json::json!({
                             "task_id": task.id.to_string(),
@@ -175,22 +176,17 @@ pub async fn create_task_and_start(
         Ok(attempt) => {
             // Track task creation and start events
             if app_state.get_analytics_enabled().await {
-                let user_id = generate_user_id();
-                let executor_type = executor_string.as_deref().unwrap_or("default");
-
                 let analytics = app_state.analytics.read().await;
 
                 // Track task creation
                 let _ = analytics
                     .track_event(
-                        &user_id,
+                        &services::generate_user_id(),
                         "task_created",
                         Some(serde_json::json!({
                             "task_id": task.id.to_string(),
                             "project_id": project_id.to_string(),
                             "has_description": task.description.is_some(),
-                            "auto_started": true,
-                            "executor_type": executor_type,
                         })),
                     )
                     .await;
@@ -198,11 +194,11 @@ pub async fn create_task_and_start(
                 // Track task start
                 let _ = analytics
                     .track_event(
-                        &user_id,
+                        &services::generate_user_id(),
                         "task_started",
                         Some(serde_json::json!({
                             "task_id": task.id.to_string(),
-                            "executor_type": executor_type,
+                            "executor_type": executor_string.as_deref().unwrap_or("default"),
                             "attempt_id": attempt.id.to_string(),
                         })),
                     )
