@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   History,
   Settings2,
@@ -47,6 +47,7 @@ import type {
   ExecutionProcess,
   Project,
   GitBranch,
+  BranchStatus,
 } from 'shared/types';
 
 interface ApiResponse<T> {
@@ -121,7 +122,9 @@ export function TaskDetailsToolbar({
   const [createAttemptExecutor, setCreateAttemptExecutor] =
     useState<string>(selectedExecutor);
 
-  // Git operations state
+  // Branch status and git operations state
+  const [branchStatus, setBranchStatus] = useState<BranchStatus | null>(null);
+  const [branchStatusLoading, setBranchStatusLoading] = useState(false);
   const [merging, setMerging] = useState(false);
   const [rebasing, setRebasing] = useState(false);
   const [creatingPR, setCreatingPR] = useState(false);
@@ -135,6 +138,40 @@ export function TaskDetailsToolbar({
   useEffect(() => {
     setIsInCreateAttemptMode(taskAttempts.length === 0);
   }, [taskAttempts.length]);
+
+  // Branch status fetching
+  const fetchBranchStatus = useCallback(async () => {
+    if (!projectId || !task.id || !selectedAttempt?.id) return;
+
+    try {
+      setBranchStatusLoading(true);
+      const response = await makeRequest(
+        `/api/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttempt.id}/branch-status`
+      );
+
+      if (response.ok) {
+        const result: ApiResponse<BranchStatus> = await response.json();
+        if (result.success && result.data) {
+          setBranchStatus(result.data);
+        } else {
+          setError('Failed to load branch status');
+        }
+      } else {
+        setError('Failed to load branch status');
+      }
+    } catch (err) {
+      setError('Failed to load branch status');
+    } finally {
+      setBranchStatusLoading(false);
+    }
+  }, [projectId, task.id, selectedAttempt?.id]);
+
+  // Fetch branch status when selected attempt changes
+  useEffect(() => {
+    if (selectedAttempt) {
+      fetchBranchStatus();
+    }
+  }, [selectedAttempt, fetchBranchStatus]);
 
   // Git operations
   const handleMergeClick = async () => {
@@ -159,8 +196,8 @@ export function TaskDetailsToolbar({
       if (response.ok) {
         const result: ApiResponse<string> = await response.json();
         if (result.success) {
-          // Merge successful
-          setError(null);
+          // Refetch branch status to show updated state
+          fetchBranchStatus();
         } else {
           setError(result.message || 'Failed to merge changes');
         }
@@ -189,7 +226,8 @@ export function TaskDetailsToolbar({
       if (response.ok) {
         const result: ApiResponse<string> = await response.json();
         if (result.success) {
-          setError(null);
+          // Refresh branch status after rebase
+          fetchBranchStatus();
         } else {
           setError(result.message || 'Failed to rebase branch');
         }
@@ -721,43 +759,62 @@ export function TaskDetailsToolbar({
                         )}
 
                         {/* Git Operations */}
-                        {selectedAttempt && !selectedAttempt.merge_commit && (
-                          <>
-                            <Button
-                              onClick={handleRebaseClick}
-                              disabled={rebasing || isAttemptRunning}
-                              variant="outline"
-                              size="sm"
+                        {selectedAttempt && branchStatus && (
+                        <>
+                        {branchStatus.is_behind === true &&
+                        !branchStatus.merged && (
+                          <Button
+                            onClick={handleRebaseClick}
+                            disabled={
+                              rebasing ||
+                                branchStatusLoading ||
+                              isAttemptRunning
+                          }
+                            variant="outline"
+                            size="sm"
                               className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1"
                             >
-                              <RefreshCw
-                                className={`h-3 w-3 ${rebasing ? 'animate-spin' : ''}`}
-                              />
-                              {rebasing ? 'Rebasing...' : `Rebase`}
-                            </Button>
-                            <Button
-                              onClick={handleCreatePRClick}
-                              disabled={creatingPR || isAttemptRunning}
-                              variant="outline"
-                              size="sm"
-                              className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1"
+                            <RefreshCw
+                              className={`h-3 w-3 ${rebasing ? 'animate-spin' : ''}`}
+                            />
+                            {rebasing ? 'Rebasing...' : `Rebase`}
+                          </Button>
+                          )}
+                        {!branchStatus.merged && (
+                        <>
+                        <Button
+                          onClick={handleCreatePRClick}
+                          disabled={
+                            creatingPR ||
+                                Boolean(branchStatus.is_behind) ||
+                                isAttemptRunning
+                            }
+                            variant="outline"
+                            size="sm"
+                            className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1"
                             >
-                              <GitPullRequest className="h-3 w-3" />
-                              {selectedAttempt.pr_url
+                            <GitPullRequest className="h-3 w-3" />
+                            {selectedAttempt.pr_url
                                 ? 'Open PR'
-                                : creatingPR
-                                  ? 'Creating...'
-                                  : 'Create PR'}
-                            </Button>
-                            <Button
-                              onClick={handleMergeClick}
-                              disabled={merging || isAttemptRunning}
-                              size="sm"
-                              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"
-                            >
-                              <GitBranchIcon className="h-3 w-3" />
-                              {merging ? 'Merging...' : 'Merge'}
-                            </Button>
+                                  : creatingPR
+                                    ? 'Creating...'
+                                    : 'Create PR'}
+                                </Button>
+                                <Button
+                                  onClick={handleMergeClick}
+                                  disabled={
+                                    merging ||
+                                    Boolean(branchStatus.is_behind) ||
+                                    isAttemptRunning
+                                  }
+                                  size="sm"
+                                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"
+                                >
+                                  <GitBranchIcon className="h-3 w-3" />
+                                  {merging ? 'Merging...' : 'Merge'}
+                                </Button>
+                              </>
+                            )}
                           </>
                         )}
 
