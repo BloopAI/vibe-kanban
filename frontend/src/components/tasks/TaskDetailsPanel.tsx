@@ -486,33 +486,23 @@ export function TaskDetailsPanel({
 
       return (
         <div className="flex-1 min-h-0 p-6 overflow-y-auto">
-          <div className="space-y-4">
-            <div className="text-center py-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-              <p className="text-lg font-semibold mb-2">Setup Script Running</p>
-              <p className="text-muted-foreground mb-4">
-                Preparing the environment for the coding agent...
-              </p>
-            </div>
-            
-            {setupProcess && (
-              <div className="border rounded-lg overflow-hidden">
-                <div className="bg-muted px-3 py-2 border-b">
-                  <p className="text-sm font-medium text-muted-foreground">Setup Script Output</p>
-                </div>
-                <div className="bg-black text-green-400 p-4 font-mono text-sm max-h-96 overflow-y-auto">
-                  <pre className="whitespace-pre-wrap">
-                    {(() => {
-                      const stdout = setupProcess.stdout || '';
-                      const stderr = setupProcess.stderr || '';
-                      const combined = [stdout, stderr].filter(Boolean).join('\n');
-                      return combined || 'No output yet...';
-                    })()}
-                  </pre>
-                </div>
-              </div>
-            )}
+          <div className="mb-4">
+            <p className="text-lg font-semibold mb-2">Setup Script Running</p>
+            <p className="text-muted-foreground mb-4">
+              Preparing the environment for the coding agent...
+            </p>
           </div>
+          
+          {setupProcess && (
+            <div className="font-mono text-sm whitespace-pre-wrap text-muted-foreground">
+              {(() => {
+                const stdout = setupProcess.stdout || '';
+                const stderr = setupProcess.stderr || '';
+                const combined = [stdout, stderr].filter(Boolean).join('\n');
+                return combined || 'Waiting for setup script output...';
+              })()}
+            </div>
+          )}
         </div>
       );
     }
