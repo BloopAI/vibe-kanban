@@ -208,7 +208,7 @@ export function TaskDetailsPanel({
 
   // Diff processing functions
   const getChunkClassName = (chunkType: DiffChunkType) => {
-    const baseClass = 'font-mono text-sm whitespace-nowrap flex min-w-max';
+    const baseClass = 'font-mono text-sm whitespace-nowrap flex w-full';
 
     switch (chunkType) {
       case 'Insert':
@@ -524,7 +524,7 @@ export function TaskDetailsPanel({
                             </Button>
                           </div>
                           <div className="overflow-x-auto">
-                            <div className="min-w-full">
+                            <div className="inline-block min-w-full">
                               {processFileChunks(file.chunks, fileIndex).map(
                                 (section, sectionIndex) => {
                                   if (
@@ -536,14 +536,14 @@ export function TaskDetailsPanel({
                                       parseInt(section.expandKey.split('-')[2]) -
                                       parseInt(section.expandKey.split('-')[1]);
                                     return (
-                                      <div key={`expand-${section.expandKey}`}>
+                                      <div key={`expand-${section.expandKey}`} className="w-full">
                                         <Button
                                           variant="ghost"
                                           size="sm"
                                           onClick={() =>
                                             toggleExpandSection(section.expandKey!)
                                           }
-                                          className="w-full min-w-max h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none"
+                                          className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none"
                                         >
                                           <ChevronDown className="h-3 w-3 mr-1" />
                                           Show {lineCount} more lines
@@ -556,22 +556,25 @@ export function TaskDetailsPanel({
                                     <div key={`section-${sectionIndex}`}>
                                       {section.type === 'expanded' &&
                                         section.expandKey && (
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() =>
-                                              toggleExpandSection(section.expandKey!)
-                                            }
-                                            className="w-full min-w-max h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none"
-                                          >
-                                            <ChevronUp className="h-3 w-3 mr-1" />
-                                            Hide expanded lines
-                                          </Button>
+                                          <div className="w-full">
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() =>
+                                                toggleExpandSection(section.expandKey!)
+                                              }
+                                              className="w-full h-8 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none"
+                                            >
+                                              <ChevronUp className="h-3 w-3 mr-1" />
+                                              Hide expanded lines
+                                            </Button>
+                                          </div>
                                         )}
                                       {section.lines.map((line, lineIndex) => (
                                         <div
                                           key={`${sectionIndex}-${lineIndex}`}
                                           className={getChunkClassName(line.chunkType)}
+                                          style={{ minWidth: 'max-content' }}
                                         >
                                           <div className={getLineNumberClassName(line.chunkType)}>
                                             <span className="inline-block w-6 text-right">
