@@ -11,7 +11,6 @@ use crate::{
         task_attempt::{TaskAttempt, TaskAttemptStatus},
         task_attempt_activity::{CreateTaskAttemptActivity, TaskAttemptActivity},
     },
-    services,
 };
 
 /// Commit any unstaged changes in the worktree after execution completion
@@ -697,10 +696,8 @@ async fn handle_coding_agent_completion(
             if let Ok(Some(task)) = Task::find_by_id(&app_state.db_pool, task_attempt.task_id).await
             {
                 // Track task completion event
-                if app_state.get_analytics_enabled().await {
-                    let analytics = app_state.analytics.read().await;
-                    analytics.track_event(
-                        &services::generate_user_id(),
+                app_state
+                    .track_analytics_event(
                         "task_finished",
                         Some(serde_json::json!({
                             "task_id": task.id.to_string(),
@@ -709,8 +706,8 @@ async fn handle_coding_agent_completion(
                             "execution_success": success,
                             "exit_code": exit_code,
                         })),
-                    );
-                }
+                    )
+                    .await;
 
                 // Update task status to InReview
                 if let Err(e) = Task::update_status(

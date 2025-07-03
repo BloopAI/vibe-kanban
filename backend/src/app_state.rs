@@ -8,7 +8,7 @@ use nix::{
 use tokio::sync::{Mutex, RwLock as TokioRwLock};
 use uuid::Uuid;
 
-use crate::services::{AnalyticsConfig, AnalyticsService};
+use crate::services::{generate_user_id, AnalyticsConfig, AnalyticsService};
 
 #[derive(Debug)]
 pub enum ExecutionType {
@@ -214,12 +214,23 @@ impl AppState {
         config.sound_file.clone()
     }
 
-    pub async fn get_analytics_enabled(&self) -> bool {
+    async fn get_analytics_enabled(&self) -> bool {
         let config = self.config.read().await;
         let user_enabled = config.analytics_enabled.unwrap_or(false);
         drop(config);
 
         let analytics = self.analytics.read().await;
         analytics.is_enabled() && user_enabled
+    }
+
+    pub async fn track_analytics_event(
+        &self,
+        event_name: &str,
+        properties: Option<serde_json::Value>,
+    ) {
+        if self.get_analytics_enabled().await {
+            let analytics = self.analytics.read().await;
+            analytics.track_event(&generate_user_id(), event_name, properties);
+        }
     }
 }

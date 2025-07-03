@@ -164,13 +164,10 @@ fn main() -> anyhow::Result<()> {
             let config_arc = Arc::new(RwLock::new(config));
 
             // Create app state
-            let app_state = AppState::new(pool.clone(), config_arc.clone());
+            let app_state = AppState::new(pool.clone(), config_arc.clone()).await;
 
             // Track session start event
-            if app_state.get_analytics_enabled().await {
-                let analytics = app_state.analytics.read().await;
-                analytics.track_event(&services::generate_user_id(), "session_start", None);
-            }
+            app_state.track_analytics_event("session_start", None).await;
             
             // Start background task to check for init status and spawn processes
             let state_clone = app_state.clone();

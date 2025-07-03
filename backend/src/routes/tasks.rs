@@ -8,14 +8,11 @@ use axum::{
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
-use crate::{
-    models::{
-        project::Project,
-        task::{CreateTask, CreateTaskAndStart, Task, TaskWithAttemptStatus, UpdateTask},
-        task_attempt::{CreateTaskAttempt, TaskAttempt},
-        ApiResponse,
-    },
-    services,
+use crate::models::{
+    project::Project,
+    task::{CreateTask, CreateTaskAndStart, Task, TaskWithAttemptStatus, UpdateTask},
+    task_attempt::{CreateTaskAttempt, TaskAttempt},
+    ApiResponse,
 };
 
 pub async fn get_project_tasks(
@@ -88,18 +85,16 @@ pub async fn create_task(
     match Task::create(&pool, &payload, id).await {
         Ok(task) => {
             // Track task creation event
-            if app_state.get_analytics_enabled().await {
-                let analytics = app_state.analytics.read().await;
-                analytics.track_event(
-                    &services::generate_user_id(),
+            app_state
+                .track_analytics_event(
                     "task_created",
                     Some(serde_json::json!({
                         "task_id": task.id.to_string(),
                         "project_id": project_id.to_string(),
                         "has_description": task.description.is_some(),
                     })),
-                );
-            }
+                )
+                .await;
 
             Ok(ResponseJson(ApiResponse {
                 success: true,
@@ -170,31 +165,29 @@ pub async fn create_task_and_start(
 
     match TaskAttempt::create(&pool, &attempt_payload, task_id).await {
         Ok(attempt) => {
-            if app_state.get_analytics_enabled().await {
-                let analytics = app_state.analytics.read().await;
-
-                // Track task creation
-                analytics.track_event(
-                    &services::generate_user_id(),
+            // Track task creation
+            app_state
+                .track_analytics_event(
                     "task_created",
                     Some(serde_json::json!({
                         "task_id": task.id.to_string(),
                         "project_id": project_id.to_string(),
                         "has_description": task.description.is_some(),
                     })),
-                );
+                )
+                .await;
 
-                // Track task start
-                analytics.track_event(
-                    &services::generate_user_id(),
+            // Track task start
+            app_state
+                .track_analytics_event(
                     "task_started",
                     Some(serde_json::json!({
                         "task_id": task.id.to_string(),
                         "executor_type": executor_string.as_deref().unwrap_or("default"),
                         "attempt_id": attempt.id.to_string(),
                     })),
-                );
-            }
+                )
+                .await;
 
             // Start execution asynchronously (don't block the response)
             let pool_clone = pool.clone();

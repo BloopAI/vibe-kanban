@@ -29,7 +29,6 @@ use crate::{
         },
         ApiResponse,
     },
-    services,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -260,16 +259,16 @@ pub async fn merge_task_attempt(
             }
 
             // Track task attempt merged event
-            let analytics = app_state.analytics.read().await;
-            analytics.track_event(
-                &services::analytics::generate_user_id(),
-                "task_attempt_merged",
-                Some(serde_json::json!({
-                    "task_id": task_id.to_string(),
-                    "project_id": project_id.to_string(),
-                    "attempt_id": attempt_id.to_string(),
-                })),
-            );
+            app_state
+                .track_analytics_event(
+                    "task_attempt_merged",
+                    Some(serde_json::json!({
+                        "task_id": task_id.to_string(),
+                        "project_id": project_id.to_string(),
+                        "attempt_id": attempt_id.to_string(),
+                    })),
+                )
+                .await;
 
             Ok(ResponseJson(ApiResponse {
                 success: true,
@@ -343,16 +342,16 @@ pub async fn create_github_pr(
     .await
     {
         Ok(pr_url) => {
-            let analytics = app_state.analytics.read().await;
-            analytics.track_event(
-                &services::generate_user_id(),
-                "github_pr_created",
-                Some(serde_json::json!({
-                    "task_id": task_id.to_string(),
-                    "project_id": project_id.to_string(),
-                    "attempt_id": attempt_id.to_string(),
-                })),
-            );
+            app_state
+                .track_analytics_event(
+                    "github_pr_created",
+                    Some(serde_json::json!({
+                        "task_id": task_id.to_string(),
+                        "project_id": project_id.to_string(),
+                        "attempt_id": attempt_id.to_string(),
+                    })),
+                )
+                .await;
 
             Ok(ResponseJson(ApiResponse {
                 success: true,
