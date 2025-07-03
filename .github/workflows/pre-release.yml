@@ -101,9 +101,9 @@ jobs:
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
         with:
-          version:  ${{ needs.bump-version.outputs.new_version }}
+          release:  ${{ needs.bump-version.outputs.new_version }}
           environment: production
-          sourcemaps: "./dist"
+          sourcemaps: "./frontend/dist"
 
       - name: Upload frontend artifact
         uses: actions/upload-artifact@v4
