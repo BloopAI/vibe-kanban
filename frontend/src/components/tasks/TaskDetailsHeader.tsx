@@ -53,10 +53,10 @@ export function TaskDetailsHeader({
   return (
     <div>
       {/* Title and Task Actions */}
-      <div className="p-6 pb-4">
+      <div className="p-4 pb-2">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-bold mb-2 line-clamp-2">
+            <h2 className="text-lg font-bold mb-1 line-clamp-2">
               {task.title}
             </h2>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -118,27 +118,27 @@ export function TaskDetailsHeader({
         </div>
 
         {/* Description */}
-        <div className="mt-4">
-          <div className="p-3 bg-muted/30 rounded-md">
+        <div className="mt-2">
+          <div className="p-2 bg-muted/20 rounded border-l-2 border-muted">
             {task.description ? (
               <div>
                 <p
-                  className={`text-sm whitespace-pre-wrap ${
-                    !isDescriptionExpanded && task.description.length > 200
-                      ? 'line-clamp-6'
+                  className={`text-xs whitespace-pre-wrap text-muted-foreground ${
+                    !isDescriptionExpanded && task.description.length > 150
+                      ? 'line-clamp-3'
                       : ''
                   }`}
                 >
                   {task.description}
                 </p>
-                {task.description.length > 200 && (
+                {task.description.length > 150 && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() =>
                       setIsDescriptionExpanded(!isDescriptionExpanded)
                     }
-                    className="mt-2 p-0 h-auto text-xs text-muted-foreground hover:text-foreground"
+                    className="mt-1 p-0 h-auto text-xs text-muted-foreground hover:text-foreground"
                   >
                     {isDescriptionExpanded ? (
                       <>
@@ -155,7 +155,7 @@ export function TaskDetailsHeader({
                 )}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground italic">
+              <p className="text-xs text-muted-foreground italic">
                 No description provided
               </p>
             )}
