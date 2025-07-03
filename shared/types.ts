@@ -100,6 +100,8 @@ export type CreateExecutorSession = { task_attempt_id: string, execution_process
 
 export type UpdateExecutorSession = { session_id: string | null, prompt: string | null, summary: string | null, };
 
+export type TaskInfoByAttemptResponse = { task_id: string, project_id: string, task_title: string, };
+
 // Generated constants
 export const EXECUTOR_TYPES: string[] = [
     "echo",

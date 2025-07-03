@@ -121,6 +121,7 @@ fn main() {
         vibe_kanban::models::executor_session::ExecutorSession::decl(),
         vibe_kanban::models::executor_session::CreateExecutorSession::decl(),
         vibe_kanban::models::executor_session::UpdateExecutorSession::decl(),
+        vibe_kanban::routes::task_attempts::TaskInfoByAttemptResponse::decl(),
     ];
 
     // 4. Friendly banner

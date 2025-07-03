@@ -10,6 +10,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use tokio::sync::RwLock;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use crate::models::{
@@ -868,6 +869,89 @@ pub async fn create_followup_attempt(
     }
 }
 
+pub async fn get_task_info_by_attempt_id(
+    Path(attempt_id): Path<Uuid>,
+    Extension(pool): Extension<SqlitePool>,
+) -> Result<ResponseJson<ApiResponse<TaskInfoByAttemptResponse>>, StatusCode> {
+    let result = sqlx::query!(
+        r#"
+        SELECT t.id as "task_id!: Uuid", t.project_id as "project_id!: Uuid", t.title as task_title
+        FROM task_attempts ta
+        JOIN tasks t ON ta.task_id = t.id
+        WHERE ta.id = $1
+        "#,
+        attempt_id
+    )
+    .fetch_optional(&pool)
+    .await;
+
+    match result {
+        Ok(Some(row)) => Ok(ResponseJson(ApiResponse {
+            success: true,
+            data: Some(TaskInfoByAttemptResponse {
+                task_id: row.task_id,
+                project_id: row.project_id,
+                task_title: row.task_title,
+            }),
+            message: None,
+        })),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!(
+                "Failed to fetch task info for attempt {}: {}",
+                attempt_id,
+                e
+            );
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct TaskInfoByAttemptResponse {
+    pub task_id: Uuid,
+    pub project_id: Uuid,
+    pub task_title: String,
+}
+
+pub async fn get_running_processes(
+    Extension(pool): Extension<SqlitePool>,
+) -> Result<ResponseJson<ApiResponse<Vec<ExecutionProcessSummary>>>, StatusCode> {
+    match ExecutionProcess::find_running(&pool).await {
+        Ok(processes) => {
+            let summaries: Vec<ExecutionProcessSummary> = processes
+                .into_iter()
+                .map(|p| ExecutionProcessSummary {
+                    id: p.id,
+                    task_attempt_id: p.task_attempt_id,
+                    process_type: p.process_type,
+                    executor_type: p.executor_type,
+                    status: p.status,
+                    command: p.command,
+                    args: p.args,
+                    working_directory: p.working_directory,
+                    exit_code: p.exit_code,
+                    started_at: p.started_at,
+                    completed_at: p.completed_at,
+                    created_at: p.created_at,
+                    updated_at: p.updated_at,
+                })
+                .collect();
+
+            Ok(ResponseJson(ApiResponse {
+                success: true,
+                data: Some(summaries),
+                message: None,
+            }))
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch running processes: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
 pub async fn start_dev_server(
     Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
     Extension(pool): Extension<SqlitePool>,
@@ -1012,5 +1096,13 @@ pub fn task_attempts_router() -> Router {
         .route(
             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/start-dev-server",
             post(start_dev_server),
+        )
+        .route(
+            "/running-processes",
+            get(get_running_processes),
+        )
+        .route(
+            "/task-info-by-attempt/:attempt_id",
+            get(get_task_info_by_attempt_id),
         )
 }

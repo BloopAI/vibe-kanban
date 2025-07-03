@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { FolderOpen, Settings, HelpCircle, Server } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { SupportDialog } from '@/components/support-dialog';
+import { ActivityMonitor } from '@/components/activity-monitor';
 
 export function Navbar() {
   const location = useLocation();
@@ -52,7 +53,8 @@ export function Navbar() {
               </Button>
             </div>
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center space-x-2">
+            <ActivityMonitor />
             <SupportDialog>
               <Button variant="ghost" size="sm">
                 <HelpCircle className="mr-2 h-4 w-4" />

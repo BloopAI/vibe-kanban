@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT t.id as \"task_id!: Uuid\", t.project_id as \"project_id!: Uuid\", t.title as task_title\n        FROM task_attempts ta\n        JOIN tasks t ON ta.task_id = t.id\n        WHERE ta.id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "task_id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "project_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_title",
+        "ordinal": 2,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "93a6d0e9c7239c9ea16841caa3ce7be4a029b364f19d941b7b49c00b222ddf18"
+}
