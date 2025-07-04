@@ -72,6 +72,11 @@ jobs:
           npm version $new_version --no-git-tag-version
           cd ..
           
+          # Update backend Cargo.toml version
+          # Convert npm semver to cargo semver (remove prerelease part for Cargo)
+          cargo_version=$(echo "$new_version" | sed 's/-.*$//')
+          sed -i "s/^version = \".*\"/version = \"$cargo_version\"/" Cargo.toml
+          
           echo "New version: $new_version"
           echo "new_version=$new_version" >> $GITHUB_OUTPUT
           echo "new_tag=v$new_version" >> $GITHUB_OUTPUT
@@ -80,7 +85,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add package.json npx-cli/package.json
+          git add package.json npx-cli/package.json Cargo.toml
           git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
           git tag -a ${{ steps.version.outputs.new_tag }} -m "Release ${{ steps.version.outputs.new_tag }}"
           git push
