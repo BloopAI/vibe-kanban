@@ -44,6 +44,7 @@ pub enum NormalizedEntryType {
         action_type: ActionType,
     },
     SystemMessage,
+    ErrorMessage,
     Thinking,
 }
 
@@ -401,6 +402,20 @@ pub async fn stream_output_to_db(
     execution_process_id: Uuid,
     is_stdout: bool,
 ) {
+    if is_stdout {
+        stream_stdout_to_db(output, pool, attempt_id, execution_process_id).await;
+    } else {
+        stream_stderr_to_db(output, pool, attempt_id, execution_process_id).await;
+    }
+}
+
+/// Stream stdout from a child process to the database (immediate updates)
+async fn stream_stdout_to_db(
+    output: impl tokio::io::AsyncRead + Unpin,
+    pool: sqlx::SqlitePool,
+    attempt_id: Uuid,
+    execution_process_id: Uuid,
+) {
     use crate::models::{execution_process::ExecutionProcess, executor_session::ExecutorSession};
 
     let mut reader = BufReader::new(output);
@@ -414,8 +429,8 @@ pub async fn stream_output_to_db(
         match reader.read_line(&mut line).await {
             Ok(0) => break, // EOF
             Ok(_) => {
-                // Parse session ID from the first JSONL line (stdout only)
-                if is_stdout && !session_id_parsed {
+                // Parse session ID from the first JSONL line
+                if !session_id_parsed {
                     if let Some(external_session_id) = parse_session_id_from_line(&line) {
                         if let Err(e) = ExecutorSession::update_session_id(
                             &pool,
@@ -448,22 +463,13 @@ pub async fn stream_output_to_db(
                     if let Err(e) = ExecutionProcess::append_output(
                         &pool,
                         execution_process_id,
-                        if is_stdout {
-                            Some(&accumulated_output)
-                        } else {
-                            None
-                        },
-                        if !is_stdout {
-                            Some(&accumulated_output)
-                        } else {
-                            None
-                        },
+                        Some(&accumulated_output),
+                        None,
                     )
                     .await
                     {
                         tracing::error!(
-                            "Failed to update {} for attempt {}: {}",
-                            if is_stdout { "stdout" } else { "stderr" },
+                            "Failed to update stdout for attempt {}: {}",
                             attempt_id,
                             e
                         );
@@ -473,12 +479,7 @@ pub async fn stream_output_to_db(
                 }
             }
             Err(e) => {
-                tracing::error!(
-                    "Error reading {} for attempt {}: {}",
-                    if is_stdout { "stdout" } else { "stderr" },
-                    attempt_id,
-                    e
-                );
+                tracing::error!("Error reading stdout for attempt {}: {}", attempt_id, e);
                 break;
             }
         }
@@ -489,26 +490,107 @@ pub async fn stream_output_to_db(
         if let Err(e) = ExecutionProcess::append_output(
             &pool,
             execution_process_id,
-            if is_stdout {
-                Some(&accumulated_output)
-            } else {
-                None
-            },
-            if !is_stdout {
-                Some(&accumulated_output)
-            } else {
-                None
-            },
+            Some(&accumulated_output),
+            None,
         )
         .await
         {
-            tracing::error!(
-                "Failed to flush {} for attempt {}: {}",
-                if is_stdout { "stdout" } else { "stderr" },
-                attempt_id,
-                e
-            );
+            tracing::error!("Failed to flush stdout for attempt {}: {}", attempt_id, e);
         }
+    }
+}
+
+/// Stream stderr from a child process to the database (buffered with timeout)
+async fn stream_stderr_to_db(
+    output: impl tokio::io::AsyncRead + Unpin,
+    pool: sqlx::SqlitePool,
+    attempt_id: Uuid,
+    execution_process_id: Uuid,
+) {
+    use tokio::time::{timeout, Duration};
+
+    let mut reader = BufReader::new(output);
+    let mut line = String::new();
+    let mut accumulated_output = String::new();
+    const STDERR_FLUSH_TIMEOUT: Duration = Duration::from_millis(1000); // 1000ms timeout
+
+    loop {
+        line.clear();
+
+        // Try to read a line with a timeout
+        let read_result = timeout(STDERR_FLUSH_TIMEOUT, reader.read_line(&mut line)).await;
+
+        match read_result {
+            Ok(Ok(0)) => {
+                // EOF - flush remaining output and break
+                break;
+            }
+            Ok(Ok(_)) => {
+                // Successfully read a line - just accumulate it
+                accumulated_output.push_str(&line);
+            }
+            Ok(Err(e)) => {
+                tracing::error!("Error reading stderr for attempt {}: {}", attempt_id, e);
+                break;
+            }
+            Err(_) => {
+                // Timeout occurred - flush accumulated output if any
+                if !accumulated_output.is_empty() {
+                    flush_stderr_chunk(
+                        &pool,
+                        execution_process_id,
+                        &accumulated_output,
+                        attempt_id,
+                    )
+                    .await;
+                    accumulated_output.clear();
+                }
+            }
+        }
+    }
+
+    // Final flush for any remaining output
+    if !accumulated_output.is_empty() {
+        flush_stderr_chunk(&pool, execution_process_id, &accumulated_output, attempt_id).await;
+    }
+}
+
+/// Flush a chunk of stderr output to the database
+async fn flush_stderr_chunk(
+    pool: &sqlx::SqlitePool,
+    execution_process_id: Uuid,
+    content: &str,
+    attempt_id: Uuid,
+) {
+    use crate::models::execution_process::ExecutionProcess;
+
+    let trimmed = content.trim();
+    if trimmed.is_empty() {
+        return;
+    }
+
+    // Add a delimiter to separate chunks in the database
+    let chunk_with_delimiter = format!("{}\n---STDERR_CHUNK_BOUNDARY---\n", trimmed);
+
+    if let Err(e) = ExecutionProcess::append_output(
+        pool,
+        execution_process_id,
+        None,
+        Some(&chunk_with_delimiter),
+    )
+    .await
+    {
+        tracing::error!(
+            "Failed to flush stderr chunk for attempt {}: {}",
+            attempt_id,
+            e
+        );
+    } else {
+        tracing::debug!(
+            "Flushed stderr chunk ({} chars) for process {}",
+            trimmed.len(),
+            execution_process_id
+        );
     }
 }
 

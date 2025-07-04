@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use crate::{
     app_state::AppState,
-    executor::{ExecutorConfig, NormalizedConversation},
+    executor::{ExecutorConfig, NormalizedConversation, NormalizedEntry, NormalizedEntryType},
     models::{
         config::Config,
         execution_process::{ExecutionProcess, ExecutionProcessStatus, ExecutionProcessSummary},
@@ -1078,73 +1078,6 @@ pub async fn get_execution_process_normalized_logs(
         }
     };
 
-    // Get logs from the execution process
-    let logs = match process.stdout {
-        Some(stdout) => stdout,
-        None => {
-            // If the process is still running, return empty logs instead of an error
-            if process.status == ExecutionProcessStatus::Running {
-                // Get executor session data for this execution process
-                let executor_session = match ExecutorSession::find_by_execution_process_id(
-                    &app_state.db_pool,
-                    process_id,
-                )
-                .await
-                {
-                    Ok(session) => session,
-                    Err(e) => {
-                        tracing::error!(
-                            "Failed to fetch executor session for process {}: {}",
-                            process_id,
-                            e
-                        );
-                        None
-                    }
-                };
-
-                return Ok(ResponseJson(ApiResponse {
-                    success: true,
-                    data: Some(NormalizedConversation {
-                        entries: vec![],
-                        session_id: None,
-                        executor_type: process
-                            .executor_type
-                            .clone()
-                            .unwrap_or("unknown".to_string()),
-                        prompt: executor_session.as_ref().and_then(|s| s.prompt.clone()),
-                        summary: executor_session.as_ref().and_then(|s| s.summary.clone()),
-                    }),
-                    message: None,
-                }));
-            }
-
-            return Ok(ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some("No logs available for this execution process".to_string()),
-            }));
-        }
-    };
-
-    // Determine executor type and create appropriate executor for normalization
-    let executor_type = process.executor_type.as_deref().unwrap_or("unknown");
-    let executor_config = match executor_type {
-        "amp" => ExecutorConfig::Amp,
-        "claude" => ExecutorConfig::Claude,
-        "echo" => ExecutorConfig::Echo,
-        "gemini" => ExecutorConfig::Gemini,
-        "opencode" => ExecutorConfig::Opencode,
-        _ => {
-            return Ok(ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some(format!("Unsupported executor type: {}", executor_type)),
-            }));
-        }
-    };
-
-    let executor = executor_config.create_executor();
-
     // Get executor session data for this execution process
     let executor_session =
         match ExecutorSession::find_by_execution_process_id(&app_state.db_pool, process_id).await {
@@ -1159,30 +1092,150 @@ pub async fn get_execution_process_normalized_logs(
             }
         };
 
-    // Normalize the logs
-    match executor.normalize_logs(&logs) {
-        Ok(mut normalized) => {
-            // Add prompt and summary from executor session
-            if let Some(session) = executor_session {
-                normalized.prompt = session.prompt;
-                normalized.summary = session.summary;
-            }
+    // Handle the case where no logs are available
+    let has_stdout =
+        process.stdout.is_some() && !process.stdout.as_ref().unwrap().trim().is_empty();
+    let has_stderr =
+        process.stderr.is_some() && !process.stderr.as_ref().unwrap().trim().is_empty();
 
-            Ok(ResponseJson(ApiResponse {
-                success: true,
-                data: Some(normalized),
-                message: None,
-            }))
-        }
-        Err(e) => {
-            tracing::error!("Failed to normalize logs for process {}: {}", process_id, e);
-            Ok(ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some(format!("Failed to normalize logs: {}", e)),
-            }))
+    // If the process is still running and has no stdout/stderr, return empty logs
+    if process.status == ExecutionProcessStatus::Running && !has_stdout && !has_stderr {
+        return Ok(ResponseJson(ApiResponse {
+            success: true,
+            data: Some(NormalizedConversation {
+                entries: vec![],
+                session_id: None,
+                executor_type: process
+                    .executor_type
+                    .clone()
+                    .unwrap_or("unknown".to_string()),
+                prompt: executor_session.as_ref().and_then(|s| s.prompt.clone()),
+                summary: executor_session.as_ref().and_then(|s| s.summary.clone()),
+            }),
+            message: None,
+        }));
+    }
+
+    // If process is completed but has no logs, return appropriate error
+    if process.status != ExecutionProcessStatus::Running && !has_stdout && !has_stderr {
+        return Ok(ResponseJson(ApiResponse {
+            success: false,
+            data: None,
+            message: Some("No logs available for this execution process".to_string()),
+        }));
+    }
+
+    // Parse stdout as JSONL using executor normalization
+    let mut stdout_entries = Vec::new();
+    if let Some(stdout) = &process.stdout {
+        if !stdout.trim().is_empty() {
+            // Determine executor type and create appropriate executor for normalization
+            let executor_type = process.executor_type.as_deref().unwrap_or("unknown");
+            let executor_config = match executor_type {
+                "amp" => ExecutorConfig::Amp,
+                "claude" => ExecutorConfig::Claude,
+                "echo" => ExecutorConfig::Echo,
+                "gemini" => ExecutorConfig::Gemini,
+                "opencode" => ExecutorConfig::Opencode,
+                _ => {
+                    tracing::warn!(
+                        "Unsupported executor type: {}, cannot normalize logs properly",
+                        executor_type
+                    );
+                    return Ok(ResponseJson(ApiResponse {
+                        success: false,
+                        data: None,
+                        message: Some(format!("Unsupported executor type: {}", executor_type)),
+                    }));
+                }
+            };
+
+            let executor = executor_config.create_executor();
+
+            // Normalize stdout logs with error handling
+            match executor.normalize_logs(stdout) {
+                Ok(normalized) => {
+                    stdout_entries = normalized.entries;
+                    tracing::debug!(
+                        "Successfully normalized {} stdout entries for process {}",
+                        stdout_entries.len(),
+                        process_id
+                    );
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "Failed to normalize stdout for process {}: {}",
+                        process_id,
+                        e
+                    );
+                    return Ok(ResponseJson(ApiResponse {
+                        success: false,
+                        data: None,
+                        message: Some(format!("Failed to normalize logs: {}", e)),
+                    }));
+                }
+            }
         }
     }
+
+    // Parse stderr chunks separated by boundary markers
+    let mut stderr_entries = Vec::new();
+    if let Some(stderr) = &process.stderr {
+        let trimmed = stderr.trim();
+        if !trimmed.is_empty() {
+            // Split stderr by chunk boundaries and create separate error messages
+            let chunks: Vec<&str> = trimmed.split("---STDERR_CHUNK_BOUNDARY---").collect();
+
+            for chunk in chunks {
+                let chunk_trimmed = chunk.trim();
+                if !chunk_trimmed.is_empty() {
+                    stderr_entries.push(NormalizedEntry {
+                        timestamp: Some(chrono::Utc::now().to_rfc3339()),
+                        entry_type: NormalizedEntryType::ErrorMessage,
+                        content: chunk_trimmed.to_string(),
+                        metadata: None,
+                    });
+                }
+            }
+
+            tracing::debug!(
+                "Processed stderr content into {} error messages for process {}",
+                stderr_entries.len(),
+                process_id
+            );
+        }
+    }
+
+    // Merge stdout and stderr entries chronologically
+    let mut all_entries = Vec::new();
+    all_entries.extend(stdout_entries);
+    all_entries.extend(stderr_entries);
+
+    // Sort by timestamp (entries without timestamps go to the end)
+    all_entries.sort_by(|a, b| match (&a.timestamp, &b.timestamp) {
+        (Some(a_ts), Some(b_ts)) => a_ts.cmp(b_ts),
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (None, None) => std::cmp::Ordering::Equal,
+    });
+
+    // Create final normalized conversation
+    let normalized_conversation = NormalizedConversation {
+        entries: all_entries,
+        session_id: None,
+        executor_type: process
+            .executor_type
+            .clone()
+            .unwrap_or("unknown".to_string()),
+        prompt: executor_session.as_ref().and_then(|s| s.prompt.clone()),
+        summary: executor_session.as_ref().and_then(|s| s.summary.clone()),
+    };
+
+    Ok(ResponseJson(ApiResponse {
+        success: true,
+        data: Some(normalized_conversation),
+        message: None,
+    }))
 }
 
 pub fn task_attempts_router() -> Router<AppState> {

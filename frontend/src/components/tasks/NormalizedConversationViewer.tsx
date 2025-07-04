@@ -11,6 +11,9 @@ import {
   Settings,
   Brain,
   Hammer,
+  AlertCircle,
+  ChevronRight,
+  ChevronUp,
 } from 'lucide-react';
 import { makeRequest } from '@/lib/api';
 import type {
@@ -38,6 +41,9 @@ const getEntryIcon = (entryType: NormalizedEntryType) => {
   }
   if (entryType.type === 'thinking') {
     return <Brain className="h-4 w-4 text-purple-600" />;
+  }
+  if (entryType.type === 'error_message') {
+    return <AlertCircle className="h-4 w-4 text-red-600" />;
   }
   if (entryType.type === 'tool_use') {
     const { action_type } = entryType;
@@ -74,6 +80,10 @@ const getContentClassName = (entryType: NormalizedEntryType) => {
     return `${baseClasses} font-mono`;
   }
 
+  if (entryType.type === 'error_message') {
+    return `${baseClasses} text-red-600 font-mono bg-red-50 dark:bg-red-950/20 px-2 py-1 rounded`;
+  }
+
   return baseClasses;
 };
 
@@ -86,6 +96,19 @@ export function NormalizedConversationViewer({
     useState<NormalizedConversation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedErrors, setExpandedErrors] = useState<Set<number>>(new Set());
+
+  const toggleErrorExpansion = (index: number) => {
+    setExpandedErrors((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
 
   const fetchNormalizedLogs = useCallback(
     async (isPolling = false) => {
@@ -203,18 +226,64 @@ export function NormalizedConversationViewer({
 
       {/* Display conversation entries */}
       <div className="space-y-2">
-        {conversation.entries.map((entry, index) => (
-          <div key={index} className="flex items-start gap-3">
-            <div className="flex-shrink-0 mt-1">
-              {getEntryIcon(entry.entry_type)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className={getContentClassName(entry.entry_type)}>
-                {entry.content}
+        {conversation.entries.map((entry, index) => {
+          const isErrorMessage = entry.entry_type.type === 'error_message';
+          const isExpanded = expandedErrors.has(index);
+          const hasMultipleLines =
+            isErrorMessage && entry.content.includes('\n');
+
+          return (
+            <div key={index} className="flex items-start gap-3">
+              <div className="flex-shrink-0 mt-1">
+                {isErrorMessage && hasMultipleLines ? (
+                  <button
+                    onClick={() => toggleErrorExpansion(index)}
+                    className="transition-colors hover:opacity-70"
+                  >
+                    {getEntryIcon(entry.entry_type)}
+                  </button>
+                ) : (
+                  getEntryIcon(entry.entry_type)
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                {isErrorMessage && hasMultipleLines ? (
+                  <div className={isExpanded ? 'space-y-2' : ''}>
+                    <div className={getContentClassName(entry.entry_type)}>
+                      {isExpanded ? (
+                        entry.content
+                      ) : (
+                        <>
+                          {entry.content.split('\n')[0]}
+                          <button
+                            onClick={() => toggleErrorExpansion(index)}
+                            className="ml-2 inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                          >
+                            <ChevronRight className="h-3 w-3" />
+                            Show more
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    {isExpanded && (
+                      <button
+                        onClick={() => toggleErrorExpansion(index)}
+                        className="flex items-center gap-1 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                      >
+                        <ChevronUp className="h-3 w-3" />
+                        Show less
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className={getContentClassName(entry.entry_type)}>
+                    {entry.content}
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

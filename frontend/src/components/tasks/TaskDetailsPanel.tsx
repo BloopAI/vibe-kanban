@@ -578,7 +578,7 @@ export function TaskDetailsPanel({
       );
     }
 
-    // When setup failed, show error message and stderr
+    // When setup failed, show error message and conversation
     if (isSetupFailed) {
       const setupProcess = executionState.setup_process_id
         ? attemptData.runningProcessDetails[executionState.setup_process_id]
@@ -598,20 +598,17 @@ export function TaskDetailsPanel({
           </div>
 
           {setupProcess && (
-            <div className="font-mono text-sm whitespace-pre-wrap text-muted-foreground">
-              {(() => {
-                const stderr = setupProcess.stderr || '';
-                const stdout = setupProcess.stdout || '';
-                const combined = [stderr, stdout].filter(Boolean).join('\n');
-                return combined || 'No error output available';
-              })()}
-            </div>
+            <NormalizedConversationViewer
+              executionProcess={setupProcess}
+              projectId={projectId}
+              onConversationUpdate={handleConversationUpdate}
+            />
           )}
         </div>
       );
     }
 
-    // When coding agent failed, show error message and stderr
+    // When coding agent failed, show error message and conversation
     if (isCodingAgentFailed) {
       const codingAgentProcess = executionState.coding_agent_process_id
         ? attemptData.runningProcessDetails[
@@ -633,14 +630,11 @@ export function TaskDetailsPanel({
           </div>
 
           {codingAgentProcess && (
-            <div className="font-mono text-sm whitespace-pre-wrap text-muted-foreground">
-              {(() => {
-                const stderr = codingAgentProcess.stderr || '';
-                const stdout = codingAgentProcess.stdout || '';
-                const combined = [stderr, stdout].filter(Boolean).join('\n');
-                return combined || 'No error output available';
-              })()}
-            </div>
+            <NormalizedConversationViewer
+              executionProcess={codingAgentProcess}
+              projectId={projectId}
+              onConversationUpdate={handleConversationUpdate}
+            />
           )}
         </div>
       );
