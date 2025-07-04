@@ -75,7 +75,25 @@ jobs:
           # Update backend Cargo.toml version
           # Convert npm semver to cargo semver (remove prerelease part for Cargo)
           cargo_version=$(echo "$new_version" | sed 's/-.*$//')
-          sed -i "s/^version = \".*\"/version = \"$cargo_version\"/" backend/Cargo.toml
+          
+          node -e "
+            const fs = require('fs');
+            const path = 'backend/Cargo.toml';
+          
+            if (fs.existsSync(path)) {
+              let content = fs.readFileSync(path, 'utf8');
+              console.log('Original Cargo.toml version line:');
+              console.log(content.match(/^version = \".*\"/m)?.[0] || 'Version line not found');
+          
+              content = content.replace(/^version = \".*\"/m, 'version = \"$cargo_version\"');
+              fs.writeFileSync(path, content);
+          
+              console.log('Updated Cargo.toml version line:');
+              console.log(content.match(/^version = \".*\"/m)?.[0] || 'Version line not found');
+            } else {
+              console.log('Cargo.toml not found');
+            }
+          ".replace('$cargo_version', cargo_version)
           
           echo "New version: $new_version"
           echo "new_version=$new_version" >> $GITHUB_OUTPUT
