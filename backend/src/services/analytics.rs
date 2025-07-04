@@ -45,15 +45,12 @@ impl AnalyticsService {
     }
 
     pub fn is_enabled(&self) -> bool {
-        self.config.enabled && !self.config.posthog_api_key.is_empty()
+        self.config.enabled
+            && !self.config.posthog_api_key.is_empty()
+            && !self.config.posthog_api_endpoint.is_empty()
     }
 
     pub fn track_event(&self, user_id: &str, event_name: &str, properties: Option<Value>) {
-        if !self.is_enabled() {
-            tracing::warn!("Analytics are disabled");
-            return;
-        }
-
         let endpoint = format!(
             "{}/capture/",
             self.config.posthog_api_endpoint.trim_end_matches('/')

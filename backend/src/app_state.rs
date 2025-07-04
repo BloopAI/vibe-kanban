@@ -30,6 +30,7 @@ pub struct AppState {
     pub db_pool: sqlx::SqlitePool,
     config: Arc<tokio::sync::RwLock<crate::models::config::Config>>,
     pub analytics: Arc<TokioRwLock<AnalyticsService>>,
+    user_id: String,
 }
 
 impl AppState {
@@ -51,14 +52,26 @@ impl AppState {
             db_pool,
             config,
             analytics,
+            user_id: generate_user_id(),
         }
     }
 
     pub async fn update_analytics_config(&self, user_enabled: bool) {
+        // Check if analytics was disabled before this update
+        let was_analytics_disabled = {
+            let analytics = self.analytics.read().await;
+            !analytics.is_enabled()
+        };
+
         let new_config = AnalyticsConfig::new(user_enabled);
         let new_service = AnalyticsService::new(new_config);
         let mut analytics = self.analytics.write().await;
         *analytics = new_service;
+
+        // If analytics was disabled and is now enabled, fire a session_start event
+        if was_analytics_disabled && analytics.is_enabled() {
+            analytics.track_event(&self.user_id, "session_start", None);
+        }
     }
 
     // Running executions getters
@@ -214,23 +227,14 @@ impl AppState {
         config.sound_file.clone()
     }
 
-    async fn get_analytics_enabled(&self) -> bool {
-        let config = self.config.read().await;
-        let user_enabled = config.analytics_enabled.unwrap_or(false);
-        drop(config);
-
-        let analytics = self.analytics.read().await;
-        analytics.is_enabled() && user_enabled
-    }
-
     pub async fn track_analytics_event(
         &self,
         event_name: &str,
         properties: Option<serde_json::Value>,
     ) {
-        if self.get_analytics_enabled().await {
-            let analytics = self.analytics.read().await;
-            analytics.track_event(&generate_user_id(), event_name, properties);
+        let analytics = self.analytics.read().await;
+        if analytics.is_enabled() {
+            analytics.track_event(&self.user_id, event_name, properties);
         }
     }
 }
