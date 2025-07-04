@@ -1,6 +1,6 @@
 {
   "name": "vibe-kanban",
-  "version": "0.0.37-ersion.0",
+  "version": "0.0.37-ersion.1",
   "private": true,
   "scripts": {
     "dev": "export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && concurrently \"cargo watch -w backend -x 'run --manifest-path backend/Cargo.toml'\" \"npm run frontend:dev\"",
