@@ -1586,29 +1586,30 @@ impl TaskAttempt {
         // Open the worktree repository
         let worktree_repo = Repository::open(&attempt.worktree_path)?;
 
-        // Find the actual base branch by looking at all branches in the main repo
-        // and finding which one has the most recent common ancestor with the worktree branch
+        // Get the worktree branch head
         let worktree_head = worktree_repo.head()?.peel_to_commit()?;
         let worktree_oid = worktree_head.id();
         
-        let mut best_base_branch: Option<(String, git2::Oid)> = None;
-        let mut best_merge_base_time: Option<git2::Time> = None;
+        // First, try to get the upstream branch from the worktree's branch config
+        let mut base_branch_name = "main".to_string();
+        let mut main_oid = worktree_oid; // fallback to same commit
         
-        // Iterate through all local branches in main repo
-        let branch_iterator = main_repo.branches(Some(BranchType::Local))?;
-        for branch_result in branch_iterator {
-            let (branch, _) = branch_result?;
-            if let Some(branch_name) = branch.name()? {
-                if let Ok(branch_commit) = branch.get().peel_to_commit() {
-                    // Find merge base between this branch and the worktree branch
-                    if let Ok(merge_base_oid) = main_repo.merge_base(branch_commit.id(), worktree_oid) {
-                        if let Ok(merge_base_commit) = main_repo.find_commit(merge_base_oid) {
-                            let merge_base_time = merge_base_commit.time();
-                            
-                            // Keep track of the branch with the most recent merge base
-                            if best_merge_base_time.is_none() || merge_base_time.seconds() > best_merge_base_time.unwrap().seconds() {
-                                best_merge_base_time = Some(merge_base_time);
-                                best_base_branch = Some((branch_name.to_string(), branch_commit.id()));
+        // Check if the worktree's current branch has upstream tracking
+        if let Ok(worktree_branch) = worktree_repo.head() {
+            if let Ok(worktree_branch_ref) = worktree_branch.resolve() {
+                if let Some(branch_name) = worktree_branch_ref.shorthand() {
+                    if let Ok(branch) = worktree_repo.find_branch(branch_name, BranchType::Local) {
+                        if let Ok(upstream) = branch.upstream() {
+                            if let Some(upstream_name) = upstream.name()? {
+                                // Extract the branch name from upstream (e.g., "origin/main" -> "main")
+                                if let Some(base_name) = upstream_name.split('/').last() {
+                                    if let Ok(base_branch) = main_repo.find_branch(base_name, BranchType::Local) {
+                                        if let Ok(base_commit) = base_branch.get().peel_to_commit() {
+                                            base_branch_name = base_name.to_string();
+                                            main_oid = base_commit.id();
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -1616,9 +1617,26 @@ impl TaskAttempt {
             }
         }
         
-        // Use the branch with the most recent merge base as the base branch
-        let (base_branch_name, main_oid) = best_base_branch
-            .unwrap_or_else(|| ("main".to_string(), worktree_oid));
+        // If no upstream found, try common base branches using merge-base
+        if main_oid == worktree_oid {
+            let potential_base_branches = vec!["main", "master", "develop"];
+            for branch_name in potential_base_branches {
+                if let Ok(branch) = main_repo.find_branch(branch_name, BranchType::Local) {
+                    if let Ok(branch_commit) = branch.get().peel_to_commit() {
+                        // Use git merge-base to find the common ancestor
+                        if let Ok(merge_base_oid) = main_repo.merge_base(branch_commit.id(), worktree_oid) {
+                            // If the merge base is not the same as the worktree head, 
+                            // this means the worktree has diverged from this branch
+                            if merge_base_oid != worktree_oid {
+                                base_branch_name = branch_name.to_string();
+                                main_oid = branch_commit.id();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         // Get the current HEAD of the worktree
         let worktree_head = worktree_repo.head()?.peel_to_commit()?;
