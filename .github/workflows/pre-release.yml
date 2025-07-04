@@ -47,6 +47,12 @@ jobs:
       - name: Install cargo-edit
         run: cargo install cargo-edit
 
+      - name: Cache cargo-edit
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/bin/cargo-set-version
+          key: cargo-edit-${{ runner.os }}
+
       - name: Generate branch suffix
         id: branch
         run: |
