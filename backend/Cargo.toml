@@ -1,6 +1,6 @@
 [package]
 name = "vibe-kanban"
-version = "0.0.37-ersion.2"
+version = "0.0.37-ersion.3"
 edition = "2021"
 default-run = "vibe-kanban"
 build = "build.rs"
