@@ -1586,12 +1586,33 @@ impl TaskAttempt {
         // Open the worktree repository
         let worktree_repo = Repository::open(&attempt.worktree_path)?;
 
-        // Get the base branch name from the main repository
-        let base_branch_name = main_repo.head()?.shorthand().unwrap_or("main").to_string();
-
-        // Get the current HEAD of base branch in the main repo
-        let main_head = main_repo.head()?.peel_to_commit()?;
-        let main_oid = main_head.id();
+        // Get the base branch name by finding the merge base of the task branch with potential base branches
+        // Try common base branches to find where this task branch diverged from
+        let potential_base_branches = vec!["main", "master", "develop"];
+        let mut base_branch_name = "main".to_string();
+        let mut main_oid = None;
+        
+        for branch_name in potential_base_branches {
+            if let Ok(branch) = main_repo.find_branch(branch_name, BranchType::Local) {
+                if let Ok(commit) = branch.get().peel_to_commit() {
+                    // Check if this branch has a merge base with the task branch
+                    let worktree_head = worktree_repo.head()?.peel_to_commit()?;
+                    if let Ok(_merge_base) = main_repo.merge_base(commit.id(), worktree_head.id()) {
+                        base_branch_name = branch_name.to_string();
+                        main_oid = Some(commit.id());
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // If no merge base found with common branches, fall back to main/master
+        let main_oid = if let Some(oid) = main_oid {
+            oid
+        } else {
+            let main_head = main_repo.head()?.peel_to_commit()?;
+            main_head.id()
+        };
 
         // Get the current HEAD of the worktree
         let worktree_head = worktree_repo.head()?.peel_to_commit()?;
