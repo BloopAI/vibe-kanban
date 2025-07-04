@@ -236,7 +236,7 @@ impl AppState {
         if analytics.is_enabled() {
             analytics.track_event(&self.user_id, event_name, properties);
         } else {
-            tracing::info!("Analytics disabled, skipping event: {}", event_name);
+            tracing::debug!("Analytics disabled, skipping event: {}", event_name);
         }
     }
 }

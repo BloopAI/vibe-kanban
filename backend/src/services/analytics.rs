@@ -84,7 +84,7 @@ impl AnalyticsService {
             {
                 Ok(response) => {
                     if response.status().is_success() {
-                        tracing::info!("Event '{}' sent successfully", event_name);
+                        tracing::debug!("Event '{}' sent successfully", event_name);
                     } else {
                         let status = response.status();
                         let response_text = response.text().await.unwrap_or_default();
