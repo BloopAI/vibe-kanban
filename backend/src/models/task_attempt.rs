@@ -1553,20 +1553,35 @@ impl TaskAttempt {
         Ok(chunks)
     }
 
-    /// Get the branch status for this task attempt (ahead/behind main)
+    /// Get the branch status for this task attempt
     pub async fn get_branch_status(
         pool: &SqlitePool,
         attempt_id: Uuid,
         task_id: Uuid,
         project_id: Uuid,
     ) -> Result<BranchStatus, TaskAttemptError> {
-        // Get the task attempt with validation
+        // ── fetch the task attempt ───────────────────────────────────────────────────
         let attempt = sqlx::query_as!(
             TaskAttempt,
-            r#"SELECT ta.id as "id!: Uuid", ta.task_id as "task_id!: Uuid", ta.worktree_path, ta.branch, ta.merge_commit, ta.executor, ta.pr_url, ta.pr_number, ta.pr_status, ta.pr_merged_at as "pr_merged_at: DateTime<Utc>", ta.created_at as "created_at!: DateTime<Utc>", ta.updated_at as "updated_at!: DateTime<Utc>"
-               FROM task_attempts ta 
-               JOIN tasks t ON ta.task_id = t.id 
-               WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
+            r#"
+            SELECT  ta.id                AS "id!: Uuid",
+                    ta.task_id           AS "task_id!: Uuid",
+                    ta.worktree_path,
+                    ta.branch,
+                    ta.merge_commit,
+                    ta.executor,
+                    ta.pr_url,
+                    ta.pr_number,
+                    ta.pr_status,
+                    ta.pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
+                    ta.created_at        AS "created_at!: DateTime<Utc>",
+                    ta.updated_at        AS "updated_at!: DateTime<Utc>"
+            FROM    task_attempts ta
+            JOIN    tasks t ON ta.task_id = t.id
+            WHERE   ta.id = $1
+              AND   t.id  = $2
+              AND   t.project_id = $3
+        "#,
             attempt_id,
             task_id,
             project_id
@@ -1575,77 +1590,81 @@ impl TaskAttempt {
         .await?
         .ok_or(TaskAttemptError::TaskNotFound)?;
 
-        // Get the project
+        // ── fetch the owning project & open its repository ───────────────────────────
         let project = Project::find_by_id(pool, project_id)
             .await?
             .ok_or(TaskAttemptError::ProjectNotFound)?;
 
-        // Open the main repository
+        use git2::{BranchType, Repository, Status, StatusOptions};
+
         let main_repo = Repository::open(&project.git_repo_path)?;
+        let attempt_branch = attempt.branch.clone();
 
-        // Open the worktree repository
-        let worktree_repo = Repository::open(&attempt.worktree_path)?;
+        // ── locate the commit pointed to by the attempt branch ───────────────────────
+        let attempt_ref = main_repo
+            // try "refs/heads/<name>" first, then raw name
+            .find_reference(&format!("refs/heads/{}", attempt_branch))
+            .or_else(|_| main_repo.find_reference(&attempt_branch))?;
+        let attempt_oid = attempt_ref.target().unwrap();
 
-        // Find base branch by checking which common branch has a valid merge-base
-        let worktree_head = worktree_repo.head()?.peel_to_commit()?;
-        let worktree_oid = worktree_head.id();
-        
-        let (base_branch_name, main_oid) = ["main", "master", "develop"]
-            .iter()
-            .find_map(|&branch_name| {
-                let branch = main_repo.find_branch(branch_name, BranchType::Local).ok()?;
-                let branch_commit = branch.get().peel_to_commit().ok()?;
-                main_repo.merge_base(branch_commit.id(), worktree_oid).ok()
-                    .map(|_| (branch_name.to_string(), branch_commit.id()))
-            })
-            .unwrap_or_else(|| ("main".to_string(), worktree_oid));
+        // ── determine the base branch & ahead/behind counts ─────────────────────────
+        let mut base_branch_name = String::from("main"); // sensible default
+        let mut commits_ahead: usize = 0;
+        let mut commits_behind: usize = 0;
+        let mut best_distance: usize = usize::MAX;
 
-        // Get the current HEAD of the worktree
-        let worktree_head = worktree_repo.head()?.peel_to_commit()?;
-        let worktree_oid = worktree_head.id();
-
-        // Check for uncommitted changes in the worktree
-        let has_uncommitted_changes = {
-            let statuses = worktree_repo.statuses(None)?;
-            statuses.iter().any(|entry| {
-                let status = entry.status();
-                // Check for any unstaged or staged changes
-                status.is_wt_modified()
-                    || status.is_wt_new()
-                    || status.is_wt_deleted()
-                    || status.is_index_modified()
-                    || status.is_index_new()
-                    || status.is_index_deleted()
-            })
-        };
-
-        if main_oid == worktree_oid {
-            // Branches are at the same commit
-            return Ok(BranchStatus {
-                is_behind: false,
-                commits_behind: 0,
-                commits_ahead: 0,
-                up_to_date: true,
-                merged: attempt.merge_commit.is_some(),
-                has_uncommitted_changes,
-                base_branch_name,
-            });
+        // 1. prefer the branch’s configured upstream, if any
+        if let Ok(local_branch) = main_repo.find_branch(&attempt_branch, BranchType::Local) {
+            if let Ok(upstream) = local_branch.upstream() {
+                if let Some(name) = upstream.name()? {
+                    if let Some(base_oid) = upstream.get().target() {
+                        let (ahead, behind) =
+                            main_repo.graph_ahead_behind(attempt_oid, base_oid)?;
+                        base_branch_name = name.to_owned();
+                        commits_ahead = ahead;
+                        commits_behind = behind;
+                        best_distance = ahead + behind;
+                    }
+                }
+            }
         }
 
-        // Count commits ahead/behind
-        let mut revwalk = main_repo.revwalk()?;
+        // 2. otherwise, take the branch with the smallest ahead+behind distance
+        if best_distance == usize::MAX {
+            for br in main_repo.branches(None)? {
+                let (br, _) = br?;
+                let name = br.name()?.unwrap_or_default();
+                if name == attempt_branch {
+                    continue; // skip comparing the branch to itself
+                }
+                if let Some(base_oid) = br.get().target() {
+                    let (ahead, behind) = main_repo.graph_ahead_behind(attempt_oid, base_oid)?;
+                    let distance = ahead + behind;
+                    if distance < best_distance {
+                        best_distance = distance;
+                        base_branch_name = name.to_owned();
+                        commits_ahead = ahead;
+                        commits_behind = behind;
+                    }
+                }
+            }
+        }
 
-        // Count commits behind (main has commits that worktree doesn't)
-        revwalk.push(main_oid)?;
-        revwalk.hide(worktree_oid)?;
-        let commits_behind = revwalk.count();
+        // ── detect any uncommitted / untracked changes ───────────────────────────────
+        let repo_for_status = Repository::open(&project.git_repo_path)?;
 
-        // Count commits ahead (worktree has commits that main doesn't)
-        let mut revwalk = main_repo.revwalk()?;
-        revwalk.push(worktree_oid)?;
-        revwalk.hide(main_oid)?;
-        let commits_ahead = revwalk.count();
+        let mut status_opts = StatusOptions::new();
+        status_opts
+            .include_untracked(true)
+            .recurse_untracked_dirs(true)
+            .include_ignored(false);
 
+        let has_uncommitted_changes = repo_for_status
+            .statuses(Some(&mut status_opts))?
+            .iter()
+            .any(|e| e.status() != Status::CURRENT);
+
+        // ── assemble & return ────────────────────────────────────────────────────────
         Ok(BranchStatus {
             is_behind: commits_behind > 0,
             commits_behind,
