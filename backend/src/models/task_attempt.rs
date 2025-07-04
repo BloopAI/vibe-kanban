@@ -246,7 +246,11 @@ impl TaskAttempt {
                     Ok(head_ref) => head_ref,
                     Err(e) if e.class() == git2::ErrorClass::Reference && e.code() == git2::ErrorCode::UnbornBranch => {
                         // Repository has no commits yet, create an initial commit
-                        let signature = git2::Signature::now("Vibe Kanban", "noreply@vibekanban.com")?;
+                        let signature = repo.signature().unwrap_or_else(|_| {
+                            // Fallback if no Git config is set
+                            git2::Signature::now("Vibe Kanban", "noreply@vibekanban.com")
+                                .expect("Failed to create fallback signature")
+                        });
                         let tree_id = {
                             let tree_builder = repo.treebuilder(None)?;
                             tree_builder.write()?
