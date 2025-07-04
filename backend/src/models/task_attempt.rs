@@ -241,7 +241,36 @@ impl TaskAttempt {
                 let branch = repo.find_branch(base_branch.as_str(), BranchType::Local)?;
                 branch.into_reference()
             } else {
-                repo.head()?
+                // Handle new repositories without any commits
+                match repo.head() {
+                    Ok(head_ref) => head_ref,
+                    Err(e) if e.class() == git2::ErrorClass::Reference && e.code() == git2::ErrorCode::UnbornBranch => {
+                        // Repository has no commits yet, create an initial commit
+                        let signature = git2::Signature::now("Vibe Kanban", "noreply@vibekanban.com")?;
+                        let tree_id = {
+                            let tree_builder = repo.treebuilder(None)?;
+                            tree_builder.write()?
+                        };
+                        let tree = repo.find_tree(tree_id)?;
+                        
+                        // Create initial commit on main branch
+                        let _commit_id = repo.commit(
+                            Some("refs/heads/main"),
+                            &signature,
+                            &signature,
+                            "Initial commit",
+                            &tree,
+                            &[],
+                        )?;
+                        
+                        // Set HEAD to point to main branch
+                        repo.set_head("refs/heads/main")?;
+                        
+                        // Return reference to main branch
+                        repo.find_reference("refs/heads/main")?
+                    }
+                    Err(e) => return Err(e.into()),
+                }
             };
 
             // Create branch
@@ -1183,27 +1212,7 @@ impl TaskAttempt {
             // Task attempt not yet merged - use the original logic with fork point
             let worktree_repo = Repository::open(&attempt.worktree_path)?;
             let main_repo = Repository::open(&project.git_repo_path)?;
-            
-            // Handle case where main repository doesn't have a main branch yet (new repo)
-            let main_head_oid = match main_repo.head() {
-                Ok(head_ref) => {
-                    match head_ref.peel_to_commit() {
-                        Ok(commit) => commit.id(),
-                        Err(_) => {
-                            // No commits yet, return empty diff for new repository
-                            return Ok(WorktreeDiff { files });
-                        }
-                    }
-                }
-                Err(e) => {
-                    // Handle UnbornBranch error (new repo without commits)
-                    if e.class() == git2::ErrorClass::Reference && e.code() == git2::ErrorCode::UnbornBranch {
-                        // New repository without any commits, return empty diff
-                        return Ok(WorktreeDiff { files });
-                    }
-                    return Err(e.into());
-                }
-            };
+            let main_head_oid = main_repo.head()?.peel_to_commit()?.id();
 
             // Get the current worktree HEAD commit
             let worktree_head = worktree_repo.head()?;
