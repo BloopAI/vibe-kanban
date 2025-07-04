@@ -16,7 +16,7 @@ use crate::models::{
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CreateTaskRequest {
-    #[schemars(description = "The ID of the project to create the task in")]
+    #[schemars(description = "The ID of the project to create the task in. This is required!")]
     pub project_id: String,
     #[schemars(description = "The title of the task")]
     pub title: String,
@@ -170,54 +170,6 @@ pub struct DeleteTaskResponse {
     pub deleted_task_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct CompleteTaskRequest {
-    #[schemars(description = "The ID of the project containing the task")]
-    pub project_id: String,
-    #[schemars(description = "The title of the task to complete (will search for exact match)")]
-    pub task_title: String,
-}
-
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct SetTaskStatusRequest {
-    #[schemars(description = "The ID of the project containing the task")]
-    pub project_id: String,
-    #[schemars(description = "The title of the task to update")]
-    pub task_title: String,
-    #[schemars(
-        description = "New status: 'todo', 'in-progress', 'in-review', 'done', 'cancelled'"
-    )]
-    pub status: String,
-}
-
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct UpdateTaskTitleRequest {
-    #[schemars(description = "The ID of the project containing the task")]
-    pub project_id: String,
-    #[schemars(description = "Current title of the task")]
-    pub current_title: String,
-    #[schemars(description = "New title for the task")]
-    pub new_title: String,
-}
-
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct UpdateTaskDescriptionRequest {
-    #[schemars(description = "The ID of the project containing the task")]
-    pub project_id: String,
-    #[schemars(description = "The title of the task to update")]
-    pub task_title: String,
-    #[schemars(description = "New description for the task")]
-    pub description: String,
-}
-
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct DeleteTaskByTitleRequest {
-    #[schemars(description = "The ID of the project containing the task")]
-    pub project_id: String,
-    #[schemars(description = "The title of the task to delete")]
-    pub task_title: String,
-}
-
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct SimpleTaskResponse {
     pub success: bool,
@@ -256,7 +208,7 @@ impl TaskServer {
 #[tool(tool_box)]
 impl TaskServer {
     #[tool(
-        description = "Create a new task/ticket in a project. Always pass the `project_id` of project you want to create the task in."
+        description = "Create a new task/ticket in a project. Always pass the `project_id` of the project you want to create the task in - it is required!"
     )]
     async fn create_task(
         &self,
@@ -345,7 +297,7 @@ impl TaskServer {
         }
     }
 
-    #[tool(description = "List all available projects")]
+    #[tool(description = "List all the available projects")]
     async fn list_projects(
         &self,
         #[tool(aggr)] _request: ListProjectsRequest,
@@ -396,7 +348,7 @@ impl TaskServer {
     }
 
     #[tool(
-        description = "List task/tickets in a project with optional filtering and execution status"
+        description = "List all the task/tickets in a project with optional filtering and execution status. `project_id` is required!"
     )]
     async fn list_tasks(
         &self,
@@ -534,7 +486,9 @@ impl TaskServer {
         }
     }
 
-    #[tool(description = "Update an existing task/ticket's title, description, or status")]
+    #[tool(
+        description = "Update an existing task/ticket's title, description, or status. `project_id` and `task_id` are required! `title`, `description`, and `status` are optional."
+    )]
     async fn update_task(
         &self,
         #[tool(aggr)] UpdateTaskRequest {
@@ -667,405 +621,9 @@ impl TaskServer {
         }
     }
 
-    #[tool(description = "Mark a task/ticket as completed by its title")]
-    async fn complete_task(
-        &self,
-        #[tool(aggr)] CompleteTaskRequest {
-            project_id,
-            task_title,
-        }: CompleteTaskRequest,
-    ) -> Result<CallToolResult, RmcpError> {
-        let project_uuid = match Uuid::parse_str(&project_id) {
-            Ok(uuid) => uuid,
-            Err(_) => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": "Invalid project ID format. Please use the project ID from list_projects.",
-                    "hint": "Try using 'list_projects' first to get the correct project ID"
-                });
-                return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap(),
-                )]));
-            }
-        };
-
-        match Task::find_task_by_title(&self.pool, project_uuid, &task_title).await {
-            Ok(Some(task)) => {
-                match Task::update_status(&self.pool, task.id, project_uuid, TaskStatus::Done).await
-                {
-                    Ok(_) => {
-                        let response = SimpleTaskResponse {
-                            success: true,
-                            message: format!("Task '{}' marked as completed", task_title),
-                            task_title: task_title.clone(),
-                            new_status: Some("done".to_string()),
-                        };
-                        Ok(CallToolResult::success(vec![Content::text(
-                            serde_json::to_string_pretty(&response).unwrap(),
-                        )]))
-                    }
-                    Err(e) => {
-                        let error_response = serde_json::json!({
-                            "success": false,
-                            "error": "Failed to update task status",
-                            "details": e.to_string()
-                        });
-                        Ok(CallToolResult::error(vec![Content::text(
-                            serde_json::to_string_pretty(&error_response).unwrap(),
-                        )]))
-                    }
-                }
-            }
-            Ok(None) => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": format!("Task with title '{}' not found in project", task_title),
-                    "hint": "Use 'list_tasks' to see available tasks in the project"
-                });
-                Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap(),
-                )]))
-            }
-            Err(e) => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": "Database error while searching for task",
-                    "details": e.to_string()
-                });
-                Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap(),
-                )]))
-            }
-        }
-    }
-
-    #[tool(description = "Set a task/ticket's status by its title")]
-    async fn set_task_status(
-        &self,
-        #[tool(aggr)] SetTaskStatusRequest {
-            project_id,
-            task_title,
-            status,
-        }: SetTaskStatusRequest,
-    ) -> Result<CallToolResult, RmcpError> {
-        let project_uuid = match Uuid::parse_str(&project_id) {
-            Ok(uuid) => uuid,
-            Err(_) => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": "Invalid project ID format",
-                    "hint": "Use 'list_projects' to get the correct project ID"
-                });
-                return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap(),
-                )]));
-            }
-        };
-
-        let status_enum = match parse_task_status(&status) {
-            Some(s) => s,
-            None => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": "Invalid status value",
-                    "provided": status,
-                    "valid_options": ["todo", "in-progress", "in-review", "done", "cancelled"],
-                    "hint": "Use one of the valid status options"
-                });
-                return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap(),
-                )]));
-            }
-        };
-
-        match Task::find_task_by_title(&self.pool, project_uuid, &task_title).await {
-            Ok(Some(task)) => {
-                match Task::update_status(&self.pool, task.id, project_uuid, status_enum).await {
-                    Ok(_) => {
-                        let response = SimpleTaskResponse {
-                            success: true,
-                            message: format!(
-                                "Task '{}' status updated to '{}'",
-                                task_title, status
-                            ),
-                            task_title: task_title.clone(),
-                            new_status: Some(status.clone()),
-                        };
-                        Ok(CallToolResult::success(vec![Content::text(
-                            serde_json::to_string_pretty(&response).unwrap(),
-                        )]))
-                    }
-                    Err(e) => {
-                        let error_response = serde_json::json!({
-                            "success": false,
-                            "error": "Failed to update task status",
-                            "details": e.to_string()
-                        });
-                        Ok(CallToolResult::error(vec![Content::text(
-                            serde_json::to_string_pretty(&error_response).unwrap(),
-                        )]))
-                    }
-                }
-            }
-            Ok(None) => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": format!("Task '{}' not found in project", task_title),
-                    "hint": "Use 'list_tasks' to see available tasks"
-                });
-                Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap(),
-                )]))
-            }
-            Err(e) => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": "Database error",
-                    "details": e.to_string()
-                });
-                Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap(),
-                )]))
-            }
-        }
-    }
-
-    #[tool(description = "Delete a task/ticket by its title")]
-    async fn delete_task_by_title(
-        &self,
-        #[tool(aggr)] DeleteTaskByTitleRequest {
-            project_id,
-            task_title,
-        }: DeleteTaskByTitleRequest,
-    ) -> Result<CallToolResult, RmcpError> {
-        let project_uuid = match Uuid::parse_str(&project_id) {
-            Ok(uuid) => uuid,
-            Err(_) => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": "Invalid project ID format",
-                    "hint": "Use 'list_projects' to get the correct project ID"
-                });
-                return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap(),
-                )]));
-            }
-        };
-
-        match Task::find_task_by_title(&self.pool, project_uuid, &task_title).await {
-            Ok(Some(task)) => match Task::delete(&self.pool, task.id, project_uuid).await {
-                Ok(_) => {
-                    let response = SimpleTaskResponse {
-                        success: true,
-                        message: format!("Task '{}' deleted successfully", task_title),
-                        task_title: task_title.clone(),
-                        new_status: None,
-                    };
-                    Ok(CallToolResult::success(vec![Content::text(
-                        serde_json::to_string_pretty(&response).unwrap(),
-                    )]))
-                }
-                Err(e) => {
-                    let error_response = serde_json::json!({
-                        "success": false,
-                        "error": "Failed to delete task",
-                        "details": e.to_string()
-                    });
-                    Ok(CallToolResult::error(vec![Content::text(
-                        serde_json::to_string_pretty(&error_response).unwrap(),
-                    )]))
-                }
-            },
-            Ok(None) => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": format!("Task '{}' not found in project", task_title),
-                    "hint": "Use 'list_tasks' to see available tasks"
-                });
-                Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap(),
-                )]))
-            }
-            Err(e) => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": "Database error",
-                    "details": e.to_string()
-                });
-                Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap(),
-                )]))
-            }
-        }
-    }
-
-    #[tool(description = "Update a task/ticket's title by finding it with the current title")]
-    async fn update_task_title(
-        &self,
-        #[tool(aggr)] UpdateTaskTitleRequest {
-            project_id,
-            current_title,
-            new_title,
-        }: UpdateTaskTitleRequest,
-    ) -> Result<CallToolResult, RmcpError> {
-        let project_uuid = match Uuid::parse_str(&project_id) {
-            Ok(uuid) => uuid,
-            Err(_) => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": "Invalid project ID format",
-                    "hint": "Use 'list_projects' to get the correct project ID"
-                });
-                return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap(),
-                )]));
-            }
-        };
-
-        match Task::find_task_by_title(&self.pool, project_uuid, &current_title).await {
-            Ok(Some(task)) => {
-                // Update the task with new title, keeping other fields the same
-                match Task::update(
-                    &self.pool,
-                    task.id,
-                    project_uuid,
-                    new_title.clone(),
-                    task.description,
-                    task.status,
-                )
-                .await
-                {
-                    Ok(updated_task) => {
-                        let response = serde_json::json!({
-                            "success": true,
-                            "message": format!("Task title updated from '{}' to '{}'", current_title, new_title),
-                            "old_title": current_title,
-                            "new_title": new_title,
-                            "task_id": updated_task.id.to_string()
-                        });
-                        Ok(CallToolResult::success(vec![Content::text(
-                            serde_json::to_string_pretty(&response).unwrap(),
-                        )]))
-                    }
-                    Err(e) => {
-                        let error_response = serde_json::json!({
-                            "success": false,
-                            "error": "Failed to update task title",
-                            "details": e.to_string()
-                        });
-                        Ok(CallToolResult::error(vec![Content::text(
-                            serde_json::to_string_pretty(&error_response).unwrap(),
-                        )]))
-                    }
-                }
-            }
-            Ok(None) => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": format!("Task with title '{}' not found in project", current_title),
-                    "hint": "Use 'list_tasks' to see available tasks with exact titles"
-                });
-                Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap(),
-                )]))
-            }
-            Err(e) => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": "Database error while searching for task",
-                    "details": e.to_string()
-                });
-                Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap(),
-                )]))
-            }
-        }
-    }
-
-    #[tool(description = "Update a task/ticket's description by its title")]
-    async fn update_task_description(
-        &self,
-        #[tool(aggr)] UpdateTaskDescriptionRequest {
-            project_id,
-            task_title,
-            description,
-        }: UpdateTaskDescriptionRequest,
-    ) -> Result<CallToolResult, RmcpError> {
-        let project_uuid = match Uuid::parse_str(&project_id) {
-            Ok(uuid) => uuid,
-            Err(_) => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": "Invalid project ID format",
-                    "hint": "Use 'list_projects' to get the correct project ID"
-                });
-                return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap(),
-                )]));
-            }
-        };
-
-        match Task::find_task_by_title(&self.pool, project_uuid, &task_title).await {
-            Ok(Some(task)) => {
-                // Update the task with new description, keeping other fields the same
-                match Task::update(
-                    &self.pool,
-                    task.id,
-                    project_uuid,
-                    task.title.clone(),
-                    Some(description.clone()),
-                    task.status,
-                )
-                .await
-                {
-                    Ok(updated_task) => {
-                        let response = serde_json::json!({
-                            "success": true,
-                            "message": format!("Description updated for task '{}'", task_title),
-                            "task_title": task_title,
-                            "new_description": description,
-                            "task_id": updated_task.id.to_string()
-                        });
-                        Ok(CallToolResult::success(vec![Content::text(
-                            serde_json::to_string_pretty(&response).unwrap(),
-                        )]))
-                    }
-                    Err(e) => {
-                        let error_response = serde_json::json!({
-                            "success": false,
-                            "error": "Failed to update task description",
-                            "details": e.to_string()
-                        });
-                        Ok(CallToolResult::error(vec![Content::text(
-                            serde_json::to_string_pretty(&error_response).unwrap(),
-                        )]))
-                    }
-                }
-            }
-            Ok(None) => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": format!("Task with title '{}' not found in project", task_title),
-                    "hint": "Use 'list_tasks' to see available tasks with exact titles"
-                });
-                Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap(),
-                )]))
-            }
-            Err(e) => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": "Database error while searching for task",
-                    "details": e.to_string()
-                });
-                Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap(),
-                )]))
-            }
-        }
-    }
-
-    #[tool(description = "Delete a task/ticket from a project")]
+    #[tool(
+        description = "Delete a task/ticket from a project. `project_id` and `task_id` are required!"
+    )]
     async fn delete_task(
         &self,
         #[tool(aggr)] DeleteTaskRequest {
@@ -1157,7 +715,9 @@ impl TaskServer {
         }
     }
 
-    #[tool(description = "Get detailed information about a specific task/ticket")]
+    #[tool(
+        description = "Get detailed information about a specific task/ticket. `project_id` and `task_id` are required!"
+    )]
     async fn get_task(
         &self,
         #[tool(aggr)] GetTaskRequest {
@@ -1254,7 +814,7 @@ impl ServerHandler for TaskServer {
                 name: "vibe-kanban".to_string(),
                 version: "1.0.0".to_string(),
             },
-            instructions: Some("A task and project management server. AGENT-FRIENDLY TOOLS (use task titles): 'complete_task', 'set_task_status', 'update_task_title', 'update_task_description', 'delete_task_by_title'. STANDARD TOOLS: 'list_projects', 'create_project', 'list_tasks', 'create_task', 'get_task'. ADVANCED TOOLS (use UUIDs): 'update_task', 'delete_task'. Always use exact task titles from list_tasks results.".to_string()),
+            instructions: Some("A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. This should be provided to you. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'get_task', 'update_task', 'delete_task'. Make sure to pass `project_id` or `task_id` where required. You can use list tools to get the available ids.".to_string()),
         }
     }
 }
