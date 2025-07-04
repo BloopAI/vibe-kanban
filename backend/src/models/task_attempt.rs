@@ -1183,7 +1183,27 @@ impl TaskAttempt {
             // Task attempt not yet merged - use the original logic with fork point
             let worktree_repo = Repository::open(&attempt.worktree_path)?;
             let main_repo = Repository::open(&project.git_repo_path)?;
-            let main_head_oid = main_repo.head()?.peel_to_commit()?.id();
+            
+            // Handle case where main repository doesn't have a main branch yet (new repo)
+            let main_head_oid = match main_repo.head() {
+                Ok(head_ref) => {
+                    match head_ref.peel_to_commit() {
+                        Ok(commit) => commit.id(),
+                        Err(_) => {
+                            // No commits yet, return empty diff for new repository
+                            return Ok(WorktreeDiff { files });
+                        }
+                    }
+                }
+                Err(e) => {
+                    // Handle UnbornBranch error (new repo without commits)
+                    if e.class() == git2::ErrorClass::Reference && e.code() == git2::ErrorCode::UnbornBranch {
+                        // New repository without any commits, return empty diff
+                        return Ok(WorktreeDiff { files });
+                    }
+                    return Err(e.into());
+                }
+            };
 
             // Get the current worktree HEAD commit
             let worktree_head = worktree_repo.head()?;
