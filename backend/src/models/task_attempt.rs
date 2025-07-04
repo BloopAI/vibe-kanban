@@ -244,7 +244,10 @@ impl TaskAttempt {
                 // Handle new repositories without any commits
                 match repo.head() {
                     Ok(head_ref) => head_ref,
-                    Err(e) if e.class() == git2::ErrorClass::Reference && e.code() == git2::ErrorCode::UnbornBranch => {
+                    Err(e)
+                        if e.class() == git2::ErrorClass::Reference
+                            && e.code() == git2::ErrorCode::UnbornBranch =>
+                    {
                         // Repository has no commits yet, create an initial commit
                         let signature = repo.signature().unwrap_or_else(|_| {
                             // Fallback if no Git config is set
@@ -256,7 +259,7 @@ impl TaskAttempt {
                             tree_builder.write()?
                         };
                         let tree = repo.find_tree(tree_id)?;
-                        
+
                         // Create initial commit on main branch
                         let _commit_id = repo.commit(
                             Some("refs/heads/main"),
@@ -266,10 +269,10 @@ impl TaskAttempt {
                             &tree,
                             &[],
                         )?;
-                        
+
                         // Set HEAD to point to main branch
                         repo.set_head("refs/heads/main")?;
-                        
+
                         // Return reference to main branch
                         repo.find_reference("refs/heads/main")?
                     }
