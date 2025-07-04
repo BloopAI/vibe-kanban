@@ -81,11 +81,7 @@ jobs:
           npm version $new_version --no-git-tag-version
           cd ..
           
-          # Update backend Cargo.toml version
-          # Convert npm semver to cargo semver (remove prerelease part for Cargo)
-          cargo_version=$(echo "$new_version" | sed 's/-.*$//')
-          
-          cargo set-version "$cargo_version"
+          cargo set-version "$new_version"
           
           echo "New version: $new_version"
           echo "new_version=$new_version" >> $GITHUB_OUTPUT
