@@ -132,10 +132,16 @@ impl Task {
             ) merged_attempts 
             ON t.id = merged_attempts.task_id
             LEFT JOIN (
-                SELECT DISTINCT ta.task_id
-                FROM task_attempts ta
+                SELECT DISTINCT latest_attempts.task_id
+                FROM (
+                    -- Get the latest attempt for each task
+                    SELECT task_id, id as attempt_id, created_at,
+                           ROW_NUMBER() OVER (PARTITION BY task_id ORDER BY created_at DESC) AS rn
+                    FROM task_attempts
+                    WHERE merge_commit IS NULL  -- Don't show as failed if already merged
+                ) latest_attempts
                 JOIN execution_processes ep 
-                ON ta.id = ep.task_attempt_id
+                ON latest_attempts.attempt_id = ep.task_attempt_id
                 JOIN (
                     -- pick exactly one "latest" activity per process,
                     -- tiebreaking so that running‐states are lower priority
@@ -158,8 +164,8 @@ impl Task {
                     WHERE rn = 1
                 ) latest_act 
                 ON ep.id = latest_act.execution_process_id
-                WHERE latest_act.status IN ('setupfailed','executorfailed')
-                  AND ta.merge_commit IS NULL  -- Don't show as failed if already merged
+                WHERE latest_attempts.rn = 1  -- Only consider the latest attempt
+                  AND latest_act.status IN ('setupfailed','executorfailed')
             ) failed_attempts 
             ON t.id = failed_attempts.task_id
             WHERE t.project_id = $1
