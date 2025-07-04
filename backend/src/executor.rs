@@ -380,6 +380,19 @@ impl ExecutorConfig {
     }
 }
 
+impl std::fmt::Display for ExecutorConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            ExecutorConfig::Echo => "echo",
+            ExecutorConfig::Claude => "claude",
+            ExecutorConfig::Amp => "amp",
+            ExecutorConfig::Gemini => "gemini",
+            ExecutorConfig::Opencode => "opencode",
+        };
+        write!(f, "{}", s)
+    }
+}
+
 /// Stream output from a child process to the database
 pub async fn stream_output_to_db(
     output: impl tokio::io::AsyncRead + Unpin,

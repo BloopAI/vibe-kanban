@@ -151,13 +151,7 @@ pub async fn create_task_and_start(
     };
 
     // Create task attempt
-    let executor_string = payload.executor.as_ref().map(|exec| match exec {
-        crate::executor::ExecutorConfig::Echo => "echo".to_string(),
-        crate::executor::ExecutorConfig::Claude => "claude".to_string(),
-        crate::executor::ExecutorConfig::Amp => "amp".to_string(),
-        crate::executor::ExecutorConfig::Gemini => "gemini".to_string(),
-        crate::executor::ExecutorConfig::Opencode => "opencode".to_string(),
-    });
+    let executor_string = payload.executor.as_ref().map(|exec| exec.to_string());
     let attempt_payload = CreateTaskAttempt {
         executor: executor_string.clone(),
         base_branch: None, // Not supported in task creation endpoint, only in task attempts
@@ -165,7 +159,6 @@ pub async fn create_task_and_start(
 
     match TaskAttempt::create(&pool, &attempt_payload, task_id).await {
         Ok(attempt) => {
-            // Track task creation
             app_state
                 .track_analytics_event(
                     "task_created",
@@ -177,10 +170,9 @@ pub async fn create_task_and_start(
                 )
                 .await;
 
-            // Track task start
             app_state
                 .track_analytics_event(
-                    "task_started",
+                    "task_attempt_started",
                     Some(serde_json::json!({
                         "task_id": task.id.to_string(),
                         "executor_type": executor_string.as_deref().unwrap_or("default"),

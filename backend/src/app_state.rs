@@ -41,7 +41,7 @@ impl AppState {
         // Initialize analytics with user preferences
         let user_enabled = {
             let config_guard = config.read().await;
-            config_guard.analytics_enabled.unwrap_or(false)
+            config_guard.analytics_enabled.unwrap_or(true)
         };
 
         let analytics_config = AnalyticsConfig::new(user_enabled);
@@ -235,6 +235,8 @@ impl AppState {
         let analytics = self.analytics.read().await;
         if analytics.is_enabled() {
             analytics.track_event(&self.user_id, event_name, properties);
+        } else {
+            tracing::info!("Analytics disabled, skipping event: {}", event_name);
         }
     }
 }

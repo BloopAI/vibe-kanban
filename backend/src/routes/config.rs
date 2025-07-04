@@ -54,7 +54,7 @@ async fn update_config(
             drop(config);
 
             app_state
-                .update_analytics_config(new_config.analytics_enabled.unwrap_or(false))
+                .update_analytics_config(new_config.analytics_enabled.unwrap_or(true))
                 .await;
 
             ResponseJson(ApiResponse {

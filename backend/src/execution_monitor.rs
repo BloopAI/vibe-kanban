@@ -695,10 +695,9 @@ async fn handle_coding_agent_completion(
             // Get task to access task_id and project_id for status update
             if let Ok(Some(task)) = Task::find_by_id(&app_state.db_pool, task_attempt.task_id).await
             {
-                // Track task completion event
                 app_state
                     .track_analytics_event(
-                        "task_finished",
+                        "task_attempt_finished",
                         Some(serde_json::json!({
                             "task_id": task.id.to_string(),
                             "project_id": task.project_id.to_string(),
