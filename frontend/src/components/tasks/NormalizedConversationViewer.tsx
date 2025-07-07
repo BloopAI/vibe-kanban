@@ -14,10 +14,13 @@ import {
   AlertCircle,
   ChevronRight,
   ChevronUp,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react';
 import { makeRequest } from '@/lib/api';
 import type {
   NormalizedConversation,
+  NormalizedEntry,
   NormalizedEntryType,
   ExecutionProcess,
   ApiResponse,
@@ -87,6 +90,97 @@ const getContentClassName = (entryType: NormalizedEntryType) => {
   return baseClasses;
 };
 
+// Configuration for Gemini message clustering
+const GEMINI_CLUSTERING_CONFIG = {
+  enabled: true,
+  maxClusterSize: 5000, // Maximum characters per cluster
+  maxClusterCount: 50, // Maximum number of messages to cluster together
+  minClusterSize: 2, // Minimum number of messages to consider clustering
+};
+
+/**
+ * Utility function to cluster adjacent assistant messages for Gemini executor.
+ *
+ * This function merges consecutive assistant messages into larger chunks to improve
+ * readability while preserving the progressive nature of Gemini's output.
+ *
+ * Clustering rules:
+ * - Only assistant messages are clustered together
+ * - Non-assistant messages (errors, tool use, etc.) break clustering
+ * - Clusters are limited by size (characters) and count (number of messages)
+ * - Requires minimum of 2 messages to form a cluster
+ * - Original content and formatting is preserved
+ *
+ * @param entries - Original conversation entries
+ * @param enabled - Whether clustering is enabled
+ * @returns - Processed entries with clustering applied
+ */
+const clusterGeminiMessages = (
+  entries: NormalizedEntry[],
+  enabled: boolean
+): NormalizedEntry[] => {
+  if (!enabled) {
+    return entries;
+  }
+
+  const clustered: NormalizedEntry[] = [];
+  let currentCluster: NormalizedEntry[] = [];
+
+  const flushCluster = () => {
+    if (currentCluster.length === 0) return;
+
+    if (currentCluster.length < GEMINI_CLUSTERING_CONFIG.minClusterSize) {
+      // Not enough messages to cluster, add them individually
+      clustered.push(...currentCluster);
+    } else {
+      // Merge multiple messages into one
+      // Join with newlines to preserve message boundaries and readability
+      const mergedContent = currentCluster
+        .map((entry) => entry.content)
+        .join('\n');
+
+      const mergedEntry: NormalizedEntry = {
+        timestamp: currentCluster[0].timestamp, // Use timestamp of first message
+        entry_type: currentCluster[0].entry_type,
+        content: mergedContent,
+      };
+      clustered.push(mergedEntry);
+    }
+    currentCluster = [];
+  };
+
+  for (const entry of entries) {
+    const isAssistantMessage = entry.entry_type.type === 'assistant_message';
+
+    if (isAssistantMessage) {
+      // Check if we can add to current cluster
+      const wouldExceedSize =
+        currentCluster.length > 0 &&
+        currentCluster.map((e) => e.content).join('').length +
+          entry.content.length >
+          GEMINI_CLUSTERING_CONFIG.maxClusterSize;
+      const wouldExceedCount =
+        currentCluster.length >= GEMINI_CLUSTERING_CONFIG.maxClusterCount;
+
+      if (wouldExceedSize || wouldExceedCount) {
+        // Flush current cluster and start new one
+        flushCluster();
+      }
+
+      currentCluster.push(entry);
+    } else {
+      // Non-assistant message, flush current cluster and add this message separately
+      flushCluster();
+      clustered.push(entry);
+    }
+  }
+
+  // Flush any remaining cluster
+  flushCluster();
+
+  return clustered;
+};
+
 export function NormalizedConversationViewer({
   executionProcess,
   projectId,
@@ -97,6 +191,9 @@ export function NormalizedConversationViewer({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedErrors, setExpandedErrors] = useState<Set<number>>(new Set());
+  const [clusteringEnabled, setClusteringEnabled] = useState(
+    GEMINI_CLUSTERING_CONFIG.enabled
+  );
 
   const toggleErrorExpansion = (index: number) => {
     setExpandedErrors((prev) => {
@@ -208,8 +305,50 @@ export function NormalizedConversationViewer({
     );
   }
 
+  // Apply clustering for Gemini executor conversations
+  const isGeminiExecutor = conversation.executor_type === 'gemini';
+  const hasAssistantMessages = conversation.entries.some(
+    (entry) => entry.entry_type.type === 'assistant_message'
+  );
+  const displayEntries = isGeminiExecutor
+    ? clusterGeminiMessages(conversation.entries, clusteringEnabled)
+    : conversation.entries;
+
   return (
     <div>
+      {/* Display clustering controls for Gemini */}
+      {isGeminiExecutor && hasAssistantMessages && (
+        <div className="mb-4 p-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-md">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs text-blue-700 dark:text-blue-300">
+              <Bot className="h-3 w-3" />
+              <span>
+                {clusteringEnabled &&
+                displayEntries.length !== conversation.entries.length
+                  ? `Messages clustered for better readability (${conversation.entries.length} → ${displayEntries.length} messages)`
+                  : 'Gemini message clustering'}
+              </span>
+            </div>
+            <button
+              onClick={() => setClusteringEnabled(!clusteringEnabled)}
+              className="flex items-center gap-1 text-xs text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 transition-colors"
+              title={
+                clusteringEnabled
+                  ? 'Disable message clustering'
+                  : 'Enable message clustering'
+              }
+            >
+              {clusteringEnabled ? (
+                <ToggleRight className="h-4 w-4" />
+              ) : (
+                <ToggleLeft className="h-4 w-4" />
+              )}
+              <span>{clusteringEnabled ? 'ON' : 'OFF'}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Display prompt if available */}
       {conversation.prompt && (
         <div className="flex items-start gap-3 mb-6">
@@ -226,7 +365,7 @@ export function NormalizedConversationViewer({
 
       {/* Display conversation entries */}
       <div className="space-y-2">
-        {conversation.entries.map((entry, index) => {
+        {displayEntries.map((entry, index) => {
           const isErrorMessage = entry.entry_type.type === 'error_message';
           const isExpanded = expandedErrors.has(index);
           const hasMultipleLines =
@@ -277,7 +416,7 @@ export function NormalizedConversationViewer({
                   </div>
                 ) : (
                   <div className={getContentClassName(entry.entry_type)}>
-                    {entry.content}
+                        {entry.content}
                   </div>
                 )}
               </div>
