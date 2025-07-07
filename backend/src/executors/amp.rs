@@ -95,8 +95,19 @@ impl Executor for AmpExecutor {
             }
 
             // Try to parse as JSON
-            let json: Value = serde_json::from_str(trimmed)
-                .map_err(|e| format!("Failed to parse JSON: {}", e))?;
+            let json: Value = match serde_json::from_str(trimmed) {
+                Ok(json) => json,
+                Err(_) => {
+                    // If line isn't valid JSON, add it as raw text
+                    entries.push(NormalizedEntry {
+                        timestamp: None,
+                        entry_type: NormalizedEntryType::SystemMessage,
+                        content: format!("Raw output: {}", trimmed),
+                        metadata: None,
+                    });
+                    continue;
+                }
+            };
 
             // Extract session ID (threadID in AMP)
             if session_id.is_none() {
@@ -106,7 +117,7 @@ impl Executor for AmpExecutor {
             }
 
             // Process different message types
-            if let Some(msg_type) = json.get("type").and_then(|t| t.as_str()) {
+            let processed = if let Some(msg_type) = json.get("type").and_then(|t| t.as_str()) {
                 if msg_type == "messages" {
                     if let Some(messages) = json.get("messages").and_then(|m| m.as_array()) {
                         for message_entry in messages {
@@ -207,7 +218,22 @@ impl Executor for AmpExecutor {
                             }
                         }
                     }
+                    true
+                } else {
+                    false
                 }
+            } else {
+                false
+            };
+
+            // If JSON didn't match expected patterns, add it as unrecognized JSON
+            if !processed {
+                entries.push(NormalizedEntry {
+                    timestamp: None,
+                    entry_type: NormalizedEntryType::SystemMessage,
+                    content: format!("Unrecognized JSON: {}", trimmed),
+                    metadata: Some(json),
+                });
             }
         }
 

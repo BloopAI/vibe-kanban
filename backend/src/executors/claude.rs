@@ -89,8 +89,19 @@ impl Executor for ClaudeExecutor {
             }
 
             // Try to parse as JSON
-            let json: Value = serde_json::from_str(trimmed)
-                .map_err(|e| format!("Failed to parse JSON: {}", e))?;
+            let json: Value = match serde_json::from_str(trimmed) {
+                Ok(json) => json,
+                Err(_) => {
+                    // If line isn't valid JSON, add it as raw text
+                    entries.push(NormalizedEntry {
+                        timestamp: None,
+                        entry_type: NormalizedEntryType::SystemMessage,
+                        content: format!("Raw output: {}", trimmed),
+                        metadata: None,
+                    });
+                    continue;
+                }
+            };
 
             // Extract session ID
             if session_id.is_none() {
@@ -100,7 +111,7 @@ impl Executor for ClaudeExecutor {
             }
 
             // Process different message types
-            if let Some(msg_type) = json.get("type").and_then(|t| t.as_str()) {
+            let processed = if let Some(msg_type) = json.get("type").and_then(|t| t.as_str()) {
                 match msg_type {
                     "assistant" => {
                         if let Some(message) = json.get("message") {
@@ -158,6 +169,7 @@ impl Executor for ClaudeExecutor {
                                 }
                             }
                         }
+                        true
                     }
                     "user" => {
                         if let Some(message) = json.get("message") {
@@ -183,6 +195,7 @@ impl Executor for ClaudeExecutor {
                                 }
                             }
                         }
+                        true
                     }
                     "system" => {
                         if let Some(subtype) = json.get("subtype").and_then(|s| s.as_str()) {
@@ -200,9 +213,22 @@ impl Executor for ClaudeExecutor {
                                 });
                             }
                         }
+                        true
                     }
-                    _ => {}
+                    _ => false,
                 }
+            } else {
+                false
+            };
+
+            // If JSON didn't match expected patterns, add it as unrecognized JSON
+            if !processed {
+                entries.push(NormalizedEntry {
+                    timestamp: None,
+                    entry_type: NormalizedEntryType::SystemMessage,
+                    content: format!("Unrecognized JSON: {}", trimmed),
+                    metadata: Some(json),
+                });
             }
         }
 
