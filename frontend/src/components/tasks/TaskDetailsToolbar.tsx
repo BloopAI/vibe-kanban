@@ -141,12 +141,12 @@ export function TaskDetailsToolbar({
 
   // Branch status fetching
   const fetchBranchStatus = useCallback(async () => {
-    if (!projectId || !task.id || !selectedAttempt?.id) return;
+    if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
 
     try {
       setBranchStatusLoading(true);
       const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttempt.id}/branch-status`
+        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/branch-status`
       );
 
       if (response.ok) {
@@ -164,7 +164,7 @@ export function TaskDetailsToolbar({
     } finally {
       setBranchStatusLoading(false);
     }
-  }, [projectId, task.id, selectedAttempt?.id]);
+  }, [projectId, selectedAttempt?.id, selectedAttempt?.task_id]);
 
   // Fetch branch status when selected attempt changes
   useEffect(() => {
@@ -175,19 +175,19 @@ export function TaskDetailsToolbar({
 
   // Git operations
   const handleMergeClick = async () => {
-    if (!projectId || !task.id || !selectedAttempt?.id) return;
+    if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
 
     // Directly perform merge without checking branch status
     await performMerge();
   };
 
   const performMerge = async () => {
-    if (!projectId || !task.id || !selectedAttempt?.id) return;
+    if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
 
     try {
       setMerging(true);
       const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttempt.id}/merge`,
+        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/merge`,
         {
           method: 'POST',
         }
@@ -212,12 +212,12 @@ export function TaskDetailsToolbar({
   };
 
   const handleRebaseClick = async () => {
-    if (!projectId || !task.id || !selectedAttempt?.id) return;
+    if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
 
     try {
       setRebasing(true);
       const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttempt.id}/rebase`,
+        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/rebase`,
         {
           method: 'POST',
         }
@@ -242,7 +242,7 @@ export function TaskDetailsToolbar({
   };
 
   const handleCreatePRClick = async () => {
-    if (!projectId || !task.id || !selectedAttempt?.id) return;
+    if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
 
     // If PR already exists, open it
     if (selectedAttempt.pr_url) {
@@ -258,12 +258,12 @@ export function TaskDetailsToolbar({
   };
 
   const handleConfirmCreatePR = async () => {
-    if (!projectId || !task.id || !selectedAttempt?.id) return;
+    if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
 
     try {
       setCreatingPR(true);
       const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttempt.id}/create-pr`,
+        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/create-pr`,
         {
           method: 'POST',
           headers: {
