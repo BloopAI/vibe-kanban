@@ -59,7 +59,7 @@ impl PrMonitorService {
             match github_token {
                 Some(token) => {
                     if let Err(e) = self.check_all_open_prs_with_token(&token).await {
-                        error!("Error checking PRs: {}", e);
+                        warn!("Error checking PRs: {}", e);
                     }
                 }
                 None => {
@@ -85,7 +85,7 @@ impl PrMonitorService {
 
         for pr_info in open_prs {
             if let Err(e) = self.check_pr_status(&pr_info).await {
-                error!(
+                warn!(
                     "Error checking PR #{} for attempt {}: {}",
                     pr_info.pr_number, pr_info.attempt_id, e
                 );
