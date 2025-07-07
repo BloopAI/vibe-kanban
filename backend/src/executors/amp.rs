@@ -115,98 +115,100 @@ Task description: {}"#,
 
             // Process different message types
             let processed = if let Some(msg_type) = json.get("type").and_then(|t| t.as_str()) {
-                if msg_type == "messages" {
-                    if let Some(messages) = json.get("messages").and_then(|m| m.as_array()) {
-                        for message_entry in messages {
-                            if let Some(message_data) =
-                                message_entry.as_array().and_then(|arr| arr.get(1))
-                            {
-                                if let Some(role) =
-                                    message_data.get("role").and_then(|r| r.as_str())
+                match msg_type {
+                    "messages" => {
+                        if let Some(messages) = json.get("messages").and_then(|m| m.as_array()) {
+                            for message_entry in messages {
+                                if let Some(message_data) =
+                                    message_entry.as_array().and_then(|arr| arr.get(1))
                                 {
-                                    if let Some(content) =
-                                        message_data.get("content").and_then(|c| c.as_array())
+                                    if let Some(role) =
+                                        message_data.get("role").and_then(|r| r.as_str())
                                     {
-                                        for content_item in content {
-                                            if let Some(content_type) =
-                                                content_item.get("type").and_then(|t| t.as_str())
-                                            {
-                                                match content_type {
-                                                    "text" => {
-                                                        if let Some(text) = content_item
-                                                            .get("text")
-                                                            .and_then(|t| t.as_str())
-                                                        {
-                                                            let entry_type = match role {
-                                                                "user" => NormalizedEntryType::UserMessage,
-                                                                "assistant" => NormalizedEntryType::AssistantMessage,
-                                                                _ => continue,
-                                                            };
-                                                            entries.push(NormalizedEntry {
-                                                                timestamp: message_data
-                                                                    .get("meta")
-                                                                    .and_then(|m| m.get("sentAt"))
-                                                                    .and_then(|s| s.as_u64())
-                                                                    .map(|ts| ts.to_string()),
-                                                                entry_type,
-                                                                content: text.to_string(),
-                                                                metadata: Some(
-                                                                    content_item.clone(),
-                                                                ),
-                                                            });
+                                        if let Some(content) =
+                                            message_data.get("content").and_then(|c| c.as_array())
+                                        {
+                                            for content_item in content {
+                                                if let Some(content_type) =
+                                                    content_item.get("type").and_then(|t| t.as_str())
+                                                {
+                                                    match content_type {
+                                                        "text" => {
+                                                            if let Some(text) = content_item
+                                                                .get("text")
+                                                                .and_then(|t| t.as_str())
+                                                            {
+                                                                let entry_type = match role {
+                                                                    "user" => NormalizedEntryType::UserMessage,
+                                                                    "assistant" => NormalizedEntryType::AssistantMessage,
+                                                                    _ => continue,
+                                                                };
+                                                                entries.push(NormalizedEntry {
+                                                                    timestamp: message_data
+                                                                        .get("meta")
+                                                                        .and_then(|m| m.get("sentAt"))
+                                                                        .and_then(|s| s.as_u64())
+                                                                        .map(|ts| ts.to_string()),
+                                                                    entry_type,
+                                                                    content: text.to_string(),
+                                                                    metadata: Some(
+                                                                        content_item.clone(),
+                                                                    ),
+                                                                });
+                                                            }
                                                         }
-                                                    }
-                                                    "thinking" => {
-                                                        if let Some(thinking) = content_item
-                                                            .get("thinking")
-                                                            .and_then(|t| t.as_str())
-                                                        {
-                                                            entries.push(NormalizedEntry {
-                                                                timestamp: None,
-                                                                entry_type:
-                                                                    NormalizedEntryType::Thinking,
-                                                                content: thinking.to_string(),
-                                                                metadata: Some(
-                                                                    content_item.clone(),
-                                                                ),
-                                                            });
+                                                        "thinking" => {
+                                                            if let Some(thinking) = content_item
+                                                                .get("thinking")
+                                                                .and_then(|t| t.as_str())
+                                                            {
+                                                                entries.push(NormalizedEntry {
+                                                                    timestamp: None,
+                                                                    entry_type:
+                                                                        NormalizedEntryType::Thinking,
+                                                                    content: thinking.to_string(),
+                                                                    metadata: Some(
+                                                                        content_item.clone(),
+                                                                    ),
+                                                                });
+                                                            }
                                                         }
-                                                    }
-                                                    "tool_use" => {
-                                                        if let Some(tool_name) = content_item
-                                                            .get("name")
-                                                            .and_then(|n| n.as_str())
-                                                        {
-                                                            let input = content_item
-                                                                .get("input")
-                                                                .unwrap_or(&Value::Null);
-                                                            let action_type = self
-                                                                .extract_action_type(
-                                                                    tool_name, input,
-                                                                );
-                                                            let content = self
-                                                                .generate_concise_content(
-                                                                    tool_name,
-                                                                    input,
-                                                                    &action_type,
-                                                                );
+                                                        "tool_use" => {
+                                                            if let Some(tool_name) = content_item
+                                                                .get("name")
+                                                                .and_then(|n| n.as_str())
+                                                            {
+                                                                let input = content_item
+                                                                    .get("input")
+                                                                    .unwrap_or(&Value::Null);
+                                                                let action_type = self
+                                                                    .extract_action_type(
+                                                                        tool_name, input,
+                                                                    );
+                                                                let content = self
+                                                                    .generate_concise_content(
+                                                                        tool_name,
+                                                                        input,
+                                                                        &action_type,
+                                                                    );
 
-                                                            entries.push(NormalizedEntry {
-                                                                timestamp: None,
-                                                                entry_type:
-                                                                    NormalizedEntryType::ToolUse {
-                                                                        tool_name: tool_name
-                                                                            .to_string(),
-                                                                        action_type,
-                                                                    },
-                                                                content,
-                                                                metadata: Some(
-                                                                    content_item.clone(),
-                                                                ),
-                                                            });
+                                                                entries.push(NormalizedEntry {
+                                                                    timestamp: None,
+                                                                    entry_type:
+                                                                        NormalizedEntryType::ToolUse {
+                                                                            tool_name: tool_name
+                                                                                .to_string(),
+                                                                            action_type,
+                                                                        },
+                                                                    content,
+                                                                    metadata: Some(
+                                                                        content_item.clone(),
+                                                                    ),
+                                                                });
+                                                            }
                                                         }
+                                                        _ => {}
                                                     }
-                                                    _ => {}
                                                 }
                                             }
                                         }
@@ -214,10 +216,11 @@ Task description: {}"#,
                                 }
                             }
                         }
+                        true
                     }
-                    true
-                } else {
-                    false
+                    // Ignore these JSON types - they're not relevant for task execution logs
+                    "initial" | "token-usage" | "state" => true,
+                    _ => false,
                 }
             } else {
                 false
