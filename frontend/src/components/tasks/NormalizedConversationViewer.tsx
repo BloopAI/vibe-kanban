@@ -212,7 +212,7 @@ export function NormalizedConversationViewer({
     <div>
       {/* Display prompt if available */}
       {conversation.prompt && (
-        <div className="flex items-start gap-3 mb-6">
+        <div className="flex items-start gap-3">
           <div className="flex-shrink-0 mt-1">
             <Hammer className="h-4 w-4 text-blue-600" />
           </div>

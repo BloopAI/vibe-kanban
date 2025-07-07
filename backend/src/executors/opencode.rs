@@ -34,18 +34,15 @@ impl Executor for OpencodeExecutor {
 
         use tokio::process::Command;
 
-        let prompt = format!(
-            r#"project_id: {}
-            
-            Task title: {}
-            Task description: {}
-            "#,
-            task.project_id,
-            task.title,
-            task.description
-                .as_deref()
-                .unwrap_or("No description provided")
-        );
+        let prompt = if let Some(task_description) = task.description {
+            format!(
+                r#"Task title: {}
+Task description: {}"#,
+                task.title, task_description
+            )
+        } else {
+            task.title.clone()
+        };
 
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
