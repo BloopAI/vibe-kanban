@@ -4,7 +4,7 @@ use chrono::Utc;
 use octocrab::{models::IssueState, Octocrab};
 use sqlx::SqlitePool;
 use tokio::{sync::RwLock, time::interval};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use crate::models::{
