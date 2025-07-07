@@ -17,6 +17,7 @@ import {
   ToggleLeft,
   ToggleRight,
 } from 'lucide-react';
+import Markdown from 'react-markdown';
 import { makeRequest } from '@/lib/api';
 import type {
   NormalizedConversation,
@@ -416,7 +417,13 @@ export function NormalizedConversationViewer({
                   </div>
                 ) : (
                   <div className={getContentClassName(entry.entry_type)}>
-                        {entry.content}
+                    {entry.entry_type.type === 'assistant_message' ? (
+                      <div className="[&>p]:mb-2 [&>ul]:list-disc [&>ul]:ml-4 [&>ol]:list-decimal [&>ol]:ml-4 [&>code]:bg-muted [&>code]:px-1 [&>code]:rounded [&>pre]:bg-muted [&>pre]:p-3 [&>pre]:rounded [&>h1]:font-bold [&>h2]:font-semibold">
+                        <Markdown>{entry.content}</Markdown>
+                      </div>
+                    ) : (
+                      entry.content
+                    )}
                   </div>
                 )}
               </div>
