@@ -1,8 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, Settings, HelpCircle, Server } from 'lucide-react';
+import { FolderOpen, Settings, BookOpen, Server } from 'lucide-react';
 import { Logo } from '@/components/logo';
-import { SupportDialog } from '@/components/support-dialog';
 
 export function Navbar() {
   const location = useLocation();
@@ -53,12 +52,16 @@ export function Navbar() {
             </div>
           </div>
           <div className="flex items-center">
-            <SupportDialog>
-              <Button variant="ghost" size="sm">
-                <HelpCircle className="mr-2 h-4 w-4" />
-                Support
-              </Button>
-            </SupportDialog>
+            <Button 
+              asChild 
+              variant="ghost" 
+              size="sm"
+            >
+              <a href="https://vibekanban.com/" target="_blank" rel="noopener noreferrer">
+                <BookOpen className="mr-2 h-4 w-4" />
+                Docs
+              </a>
+            </Button>
           </div>
         </div>
       </div>
