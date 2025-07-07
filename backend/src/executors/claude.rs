@@ -50,7 +50,7 @@ impl Executor for ClaudeExecutor {
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
         let claude_command = format!(
-            "claude \"{}\" -p --dangerously-skip-permissions --verbose --output-format=stream-json",
+            "npx -y @anthropic-ai/claude-code \"{}\" -p --dangerously-skip-permissions --verbose --output-format=stream-json",
             prompt.replace("\"", "\\\"")
         );
 
@@ -359,7 +359,7 @@ impl Executor for ClaudeFollowupExecutor {
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
         let claude_command = format!(
-            "claude \"{}\" -p --dangerously-skip-permissions --verbose --output-format=stream-json --resume={}",
+            "npx -y @anthropic-ai/claude-code \"{}\" -p --dangerously-skip-permissions --verbose --output-format=stream-json --resume={}",
             self.prompt.replace("\"", "\\\""),
             self.session_id
         );
