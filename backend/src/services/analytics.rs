@@ -62,6 +62,7 @@ impl AnalyticsService {
                 "timestamp".to_string(),
                 json!(chrono::Utc::now().to_rfc3339()),
             );
+            props.insert("version".to_string(), json!(env!("CARGO_PKG_VERSION")));
         }
 
         let payload = json!({
