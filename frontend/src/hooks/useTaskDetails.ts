@@ -128,13 +128,17 @@ export function useTaskDetails(
     async (attemptId: string) => {
       if (!task) return;
 
+      // Find the attempt to get the task_id
+      const attempt = taskAttempts.find(a => a.id === attemptId);
+      const taskId = attempt?.task_id || task.id;
+
       try {
         const [activitiesResponse, processesResponse] = await Promise.all([
           makeRequest(
-            `/api/projects/${projectId}/tasks/${task.id}/attempts/${attemptId}/activities`
+            `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/activities`
           ),
           makeRequest(
-            `/api/projects/${projectId}/tasks/${task.id}/attempts/${attemptId}/execution-processes`
+            `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/execution-processes`
           ),
         ]);
 
@@ -222,9 +226,13 @@ export function useTaskDetails(
     async (attemptId: string) => {
       if (!task) return;
 
+      // Find the attempt to get the task_id
+      const attempt = taskAttempts.find(a => a.id === attemptId);
+      const taskId = attempt?.task_id || task.id;
+
       try {
         const response = await makeRequest(
-          `/api/projects/${projectId}/tasks/${task.id}/attempts/${attemptId}`
+          `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}`
         );
 
         if (response.ok) {
@@ -414,7 +422,7 @@ export function useTaskDetails(
     try {
       setIsStopping(true);
       const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttempt.id}/stop`,
+        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/stop`,
         {
           method: 'POST',
           headers: {
@@ -443,7 +451,7 @@ export function useTaskDetails(
 
     try {
       const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttempt.id}/start-dev-server`,
+        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/start-dev-server`,
         {
           method: 'POST',
           headers: {
@@ -477,7 +485,7 @@ export function useTaskDetails(
 
     try {
       const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttempt.id}/execution-processes/${runningDevServer.id}/stop`,
+        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/execution-processes/${runningDevServer.id}/stop`,
         {
           method: 'POST',
           headers: {
@@ -503,7 +511,7 @@ export function useTaskDetails(
 
     try {
       const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttempt.id}/open-editor`,
+        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/open-editor`,
         {
           method: 'POST',
           headers: {
@@ -529,7 +537,7 @@ export function useTaskDetails(
       setIsSendingFollowUp(true);
       setFollowUpError(null);
       const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttempt.id}/follow-up`,
+        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/follow-up`,
         {
           method: 'POST',
           headers: {

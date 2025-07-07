@@ -121,9 +121,14 @@ export function TaskDetailsPanel({
 
   // Fetch diff when attempt changes
   const fetchDiff = useCallback(async () => {
-    if (!projectId || !task?.id || !selectedAttempt?.id) {
+    if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) {
       setDiff(null);
       setDiffLoading(false);
+      return;
+    }
+
+    // Prevent multiple concurrent requests
+    if (diffLoading) {
       return;
     }
 
@@ -131,7 +136,7 @@ export function TaskDetailsPanel({
       setDiffLoading(true);
       setDiffError(null);
       const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttempt.id}/diff`
+        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/diff`
       );
 
       if (response.ok) {
@@ -149,7 +154,7 @@ export function TaskDetailsPanel({
     } finally {
       setDiffLoading(false);
     }
-  }, [projectId, task?.id, selectedAttempt?.id]);
+  }, [projectId, selectedAttempt?.id, selectedAttempt?.task_id]);
 
   useEffect(() => {
     if (isOpen) {
@@ -463,7 +468,7 @@ export function TaskDetailsPanel({
     try {
       setDeletingFiles((prev) => new Set(prev).add(fileToDelete));
       const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttempt.id}/delete-file?file_path=${encodeURIComponent(
+        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/delete-file?file_path=${encodeURIComponent(
           fileToDelete
         )}`,
         {
