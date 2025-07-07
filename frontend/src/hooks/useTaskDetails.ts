@@ -129,7 +129,7 @@ export function useTaskDetails(
       if (!task) return;
 
       // Find the attempt to get the task_id
-      const attempt = taskAttempts.find(a => a.id === attemptId);
+      const attempt = taskAttempts.find((a) => a.id === attemptId);
       const taskId = attempt?.task_id || task.id;
 
       try {
@@ -227,7 +227,7 @@ export function useTaskDetails(
       if (!task) return;
 
       // Find the attempt to get the task_id
-      const attempt = taskAttempts.find(a => a.id === attemptId);
+      const attempt = taskAttempts.find((a) => a.id === attemptId);
       const taskId = attempt?.task_id || task.id;
 
       try {
