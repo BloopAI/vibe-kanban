@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT ta.id as \"id!: Uuid\", ta.task_id as \"task_id!: Uuid\", ta.worktree_path, ta.branch, ta.base_branch, ta.merge_commit, ta.executor, ta.pr_url, ta.pr_number, ta.pr_status, ta.pr_merged_at as \"pr_merged_at: DateTime<Utc>\", ta.created_at as \"created_at!: DateTime<Utc>\", ta.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM task_attempts ta \n               JOIN tasks t ON ta.task_id = t.id \n               WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3",
+  "query": "SELECT  ta.id                AS \"id!: Uuid\",\n                       ta.task_id           AS \"task_id!: Uuid\",\n                       ta.worktree_path,\n                       ta.branch,\n                       ta.base_branch,\n                       ta.merge_commit,\n                       ta.executor,\n                       ta.pr_url,\n                       ta.pr_number,\n                       ta.pr_status,\n                       ta.pr_merged_at      AS \"pr_merged_at: DateTime<Utc>\",\n                       ta.worktree_deleted  AS \"worktree_deleted!: bool\",\n                       ta.created_at        AS \"created_at!: DateTime<Utc>\",\n                       ta.updated_at        AS \"updated_at!: DateTime<Utc>\"\n               FROM    task_attempts ta\n               JOIN    tasks t ON ta.task_id = t.id\n               WHERE   ta.id = $1 AND t.id = $2 AND t.project_id = $3",
   "describe": {
     "columns": [
       {
@@ -59,13 +59,18 @@
         "type_info": "Datetime"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "worktree_deleted!: bool",
         "ordinal": 11,
+        "type_info": "Bool"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 12,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 12,
+        "ordinal": 13,
         "type_info": "Text"
       }
     ],
@@ -85,8 +90,9 @@
       true,
       true,
       false,
+      false,
       false
     ]
   },
-  "hash": "6d3d6f10f57247d29724962eb428fee95dbdc4ae87f8c90b7bbd7f5c88d5a271"
+  "hash": "8a8e1a2a5156b6d0fce8dbfdf4d2fd19501c4246d9b362abc0c489ec0331bf4c"
 }

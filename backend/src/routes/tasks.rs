@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use crate::{
     app_state::AppState,
+    execution_monitor,
     models::{
         project::Project,
         task::{CreateTask, CreateTaskAndStart, Task, TaskWithAttemptStatus, UpdateTask},
@@ -262,6 +263,53 @@ pub async fn delete_task(
     Path((project_id, task_id)): Path<(Uuid, Uuid)>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
+    // Verify task exists in the specified project
+    match Task::find_by_id_and_project_id(&app_state.db_pool, task_id, project_id).await {
+        Ok(Some(_)) => {} // Task exists, proceed
+        Ok(None) => return Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to check task existence: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Clean up all worktrees for this task before deletion
+    if let Err(e) = execution_monitor::cleanup_task_worktrees(&app_state.db_pool, task_id).await {
+        tracing::error!("Failed to cleanup worktrees for task {}: {}", task_id, e);
+        // Continue with deletion even if cleanup fails
+    }
+
+    // Clean up all executor sessions for this task before deletion
+    match TaskAttempt::find_by_task_id(&app_state.db_pool, task_id).await {
+        Ok(task_attempts) => {
+            for attempt in task_attempts {
+                if let Err(e) =
+                    crate::models::executor_session::ExecutorSession::delete_by_task_attempt_id(
+                        &app_state.db_pool,
+                        attempt.id,
+                    )
+                    .await
+                {
+                    tracing::error!(
+                        "Failed to cleanup executor sessions for task attempt {}: {}",
+                        attempt.id,
+                        e
+                    );
+                    // Continue with deletion even if session cleanup fails
+                } else {
+                    tracing::debug!(
+                        "Cleaned up executor sessions for task attempt {}",
+                        attempt.id
+                    );
+                }
+            }
+        }
+        Err(e) => {
+            tracing::error!("Failed to get task attempts for session cleanup: {}", e);
+            // Continue with deletion even if we can't get task attempts
+        }
+    }
+
     match Task::delete(&app_state.db_pool, task_id, project_id).await {
         Ok(rows_affected) => {
             if rows_affected == 0 {

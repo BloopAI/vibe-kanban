@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO task_attempts (id, task_id, worktree_path, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at) \n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) \n               RETURNING id as \"id!: Uuid\", task_id as \"task_id!: Uuid\", worktree_path, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at as \"pr_merged_at: DateTime<Utc>\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "INSERT INTO task_attempts (id, task_id, worktree_path, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at, worktree_deleted)\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)\n               RETURNING id as \"id!: Uuid\", task_id as \"task_id!: Uuid\", worktree_path, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at as \"pr_merged_at: DateTime<Utc>\", worktree_deleted as \"worktree_deleted!: bool\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -59,18 +59,23 @@
         "type_info": "Datetime"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "worktree_deleted!: bool",
         "ordinal": 11,
+        "type_info": "Bool"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 12,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 12,
+        "ordinal": 13,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 11
+      "Right": 12
     },
     "nullable": [
       true,
@@ -85,8 +90,9 @@
       true,
       true,
       false,
+      false,
       false
     ]
   },
-  "hash": "5634c7b542833bc811d47391bfab0af14914e93b0dc1e9ec9de8869fe661a2d4"
+  "hash": "e1266b583bd1d164e76fb6a5a906dc229443ec6c437b8eab1c75c625e1cd1166"
 }

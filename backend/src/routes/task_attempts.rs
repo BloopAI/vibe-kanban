@@ -39,6 +39,13 @@ pub struct CreateGitHubPRRequest {
     pub base_branch: Option<String>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct FollowUpResponse {
+    pub message: String,
+    pub actual_attempt_id: Uuid,
+    pub created_new_attempt: bool,
+}
+
 pub async fn get_task_attempts(
     Path((project_id, task_id)): Path<(Uuid, Uuid)>,
     State(app_state): State<AppState>,
@@ -223,6 +230,16 @@ pub async fn get_task_attempt_diff(
     Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<WorktreeDiff>>, StatusCode> {
+    // Verify task attempt exists and belongs to the correct task
+    match TaskAttempt::exists_for_task(&app_state.db_pool, attempt_id, task_id, project_id).await {
+        Ok(false) => return Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to check task attempt existence: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+        Ok(true) => {}
+    }
+
     match TaskAttempt::get_diff(&app_state.db_pool, attempt_id, task_id, project_id).await {
         Ok(diff) => Ok(ResponseJson(ApiResponse {
             success: true,
@@ -507,6 +524,16 @@ pub async fn get_task_attempt_branch_status(
     Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<BranchStatus>>, StatusCode> {
+    // Verify task attempt exists and belongs to the correct task
+    match TaskAttempt::exists_for_task(&app_state.db_pool, attempt_id, task_id, project_id).await {
+        Ok(false) => return Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to check task attempt existence: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+        Ok(true) => {}
+    }
+
     match TaskAttempt::get_branch_status(&app_state.db_pool, attempt_id, task_id, project_id).await
     {
         Ok(status) => Ok(ResponseJson(ApiResponse {
@@ -912,7 +939,7 @@ pub async fn create_followup_attempt(
     Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
     State(app_state): State<AppState>,
     Json(payload): Json<CreateFollowUpAttempt>,
-) -> Result<ResponseJson<ApiResponse<String>>, StatusCode> {
+) -> Result<ResponseJson<ApiResponse<FollowUpResponse>>, StatusCode> {
     // Verify task attempt exists
     if !TaskAttempt::exists_for_task(&app_state.db_pool, attempt_id, task_id, project_id)
         .await
@@ -935,11 +962,27 @@ pub async fn create_followup_attempt(
     )
     .await
     {
-        Ok(_) => Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: Some("Follow-up execution started successfully".to_string()),
-            message: Some("Follow-up execution started successfully".to_string()),
-        })),
+        Ok(actual_attempt_id) => {
+            let created_new_attempt = actual_attempt_id != attempt_id;
+            let message = if created_new_attempt {
+                format!(
+                    "Follow-up execution started on new attempt {} (original worktree was deleted)",
+                    actual_attempt_id
+                )
+            } else {
+                "Follow-up execution started successfully".to_string()
+            };
+
+            Ok(ResponseJson(ApiResponse {
+                success: true,
+                data: Some(FollowUpResponse {
+                    message: message.clone(),
+                    actual_attempt_id,
+                    created_new_attempt,
+                }),
+                message: Some(message),
+            }))
+        }
         Err(e) => {
             tracing::error!(
                 "Failed to start follow-up execution for task attempt {}: {}",
@@ -1182,11 +1225,27 @@ pub async fn get_execution_process_normalized_logs(
 
             let executor = executor_config.create_executor();
 
-            // Path can be a symlink, so resolve it to the real path
-            let real_path = std::fs::canonicalize(process.working_directory).unwrap();
+            // Use the working directory path for normalization
+            // Try to canonicalize if the directory exists, otherwise use the stored path as-is
+            let working_dir_path = match std::fs::canonicalize(&process.working_directory) {
+                Ok(canonical_path) => {
+                    tracing::debug!(
+                        "Using canonical path for normalization: {}",
+                        canonical_path.display()
+                    );
+                    canonical_path.to_string_lossy().to_string()
+                }
+                Err(_) => {
+                    tracing::debug!(
+                        "Working directory {} no longer exists, using stored path for normalization",
+                        process.working_directory
+                    );
+                    process.working_directory.clone()
+                }
+            };
 
             // Normalize stdout logs with error handling
-            match executor.normalize_logs(stdout, &real_path.to_string_lossy()) {
+            match executor.normalize_logs(stdout, &working_dir_path) {
                 Ok(normalized) => {
                     stdout_entries = normalized.entries;
                     tracing::debug!(

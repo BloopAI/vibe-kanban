@@ -64,16 +64,16 @@ impl ExecutorSession {
     ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             ExecutorSession,
-            r#"SELECT 
-                id as "id!: Uuid", 
-                task_attempt_id as "task_attempt_id!: Uuid", 
-                execution_process_id as "execution_process_id!: Uuid", 
-                session_id, 
+            r#"SELECT
+                id as "id!: Uuid",
+                task_attempt_id as "task_attempt_id!: Uuid",
+                execution_process_id as "execution_process_id!: Uuid",
+                session_id,
                 prompt,
                 summary,
-                created_at as "created_at!: DateTime<Utc>", 
+                created_at as "created_at!: DateTime<Utc>",
                 updated_at as "updated_at!: DateTime<Utc>"
-               FROM executor_sessions 
+               FROM executor_sessions
                WHERE execution_process_id = $1"#,
             execution_process_id
         )
@@ -115,21 +115,26 @@ impl ExecutorSession {
     ) -> Result<Self, sqlx::Error> {
         let now = Utc::now();
 
+        tracing::debug!(
+            "Creating executor session: id={}, task_attempt_id={}, execution_process_id={}, external_session_id=None (will be set later)",
+            session_id, data.task_attempt_id, data.execution_process_id
+        );
+
         sqlx::query_as!(
             ExecutorSession,
             r#"INSERT INTO executor_sessions (
                 id, task_attempt_id, execution_process_id, session_id, prompt, summary,
                 created_at, updated_at
-               ) 
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-               RETURNING 
-                id as "id!: Uuid", 
-                task_attempt_id as "task_attempt_id!: Uuid", 
-                execution_process_id as "execution_process_id!: Uuid", 
-                session_id, 
+               )
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+               RETURNING
+                id as "id!: Uuid",
+                task_attempt_id as "task_attempt_id!: Uuid",
+                execution_process_id as "execution_process_id!: Uuid",
+                session_id,
                 prompt,
                 summary,
-                created_at as "created_at!: DateTime<Utc>", 
+                created_at as "created_at!: DateTime<Utc>",
                 updated_at as "updated_at!: DateTime<Utc>""#,
             session_id,
             data.task_attempt_id,
@@ -151,8 +156,8 @@ impl ExecutorSession {
         external_session_id: &str,
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            r#"UPDATE executor_sessions 
-               SET session_id = $1, updated_at = datetime('now') 
+            r#"UPDATE executor_sessions
+               SET session_id = $1, updated_at = datetime('now')
                WHERE execution_process_id = $2"#,
             external_session_id,
             execution_process_id

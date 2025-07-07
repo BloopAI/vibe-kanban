@@ -4,7 +4,7 @@ use chrono::Utc;
 use octocrab::{models::IssueState, Octocrab};
 use sqlx::SqlitePool;
 use tokio::{sync::RwLock, time::interval};
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use crate::models::{
@@ -63,7 +63,7 @@ impl PrMonitorService {
             match github_token {
                 Some(token) => {
                     if let Err(e) = self.check_all_open_prs_with_token(&token).await {
-                        warn!("Error checking PRs: {}", e);
+                        error!("Error checking PRs: {}", e);
                     }
                 }
                 None => {
@@ -89,7 +89,7 @@ impl PrMonitorService {
 
         for pr_info in open_prs {
             if let Err(e) = self.check_pr_status(&pr_info).await {
-                warn!(
+                error!(
                     "Error checking PR #{} for attempt {}: {}",
                     pr_info.pr_number, pr_info.attempt_id, e
                 );

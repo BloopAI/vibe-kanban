@@ -9,7 +9,10 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{project::Project, task::Task};
-use crate::{executor::Executor, utils::shell::get_shell_command};
+use crate::{
+    executor::Executor,
+    utils::{shell::get_shell_command, worktree_manager::WorktreeManager},
+};
 
 #[derive(Debug)]
 pub enum TaskAttemptError {
@@ -75,6 +78,7 @@ pub struct TaskAttempt {
     pub pr_number: Option<i64>,    // GitHub PR number
     pub pr_status: Option<String>, // open, closed, merged
     pub pr_merged_at: Option<DateTime<Utc>>, // When PR was merged
+    pub worktree_deleted: bool,    // Flag indicating if worktree has been cleaned up
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -173,12 +177,53 @@ pub struct TaskAttemptState {
 }
 
 impl TaskAttempt {
+    /// Helper function to mark a worktree as deleted in the database
+    pub async fn mark_worktree_deleted(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE task_attempts SET worktree_deleted = TRUE, updated_at = datetime('now') WHERE id = ?",
+            attempt_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Get the base directory for vibe-kanban worktrees
+    pub fn get_worktree_base_dir() -> std::path::PathBuf {
+        if cfg!(target_os = "macos") {
+            // macOS already uses /var/folders/... which is persistent storage
+            std::env::temp_dir().join("vibe-kanban")
+        } else if cfg!(target_os = "linux") {
+            // Linux: use /var/tmp instead of /tmp to avoid RAM usage
+            std::path::PathBuf::from("/var/tmp/vibe-kanban")
+        } else {
+            // Windows and other platforms: use temp dir with vibe-kanban subdirectory
+            std::env::temp_dir().join("vibe-kanban")
+        }
+    }
+
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             TaskAttempt,
-            r#"SELECT id as "id!: Uuid", task_id as "task_id!: Uuid", worktree_path, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at as "pr_merged_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM task_attempts 
-               WHERE id = $1"#,
+            r#"SELECT  id                AS "id!: Uuid",
+                       task_id           AS "task_id!: Uuid",
+                       worktree_path,
+                       branch,
+                       merge_commit,
+                       base_branch,
+                       executor,
+                       pr_url,
+                       pr_number,
+                       pr_status,
+                       pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
+                       worktree_deleted  AS "worktree_deleted!: bool",
+                       created_at        AS "created_at!: DateTime<Utc>",
+                       updated_at        AS "updated_at!: DateTime<Utc>"
+               FROM    task_attempts
+               WHERE   id = $1"#,
             id
         )
         .fetch_optional(pool)
@@ -191,14 +236,86 @@ impl TaskAttempt {
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             TaskAttempt,
-            r#"SELECT id as "id!: Uuid", task_id as "task_id!: Uuid", worktree_path, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at as "pr_merged_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM task_attempts 
-               WHERE task_id = $1 
+            r#"SELECT  id                AS "id!: Uuid",
+                       task_id           AS "task_id!: Uuid",
+                       worktree_path,
+                       branch,
+                       base_branch,
+                       merge_commit,
+                       executor,
+                       pr_url,
+                       pr_number,
+                       pr_status,
+                       pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
+                       worktree_deleted  AS "worktree_deleted!: bool",
+                       created_at        AS "created_at!: DateTime<Utc>",
+                       updated_at        AS "updated_at!: DateTime<Utc>"
+               FROM    task_attempts
+               WHERE   task_id = $1
                ORDER BY created_at DESC"#,
             task_id
         )
         .fetch_all(pool)
         .await
+    }
+
+    /// Find task attempts by task_id with project git repo path for cleanup operations
+    pub async fn find_by_task_id_with_project(
+        pool: &SqlitePool,
+        task_id: Uuid,
+    ) -> Result<Vec<(Uuid, String, String)>, sqlx::Error> {
+        let records = sqlx::query!(
+            r#"
+            SELECT ta.id as "attempt_id!: Uuid", ta.worktree_path, p.git_repo_path as "git_repo_path!"
+            FROM task_attempts ta
+            JOIN tasks t ON ta.task_id = t.id
+            JOIN projects p ON t.project_id = p.id
+            WHERE ta.task_id = $1
+            "#,
+            task_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(records
+            .into_iter()
+            .map(|r| (r.attempt_id, r.worktree_path, r.git_repo_path))
+            .collect())
+    }
+
+    /// Find task attempts that are expired (4+ minutes since last activity) and eligible for worktree cleanup
+    pub async fn find_expired_for_cleanup(
+        pool: &SqlitePool,
+    ) -> Result<Vec<(Uuid, String, String)>, sqlx::Error> {
+        let records = sqlx::query!(
+            r#"
+            SELECT ta.id as "attempt_id!: Uuid", ta.worktree_path, p.git_repo_path as "git_repo_path!"
+            FROM task_attempts ta
+            JOIN execution_processes ep ON ta.id = ep.task_attempt_id
+            JOIN tasks t ON ta.task_id = t.id
+            JOIN projects p ON t.project_id = p.id
+            WHERE ep.completed_at IS NOT NULL
+                AND ta.worktree_deleted = FALSE
+            GROUP BY ta.id, ta.worktree_path, p.git_repo_path
+            HAVING datetime('now', '-24 hours') > datetime(MAX(ep.completed_at))
+                AND ta.id NOT IN (
+                    SELECT DISTINCT ep2.task_attempt_id
+                    FROM execution_processes ep2
+                    WHERE ep2.completed_at IS NULL
+                )
+            ORDER BY MAX(ep.completed_at) ASC
+            "#
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(records
+            .into_iter()
+            .filter_map(|r| {
+                r.worktree_path
+                    .map(|path| (r.attempt_id, path, r.git_repo_path))
+            })
+            .collect())
     }
 
     pub async fn create(
@@ -222,9 +339,8 @@ impl TaskAttempt {
             task_title_id
         );
 
-        // Generate worktree path automatically using cross-platform temporary directory
-        let temp_dir = std::env::temp_dir();
-        let worktree_path = temp_dir.join(&task_attempt_branch);
+        // Generate worktree path using vibe-kanban specific directory
+        let worktree_path = Self::get_worktree_base_dir().join(&task_attempt_branch);
         let worktree_path_str = worktree_path.to_string_lossy().to_string();
 
         // Then get the project using the project_id
@@ -325,9 +441,9 @@ impl TaskAttempt {
         // Insert the record into the database
         Ok(sqlx::query_as!(
             TaskAttempt,
-            r#"INSERT INTO task_attempts (id, task_id, worktree_path, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at) 
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
-               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", worktree_path, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at as "pr_merged_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO task_attempts (id, task_id, worktree_path, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at, worktree_deleted)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", worktree_path, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at as "pr_merged_at: DateTime<Utc>", worktree_deleted as "worktree_deleted!: bool", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             attempt_id,
             task_id,
             worktree_path_str,
@@ -338,7 +454,8 @@ impl TaskAttempt {
             Option::<String>::None, // pr_url is None during creation
             Option::<i64>::None, // pr_number is None during creation
             Option::<String>::None, // pr_status is None during creation
-            Option::<DateTime<Utc>>::None // pr_merged_at is None during creation
+            Option::<DateTime<Utc>>::None, // pr_merged_at is None during creation
+            false // worktree_deleted is false during creation
         )
         .fetch_one(pool)
         .await?)
@@ -498,13 +615,26 @@ impl TaskAttempt {
         // Get the task attempt with validation
         let attempt = sqlx::query_as!(
             TaskAttempt,
-            r#"SELECT ta.id as "id!: Uuid", ta.task_id as "task_id!: Uuid", ta.worktree_path, ta.branch, ta.base_branch, ta.merge_commit, ta.executor, ta.pr_url, ta.pr_number, ta.pr_status, ta.pr_merged_at as "pr_merged_at: DateTime<Utc>", ta.created_at as "created_at!: DateTime<Utc>", ta.updated_at as "updated_at!: DateTime<Utc>"
-               FROM task_attempts ta 
-               JOIN tasks t ON ta.task_id = t.id 
-               WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
-               attempt_id,
-               task_id,
-               project_id
+            r#"SELECT  ta.id                AS "id!: Uuid",
+                       ta.task_id           AS "task_id!: Uuid",
+                       ta.worktree_path,
+                       ta.branch,
+                       ta.base_branch,
+                       ta.merge_commit,
+                       ta.executor,
+                       ta.pr_url,
+                       ta.pr_number,
+                       ta.pr_status,
+                       ta.pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
+                       ta.worktree_deleted  AS "worktree_deleted!: bool",
+                       ta.created_at        AS "created_at!: DateTime<Utc>",
+                       ta.updated_at        AS "updated_at!: DateTime<Utc>"
+               FROM    task_attempts ta
+               JOIN    tasks t ON ta.task_id = t.id
+               WHERE   ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
+            attempt_id,
+            task_id,
+            project_id
         )
         .fetch_optional(pool)
         .await?
@@ -519,9 +649,13 @@ impl TaskAttempt {
             .await?
             .ok_or(TaskAttemptError::ProjectNotFound)?;
 
+        // Ensure worktree exists (recreate if needed for cold task support)
+        let worktree_path =
+            Self::ensure_worktree_exists(pool, attempt_id, project_id, "merge").await?;
+
         // Perform the actual merge operation
         let merge_commit_id = Self::perform_merge_operation(
-            &attempt.worktree_path,
+            &worktree_path,
             &project.git_repo_path,
             &attempt.branch,
             &task.title,
@@ -659,9 +793,9 @@ impl TaskAttempt {
         task_id: Uuid,
         project_id: Uuid,
     ) -> Result<(), TaskAttemptError> {
-        let task_attempt = TaskAttempt::find_by_id(pool, attempt_id)
-            .await?
-            .ok_or(TaskAttemptError::TaskNotFound)?;
+        // Ensure worktree exists (recreate if needed for cold task support)
+        let worktree_path =
+            Self::ensure_worktree_exists(pool, attempt_id, project_id, "dev server").await?;
 
         // Get the project to access the dev_script
         let project = crate::models::project::Project::find_by_id(pool, project_id)
@@ -689,7 +823,7 @@ impl TaskAttempt {
             "Starting dev server".to_string(),
             TaskAttemptStatus::ExecutorRunning, // Dev servers don't create activities, just use generic status
             crate::models::execution_process::ExecutionProcessType::DevServer,
-            &task_attempt.worktree_path,
+            &worktree_path,
         )
         .await;
 
@@ -710,6 +844,7 @@ impl TaskAttempt {
     }
 
     /// Start a follow-up execution using the same executor type as the first process
+    /// Returns the attempt_id that was actually used (always the original attempt_id for session continuity)
     pub async fn start_followup_execution(
         pool: &SqlitePool,
         app_state: &crate::app_state::AppState,
@@ -717,21 +852,41 @@ impl TaskAttempt {
         task_id: Uuid,
         project_id: Uuid,
         prompt: &str,
-    ) -> Result<(), TaskAttemptError> {
+    ) -> Result<Uuid, TaskAttemptError> {
         use crate::models::{
             executor_session::ExecutorSession,
             task::{Task, TaskStatus},
         };
 
-        // Update task status to indicate follow-up execution has started
-        Task::update_status(pool, task_id, project_id, TaskStatus::InProgress).await?;
-
-        // Get task attempt
-        let task_attempt = TaskAttempt::find_by_id(pool, attempt_id)
+        // Get the current task attempt to check if worktree is deleted
+        let current_attempt = TaskAttempt::find_by_id(pool, attempt_id)
             .await?
             .ok_or(TaskAttemptError::TaskNotFound)?;
 
+        let actual_attempt_id = attempt_id;
+
+        if current_attempt.worktree_deleted {
+            info!(
+                "Resurrecting deleted attempt {} (branch: {}) for followup execution - maintaining session continuity",
+                attempt_id, current_attempt.branch
+            );
+        } else {
+            info!(
+                "Continuing followup execution on active attempt {} (branch: {})",
+                attempt_id, current_attempt.branch
+            );
+        }
+
+        // Update task status to indicate follow-up execution has started
+        Task::update_status(pool, task_id, project_id, TaskStatus::InProgress).await?;
+
+        // Ensure worktree exists (recreate if needed for cold task support)
+        // This will resurrect the worktree at the exact same path for session continuity
+        let worktree_path =
+            Self::ensure_worktree_exists(pool, actual_attempt_id, project_id, "followup").await?;
+
         // Find the most recent coding agent execution process to get the executor type
+        // Look up processes from the ORIGINAL attempt to find the session
         let execution_processes =
             crate::models::execution_process::ExecutionProcess::find_by_task_attempt_id(
                 pool, attempt_id,
@@ -746,13 +901,31 @@ impl TaskAttempt {
                     crate::models::execution_process::ExecutionProcessType::CodingAgent
                 )
             })
-            .ok_or(TaskAttemptError::TaskNotFound)?; // No previous coding agent found
+            .ok_or_else(|| {
+                tracing::error!(
+                    "No previous coding agent execution found for task attempt {}. Found {} processes: {:?}",
+                    attempt_id,
+                    execution_processes.len(),
+                    execution_processes.iter().map(|p| format!("{:?}", p.process_type)).collect::<Vec<_>>()
+                );
+                TaskAttemptError::ValidationError("No previous coding agent execution found for follow-up".to_string())
+            })?;
 
         // Get the executor session to find the session ID
+        // This looks up the session from the original attempt's processes
         let executor_session =
             ExecutorSession::find_by_execution_process_id(pool, most_recent_coding_agent.id)
                 .await?
-                .ok_or(TaskAttemptError::TaskNotFound)?; // No session found
+                .ok_or_else(|| {
+                    tracing::error!(
+                        "No executor session found for execution process {} (task attempt {})",
+                        most_recent_coding_agent.id,
+                        attempt_id
+                    );
+                    TaskAttemptError::ValidationError(
+                        "No executor session found for follow-up".to_string(),
+                    )
+                })?;
 
         // Determine the executor config from the stored executor_type
         let executor_config = match most_recent_coding_agent.executor_type.as_deref() {
@@ -760,28 +933,209 @@ impl TaskAttempt {
             Some("amp") => crate::executor::ExecutorConfig::Amp,
             Some("gemini") => crate::executor::ExecutorConfig::Gemini,
             Some("echo") => crate::executor::ExecutorConfig::Echo,
-            _ => return Err(TaskAttemptError::TaskNotFound), // Invalid executor type
+            Some("opencode") => crate::executor::ExecutorConfig::Opencode,
+            _ => {
+                tracing::error!(
+                    "Invalid or missing executor type '{}' for execution process {} (task attempt {})",
+                    most_recent_coding_agent.executor_type.as_deref().unwrap_or("None"),
+                    most_recent_coding_agent.id,
+                    attempt_id
+                );
+                return Err(TaskAttemptError::ValidationError(format!(
+                    "Invalid executor type for follow-up: {}",
+                    most_recent_coding_agent
+                        .executor_type
+                        .as_deref()
+                        .unwrap_or("None")
+                )));
+            }
         };
 
-        // Create the follow-up executor type
-        let followup_executor = crate::executor::ExecutorType::FollowUpCodingAgent {
-            config: executor_config,
-            session_id: executor_session.session_id.clone(),
-            prompt: prompt.to_string(),
+        // Try to use follow-up with session ID, but fall back to new session if it fails
+        let followup_executor = if let Some(session_id) = &executor_session.session_id {
+            // First try with session ID for continuation
+            debug!(
+                "SESSION_FOLLOWUP: Attempting follow-up execution with session ID: {} (attempt: {}, worktree: {})",
+                session_id, attempt_id, worktree_path
+            );
+            crate::executor::ExecutorType::FollowUpCodingAgent {
+                config: executor_config.clone(),
+                session_id: executor_session.session_id.clone(),
+                prompt: prompt.to_string(),
+            }
+        } else {
+            // No session ID available, start new session
+            tracing::warn!(
+                "SESSION_FOLLOWUP: No session ID available for follow-up execution on attempt {}, starting new session (worktree: {})",
+                attempt_id, worktree_path
+            );
+            crate::executor::ExecutorType::CodingAgent(executor_config.clone())
         };
 
-        Self::start_process_execution(
+        // Try to start the follow-up execution
+        let execution_result = Self::start_process_execution(
             pool,
             app_state,
-            attempt_id,
+            actual_attempt_id,
             task_id,
             followup_executor,
             "Starting follow-up executor".to_string(),
             TaskAttemptStatus::ExecutorRunning,
             crate::models::execution_process::ExecutionProcessType::CodingAgent,
-            &task_attempt.worktree_path,
+            &worktree_path,
         )
-        .await
+        .await;
+
+        // If follow-up execution failed and we tried to use a session ID,
+        // fall back to a new session
+        if execution_result.is_err() && executor_session.session_id.is_some() {
+            tracing::warn!(
+                "SESSION_FOLLOWUP: Follow-up execution with session ID '{}' failed for attempt {}, falling back to new session. Error: {:?}",
+                executor_session.session_id.as_ref().unwrap(),
+                attempt_id,
+                execution_result.as_ref().err()
+            );
+
+            // Create a new session instead of trying to resume
+            let new_session_executor = crate::executor::ExecutorType::CodingAgent(executor_config);
+
+            Self::start_process_execution(
+                pool,
+                app_state,
+                actual_attempt_id,
+                task_id,
+                new_session_executor,
+                "Starting new executor session (follow-up session failed)".to_string(),
+                TaskAttemptStatus::ExecutorRunning,
+                crate::models::execution_process::ExecutionProcessType::CodingAgent,
+                &worktree_path,
+            )
+            .await?;
+        } else {
+            // Either it succeeded or we already tried without session ID
+            execution_result?;
+        }
+
+        Ok(actual_attempt_id)
+    }
+
+    /// Ensure worktree exists, recreating from branch if needed (cold task support)
+    async fn ensure_worktree_exists(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+        project_id: Uuid,
+        context: &str,
+    ) -> Result<String, TaskAttemptError> {
+        let task_attempt = TaskAttempt::find_by_id(pool, attempt_id)
+            .await?
+            .ok_or(TaskAttemptError::TaskNotFound)?;
+
+        // Return existing path if worktree still exists
+        if std::path::Path::new(&task_attempt.worktree_path).exists() {
+            return Ok(task_attempt.worktree_path);
+        }
+
+        // Recreate worktree from branch
+        info!(
+            "Worktree {} no longer exists, recreating from branch {} for {}",
+            task_attempt.worktree_path, task_attempt.branch, context
+        );
+
+        let new_worktree_path =
+            Self::recreate_worktree_from_branch(pool, &task_attempt, project_id).await?;
+
+        // Update database with new path and reset worktree_deleted flag
+        sqlx::query!(
+            "UPDATE task_attempts SET worktree_path = $1, worktree_deleted = FALSE, updated_at = datetime('now') WHERE id = $2",
+            new_worktree_path,
+            attempt_id
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(new_worktree_path)
+    }
+
+    /// Recreate a worktree from an existing branch (for cold task support)
+    async fn recreate_worktree_from_branch(
+        pool: &SqlitePool,
+        task_attempt: &TaskAttempt,
+        project_id: Uuid,
+    ) -> Result<String, TaskAttemptError> {
+        let project = Project::find_by_id(pool, project_id)
+            .await?
+            .ok_or(TaskAttemptError::ProjectNotFound)?;
+
+        let repo = Repository::open(&project.git_repo_path)?;
+
+        // Verify branch exists before proceeding
+        let _branch = repo
+            .find_branch(&task_attempt.branch, BranchType::Local)
+            .map_err(|_| TaskAttemptError::BranchNotFound(task_attempt.branch.clone()))?;
+        drop(_branch);
+
+        // Use the stored worktree path from database - this ensures we recreate in the exact same location
+        // where Claude originally created its session, maintaining session continuity
+        let stored_worktree_path = std::path::PathBuf::from(&task_attempt.worktree_path);
+        let stored_worktree_path_str = stored_worktree_path.to_string_lossy().to_string();
+
+        info!(
+            "Recreating worktree using stored path: {} (branch: {})",
+            stored_worktree_path_str, task_attempt.branch
+        );
+
+        // Clean up existing directory if it exists to avoid git sync issues
+        // If we're in this method, we intend to recreate anyway
+        if stored_worktree_path.exists() {
+            debug!(
+                "Removing existing directory before worktree recreation: {}",
+                stored_worktree_path_str
+            );
+            std::fs::remove_dir_all(&stored_worktree_path).map_err(|e| {
+                TaskAttemptError::Git(GitError::from_str(&format!(
+                    "Failed to remove existing worktree directory {}: {}",
+                    stored_worktree_path_str, e
+                )))
+            })?;
+        }
+
+        // Ensure parent directory exists - critical for session continuity
+        if let Some(parent) = stored_worktree_path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| {
+                TaskAttemptError::Git(GitError::from_str(&format!(
+                    "Failed to create parent directory for worktree path {}: {}",
+                    stored_worktree_path_str, e
+                )))
+            })?;
+        }
+
+        // Create worktree at the exact same path as originally created
+        // Use the WorktreeManager for proper synchronization and race condition handling
+
+        // Extract repository path for WorktreeManager
+        let repo_path = repo
+            .workdir()
+            .ok_or_else(|| {
+                TaskAttemptError::Git(GitError::from_str("Repository has no working directory"))
+            })?
+            .to_str()
+            .ok_or_else(|| {
+                TaskAttemptError::Git(GitError::from_str("Repository path is not valid UTF-8"))
+            })?
+            .to_string();
+
+        WorktreeManager::ensure_worktree_exists(
+            repo_path,
+            task_attempt.branch.clone(),
+            stored_worktree_path,
+        )
+        .await?;
+
+        info!(
+            "Successfully recreated worktree at original path: {} -> {}",
+            task_attempt.branch, stored_worktree_path_str
+        );
+        Ok(stored_worktree_path_str)
     }
 
     /// Resolve executor configuration from string name
@@ -1143,10 +1497,23 @@ impl TaskAttempt {
         // Get the task attempt with validation
         let attempt = sqlx::query_as!(
             TaskAttempt,
-            r#"SELECT ta.id as "id!: Uuid", ta.task_id as "task_id!: Uuid", ta.worktree_path, ta.branch, ta.base_branch, ta.merge_commit, ta.executor, ta.pr_url, ta.pr_number, ta.pr_status, ta.pr_merged_at as "pr_merged_at: DateTime<Utc>", ta.created_at as "created_at!: DateTime<Utc>", ta.updated_at as "updated_at!: DateTime<Utc>"
-               FROM task_attempts ta 
-               JOIN tasks t ON ta.task_id = t.id 
-               WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
+            r#"SELECT  ta.id                AS "id!: Uuid",
+                       ta.task_id           AS "task_id!: Uuid",
+                       ta.worktree_path,
+                       ta.branch,
+                       ta.base_branch,
+                       ta.merge_commit,
+                       ta.executor,
+                       ta.pr_url,
+                       ta.pr_number,
+                       ta.pr_status,
+                       ta.pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
+                       ta.worktree_deleted  AS "worktree_deleted!: bool",
+                       ta.created_at        AS "created_at!: DateTime<Utc>",
+                       ta.updated_at        AS "updated_at!: DateTime<Utc>"
+               FROM    task_attempts ta
+               JOIN    tasks t ON ta.task_id = t.id
+               WHERE   ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
             attempt_id,
             task_id,
             project_id
@@ -1279,7 +1646,11 @@ impl TaskAttempt {
             )?;
         } else {
             // Task attempt not yet merged - use the original logic with fork point
-            let worktree_repo = Repository::open(&attempt.worktree_path)?;
+            // Ensure worktree exists (recreate if needed for cold task support)
+            let worktree_path =
+                Self::ensure_worktree_exists(pool, attempt_id, project_id, "diff").await?;
+
+            let worktree_repo = Repository::open(&worktree_path)?;
             let main_repo = Repository::open(&project.git_repo_path)?;
             let main_head_oid = main_repo.head()?.peel_to_commit()?.id();
 
@@ -1411,7 +1782,7 @@ impl TaskAttempt {
                             &mut files,
                             &worktree_repo,
                             base_oid,
-                            &attempt.worktree_path,
+                            &worktree_path,
                             path_str,
                             &delta,
                         ) {
@@ -1767,6 +2138,7 @@ impl TaskAttempt {
                     ta.pr_number,
                     ta.pr_status,
                     ta.pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
+                    ta.worktree_deleted as "worktree_deleted!: bool",
                     ta.created_at        AS "created_at!: DateTime<Utc>",
                     ta.updated_at        AS "updated_at!: DateTime<Utc>"
             FROM    task_attempts ta
@@ -1790,6 +2162,7 @@ impl TaskAttempt {
 
         use git2::{BranchType, Repository, Status, StatusOptions};
 
+        // Ensure worktree exists (recreate if needed for cold task support)
         let main_repo = Repository::open(&project.git_repo_path)?;
         let attempt_branch = attempt.branch.clone();
 
@@ -1866,10 +2239,23 @@ impl TaskAttempt {
         // Get the task attempt with validation
         let attempt = sqlx::query_as!(
             TaskAttempt,
-            r#"SELECT ta.id as "id!: Uuid", ta.task_id as "task_id!: Uuid", ta.worktree_path, ta.branch, ta.base_branch, ta.merge_commit, ta.executor, ta.pr_url, ta.pr_number, ta.pr_status, ta.pr_merged_at as "pr_merged_at: DateTime<Utc>", ta.created_at as "created_at!: DateTime<Utc>", ta.updated_at as "updated_at!: DateTime<Utc>"
-               FROM task_attempts ta 
-               JOIN tasks t ON ta.task_id = t.id 
-               WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
+            r#"SELECT  ta.id                AS "id!: Uuid",
+                       ta.task_id           AS "task_id!: Uuid",
+                       ta.worktree_path,
+                       ta.branch,
+                       ta.base_branch,
+                       ta.merge_commit,
+                       ta.executor,
+                       ta.pr_url,
+                       ta.pr_number,
+                       ta.pr_status,
+                       ta.pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
+                       ta.worktree_deleted  AS "worktree_deleted!: bool",
+                       ta.created_at        AS "created_at!: DateTime<Utc>",
+                       ta.updated_at        AS "updated_at!: DateTime<Utc>"
+               FROM    task_attempts ta
+               JOIN    tasks t ON ta.task_id = t.id
+               WHERE   ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
             attempt_id,
             task_id,
             project_id
@@ -1886,9 +2272,13 @@ impl TaskAttempt {
         // Use the stored base branch if no new base branch is provided
         let effective_base_branch = new_base_branch.or_else(|| Some(attempt.base_branch.clone()));
 
+        // Ensure worktree exists (recreate if needed for cold task support)
+        let worktree_path =
+            Self::ensure_worktree_exists(pool, attempt_id, project_id, "rebase").await?;
+
         // Perform the git rebase operations (synchronous)
         let new_base_commit = Self::perform_rebase_operation(
-            &attempt.worktree_path,
+            &worktree_path,
             &project.git_repo_path,
             effective_base_branch,
         )?;
@@ -1906,12 +2296,25 @@ impl TaskAttempt {
         file_path: &str,
     ) -> Result<String, TaskAttemptError> {
         // Get the task attempt with validation
-        let attempt = sqlx::query_as!(
+        let _attempt = sqlx::query_as!(
             TaskAttempt,
-            r#"SELECT ta.id as "id!: Uuid", ta.task_id as "task_id!: Uuid", ta.worktree_path, ta.branch, ta.base_branch, ta.merge_commit, ta.executor, ta.pr_url, ta.pr_number, ta.pr_status, ta.pr_merged_at as "pr_merged_at: DateTime<Utc>", ta.created_at as "created_at!: DateTime<Utc>", ta.updated_at as "updated_at!: DateTime<Utc>"
-               FROM task_attempts ta 
-               JOIN tasks t ON ta.task_id = t.id 
-               WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
+            r#"SELECT  ta.id                AS "id!: Uuid",
+                       ta.task_id           AS "task_id!: Uuid",
+                       ta.worktree_path,
+                       ta.branch,
+                       ta.base_branch,
+                       ta.merge_commit,
+                       ta.executor,
+                       ta.pr_url,
+                       ta.pr_number,
+                       ta.pr_status,
+                       ta.pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
+                       ta.worktree_deleted  AS "worktree_deleted!: bool",
+                       ta.created_at        AS "created_at!: DateTime<Utc>",
+                       ta.updated_at        AS "updated_at!: DateTime<Utc>"
+               FROM    task_attempts ta
+               JOIN    tasks t ON ta.task_id = t.id
+               WHERE   ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
             attempt_id,
             task_id,
             project_id
@@ -1920,11 +2323,15 @@ impl TaskAttempt {
         .await?
         .ok_or(TaskAttemptError::TaskNotFound)?;
 
+        // Ensure worktree exists (recreate if needed for cold task support)
+        let worktree_path_str =
+            Self::ensure_worktree_exists(pool, attempt_id, project_id, "delete file").await?;
+
         // Open the worktree repository
-        let repo = Repository::open(&attempt.worktree_path)?;
+        let repo = Repository::open(&worktree_path_str)?;
 
         // Get the absolute path to the file within the worktree
-        let worktree_path = Path::new(&attempt.worktree_path);
+        let worktree_path = Path::new(&worktree_path_str);
         let file_full_path = worktree_path.join(file_path);
 
         // Check if file exists and delete it
@@ -1978,10 +2385,23 @@ impl TaskAttempt {
         // Get the task attempt with validation
         let attempt = sqlx::query_as!(
             TaskAttempt,
-            r#"SELECT ta.id as "id!: Uuid", ta.task_id as "task_id!: Uuid", ta.worktree_path, ta.branch, ta.base_branch, ta.merge_commit, ta.executor, ta.pr_url, ta.pr_number, ta.pr_status, ta.pr_merged_at as "pr_merged_at: DateTime<Utc>", ta.created_at as "created_at!: DateTime<Utc>", ta.updated_at as "updated_at!: DateTime<Utc>"
-               FROM task_attempts ta 
-               JOIN tasks t ON ta.task_id = t.id 
-               WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
+            r#"SELECT  ta.id                AS "id!: Uuid",
+                       ta.task_id           AS "task_id!: Uuid",
+                       ta.worktree_path,
+                       ta.branch,
+                       ta.base_branch,
+                       ta.merge_commit,
+                       ta.executor,
+                       ta.pr_url,
+                       ta.pr_number,
+                       ta.pr_status,
+                       ta.pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
+                       ta.worktree_deleted  AS "worktree_deleted!: bool",
+                       ta.created_at        AS "created_at!: DateTime<Utc>",
+                       ta.updated_at        AS "updated_at!: DateTime<Utc>"
+               FROM    task_attempts ta
+               JOIN    tasks t ON ta.task_id = t.id
+               WHERE   ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
             params.attempt_id,
             params.task_id,
             params.project_id
@@ -1995,11 +2415,16 @@ impl TaskAttempt {
             .await?
             .ok_or(TaskAttemptError::ProjectNotFound)?;
 
+        // Ensure worktree exists (recreate if needed for cold task support)
+        let worktree_path =
+            Self::ensure_worktree_exists(pool, params.attempt_id, params.project_id, "GitHub PR")
+                .await?;
+
         // Extract GitHub repository information from the project path
         let (owner, repo_name) = Self::extract_github_repo_info(&project.git_repo_path)?;
 
         // Push the branch to GitHub first
-        Self::push_branch_to_github(&attempt.worktree_path, &attempt.branch, params.github_token)?;
+        Self::push_branch_to_github(&worktree_path, &attempt.branch, params.github_token)?;
 
         // Create the PR using Octocrab
         let pr_url = Self::create_pr_with_octocrab(
@@ -2223,10 +2648,23 @@ impl TaskAttempt {
         // Get the task attempt with validation
         let _attempt = sqlx::query_as!(
             TaskAttempt,
-            r#"SELECT ta.id as "id!: Uuid", ta.task_id as "task_id!: Uuid", ta.worktree_path, ta.branch, ta.base_branch, ta.merge_commit, ta.executor, ta.pr_url, ta.pr_number, ta.pr_status, ta.pr_merged_at as "pr_merged_at: DateTime<Utc>", ta.created_at as "created_at!: DateTime<Utc>", ta.updated_at as "updated_at!: DateTime<Utc>"
-               FROM task_attempts ta 
-               JOIN tasks t ON ta.task_id = t.id 
-               WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
+            r#"SELECT  ta.id                AS "id!: Uuid",
+                       ta.task_id           AS "task_id!: Uuid",
+                       ta.worktree_path,
+                       ta.branch,
+                       ta.base_branch,
+                       ta.merge_commit,
+                       ta.executor,
+                       ta.pr_url,
+                       ta.pr_number,
+                       ta.pr_status,
+                       ta.pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
+                       ta.worktree_deleted  AS "worktree_deleted!: bool",
+                       ta.created_at        AS "created_at!: DateTime<Utc>",
+                       ta.updated_at        AS "updated_at!: DateTime<Utc>"
+               FROM    task_attempts ta
+               JOIN    tasks t ON ta.task_id = t.id
+               WHERE   ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
             attempt_id,
             task_id,
             project_id

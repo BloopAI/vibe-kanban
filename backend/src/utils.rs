@@ -4,6 +4,7 @@ use directories::ProjectDirs;
 
 pub mod shell;
 pub mod text;
+pub mod worktree_manager;
 
 const PROJECT_ROOT: &str = env!("CARGO_MANIFEST_DIR");
 
