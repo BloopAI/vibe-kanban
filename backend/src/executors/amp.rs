@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
+use std::path::Path;
 use uuid::Uuid;
 
 use crate::{
@@ -227,7 +228,14 @@ Task description: {}"#,
             };
 
             // If JSON didn't match expected patterns, add it as unrecognized JSON
+            // Skip JSON with type "result" as requested
             if !processed {
+                if let Some(msg_type) = json.get("type").and_then(|t| t.as_str()) {
+                    if msg_type == "result" {
+                        // Skip result entries
+                        continue;
+                    }
+                }
                 entries.push(NormalizedEntry {
                     timestamp: None,
                     entry_type: NormalizedEntryType::SystemMessage,
@@ -248,6 +256,26 @@ Task description: {}"#,
 }
 
 impl AmpExecutor {
+    /// Convert absolute paths to relative paths based on current working directory
+    fn make_path_relative(&self, path: &str) -> String {
+        let path_obj = Path::new(path);
+        
+        // If path is already relative, return as is
+        if path_obj.is_relative() {
+            return path.to_string();
+        }
+        
+        // Try to get current working directory and make path relative to it
+        if let Ok(current_dir) = std::env::current_dir() {
+            if let Ok(relative_path) = path_obj.strip_prefix(&current_dir) {
+                return relative_path.to_string_lossy().to_string();
+            }
+        }
+        
+        // If we can't make it relative, return the original path
+        path.to_string()
+    }
+
     fn generate_concise_content(
         &self,
         tool_name: &str,
@@ -267,7 +295,7 @@ impl AmpExecutor {
                     "todo_write" | "todo_read" => "Managing TODO list".to_string(),
                     "list_directory" | "ls" => {
                         if let Some(path) = input.get("path").and_then(|p| p.as_str()) {
-                            format!("List directory: {}", path)
+                            format!("List directory: {}", self.make_path_relative(path))
                         } else {
                             "List directory".to_string()
                         }
@@ -297,11 +325,11 @@ impl AmpExecutor {
             "read_file" | "read" => {
                 if let Some(path) = input.get("path").and_then(|p| p.as_str()) {
                     ActionType::FileRead {
-                        path: path.to_string(),
+                        path: self.make_path_relative(path),
                     }
                 } else if let Some(file_path) = input.get("file_path").and_then(|p| p.as_str()) {
                     ActionType::FileRead {
-                        path: file_path.to_string(),
+                        path: self.make_path_relative(file_path),
                     }
                 } else {
                     ActionType::Other {
@@ -312,11 +340,11 @@ impl AmpExecutor {
             "edit_file" | "write" | "create_file" => {
                 if let Some(path) = input.get("path").and_then(|p| p.as_str()) {
                     ActionType::FileWrite {
-                        path: path.to_string(),
+                        path: self.make_path_relative(path),
                     }
                 } else if let Some(file_path) = input.get("file_path").and_then(|p| p.as_str()) {
                     ActionType::FileWrite {
-                        path: file_path.to_string(),
+                        path: self.make_path_relative(file_path),
                     }
                 } else {
                     ActionType::Other {
