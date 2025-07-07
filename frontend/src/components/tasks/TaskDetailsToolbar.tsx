@@ -573,7 +573,8 @@ export function TaskDetailsToolbar({
                         <div className="flex items-center gap-1.5">
                           <GitBranchIcon className="h-3 w-3 text-muted-foreground" />
                           <span className="text-sm font-medium">
-                            {branchStatus?.base_branch_name || selectedBranchDisplayName}
+                            {branchStatus?.base_branch_name ||
+                              selectedBranchDisplayName}
                           </span>
                         </div>
                       </div>
