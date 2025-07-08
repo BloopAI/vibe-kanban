@@ -132,83 +132,32 @@ impl AppState {
         execution_id: Uuid,
     ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
         let mut executions = self.running_executions.lock().await;
+        let Some(exec) = executions.get_mut(&execution_id) else {
+            return Ok(false);
+        };
 
-        if let Some(mut execution) = executions.remove(&execution_id) {
-            // Graceful shutdown sequence: SIGTERM -> SIGKILL -> kill()
-            let process_id = execution.child.id();
+        // hit the whole process group, not just the leader
+        #[cfg(unix)]
+        {
+            use nix::{sys::signal::killpg, unistd::getpgid};
 
-            #[cfg(unix)]
-            {
-                if let Some(pid) = process_id {
-                    let pid = Pid::from_raw(pid as i32);
-
-                    // Step 1: Send SIGTERM for graceful shutdown
-                    tracing::info!("Sending SIGTERM to execution process {}", execution_id);
-                    if let Err(e) = kill(pid, Signal::SIGTERM) {
-                        tracing::warn!("Failed to send SIGTERM to process {}: {}", execution_id, e);
-                    } else {
-                        // Wait 2 seconds for graceful shutdown
-                        tokio::time::sleep(Duration::from_secs(2)).await;
-
-                        // Check if process is still running
-                        if execution
-                            .child
-                            .try_wait()
-                            .is_ok_and(|status| status.is_some())
-                        {
-                            tracing::info!(
-                                "Process {} exited gracefully after SIGTERM",
-                                execution_id
-                            );
-                            return Ok(true);
-                        }
-                    }
-
-                    // Step 2: Send SIGKILL for forceful termination
-                    tracing::info!("Sending SIGKILL to execution process {}", execution_id);
-                    if let Err(e) = kill(pid, Signal::SIGKILL) {
-                        tracing::warn!("Failed to send SIGKILL to process {}: {}", execution_id, e);
-                    } else {
-                        // Wait 1 second for SIGKILL to take effect
-                        tokio::time::sleep(Duration::from_secs(1)).await;
-
-                        // Check if process is still running
-                        if execution
-                            .child
-                            .try_wait()
-                            .is_ok_and(|status| status.is_some())
-                        {
-                            tracing::info!("Process {} terminated after SIGKILL", execution_id);
-                            return Ok(true);
-                        }
-                    }
+            let pgid = getpgid(Some(Pid::from_raw(exec.child.id().unwrap() as i32)))?;
+            for sig in [Signal::SIGINT, Signal::SIGTERM, Signal::SIGKILL] {
+                killpg(pgid, sig)?;
+                tokio::time::sleep(Duration::from_secs(2)).await;
+                if exec.child.try_wait()?.is_some() {
+                    break; // gone!
                 }
             }
-
-            // Step 3: Fallback to kill() method
-            tracing::info!(
-                "Using fallback kill() for execution process {}",
-                execution_id
-            );
-            match execution.child.kill().await {
-                Ok(_) => {
-                    tracing::info!(
-                        "Stopped execution process {} and its process group",
-                        execution_id
-                    );
-                    Ok(true)
-                }
-                Err(e) => {
-                    tracing::error!("Failed to kill execution process {}: {}", execution_id, e);
-                    // Re-insert the execution since we failed to kill it
-                    executions.insert(execution_id, execution);
-                    Err(Box::new(e))
-                }
-            }
-        } else {
-            // Execution not found (might already be finished)
-            Ok(false)
         }
+
+        // final fallback – command_group already targets the group
+        exec.child.kill().await.ok();
+        exec.child.wait().await.ok(); // reap
+
+        // only NOW remove it
+        executions.remove(&execution_id);
+        Ok(true)
     }
 
     // Config getters
