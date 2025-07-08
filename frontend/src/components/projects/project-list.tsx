@@ -167,7 +167,7 @@ export function ProjectList() {
               className="hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => navigate(`/projects/${project.id}/tasks`)}
             >
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-6">
                 <div className="flex items-start justify-between">
                   <CardTitle className="text-lg">{project.name}</CardTitle>
                   <div className="flex items-center gap-2">
