@@ -183,8 +183,8 @@ const clusterGeminiMessages = (
       const wouldExceedSize =
         currentCluster.length > 0 &&
         currentCluster.map((e) => e.content).join('').length +
-        entry.content.length >
-        GEMINI_CLUSTERING_CONFIG.maxClusterSize;
+          entry.content.length >
+          GEMINI_CLUSTERING_CONFIG.maxClusterSize;
       const wouldExceedCount =
         currentCluster.length >= GEMINI_CLUSTERING_CONFIG.maxClusterCount;
 
@@ -205,7 +205,7 @@ const clusterGeminiMessages = (
   flushCluster();
 
   return clustered;
-}
+};
 
 // Helper function to determine if content should be rendered as markdown
 const shouldRenderMarkdown = (entryType: NormalizedEntryType) => {
@@ -381,7 +381,7 @@ export function NormalizedConversationViewer({
               <Bot className="h-3 w-3" />
               <span>
                 {clusteringEnabled &&
-                  displayEntries.length !== conversation.entries.length
+                displayEntries.length !== conversation.entries.length
                   ? `Messages clustered for better readability (${conversation.entries.length} → ${displayEntries.length} messages)`
                   : 'Gemini message clustering'}
               </span>
@@ -490,16 +490,14 @@ export function NormalizedConversationViewer({
                       />
                     ) : (
                       entry.content
-                    )
-                    }
-                  </div >
-                )
-                }
-              </div >
-            </div >
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           );
         })}
-      </div >
-    </div >
+      </div>
+    </div>
   );
 }
