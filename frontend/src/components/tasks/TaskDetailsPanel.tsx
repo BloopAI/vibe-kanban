@@ -154,7 +154,7 @@ export function TaskDetailsPanel({
     } finally {
       setDiffLoading(false);
     }
-  }, [projectId, selectedAttempt?.id, selectedAttempt?.task_id]);
+  }, [projectId, selectedAttempt?.id, selectedAttempt?.task_id, diffLoading]);
 
   useEffect(() => {
     if (isOpen) {
