@@ -148,6 +148,27 @@ export function TaskDetailsToolbar({
     setIsInCreateAttemptMode(taskAttempts.length === 0);
   }, [taskAttempts.length]);
 
+  // Update default values from latest attempt when taskAttempts change
+  useEffect(() => {
+    if (taskAttempts.length > 0) {
+      const latestAttempt = taskAttempts.reduce((latest, current) =>
+        new Date(current.created_at) > new Date(latest.created_at)
+          ? current
+          : latest
+      );
+      
+      // Only update if branch still exists in available branches
+      if (latestAttempt.base_branch && branches.some((b: GitBranch) => b.name === latestAttempt.base_branch)) {
+        setCreateAttemptBranch(latestAttempt.base_branch);
+      }
+      
+      // Only update executor if it's different from default and exists in available executors
+      if (latestAttempt.executor && availableExecutors.some(e => e.id === latestAttempt.executor)) {
+        setCreateAttemptExecutor(latestAttempt.executor);
+      }
+    }
+  }, [taskAttempts, branches, availableExecutors]);
+
   // Update PR base branch when selected attempt changes
   useEffect(() => {
     if (selectedAttempt?.base_branch) {
@@ -349,8 +370,33 @@ export function TaskDetailsToolbar({
   // Handle entering create attempt mode
   const handleEnterCreateAttemptMode = () => {
     setIsInCreateAttemptMode(true);
-    setCreateAttemptBranch(selectedBranch);
-    setCreateAttemptExecutor(selectedExecutor);
+    
+    // Use latest attempt's settings as defaults if available
+    if (taskAttempts.length > 0) {
+      const latestAttempt = taskAttempts.reduce((latest, current) =>
+        new Date(current.created_at) > new Date(latest.created_at)
+          ? current
+          : latest
+      );
+      
+      // Use latest attempt's branch if it still exists, otherwise use current selected branch
+      if (latestAttempt.base_branch && branches.some((b: GitBranch) => b.name === latestAttempt.base_branch)) {
+        setCreateAttemptBranch(latestAttempt.base_branch);
+      } else {
+        setCreateAttemptBranch(selectedBranch);
+      }
+      
+      // Use latest attempt's executor if it exists, otherwise use current selected executor
+      if (latestAttempt.executor && availableExecutors.some(e => e.id === latestAttempt.executor)) {
+        setCreateAttemptExecutor(latestAttempt.executor);
+      } else {
+        setCreateAttemptExecutor(selectedExecutor);
+      }
+    } else {
+      // Fallback to current selected values if no attempts exist
+      setCreateAttemptBranch(selectedBranch);
+      setCreateAttemptExecutor(selectedExecutor);
+    }
   };
 
   // Handle exiting create attempt mode
