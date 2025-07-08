@@ -16,6 +16,7 @@ import {
   ChevronUp,
   ToggleLeft,
   ToggleRight,
+  CheckSquare,
 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { makeRequest } from '@/lib/api';
@@ -50,7 +51,13 @@ const getEntryIcon = (entryType: NormalizedEntryType) => {
     return <AlertCircle className="h-4 w-4 text-red-600" />;
   }
   if (entryType.type === 'tool_use') {
-    const { action_type } = entryType;
+    const { action_type, tool_name } = entryType;
+
+    // Special handling for TODO tools
+    if (tool_name && (tool_name.toLowerCase() === 'todowrite' || tool_name.toLowerCase() === 'todoread')) {
+      return <CheckSquare className="h-4 w-4 text-purple-600" />;
+    }
+
     if (action_type.action === 'file_read') {
       return <Eye className="h-4 w-4 text-orange-600" />;
     }
@@ -86,6 +93,15 @@ const getContentClassName = (entryType: NormalizedEntryType) => {
 
   if (entryType.type === 'error_message') {
     return `${baseClasses} text-red-600 font-mono bg-red-50 dark:bg-red-950/20 px-2 py-1 rounded`;
+  }
+
+  // Special styling for TODO lists
+  if (
+    entryType.type === 'tool_use' &&
+    entryType.tool_name &&
+    (entryType.tool_name.toLowerCase() === 'todowrite' || entryType.tool_name.toLowerCase() === 'todoread')
+  ) {
+    return `${baseClasses} font-mono text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/20 px-2 py-1 rounded`;
   }
 
   return baseClasses;
@@ -158,8 +174,8 @@ const clusterGeminiMessages = (
       const wouldExceedSize =
         currentCluster.length > 0 &&
         currentCluster.map((e) => e.content).join('').length +
-          entry.content.length >
-          GEMINI_CLUSTERING_CONFIG.maxClusterSize;
+        entry.content.length >
+        GEMINI_CLUSTERING_CONFIG.maxClusterSize;
       const wouldExceedCount =
         currentCluster.length >= GEMINI_CLUSTERING_CONFIG.maxClusterCount;
 
@@ -325,7 +341,7 @@ export function NormalizedConversationViewer({
               <Bot className="h-3 w-3" />
               <span>
                 {clusteringEnabled &&
-                displayEntries.length !== conversation.entries.length
+                  displayEntries.length !== conversation.entries.length
                   ? `Messages clustered for better readability (${conversation.entries.length} → ${displayEntries.length} messages)`
                   : 'Gemini message clustering'}
               </span>

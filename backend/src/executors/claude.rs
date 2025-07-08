@@ -303,7 +303,41 @@ impl ClaudeExecutor {
             ActionType::Other { description: _ } => {
                 // For other tools, try to extract key information or fall back to tool name
                 match tool_name.to_lowercase().as_str() {
-                    "todoread" | "todowrite" => "Managing TODO list".to_string(),
+                    "todoread" | "todowrite" => {
+                        // Extract todo list from input to show actual todos
+                        if let Some(todos) = input.get("todos").and_then(|t| t.as_array()) {
+                            let mut todo_items = Vec::new();
+                            for todo in todos {
+                                if let Some(content) = todo.get("content").and_then(|c| c.as_str())
+                                {
+                                    let status = todo
+                                        .get("status")
+                                        .and_then(|s| s.as_str())
+                                        .unwrap_or("pending");
+                                    let priority = todo
+                                        .get("priority")
+                                        .and_then(|p| p.as_str())
+                                        .unwrap_or("medium");
+                                    let status_emoji = match status {
+                                        "completed" => "✅",
+                                        "in_progress" => "🔄",
+                                        _ => "⏳",
+                                    };
+                                    todo_items.push(format!(
+                                        "{} {} ({})",
+                                        status_emoji, content, priority
+                                    ));
+                                }
+                            }
+                            if !todo_items.is_empty() {
+                                format!("TODO List:\n{}", todo_items.join("\n"))
+                            } else {
+                                "Managing TODO list".to_string()
+                            }
+                        } else {
+                            "Managing TODO list".to_string()
+                        }
+                    }
                     "ls" => {
                         if let Some(path) = input.get("path").and_then(|p| p.as_str()) {
                             format!(
@@ -522,5 +556,90 @@ mod tests {
         let absolute_path = format!("{}/src/main.rs", test_worktree);
         let result = executor.make_path_relative(&absolute_path, test_worktree);
         assert_eq!(result, "src/main.rs");
+    }
+
+    #[test]
+    fn test_todo_tool_content_extraction() {
+        let executor = ClaudeExecutor;
+
+        // Test TodoWrite with actual todo list
+        let todo_input = serde_json::json!({
+            "todos": [
+                {
+                    "id": "1",
+                    "content": "Fix the navigation bug",
+                    "status": "completed",
+                    "priority": "high"
+                },
+                {
+                    "id": "2",
+                    "content": "Add user authentication",
+                    "status": "in_progress",
+                    "priority": "medium"
+                },
+                {
+                    "id": "3",
+                    "content": "Write documentation",
+                    "status": "pending",
+                    "priority": "low"
+                }
+            ]
+        });
+
+        let result = executor.generate_concise_content(
+            "TodoWrite",
+            &todo_input,
+            &ActionType::Other {
+                description: "Tool: TodoWrite".to_string(),
+            },
+            "/tmp/test-worktree",
+        );
+
+        assert!(result.contains("TODO List:"));
+        assert!(result.contains("✅ Fix the navigation bug (high)"));
+        assert!(result.contains("🔄 Add user authentication (medium)"));
+        assert!(result.contains("⏳ Write documentation (low)"));
+    }
+
+    #[test]
+    fn test_todo_tool_empty_list() {
+        let executor = ClaudeExecutor;
+
+        // Test TodoWrite with empty todo list
+        let empty_input = serde_json::json!({
+            "todos": []
+        });
+
+        let result = executor.generate_concise_content(
+            "TodoWrite",
+            &empty_input,
+            &ActionType::Other {
+                description: "Tool: TodoWrite".to_string(),
+            },
+            "/tmp/test-worktree",
+        );
+
+        assert_eq!(result, "Managing TODO list");
+    }
+
+    #[test]
+    fn test_todo_tool_no_todos_field() {
+        let executor = ClaudeExecutor;
+
+        // Test TodoWrite with no todos field
+        let no_todos_input = serde_json::json!({
+            "other_field": "value"
+        });
+
+        let result = executor.generate_concise_content(
+            "TodoWrite",
+            &no_todos_input,
+            &ActionType::Other {
+                description: "Tool: TodoWrite".to_string(),
+            },
+            "/tmp/test-worktree",
+        );
+
+        assert_eq!(result, "Managing TODO list");
     }
 }
