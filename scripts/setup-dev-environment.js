@@ -188,7 +188,7 @@ if (require.main === module) {
     case "frontend":
       getPorts()
         .then((ports) => {
-          console.log(ports.frontend);
+          console.log(JSON.stringify(ports.frontend, null, 2));
         })
         .catch(console.error);
       break;
@@ -196,7 +196,7 @@ if (require.main === module) {
     case "backend":
       getPorts()
         .then((ports) => {
-          console.log(ports.backend);
+          console.log(JSON.stringify(ports.backend, null, 2));
         })
         .catch(console.error);
       break;
