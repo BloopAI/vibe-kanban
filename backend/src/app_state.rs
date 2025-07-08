@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 
 #[cfg(unix)]
 use nix::{
-    sys::signal::{kill, Signal},
+    sys::signal::Signal,
     unistd::Pid,
 };
 use tokio::sync::{Mutex, RwLock as TokioRwLock};
