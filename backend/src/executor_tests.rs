@@ -12,7 +12,7 @@ mod tests {
 {"type":"messages","messages":[[0,{"role":"user","content":[{"type":"text","text":"Task title: Create and start should open task\nTask description: When I press 'create & start' on task creation dialog it should then open the task in the sidebar"}],"meta":{"sentAt":1751544747623}}]],"toolResults":[]}
 {"type":"messages","messages":[[1,{"role":"assistant","content":[{"type":"thinking","thinking":"The user wants to implement a feature where pressing \"create & start\" on the task creation dialog should open the task in the sidebar."},{"type":"text","text":"I'll help you implement the \"create & start\" functionality. Let me explore the codebase to understand the current task creation and sidebar structure."},{"type":"tool_use","id":"toolu_01FQqskzGAhZaZu8H6qSs5pV","name":"todo_write","input":{"todos":[{"id":"1","content":"Explore task creation dialog component","status":"todo","priority":"high"}]}}],"state":{"type":"complete","stopReason":"tool_use"}}]],"toolResults":[]}"#;
 
-        let result = amp_executor.normalize_logs(amp_logs).unwrap();
+        let result = amp_executor.normalize_logs(amp_logs, "/tmp/test-worktree").unwrap();
 
         assert_eq!(result.executor_type, "amp");
         assert_eq!(
@@ -68,7 +68,7 @@ mod tests {
 {"type":"assistant","message":{"id":"msg_014xUHgkAhs6cRx5WVT3s7if","type":"message","role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"text","text":"I'll help you list your projects using vibe-kanban. Let me first explore the codebase to understand how vibe-kanban works and find your projects."}],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":13497,"cache_read_input_tokens":0,"output_tokens":1,"service_tier":"standard"}},"parent_tool_use_id":null,"session_id":"499dcce4-04aa-4a3e-9e0c-ea0228fa87c9"}
 {"type":"assistant","message":{"id":"msg_014xUHgkAhs6cRx5WVT3s7if","type":"message","role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"tool_use","id":"toolu_01Br3TvXdmW6RPGpB5NihTHh","name":"Task","input":{"description":"Find vibe-kanban projects","prompt":"I need to find and list projects using vibe-kanban."}}],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":13497,"cache_read_input_tokens":0,"output_tokens":1,"service_tier":"standard"}},"parent_tool_use_id":null,"session_id":"499dcce4-04aa-4a3e-9e0c-ea0228fa87c9"}"#;
 
-        let result = claude_executor.normalize_logs(claude_logs).unwrap();
+        let result = claude_executor.normalize_logs(claude_logs, "/tmp/test-worktree").unwrap();
 
         assert_eq!(result.executor_type, "claude");
         assert_eq!(

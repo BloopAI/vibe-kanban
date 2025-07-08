@@ -1,6 +1,7 @@
+use std::path::Path;
+
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
-use std::path::Path;
 use tokio::process::Command;
 use uuid::Uuid;
 
@@ -74,7 +75,11 @@ Task description: {}"#,
         Ok(child)
     }
 
-    fn normalize_logs(&self, logs: &str) -> Result<NormalizedConversation, String> {
+    fn normalize_logs(
+        &self,
+        logs: &str,
+        worktree_path: &str,
+    ) -> Result<NormalizedConversation, String> {
         use serde_json::Value;
 
         let mut entries = Vec::new();
@@ -142,12 +147,16 @@ Task description: {}"#,
                                                     let input = content_item
                                                         .get("input")
                                                         .unwrap_or(&Value::Null);
-                                                    let action_type =
-                                                        self.extract_action_type(tool_name, input);
+                                                    let action_type = self.extract_action_type(
+                                                        tool_name,
+                                                        input,
+                                                        worktree_path,
+                                                    );
                                                     let content = self.generate_concise_content(
                                                         tool_name,
                                                         input,
                                                         &action_type,
+                                                        worktree_path,
                                                     );
 
                                                     entries.push(NormalizedEntry {
@@ -248,22 +257,23 @@ Task description: {}"#,
 }
 
 impl ClaudeExecutor {
-    /// Convert absolute paths to relative paths based on current working directory
-    fn make_path_relative(&self, path: &str) -> String {
+    /// Convert absolute paths to relative paths based on worktree path
+    fn make_path_relative(&self, path: &str, worktree_path: &str) -> String {
         let path_obj = Path::new(path);
-        
+
+        tracing::info!("Making path relative: {} -> {}", path, worktree_path);
+
         // If path is already relative, return as is
         if path_obj.is_relative() {
             return path.to_string();
         }
-        
-        // Try to get current working directory and make path relative to it
-        if let Ok(current_dir) = std::env::current_dir() {
-            if let Ok(relative_path) = path_obj.strip_prefix(&current_dir) {
-                return relative_path.to_string_lossy().to_string();
-            }
+
+        // Try to make path relative to the worktree path
+        let worktree_path_obj = Path::new(worktree_path);
+        if let Ok(relative_path) = path_obj.strip_prefix(worktree_path_obj) {
+            return relative_path.to_string_lossy().to_string();
         }
-        
+
         // If we can't make it relative, return the original path
         path.to_string()
     }
@@ -273,6 +283,7 @@ impl ClaudeExecutor {
         tool_name: &str,
         input: &serde_json::Value,
         action_type: &ActionType,
+        worktree_path: &str,
     ) -> String {
         match action_type {
             ActionType::FileRead { path } => path.clone(),
@@ -287,7 +298,10 @@ impl ClaudeExecutor {
                     "todoread" | "todowrite" => "Managing TODO list".to_string(),
                     "ls" => {
                         if let Some(path) = input.get("path").and_then(|p| p.as_str()) {
-                            format!("List directory: {}", self.make_path_relative(path))
+                            format!(
+                                "List directory: {}",
+                                self.make_path_relative(path, worktree_path)
+                            )
                         } else {
                             "List directory".to_string()
                         }
@@ -305,12 +319,17 @@ impl ClaudeExecutor {
         }
     }
 
-    fn extract_action_type(&self, tool_name: &str, input: &serde_json::Value) -> ActionType {
+    fn extract_action_type(
+        &self,
+        tool_name: &str,
+        input: &serde_json::Value,
+        worktree_path: &str,
+    ) -> ActionType {
         match tool_name.to_lowercase().as_str() {
             "read" => {
                 if let Some(file_path) = input.get("file_path").and_then(|p| p.as_str()) {
                     ActionType::FileRead {
-                        path: self.make_path_relative(file_path),
+                        path: self.make_path_relative(file_path, worktree_path),
                     }
                 } else {
                     ActionType::Other {
@@ -321,11 +340,11 @@ impl ClaudeExecutor {
             "edit" | "write" | "multiedit" => {
                 if let Some(file_path) = input.get("file_path").and_then(|p| p.as_str()) {
                     ActionType::FileWrite {
-                        path: self.make_path_relative(file_path),
+                        path: self.make_path_relative(file_path, worktree_path),
                     }
                 } else if let Some(path) = input.get("path").and_then(|p| p.as_str()) {
                     ActionType::FileWrite {
-                        path: self.make_path_relative(path),
+                        path: self.make_path_relative(path, worktree_path),
                     }
                 } else {
                     ActionType::Other {
@@ -439,10 +458,14 @@ impl Executor for ClaudeFollowupExecutor {
         Ok(child)
     }
 
-    fn normalize_logs(&self, logs: &str) -> Result<NormalizedConversation, String> {
+    fn normalize_logs(
+        &self,
+        logs: &str,
+        worktree_path: &str,
+    ) -> Result<NormalizedConversation, String> {
         // Reuse the same logic as the main ClaudeExecutor
         let main_executor = ClaudeExecutor;
-        main_executor.normalize_logs(logs)
+        main_executor.normalize_logs(logs, worktree_path)
     }
 }
 
@@ -458,34 +481,38 @@ mod tests {
 {"type":"result","subtype":"success","is_error":false,"duration_ms":6059,"result":"Final result"}
 {"type":"unknown","data":"some data"}"#;
 
-        let result = executor.normalize_logs(logs).unwrap();
-        
+        let result = executor.normalize_logs(logs, "/tmp/test-worktree").unwrap();
+
         // Should have system message, assistant message, and unknown message
         // but NOT the result message
         assert_eq!(result.entries.len(), 3);
-        
+
         // Check that no entry contains "result"
         for entry in &result.entries {
             assert!(!entry.content.contains("result"));
         }
-        
+
         // Check that unknown JSON is still processed
-        assert!(result.entries.iter().any(|e| e.content.contains("Unrecognized JSON")));
+        assert!(result
+            .entries
+            .iter()
+            .any(|e| e.content.contains("Unrecognized JSON")));
     }
 
     #[test]
     fn test_make_path_relative() {
         let executor = ClaudeExecutor;
-        
+
         // Test with relative path (should remain unchanged)
-        assert_eq!(executor.make_path_relative("src/main.rs"), "src/main.rs");
-        
+        assert_eq!(
+            executor.make_path_relative("src/main.rs", "/tmp/test-worktree"),
+            "src/main.rs"
+        );
+
         // Test with absolute path (should become relative if possible)
-        if let Ok(current_dir) = std::env::current_dir() {
-            let absolute_path = current_dir.join("src/main.rs");
-            let absolute_path_str = absolute_path.to_string_lossy();
-            let result = executor.make_path_relative(&absolute_path_str);
-            assert_eq!(result, "src/main.rs");
-        }
+        let test_worktree = "/tmp/test-worktree";
+        let absolute_path = format!("{}/src/main.rs", test_worktree);
+        let result = executor.make_path_relative(&absolute_path, test_worktree);
+        assert_eq!(result, "src/main.rs");
     }
 }

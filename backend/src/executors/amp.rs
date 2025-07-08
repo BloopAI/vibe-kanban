@@ -80,7 +80,7 @@ Task description: {}"#,
         Ok(child)
     }
 
-    fn normalize_logs(&self, logs: &str) -> Result<NormalizedConversation, String> {
+    fn normalize_logs(&self, logs: &str, _worktree_path: &str) -> Result<NormalizedConversation, String> {
         use serde_json::Value;
 
         let mut entries = Vec::new();
@@ -464,9 +464,9 @@ impl Executor for AmpFollowupExecutor {
         Ok(child)
     }
 
-    fn normalize_logs(&self, logs: &str) -> Result<NormalizedConversation, String> {
+    fn normalize_logs(&self, logs: &str, worktree_path: &str) -> Result<NormalizedConversation, String> {
         // Reuse the same logic as the main AmpExecutor
         let main_executor = AmpExecutor;
-        main_executor.normalize_logs(logs)
+        main_executor.normalize_logs(logs, worktree_path)
     }
 }
