@@ -154,7 +154,11 @@ Task description: {}"#,
         Ok(child)
     }
 
-    fn normalize_logs(&self, logs: &str, _worktree_path: &str) -> Result<NormalizedConversation, String> {
+    fn normalize_logs(
+        &self,
+        logs: &str,
+        _worktree_path: &str,
+    ) -> Result<NormalizedConversation, String> {
         let mut entries: Vec<NormalizedEntry> = Vec::new();
         let mut parse_errors = Vec::new();
 
@@ -560,7 +564,11 @@ impl Executor for GeminiFollowupExecutor {
         Ok(child)
     }
 
-    fn normalize_logs(&self, logs: &str, worktree_path: &str) -> Result<NormalizedConversation, String> {
+    fn normalize_logs(
+        &self,
+        logs: &str,
+        worktree_path: &str,
+    ) -> Result<NormalizedConversation, String> {
         // Reuse the same logic as the main GeminiExecutor
         let main_executor = GeminiExecutor;
         main_executor.normalize_logs(logs, worktree_path)

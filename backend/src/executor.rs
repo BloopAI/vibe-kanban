@@ -220,7 +220,11 @@ pub trait Executor: Send + Sync {
     ) -> Result<command_group::AsyncGroupChild, ExecutorError>;
 
     /// Normalize executor logs into a standard format
-    fn normalize_logs(&self, _logs: &str, _worktree_path: &str) -> Result<NormalizedConversation, String> {
+    fn normalize_logs(
+        &self,
+        _logs: &str,
+        _worktree_path: &str,
+    ) -> Result<NormalizedConversation, String> {
         // Default implementation returns empty conversation
         Ok(NormalizedConversation {
             entries: vec![],

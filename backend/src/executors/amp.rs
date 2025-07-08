@@ -1,6 +1,7 @@
+use std::path::Path;
+
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
-use std::path::Path;
 use uuid::Uuid;
 
 use crate::{
@@ -80,7 +81,11 @@ Task description: {}"#,
         Ok(child)
     }
 
-    fn normalize_logs(&self, logs: &str, _worktree_path: &str) -> Result<NormalizedConversation, String> {
+    fn normalize_logs(
+        &self,
+        logs: &str,
+        _worktree_path: &str,
+    ) -> Result<NormalizedConversation, String> {
         use serde_json::Value;
 
         let mut entries = Vec::new();
@@ -130,8 +135,9 @@ Task description: {}"#,
                                             message_data.get("content").and_then(|c| c.as_array())
                                         {
                                             for content_item in content {
-                                                if let Some(content_type) =
-                                                    content_item.get("type").and_then(|t| t.as_str())
+                                                if let Some(content_type) = content_item
+                                                    .get("type")
+                                                    .and_then(|t| t.as_str())
                                                 {
                                                     match content_type {
                                                         "text" => {
@@ -147,7 +153,9 @@ Task description: {}"#,
                                                                 entries.push(NormalizedEntry {
                                                                     timestamp: message_data
                                                                         .get("meta")
-                                                                        .and_then(|m| m.get("sentAt"))
+                                                                        .and_then(|m| {
+                                                                            m.get("sentAt")
+                                                                        })
                                                                         .and_then(|s| s.as_u64())
                                                                         .map(|ts| ts.to_string()),
                                                                     entry_type,
@@ -259,19 +267,19 @@ impl AmpExecutor {
     /// Convert absolute paths to relative paths based on current working directory
     fn make_path_relative(&self, path: &str) -> String {
         let path_obj = Path::new(path);
-        
+
         // If path is already relative, return as is
         if path_obj.is_relative() {
             return path.to_string();
         }
-        
+
         // Try to get current working directory and make path relative to it
         if let Ok(current_dir) = std::env::current_dir() {
             if let Ok(relative_path) = path_obj.strip_prefix(&current_dir) {
                 return relative_path.to_string_lossy().to_string();
             }
         }
-        
+
         // If we can't make it relative, return the original path
         path.to_string()
     }
@@ -464,7 +472,11 @@ impl Executor for AmpFollowupExecutor {
         Ok(child)
     }
 
-    fn normalize_logs(&self, logs: &str, worktree_path: &str) -> Result<NormalizedConversation, String> {
+    fn normalize_logs(
+        &self,
+        logs: &str,
+        worktree_path: &str,
+    ) -> Result<NormalizedConversation, String> {
         // Reuse the same logic as the main AmpExecutor
         let main_executor = AmpExecutor;
         main_executor.normalize_logs(logs, worktree_path)
