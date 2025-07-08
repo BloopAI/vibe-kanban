@@ -18,8 +18,8 @@ import {
   ToggleRight,
   CheckSquare,
 } from 'lucide-react';
-import Markdown from 'react-markdown';
 import { makeRequest } from '@/lib/api';
+import { MarkdownRenderer } from '@/components/ui/markdown-renderer';
 import type {
   NormalizedConversation,
   NormalizedEntry,
@@ -54,7 +54,11 @@ const getEntryIcon = (entryType: NormalizedEntryType) => {
     const { action_type, tool_name } = entryType;
 
     // Special handling for TODO tools
-    if (tool_name && (tool_name.toLowerCase() === 'todowrite' || tool_name.toLowerCase() === 'todoread')) {
+    if (
+      tool_name &&
+      (tool_name.toLowerCase() === 'todowrite' ||
+        tool_name.toLowerCase() === 'todoread')
+    ) {
       return <CheckSquare className="h-4 w-4 text-purple-600" />;
     }
 
@@ -99,7 +103,8 @@ const getContentClassName = (entryType: NormalizedEntryType) => {
   if (
     entryType.type === 'tool_use' &&
     entryType.tool_name &&
-    (entryType.tool_name.toLowerCase() === 'todowrite' || entryType.tool_name.toLowerCase() === 'todoread')
+    (entryType.tool_name.toLowerCase() === 'todowrite' ||
+      entryType.tool_name.toLowerCase() === 'todoread')
   ) {
     return `${baseClasses} font-mono text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/20 px-2 py-1 rounded`;
   }
@@ -196,6 +201,18 @@ const clusterGeminiMessages = (
   flushCluster();
 
   return clustered;
+}
+
+// Helper function to determine if content should be rendered as markdown
+const shouldRenderMarkdown = (entryType: NormalizedEntryType) => {
+  // Render markdown for assistant messages and some tool outputs
+  return (
+    entryType.type === 'assistant_message' ||
+    (entryType.type === 'tool_use' &&
+      entryType.tool_name &&
+      (entryType.tool_name.toLowerCase() === 'todowrite' ||
+        entryType.tool_name.toLowerCase() === 'todoread'))
+  );
 };
 
 export function NormalizedConversationViewer({
@@ -374,7 +391,10 @@ export function NormalizedConversationViewer({
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm whitespace-pre-wrap text-foreground">
-              {conversation.prompt}
+              <MarkdownRenderer
+                content={conversation.prompt}
+                className="whitespace-pre-wrap break-words"
+              />
             </div>
           </div>
         </div>
@@ -407,7 +427,14 @@ export function NormalizedConversationViewer({
                   <div className={isExpanded ? 'space-y-2' : ''}>
                     <div className={getContentClassName(entry.entry_type)}>
                       {isExpanded ? (
-                        entry.content
+                        shouldRenderMarkdown(entry.entry_type) ? (
+                          <MarkdownRenderer
+                            content={entry.content}
+                            className="whitespace-pre-wrap break-words"
+                          />
+                        ) : (
+                          entry.content
+                        )
                       ) : (
                         <>
                           {entry.content.split('\n')[0]}
@@ -433,20 +460,23 @@ export function NormalizedConversationViewer({
                   </div>
                 ) : (
                   <div className={getContentClassName(entry.entry_type)}>
-                    {entry.entry_type.type === 'assistant_message' ? (
-                      <div className="[&>p]:mb-2 [&>ul]:list-disc [&>ul]:ml-4 [&>ol]:list-decimal [&>ol]:ml-4 [&>code]:bg-muted [&>code]:px-1 [&>code]:rounded [&>pre]:bg-muted [&>pre]:p-3 [&>pre]:rounded [&>h1]:font-bold [&>h2]:font-semibold">
-                        <Markdown>{entry.content}</Markdown>
-                      </div>
+                    {shouldRenderMarkdown(entry.entry_type) ? (
+                      <MarkdownRenderer
+                        content={entry.content}
+                        className="whitespace-pre-wrap break-words"
+                      />
                     ) : (
                       entry.content
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
+                    )
+                    }
+                  </div >
+                )
+                }
+              </div >
+            </div >
           );
         })}
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }
