@@ -126,6 +126,7 @@ Task title: {}"#,
                 match msg_type {
                     "assistant" => {
                         if let Some(message) = json.get("message") {
+                            dbg!(&message);
                             if let Some(content) = message.get("content").and_then(|c| c.as_array())
                             {
                                 for content_item in content {
@@ -294,11 +295,11 @@ impl ClaudeExecutor {
         worktree_path: &str,
     ) -> String {
         match action_type {
-            ActionType::FileRead { path } => path.clone(),
-            ActionType::FileWrite { path } => path.clone(),
-            ActionType::CommandRun { command } => command.clone(),
-            ActionType::Search { query } => query.clone(),
-            ActionType::WebFetch { url } => url.clone(),
+            ActionType::FileRead { path } => format!("`{}`", path),
+            ActionType::FileWrite { path } => format!("`{}`", path),
+            ActionType::CommandRun { command } => format!("`{}`", command),
+            ActionType::Search { query } => format!("`{}`", query),
+            ActionType::WebFetch { url } => format!("`{}`", url),
             ActionType::TaskCreate { description } => description.clone(),
             ActionType::Other { description: _ } => {
                 // For other tools, try to extract key information or fall back to tool name
@@ -340,12 +341,28 @@ impl ClaudeExecutor {
                     }
                     "ls" => {
                         if let Some(path) = input.get("path").and_then(|p| p.as_str()) {
-                            format!(
-                                "List directory: {}",
-                                self.make_path_relative(path, worktree_path)
-                            )
+                            let relative_path = self.make_path_relative(path, worktree_path);
+                            if relative_path.is_empty() {
+                                "List directory".to_string()
+                            } else {
+                                format!("List directory: `{}`", relative_path)
+                            }
                         } else {
                             "List directory".to_string()
+                        }
+                    }
+                    "glob" => {
+                        let pattern = input.get("pattern").and_then(|p| p.as_str()).unwrap_or("*");
+                        let path = input.get("path").and_then(|p| p.as_str());
+
+                        if let Some(search_path) = path {
+                            format!(
+                                "Find files: `{}` in `{}`",
+                                pattern,
+                                self.make_path_relative(search_path, worktree_path)
+                            )
+                        } else {
+                            format!("Find files: `{}`", pattern)
                         }
                     }
                     "codebase_search_agent" => {
@@ -417,9 +434,9 @@ impl ClaudeExecutor {
                 }
             }
             "glob" => {
-                if let Some(file_pattern) = input.get("filePattern").and_then(|p| p.as_str()) {
-                    ActionType::Search {
-                        query: file_pattern.to_string(),
+                if let Some(pattern) = input.get("pattern").and_then(|p| p.as_str()) {
+                    ActionType::Other {
+                        description: format!("Find files: {}", pattern),
                     }
                 } else {
                     ActionType::Other {
@@ -641,5 +658,69 @@ mod tests {
         );
 
         assert_eq!(result, "Managing TODO list");
+    }
+
+    #[test]
+    fn test_glob_tool_content_extraction() {
+        let executor = ClaudeExecutor;
+
+        // Test Glob with pattern and path
+        let glob_input = serde_json::json!({
+            "pattern": "**/*.ts",
+            "path": "/tmp/test-worktree/src"
+        });
+
+        let result = executor.generate_concise_content(
+            "Glob",
+            &glob_input,
+            &ActionType::Other {
+                description: "Find files: **/*.ts".to_string(),
+            },
+            "/tmp/test-worktree",
+        );
+
+        assert_eq!(result, "Find files: `**/*.ts` in `src`");
+    }
+
+    #[test]
+    fn test_glob_tool_pattern_only() {
+        let executor = ClaudeExecutor;
+
+        // Test Glob with pattern only
+        let glob_input = serde_json::json!({
+            "pattern": "*.js"
+        });
+
+        let result = executor.generate_concise_content(
+            "Glob",
+            &glob_input,
+            &ActionType::Other {
+                description: "Find files: *.js".to_string(),
+            },
+            "/tmp/test-worktree",
+        );
+
+        assert_eq!(result, "Find files: `*.js`");
+    }
+
+    #[test]
+    fn test_ls_tool_content_extraction() {
+        let executor = ClaudeExecutor;
+
+        // Test LS with path
+        let ls_input = serde_json::json!({
+            "path": "/tmp/test-worktree/components"
+        });
+
+        let result = executor.generate_concise_content(
+            "LS",
+            &ls_input,
+            &ActionType::Other {
+                description: "Tool: LS".to_string(),
+            },
+            "/tmp/test-worktree",
+        );
+
+        assert_eq!(result, "List directory: `components`");
     }
 }

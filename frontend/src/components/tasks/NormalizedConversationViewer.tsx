@@ -205,13 +205,21 @@ const clusterGeminiMessages = (
 
 // Helper function to determine if content should be rendered as markdown
 const shouldRenderMarkdown = (entryType: NormalizedEntryType) => {
-  // Render markdown for assistant messages and some tool outputs
+  // Render markdown for assistant messages and tool outputs that contain backticks
   return (
     entryType.type === 'assistant_message' ||
     (entryType.type === 'tool_use' &&
       entryType.tool_name &&
       (entryType.tool_name.toLowerCase() === 'todowrite' ||
-        entryType.tool_name.toLowerCase() === 'todoread'))
+        entryType.tool_name.toLowerCase() === 'todoread' ||
+        entryType.tool_name.toLowerCase() === 'glob' ||
+        entryType.tool_name.toLowerCase() === 'ls' ||
+        entryType.tool_name.toLowerCase() === 'read' ||
+        entryType.tool_name.toLowerCase() === 'write' ||
+        entryType.tool_name.toLowerCase() === 'edit' ||
+        entryType.tool_name.toLowerCase() === 'multiedit' ||
+        entryType.tool_name.toLowerCase() === 'bash' ||
+        entryType.tool_name.toLowerCase() === 'grep'))
   );
 };
 
