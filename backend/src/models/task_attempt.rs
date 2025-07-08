@@ -1155,8 +1155,6 @@ impl TaskAttempt {
         .await?
         .ok_or(TaskAttemptError::TaskNotFound)?;
 
-        tracing::info!("Attempt: {:#?}", attempt);
-
         // Get the project to access the main repository
         let project = Project::find_by_id(pool, project_id)
             .await?
@@ -1243,12 +1241,26 @@ impl TaskAttempt {
                                     });
                                 }
                                 // For added or deleted files without content, still show the file
-                                Ok(_) if delta.status() == git2::Delta::Added || delta.status() == git2::Delta::Deleted => {
+                                Ok(_)
+                                    if delta.status() == git2::Delta::Added
+                                        || delta.status() == git2::Delta::Deleted =>
+                                {
                                     files.push(FileDiff {
                                         path: path_str.to_string(),
                                         chunks: vec![DiffChunk {
-                                            chunk_type: if delta.status() == git2::Delta::Added { DiffChunkType::Insert } else { DiffChunkType::Delete },
-                                            content: format!("{} file", if delta.status() == git2::Delta::Added { "Added" } else { "Deleted" }),
+                                            chunk_type: if delta.status() == git2::Delta::Added {
+                                                DiffChunkType::Insert
+                                            } else {
+                                                DiffChunkType::Delete
+                                            },
+                                            content: format!(
+                                                "{} file",
+                                                if delta.status() == git2::Delta::Added {
+                                                    "Added"
+                                                } else {
+                                                    "Deleted"
+                                                }
+                                            ),
                                         }],
                                     });
                                 }
@@ -1266,7 +1278,6 @@ impl TaskAttempt {
                 None,
             )?;
         } else {
-            tracing::info!("TASK NOT MERGED");
             // Task attempt not yet merged - use the original logic with fork point
             let worktree_repo = Repository::open(&attempt.worktree_path)?;
             let main_repo = Repository::open(&project.git_repo_path)?;
@@ -1341,12 +1352,26 @@ impl TaskAttempt {
                                     });
                                 }
                                 // For added or deleted files without content, still show the file
-                                Ok(_) if delta.status() == git2::Delta::Added || delta.status() == git2::Delta::Deleted => {
+                                Ok(_)
+                                    if delta.status() == git2::Delta::Added
+                                        || delta.status() == git2::Delta::Deleted =>
+                                {
                                     files.push(FileDiff {
                                         path: path_str.to_string(),
                                         chunks: vec![DiffChunk {
-                                            chunk_type: if delta.status() == git2::Delta::Added { DiffChunkType::Insert } else { DiffChunkType::Delete },
-                                            content: format!("{} file", if delta.status() == git2::Delta::Added { "Added" } else { "Deleted" }),
+                                            chunk_type: if delta.status() == git2::Delta::Added {
+                                                DiffChunkType::Insert
+                                            } else {
+                                                DiffChunkType::Delete
+                                            },
+                                            content: format!(
+                                                "{} file",
+                                                if delta.status() == git2::Delta::Added {
+                                                    "Added"
+                                                } else {
+                                                    "Deleted"
+                                                }
+                                            ),
                                         }],
                                     });
                                 }
@@ -1534,33 +1559,48 @@ impl TaskAttempt {
                     Some(&mut git2::DiffOptions::new()),
                 ) {
                     let mut chunks = Vec::new();
-                    
+
                     // Process the patch hunks
                     for hunk_idx in 0..patch.num_hunks() {
                         if let Ok((_hunk, hunk_lines)) = patch.hunk(hunk_idx) {
                             for line_idx in 0..hunk_lines {
                                 if let Ok(line) = patch.line_in_hunk(hunk_idx, line_idx) {
-                                    let content = String::from_utf8_lossy(line.content()).to_string();
+                                    let content =
+                                        String::from_utf8_lossy(line.content()).to_string();
                                     let chunk_type = match line.origin() {
                                         ' ' => DiffChunkType::Equal,
                                         '+' => DiffChunkType::Insert,
                                         '-' => DiffChunkType::Delete,
                                         _ => continue,
                                     };
-                                    chunks.push(DiffChunk { chunk_type, content });
+                                    chunks.push(DiffChunk {
+                                        chunk_type,
+                                        content,
+                                    });
                                 }
                             }
                         }
                     }
-                    
+
                     // If no hunks but file status changed, add a placeholder
                     if chunks.is_empty() && delta.status() != git2::Delta::Modified {
                         chunks.push(DiffChunk {
-                            chunk_type: if delta.status() == git2::Delta::Added { DiffChunkType::Insert } else { DiffChunkType::Delete },
-                            content: format!("{} file", if delta.status() == git2::Delta::Added { "Added" } else { "Deleted" }),
+                            chunk_type: if delta.status() == git2::Delta::Added {
+                                DiffChunkType::Insert
+                            } else {
+                                DiffChunkType::Delete
+                            },
+                            content: format!(
+                                "{} file",
+                                if delta.status() == git2::Delta::Added {
+                                    "Added"
+                                } else {
+                                    "Deleted"
+                                }
+                            ),
                         });
                     }
-                    
+
                     if !chunks.is_empty() {
                         files.push(FileDiff {
                             path: path_str.to_string(),
@@ -1569,7 +1609,12 @@ impl TaskAttempt {
                     }
                 } else {
                     // Fallback to the original method if patch creation fails
-                    match Self::generate_git_diff_chunks(worktree_repo, &old_file, &new_file, path_str) {
+                    match Self::generate_git_diff_chunks(
+                        worktree_repo,
+                        &old_file,
+                        &new_file,
+                        path_str,
+                    ) {
                         Ok(diff_chunks) if !diff_chunks.is_empty() => {
                             files.push(FileDiff {
                                 path: path_str.to_string(),
@@ -1577,12 +1622,26 @@ impl TaskAttempt {
                             });
                         }
                         // For added or deleted files without content, still show the file
-                        Ok(_) if delta.status() == git2::Delta::Added || delta.status() == git2::Delta::Deleted => {
+                        Ok(_)
+                            if delta.status() == git2::Delta::Added
+                                || delta.status() == git2::Delta::Deleted =>
+                        {
                             files.push(FileDiff {
                                 path: path_str.to_string(),
                                 chunks: vec![DiffChunk {
-                                    chunk_type: if delta.status() == git2::Delta::Added { DiffChunkType::Insert } else { DiffChunkType::Delete },
-                                    content: format!("{} file", if delta.status() == git2::Delta::Added { "Added" } else { "Deleted" }),
+                                    chunk_type: if delta.status() == git2::Delta::Added {
+                                        DiffChunkType::Insert
+                                    } else {
+                                        DiffChunkType::Delete
+                                    },
+                                    content: format!(
+                                        "{} file",
+                                        if delta.status() == git2::Delta::Added {
+                                            "Added"
+                                        } else {
+                                            "Deleted"
+                                        }
+                                    ),
                                 }],
                             });
                         }

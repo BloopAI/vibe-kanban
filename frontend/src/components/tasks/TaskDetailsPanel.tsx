@@ -839,7 +839,7 @@ export function TaskDetailsPanel({
           {/* Top area - Code Changes (responsive height) */}
           {showDiffs && (
             <div
-              className={`${areAllFilesCollapsed() ? 'h-auto' : 'max-h-[66vh]'} min-h-0 ${areAllFilesCollapsed() ? 'p-2' : 'p-4'} overflow-y-auto`}
+              className={`${areAllFilesCollapsed() ? 'h-auto' : 'max-h-[66vh]'} min-h-0 p-4 overflow-y-auto`}
             >
               {diffLoading ? (
                 <div className="flex items-center justify-center h-32">
@@ -1091,7 +1091,7 @@ export function TaskDetailsPanel({
 
           {/* Bottom area - Agent Logs (responsive height) */}
           <div
-            className={`${!showDiffs || areAllFilesCollapsed() ? 'flex-1' : 'flex-1'} min-h-0 ${showDiffs ? 'border-t' : ''} bg-muted/30`}
+            className={`${!showDiffs || areAllFilesCollapsed() ? 'flex-1' : 'flex-1'} min-h-60 ${showDiffs ? 'border-t' : ''} bg-muted/30`}
           >
             <div
               ref={scrollContainerRef}
