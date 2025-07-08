@@ -15,7 +15,6 @@ use crate::{
         config::Config,
         execution_process::{ExecutionProcess, ExecutionProcessStatus, ExecutionProcessSummary},
         executor_session::ExecutorSession,
-        project::Project,
         task::Task,
         task_attempt::{
             BranchStatus, CreateFollowUpAttempt, CreatePrParams, CreateTaskAttempt, TaskAttempt,
