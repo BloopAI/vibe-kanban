@@ -128,46 +128,72 @@ export function GitHubLoginDialog({
             <Button onClick={() => onOpenChange(false)}>Close</Button>
           </div>
         ) : deviceState ? (
-          <div className="py-4 text-center">
-            <div className="mb-2">
-              1. Go to{' '}
-              <a
-                href={deviceState.verification_uri}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-700 font-medium hover:text-blue-600 transition-colors"
-                style={{ textDecoration: 'none' }}
-              >
-                {deviceState.verification_uri}
-              </a>
+          <div className="py-6 space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm font-semibold">
+                  1
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-gray-900 mb-1">
+                    Go to GitHub Device Authorization
+                  </p>
+                  <a
+                    href={deviceState.verification_uri}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 text-sm underline"
+                  >
+                    {deviceState.verification_uri}
+                  </a>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm font-semibold">
+                  2
+                </span>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-900 mb-3">
+                    Enter this code:
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl font-mono font-bold tracking-[0.2em] bg-gray-50 border rounded-lg px-4 py-2 text-gray-900">
+                      {deviceState.user_code}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(deviceState.user_code);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }}
+                      disabled={copied}
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="w-4 h-4 mr-1" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Clipboard className="w-4 h-4 mr-1" />
+                          Copy
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="mb-2">2. Enter this code:</div>
-            <div className="mb-4 flex items-center justify-center gap-2">
-              <span className="text-2xl font-mono font-bold tracking-widest bg-gray-100 rounded p-2">
-                {deviceState.user_code}
-              </span>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  navigator.clipboard.writeText(deviceState.user_code);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }}
-                className="w-28"
-                disabled={copied}
-              >
-                {copied ? 'Copied' : 'Copy'}
-                {copied ? (
-                  <Check className="ml-1.5 w-5 h-5" />
-                ) : (
-                  <Clipboard className="ml-1.5 w-5 h-5" />
-                )}
-              </Button>
-            </div>
-            <div className="mb-2 text-muted-foreground text-sm">
-              {copied
-                ? 'Code copied to clipboard!'
-                : 'Waiting for you to authorize…'}
+            
+            <div className="text-center">
+              <div className="text-sm text-muted-foreground">
+                {copied
+                  ? 'Code copied to clipboard!'
+                  : 'Waiting for you to authorize…'}
+              </div>
             </div>
             {error && <div className="text-red-500 mt-2">{error}</div>}
           </div>
