@@ -9,6 +9,7 @@ use axum::{
 };
 use sentry_tower::NewSentryLayer;
 use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
+use strip_ansi_escapes::strip;
 use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
 use tracing_subscriber::{filter::LevelFilter, prelude::*};
@@ -209,11 +210,19 @@ fn main() -> anyhow::Result<()> {
                 .layer(CorsLayer::permissive())
                 .layer(NewSentryLayer::new_from_top());
 
-            let port: u16 = std::env::var("BACKEND_PORT")
+            let port = std::env::var("BACKEND_PORT")
                 .or_else(|_| std::env::var("PORT"))
                 .ok()
-                .and_then(|p| p.parse().ok())
-                .unwrap_or(0); // Use 0 to find free port if no specific port provided
+                .and_then(|s| {
+                    // remove any ANSI codes, then turn into String
+                    let cleaned = String::from_utf8(strip(s.as_bytes()))
+                        .expect("UTF-8 after stripping ANSI");
+                    cleaned.trim().parse::<u16>().ok()
+                })
+                .unwrap_or_else(|| {
+                    tracing::error!("Failed to parse port after stripping ANSI, defaulting to 0");
+                    0
+                }); // Use 0 to find free port if no specific port provided
 
             let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
             let actual_port = listener.local_addr()?.port(); // get → 53427 (example)

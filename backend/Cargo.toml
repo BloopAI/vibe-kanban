@@ -46,6 +46,7 @@ sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debu
 sentry-tower = "0.41.0"
 sentry-tracing = { version = "0.41.0", features = ["backtrace"] }
 reqwest = { version = "0.11", features = ["json"] }
+strip-ansi-escapes = "0.2.1"
 
 [build-dependencies]
 dotenv = "0.15"
