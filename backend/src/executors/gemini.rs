@@ -37,12 +37,19 @@ impl Executor for GeminiExecutor {
 
         let prompt = if let Some(task_description) = task.description {
             format!(
-                r#"Task title: {}
+                r#"project_id: {}
+            
+Task title: {}
 Task description: {}"#,
-                task.title, task_description
+                task.project_id, task.title, task_description
             )
         } else {
-            task.title.clone()
+            format!(
+                r#"project_id: {}
+            
+Task title: {}"#,
+                task.project_id, task.title
+            )
         };
 
         // Use shell command for cross-platform compatibility

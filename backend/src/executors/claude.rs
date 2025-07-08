@@ -38,12 +38,19 @@ impl Executor for ClaudeExecutor {
 
         let prompt = if let Some(task_description) = task.description {
             format!(
-                r#"Task title: {}
+                r#"project_id: {}
+            
+Task title: {}
 Task description: {}"#,
-                task.title, task_description
+                task.project_id, task.title, task_description
             )
         } else {
-            task.title.clone()
+            format!(
+                r#"project_id: {}
+            
+Task title: {}"#,
+                task.project_id, task.title
+            )
         };
 
         // Use shell command for cross-platform compatibility
@@ -61,7 +68,8 @@ Task description: {}"#,
             .stderr(std::process::Stdio::piped())
             .current_dir(worktree_path)
             .arg(shell_arg)
-            .arg(&claude_command);
+            .arg(&claude_command)
+            .env("NODE_NO_WARNINGS", "1");
 
         let child = command
             .group_spawn() // Create new process group so we can kill entire tree
@@ -261,7 +269,7 @@ impl ClaudeExecutor {
     fn make_path_relative(&self, path: &str, worktree_path: &str) -> String {
         let path_obj = Path::new(path);
 
-        tracing::info!("Making path relative: {} -> {}", path, worktree_path);
+        tracing::debug!("Making path relative: {} -> {}", path, worktree_path);
 
         // If path is already relative, return as is
         if path_obj.is_relative() {
