@@ -138,7 +138,9 @@ export function TaskDetailsToolbar({
   const [showCreatePRDialog, setShowCreatePRDialog] = useState(false);
   const [prTitle, setPrTitle] = useState('');
   const [prBody, setPrBody] = useState('');
-  const [prBaseBranch, setPrBaseBranch] = useState(selectedAttempt?.base_branch || 'main');
+  const [prBaseBranch, setPrBaseBranch] = useState(
+    selectedAttempt?.base_branch || 'main'
+  );
   const [error, setError] = useState<string | null>(null);
 
   // Set create attempt mode when there are no attempts
@@ -928,7 +930,7 @@ export function TaskDetailsToolbar({
                 </SelectTrigger>
                 <SelectContent>
                   {branches
-                    .filter(branch => !branch.is_remote) // Only show local branches
+                    .filter((branch) => !branch.is_remote) // Only show local branches
                     .map((branch) => (
                       <SelectItem key={branch.name} value={branch.name}>
                         {branch.name}
@@ -936,12 +938,12 @@ export function TaskDetailsToolbar({
                       </SelectItem>
                     ))}
                   {/* Add common branches as fallback if not in the list */}
-                  {!branches.some(b => b.name === 'main' && !b.is_remote) && (
+                  {!branches.some((b) => b.name === 'main' && !b.is_remote) && (
                     <SelectItem value="main">main</SelectItem>
                   )}
-                  {!branches.some(b => b.name === 'master' && !b.is_remote) && (
-                    <SelectItem value="master">master</SelectItem>
-                  )}
+                  {!branches.some(
+                    (b) => b.name === 'master' && !b.is_remote
+                  ) && <SelectItem value="master">master</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
