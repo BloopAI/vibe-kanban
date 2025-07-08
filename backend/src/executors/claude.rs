@@ -126,7 +126,6 @@ Task title: {}"#,
                 match msg_type {
                     "assistant" => {
                         if let Some(message) = json.get("message") {
-                            dbg!(&message);
                             if let Some(content) = message.get("content").and_then(|c| c.as_array())
                             {
                                 for content_item in content {
@@ -315,19 +314,13 @@ impl ClaudeExecutor {
                                         .get("status")
                                         .and_then(|s| s.as_str())
                                         .unwrap_or("pending");
-                                    let priority = todo
-                                        .get("priority")
-                                        .and_then(|p| p.as_str())
-                                        .unwrap_or("medium");
                                     let status_emoji = match status {
                                         "completed" => "✅",
                                         "in_progress" => "🔄",
-                                        _ => "⏳",
+                                        "pending" | "todo" => "⏳",
+                                        _ => "📝",
                                     };
-                                    todo_items.push(format!(
-                                        "{} {} ({})",
-                                        status_emoji, content, priority
-                                    ));
+                                    todo_items.push(format!("{} {}", status_emoji, content));
                                 }
                             }
                             if !todo_items.is_empty() {

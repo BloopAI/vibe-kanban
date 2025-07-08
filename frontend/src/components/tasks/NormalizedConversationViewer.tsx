@@ -57,7 +57,9 @@ const getEntryIcon = (entryType: NormalizedEntryType) => {
     if (
       tool_name &&
       (tool_name.toLowerCase() === 'todowrite' ||
-        tool_name.toLowerCase() === 'todoread')
+        tool_name.toLowerCase() === 'todoread' ||
+        tool_name.toLowerCase() === 'todo_write' ||
+        tool_name.toLowerCase() === 'todo_read')
     ) {
       return <CheckSquare className="h-4 w-4 text-purple-600" />;
     }
@@ -104,7 +106,9 @@ const getContentClassName = (entryType: NormalizedEntryType) => {
     entryType.type === 'tool_use' &&
     entryType.tool_name &&
     (entryType.tool_name.toLowerCase() === 'todowrite' ||
-      entryType.tool_name.toLowerCase() === 'todoread')
+      entryType.tool_name.toLowerCase() === 'todoread' ||
+      entryType.tool_name.toLowerCase() === 'todo_write' ||
+      entryType.tool_name.toLowerCase() === 'todo_read')
   ) {
     return `${baseClasses} font-mono text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/20 px-2 py-1 rounded`;
   }
@@ -212,14 +216,25 @@ const shouldRenderMarkdown = (entryType: NormalizedEntryType) => {
       entryType.tool_name &&
       (entryType.tool_name.toLowerCase() === 'todowrite' ||
         entryType.tool_name.toLowerCase() === 'todoread' ||
+        entryType.tool_name.toLowerCase() === 'todo_write' ||
+        entryType.tool_name.toLowerCase() === 'todo_read' ||
         entryType.tool_name.toLowerCase() === 'glob' ||
         entryType.tool_name.toLowerCase() === 'ls' ||
+        entryType.tool_name.toLowerCase() === 'list_directory' ||
         entryType.tool_name.toLowerCase() === 'read' ||
+        entryType.tool_name.toLowerCase() === 'read_file' ||
         entryType.tool_name.toLowerCase() === 'write' ||
+        entryType.tool_name.toLowerCase() === 'create_file' ||
         entryType.tool_name.toLowerCase() === 'edit' ||
+        entryType.tool_name.toLowerCase() === 'edit_file' ||
         entryType.tool_name.toLowerCase() === 'multiedit' ||
         entryType.tool_name.toLowerCase() === 'bash' ||
-        entryType.tool_name.toLowerCase() === 'grep'))
+        entryType.tool_name.toLowerCase() === 'run_command' ||
+        entryType.tool_name.toLowerCase() === 'grep' ||
+        entryType.tool_name.toLowerCase() === 'search' ||
+        entryType.tool_name.toLowerCase() === 'webfetch' ||
+        entryType.tool_name.toLowerCase() === 'web_fetch' ||
+        entryType.tool_name.toLowerCase() === 'task'))
   );
 };
 
