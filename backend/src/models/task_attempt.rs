@@ -1155,6 +1155,8 @@ impl TaskAttempt {
         .await?
         .ok_or(TaskAttemptError::TaskNotFound)?;
 
+        tracing::info!("Attempt: {:#?}", attempt);
+
         // Get the project to access the main repository
         let project = Project::find_by_id(pool, project_id)
             .await?
@@ -1228,7 +1230,9 @@ impl TaskAttempt {
                         };
 
                         // Generate Git-native diff chunks
-                        if old_content != new_content {
+                        // Always generate diff for file changes, even if both contents are empty
+                        // This handles cases where empty files are added or files are deleted
+                        if old_content != new_content || delta.status() != git2::Delta::Modified {
                             match Self::generate_git_diff_chunks(
                                 &main_repo, &old_file, &new_file, path_str,
                             ) {
@@ -1236,6 +1240,16 @@ impl TaskAttempt {
                                     files.push(FileDiff {
                                         path: path_str.to_string(),
                                         chunks: diff_chunks,
+                                    });
+                                }
+                                // For added or deleted files without content, still show the file
+                                Ok(_) if delta.status() == git2::Delta::Added || delta.status() == git2::Delta::Deleted => {
+                                    files.push(FileDiff {
+                                        path: path_str.to_string(),
+                                        chunks: vec![DiffChunk {
+                                            chunk_type: if delta.status() == git2::Delta::Added { DiffChunkType::Insert } else { DiffChunkType::Delete },
+                                            content: format!("{} file", if delta.status() == git2::Delta::Added { "Added" } else { "Deleted" }),
+                                        }],
                                     });
                                 }
                                 Err(e) => {
@@ -1252,6 +1266,7 @@ impl TaskAttempt {
                 None,
             )?;
         } else {
+            tracing::info!("TASK NOT MERGED");
             // Task attempt not yet merged - use the original logic with fork point
             let worktree_repo = Repository::open(&attempt.worktree_path)?;
             let main_repo = Repository::open(&project.git_repo_path)?;
@@ -1310,7 +1325,9 @@ impl TaskAttempt {
                         };
 
                         // Generate Git-native diff chunks
-                        if old_content != new_content {
+                        // Always generate diff for file changes, even if both contents are empty
+                        // This handles cases where empty files are added or files are deleted
+                        if old_content != new_content || delta.status() != git2::Delta::Modified {
                             match Self::generate_git_diff_chunks(
                                 &worktree_repo,
                                 &old_file,
@@ -1321,6 +1338,16 @@ impl TaskAttempt {
                                     files.push(FileDiff {
                                         path: path_str.to_string(),
                                         chunks: diff_chunks,
+                                    });
+                                }
+                                // For added or deleted files without content, still show the file
+                                Ok(_) if delta.status() == git2::Delta::Added || delta.status() == git2::Delta::Deleted => {
+                                    files.push(FileDiff {
+                                        path: path_str.to_string(),
+                                        chunks: vec![DiffChunk {
+                                            chunk_type: if delta.status() == git2::Delta::Added { DiffChunkType::Insert } else { DiffChunkType::Delete },
+                                            content: format!("{} file", if delta.status() == git2::Delta::Added { "Added" } else { "Deleted" }),
+                                        }],
                                     });
                                 }
                                 Err(e) => {
@@ -1469,17 +1496,102 @@ impl TaskAttempt {
             }
         } else {
             // File only has unstaged changes (new file or uncommitted changes only)
-            match Self::generate_git_diff_chunks(worktree_repo, &old_file, &new_file, path_str) {
-                Ok(diff_chunks) if !diff_chunks.is_empty() => {
-                    files.push(FileDiff {
-                        path: path_str.to_string(),
-                        chunks: diff_chunks,
-                    });
+            // First check if this is a new file or changed file by comparing with base
+            let base_content = if let Ok(base_commit) = worktree_repo.find_commit(base_oid) {
+                if let Ok(base_tree) = base_commit.tree() {
+                    match base_tree.get_path(std::path::Path::new(path_str)) {
+                        Ok(entry) => {
+                            if let Ok(blob) = worktree_repo.find_blob(entry.id()) {
+                                String::from_utf8_lossy(blob.content()).to_string()
+                            } else {
+                                String::new()
+                            }
+                        }
+                        Err(_) => String::new(),
+                    }
+                } else {
+                    String::new()
                 }
-                Err(e) => {
-                    eprintln!("Error generating unstaged diff for {}: {:?}", path_str, e);
+            } else {
+                String::new()
+            };
+
+            // Get the working directory content
+            let working_content = if delta.status() != git2::Delta::Deleted {
+                let file_path = std::path::Path::new(worktree_path).join(path_str);
+                std::fs::read_to_string(&file_path).unwrap_or_default()
+            } else {
+                String::new()
+            };
+
+            // Create diff from base to working directory (including unstaged changes)
+            if base_content != working_content || delta.status() != git2::Delta::Modified {
+                if let Ok(patch) = git2::Patch::from_buffers(
+                    base_content.as_bytes(),
+                    Some(std::path::Path::new(path_str)),
+                    working_content.as_bytes(),
+                    Some(std::path::Path::new(path_str)),
+                    Some(&mut git2::DiffOptions::new()),
+                ) {
+                    let mut chunks = Vec::new();
+                    
+                    // Process the patch hunks
+                    for hunk_idx in 0..patch.num_hunks() {
+                        if let Ok((_hunk, hunk_lines)) = patch.hunk(hunk_idx) {
+                            for line_idx in 0..hunk_lines {
+                                if let Ok(line) = patch.line_in_hunk(hunk_idx, line_idx) {
+                                    let content = String::from_utf8_lossy(line.content()).to_string();
+                                    let chunk_type = match line.origin() {
+                                        ' ' => DiffChunkType::Equal,
+                                        '+' => DiffChunkType::Insert,
+                                        '-' => DiffChunkType::Delete,
+                                        _ => continue,
+                                    };
+                                    chunks.push(DiffChunk { chunk_type, content });
+                                }
+                            }
+                        }
+                    }
+                    
+                    // If no hunks but file status changed, add a placeholder
+                    if chunks.is_empty() && delta.status() != git2::Delta::Modified {
+                        chunks.push(DiffChunk {
+                            chunk_type: if delta.status() == git2::Delta::Added { DiffChunkType::Insert } else { DiffChunkType::Delete },
+                            content: format!("{} file", if delta.status() == git2::Delta::Added { "Added" } else { "Deleted" }),
+                        });
+                    }
+                    
+                    if !chunks.is_empty() {
+                        files.push(FileDiff {
+                            path: path_str.to_string(),
+                            chunks,
+                        });
+                    }
+                } else {
+                    // Fallback to the original method if patch creation fails
+                    match Self::generate_git_diff_chunks(worktree_repo, &old_file, &new_file, path_str) {
+                        Ok(diff_chunks) if !diff_chunks.is_empty() => {
+                            files.push(FileDiff {
+                                path: path_str.to_string(),
+                                chunks: diff_chunks,
+                            });
+                        }
+                        // For added or deleted files without content, still show the file
+                        Ok(_) if delta.status() == git2::Delta::Added || delta.status() == git2::Delta::Deleted => {
+                            files.push(FileDiff {
+                                path: path_str.to_string(),
+                                chunks: vec![DiffChunk {
+                                    chunk_type: if delta.status() == git2::Delta::Added { DiffChunkType::Insert } else { DiffChunkType::Delete },
+                                    content: format!("{} file", if delta.status() == git2::Delta::Added { "Added" } else { "Deleted" }),
+                                }],
+                            });
+                        }
+                        Err(e) => {
+                            eprintln!("Error generating unstaged diff for {}: {:?}", path_str, e);
+                        }
+                        _ => {}
+                    }
                 }
-                _ => {}
             }
         }
 
