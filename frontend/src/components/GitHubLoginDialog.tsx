@@ -148,7 +148,7 @@ export function GitHubLoginDialog({
                   </a>
                 </div>
               </div>
-              
+
               <div className="flex items-start gap-3">
                 <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm font-semibold">
                   2
@@ -187,7 +187,7 @@ export function GitHubLoginDialog({
                 </div>
               </div>
             </div>
-            
+
             <div className="text-center">
               <div className="text-sm text-muted-foreground">
                 {copied
