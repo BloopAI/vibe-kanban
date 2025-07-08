@@ -61,17 +61,17 @@ export function MarkdownRenderer({
             </h3>
           ),
           ul: ({ children, ...props }) => (
-            <ul {...props} className="list-disc ml-4 mb-0 space-y-0">
+            <ul {...props} className="list-disc ml-4 mb-0 -space-y-1">
               {children}
             </ul>
           ),
           ol: ({ children, ...props }) => (
-            <ol {...props} className="list-decimal ml-4 mb-0 space-y-0">
+            <ol {...props} className="list-decimal ml-4 mb-0 -space-y-1">
               {children}
             </ol>
           ),
           li: ({ children, ...props }) => (
-            <li {...props} className="mb-0 leading-tight">
+            <li {...props} className="mb-0 leading-tight -my-0.5">
               {children}
             </li>
           ),
