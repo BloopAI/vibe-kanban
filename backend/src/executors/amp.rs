@@ -324,7 +324,12 @@ impl AmpExecutor {
                                         "pending" | "todo" => "⏳",
                                         _ => "📝",
                                     };
-                                    todo_items.push(format!("{} {}", emoji, content));
+                                    let priority = todo
+                                        .get("priority")
+                                        .and_then(|p| p.as_str())
+                                        .unwrap_or("medium");
+                                    todo_items
+                                        .push(format!("{} {} ({})", emoji, content, priority));
                                 }
                             }
                             if !todo_items.is_empty() {

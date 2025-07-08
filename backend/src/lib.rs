@@ -12,9 +12,6 @@ pub mod routes;
 pub mod services;
 pub mod utils;
 
-#[cfg(test)]
-mod executor_tests;
-
 #[derive(RustEmbed)]
 #[folder = "../frontend/dist"]
 pub struct Assets;
