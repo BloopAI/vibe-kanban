@@ -156,14 +156,20 @@ export function TaskDetailsToolbar({
           ? current
           : latest
       );
-      
+
       // Only update if branch still exists in available branches
-      if (latestAttempt.base_branch && branches.some((b: GitBranch) => b.name === latestAttempt.base_branch)) {
+      if (
+        latestAttempt.base_branch &&
+        branches.some((b: GitBranch) => b.name === latestAttempt.base_branch)
+      ) {
         setCreateAttemptBranch(latestAttempt.base_branch);
       }
-      
+
       // Only update executor if it's different from default and exists in available executors
-      if (latestAttempt.executor && availableExecutors.some(e => e.id === latestAttempt.executor)) {
+      if (
+        latestAttempt.executor &&
+        availableExecutors.some((e) => e.id === latestAttempt.executor)
+      ) {
         setCreateAttemptExecutor(latestAttempt.executor);
       }
     }
@@ -370,7 +376,7 @@ export function TaskDetailsToolbar({
   // Handle entering create attempt mode
   const handleEnterCreateAttemptMode = () => {
     setIsInCreateAttemptMode(true);
-    
+
     // Use latest attempt's settings as defaults if available
     if (taskAttempts.length > 0) {
       const latestAttempt = taskAttempts.reduce((latest, current) =>
@@ -378,16 +384,22 @@ export function TaskDetailsToolbar({
           ? current
           : latest
       );
-      
+
       // Use latest attempt's branch if it still exists, otherwise use current selected branch
-      if (latestAttempt.base_branch && branches.some((b: GitBranch) => b.name === latestAttempt.base_branch)) {
+      if (
+        latestAttempt.base_branch &&
+        branches.some((b: GitBranch) => b.name === latestAttempt.base_branch)
+      ) {
         setCreateAttemptBranch(latestAttempt.base_branch);
       } else {
         setCreateAttemptBranch(selectedBranch);
       }
-      
+
       // Use latest attempt's executor if it exists, otherwise use current selected executor
-      if (latestAttempt.executor && availableExecutors.some(e => e.id === latestAttempt.executor)) {
+      if (
+        latestAttempt.executor &&
+        availableExecutors.some((e) => e.id === latestAttempt.executor)
+      ) {
         setCreateAttemptExecutor(latestAttempt.executor);
       } else {
         setCreateAttemptExecutor(selectedExecutor);
