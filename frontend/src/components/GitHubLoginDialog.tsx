@@ -115,7 +115,7 @@ export function GitHubLoginDialog({
         <DialogHeader>
           <DialogTitle>Sign in with GitHub</DialogTitle>
           <DialogDescription>
-            Connect your GitHub account to use all features of Vibe Kanban.
+            Connect your GitHub account to use Vibe Kanban.
           </DialogDescription>
         </DialogHeader>
         {loading ? (
