@@ -67,7 +67,7 @@ pub struct TaskAttempt {
     pub id: Uuid,
     pub task_id: Uuid, // Foreign key to Task
     pub worktree_path: String,
-    pub branch: String, // Git branch name for this task attempt
+    pub branch: String,      // Git branch name for this task attempt
     pub base_branch: String, // Base branch this attempt is based on
     pub merge_commit: Option<String>,
     pub executor: Option<String>,  // Name of the executor to use
@@ -239,11 +239,11 @@ impl TaskAttempt {
             // Default to current HEAD branch name or "main"
             let repo = Repository::open(&project.git_repo_path)?;
             let default_branch = match repo.head() {
-                Ok(head_ref) => {
-                    head_ref.shorthand().unwrap_or("main").to_string()
-                }
-                Err(e) if e.class() == git2::ErrorClass::Reference
-                    && e.code() == git2::ErrorCode::UnbornBranch => {
+                Ok(head_ref) => head_ref.shorthand().unwrap_or("main").to_string(),
+                Err(e)
+                    if e.class() == git2::ErrorClass::Reference
+                        && e.code() == git2::ErrorCode::UnbornBranch =>
+                {
                     "main".to_string() // Repository has no commits yet
                 }
                 Err(_) => "main".to_string(), // Fallback
@@ -1646,16 +1646,17 @@ impl TaskAttempt {
         }
 
         // Calculate ahead/behind counts using the stored base branch
-        let (commits_ahead, commits_behind) = if let Ok(base_branch) = main_repo.find_branch(&base_branch_name, BranchType::Local) {
-            if let Some(base_oid) = base_branch.get().target() {
-                main_repo.graph_ahead_behind(attempt_oid, base_oid)?
+        let (commits_ahead, commits_behind) =
+            if let Ok(base_branch) = main_repo.find_branch(&base_branch_name, BranchType::Local) {
+                if let Some(base_oid) = base_branch.get().target() {
+                    main_repo.graph_ahead_behind(attempt_oid, base_oid)?
+                } else {
+                    (0, 0) // Base branch has no commits
+                }
             } else {
-                (0, 0) // Base branch has no commits
-            }
-        } else {
-            // Base branch doesn't exist, assume no relationship
-            (0, 0)
-        };
+                // Base branch doesn't exist, assume no relationship
+                (0, 0)
+            };
 
         // ── detect any uncommitted / untracked changes ───────────────────────────────
         let repo_for_status = Repository::open(&project.git_repo_path)?;
