@@ -341,8 +341,15 @@ pub async fn create_github_pr(
 
     let base_branch = request
         .base_branch
-        .or(config.github.default_pr_base)
-        .unwrap_or_else(|| attempt.base_branch.clone());
+        .unwrap_or_else(|| {
+            // Use the stored base branch from the task attempt as the default
+            // Fall back to config default or "main" only if stored base branch is somehow invalid
+            if !attempt.base_branch.trim().is_empty() {
+                attempt.base_branch.clone()
+            } else {
+                config.github.default_pr_base.unwrap_or_else(|| "main".to_string())
+            }
+        });
 
     match TaskAttempt::create_github_pr(
         &app_state.db_pool,
