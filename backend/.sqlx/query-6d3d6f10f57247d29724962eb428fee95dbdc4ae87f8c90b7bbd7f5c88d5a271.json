@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT  ta.id                AS \"id!: Uuid\",\n                    ta.task_id           AS \"task_id!: Uuid\",\n                    ta.worktree_path,\n                    ta.branch,\n                    ta.merge_commit,\n                    ta.executor,\n                    ta.pr_url,\n                    ta.pr_number,\n                    ta.pr_status,\n                    ta.pr_merged_at      AS \"pr_merged_at: DateTime<Utc>\",\n                    ta.created_at        AS \"created_at!: DateTime<Utc>\",\n                    ta.updated_at        AS \"updated_at!: DateTime<Utc>\"\n            FROM    task_attempts ta\n            JOIN    tasks t ON ta.task_id = t.id\n            WHERE   ta.id = $1\n              AND   t.id  = $2\n              AND   t.project_id = $3\n        ",
+  "query": "SELECT ta.id as \"id!: Uuid\", ta.task_id as \"task_id!: Uuid\", ta.worktree_path, ta.branch, ta.base_branch, ta.merge_commit, ta.executor, ta.pr_url, ta.pr_number, ta.pr_status, ta.pr_merged_at as \"pr_merged_at: DateTime<Utc>\", ta.created_at as \"created_at!: DateTime<Utc>\", ta.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM task_attempts ta \n               JOIN tasks t ON ta.task_id = t.id \n               WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3",
   "describe": {
     "columns": [
       {
@@ -24,43 +24,48 @@
         "type_info": "Text"
       },
       {
-        "name": "merge_commit",
+        "name": "base_branch",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "executor",
+        "name": "merge_commit",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "pr_url",
+        "name": "executor",
         "ordinal": 6,
         "type_info": "Text"
       },
       {
-        "name": "pr_number",
+        "name": "pr_url",
         "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "pr_number",
+        "ordinal": 8,
         "type_info": "Integer"
       },
       {
         "name": "pr_status",
-        "ordinal": 8,
+        "ordinal": 9,
         "type_info": "Text"
       },
       {
         "name": "pr_merged_at: DateTime<Utc>",
-        "ordinal": 9,
+        "ordinal": 10,
         "type_info": "Datetime"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 10,
+        "ordinal": 11,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 11,
+        "ordinal": 12,
         "type_info": "Text"
       }
     ],
@@ -69,6 +74,7 @@
     },
     "nullable": [
       true,
+      false,
       false,
       false,
       false,
@@ -82,5 +88,5 @@
       false
     ]
   },
-  "hash": "fe7c982685e4d98b871b03535de042e64b3b28f2c2837d064031159ea5048029"
+  "hash": "6d3d6f10f57247d29724962eb428fee95dbdc4ae87f8c90b7bbd7f5c88d5a271"
 }

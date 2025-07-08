@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT ta.id as \"id!: Uuid\", ta.task_id as \"task_id!: Uuid\", ta.worktree_path, ta.branch, ta.merge_commit, ta.executor, ta.pr_url, ta.pr_number, ta.pr_status, ta.pr_merged_at as \"pr_merged_at: DateTime<Utc>\", ta.created_at as \"created_at!: DateTime<Utc>\", ta.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM task_attempts ta \n               JOIN tasks t ON ta.task_id = t.id \n               WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3",
+  "query": "INSERT INTO task_attempts (id, task_id, worktree_path, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at) \n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) \n               RETURNING id as \"id!: Uuid\", task_id as \"task_id!: Uuid\", worktree_path, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at as \"pr_merged_at: DateTime<Utc>\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -24,51 +24,57 @@
         "type_info": "Text"
       },
       {
-        "name": "merge_commit",
+        "name": "base_branch",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "executor",
+        "name": "merge_commit",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "pr_url",
+        "name": "executor",
         "ordinal": 6,
         "type_info": "Text"
       },
       {
-        "name": "pr_number",
+        "name": "pr_url",
         "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "pr_number",
+        "ordinal": 8,
         "type_info": "Integer"
       },
       {
         "name": "pr_status",
-        "ordinal": 8,
+        "ordinal": 9,
         "type_info": "Text"
       },
       {
         "name": "pr_merged_at: DateTime<Utc>",
-        "ordinal": 9,
+        "ordinal": 10,
         "type_info": "Datetime"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 10,
+        "ordinal": 11,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 11,
+        "ordinal": 12,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 3
+      "Right": 11
     },
     "nullable": [
       true,
+      false,
       false,
       false,
       false,
@@ -82,5 +88,5 @@
       false
     ]
   },
-  "hash": "c0e3402045a18d43bcbb882c9ea158f01d116d92f7f7e0fd467af8e2066dc638"
+  "hash": "5634c7b542833bc811d47391bfab0af14914e93b0dc1e9ec9de8869fe661a2d4"
 }

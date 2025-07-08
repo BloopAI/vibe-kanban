@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\", task_id as \"task_id!: Uuid\", worktree_path, branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at as \"pr_merged_at: DateTime<Utc>\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM task_attempts \n               WHERE id = $1",
+  "query": "SELECT id as \"id!: Uuid\", task_id as \"task_id!: Uuid\", worktree_path, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at as \"pr_merged_at: DateTime<Utc>\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM task_attempts \n               WHERE task_id = $1 \n               ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -24,43 +24,48 @@
         "type_info": "Text"
       },
       {
-        "name": "merge_commit",
+        "name": "base_branch",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "executor",
+        "name": "merge_commit",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "pr_url",
+        "name": "executor",
         "ordinal": 6,
         "type_info": "Text"
       },
       {
-        "name": "pr_number",
+        "name": "pr_url",
         "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "pr_number",
+        "ordinal": 8,
         "type_info": "Integer"
       },
       {
         "name": "pr_status",
-        "ordinal": 8,
+        "ordinal": 9,
         "type_info": "Text"
       },
       {
         "name": "pr_merged_at: DateTime<Utc>",
-        "ordinal": 9,
+        "ordinal": 10,
         "type_info": "Datetime"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 10,
+        "ordinal": 11,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 11,
+        "ordinal": 12,
         "type_info": "Text"
       }
     ],
@@ -69,6 +74,7 @@
     },
     "nullable": [
       true,
+      false,
       false,
       false,
       false,
@@ -82,5 +88,5 @@
       false
     ]
   },
-  "hash": "b0e812c0c8e6456e1ae11a89e8c03e29727de9d08652b61350e0555d348ecc59"
+  "hash": "849ce16b3d341fe420816fe91c345a44475a4383221bfe7711e1ee1b5b3b0aeb"
 }

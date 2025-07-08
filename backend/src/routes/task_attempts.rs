@@ -329,10 +329,20 @@ pub async fn create_github_pr(
         }
     };
 
+    // Get the task attempt to access the stored base branch
+    let attempt = match TaskAttempt::find_by_id(&app_state.db_pool, attempt_id).await {
+        Ok(Some(attempt)) => attempt,
+        Ok(None) => return Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to fetch task attempt {}: {}", attempt_id, e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
     let base_branch = request
         .base_branch
         .or(config.github.default_pr_base)
-        .unwrap_or_else(|| "main".to_string());
+        .unwrap_or_else(|| attempt.base_branch.clone());
 
     match TaskAttempt::create_github_pr(
         &app_state.db_pool,
