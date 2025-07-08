@@ -119,6 +119,9 @@ export function TaskDetailsPanel({
     handleSendFollowUp,
   } = useTaskDetails(task, projectId, isOpen);
 
+  // Use ref to track loading state to prevent dependency cycles
+  const diffLoadingRef = useRef(false);
+
   // Fetch diff when attempt changes
   const fetchDiff = useCallback(async () => {
     if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) {
@@ -128,11 +131,12 @@ export function TaskDetailsPanel({
     }
 
     // Prevent multiple concurrent requests
-    if (diffLoading) {
+    if (diffLoadingRef.current) {
       return;
     }
 
     try {
+      diffLoadingRef.current = true;
       setDiffLoading(true);
       setDiffError(null);
       const response = await makeRequest(
@@ -152,9 +156,10 @@ export function TaskDetailsPanel({
     } catch (err) {
       setDiffError('Failed to load diff');
     } finally {
+      diffLoadingRef.current = false;
       setDiffLoading(false);
     }
-  }, [projectId, selectedAttempt?.id, selectedAttempt?.task_id, diffLoading]);
+  }, [projectId, selectedAttempt?.id, selectedAttempt?.task_id]);
 
   useEffect(() => {
     if (isOpen) {
