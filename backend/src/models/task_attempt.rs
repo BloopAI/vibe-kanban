@@ -9,8 +9,9 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{project::Project, task::Task};
-use crate::{
-    services::{GitService, GitServiceError, GitHubService, GitHubServiceError, GitHubRepoInfo, CreatePrRequest, ProcessService},
+use crate::services::{
+    CreatePrRequest, GitHubRepoInfo, GitHubService, GitHubServiceError, GitService,
+    GitServiceError, ProcessService,
 };
 
 #[derive(Debug)]
@@ -239,7 +240,7 @@ impl TaskAttempt {
         let task = Task::find_by_id(pool, task_id)
             .await?
             .ok_or(TaskAttemptError::TaskNotFound)?;
-        
+
         let project = Project::find_by_id(pool, project_id)
             .await?
             .ok_or(TaskAttemptError::ProjectNotFound)?;
@@ -491,8 +492,9 @@ impl TaskAttempt {
     ) -> Result<String, TaskAttemptError> {
         let git_service = GitService::new(main_repo_path)?;
         let worktree_path = Path::new(worktree_path);
-        
-        git_service.merge_changes(worktree_path, branch_name, task_title)
+
+        git_service
+            .merge_changes(worktree_path, branch_name, task_title)
             .map_err(TaskAttemptError::from)
     }
 
@@ -504,8 +506,9 @@ impl TaskAttempt {
     ) -> Result<String, TaskAttemptError> {
         let git_service = GitService::new(main_repo_path)?;
         let worktree_path = Path::new(worktree_path);
-        
-        git_service.rebase_branch(worktree_path, new_base_branch.as_deref())
+
+        git_service
+            .rebase_branch(worktree_path, new_base_branch.as_deref())
             .map_err(TaskAttemptError::from)
     }
 
@@ -554,8 +557,6 @@ impl TaskAttempt {
         ProcessService::start_execution(pool, app_state, attempt_id, task_id, project_id).await
     }
 
-
-
     /// Start the coding agent after setup is complete or if no setup is needed
     pub async fn start_coding_agent(
         pool: &SqlitePool,
@@ -588,7 +589,10 @@ impl TaskAttempt {
         project_id: Uuid,
         prompt: &str,
     ) -> Result<Uuid, TaskAttemptError> {
-        ProcessService::start_followup_execution(pool, app_state, attempt_id, task_id, project_id, prompt).await
+        ProcessService::start_followup_execution(
+            pool, app_state, attempt_id, task_id, project_id, prompt,
+        )
+        .await
     }
 
     /// Ensure worktree exists, recreating from branch if needed (cold task support)
@@ -652,8 +656,6 @@ impl TaskAttempt {
         Ok(result_path.to_string_lossy().to_string())
     }
 
-
-
     /// Get the git diff between the base commit and the current committed worktree state
     pub async fn get_diff(
         pool: &SqlitePool,
@@ -669,7 +671,8 @@ impl TaskAttempt {
 
         if let Some(merge_commit_id) = &ctx.task_attempt.merge_commit {
             // Task attempt has been merged - show the diff from the merge commit
-            git_service.get_enhanced_diff(Path::new(""), Some(merge_commit_id))
+            git_service
+                .get_enhanced_diff(Path::new(""), Some(merge_commit_id))
                 .map_err(TaskAttemptError::from)
         } else {
             // Task attempt not yet merged - get worktree diff
@@ -677,12 +680,11 @@ impl TaskAttempt {
             let worktree_path =
                 Self::ensure_worktree_exists(pool, attempt_id, project_id, "diff").await?;
 
-            git_service.get_enhanced_diff(Path::new(&worktree_path), None)
+            git_service
+                .get_enhanced_diff(Path::new(&worktree_path), None)
                 .map_err(TaskAttemptError::from)
         }
     }
-
-
 
     /// Get the branch status for this task attempt
     pub async fn get_branch_status(
@@ -774,7 +776,8 @@ impl TaskAttempt {
         let ctx = TaskAttempt::load_context(pool, attempt_id, task_id, project_id).await?;
 
         // Use the stored base branch if no new base branch is provided
-        let effective_base_branch = new_base_branch.or_else(|| Some(ctx.task_attempt.base_branch.clone()));
+        let effective_base_branch =
+            new_base_branch.or_else(|| Some(ctx.task_attempt.base_branch.clone()));
 
         // Ensure worktree exists (recreate if needed for cold task support)
         let worktree_path =
@@ -810,8 +813,8 @@ impl TaskAttempt {
         let git_service = GitService::new(&ctx.project.git_repo_path)?;
 
         // Use GitService to delete file and commit
-        let commit_id = git_service
-            .delete_file_and_commit(Path::new(&worktree_path_str), file_path)?;
+        let commit_id =
+            git_service.delete_file_and_commit(Path::new(&worktree_path_str), file_path)?;
 
         Ok(commit_id)
     }
@@ -822,7 +825,9 @@ impl TaskAttempt {
         params: CreatePrParams<'_>,
     ) -> Result<String, TaskAttemptError> {
         // Load context with full validation
-        let ctx = TaskAttempt::load_context(pool, params.attempt_id, params.task_id, params.project_id).await?;
+        let ctx =
+            TaskAttempt::load_context(pool, params.attempt_id, params.task_id, params.project_id)
+                .await?;
 
         // Ensure worktree exists (recreate if needed for cold task support)
         let worktree_path =
@@ -834,12 +839,18 @@ impl TaskAttempt {
 
         // Use GitService to get the remote URL, then create GitHubRepoInfo
         let git_service = GitService::new(&ctx.project.git_repo_path)?;
-        let (owner, repo_name) = git_service.get_github_repo_info()
+        let (owner, repo_name) = git_service
+            .get_github_repo_info()
             .map_err(|e| TaskAttemptError::ValidationError(e.to_string()))?;
         let repo_info = GitHubRepoInfo { owner, repo_name };
 
         // Push the branch to GitHub first
-        Self::push_branch_to_github(&ctx.project.git_repo_path, &worktree_path, &ctx.task_attempt.branch, params.github_token)?;
+        Self::push_branch_to_github(
+            &ctx.project.git_repo_path,
+            &worktree_path,
+            &ctx.task_attempt.branch,
+            params.github_token,
+        )?;
 
         // Create the PR using GitHub service
         let pr_request = CreatePrRequest {
@@ -865,8 +876,6 @@ impl TaskAttempt {
         Ok(pr_info.url)
     }
 
-
-
     /// Push the branch to GitHub remote
     fn push_branch_to_github(
         git_repo_path: &str,
@@ -876,11 +885,10 @@ impl TaskAttempt {
     ) -> Result<(), TaskAttemptError> {
         // Use GitService to push to GitHub
         let git_service = GitService::new(git_repo_path)?;
-        git_service.push_to_github(Path::new(worktree_path), branch_name, github_token)
+        git_service
+            .push_to_github(Path::new(worktree_path), branch_name, github_token)
             .map_err(TaskAttemptError::from)
     }
-
-
 
     /// Update PR status and merge commit
     pub async fn update_pr_status(
@@ -913,7 +921,8 @@ impl TaskAttempt {
         // Load context with full validation
         let ctx = TaskAttempt::load_context(pool, attempt_id, task_id, project_id).await?;
 
-        let has_setup_script = ctx.project
+        let has_setup_script = ctx
+            .project
             .setup_script
             .as_ref()
             .map(|script| !script.trim().is_empty())

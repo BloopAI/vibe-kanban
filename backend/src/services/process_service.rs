@@ -1,4 +1,3 @@
-
 use sqlx::SqlitePool;
 use tracing::{debug, info};
 use uuid::Uuid;
@@ -176,11 +175,13 @@ impl ProcessService {
         // Ensure worktree exists (recreate if needed for cold task support)
         // This will resurrect the worktree at the exact same path for session continuity
         let worktree_path =
-            TaskAttempt::ensure_worktree_exists(pool, actual_attempt_id, project_id, "followup").await?;
+            TaskAttempt::ensure_worktree_exists(pool, actual_attempt_id, project_id, "followup")
+                .await?;
 
         // Find the most recent coding agent execution process to get the executor type
         // Look up processes from the ORIGINAL attempt to find the session
-        let execution_processes = ExecutionProcess::find_by_task_attempt_id(pool, attempt_id).await?;
+        let execution_processes =
+            ExecutionProcess::find_by_task_attempt_id(pool, attempt_id).await?;
         let most_recent_coding_agent = execution_processes
             .iter()
             .rev() // Reverse to get most recent first (since they're ordered by created_at ASC)
@@ -197,18 +198,19 @@ impl ProcessService {
 
         // Get the executor session to find the session ID
         // This looks up the session from the original attempt's processes
-        let executor_session = ExecutorSession::find_by_execution_process_id(pool, most_recent_coding_agent.id)
-            .await?
-            .ok_or_else(|| {
-                tracing::error!(
-                    "No executor session found for execution process {} (task attempt {})",
-                    most_recent_coding_agent.id,
-                    attempt_id
-                );
-                TaskAttemptError::ValidationError(
-                    "No executor session found for follow-up".to_string(),
-                )
-            })?;
+        let executor_session =
+            ExecutorSession::find_by_execution_process_id(pool, most_recent_coding_agent.id)
+                .await?
+                .ok_or_else(|| {
+                    tracing::error!(
+                        "No executor session found for execution process {} (task attempt {})",
+                        most_recent_coding_agent.id,
+                        attempt_id
+                    );
+                    TaskAttemptError::ValidationError(
+                        "No executor session found for follow-up".to_string(),
+                    )
+                })?;
 
         // Determine the executor config from the stored executor_type
         let executor_config = match most_recent_coding_agent.executor_type.as_deref() {

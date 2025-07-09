@@ -89,7 +89,8 @@ impl NotificationService {
                     .arg("\\a")
                     .spawn();
             }
-        } else if cfg!(target_os = "windows") || (cfg!(target_os = "linux") && crate::utils::is_wsl2())
+        } else if cfg!(target_os = "windows")
+            || (cfg!(target_os = "linux") && crate::utils::is_wsl2())
         {
             // Convert WSL path to Windows path if in WSL2
             let file_path = if crate::utils::is_wsl2() {
@@ -122,7 +123,8 @@ impl NotificationService {
             self.send_macos_notification(title, message).await;
         } else if cfg!(target_os = "linux") && !crate::utils::is_wsl2() {
             self.send_linux_notification(title, message).await;
-        } else if cfg!(target_os = "windows") || (cfg!(target_os = "linux") && crate::utils::is_wsl2())
+        } else if cfg!(target_os = "windows")
+            || (cfg!(target_os = "linux") && crate::utils::is_wsl2())
         {
             self.send_windows_notification(title, message).await;
         }
@@ -281,9 +283,13 @@ mod tests {
         assert!(!service.push_enabled);
 
         // These should be no-ops when disabled
-        service.play_sound_notification(&SoundFile::AbstractSound1).await;
+        service
+            .play_sound_notification(&SoundFile::AbstractSound1)
+            .await;
         service.send_push_notification("Test", "Message").await;
-        service.notify("Test", "Message", &SoundFile::AbstractSound1).await;
+        service
+            .notify("Test", "Message", &SoundFile::AbstractSound1)
+            .await;
     }
 
     #[tokio::test]

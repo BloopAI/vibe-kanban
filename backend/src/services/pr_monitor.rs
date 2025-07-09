@@ -1,6 +1,5 @@
 use std::{sync::Arc, time::Duration};
 
-
 use sqlx::SqlitePool;
 use tokio::{sync::RwLock, time::interval};
 use tracing::{debug, error, info, warn};
@@ -12,7 +11,7 @@ use crate::{
         task::{Task, TaskStatus},
         task_attempt::TaskAttempt,
     },
-    services::{GitHubService, GitHubRepoInfo},
+    services::{GitHubRepoInfo, GitHubService},
 };
 
 /// Service to monitor GitHub PRs and update task status when they are merged
@@ -153,7 +152,7 @@ impl PrMonitorService {
         pr_info: &PrInfo,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let github_service = GitHubService::new(&pr_info.github_token)?;
-        
+
         let repo_info = GitHubRepoInfo {
             owner: pr_info.repo_owner.clone(),
             repo_name: pr_info.repo_name.clone(),
@@ -186,8 +185,7 @@ impl PrMonitorService {
             if pr_status.merged {
                 info!(
                     "PR #{} was merged, updating task {} to done",
-                    pr_info.pr_number,
-                    pr_info.task_id
+                    pr_info.pr_number, pr_info.task_id
                 );
 
                 Task::update_status(

@@ -1,4 +1,5 @@
 use std::time::Duration;
+
 use octocrab::{Octocrab, OctocrabBuilder};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -91,7 +92,9 @@ impl GitHubService {
         let client = OctocrabBuilder::new()
             .personal_token(github_token.to_string())
             .build()
-            .map_err(|e| GitHubServiceError::AuthError(format!("Failed to create GitHub client: {}", e)))?;
+            .map_err(|e| {
+                GitHubServiceError::AuthError(format!("Failed to create GitHub client: {}", e))
+            })?;
 
         Ok(Self {
             client,
@@ -100,7 +103,10 @@ impl GitHubService {
     }
 
     /// Create a new GitHub service with custom retry configuration
-    pub fn with_retry_config(github_token: &str, retry_config: RetryConfig) -> Result<Self, GitHubServiceError> {
+    pub fn with_retry_config(
+        github_token: &str,
+        retry_config: RetryConfig,
+    ) -> Result<Self, GitHubServiceError> {
         let mut service = Self::new(github_token)?;
         service.retry_config = retry_config;
         Ok(service)
@@ -130,9 +136,8 @@ impl GitHubService {
         repo_info: &GitHubRepoInfo,
         request: &CreatePrRequest,
     ) -> Result<PullRequestInfo, GitHubServiceError> {
-        self.with_retry(|| async {
-            self.create_pr_internal(repo_info, request).await
-        }).await
+        self.with_retry(|| async { self.create_pr_internal(repo_info, request).await })
+            .await
     }
 
     async fn create_pr_internal(
@@ -181,7 +186,8 @@ impl GitHubService {
             })?;
 
         // Create the pull request
-        let pr = self.client
+        let pr = self
+            .client
             .pulls(&repo_info.owner, &repo_info.repo_name)
             .create(&request.title, &request.head_branch, &request.base_branch)
             .body(request.body.as_deref().unwrap_or(""))
@@ -221,9 +227,8 @@ impl GitHubService {
         repo_info: &GitHubRepoInfo,
         pr_number: i64,
     ) -> Result<PullRequestInfo, GitHubServiceError> {
-        self.with_retry(|| async {
-            self.update_pr_status_internal(repo_info, pr_number).await
-        }).await
+        self.with_retry(|| async { self.update_pr_status_internal(repo_info, pr_number).await })
+            .await
     }
 
     async fn update_pr_status_internal(
@@ -231,7 +236,8 @@ impl GitHubService {
         repo_info: &GitHubRepoInfo,
         pr_number: i64,
     ) -> Result<PullRequestInfo, GitHubServiceError> {
-        let pr = self.client
+        let pr = self
+            .client
             .pulls(&repo_info.owner, &repo_info.repo_name)
             .get(pr_number as u64)
             .await
@@ -267,7 +273,7 @@ impl GitHubService {
         Ok(pr_info)
     }
 
-    /// Push a branch to GitHub (this would typically be handled by GitService, 
+    /// Push a branch to GitHub (this would typically be handled by GitService,
     /// but included here for completeness of GitHub operations)
     pub async fn push_branch(
         &self,
@@ -277,7 +283,7 @@ impl GitHubService {
         // Note: This is a placeholder. Actual git operations should be handled by GitService.
         // This method is here to maintain the interface contract, but actual implementation
         // would typically delegate to GitService.
-        
+
         // Verify the branch exists on the remote
         self.with_retry(|| async {
             self.client
@@ -292,9 +298,10 @@ impl GitHubService {
                         branch_name, e
                     ))
                 })?;
-            
+
             Ok(())
-        }).await?;
+        })
+        .await?;
 
         info!("Verified branch '{}' exists on GitHub", branch_name);
         Ok(())
@@ -317,7 +324,8 @@ impl GitHubService {
                     ))
                 })?;
             Ok(())
-        }).await
+        })
+        .await
     }
 
     /// Retry wrapper for GitHub API calls with exponential backoff
@@ -327,19 +335,19 @@ impl GitHubService {
         Fut: std::future::Future<Output = Result<T, GitHubServiceError>>,
     {
         let mut last_error = None;
-        
+
         for attempt in 0..=self.retry_config.max_retries {
             match operation().await {
                 Ok(result) => return Ok(result),
                 Err(e) => {
                     last_error = Some(e);
-                    
+
                     if attempt < self.retry_config.max_retries {
                         let delay = std::cmp::min(
                             self.retry_config.base_delay * 2_u32.pow(attempt),
                             self.retry_config.max_delay,
                         );
-                        
+
                         warn!(
                             "GitHub API call failed (attempt {}/{}), retrying in {:?}: {}",
                             attempt + 1,
@@ -347,13 +355,13 @@ impl GitHubService {
                             delay,
                             last_error.as_ref().unwrap()
                         );
-                        
+
                         sleep(delay).await;
                     }
                 }
             }
         }
-        
+
         Err(last_error.unwrap())
     }
 }

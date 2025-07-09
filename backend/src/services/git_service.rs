@@ -6,8 +6,10 @@ use git2::{
 use regex;
 use tracing::{debug, info};
 
-use crate::models::task_attempt::{BranchStatus, DiffChunk, DiffChunkType, FileDiff, WorktreeDiff};
-use crate::utils::worktree_manager::WorktreeManager;
+use crate::{
+    models::task_attempt::{BranchStatus, DiffChunk, DiffChunkType, FileDiff, WorktreeDiff},
+    utils::worktree_manager::WorktreeManager,
+};
 
 #[derive(Debug)]
 pub enum GitServiceError {
@@ -57,7 +59,7 @@ impl GitService {
     /// Create a new GitService for the given repository path
     pub fn new<P: AsRef<Path>>(repo_path: P) -> Result<Self, GitServiceError> {
         let repo_path = repo_path.as_ref().to_path_buf();
-        
+
         // Validate that the path exists and is a git repository
         if !repo_path.exists() {
             return Err(GitServiceError::InvalidPath(format!(
@@ -91,7 +93,7 @@ impl GitService {
         base_branch: Option<&str>,
     ) -> Result<(), GitServiceError> {
         let repo = self.open_repo()?;
-        
+
         // Ensure parent directory exists
         if let Some(parent) = worktree_path.parent() {
             std::fs::create_dir_all(parent)?;
@@ -99,15 +101,18 @@ impl GitService {
 
         // Choose base reference
         let base_reference = if let Some(base_branch) = base_branch {
-            let branch = repo.find_branch(base_branch, BranchType::Local)
+            let branch = repo
+                .find_branch(base_branch, BranchType::Local)
                 .map_err(|_| GitServiceError::BranchNotFound(base_branch.to_string()))?;
             branch.into_reference()
         } else {
             // Handle new repositories without any commits
             match repo.head() {
                 Ok(head_ref) => head_ref,
-                Err(e) if e.class() == git2::ErrorClass::Reference 
-                    && e.code() == git2::ErrorCode::UnbornBranch => {
+                Err(e)
+                    if e.class() == git2::ErrorClass::Reference
+                        && e.code() == git2::ErrorCode::UnbornBranch =>
+                {
                     // Repository has no commits yet, create an initial commit
                     self.create_initial_commit(&repo)?;
                     repo.find_reference("refs/heads/main")?
@@ -127,7 +132,11 @@ impl GitService {
         // Create the worktree at the specified path
         repo.worktree(branch_name, worktree_path, Some(&worktree_opts))?;
 
-        info!("Created worktree '{}' at path: {}", branch_name, worktree_path.display());
+        info!(
+            "Created worktree '{}' at path: {}",
+            branch_name,
+            worktree_path.display()
+        );
         Ok(())
     }
 
@@ -138,7 +147,7 @@ impl GitService {
             git2::Signature::now("Vibe Kanban", "noreply@vibekanban.com")
                 .expect("Failed to create fallback signature")
         });
-        
+
         let tree_id = {
             let tree_builder = repo.treebuilder(None)?;
             tree_builder.write()?
@@ -170,7 +179,7 @@ impl GitService {
         task_title: &str,
     ) -> Result<String, GitServiceError> {
         let main_repo = self.open_repo()?;
-        
+
         // Open the worktree repository to get the latest commit
         let worktree_repo = Repository::open(worktree_path)?;
         let worktree_head = worktree_repo.head()?;
@@ -221,13 +230,11 @@ impl GitService {
         // Get the target base branch reference
         let base_branch_name = match new_base_branch {
             Some(branch) => branch.to_string(),
-            None => {
-                main_repo
-                    .head()
-                    .ok()
-                    .and_then(|head| head.shorthand().map(|s| s.to_string()))
-                    .unwrap_or_else(|| "main".to_string())
-            }
+            None => main_repo
+                .head()
+                .ok()
+                .and_then(|head| head.shorthand().map(|s| s.to_string()))
+                .unwrap_or_else(|| "main".to_string()),
         };
         let base_branch_name = base_branch_name.as_str();
 
@@ -266,7 +273,8 @@ impl GitService {
                 // For now, abort the rebase on conflicts
                 rebase.abort()?;
                 return Err(GitServiceError::MergeConflicts(
-                    "Rebase failed due to conflicts. Please resolve conflicts manually.".to_string(),
+                    "Rebase failed due to conflicts. Please resolve conflicts manually."
+                        .to_string(),
                 ));
             }
 
@@ -352,13 +360,17 @@ impl GitService {
                     let old_file = delta.old_file();
                     let new_file = delta.new_file();
 
-                    if let Ok(diff_chunks) = self.generate_git_diff_chunks(&main_repo, &old_file, &new_file, path_str) {
+                    if let Ok(diff_chunks) =
+                        self.generate_git_diff_chunks(&main_repo, &old_file, &new_file, path_str)
+                    {
                         if !diff_chunks.is_empty() {
                             files.push(FileDiff {
                                 path: path_str.to_string(),
                                 chunks: diff_chunks,
                             });
-                        } else if delta.status() == git2::Delta::Added || delta.status() == git2::Delta::Deleted {
+                        } else if delta.status() == git2::Delta::Added
+                            || delta.status() == git2::Delta::Deleted
+                        {
                             files.push(FileDiff {
                                 path: path_str.to_string(),
                                 chunks: vec![DiffChunk {
@@ -431,13 +443,20 @@ impl GitService {
                     let old_file = delta.old_file();
                     let new_file = delta.new_file();
 
-                    if let Ok(diff_chunks) = self.generate_git_diff_chunks(&worktree_repo, &old_file, &new_file, path_str) {
+                    if let Ok(diff_chunks) = self.generate_git_diff_chunks(
+                        &worktree_repo,
+                        &old_file,
+                        &new_file,
+                        path_str,
+                    ) {
                         if !diff_chunks.is_empty() {
                             files.push(FileDiff {
                                 path: path_str.to_string(),
                                 chunks: diff_chunks,
                             });
-                        } else if delta.status() == git2::Delta::Added || delta.status() == git2::Delta::Deleted {
+                        } else if delta.status() == git2::Delta::Added
+                            || delta.status() == git2::Delta::Deleted
+                        {
                             files.push(FileDiff {
                                 path: path_str.to_string(),
                                 chunks: vec![DiffChunk {
@@ -474,10 +493,8 @@ impl GitService {
         unstaged_diff_opts.interhunk_lines(0);
         unstaged_diff_opts.include_untracked(true);
 
-        let unstaged_diff = worktree_repo.diff_tree_to_workdir_with_index(
-            Some(&current_tree),
-            Some(&mut unstaged_diff_opts),
-        )?;
+        let unstaged_diff = worktree_repo
+            .diff_tree_to_workdir_with_index(Some(&current_tree), Some(&mut unstaged_diff_opts))?;
 
         // Process unstaged changes
         unstaged_diff.foreach(
@@ -540,24 +557,20 @@ impl GitService {
                 Some(Path::new(file_path)),
                 Some(&mut diff_opts),
             )?,
-            (None, Some(new_b)) => {
-                git2::Patch::from_buffers(
-                    &[],
-                    Some(Path::new(file_path)),
-                    new_b.content(),
-                    Some(Path::new(file_path)),
-                    Some(&mut diff_opts),
-                )?
-            }
-            (Some(old_b), None) => {
-                git2::Patch::from_blob_and_buffer(
-                    old_b,
-                    Some(Path::new(file_path)),
-                    &[],
-                    Some(Path::new(file_path)),
-                    Some(&mut diff_opts),
-                )?
-            }
+            (None, Some(new_b)) => git2::Patch::from_buffers(
+                &[],
+                Some(Path::new(file_path)),
+                new_b.content(),
+                Some(Path::new(file_path)),
+                Some(&mut diff_opts),
+            )?,
+            (Some(old_b), None) => git2::Patch::from_blob_and_buffer(
+                old_b,
+                Some(Path::new(file_path)),
+                &[],
+                Some(Path::new(file_path)),
+                Some(&mut diff_opts),
+            )?,
             (None, None) => {
                 return Ok(chunks);
             }
@@ -605,7 +618,9 @@ impl GitService {
             let working_content = self.get_working_file_content(worktree_path, path_str, delta)?;
 
             if base_content != working_content {
-                if let Ok(combined_chunks) = self.create_combined_diff_chunks(&base_content, &working_content, path_str) {
+                if let Ok(combined_chunks) =
+                    self.create_combined_diff_chunks(&base_content, &working_content, path_str)
+                {
                     existing_file.chunks = combined_chunks;
                 }
             }
@@ -615,7 +630,9 @@ impl GitService {
             let working_content = self.get_working_file_content(worktree_path, path_str, delta)?;
 
             if base_content != working_content || delta.status() != git2::Delta::Modified {
-                if let Ok(chunks) = self.create_combined_diff_chunks(&base_content, &working_content, path_str) {
+                if let Ok(chunks) =
+                    self.create_combined_diff_chunks(&base_content, &working_content, path_str)
+                {
                     if !chunks.is_empty() {
                         files.push(FileDiff {
                             path: path_str.to_string(),
@@ -677,8 +694,7 @@ impl GitService {
     ) -> Result<String, GitServiceError> {
         if delta.status() != git2::Delta::Deleted {
             let file_path = worktree_path.join(path_str);
-            std::fs::read_to_string(&file_path)
-                .map_err(GitServiceError::from)
+            std::fs::read_to_string(&file_path).map_err(GitServiceError::from)
         } else {
             Ok(String::new())
         }
@@ -735,7 +751,11 @@ impl GitService {
     }
 
     /// Delete a file from the repository and commit the change
-    pub fn delete_file_and_commit(&self, worktree_path: &Path, file_path: &str) -> Result<String, GitServiceError> {
+    pub fn delete_file_and_commit(
+        &self,
+        worktree_path: &Path,
+        file_path: &str,
+    ) -> Result<String, GitServiceError> {
         let repo = Repository::open(worktree_path)?;
 
         // Get the absolute path to the file within the worktree
@@ -785,7 +805,11 @@ impl GitService {
     }
 
     /// Delete a file from the repository (legacy method without commit)
-    pub fn delete_file(&self, worktree_path: &Path, file_path: &str) -> Result<(), GitServiceError> {
+    pub fn delete_file(
+        &self,
+        worktree_path: &Path,
+        file_path: &str,
+    ) -> Result<(), GitServiceError> {
         let worktree_repo = Repository::open(worktree_path)?;
         let mut index = worktree_repo.index()?;
 
@@ -823,7 +847,8 @@ impl GitService {
         let base_commit = base_branch.get().peel_to_commit()?;
 
         // Calculate ahead/behind counts
-        let (commits_ahead, commits_behind) = main_repo.graph_ahead_behind(head_commit.id(), base_commit.id())?;
+        let (commits_ahead, commits_behind) =
+            main_repo.graph_ahead_behind(head_commit.id(), base_commit.id())?;
 
         // Check if branch is up to date
         let up_to_date = commits_ahead == 0 && commits_behind == 0;
@@ -849,11 +874,13 @@ impl GitService {
     /// Get the default branch name for the repository
     pub fn get_default_branch_name(&self) -> Result<String, GitServiceError> {
         let repo = self.open_repo()?;
-        
+
         let result = match repo.head() {
             Ok(head_ref) => Ok(head_ref.shorthand().unwrap_or("main").to_string()),
-            Err(e) if e.class() == git2::ErrorClass::Reference 
-                && e.code() == git2::ErrorCode::UnbornBranch => {
+            Err(e)
+                if e.class() == git2::ErrorClass::Reference
+                    && e.code() == git2::ErrorCode::UnbornBranch =>
+            {
                 Ok("main".to_string()) // Repository has no commits yet
             }
             Err(_) => Ok("main".to_string()), // Fallback
@@ -875,7 +902,7 @@ impl GitService {
     /// Remove a worktree (cleanup operation)
     pub fn remove_worktree(&self, worktree_name: &str) -> Result<(), GitServiceError> {
         let repo = self.open_repo()?;
-        
+
         // Find and remove the worktree
         if let Ok(worktree) = repo.find_worktree(worktree_name) {
             // Try to prune the worktree directly
@@ -950,7 +977,9 @@ impl GitService {
         let repo_path = repo
             .workdir()
             .ok_or_else(|| {
-                GitServiceError::InvalidRepository("Repository has no working directory".to_string())
+                GitServiceError::InvalidRepository(
+                    "Repository has no working directory".to_string(),
+                )
             })?
             .to_str()
             .ok_or_else(|| {
@@ -964,10 +993,12 @@ impl GitService {
             stored_worktree_path.to_path_buf(),
         )
         .await
-        .map_err(|e| GitServiceError::IoError(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("WorktreeManager error: {}", e),
-        )))?;
+        .map_err(|e| {
+            GitServiceError::IoError(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("WorktreeManager error: {}", e),
+            ))
+        })?;
 
         info!(
             "Successfully recreated worktree at original path: {} -> {}",
@@ -1072,19 +1103,21 @@ impl GitService {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::fs;
+
     use tempfile::TempDir;
+
+    use super::*;
 
     fn create_test_repo() -> (TempDir, Repository) {
         let temp_dir = TempDir::new().unwrap();
         let repo = Repository::init(temp_dir.path()).unwrap();
-        
+
         // Configure the repository
         let mut config = repo.config().unwrap();
         config.set_str("user.name", "Test User").unwrap();
         config.set_str("user.email", "test@example.com").unwrap();
-        
+
         (temp_dir, repo)
     }
 

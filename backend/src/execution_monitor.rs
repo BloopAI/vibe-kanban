@@ -391,8 +391,6 @@ async fn cleanup_orphaned_worktree_directory(
     Ok(())
 }
 
-
-
 pub async fn execution_monitor(app_state: AppState) {
     let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
     let mut cleanup_interval = tokio::time::interval(tokio::time::Duration::from_secs(1800)); // 30 minutes
@@ -792,7 +790,7 @@ async fn handle_coding_agent_completion(
     // Send notifications if enabled
     let sound_enabled = app_state.get_sound_alerts_enabled().await;
     let push_enabled = app_state.get_push_notifications_enabled().await;
-    
+
     if sound_enabled || push_enabled {
         let sound_file = app_state.get_sound_file().await;
         let notification_config = NotificationConfig {
@@ -800,7 +798,7 @@ async fn handle_coding_agent_completion(
             push_enabled,
             sound_file: sound_file.clone(),
         };
-        
+
         let notification_service = NotificationService::new(notification_config);
         let notification_title = "Task Complete";
         let notification_message = if success {
@@ -808,8 +806,10 @@ async fn handle_coding_agent_completion(
         } else {
             "Task execution failed"
         };
-        
-        notification_service.notify(notification_title, notification_message, &sound_file).await;
+
+        notification_service
+            .notify(notification_title, notification_message, &sound_file)
+            .await;
     }
 
     // Get task attempt to access worktree path for committing changes
