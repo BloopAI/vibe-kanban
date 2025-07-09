@@ -11,7 +11,7 @@ use uuid::Uuid;
 use super::{project::Project, task::Task};
 use crate::{
     executor::Executor,
-    services::{GitService, GitServiceError, GitHubService, GitHubServiceError, CreatePrRequest},
+    services::{GitService, GitServiceError, GitHubService, GitHubServiceError, GitHubRepoInfo, CreatePrRequest},
     utils::shell::get_shell_command,
 };
 
@@ -1608,8 +1608,11 @@ impl TaskAttempt {
         // Create GitHub service instance
         let github_service = GitHubService::new(params.github_token)?;
 
-        // Extract GitHub repository information from the project path
-        let repo_info = GitHubService::extract_repo_info(&project.git_repo_path)?;
+        // Use GitService to get the remote URL, then create GitHubRepoInfo
+        let git_service = GitService::new(&project.git_repo_path)?;
+        let (owner, repo_name) = git_service.get_github_repo_info()
+            .map_err(|e| TaskAttemptError::ValidationError(e.to_string()))?;
+        let repo_info = GitHubRepoInfo { owner, repo_name };
 
         // Push the branch to GitHub first
         Self::push_branch_to_github(&project.git_repo_path, &worktree_path, &attempt.branch, params.github_token)?;
