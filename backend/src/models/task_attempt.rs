@@ -11,7 +11,7 @@ use uuid::Uuid;
 use super::{project::Project, task::Task};
 use crate::{
     executor::Executor,
-    services::{GitService, GitServiceError},
+    services::{GitService, GitServiceError, GitHubService, GitHubServiceError, GitHubRepoInfo, CreatePrRequest},
     utils::shell::get_shell_command,
 };
 
@@ -20,6 +20,7 @@ pub enum TaskAttemptError {
     Database(sqlx::Error),
     Git(GitError),
     GitService(GitServiceError),
+    GitHubService(GitHubServiceError),
     TaskNotFound,
     ProjectNotFound,
     ValidationError(String),
@@ -32,6 +33,7 @@ impl std::fmt::Display for TaskAttemptError {
             TaskAttemptError::Database(e) => write!(f, "Database error: {}", e),
             TaskAttemptError::Git(e) => write!(f, "Git error: {}", e),
             TaskAttemptError::GitService(e) => write!(f, "Git service error: {}", e),
+            TaskAttemptError::GitHubService(e) => write!(f, "GitHub service error: {}", e),
             TaskAttemptError::TaskNotFound => write!(f, "Task not found"),
             TaskAttemptError::ProjectNotFound => write!(f, "Project not found"),
             TaskAttemptError::ValidationError(e) => write!(f, "Validation error: {}", e),
@@ -57,6 +59,12 @@ impl From<GitError> for TaskAttemptError {
 impl From<GitServiceError> for TaskAttemptError {
     fn from(err: GitServiceError) -> Self {
         TaskAttemptError::GitService(err)
+    }
+}
+
+impl From<GitHubServiceError> for TaskAttemptError {
+    fn from(err: GitHubServiceError) -> Self {
+        TaskAttemptError::GitHubService(err)
     }
 }
 
@@ -1597,51 +1605,43 @@ impl TaskAttempt {
             Self::ensure_worktree_exists(pool, params.attempt_id, params.project_id, "GitHub PR")
                 .await?;
 
-        // Extract GitHub repository information from the project path
-        let (owner, repo_name) = Self::extract_github_repo_info(&project.git_repo_path)?;
+        // Create GitHub service instance
+        let github_service = GitHubService::new(params.github_token)?;
+
+        // Use GitService to get the remote URL, then create GitHubRepoInfo
+        let git_service = GitService::new(&project.git_repo_path)?;
+        let (owner, repo_name) = git_service.get_github_repo_info()
+            .map_err(|e| TaskAttemptError::ValidationError(e.to_string()))?;
+        let repo_info = GitHubRepoInfo { owner, repo_name };
 
         // Push the branch to GitHub first
         Self::push_branch_to_github(&project.git_repo_path, &worktree_path, &attempt.branch, params.github_token)?;
 
-        // Create the PR using Octocrab
-        let pr_url = Self::create_pr_with_octocrab(
-            params.github_token,
-            &owner,
-            &repo_name,
-            &attempt.branch,
-            params.base_branch.unwrap_or("main"),
-            params.title,
-            params.body,
-        )
-        .await?;
+        // Create the PR using GitHub service
+        let pr_request = CreatePrRequest {
+            title: params.title.to_string(),
+            body: params.body.map(|s| s.to_string()),
+            head_branch: attempt.branch.clone(),
+            base_branch: params.base_branch.unwrap_or("main").to_string(),
+        };
 
-        // Extract PR number from URL (GitHub URLs are in format: https://github.com/owner/repo/pull/123)
-        let pr_number = pr_url
-            .split('/')
-            .next_back()
-            .and_then(|n| n.parse::<i64>().ok());
+        let pr_info = github_service.create_pr(&repo_info, &pr_request).await?;
 
         // Update the task attempt with PR information
         sqlx::query!(
             "UPDATE task_attempts SET pr_url = $1, pr_number = $2, pr_status = $3, updated_at = datetime('now') WHERE id = $4",
-            pr_url,
-            pr_number,
-            "open",
+            pr_info.url,
+            pr_info.number,
+            pr_info.status,
             params.attempt_id
         )
         .execute(pool)
         .await?;
 
-        Ok(pr_url)
+        Ok(pr_info.url)
     }
 
-    /// Extract GitHub owner and repo name from git repo path
-    fn extract_github_repo_info(git_repo_path: &str) -> Result<(String, String), TaskAttemptError> {
-        // Use GitService to extract GitHub repo info
-        let git_service = GitService::new(git_repo_path)?;
-        git_service.get_github_repo_info()
-            .map_err(|e| TaskAttemptError::ValidationError(e.to_string()))
-    }
+
 
     /// Push the branch to GitHub remote
     fn push_branch_to_github(
@@ -1656,76 +1656,7 @@ impl TaskAttempt {
             .map_err(TaskAttemptError::from)
     }
 
-    /// Create a PR using Octocrab
-    async fn create_pr_with_octocrab(
-        github_token: &str,
-        owner: &str,
-        repo_name: &str,
-        head_branch: &str,
-        base_branch: &str,
-        title: &str,
-        body: Option<&str>,
-    ) -> Result<String, TaskAttemptError> {
-        let octocrab = octocrab::OctocrabBuilder::new()
-            .personal_token(github_token.to_string())
-            .build()
-            .map_err(|e| {
-                TaskAttemptError::ValidationError(format!("Failed to create GitHub client: {}", e))
-            })?;
 
-        // Verify repository access
-        octocrab.repos(owner, repo_name).get().await.map_err(|e| {
-            TaskAttemptError::ValidationError(format!(
-                "Cannot access repository {}/{}: {}",
-                owner, repo_name, e
-            ))
-        })?;
-
-        // Check if the base branch exists
-        octocrab
-            .repos(owner, repo_name)
-            .get_ref(&octocrab::params::repos::Reference::Branch(
-                base_branch.to_string(),
-            ))
-            .await
-            .map_err(|e| {
-                TaskAttemptError::ValidationError(format!(
-                    "Base branch '{}' does not exist: {}",
-                    base_branch, e
-                ))
-            })?;
-
-        // Check if the head branch exists
-        octocrab.repos(owner, repo_name)
-            .get_ref(&octocrab::params::repos::Reference::Branch(head_branch.to_string())).await
-            .map_err(|e| TaskAttemptError::ValidationError(format!("Head branch '{}' does not exist. Make sure the branch was pushed successfully: {}", head_branch, e)))?;
-
-        let pr = octocrab
-            .pulls(owner, repo_name)
-            .create(title, head_branch, base_branch)
-            .body(body.unwrap_or(""))
-            .send()
-            .await
-            .map_err(|e| match e {
-                octocrab::Error::GitHub { source, .. } => {
-                    TaskAttemptError::ValidationError(format!(
-                        "GitHub API error: {} (status: {})",
-                        source.message,
-                        source.status_code.as_u16()
-                    ))
-                }
-                _ => TaskAttemptError::ValidationError(format!("Failed to create PR: {}", e)),
-            })?;
-
-        info!(
-            "Created GitHub PR #{} for branch {}",
-            pr.number, head_branch
-        );
-        Ok(pr
-            .html_url
-            .map(|url| url.to_string())
-            .unwrap_or_else(|| "".to_string()))
-    }
 
     /// Update PR status and merge commit
     pub async fn update_pr_status(

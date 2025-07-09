@@ -1,16 +1,18 @@
 use std::{sync::Arc, time::Duration};
 
-use chrono::Utc;
-use octocrab::{models::IssueState, Octocrab};
+
 use sqlx::SqlitePool;
 use tokio::{sync::RwLock, time::interval};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
-use crate::models::{
-    config::Config,
-    task::{Task, TaskStatus},
-    task_attempt::TaskAttempt,
+use crate::{
+    models::{
+        config::Config,
+        task::{Task, TaskStatus},
+        task_attempt::TaskAttempt,
+    },
+    services::{GitHubService, GitHubRepoInfo},
 };
 
 /// Service to monitor GitHub PRs and update task status when they are merged
@@ -150,57 +152,41 @@ impl PrMonitorService {
         &self,
         pr_info: &PrInfo,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let octocrab = Octocrab::builder()
-            .personal_token(pr_info.github_token.clone())
-            .build()?;
-
-        let pr = octocrab
-            .pulls(&pr_info.repo_owner, &pr_info.repo_name)
-            .get(pr_info.pr_number as u64)
-            .await?;
-
-        let new_status = match pr.state {
-            Some(IssueState::Open) => "open",
-            Some(IssueState::Closed) => {
-                if pr.merged_at.is_some() {
-                    "merged"
-                } else {
-                    "closed"
-                }
-            }
-            None => "unknown",    // Should not happen for PRs
-            Some(_) => "unknown", // Handle any other states
+        let github_service = GitHubService::new(&pr_info.github_token)?;
+        
+        let repo_info = GitHubRepoInfo {
+            owner: pr_info.repo_owner.clone(),
+            repo_name: pr_info.repo_name.clone(),
         };
+
+        let pr_status = github_service
+            .update_pr_status(&repo_info, pr_info.pr_number)
+            .await?;
 
         debug!(
             "PR #{} status: {} (was open)",
-            pr_info.pr_number, new_status
+            pr_info.pr_number, pr_status.status
         );
 
         // Update the PR status in the database
-        if new_status != "open" {
+        if pr_status.status != "open" {
             // Extract merge commit SHA if the PR was merged
-            let merge_commit_sha = if new_status == "merged" {
-                pr.merge_commit_sha.as_deref()
-            } else {
-                None
-            };
+            let merge_commit_sha = pr_status.merge_commit_sha.as_deref();
 
             TaskAttempt::update_pr_status(
                 &self.pool,
                 pr_info.attempt_id,
-                new_status,
-                pr.merged_at.map(|dt| dt.with_timezone(&Utc)),
+                &pr_status.status,
+                pr_status.merged_at,
                 merge_commit_sha,
             )
             .await?;
 
             // If the PR was merged, update the task status to done
-            if new_status == "merged" {
+            if pr_status.merged {
                 info!(
-                    "PR #{} was merged with commit {}, updating task {} to done",
+                    "PR #{} was merged, updating task {} to done",
                     pr_info.pr_number,
-                    merge_commit_sha.unwrap_or("unknown"),
                     pr_info.task_id
                 );
 
@@ -217,29 +203,12 @@ impl PrMonitorService {
         Ok(())
     }
 
-    /// Extract GitHub owner and repo name from git repo path (reused from TaskAttempt)
+    /// Extract GitHub owner and repo name from git repo path
     fn extract_github_repo_info(
         git_repo_path: &str,
     ) -> Result<(String, String), Box<dyn std::error::Error + Send + Sync>> {
-        use git2::Repository;
-
-        // Try to extract from remote origin URL
-        let repo = Repository::open(git_repo_path)?;
-        let remote = repo
-            .find_remote("origin")
-            .map_err(|_| "No 'origin' remote found")?;
-
-        let url = remote.url().ok_or("Remote origin has no URL")?;
-
-        // Parse GitHub URL (supports both HTTPS and SSH formats)
-        let github_regex = regex::Regex::new(r"github\.com[:/]([^/]+)/(.+?)(?:\.git)?/?$")?;
-
-        if let Some(captures) = github_regex.captures(url) {
-            let owner = captures.get(1).unwrap().as_str().to_string();
-            let repo_name = captures.get(2).unwrap().as_str().to_string();
-            Ok((owner, repo_name))
-        } else {
-            Err(format!("Not a GitHub repository: {}", url).into())
-        }
+        let repo_info = GitHubService::extract_repo_info(git_repo_path)
+            .map_err(|e| format!("Failed to extract GitHub repo info: {}", e))?;
+        Ok((repo_info.owner, repo_info.repo_name))
     }
 }
