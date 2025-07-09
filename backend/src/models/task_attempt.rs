@@ -23,7 +23,6 @@ pub enum TaskAttemptError {
     TaskNotFound,
     ProjectNotFound,
     ValidationError(String),
-
 }
 
 impl std::fmt::Display for TaskAttemptError {
@@ -555,8 +554,6 @@ impl TaskAttempt {
     ) -> Result<(), TaskAttemptError> {
         ProcessService::start_execution(pool, app_state, attempt_id, task_id, project_id).await
     }
-
-
 
     /// Start a dev server for this task attempt
     pub async fn start_dev_server(

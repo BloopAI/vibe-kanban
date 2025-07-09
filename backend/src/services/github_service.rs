@@ -98,8 +98,6 @@ impl GitHubService {
         })
     }
 
-
-
     /// Extract GitHub repository information from a repository URL
     pub fn extract_repo_info(repo_url: &str) -> Result<GitHubRepoInfo, GitHubServiceError> {
         // Parse GitHub URL (supports both HTTPS and SSH formats)
@@ -182,13 +180,11 @@ impl GitHubService {
             .send()
             .await
             .map_err(|e| match e {
-                octocrab::Error::GitHub { source, .. } => {
-                    GitHubServiceError::PullRequest(format!(
-                        "GitHub API error: {} (status: {})",
-                        source.message,
-                        source.status_code.as_u16()
-                    ))
-                }
+                octocrab::Error::GitHub { source, .. } => GitHubServiceError::PullRequest(format!(
+                    "GitHub API error: {} (status: {})",
+                    source.message,
+                    source.status_code.as_u16()
+                )),
                 _ => GitHubServiceError::PullRequest(format!("Failed to create PR: {}", e)),
             })?;
 
@@ -230,10 +226,7 @@ impl GitHubService {
             .get(pr_number as u64)
             .await
             .map_err(|e| {
-                GitHubServiceError::PullRequest(format!(
-                    "Failed to get PR #{}: {}",
-                    pr_number, e
-                ))
+                GitHubServiceError::PullRequest(format!("Failed to get PR #{}: {}", pr_number, e))
             })?;
 
         let status = match pr.state {
@@ -260,8 +253,6 @@ impl GitHubService {
 
         Ok(pr_info)
     }
-
-
 
     /// Retry wrapper for GitHub API calls with exponential backoff
     async fn with_retry<F, Fut, T>(&self, operation: F) -> Result<T, GitHubServiceError>

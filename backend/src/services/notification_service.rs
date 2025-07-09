@@ -37,10 +37,6 @@ impl NotificationService {
         }
     }
 
-
-
-
-
     /// Send both sound and push notifications if enabled
     pub async fn notify(&self, title: &str, message: &str, sound_file: &SoundFile) {
         if self.sound_enabled {
@@ -51,8 +47,6 @@ impl NotificationService {
             self.send_push_notification(title, message).await;
         }
     }
-
-
 
     /// Play a system sound notification across platforms
     pub async fn play_sound_notification(&self, sound_file: &SoundFile) {
@@ -267,7 +261,3 @@ impl NotificationService {
         }
     }
 }
-
-
-
-
