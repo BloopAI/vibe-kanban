@@ -1,5 +1,3 @@
-use std::sync::OnceLock;
-
 use git2::Repository;
 use uuid::Uuid;
 
@@ -11,7 +9,7 @@ use crate::{
         task_attempt::{TaskAttempt, TaskAttemptStatus},
         task_attempt_activity::{CreateTaskAttemptActivity, TaskAttemptActivity},
     },
-    services::task_execution::ProcessService,
+    services::task_execution::{NotificationConfig, NotificationService, ProcessService},
     utils::worktree_manager::WorktreeManager,
 };
 
@@ -393,198 +391,7 @@ async fn cleanup_orphaned_worktree_directory(
     Ok(())
 }
 
-/// Cache for WSL root path from PowerShell
-static WSL_ROOT_PATH_CACHE: OnceLock<Option<String>> = OnceLock::new();
 
-/// Get WSL root path via PowerShell (cached)
-async fn get_wsl_root_path() -> Option<String> {
-    if let Some(cached) = WSL_ROOT_PATH_CACHE.get() {
-        return cached.clone();
-    }
-
-    match tokio::process::Command::new("powershell.exe")
-        .arg("-c")
-        .arg("(Get-Location).Path -replace '^.*::', ''")
-        .current_dir("/")
-        .output()
-        .await
-    {
-        Ok(output) => {
-            match String::from_utf8(output.stdout) {
-                Ok(pwd_str) => {
-                    let pwd = pwd_str.trim();
-                    tracing::info!("WSL root path detected: {}", pwd);
-
-                    // Cache the result
-                    let _ = WSL_ROOT_PATH_CACHE.set(Some(pwd.to_string()));
-                    return Some(pwd.to_string());
-                }
-                Err(e) => {
-                    tracing::error!("Failed to parse PowerShell pwd output as UTF-8: {}", e);
-                }
-            }
-        }
-        Err(e) => {
-            tracing::error!("Failed to execute PowerShell pwd command: {}", e);
-        }
-    }
-
-    // Cache the failure result
-    let _ = WSL_ROOT_PATH_CACHE.set(None);
-    None
-}
-
-/// Convert WSL path to Windows UNC path for PowerShell
-async fn wsl_to_windows_path(wsl_path: &std::path::Path) -> Option<String> {
-    let path_str = wsl_path.to_string_lossy();
-
-    // Relative paths work fine as-is in PowerShell
-    if !path_str.starts_with('/') {
-        tracing::debug!("Using relative path as-is: {}", path_str);
-        return Some(path_str.to_string());
-    }
-
-    // Get cached WSL root path from PowerShell
-    if let Some(wsl_root) = get_wsl_root_path().await {
-        // Simply concatenate WSL root with the absolute path - PowerShell doesn't mind /
-        let windows_path = format!("{}{}", wsl_root, path_str);
-        tracing::debug!("WSL path converted: {} -> {}", path_str, windows_path);
-        Some(windows_path)
-    } else {
-        tracing::error!(
-            "Failed to determine WSL root path for conversion: {}",
-            path_str
-        );
-        None
-    }
-}
-
-/// Play a system sound notification
-async fn play_sound_notification(sound_file: &crate::models::config::SoundFile) {
-    let file_path = match sound_file.get_path().await {
-        Ok(path) => path,
-        Err(e) => {
-            tracing::error!("Failed to create cached sound file: {}", e);
-            return;
-        }
-    };
-
-    // Use platform-specific sound notification
-    // Note: spawn() calls are intentionally not awaited - sound notifications should be fire-and-forget
-    if cfg!(target_os = "macos") {
-        let _ = tokio::process::Command::new("afplay")
-            .arg(&file_path)
-            .spawn();
-    } else if cfg!(target_os = "linux") && !crate::utils::is_wsl2() {
-        // Try different Linux audio players
-        if tokio::process::Command::new("paplay")
-            .arg(&file_path)
-            .spawn()
-            .is_ok()
-        {
-            // Success with paplay
-        } else if tokio::process::Command::new("aplay")
-            .arg(&file_path)
-            .spawn()
-            .is_ok()
-        {
-            // Success with aplay
-        } else {
-            // Try system bell as fallback
-            let _ = tokio::process::Command::new("echo")
-                .arg("-e")
-                .arg("\\a")
-                .spawn();
-        }
-    } else if cfg!(target_os = "windows") || (cfg!(target_os = "linux") && crate::utils::is_wsl2())
-    {
-        // Convert WSL path to Windows path if in WSL2
-        let file_path = if crate::utils::is_wsl2() {
-            if let Some(windows_path) = wsl_to_windows_path(&file_path).await {
-                windows_path
-            } else {
-                file_path.to_string_lossy().to_string()
-            }
-        } else {
-            file_path.to_string_lossy().to_string()
-        };
-
-        let _ = tokio::process::Command::new("powershell.exe")
-            .arg("-c")
-            .arg(format!(
-                r#"(New-Object Media.SoundPlayer "{}").PlaySync()"#,
-                file_path
-            ))
-            .spawn();
-    }
-}
-
-/// Send a cross-platform push notification
-async fn send_push_notification(title: &str, message: &str) {
-    if cfg!(target_os = "macos") {
-        let script = format!(
-            r#"display notification "{message}" with title "{title}" sound name "Glass""#,
-            message = message.replace('"', r#"\""#),
-            title = title.replace('"', r#"\""#)
-        );
-
-        let _ = tokio::process::Command::new("osascript")
-            .arg("-e")
-            .arg(script)
-            .spawn();
-    } else if cfg!(target_os = "linux") && !crate::utils::is_wsl2() {
-        // Linux: Use notify-rust crate - fire and forget
-        use notify_rust::Notification;
-
-        let title = title.to_string();
-        let message = message.to_string();
-
-        let _handle = tokio::task::spawn_blocking(move || {
-            if let Err(e) = Notification::new()
-                .summary(&title)
-                .body(&message)
-                .timeout(10000)
-                .show()
-            {
-                tracing::error!("Failed to send Linux notification: {}", e);
-            }
-        });
-        drop(_handle); // Don't await, fire-and-forget
-    } else if cfg!(target_os = "windows") || (cfg!(target_os = "linux") && crate::utils::is_wsl2())
-    {
-        // Windows and WSL2: Use PowerShell toast notification script
-        let script_path = match crate::utils::get_powershell_script().await {
-            Ok(path) => path,
-            Err(e) => {
-                tracing::error!("Failed to get PowerShell script: {}", e);
-                return;
-            }
-        };
-
-        // Convert WSL path to Windows path if in WSL2
-        let script_path_str = if crate::utils::is_wsl2() {
-            if let Some(windows_path) = wsl_to_windows_path(&script_path).await {
-                windows_path
-            } else {
-                script_path.to_string_lossy().to_string()
-            }
-        } else {
-            script_path.to_string_lossy().to_string()
-        };
-
-        let _ = tokio::process::Command::new("powershell.exe")
-            .arg("-NoProfile")
-            .arg("-ExecutionPolicy")
-            .arg("Bypass")
-            .arg("-File")
-            .arg(script_path_str)
-            .arg("-Title")
-            .arg(title)
-            .arg("-Message")
-            .arg(message)
-            .spawn();
-    }
-}
 
 pub async fn execution_monitor(app_state: AppState) {
     let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
@@ -982,21 +789,27 @@ async fn handle_coding_agent_completion(
         None
     };
 
-    // Play sound notification if enabled
-    if app_state.get_sound_alerts_enabled().await {
+    // Send notifications if enabled
+    let sound_enabled = app_state.get_sound_alerts_enabled().await;
+    let push_enabled = app_state.get_push_notifications_enabled().await;
+    
+    if sound_enabled || push_enabled {
         let sound_file = app_state.get_sound_file().await;
-        play_sound_notification(&sound_file).await;
-    }
-
-    // Send push notification if enabled
-    if app_state.get_push_notifications_enabled().await {
+        let notification_config = NotificationConfig {
+            sound_enabled,
+            push_enabled,
+            sound_file: sound_file.clone(),
+        };
+        
+        let notification_service = NotificationService::new(notification_config);
         let notification_title = "Task Complete";
         let notification_message = if success {
             "Task execution completed successfully"
         } else {
             "Task execution failed"
         };
-        send_push_notification(notification_title, notification_message).await;
+        
+        notification_service.notify(notification_title, notification_message, &sound_file).await;
     }
 
     // Get task attempt to access worktree path for committing changes
