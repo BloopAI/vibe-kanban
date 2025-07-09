@@ -23,7 +23,7 @@ pub enum TaskAttemptError {
     TaskNotFound,
     ProjectNotFound,
     ValidationError(String),
-    BranchNotFound(String),
+
 }
 
 impl std::fmt::Display for TaskAttemptError {
@@ -36,7 +36,6 @@ impl std::fmt::Display for TaskAttemptError {
             TaskAttemptError::TaskNotFound => write!(f, "Task not found"),
             TaskAttemptError::ProjectNotFound => write!(f, "Project not found"),
             TaskAttemptError::ValidationError(e) => write!(f, "Validation error: {}", e),
-            TaskAttemptError::BranchNotFound(e) => write!(f, "Branch not found: {}", e),
         }
     }
 }
@@ -557,16 +556,7 @@ impl TaskAttempt {
         ProcessService::start_execution(pool, app_state, attempt_id, task_id, project_id).await
     }
 
-    /// Start the coding agent after setup is complete or if no setup is needed
-    pub async fn start_coding_agent(
-        pool: &SqlitePool,
-        app_state: &crate::app_state::AppState,
-        attempt_id: Uuid,
-        task_id: Uuid,
-        project_id: Uuid,
-    ) -> Result<(), TaskAttemptError> {
-        ProcessService::start_coding_agent(pool, app_state, attempt_id, task_id, project_id).await
-    }
+
 
     /// Start a dev server for this task attempt
     pub async fn start_dev_server(

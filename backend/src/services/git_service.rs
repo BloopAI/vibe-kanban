@@ -7,7 +7,7 @@ use regex;
 use tracing::{debug, info};
 
 use crate::{
-    models::task_attempt::{BranchStatus, DiffChunk, DiffChunkType, FileDiff, WorktreeDiff},
+    models::task_attempt::{DiffChunk, DiffChunkType, FileDiff, WorktreeDiff},
     utils::worktree_manager::WorktreeManager,
 };
 
@@ -17,7 +17,7 @@ pub enum GitServiceError {
     IoError(std::io::Error),
     InvalidRepository(String),
     BranchNotFound(String),
-    WorktreeExists(String),
+
     MergeConflicts(String),
     InvalidPath(String),
 }
@@ -29,7 +29,7 @@ impl std::fmt::Display for GitServiceError {
             GitServiceError::IoError(e) => write!(f, "IO error: {}", e),
             GitServiceError::InvalidRepository(e) => write!(f, "Invalid repository: {}", e),
             GitServiceError::BranchNotFound(e) => write!(f, "Branch not found: {}", e),
-            GitServiceError::WorktreeExists(e) => write!(f, "Worktree already exists: {}", e),
+
             GitServiceError::MergeConflicts(e) => write!(f, "Merge conflicts: {}", e),
             GitServiceError::InvalidPath(e) => write!(f, "Invalid path: {}", e),
         }
@@ -745,10 +745,7 @@ impl GitService {
         Ok(chunks)
     }
 
-    /// Get diff between worktree and its base branch (legacy method for compatibility)
-    pub fn get_diff(&self, worktree_path: &Path) -> Result<WorktreeDiff, GitServiceError> {
-        self.get_enhanced_diff(worktree_path, None)
-    }
+
 
     /// Delete a file from the repository and commit the change
     pub fn delete_file_and_commit(
@@ -803,72 +800,9 @@ impl GitService {
         Ok(commit_id.to_string())
     }
 
-    /// Delete a file from the repository (legacy method without commit)
-    pub fn delete_file(
-        &self,
-        worktree_path: &Path,
-        file_path: &str,
-    ) -> Result<(), GitServiceError> {
-        let worktree_repo = Repository::open(worktree_path)?;
-        let mut index = worktree_repo.index()?;
 
-        // Remove the file from the index
-        index.remove_path(Path::new(file_path))?;
-        index.write()?;
 
-        // Also delete the file from the working directory if it exists
-        let full_file_path = worktree_path.join(file_path);
-        if full_file_path.exists() {
-            std::fs::remove_file(full_file_path)?;
-        }
 
-        debug!("Deleted file: {}", file_path);
-        Ok(())
-    }
-
-    /// Get the status of a branch relative to its base branch
-    pub fn get_branch_status(
-        &self,
-        worktree_path: &Path,
-        base_branch_name: &str,
-    ) -> Result<BranchStatus, GitServiceError> {
-        let worktree_repo = Repository::open(worktree_path)?;
-        let main_repo = self.open_repo()?;
-
-        // Get the current HEAD commit
-        let head = worktree_repo.head()?;
-        let head_commit = head.peel_to_commit()?;
-
-        // Get the base branch commit from the main repo
-        let base_branch = main_repo
-            .find_branch(base_branch_name, BranchType::Local)
-            .map_err(|_| GitServiceError::BranchNotFound(base_branch_name.to_string()))?;
-        let base_commit = base_branch.get().peel_to_commit()?;
-
-        // Calculate ahead/behind counts
-        let (commits_ahead, commits_behind) =
-            main_repo.graph_ahead_behind(head_commit.id(), base_commit.id())?;
-
-        // Check if branch is up to date
-        let up_to_date = commits_ahead == 0 && commits_behind == 0;
-
-        // Check if branch is merged (simplified check - if HEAD is reachable from base)
-        let merged = commits_ahead == 0;
-
-        // Check for uncommitted changes
-        let statuses = worktree_repo.statuses(None)?;
-        let has_uncommitted_changes = !statuses.is_empty();
-
-        Ok(BranchStatus {
-            is_behind: commits_behind > 0,
-            commits_behind,
-            commits_ahead,
-            up_to_date,
-            merged,
-            has_uncommitted_changes,
-            base_branch_name: base_branch_name.to_string(),
-        })
-    }
 
     /// Get the default branch name for the repository
     pub fn get_default_branch_name(&self) -> Result<String, GitServiceError> {
@@ -887,39 +821,7 @@ impl GitService {
         result
     }
 
-    /// Check if a branch exists in the repository
-    pub fn branch_exists(&self, branch_name: &str) -> Result<bool, GitServiceError> {
-        let repo = self.open_repo()?;
-        let result = match repo.find_branch(branch_name, BranchType::Local) {
-            Ok(_) => Ok(true),
-            Err(e) if e.code() == git2::ErrorCode::NotFound => Ok(false),
-            Err(e) => Err(e.into()),
-        };
-        result
-    }
 
-    /// Remove a worktree (cleanup operation)
-    pub fn remove_worktree(&self, worktree_name: &str) -> Result<(), GitServiceError> {
-        let repo = self.open_repo()?;
-
-        // Find and remove the worktree
-        if let Ok(worktree) = repo.find_worktree(worktree_name) {
-            // Try to prune the worktree directly
-            worktree.prune(None)?;
-            info!("Removed worktree: {}", worktree_name);
-        } else {
-            debug!("Worktree {} not found, nothing to remove", worktree_name);
-        }
-
-        Ok(())
-    }
-
-    /// Check if the repository has any uncommitted changes
-    pub fn has_uncommitted_changes(&self, worktree_path: &Path) -> Result<bool, GitServiceError> {
-        let repo = Repository::open(worktree_path)?;
-        let statuses = repo.statuses(None)?;
-        Ok(!statuses.is_empty())
-    }
 
     /// Recreate a worktree from an existing branch (for cold task support)
     pub async fn recreate_worktree_from_branch(
@@ -1091,10 +993,7 @@ impl GitService {
         Ok(())
     }
 
-    /// Get the repository path
-    pub fn repo_path(&self) -> &Path {
-        &self.repo_path
-    }
+
 }
 
 #[cfg(test)]
@@ -1120,8 +1019,7 @@ mod tests {
     #[test]
     fn test_git_service_creation() {
         let (temp_dir, _repo) = create_test_repo();
-        let git_service = GitService::new(temp_dir.path()).unwrap();
-        assert_eq!(git_service.repo_path(), temp_dir.path());
+        let _git_service = GitService::new(temp_dir.path()).unwrap();
     }
 
     #[test]

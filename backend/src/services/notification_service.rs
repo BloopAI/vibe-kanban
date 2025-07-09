@@ -14,7 +14,7 @@ pub struct NotificationService {
 pub struct NotificationConfig {
     pub sound_enabled: bool,
     pub push_enabled: bool,
-    pub sound_file: SoundFile,
+
 }
 
 /// Cache for WSL root path from PowerShell
@@ -29,13 +29,7 @@ impl NotificationService {
         }
     }
 
-    /// Create a NotificationService with notifications disabled
-    pub fn disabled() -> Self {
-        Self {
-            sound_enabled: false,
-            push_enabled: false,
-        }
-    }
+
 
     /// Send both sound and push notifications if enabled
     pub async fn notify(&self, title: &str, message: &str, sound_file: &SoundFile) {
@@ -267,7 +261,6 @@ impl Default for NotificationConfig {
         Self {
             sound_enabled: true,
             push_enabled: true,
-            sound_file: SoundFile::AbstractSound4,
         }
     }
 }

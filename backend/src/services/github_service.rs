@@ -8,25 +8,21 @@ use tracing::{info, warn};
 
 #[derive(Debug)]
 pub enum GitHubServiceError {
-    ClientError(octocrab::Error),
-    AuthError(String),
-    RepositoryError(String),
-    PullRequestError(String),
-    BranchError(String),
-    NetworkError(String),
-    RateLimitError(String),
+    Client(octocrab::Error),
+    Auth(String),
+    Repository(String),
+    PullRequest(String),
+    Branch(String),
 }
 
 impl std::fmt::Display for GitHubServiceError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            GitHubServiceError::ClientError(e) => write!(f, "GitHub client error: {}", e),
-            GitHubServiceError::AuthError(e) => write!(f, "Authentication error: {}", e),
-            GitHubServiceError::RepositoryError(e) => write!(f, "Repository error: {}", e),
-            GitHubServiceError::PullRequestError(e) => write!(f, "Pull request error: {}", e),
-            GitHubServiceError::BranchError(e) => write!(f, "Branch error: {}", e),
-            GitHubServiceError::NetworkError(e) => write!(f, "Network error: {}", e),
-            GitHubServiceError::RateLimitError(e) => write!(f, "Rate limit exceeded: {}", e),
+            GitHubServiceError::Client(e) => write!(f, "GitHub client error: {}", e),
+            GitHubServiceError::Auth(e) => write!(f, "Authentication error: {}", e),
+            GitHubServiceError::Repository(e) => write!(f, "Repository error: {}", e),
+            GitHubServiceError::PullRequest(e) => write!(f, "Pull request error: {}", e),
+            GitHubServiceError::Branch(e) => write!(f, "Branch error: {}", e),
         }
     }
 }
@@ -35,7 +31,7 @@ impl std::error::Error for GitHubServiceError {}
 
 impl From<octocrab::Error> for GitHubServiceError {
     fn from(err: octocrab::Error) -> Self {
-        GitHubServiceError::ClientError(err)
+        GitHubServiceError::Client(err)
     }
 }
 
@@ -93,7 +89,7 @@ impl GitHubService {
             .personal_token(github_token.to_string())
             .build()
             .map_err(|e| {
-                GitHubServiceError::AuthError(format!("Failed to create GitHub client: {}", e))
+                GitHubServiceError::Auth(format!("Failed to create GitHub client: {}", e))
             })?;
 
         Ok(Self {
@@ -102,28 +98,20 @@ impl GitHubService {
         })
     }
 
-    /// Create a new GitHub service with custom retry configuration
-    pub fn with_retry_config(
-        github_token: &str,
-        retry_config: RetryConfig,
-    ) -> Result<Self, GitHubServiceError> {
-        let mut service = Self::new(github_token)?;
-        service.retry_config = retry_config;
-        Ok(service)
-    }
+
 
     /// Extract GitHub repository information from a repository URL
     pub fn extract_repo_info(repo_url: &str) -> Result<GitHubRepoInfo, GitHubServiceError> {
         // Parse GitHub URL (supports both HTTPS and SSH formats)
         let github_regex = Regex::new(r"github\.com[:/]([^/]+)/(.+?)(?:\.git)?/?$")
-            .map_err(|e| GitHubServiceError::RepositoryError(format!("Regex error: {}", e)))?;
+            .map_err(|e| GitHubServiceError::Repository(format!("Regex error: {}", e)))?;
 
         if let Some(captures) = github_regex.captures(repo_url) {
             let owner = captures.get(1).unwrap().as_str().to_string();
             let repo_name = captures.get(2).unwrap().as_str().to_string();
             Ok(GitHubRepoInfo { owner, repo_name })
         } else {
-            Err(GitHubServiceError::RepositoryError(format!(
+            Err(GitHubServiceError::Repository(format!(
                 "Not a GitHub repository URL: {}",
                 repo_url
             )))
@@ -151,7 +139,7 @@ impl GitHubService {
             .get()
             .await
             .map_err(|e| {
-                GitHubServiceError::RepositoryError(format!(
+                GitHubServiceError::Repository(format!(
                     "Cannot access repository {}/{}: {}",
                     repo_info.owner, repo_info.repo_name, e
                 ))
@@ -165,7 +153,7 @@ impl GitHubService {
             ))
             .await
             .map_err(|e| {
-                GitHubServiceError::BranchError(format!(
+                GitHubServiceError::Branch(format!(
                     "Base branch '{}' does not exist: {}",
                     request.base_branch, e
                 ))
@@ -179,7 +167,7 @@ impl GitHubService {
             ))
             .await
             .map_err(|e| {
-                GitHubServiceError::BranchError(format!(
+                GitHubServiceError::Branch(format!(
                     "Head branch '{}' does not exist. Make sure the branch was pushed successfully: {}",
                     request.head_branch, e
                 ))
@@ -195,13 +183,13 @@ impl GitHubService {
             .await
             .map_err(|e| match e {
                 octocrab::Error::GitHub { source, .. } => {
-                    GitHubServiceError::PullRequestError(format!(
+                    GitHubServiceError::PullRequest(format!(
                         "GitHub API error: {} (status: {})",
                         source.message,
                         source.status_code.as_u16()
                     ))
                 }
-                _ => GitHubServiceError::PullRequestError(format!("Failed to create PR: {}", e)),
+                _ => GitHubServiceError::PullRequest(format!("Failed to create PR: {}", e)),
             })?;
 
         let pr_info = PullRequestInfo {
@@ -242,7 +230,7 @@ impl GitHubService {
             .get(pr_number as u64)
             .await
             .map_err(|e| {
-                GitHubServiceError::PullRequestError(format!(
+                GitHubServiceError::PullRequest(format!(
                     "Failed to get PR #{}: {}",
                     pr_number, e
                 ))
@@ -273,60 +261,7 @@ impl GitHubService {
         Ok(pr_info)
     }
 
-    /// Push a branch to GitHub (this would typically be handled by GitService,
-    /// but included here for completeness of GitHub operations)
-    pub async fn push_branch(
-        &self,
-        repo_info: &GitHubRepoInfo,
-        branch_name: &str,
-    ) -> Result<(), GitHubServiceError> {
-        // Note: This is a placeholder. Actual git operations should be handled by GitService.
-        // This method is here to maintain the interface contract, but actual implementation
-        // would typically delegate to GitService.
 
-        // Verify the branch exists on the remote
-        self.with_retry(|| async {
-            self.client
-                .repos(&repo_info.owner, &repo_info.repo_name)
-                .get_ref(&octocrab::params::repos::Reference::Branch(
-                    branch_name.to_string(),
-                ))
-                .await
-                .map_err(|e| {
-                    GitHubServiceError::BranchError(format!(
-                        "Branch '{}' was not found on GitHub. Ensure it was pushed correctly: {}",
-                        branch_name, e
-                    ))
-                })?;
-
-            Ok(())
-        })
-        .await?;
-
-        info!("Verified branch '{}' exists on GitHub", branch_name);
-        Ok(())
-    }
-
-    /// Verify repository access and permissions
-    pub async fn verify_repository_access(
-        &self,
-        repo_info: &GitHubRepoInfo,
-    ) -> Result<(), GitHubServiceError> {
-        self.with_retry(|| async {
-            self.client
-                .repos(&repo_info.owner, &repo_info.repo_name)
-                .get()
-                .await
-                .map_err(|e| {
-                    GitHubServiceError::RepositoryError(format!(
-                        "Cannot access repository {}/{}: {}",
-                        repo_info.owner, repo_info.repo_name, e
-                    ))
-                })?;
-            Ok(())
-        })
-        .await
-    }
 
     /// Retry wrapper for GitHub API calls with exponential backoff
     async fn with_retry<F, Fut, T>(&self, operation: F) -> Result<T, GitHubServiceError>

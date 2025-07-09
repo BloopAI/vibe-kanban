@@ -796,7 +796,6 @@ async fn handle_coding_agent_completion(
         let notification_config = NotificationConfig {
             sound_enabled,
             push_enabled,
-            sound_file: sound_file.clone(),
         };
 
         let notification_service = NotificationService::new(notification_config);
