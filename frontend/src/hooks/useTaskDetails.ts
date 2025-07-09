@@ -66,7 +66,8 @@ export function useTaskDetails(
 
     return attemptData.processes.some(
       (process) =>
-        (process.process_type === 'codingagent' || process.process_type === 'setupscript') &&
+        (process.process_type === 'codingagent' ||
+          process.process_type === 'setupscript') &&
         process.status !== 'completed' &&
         process.status !== 'killed'
     );
