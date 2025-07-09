@@ -60,33 +60,17 @@ export function useTaskDetails(
 
   // Check if any execution process is currently running
   const isAttemptRunning = useMemo(() => {
-    if (!selectedAttempt || attemptData.activities.length === 0 || isStopping) {
+    if (!selectedAttempt || isStopping) {
       return false;
     }
 
-    const latestActivitiesByProcess = new Map<
-      string,
-      TaskAttemptActivityWithPrompt
-    >();
-
-    attemptData.activities.forEach((activity) => {
-      const existing = latestActivitiesByProcess.get(
-        activity.execution_process_id
-      );
-      if (
-        !existing ||
-        new Date(activity.created_at) > new Date(existing.created_at)
-      ) {
-        latestActivitiesByProcess.set(activity.execution_process_id, activity);
-      }
-    });
-
-    return Array.from(latestActivitiesByProcess.values()).some(
-      (activity) =>
-        activity.status === 'setuprunning' ||
-        activity.status === 'executorrunning'
+    return attemptData.processes.some(
+      (process) =>
+        (process.process_type === 'codingagent' || process.process_type === 'setupscript') &&
+        process.status !== 'completed' &&
+        process.status !== 'killed'
     );
-  }, [selectedAttempt, attemptData.activities, isStopping]);
+  }, [selectedAttempt, attemptData.processes, isStopping]);
 
   // Check if follow-up should be enabled
   const canSendFollowUp = useMemo(() => {
