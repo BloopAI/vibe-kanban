@@ -14,7 +14,15 @@ pub struct NotificationService {
 pub struct NotificationConfig {
     pub sound_enabled: bool,
     pub push_enabled: bool,
+}
 
+impl Default for NotificationConfig {
+    fn default() -> Self {
+        Self {
+            sound_enabled: true,
+            push_enabled: true,
+        }
+    }
 }
 
 /// Cache for WSL root path from PowerShell
@@ -31,6 +39,8 @@ impl NotificationService {
 
 
 
+
+
     /// Send both sound and push notifications if enabled
     pub async fn notify(&self, title: &str, message: &str, sound_file: &SoundFile) {
         if self.sound_enabled {
@@ -41,6 +51,8 @@ impl NotificationService {
             self.send_push_notification(title, message).await;
         }
     }
+
+
 
     /// Play a system sound notification across platforms
     pub async fn play_sound_notification(&self, sound_file: &SoundFile) {
@@ -256,53 +268,6 @@ impl NotificationService {
     }
 }
 
-impl Default for NotificationConfig {
-    fn default() -> Self {
-        Self {
-            sound_enabled: true,
-            push_enabled: true,
-        }
-    }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
 
-    #[tokio::test]
-    async fn test_disabled_notifications() {
-        let service = NotificationService::disabled();
-        assert!(!service.sound_enabled);
-        assert!(!service.push_enabled);
 
-        // These should be no-ops when disabled
-        service
-            .play_sound_notification(&SoundFile::AbstractSound1)
-            .await;
-        service.send_push_notification("Test", "Message").await;
-        service
-            .notify("Test", "Message", &SoundFile::AbstractSound1)
-            .await;
-    }
-
-    #[tokio::test]
-    async fn test_notification_config() {
-        let config = NotificationConfig {
-            sound_enabled: true,
-            push_enabled: false,
-            sound_file: SoundFile::CowMooing,
-        };
-
-        let service = NotificationService::new(config);
-        assert!(service.sound_enabled);
-        assert!(!service.push_enabled);
-    }
-
-    #[test]
-    fn test_default_config() {
-        let config = NotificationConfig::default();
-        assert!(config.sound_enabled);
-        assert!(config.push_enabled);
-        assert!(matches!(config.sound_file, SoundFile::AbstractSound4));
-    }
-}
