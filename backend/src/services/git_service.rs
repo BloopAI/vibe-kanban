@@ -240,7 +240,7 @@ impl GitService {
 
         // Check if the specified base branch exists in the main repo
         let base_branch = main_repo
-            .find_branch(&base_branch_name, BranchType::Local)
+            .find_branch(base_branch_name, BranchType::Local)
             .map_err(|_| GitServiceError::BranchNotFound(base_branch_name.to_string()))?;
 
         let base_commit_id = base_branch.get().peel_to_commit()?.id();
@@ -764,8 +764,7 @@ impl GitService {
         // Check if file exists and delete it
         if file_full_path.exists() {
             std::fs::remove_file(&file_full_path).map_err(|e| {
-                GitServiceError::IoError(std::io::Error::new(
-                    std::io::ErrorKind::Other,
+                GitServiceError::IoError(std::io::Error::other(
                     format!("Failed to delete file {}: {}", file_path, e),
                 ))
             })?;
@@ -949,9 +948,8 @@ impl GitService {
                 "Removing existing directory before worktree recreation: {}",
                 stored_worktree_path_str
             );
-            std::fs::remove_dir_all(&stored_worktree_path).map_err(|e| {
-                GitServiceError::IoError(std::io::Error::new(
-                    std::io::ErrorKind::Other,
+            std::fs::remove_dir_all(stored_worktree_path).map_err(|e| {
+                GitServiceError::IoError(std::io::Error::other(
                     format!(
                         "Failed to remove existing worktree directory {}: {}",
                         stored_worktree_path_str, e
@@ -963,8 +961,7 @@ impl GitService {
         // Ensure parent directory exists - critical for session continuity
         if let Some(parent) = stored_worktree_path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| {
-                GitServiceError::IoError(std::io::Error::new(
-                    std::io::ErrorKind::Other,
+                GitServiceError::IoError(std::io::Error::other(
                     format!(
                         "Failed to create parent directory for worktree path {}: {}",
                         stored_worktree_path_str, e
@@ -994,8 +991,7 @@ impl GitService {
         )
         .await
         .map_err(|e| {
-            GitServiceError::IoError(std::io::Error::new(
-                std::io::ErrorKind::Other,
+            GitServiceError::IoError(std::io::Error::other(
                 format!("WorktreeManager error: {}", e),
             ))
         })?;
