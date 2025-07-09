@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use octocrab::{Octocrab, OctocrabBuilder};
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 use tracing::{info, warn};
@@ -96,24 +95,6 @@ impl GitHubService {
             client,
             retry_config: RetryConfig::default(),
         })
-    }
-
-    /// Extract GitHub repository information from a repository URL
-    pub fn extract_repo_info(repo_url: &str) -> Result<GitHubRepoInfo, GitHubServiceError> {
-        // Parse GitHub URL (supports both HTTPS and SSH formats)
-        let github_regex = Regex::new(r"github\.com[:/]([^/]+)/(.+?)(?:\.git)?/?$")
-            .map_err(|e| GitHubServiceError::Repository(format!("Regex error: {}", e)))?;
-
-        if let Some(captures) = github_regex.captures(repo_url) {
-            let owner = captures.get(1).unwrap().as_str().to_string();
-            let repo_name = captures.get(2).unwrap().as_str().to_string();
-            Ok(GitHubRepoInfo { owner, repo_name })
-        } else {
-            Err(GitHubServiceError::Repository(format!(
-                "Not a GitHub repository URL: {}",
-                repo_url
-            )))
-        }
     }
 
     /// Create a pull request on GitHub
@@ -289,40 +270,5 @@ impl GitHubService {
         }
 
         Err(last_error.unwrap())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_extract_repo_info_https() {
-        let repo_url = "https://github.com/owner/repo.git";
-        let result = GitHubService::extract_repo_info(repo_url).unwrap();
-        assert_eq!(result.owner, "owner");
-        assert_eq!(result.repo_name, "repo");
-    }
-
-    #[test]
-    fn test_extract_repo_info_ssh() {
-        let repo_url = "git@github.com:owner/repo.git";
-        let result = GitHubService::extract_repo_info(repo_url).unwrap();
-        assert_eq!(result.owner, "owner");
-        assert_eq!(result.repo_name, "repo");
-    }
-
-    #[test]
-    fn test_extract_repo_info_no_git_suffix() {
-        let repo_url = "https://github.com/owner/repo";
-        let result = GitHubService::extract_repo_info(repo_url).unwrap();
-        assert_eq!(result.owner, "owner");
-        assert_eq!(result.repo_name, "repo");
-    }
-
-    #[test]
-    fn test_extract_repo_info_invalid() {
-        let repo_url = "https://gitlab.com/owner/repo.git";
-        assert!(GitHubService::extract_repo_info(repo_url).is_err());
     }
 }
