@@ -119,7 +119,7 @@ export function TaskDetailsHeader({
 
         {/* Description */}
         <div className="mt-2">
-          <div className="p-2 bg-muted/20 rounded border-l-2 border-muted">
+          <div className="p-2 bg-muted/20 rounded border-l-2 border-muted max-h-48 overflow-y-auto">
             {task.description ? (
               <div>
                 <p
