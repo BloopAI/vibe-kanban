@@ -192,7 +192,66 @@ pub struct TaskAttemptState {
     pub coding_agent_process_id: Option<String>,
 }
 
+#[derive(Debug)]
+pub struct TaskAttemptContext {
+    pub task_attempt: TaskAttempt,
+    pub task: Task,
+    pub project: Project,
+}
+
 impl TaskAttempt {
+    /// Load task attempt with full validation - ensures task_attempt belongs to task and task belongs to project
+    pub async fn load_context(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+        task_id: Uuid,
+        project_id: Uuid,
+    ) -> Result<TaskAttemptContext, TaskAttemptError> {
+        // Single query with JOIN validation to ensure proper relationships
+        let task_attempt = sqlx::query_as!(
+            TaskAttempt,
+            r#"SELECT  ta.id                AS "id!: Uuid",
+                       ta.task_id           AS "task_id!: Uuid",
+                       ta.worktree_path,
+                       ta.branch,
+                       ta.base_branch,
+                       ta.merge_commit,
+                       ta.executor,
+                       ta.pr_url,
+                       ta.pr_number,
+                       ta.pr_status,
+                       ta.pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
+                       ta.worktree_deleted  AS "worktree_deleted!: bool",
+                       ta.created_at        AS "created_at!: DateTime<Utc>",
+                       ta.updated_at        AS "updated_at!: DateTime<Utc>"
+               FROM    task_attempts ta
+               JOIN    tasks t ON ta.task_id = t.id
+               JOIN    projects p ON t.project_id = p.id
+               WHERE   ta.id = $1 AND t.id = $2 AND p.id = $3"#,
+            attempt_id,
+            task_id,
+            project_id
+        )
+        .fetch_optional(pool)
+        .await?
+        .ok_or(TaskAttemptError::TaskNotFound)?;
+
+        // Load task and project (we know they exist due to JOIN validation)
+        let task = Task::find_by_id(pool, task_id)
+            .await?
+            .ok_or(TaskAttemptError::TaskNotFound)?;
+        
+        let project = Project::find_by_id(pool, project_id)
+            .await?
+            .ok_or(TaskAttemptError::ProjectNotFound)?;
+
+        Ok(TaskAttemptContext {
+            task_attempt,
+            task,
+            project,
+        })
+    }
+
     /// Helper function to mark a worktree as deleted in the database
     pub async fn mark_worktree_deleted(
         pool: &SqlitePool,
