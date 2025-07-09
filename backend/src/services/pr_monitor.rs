@@ -11,7 +11,7 @@ use crate::{
         task::{Task, TaskStatus},
         task_attempt::TaskAttempt,
     },
-    services::{GitHubRepoInfo, GitHubService},
+    services::{GitHubRepoInfo, GitHubService, GitService},
 };
 
 /// Service to monitor GitHub PRs and update task status when they are merged
@@ -124,22 +124,35 @@ impl PrMonitorService {
         let mut pr_infos = Vec::new();
 
         for row in rows {
-            // Extract owner and repo from git_repo_path
-            if let Ok((owner, repo_name)) = Self::extract_github_repo_info(&row.git_repo_path) {
-                pr_infos.push(PrInfo {
-                    attempt_id: row.attempt_id,
-                    task_id: row.task_id,
-                    project_id: row.project_id,
-                    pr_number: row.pr_number,
-                    repo_owner: owner,
-                    repo_name,
-                    github_token: github_token.to_string(),
-                });
-            } else {
-                warn!(
-                    "Could not extract repo info from git path: {}",
-                    row.git_repo_path
-                );
+            // Get GitHub repo info from local git repository
+            match GitService::new(&row.git_repo_path) {
+                Ok(git_service) => {
+                    match git_service.get_github_repo_info() {
+                        Ok((owner, repo_name)) => {
+                            pr_infos.push(PrInfo {
+                                attempt_id: row.attempt_id,
+                                task_id: row.task_id,
+                                project_id: row.project_id,
+                                pr_number: row.pr_number,
+                                repo_owner: owner,
+                                repo_name,
+                                github_token: github_token.to_string(),
+                            });
+                        }
+                        Err(e) => {
+                            warn!(
+                                "Could not extract repo info from git path {}: {}",
+                                row.git_repo_path, e
+                            );
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!(
+                        "Could not create git service for path {}: {}",
+                        row.git_repo_path, e
+                    );
+                }
             }
         }
 
@@ -201,12 +214,5 @@ impl PrMonitorService {
         Ok(())
     }
 
-    /// Extract GitHub owner and repo name from git repo path
-    fn extract_github_repo_info(
-        git_repo_path: &str,
-    ) -> Result<(String, String), Box<dyn std::error::Error + Send + Sync>> {
-        let repo_info = GitHubService::extract_repo_info(git_repo_path)
-            .map_err(|e| format!("Failed to extract GitHub repo info: {}", e))?;
-        Ok((repo_info.owner, repo_info.repo_name))
-    }
+
 }
