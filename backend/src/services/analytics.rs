@@ -4,8 +4,8 @@ use std::{
     time::Duration,
 };
 
-use serde_json::{json, Value};
 use os_info;
+use serde_json::{json, Value};
 
 #[derive(Debug, Clone)]
 pub struct AnalyticsConfig {
@@ -171,7 +171,7 @@ pub fn generate_user_id() -> String {
 
 fn get_device_info() -> Value {
     let info = os_info::get();
-    
+
     json!({
         "os_type": info.os_type().to_string(),
         "os_version": info.version().to_string(),
