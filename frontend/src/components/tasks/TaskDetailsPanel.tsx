@@ -851,7 +851,7 @@ export function TaskDetailsPanel({
           {/* Top area - Code Changes (responsive height) */}
           {showDiffs && (
             <div
-              className={`${areAllFilesCollapsed() ? 'h-auto' : 'max-h-[66vh]'} min-h-0 p-4 overflow-y-auto`}
+              className={`${areAllFilesCollapsed() ? 'h-auto' : 'max-h-[66vh]'} min-h-0 p-4 overflow-y-auto bg-background border rounded-lg shadow-sm`}
             >
               {diffLoading ? (
                 <div className="flex items-center justify-center h-32">
@@ -930,7 +930,7 @@ export function TaskDetailsPanel({
                   {diff.files.map((file, fileIndex) => (
                     <div
                       key={fileIndex}
-                      className={`border rounded-lg overflow-hidden ${collapsedFiles.has(file.path) ? 'border-muted' : ''}`}
+                      className={`border rounded-lg overflow-hidden shadow-sm ${collapsedFiles.has(file.path) ? 'border-muted' : 'border-border'}`}
                     >
                       <div
                         className={`bg-muted px-3 py-1.5 flex items-center justify-between ${!collapsedFiles.has(file.path) ? 'border-b' : ''}`}
@@ -1113,7 +1113,7 @@ export function TaskDetailsPanel({
 
           {/* Bottom area - Agent Logs (responsive height) */}
           <div
-            className={`${!showDiffs || areAllFilesCollapsed() ? 'flex-1' : 'flex-1'} min-h-60 ${showDiffs ? 'border-t' : ''} bg-muted/30`}
+            className={`${!showDiffs || areAllFilesCollapsed() ? 'flex-1' : 'flex-1'} min-h-60 ${showDiffs ? 'border-t-2 border-border mt-4' : ''} bg-muted/30 rounded-lg`}
           >
             <div
               ref={scrollContainerRef}
