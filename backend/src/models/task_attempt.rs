@@ -10,8 +10,7 @@ use uuid::Uuid;
 
 use super::{project::Project, task::Task};
 use crate::{
-    services::{GitService, GitServiceError, GitHubService, GitHubServiceError, GitHubRepoInfo, CreatePrRequest},
-    services::task_execution::ProcessService,
+    services::{GitService, GitServiceError, GitHubService, GitHubServiceError, GitHubRepoInfo, CreatePrRequest, ProcessService},
 };
 
 #[derive(Debug)]

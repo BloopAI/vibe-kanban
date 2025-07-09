@@ -9,7 +9,7 @@ use crate::{
         task_attempt::{TaskAttempt, TaskAttemptStatus},
         task_attempt_activity::{CreateTaskAttemptActivity, TaskAttemptActivity},
     },
-    services::task_execution::{NotificationConfig, NotificationService, ProcessService},
+    services::{NotificationConfig, NotificationService, ProcessService},
     utils::worktree_manager::WorktreeManager,
 };
 
