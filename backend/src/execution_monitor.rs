@@ -11,6 +11,7 @@ use crate::{
         task_attempt::{TaskAttempt, TaskAttemptStatus},
         task_attempt_activity::{CreateTaskAttemptActivity, TaskAttemptActivity},
     },
+    services::task_execution::ProcessService,
     utils::worktree_manager::WorktreeManager,
 };
 
@@ -878,7 +879,7 @@ async fn handle_setup_completion(
             if let Ok(Some(task)) = Task::find_by_id(&app_state.db_pool, task_attempt.task_id).await
             {
                 // Start the coding agent
-                if let Err(e) = TaskAttempt::start_coding_agent(
+                if let Err(e) = ProcessService::start_coding_agent(
                     &app_state.db_pool,
                     app_state,
                     task_attempt_id,
