@@ -68,8 +68,7 @@ export function useTaskDetails(
       (process) =>
         (process.process_type === 'codingagent' ||
           process.process_type === 'setupscript') &&
-        process.status !== 'completed' &&
-        process.status !== 'killed'
+        process.status === 'running'
     );
   }, [selectedAttempt, attemptData.processes, isStopping]);
 
