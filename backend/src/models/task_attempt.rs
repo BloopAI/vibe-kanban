@@ -517,42 +517,8 @@ impl TaskAttempt {
         task_id: Uuid,
         project_id: Uuid,
     ) -> Result<String, TaskAttemptError> {
-        // Get the task attempt with validation
-        let attempt = sqlx::query_as!(
-            TaskAttempt,
-            r#"SELECT  ta.id                AS "id!: Uuid",
-                       ta.task_id           AS "task_id!: Uuid",
-                       ta.worktree_path,
-                       ta.branch,
-                       ta.base_branch,
-                       ta.merge_commit,
-                       ta.executor,
-                       ta.pr_url,
-                       ta.pr_number,
-                       ta.pr_status,
-                       ta.pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
-                       ta.worktree_deleted  AS "worktree_deleted!: bool",
-                       ta.created_at        AS "created_at!: DateTime<Utc>",
-                       ta.updated_at        AS "updated_at!: DateTime<Utc>"
-               FROM    task_attempts ta
-               JOIN    tasks t ON ta.task_id = t.id
-               WHERE   ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
-            attempt_id,
-            task_id,
-            project_id
-        )
-        .fetch_optional(pool)
-        .await?
-        .ok_or(TaskAttemptError::TaskNotFound)?;
-
-        // Get the task and project
-        let task = Task::find_by_id(pool, task_id)
-            .await?
-            .ok_or(TaskAttemptError::TaskNotFound)?;
-
-        let project = Project::find_by_id(pool, project_id)
-            .await?
-            .ok_or(TaskAttemptError::ProjectNotFound)?;
+        // Load context with full validation
+        let ctx = TaskAttempt::load_context(pool, attempt_id, task_id, project_id).await?;
 
         // Ensure worktree exists (recreate if needed for cold task support)
         let worktree_path =
@@ -561,9 +527,9 @@ impl TaskAttempt {
         // Perform the actual merge operation
         let merge_commit_id = Self::perform_merge_operation(
             &worktree_path,
-            &project.git_repo_path,
-            &attempt.branch,
-            &task.title,
+            &ctx.project.git_repo_path,
+            &ctx.task_attempt.branch,
+            &ctx.task.title,
         )?;
 
         // Update the task attempt with the merge commit
@@ -696,43 +662,13 @@ impl TaskAttempt {
         task_id: Uuid,
         project_id: Uuid,
     ) -> Result<WorktreeDiff, TaskAttemptError> {
-        // Get the task attempt with validation
-        let attempt = sqlx::query_as!(
-            TaskAttempt,
-            r#"SELECT  ta.id                AS "id!: Uuid",
-                       ta.task_id           AS "task_id!: Uuid",
-                       ta.worktree_path,
-                       ta.branch,
-                       ta.base_branch,
-                       ta.merge_commit,
-                       ta.executor,
-                       ta.pr_url,
-                       ta.pr_number,
-                       ta.pr_status,
-                       ta.pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
-                       ta.worktree_deleted  AS "worktree_deleted!: bool",
-                       ta.created_at        AS "created_at!: DateTime<Utc>",
-                       ta.updated_at        AS "updated_at!: DateTime<Utc>"
-               FROM    task_attempts ta
-               JOIN    tasks t ON ta.task_id = t.id
-               WHERE   ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
-            attempt_id,
-            task_id,
-            project_id
-        )
-        .fetch_optional(pool)
-        .await?
-        .ok_or(TaskAttemptError::TaskNotFound)?;
-
-        // Get the project to access the main repository
-        let project = Project::find_by_id(pool, project_id)
-            .await?
-            .ok_or(TaskAttemptError::ProjectNotFound)?;
+        // Load context with full validation
+        let ctx = TaskAttempt::load_context(pool, attempt_id, task_id, project_id).await?;
 
         // Create GitService instance
-        let git_service = GitService::new(&project.git_repo_path)?;
+        let git_service = GitService::new(&ctx.project.git_repo_path)?;
 
-        if let Some(merge_commit_id) = &attempt.merge_commit {
+        if let Some(merge_commit_id) = &ctx.task_attempt.merge_commit {
             // Task attempt has been merged - show the diff from the merge commit
             git_service.get_enhanced_diff(Path::new(""), Some(merge_commit_id))
                 .map_err(TaskAttemptError::from)
@@ -756,48 +692,14 @@ impl TaskAttempt {
         task_id: Uuid,
         project_id: Uuid,
     ) -> Result<BranchStatus, TaskAttemptError> {
-        // ── fetch the task attempt ───────────────────────────────────────────────────
-        let attempt = sqlx::query_as!(
-            TaskAttempt,
-            r#"
-            SELECT  ta.id                AS "id!: Uuid",
-                    ta.task_id           AS "task_id!: Uuid",
-                    ta.worktree_path,
-                    ta.branch,
-                    ta.base_branch,
-                    ta.merge_commit,
-                    ta.executor,
-                    ta.pr_url,
-                    ta.pr_number,
-                    ta.pr_status,
-                    ta.pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
-                    ta.worktree_deleted as "worktree_deleted!: bool",
-                    ta.created_at        AS "created_at!: DateTime<Utc>",
-                    ta.updated_at        AS "updated_at!: DateTime<Utc>"
-            FROM    task_attempts ta
-            JOIN    tasks t ON ta.task_id = t.id
-            WHERE   ta.id = $1
-              AND   t.id  = $2
-              AND   t.project_id = $3
-        "#,
-            attempt_id,
-            task_id,
-            project_id
-        )
-        .fetch_optional(pool)
-        .await?
-        .ok_or(TaskAttemptError::TaskNotFound)?;
-
-        // ── fetch the owning project & open its repository ───────────────────────────
-        let project = Project::find_by_id(pool, project_id)
-            .await?
-            .ok_or(TaskAttemptError::ProjectNotFound)?;
+        // Load context with full validation
+        let ctx = TaskAttempt::load_context(pool, attempt_id, task_id, project_id).await?;
 
         use git2::{Status, StatusOptions};
 
         // Ensure worktree exists (recreate if needed for cold task support)
-        let main_repo = Repository::open(&project.git_repo_path)?;
-        let attempt_branch = attempt.branch.clone();
+        let main_repo = Repository::open(&ctx.project.git_repo_path)?;
+        let attempt_branch = ctx.task_attempt.branch.clone();
 
         // ── locate the commit pointed to by the attempt branch ───────────────────────
         let attempt_ref = main_repo
@@ -807,7 +709,7 @@ impl TaskAttempt {
         let attempt_oid = attempt_ref.target().unwrap();
 
         // ── determine the base branch & ahead/behind counts ─────────────────────────
-        let base_branch_name = attempt.base_branch.clone();
+        let base_branch_name = ctx.task_attempt.base_branch.clone();
 
         // 1. prefer the branch’s configured upstream, if any
         if let Ok(local_branch) = main_repo.find_branch(&attempt_branch, BranchType::Local) {
@@ -836,7 +738,7 @@ impl TaskAttempt {
             };
 
         // ── detect any uncommitted / untracked changes ───────────────────────────────
-        let repo_for_status = Repository::open(&project.git_repo_path)?;
+        let repo_for_status = Repository::open(&ctx.project.git_repo_path)?;
 
         let mut status_opts = StatusOptions::new();
         status_opts
@@ -855,7 +757,7 @@ impl TaskAttempt {
             commits_behind,
             commits_ahead,
             up_to_date: commits_behind == 0 && commits_ahead == 0,
-            merged: attempt.merge_commit.is_some(),
+            merged: ctx.task_attempt.merge_commit.is_some(),
             has_uncommitted_changes,
             base_branch_name,
         })
@@ -869,41 +771,11 @@ impl TaskAttempt {
         project_id: Uuid,
         new_base_branch: Option<String>,
     ) -> Result<String, TaskAttemptError> {
-        // Get the task attempt with validation
-        let attempt = sqlx::query_as!(
-            TaskAttempt,
-            r#"SELECT  ta.id                AS "id!: Uuid",
-                       ta.task_id           AS "task_id!: Uuid",
-                       ta.worktree_path,
-                       ta.branch,
-                       ta.base_branch,
-                       ta.merge_commit,
-                       ta.executor,
-                       ta.pr_url,
-                       ta.pr_number,
-                       ta.pr_status,
-                       ta.pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
-                       ta.worktree_deleted  AS "worktree_deleted!: bool",
-                       ta.created_at        AS "created_at!: DateTime<Utc>",
-                       ta.updated_at        AS "updated_at!: DateTime<Utc>"
-               FROM    task_attempts ta
-               JOIN    tasks t ON ta.task_id = t.id
-               WHERE   ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
-            attempt_id,
-            task_id,
-            project_id
-        )
-        .fetch_optional(pool)
-        .await?
-        .ok_or(TaskAttemptError::TaskNotFound)?;
-
-        // Get the project
-        let project = Project::find_by_id(pool, project_id)
-            .await?
-            .ok_or(TaskAttemptError::ProjectNotFound)?;
+        // Load context with full validation
+        let ctx = TaskAttempt::load_context(pool, attempt_id, task_id, project_id).await?;
 
         // Use the stored base branch if no new base branch is provided
-        let effective_base_branch = new_base_branch.or_else(|| Some(attempt.base_branch.clone()));
+        let effective_base_branch = new_base_branch.or_else(|| Some(ctx.task_attempt.base_branch.clone()));
 
         // Ensure worktree exists (recreate if needed for cold task support)
         let worktree_path =
@@ -912,7 +784,7 @@ impl TaskAttempt {
         // Perform the git rebase operations (synchronous)
         let new_base_commit = Self::perform_rebase_operation(
             &worktree_path,
-            &project.git_repo_path,
+            &ctx.project.git_repo_path,
             effective_base_branch,
         )?;
 
@@ -928,45 +800,15 @@ impl TaskAttempt {
         project_id: Uuid,
         file_path: &str,
     ) -> Result<String, TaskAttemptError> {
-        // Get the task attempt with validation
-        let _attempt = sqlx::query_as!(
-            TaskAttempt,
-            r#"SELECT  ta.id                AS "id!: Uuid",
-                       ta.task_id           AS "task_id!: Uuid",
-                       ta.worktree_path,
-                       ta.branch,
-                       ta.base_branch,
-                       ta.merge_commit,
-                       ta.executor,
-                       ta.pr_url,
-                       ta.pr_number,
-                       ta.pr_status,
-                       ta.pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
-                       ta.worktree_deleted  AS "worktree_deleted!: bool",
-                       ta.created_at        AS "created_at!: DateTime<Utc>",
-                       ta.updated_at        AS "updated_at!: DateTime<Utc>"
-               FROM    task_attempts ta
-               JOIN    tasks t ON ta.task_id = t.id
-               WHERE   ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
-            attempt_id,
-            task_id,
-            project_id
-        )
-        .fetch_optional(pool)
-        .await?
-        .ok_or(TaskAttemptError::TaskNotFound)?;
+        // Load context with full validation
+        let ctx = TaskAttempt::load_context(pool, attempt_id, task_id, project_id).await?;
 
         // Ensure worktree exists (recreate if needed for cold task support)
         let worktree_path_str =
             Self::ensure_worktree_exists(pool, attempt_id, project_id, "delete file").await?;
 
-        // Get the project to access GitService
-        let project = Project::find_by_id(pool, project_id)
-            .await?
-            .ok_or(TaskAttemptError::ProjectNotFound)?;
-
         // Create GitService instance
-        let git_service = GitService::new(&project.git_repo_path)?;
+        let git_service = GitService::new(&ctx.project.git_repo_path)?;
 
         // Use GitService to delete file and commit
         let commit_id = git_service
@@ -980,38 +822,8 @@ impl TaskAttempt {
         pool: &SqlitePool,
         params: CreatePrParams<'_>,
     ) -> Result<String, TaskAttemptError> {
-        // Get the task attempt with validation
-        let attempt = sqlx::query_as!(
-            TaskAttempt,
-            r#"SELECT  ta.id                AS "id!: Uuid",
-                       ta.task_id           AS "task_id!: Uuid",
-                       ta.worktree_path,
-                       ta.branch,
-                       ta.base_branch,
-                       ta.merge_commit,
-                       ta.executor,
-                       ta.pr_url,
-                       ta.pr_number,
-                       ta.pr_status,
-                       ta.pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
-                       ta.worktree_deleted  AS "worktree_deleted!: bool",
-                       ta.created_at        AS "created_at!: DateTime<Utc>",
-                       ta.updated_at        AS "updated_at!: DateTime<Utc>"
-               FROM    task_attempts ta
-               JOIN    tasks t ON ta.task_id = t.id
-               WHERE   ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
-            params.attempt_id,
-            params.task_id,
-            params.project_id
-        )
-        .fetch_optional(pool)
-        .await?
-        .ok_or(TaskAttemptError::TaskNotFound)?;
-
-        // Get the project to access the repository path
-        let project = Project::find_by_id(pool, params.project_id)
-            .await?
-            .ok_or(TaskAttemptError::ProjectNotFound)?;
+        // Load context with full validation
+        let ctx = TaskAttempt::load_context(pool, params.attempt_id, params.task_id, params.project_id).await?;
 
         // Ensure worktree exists (recreate if needed for cold task support)
         let worktree_path =
@@ -1022,19 +834,19 @@ impl TaskAttempt {
         let github_service = GitHubService::new(params.github_token)?;
 
         // Use GitService to get the remote URL, then create GitHubRepoInfo
-        let git_service = GitService::new(&project.git_repo_path)?;
+        let git_service = GitService::new(&ctx.project.git_repo_path)?;
         let (owner, repo_name) = git_service.get_github_repo_info()
             .map_err(|e| TaskAttemptError::ValidationError(e.to_string()))?;
         let repo_info = GitHubRepoInfo { owner, repo_name };
 
         // Push the branch to GitHub first
-        Self::push_branch_to_github(&project.git_repo_path, &worktree_path, &attempt.branch, params.github_token)?;
+        Self::push_branch_to_github(&ctx.project.git_repo_path, &worktree_path, &ctx.task_attempt.branch, params.github_token)?;
 
         // Create the PR using GitHub service
         let pr_request = CreatePrRequest {
             title: params.title.to_string(),
             body: params.body.map(|s| s.to_string()),
-            head_branch: attempt.branch.clone(),
+            head_branch: ctx.task_attempt.branch.clone(),
             base_branch: params.base_branch.unwrap_or("main").to_string(),
         };
 
@@ -1099,40 +911,10 @@ impl TaskAttempt {
         task_id: Uuid,
         project_id: Uuid,
     ) -> Result<TaskAttemptState, TaskAttemptError> {
-        // Get the task attempt with validation
-        let _attempt = sqlx::query_as!(
-            TaskAttempt,
-            r#"SELECT  ta.id                AS "id!: Uuid",
-                       ta.task_id           AS "task_id!: Uuid",
-                       ta.worktree_path,
-                       ta.branch,
-                       ta.base_branch,
-                       ta.merge_commit,
-                       ta.executor,
-                       ta.pr_url,
-                       ta.pr_number,
-                       ta.pr_status,
-                       ta.pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
-                       ta.worktree_deleted  AS "worktree_deleted!: bool",
-                       ta.created_at        AS "created_at!: DateTime<Utc>",
-                       ta.updated_at        AS "updated_at!: DateTime<Utc>"
-               FROM    task_attempts ta
-               JOIN    tasks t ON ta.task_id = t.id
-               WHERE   ta.id = $1 AND t.id = $2 AND t.project_id = $3"#,
-            attempt_id,
-            task_id,
-            project_id
-        )
-        .fetch_optional(pool)
-        .await?
-        .ok_or(TaskAttemptError::TaskNotFound)?;
+        // Load context with full validation
+        let ctx = TaskAttempt::load_context(pool, attempt_id, task_id, project_id).await?;
 
-        // Get the project to check if it has a setup script
-        let project = Project::find_by_id(pool, project_id)
-            .await?
-            .ok_or(TaskAttemptError::ProjectNotFound)?;
-
-        let has_setup_script = project
+        let has_setup_script = ctx.project
             .setup_script
             .as_ref()
             .map(|script| !script.trim().is_empty())
