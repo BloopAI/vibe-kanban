@@ -250,6 +250,11 @@ async fn check_externally_deleted_worktrees(pool: &sqlx::SqlitePool) {
 
 /// Find and delete orphaned worktrees that don't correspond to any task attempts
 async fn cleanup_orphaned_worktrees(pool: &sqlx::SqlitePool) {
+    // Check if orphan cleanup is disabled via environment variable
+    if std::env::var("DISABLE_WORKTREE_ORPHAN_CLEANUP").is_ok() {
+        tracing::debug!("Orphan worktree cleanup is disabled via DISABLE_WORKTREE_ORPHAN_CLEANUP environment variable");
+        return;
+    }
     let worktree_base_dir = crate::models::task_attempt::TaskAttempt::get_worktree_base_dir();
 
     // Check if base directory exists

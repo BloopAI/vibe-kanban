@@ -3,7 +3,7 @@
   "version": "0.0.41",
   "private": true,
   "scripts": {
-    "dev": "export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && concurrently \"npm run backend:dev:watch\" \"npm run frontend:dev\"",
+    "dev": "export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && export DISABLE_WORKTREE_ORPHAN_CLEANUP=1 && concurrently \"npm run backend:dev:watch\" \"npm run frontend:dev\"",
     "build": "npm run frontend:build && npm run backend:build",
     "build:single": "npm run frontend:build && npm run backend:build:single",
     "build:npm": "./build-npm-package.sh",
