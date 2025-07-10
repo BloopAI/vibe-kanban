@@ -177,6 +177,17 @@ export function FileSearchTextarea({
     const dropdownWidth = 256; // min-w-64 = 256px
     const maxDropdownHeight = 320;
     const minDropdownHeight = 120;
+    const itemHeight = 48; // Approximate height per item (adjust based on your item styling)
+    const dropdownPadding = 16; // Padding inside dropdown
+    
+    // Calculate actual height needed based on number of results
+    const actualHeight = Math.min(
+      maxDropdownHeight,
+      Math.max(
+        minDropdownHeight,
+        filteredFiles.length * itemHeight + dropdownPadding
+      )
+    );
 
     // Position dropdown below the textarea by default
     let finalTop = textareaRect.bottom + 4; // 4px gap
@@ -199,7 +210,8 @@ export function FileSearchTextarea({
 
     // If not enough space below, position above
     if (availableSpaceBelow < minDropdownHeight && availableSpaceAbove > availableSpaceBelow) {
-      finalTop = textareaRect.top - maxDropdownHeight - 4;
+      // Use actual height for positioning above to avoid gaps
+      finalTop = textareaRect.top - actualHeight - 4;
       maxHeight = Math.min(maxDropdownHeight, Math.max(availableSpaceAbove, minDropdownHeight));
     } else {
       // Position below with available space
