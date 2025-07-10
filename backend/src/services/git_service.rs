@@ -210,14 +210,13 @@ impl GitService {
             &signature,                                      // Author
             &signature,                                      // Committer
             &format!("Merge: {} (vibe-kanban)", task_title), // Message using task title
-            &main_tree,                                      // Use the tree from main repo
+            &main_tree,                                      // Use the tree from worktree
             &[&main_commit, &main_worktree_commit], // Parents: main HEAD and worktree commit
         )?;
 
-        // Update the working directory to match the new commit's tree
+        // Reset the working directory to match the new HEAD
         let merge_commit = main_repo.find_commit(merge_commit_id)?;
-        let mut checkout_builder = git2::build::CheckoutBuilder::new();
-        main_repo.checkout_tree(merge_commit.tree()?.as_object(), Some(&mut checkout_builder))?;
+        main_repo.reset(merge_commit.as_object(), git2::ResetType::Hard, None)?;
 
         info!("Created merge commit: {}", merge_commit_id);
         Ok(merge_commit_id.to_string())
