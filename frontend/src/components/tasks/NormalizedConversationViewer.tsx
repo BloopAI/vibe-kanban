@@ -217,12 +217,30 @@ const clusterGeminiMessages = (
 const isFileModificationToolCall = (
   entryType: NormalizedEntryType
 ): boolean => {
-  return (
-    entryType.type === 'tool_use' &&
-    (entryType.action_type.action === 'file_write' ||
-      entryType.action_type.action === 'file_create' ||
-      entryType.action_type.action === 'edit_file')
-  );
+  if (entryType.type !== 'tool_use') {
+    return false;
+  }
+
+  // Check for direct file write action
+  if (entryType.action_type.action === 'file_write') {
+    return true;
+  }
+
+  // Check for "other" actions that are file modification tools
+  if (entryType.action_type.action === 'other') {
+    const fileModificationTools = [
+      'edit',
+      'write',
+      'create_file',
+      'multiedit',
+      'edit_file',
+    ];
+    return fileModificationTools.includes(
+      entryType.tool_name?.toLowerCase() || ''
+    );
+  }
+
+  return false;
 };
 
 // Extract file path from tool call
@@ -234,11 +252,7 @@ const extractFilePathFromToolCall = (entry: NormalizedEntry): string | null => {
   const { action_type, tool_name } = entry.entry_type;
 
   // Direct path extraction from action_type
-  if (
-    action_type.action === 'file_write' ||
-    action_type.action === 'file_create' ||
-    action_type.action === 'edit_file'
-  ) {
+  if (action_type.action === 'file_write') {
     return action_type.path || null;
   }
 
