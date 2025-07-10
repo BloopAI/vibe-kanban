@@ -20,12 +20,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  FileText,
   ChevronDown,
   ChevronUp,
   Trash2,
-  Eye,
-  EyeOff,
+  MessageSquare,
+  GitCompare,
 } from 'lucide-react';
 import type {
   TaskWithAttemptStatus,
@@ -84,6 +83,11 @@ export function TaskDetailsPanel({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const setupScrollRef = useRef<HTMLDivElement>(null);
 
+  // Tab and collapsible state
+  const [activeTab, setActiveTab] = useState<'logs' | 'diffs'>('logs');
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const [userSelectedTab, setUserSelectedTab] = useState<boolean>(false);
+
   // Diff-related state
   const [diff, setDiff] = useState<WorktreeDiff | null>(null);
   const [diffLoading, setDiffLoading] = useState(true);
@@ -95,7 +99,6 @@ export function TaskDetailsPanel({
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
   const [deletingFiles, setDeletingFiles] = useState<Set<string>>(new Set());
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
-  const [showDiffs, setShowDiffs] = useState(true);
 
   // Use the custom hook for all task details logic
   const {
@@ -227,6 +230,10 @@ export function TaskDetailsPanel({
       hasChanges
     ) {
       fetchDiff();
+      // Auto-switch to diffs tab when changes are detected, but only if user hasn't manually selected a tab
+      if (activeTab === 'logs' && !userSelectedTab) {
+        setActiveTab('diffs');
+      }
     }
   }, [
     executionState?.execution_state,
@@ -234,6 +241,8 @@ export function TaskDetailsPanel({
     isOpen,
     selectedAttempt,
     fetchDiff,
+    activeTab,
+    userSelectedTab,
   ]);
 
   // Handle ESC key locally to prevent global navigation
@@ -259,7 +268,11 @@ export function TaskDetailsPanel({
 
   // Auto-scroll to bottom when activities, execution processes, or conversation changes (for logs section)
   useEffect(() => {
-    if (shouldAutoScrollLogs && scrollContainerRef.current) {
+    if (
+      shouldAutoScrollLogs &&
+      scrollContainerRef.current &&
+      activeTab === 'logs'
+    ) {
       scrollContainerRef.current.scrollTop =
         scrollContainerRef.current.scrollHeight;
     }
@@ -268,6 +281,7 @@ export function TaskDetailsPanel({
     attemptData.processes,
     conversationUpdateTrigger,
     shouldAutoScrollLogs,
+    activeTab,
   ]);
 
   // Auto-scroll setup script logs to bottom
@@ -505,13 +519,6 @@ export function TaskDetailsPanel({
     setCollapsedFiles(new Set());
   };
 
-  // Helper to check if all files with content are collapsed
-  const areAllFilesCollapsed = () => {
-    return (
-      diff && diff.files.length > 0 && collapsedFiles.size === diff.files.length
-    );
-  };
-
   const handleDeleteFileClick = (filePath: string) => {
     setFileToDelete(filePath);
   };
@@ -557,8 +564,259 @@ export function TaskDetailsPanel({
     setFileToDelete(null);
   };
 
-  // Determine what content to show based on execution state
-  const renderMainContent = (): JSX.Element => {
+  // Render tab content based on active tab
+  const renderTabContent = (): JSX.Element => {
+    console.log('renderTabContent called with activeTab:', activeTab);
+    if (activeTab === 'diffs') {
+      return renderDiffsContent();
+    }
+    return renderLogsContent();
+  };
+
+  // Render diffs content
+  const renderDiffsContent = (): JSX.Element => {
+    if (diffLoading) {
+      return (
+        <div className="flex items-center justify-center h-32">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
+          <p className="text-muted-foreground ml-4">Loading changes...</p>
+        </div>
+      );
+    }
+
+    if (diffError) {
+      return (
+        <div className="text-center py-8 text-destructive">
+          <p>{diffError}</p>
+        </div>
+      );
+    }
+
+    if (!diff || diff.files.length === 0) {
+      return (
+        <div className="text-center py-8 text-muted-foreground">
+          <GitCompare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p className="text-lg font-medium mb-2">No changes detected</p>
+          <p className="text-sm">
+            The worktree is identical to the base commit. Changes will appear
+            here once the coding agent makes modifications.
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-3 h-full overflow-y-auto">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="text-sm text-muted-foreground">
+              {diff.files.length} file{diff.files.length !== 1 ? 's' : ''}{' '}
+              changed
+            </div>
+            {isBackgroundRefreshing && (
+              <div className="flex items-center gap-1">
+                <div className="animate-spin h-3 w-3 border border-blue-500 border-t-transparent rounded-full"></div>
+                <span className="text-xs text-blue-600 dark:text-blue-400">
+                  Updating...
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {diff.files.length > 1 && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={expandAllFiles}
+                  className="h-7 text-xs"
+                  disabled={collapsedFiles.size === 0}
+                >
+                  Expand All
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={collapseAllFiles}
+                  className="h-7 text-xs"
+                  disabled={collapsedFiles.size === diff.files.length}
+                >
+                  Collapse All
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+        {/* Diff files content */}
+        {diff.files.map((file, fileIndex) => (
+          <div
+            key={fileIndex}
+            className={`border rounded-lg overflow-hidden shadow-sm ${
+              collapsedFiles.has(file.path) ? 'border-muted' : 'border-border'
+            }`}
+          >
+            <div
+              className={`bg-muted px-3 py-1.5 flex items-center justify-between ${
+                !collapsedFiles.has(file.path) ? 'border-b' : ''
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleFileCollapse(file.path)}
+                  className="h-6 w-6 p-0 hover:bg-muted-foreground/10"
+                  title={
+                    collapsedFiles.has(file.path)
+                      ? 'Expand diff'
+                      : 'Collapse diff'
+                  }
+                >
+                  {collapsedFiles.has(file.path) ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronUp className="h-4 w-4" />
+                  )}
+                </Button>
+                <p className="text-sm font-medium text-muted-foreground font-mono">
+                  {file.path}
+                </p>
+                {collapsedFiles.has(file.path) && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground ml-2">
+                    <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 px-1.5 py-0.5 rounded">
+                      +
+                      {file.chunks
+                        .filter((c) => c.chunk_type === 'Insert')
+                        .reduce(
+                          (acc, c) => acc + c.content.split('\n').length - 1,
+                          0
+                        )}
+                    </span>
+                    <span className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 px-1.5 py-0.5 rounded">
+                      -
+                      {file.chunks
+                        .filter((c) => c.chunk_type === 'Delete')
+                        .reduce(
+                          (acc, c) => acc + c.content.split('\n').length - 1,
+                          0
+                        )}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDeleteFileClick(file.path)}
+                disabled={deletingFiles.has(file.path)}
+                className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 px-3 gap-1"
+                title={`Delete ${file.path}`}
+              >
+                <Trash2 className="h-4 w-4" />
+                <span className="text-xs">
+                  {deletingFiles.has(file.path) ? 'Deleting...' : 'Delete File'}
+                </span>
+              </Button>
+            </div>
+            {!collapsedFiles.has(file.path) && (
+              <div className="overflow-x-auto">
+                <div className="inline-block min-w-full">
+                  {processFileChunks(file.chunks, fileIndex).map(
+                    (section, sectionIndex) => {
+                      if (
+                        section.type === 'context' &&
+                        section.lines.length === 0 &&
+                        section.expandKey
+                      ) {
+                        const lineCount =
+                          parseInt(section.expandKey.split('-')[2]) -
+                          parseInt(section.expandKey.split('-')[1]);
+                        return (
+                          <div
+                            key={`expand-${section.expandKey}`}
+                            className="w-full"
+                          >
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                toggleExpandSection(section.expandKey!)
+                              }
+                              className="w-full h-6 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none justify-start"
+                            >
+                              <ChevronDown className="h-3 w-3 mr-1" />
+                              Show {lineCount} more lines
+                            </Button>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div key={`section-${sectionIndex}`}>
+                          {section.type === 'expanded' && section.expandKey && (
+                            <div className="w-full">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  toggleExpandSection(section.expandKey!)
+                                }
+                                className="w-full h-6 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none justify-start"
+                              >
+                                <ChevronUp className="h-3 w-3 mr-1" />
+                                Hide expanded lines
+                              </Button>
+                            </div>
+                          )}
+                          {section.lines.map((line, lineIndex) => (
+                            <div
+                              key={`${sectionIndex}-${lineIndex}`}
+                              className={getChunkClassName(line.chunkType)}
+                              style={{ minWidth: 'max-content' }}
+                            >
+                              <div
+                                className={getLineNumberClassName(
+                                  line.chunkType
+                                )}
+                              >
+                                <span className="inline-block w-5 text-right">
+                                  {line.oldLineNumber || ''}
+                                </span>
+                                <span className="inline-block w-5 text-right ml-1">
+                                  {line.newLineNumber || ''}
+                                </span>
+                              </div>
+                              <div className="flex-1 px-2 min-h-[1.25rem] flex items-center">
+                                <span className="inline-block w-4">
+                                  {getChunkPrefix(line.chunkType)}
+                                </span>
+                                <span>{line.content}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Render logs content
+  const renderLogsContent = (): JSX.Element => {
+    // Debug logging to help identify the issue
+    console.log('renderLogsContent called with state:', {
+      loading,
+      selectedAttempt: selectedAttempt?.id,
+      executionState: executionState?.execution_state,
+      activeTab,
+    });
+
     // Show loading spinner only when we're actually loading data
     if (loading) {
       return (
@@ -572,10 +830,10 @@ export function TaskDetailsPanel({
     // If no attempt is selected, show message
     if (!selectedAttempt) {
       return (
-        <div className="flex-1 min-h-0 p-6 overflow-y-auto">
-          <div className="text-center py-8 text-muted-foreground">
-            <p>No attempt selected</p>
-          </div>
+        <div className="text-center py-8 text-muted-foreground">
+          <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p className="text-lg font-medium mb-2">No attempt selected</p>
+          <p className="text-sm">Select an attempt to view its logs</p>
         </div>
       );
     }
@@ -583,10 +841,14 @@ export function TaskDetailsPanel({
     // If no execution state, execution hasn't started yet
     if (!executionState) {
       return (
-        <div className="flex-1 min-h-0 p-6 overflow-y-auto">
-          <div className="text-center py-8 text-muted-foreground">
-            <p>Task execution not started yet</p>
-          </div>
+        <div className="text-center py-8 text-muted-foreground">
+          <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p className="text-lg font-medium mb-2">
+            Task execution not started yet
+          </p>
+          <p className="text-sm">
+            Logs will appear here once the task execution begins
+          </p>
         </div>
       );
     }
@@ -613,10 +875,7 @@ export function TaskDetailsPanel({
           );
 
       return (
-        <div
-          className="flex-1 min-h-0 p-6 overflow-y-auto"
-          ref={setupScrollRef}
-        >
+        <div ref={setupScrollRef} className="h-full overflow-y-auto">
           <div className="mb-4">
             <p className="text-lg font-semibold mb-2">Setup Script Running</p>
             <p className="text-muted-foreground mb-4">
@@ -647,7 +906,7 @@ export function TaskDetailsPanel({
           );
 
       return (
-        <div className="flex-1 min-h-0 p-6 overflow-y-auto">
+        <div className="h-full overflow-y-auto">
           <div className="mb-4">
             <p className="text-lg font-semibold mb-2 text-destructive">
               Setup Script Failed
@@ -679,7 +938,7 @@ export function TaskDetailsPanel({
           );
 
       return (
-        <div className="flex-1 min-h-0 p-6 overflow-y-auto">
+        <div className="h-full overflow-y-auto">
           <div className="mb-4">
             <p className="text-lg font-semibold mb-2 text-destructive">
               Coding Agent Failed
@@ -709,11 +968,10 @@ export function TaskDetailsPanel({
       !hasChanges
     ) {
       return (
-        <div className="flex-1 min-h-0 p-6 overflow-y-auto">
-          <div className="text-center py-8 text-muted-foreground">
-            <p className="text-lg font-semibold mb-2">Setup Complete</p>
-            <p>Waiting for coding agent to start...</p>
-          </div>
+        <div className="text-center py-8 text-muted-foreground">
+          <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p className="text-lg font-semibold mb-2">Setup Complete</p>
+          <p>Waiting for coding agent to start...</p>
         </div>
       );
     }
@@ -721,511 +979,129 @@ export function TaskDetailsPanel({
     // When task is complete, show completion message
     if (isComplete) {
       return (
-        <div className="flex-1 min-h-0 p-6 overflow-y-auto">
-          <div className="text-center py-8 text-green-600">
-            <p className="text-lg font-semibold mb-2">Task Complete</p>
-            <p className="text-muted-foreground">
-              The task has been completed successfully.
-            </p>
-          </div>
+        <div className="text-center py-8 text-green-600">
+          <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p className="text-lg font-semibold mb-2">Task Complete</p>
+          <p className="text-muted-foreground">
+            The task has been completed successfully.
+          </p>
         </div>
       );
     }
 
-    // When coding agent is running or complete but no changes yet, show just agent conversation (full height)
-    if ((isCodingAgentRunning || isCodingAgentComplete) && !hasChanges) {
+    // When coding agent is running or complete, show conversation
+    if (isCodingAgentRunning || isCodingAgentComplete || hasChanges) {
       return (
-        <div className="flex-1 min-h-0 border-t bg-muted/30">
-          <div
-            ref={scrollContainerRef}
-            onScroll={handleLogsScroll}
-            className="h-full overflow-y-auto p-6"
-          >
-            {loading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Loading...</p>
-              </div>
-            ) : (
-              (() => {
-                // Find main coding agent process (command: "executor")
-                let mainCodingAgentProcess = Object.values(
-                  attemptData.runningProcessDetails
-                ).find(
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleLogsScroll}
+          className="h-full overflow-y-auto"
+        >
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading...</p>
+            </div>
+          ) : (
+            (() => {
+              // Find main coding agent process (command: "executor")
+              let mainCodingAgentProcess = Object.values(
+                attemptData.runningProcessDetails
+              ).find(
+                (process) =>
+                  process.process_type === 'codingagent' &&
+                  process.command === 'executor'
+              );
+
+              if (!mainCodingAgentProcess) {
+                const mainCodingAgentSummary = attemptData.processes.find(
                   (process) =>
                     process.process_type === 'codingagent' &&
                     process.command === 'executor'
                 );
 
-                if (!mainCodingAgentProcess) {
-                  const mainCodingAgentSummary = attemptData.processes.find(
-                    (process) =>
-                      process.process_type === 'codingagent' &&
-                      process.command === 'executor'
-                  );
-
-                  if (mainCodingAgentSummary) {
-                    mainCodingAgentProcess = Object.values(
-                      attemptData.runningProcessDetails
-                    ).find(
-                      (process) => process.id === mainCodingAgentSummary.id
-                    );
-
-                    if (!mainCodingAgentProcess) {
-                      mainCodingAgentProcess = {
-                        ...mainCodingAgentSummary,
-                        stdout: null,
-                        stderr: null,
-                      } as any;
-                    }
-                  }
-                }
-
-                // Find follow up executor processes (command: "followup_executor")
-                const followUpProcesses = attemptData.processes
-                  .filter(
-                    (process) =>
-                      process.process_type === 'codingagent' &&
-                      process.command === 'followup_executor'
-                  )
-                  .map((summary) => {
-                    const detailedProcess = Object.values(
-                      attemptData.runningProcessDetails
-                    ).find((process) => process.id === summary.id);
-                    return (
-                      detailedProcess ||
-                      ({
-                        ...summary,
-                        stdout: null,
-                        stderr: null,
-                      } as any)
-                    );
-                  });
-
-                if (mainCodingAgentProcess || followUpProcesses.length > 0) {
-                  return (
-                    <div className="space-y-8">
-                      {mainCodingAgentProcess && (
-                        <div>
-                          <NormalizedConversationViewer
-                            executionProcess={mainCodingAgentProcess}
-                            projectId={projectId}
-                            onConversationUpdate={handleConversationUpdate}
-                          />
-                        </div>
-                      )}
-                      {followUpProcesses.map((followUpProcess) => (
-                        <div key={followUpProcess.id}>
-                          <div className="border-t border-border mb-8"></div>
-                          <NormalizedConversationViewer
-                            executionProcess={followUpProcess}
-                            projectId={projectId}
-                            onConversationUpdate={handleConversationUpdate}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  );
-                }
-
-                return (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                    <p className="text-lg font-semibold mb-2">
-                      Coding Agent Starting
-                    </p>
-                    <p>Initializing conversation...</p>
-                  </div>
-                );
-              })()
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    // When changes appear, show them (2/3) and conversation (1/3) in split view
-    if (hasChanges) {
-      return (
-        <>
-          {/* Top area - Code Changes (responsive height) */}
-          {showDiffs && (
-            <div
-              className={`${areAllFilesCollapsed() ? 'h-auto' : 'max-h-[66vh]'} min-h-0 p-4 overflow-y-auto bg-background border rounded-lg shadow-sm`}
-            >
-              {diffLoading ? (
-                <div className="flex items-center justify-center h-32">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
-                  <p className="text-muted-foreground ml-4">
-                    Loading changes...
-                  </p>
-                </div>
-              ) : diffError ? (
-                <div className="text-center py-8 text-destructive">
-                  <p>{diffError}</p>
-                </div>
-              ) : !diff || diff.files.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No changes detected</p>
-                  <p className="text-sm">
-                    The worktree is identical to the base commit
-                  </p>
-                </div>
-              ) : (
-                <div
-                  className={`${areAllFilesCollapsed() ? 'space-y-1' : 'space-y-3'}`}
-                >
-                  <div
-                    className={`flex items-center justify-between ${areAllFilesCollapsed() ? 'mb-1' : 'mb-3'}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="text-sm text-muted-foreground">
-                        {diff.files.length} file
-                        {diff.files.length !== 1 ? 's' : ''} changed
-                      </div>
-                      {isBackgroundRefreshing && (
-                        <div className="flex items-center gap-1">
-                          <div className="animate-spin h-3 w-3 border border-blue-500 border-t-transparent rounded-full"></div>
-                          <span className="text-xs text-blue-600 dark:text-blue-400">
-                            Updating...
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowDiffs(false)}
-                        className="h-7 text-xs"
-                      >
-                        <EyeOff className="h-3 w-3 mr-1" />
-                        Hide Diffs
-                      </Button>
-                      {diff.files.length > 1 && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={expandAllFiles}
-                            className="h-7 text-xs"
-                            disabled={collapsedFiles.size === 0}
-                          >
-                            Expand All
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={collapseAllFiles}
-                            className="h-7 text-xs"
-                            disabled={collapsedFiles.size === diff.files.length}
-                          >
-                            Collapse All
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  {diff.files.map((file, fileIndex) => (
-                    <div
-                      key={fileIndex}
-                      className={`border rounded-lg overflow-hidden shadow-sm ${collapsedFiles.has(file.path) ? 'border-muted' : 'border-border'}`}
-                    >
-                      <div
-                        className={`bg-muted px-3 py-1.5 flex items-center justify-between ${!collapsedFiles.has(file.path) ? 'border-b' : ''}`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleFileCollapse(file.path)}
-                            className="h-6 w-6 p-0 hover:bg-muted-foreground/10"
-                            title={
-                              collapsedFiles.has(file.path)
-                                ? 'Expand diff'
-                                : 'Collapse diff'
-                            }
-                          >
-                            {collapsedFiles.has(file.path) ? (
-                              <ChevronDown className="h-4 w-4" />
-                            ) : (
-                              <ChevronUp className="h-4 w-4" />
-                            )}
-                          </Button>
-                          <p className="text-sm font-medium text-muted-foreground font-mono">
-                            {file.path}
-                          </p>
-                          {collapsedFiles.has(file.path) && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground ml-2">
-                              <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 px-1.5 py-0.5 rounded">
-                                +
-                                {file.chunks
-                                  .filter((c) => c.chunk_type === 'Insert')
-                                  .reduce(
-                                    (acc, c) =>
-                                      acc + c.content.split('\n').length - 1,
-                                    0
-                                  )}
-                              </span>
-                              <span className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 px-1.5 py-0.5 rounded">
-                                -
-                                {file.chunks
-                                  .filter((c) => c.chunk_type === 'Delete')
-                                  .reduce(
-                                    (acc, c) =>
-                                      acc + c.content.split('\n').length - 1,
-                                    0
-                                  )}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteFileClick(file.path)}
-                          disabled={deletingFiles.has(file.path)}
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 px-3 gap-1"
-                          title={`Delete ${file.path}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="text-xs">
-                            {deletingFiles.has(file.path)
-                              ? 'Deleting...'
-                              : 'Delete File'}
-                          </span>
-                        </Button>
-                      </div>
-                      {!collapsedFiles.has(file.path) && (
-                        <div className="overflow-x-auto">
-                          <div className="inline-block min-w-full">
-                            {processFileChunks(file.chunks, fileIndex).map(
-                              (section, sectionIndex) => {
-                                if (
-                                  section.type === 'context' &&
-                                  section.lines.length === 0 &&
-                                  section.expandKey
-                                ) {
-                                  const lineCount =
-                                    parseInt(section.expandKey.split('-')[2]) -
-                                    parseInt(section.expandKey.split('-')[1]);
-                                  return (
-                                    <div
-                                      key={`expand-${section.expandKey}`}
-                                      className="w-full"
-                                    >
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() =>
-                                          toggleExpandSection(
-                                            section.expandKey!
-                                          )
-                                        }
-                                        className="w-full h-6 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none justify-start"
-                                      >
-                                        <ChevronDown className="h-3 w-3 mr-1" />
-                                        Show {lineCount} more lines
-                                      </Button>
-                                    </div>
-                                  );
-                                }
-
-                                return (
-                                  <div key={`section-${sectionIndex}`}>
-                                    {section.type === 'expanded' &&
-                                      section.expandKey && (
-                                        <div className="w-full">
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() =>
-                                              toggleExpandSection(
-                                                section.expandKey!
-                                              )
-                                            }
-                                            className="w-full h-6 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 border-t border-b border-gray-200 dark:border-gray-700 rounded-none justify-start"
-                                          >
-                                            <ChevronUp className="h-3 w-3 mr-1" />
-                                            Hide expanded lines
-                                          </Button>
-                                        </div>
-                                      )}
-                                    {section.lines.map((line, lineIndex) => (
-                                      <div
-                                        key={`${sectionIndex}-${lineIndex}`}
-                                        className={getChunkClassName(
-                                          line.chunkType
-                                        )}
-                                        style={{ minWidth: 'max-content' }}
-                                      >
-                                        <div
-                                          className={getLineNumberClassName(
-                                            line.chunkType
-                                          )}
-                                        >
-                                          <span className="inline-block w-5 text-right">
-                                            {line.oldLineNumber || ''}
-                                          </span>
-                                          <span className="inline-block w-5 text-right ml-1">
-                                            {line.newLineNumber || ''}
-                                          </span>
-                                        </div>
-                                        <div className="flex-1 px-2 min-h-[1.25rem] flex items-center">
-                                          <span className="inline-block w-4">
-                                            {getChunkPrefix(line.chunkType)}
-                                          </span>
-                                          <span>{line.content}</span>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                );
-                              }
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Show Diffs button when diffs are hidden */}
-          {!showDiffs && hasChanges && (
-            <div className="p-2 border-b bg-muted/50">
-              <div className="flex justify-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowDiffs(true)}
-                  className="h-7 text-xs"
-                >
-                  <Eye className="h-3 w-3 mr-1" />
-                  Show Diffs
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Bottom area - Agent Logs (responsive height) */}
-          <div
-            className={`${!showDiffs || areAllFilesCollapsed() ? 'flex-1' : 'flex-1'} min-h-60 ${showDiffs ? 'border-t-2 border-border mt-4' : ''} bg-muted/30 rounded-lg`}
-          >
-            <div
-              ref={scrollContainerRef}
-              onScroll={handleLogsScroll}
-              className="h-full overflow-y-auto p-4"
-            >
-              {loading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
-                  <p className="text-muted-foreground">Loading...</p>
-                </div>
-              ) : (
-                (() => {
-                  // Find main coding agent process (command: "executor")
-                  let mainCodingAgentProcess = Object.values(
+                if (mainCodingAgentSummary) {
+                  mainCodingAgentProcess = Object.values(
                     attemptData.runningProcessDetails
-                  ).find(
-                    (process) =>
-                      process.process_type === 'codingagent' &&
-                      process.command === 'executor'
-                  );
+                  ).find((process) => process.id === mainCodingAgentSummary.id);
 
                   if (!mainCodingAgentProcess) {
-                    const mainCodingAgentSummary = attemptData.processes.find(
-                      (process) =>
-                        process.process_type === 'codingagent' &&
-                        process.command === 'executor'
-                    );
-
-                    if (mainCodingAgentSummary) {
-                      mainCodingAgentProcess = Object.values(
-                        attemptData.runningProcessDetails
-                      ).find(
-                        (process) => process.id === mainCodingAgentSummary.id
-                      );
-
-                      if (!mainCodingAgentProcess) {
-                        mainCodingAgentProcess = {
-                          ...mainCodingAgentSummary,
-                          stdout: null,
-                          stderr: null,
-                        } as any;
-                      }
-                    }
+                    mainCodingAgentProcess = {
+                      ...mainCodingAgentSummary,
+                      stdout: null,
+                      stderr: null,
+                    } as any;
                   }
+                }
+              }
 
-                  // Find follow up executor processes (command: "followup_executor")
-                  const followUpProcesses = attemptData.processes
-                    .filter(
-                      (process) =>
-                        process.process_type === 'codingagent' &&
-                        process.command === 'followup_executor'
-                    )
-                    .map((summary) => {
-                      const detailedProcess = Object.values(
-                        attemptData.runningProcessDetails
-                      ).find((process) => process.id === summary.id);
-                      return (
-                        detailedProcess ||
-                        ({
-                          ...summary,
-                          stdout: null,
-                          stderr: null,
-                        } as any)
-                      );
-                    });
-
-                  if (mainCodingAgentProcess || followUpProcesses.length > 0) {
-                    return (
-                      <div className="space-y-8">
-                        {mainCodingAgentProcess && (
-                          <div>
-                            <NormalizedConversationViewer
-                              executionProcess={mainCodingAgentProcess}
-                              projectId={projectId}
-                              onConversationUpdate={handleConversationUpdate}
-                            />
-                          </div>
-                        )}
-                        {followUpProcesses.map((followUpProcess) => (
-                          <div key={followUpProcess.id}>
-                            <div className="border-t border-border mb-8"></div>
-                            <NormalizedConversationViewer
-                              executionProcess={followUpProcess}
-                              projectId={projectId}
-                              onConversationUpdate={handleConversationUpdate}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  }
-
+              // Find follow up executor processes (command: "followup_executor")
+              const followUpProcesses = attemptData.processes
+                .filter(
+                  (process) =>
+                    process.process_type === 'codingagent' &&
+                    process.command === 'followup_executor'
+                )
+                .map((summary) => {
+                  const detailedProcess = Object.values(
+                    attemptData.runningProcessDetails
+                  ).find((process) => process.id === summary.id);
                   return (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>No coding agent conversation to display</p>
-                    </div>
+                    detailedProcess ||
+                    ({
+                      ...summary,
+                      stdout: null,
+                      stderr: null,
+                    } as any)
                   );
-                })()
-              )}
-            </div>
-          </div>
-        </>
+                });
+
+              if (mainCodingAgentProcess || followUpProcesses.length > 0) {
+                return (
+                  <div className="space-y-8">
+                    {mainCodingAgentProcess && (
+                      <div>
+                        <NormalizedConversationViewer
+                          executionProcess={mainCodingAgentProcess}
+                          projectId={projectId}
+                          onConversationUpdate={handleConversationUpdate}
+                        />
+                      </div>
+                    )}
+                    {followUpProcesses.map((followUpProcess) => (
+                      <div key={followUpProcess.id}>
+                        <div className="border-t border-border mb-8"></div>
+                        <NormalizedConversationViewer
+                          executionProcess={followUpProcess}
+                          projectId={projectId}
+                          onConversationUpdate={handleConversationUpdate}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+
+              return (
+                <div className="text-center py-8 text-muted-foreground">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <p className="text-lg font-semibold mb-2">
+                    Coding Agent Starting
+                  </p>
+                  <p>Initializing conversation...</p>
+                </div>
+              );
+            })()
+          )}
+        </div>
       );
     }
 
     // Default case - unexpected state
     return (
-      <div className="flex-1 min-h-0 p-6 overflow-y-auto">
-        <div className="text-center py-8 text-muted-foreground">
-          <p>Unknown execution state</p>
-        </div>
+      <div className="text-center py-8 text-muted-foreground">
+        <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+        <p>Unknown execution state</p>
       </div>
     );
   };
@@ -1250,34 +1126,100 @@ export function TaskDetailsPanel({
                 onDeleteTask={onDeleteTask}
               />
 
-              {/* Toolbar */}
-              <TaskDetailsToolbar
-                task={task}
-                project={project}
-                projectId={projectId}
-                selectedAttempt={selectedAttempt}
-                taskAttempts={taskAttempts}
-                isAttemptRunning={isAttemptRunning}
-                isStopping={isStopping}
-                selectedExecutor={selectedExecutor}
-                runningDevServer={runningDevServer}
-                isStartingDevServer={isStartingDevServer}
-                devServerDetails={devServerDetails}
-                processedDevServerLogs={processedDevServerLogs}
-                branches={branches}
-                selectedBranch={selectedBranch}
-                onAttemptChange={handleAttemptChange}
-                onCreateNewAttempt={createNewAttempt}
-                onStopAllExecutions={stopAllExecutions}
-                onStartDevServer={startDevServer}
-                onStopDevServer={stopDevServer}
-                onOpenInEditor={handleOpenInEditor}
-                onSetIsHoveringDevServer={setIsHoveringDevServer}
-              />
+              {/* Collapsible Toolbar */}
+              <div className="border-b">
+                <div className="px-4 pb-2 flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-muted-foreground">
+                    Task Details
+                  </h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
+                    className="h-6 w-6 p-0"
+                  >
+                    {isHeaderCollapsed ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronUp className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                {!isHeaderCollapsed && (
+                  <TaskDetailsToolbar
+                    task={task}
+                    project={project}
+                    projectId={projectId}
+                    selectedAttempt={selectedAttempt}
+                    taskAttempts={taskAttempts}
+                    isAttemptRunning={isAttemptRunning}
+                    isStopping={isStopping}
+                    selectedExecutor={selectedExecutor}
+                    runningDevServer={runningDevServer}
+                    isStartingDevServer={isStartingDevServer}
+                    devServerDetails={devServerDetails}
+                    processedDevServerLogs={processedDevServerLogs}
+                    branches={branches}
+                    selectedBranch={selectedBranch}
+                    onAttemptChange={handleAttemptChange}
+                    onCreateNewAttempt={createNewAttempt}
+                    onStopAllExecutions={stopAllExecutions}
+                    onStartDevServer={startDevServer}
+                    onStopDevServer={stopDevServer}
+                    onOpenInEditor={handleOpenInEditor}
+                    onSetIsHoveringDevServer={setIsHoveringDevServer}
+                  />
+                )}
+              </div>
 
-              {/* Main Content - Dynamic based on execution state */}
-              <div className="flex-1 flex flex-col min-h-0">
-                {renderMainContent()}
+              {/* Tab Navigation */}
+              <div className="border-b bg-muted/30">
+                <div className="flex px-4">
+                  <button
+                    onClick={() => {
+                      console.log(
+                        'Logs tab clicked - setting activeTab to logs'
+                      );
+                      setActiveTab('logs');
+                      setUserSelectedTab(true);
+                    }}
+                    className={`flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'logs'
+                        ? 'border-primary text-primary bg-background'
+                        : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    }`}
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Logs
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log(
+                        'Diffs tab clicked - setting activeTab to diffs'
+                      );
+                      setActiveTab('diffs');
+                      setUserSelectedTab(true);
+                    }}
+                    className={`flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'diffs'
+                        ? 'border-primary text-primary bg-background'
+                        : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    }`}
+                  >
+                    <GitCompare className="h-4 w-4 mr-2" />
+                    Diffs
+                    {diff && diff.files.length > 0 && (
+                      <span className="ml-2 px-1.5 py-0.5 text-xs bg-primary/10 text-primary rounded-full">
+                        {diff.files.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Tab Content */}
+              <div className="flex-1 flex flex-col min-h-0 p-4">
+                {renderTabContent()}
               </div>
 
               {/* Footer - Follow-up section */}
