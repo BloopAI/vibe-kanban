@@ -214,6 +214,11 @@ impl GitService {
             &[&main_commit, &main_worktree_commit], // Parents: main HEAD and worktree commit
         )?;
 
+        // Update the working directory to match the new commit's tree
+        let merge_commit = main_repo.find_commit(merge_commit_id)?;
+        let mut checkout_builder = git2::build::CheckoutBuilder::new();
+        main_repo.checkout_tree(merge_commit.tree()?.as_object(), Some(&mut checkout_builder))?;
+
         info!("Created merge commit: {}", merge_commit_id);
         Ok(merge_commit_id.to_string())
     }
