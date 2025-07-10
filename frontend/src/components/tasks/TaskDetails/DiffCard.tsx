@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronUp, Trash2, GitCompare } from 'lucide-react';
-import type { WorktreeDiff, DiffChunkType, DiffChunk } from 'shared/types';
+import { Button } from '@/components/ui/button.tsx';
+import { ChevronDown, ChevronUp, GitCompare, Trash2 } from 'lucide-react';
+import type { DiffChunk, DiffChunkType, WorktreeDiff } from 'shared/types.ts';
 
 interface ProcessedLine {
   content: string;

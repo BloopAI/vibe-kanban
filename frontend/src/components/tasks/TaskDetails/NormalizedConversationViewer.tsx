@@ -1,34 +1,34 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  User,
-  Bot,
-  Eye,
-  Edit,
-  Terminal,
-  Search,
-  Globe,
-  Plus,
-  Settings,
-  Brain,
-  Hammer,
   AlertCircle,
+  Bot,
+  Brain,
+  CheckSquare,
   ChevronRight,
   ChevronUp,
+  Edit,
+  Eye,
+  Globe,
+  Hammer,
+  Plus,
+  Search,
+  Settings,
+  Terminal,
   ToggleLeft,
   ToggleRight,
-  CheckSquare,
+  User,
 } from 'lucide-react';
-import { makeRequest } from '@/lib/api';
-import { MarkdownRenderer } from '@/components/ui/markdown-renderer';
-import { DiffCard } from './DiffCard';
+import { makeRequest } from '@/lib/api.ts';
+import { MarkdownRenderer } from '@/components/ui/markdown-renderer.tsx';
+import { DiffCard } from './DiffCard.tsx';
 import type {
+  ApiResponse,
+  ExecutionProcess,
   NormalizedConversation,
   NormalizedEntry,
   NormalizedEntryType,
-  ExecutionProcess,
-  ApiResponse,
   WorktreeDiff,
-} from 'shared/types';
+} from 'shared/types.ts';
 
 interface NormalizedConversationViewerProps {
   executionProcess: ExecutionProcess;
