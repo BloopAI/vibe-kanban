@@ -3,7 +3,7 @@
   "version": "0.0.42",
   "private": true,
   "scripts": {
-    "dev": "export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && export DISABLE_WORKTREE_ORPHAN_CLEANUP=1 && concurrently \"npm run backend:dev:watch\" \"npm run frontend:dev\"",
+    "dev": "export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && concurrently \"npm run backend:dev:watch\" \"npm run frontend:dev\"",
     "build": "npm run frontend:build && npm run backend:build",
     "build:single": "npm run frontend:build && npm run backend:build:single",
     "build:npm": "./build-npm-package.sh",
@@ -12,7 +12,7 @@
     "frontend:build": "cd frontend && npm run build",
     "cargo": "node scripts/cargo.js",
     "backend:dev": "BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) npm run backend:dev:watch",
-    "backend:dev:watch": "npm run cargo -- watch -w backend -x 'run --manifest-path backend/Cargo.toml'",
+    "backend:dev:watch": "DISABLE_WORKTREE_ORPHAN_CLEANUP=1 npm run cargo -- watch -w backend -x 'run --manifest-path backend/Cargo.toml'",
     "backend:build": "npm run cargo -- build --release --manifest-path backend/Cargo.toml && npm run cargo -- build --release --bin mcp_task_server --manifest-path backend/Cargo.toml",
     "backend:build:single": "npm run cargo -- build --release --manifest-path backend/Cargo.toml",
     "backend:run": "npm run cargo -- run --manifest-path backend/Cargo.toml",
