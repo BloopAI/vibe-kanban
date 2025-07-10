@@ -407,6 +407,9 @@ pub async fn create_github_pr(
                 e
             );
             let message = match &e {
+                crate::models::task_attempt::TaskAttemptError::GitHubService(
+                    crate::services::GitHubServiceError::TokenInvalid,
+                ) => Some("github_token_invalid".to_string()),
                 crate::models::task_attempt::TaskAttemptError::Git(err)
                     if err.message().contains("status code: 403") =>
                 {

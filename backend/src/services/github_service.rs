@@ -12,6 +12,7 @@ pub enum GitHubServiceError {
     Repository(String),
     PullRequest(String),
     Branch(String),
+    TokenInvalid,
 }
 
 impl std::fmt::Display for GitHubServiceError {
@@ -22,6 +23,7 @@ impl std::fmt::Display for GitHubServiceError {
             GitHubServiceError::Repository(e) => write!(f, "Repository error: {}", e),
             GitHubServiceError::PullRequest(e) => write!(f, "Pull request error: {}", e),
             GitHubServiceError::Branch(e) => write!(f, "Branch error: {}", e),
+            GitHubServiceError::TokenInvalid => write!(f, "GitHub token is invalid or expired."),
         }
     }
 }
@@ -30,7 +32,22 @@ impl std::error::Error for GitHubServiceError {}
 
 impl From<octocrab::Error> for GitHubServiceError {
     fn from(err: octocrab::Error) -> Self {
-        GitHubServiceError::Client(err)
+        match &err {
+            octocrab::Error::GitHub { source, .. } => {
+                let status = source.status_code.as_u16();
+                let msg = source.message.to_ascii_lowercase();
+                if status == 401
+                    || status == 403
+                    || msg.contains("bad credentials")
+                    || msg.contains("token expired")
+                {
+                    GitHubServiceError::TokenInvalid
+                } else {
+                    GitHubServiceError::Client(err)
+                }
+            }
+            _ => GitHubServiceError::Client(err),
+        }
     }
 }
 
@@ -161,11 +178,27 @@ impl GitHubService {
             .send()
             .await
             .map_err(|e| match e {
-                octocrab::Error::GitHub { source, .. } => GitHubServiceError::PullRequest(format!(
-                    "GitHub API error: {} (status: {})",
-                    source.message,
-                    source.status_code.as_u16()
-                )),
+                octocrab::Error::GitHub { source, .. } => {
+                    if source.status_code.as_u16() == 401
+                        || source.status_code.as_u16() == 403
+                        || source
+                            .message
+                            .to_ascii_lowercase()
+                            .contains("bad credentials")
+                        || source
+                            .message
+                            .to_ascii_lowercase()
+                            .contains("token expired")
+                    {
+                        GitHubServiceError::TokenInvalid
+                    } else {
+                        GitHubServiceError::PullRequest(format!(
+                            "GitHub API error: {} (status: {})",
+                            source.message,
+                            source.status_code.as_u16()
+                        ))
+                    }
+                }
                 _ => GitHubServiceError::PullRequest(format!("Failed to create PR: {}", e)),
             })?;
 

@@ -14,6 +14,7 @@ interface ConfigContextType {
   updateAndSaveConfig: (updates: Partial<Config>) => void;
   saveConfig: () => Promise<boolean>;
   loading: boolean;
+  githubTokenInvalid: boolean;
 }
 
 const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
@@ -25,6 +26,7 @@ interface ConfigProviderProps {
 export function ConfigProvider({ children }: ConfigProviderProps) {
   const [config, setConfig] = useState<Config | null>(null);
   const [loading, setLoading] = useState(true);
+  const [githubTokenInvalid, setGithubTokenInvalid] = useState(false);
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -44,6 +46,26 @@ export function ConfigProvider({ children }: ConfigProviderProps) {
 
     loadConfig();
   }, []);
+
+  // Check GitHub token validity after config loads
+  useEffect(() => {
+    if (loading) return;
+    const checkToken = async () => {
+      try {
+        const response = await fetch('/api/auth/github/check');
+        const data: ApiResponse<null> = await response.json();
+        if (!data.success && data.message === 'github_token_invalid') {
+          setGithubTokenInvalid(true);
+        } else {
+          setGithubTokenInvalid(false);
+        }
+      } catch (err) {
+        // If the check fails, assume token is invalid
+        setGithubTokenInvalid(true);
+      }
+    };
+    checkToken();
+  }, [loading]);
 
   const updateConfig = useCallback((updates: Partial<Config>) => {
     setConfig((prev) => (prev ? { ...prev, ...updates } : null));
@@ -100,7 +122,14 @@ export function ConfigProvider({ children }: ConfigProviderProps) {
 
   return (
     <ConfigContext.Provider
-      value={{ config, updateConfig, saveConfig, loading, updateAndSaveConfig }}
+      value={{
+        config,
+        updateConfig,
+        saveConfig,
+        loading,
+        updateAndSaveConfig,
+        githubTokenInvalid,
+      }}
     >
       {children}
     </ConfigContext.Provider>

@@ -22,7 +22,7 @@ import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
-  const { config, updateConfig, loading } = useConfig();
+  const { config, updateConfig, loading, githubTokenInvalid } = useConfig();
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showGitHubLogin, setShowGitHubLogin] = useState(false);
@@ -36,9 +36,12 @@ function AppContent() {
       }
       const notAuthenticated =
         !config.github?.username || !config.github?.token;
-      setShowGitHubLogin(notAuthenticated);
+      setShowGitHubLogin(notAuthenticated || githubTokenInvalid);
     }
-  }, [config]);
+    if (githubTokenInvalid) {
+      setShowGitHubLogin(true);
+    }
+  }, [config, githubTokenInvalid]);
 
   const handleDisclaimerAccept = async () => {
     if (!config) return;

@@ -2,7 +2,7 @@ use axum::{
     extract::{Request, State},
     middleware::Next,
     response::{Json as ResponseJson, Response},
-    routing::post,
+    routing::{get, post},
     Json, Router,
 };
 
@@ -12,6 +12,7 @@ pub fn auth_router() -> Router<AppState> {
     Router::new()
         .route("/auth/github/device/start", post(device_start))
         .route("/auth/github/device/poll", post(device_poll))
+        .route("/auth/github/check", get(github_check_token))
 }
 
 #[derive(serde::Deserialize)]
@@ -259,6 +260,40 @@ async fn device_poll(
             success: false,
             data: None,
             message: Some("No access token yet".to_string()),
+        })
+    }
+}
+
+/// GET /auth/github/check
+async fn github_check_token(State(app_state): State<AppState>) -> ResponseJson<ApiResponse<()>> {
+    let config = app_state.get_config().read().await;
+    let token = config.github.token.clone();
+    drop(config);
+    if let Some(token) = token {
+        let client = reqwest::Client::new();
+        let res = client
+            .get("https://api.github.com/user")
+            .bearer_auth(&token)
+            .header("User-Agent", "vibe-kanban-app")
+            .send()
+            .await;
+        match res {
+            Ok(r) if r.status().is_success() => ResponseJson(ApiResponse {
+                success: true,
+                data: None,
+                message: Some("GitHub token is valid".to_string()),
+            }),
+            _ => ResponseJson(ApiResponse {
+                success: false,
+                data: None,
+                message: Some("github_token_invalid".to_string()),
+            }),
+        }
+    } else {
+        ResponseJson(ApiResponse {
+            success: false,
+            data: None,
+            message: Some("github_token_invalid".to_string()),
         })
     }
 }

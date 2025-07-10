@@ -18,7 +18,7 @@ export function GitHubLoginDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { config, loading } = useConfig();
+  const { config, loading, githubTokenInvalid } = useConfig();
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deviceState, setDeviceState] = useState<null | {
@@ -31,7 +31,9 @@ export function GitHubLoginDialog({
   const [polling, setPolling] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const isAuthenticated = !!(config?.github?.username && config?.github?.token);
+  const isAuthenticated =
+    !!(config?.github?.username && config?.github?.token) &&
+    !githubTokenInvalid;
 
   const handleLogin = async () => {
     setFetching(true);
