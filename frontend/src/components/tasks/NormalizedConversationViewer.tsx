@@ -20,18 +20,24 @@ import {
 } from 'lucide-react';
 import { makeRequest } from '@/lib/api';
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer';
+import { DiffCard } from './DiffCard';
 import type {
   NormalizedConversation,
   NormalizedEntry,
   NormalizedEntryType,
   ExecutionProcess,
   ApiResponse,
+  WorktreeDiff,
 } from 'shared/types';
 
 interface NormalizedConversationViewerProps {
   executionProcess: ExecutionProcess;
   projectId: string;
   onConversationUpdate?: () => void;
+  diff?: WorktreeDiff | null;
+  isBackgroundRefreshing?: boolean;
+  onDeleteFile?: (filePath: string) => void;
+  deletingFiles?: Set<string>;
 }
 
 const getEntryIcon = (entryType: NormalizedEntryType) => {
@@ -207,6 +213,102 @@ const clusterGeminiMessages = (
   return clustered;
 };
 
+// Helper function to determine if a tool call modifies files
+const isFileModificationToolCall = (
+  entryType: NormalizedEntryType
+): boolean => {
+  return (
+    entryType.type === 'tool_use' &&
+    (entryType.action_type.action === 'file_write' ||
+      entryType.action_type.action === 'file_create' ||
+      entryType.action_type.action === 'edit_file')
+  );
+};
+
+// Extract file path from tool call
+const extractFilePathFromToolCall = (entry: NormalizedEntry): string | null => {
+  if (entry.entry_type.type !== 'tool_use') {
+    return null;
+  }
+
+  const { action_type, tool_name } = entry.entry_type;
+
+  // Direct path extraction from action_type
+  if (
+    action_type.action === 'file_write' ||
+    action_type.action === 'file_create' ||
+    action_type.action === 'edit_file'
+  ) {
+    return action_type.path || null;
+  }
+
+  // For "other" actions, check if it's a known file modification tool
+  if (action_type.action === 'other') {
+    const fileModificationTools = [
+      'edit',
+      'write',
+      'create_file',
+      'multiedit',
+      'edit_file',
+    ];
+
+    if (fileModificationTools.includes(tool_name.toLowerCase())) {
+      // Parse file path from content field
+      return parseFilePathFromContent(entry.content);
+    }
+  }
+
+  return null;
+};
+
+// Parse file path from content (handles various formats)
+const parseFilePathFromContent = (content: string): string | null => {
+  // Try to extract path from backticks: `path/to/file.ext`
+  const backtickMatch = content.match(/`([^`]+)`/);
+  if (backtickMatch) {
+    return backtickMatch[1];
+  }
+
+  // Try to extract from common patterns like "Edit file: path" or "Write file: path"
+  const actionMatch = content.match(
+    /(?:Edit|Write|Create)\s+file:\s*([^\s\n]+)/i
+  );
+  if (actionMatch) {
+    return actionMatch[1];
+  }
+
+  return null;
+};
+
+// Create filtered diff showing only specific files
+const createIncrementalDiff = (
+  fullDiff: WorktreeDiff | null,
+  targetFilePaths: string[]
+): WorktreeDiff | null => {
+  if (!fullDiff || targetFilePaths.length === 0) {
+    return null;
+  }
+
+  // Filter files to only include the target file paths
+  const filteredFiles = fullDiff.files.filter((file) =>
+    targetFilePaths.some(
+      (targetPath) =>
+        file.path === targetPath ||
+        file.path.endsWith('/' + targetPath) ||
+        targetPath.endsWith('/' + file.path)
+    )
+  );
+
+  if (filteredFiles.length === 0) {
+    return null;
+  }
+
+  return {
+    ...fullDiff,
+    files: filteredFiles,
+  };
+};
+
 // Helper function to determine if content should be rendered as markdown
 const shouldRenderMarkdown = (entryType: NormalizedEntryType) => {
   // Render markdown for assistant messages and tool outputs that contain backticks
@@ -242,6 +344,10 @@ export function NormalizedConversationViewer({
   executionProcess,
   projectId,
   onConversationUpdate,
+  diff,
+  isBackgroundRefreshing = false,
+  onDeleteFile,
+  deletingFiles = new Set(),
 }: NormalizedConversationViewerProps) {
   const [conversation, setConversation] =
     useState<NormalizedConversation | null>(null);
@@ -430,70 +536,105 @@ export function NormalizedConversationViewer({
           const isExpanded = expandedErrors.has(index);
           const hasMultipleLines =
             isErrorMessage && entry.content.includes('\n');
+          const isFileModification = isFileModificationToolCall(
+            entry.entry_type
+          );
+
+          // Extract file path from this specific tool call
+          const modifiedFilePath = isFileModification
+            ? extractFilePathFromToolCall(entry)
+            : null;
+
+          // Create incremental diff showing only the files modified by this specific tool call
+          const incrementalDiff =
+            modifiedFilePath && diff
+              ? createIncrementalDiff(diff, [modifiedFilePath])
+              : null;
+
+          // Show incremental diff for this specific file modification
+          const shouldShowDiff =
+            isFileModification &&
+            incrementalDiff &&
+            incrementalDiff.files.length > 0;
 
           return (
-            <div key={index} className="flex items-start gap-3">
-              <div className="flex-shrink-0 mt-1">
-                {isErrorMessage && hasMultipleLines ? (
-                  <button
-                    onClick={() => toggleErrorExpansion(index)}
-                    className="transition-colors hover:opacity-70"
-                  >
-                    {getEntryIcon(entry.entry_type)}
-                  </button>
-                ) : (
-                  getEntryIcon(entry.entry_type)
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                {isErrorMessage && hasMultipleLines ? (
-                  <div className={isExpanded ? 'space-y-2' : ''}>
-                    <div className={getContentClassName(entry.entry_type)}>
-                      {isExpanded ? (
-                        shouldRenderMarkdown(entry.entry_type) ? (
-                          <MarkdownRenderer
-                            content={entry.content}
-                            className="whitespace-pre-wrap break-words"
-                          />
+            <div key={index}>
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 mt-1">
+                  {isErrorMessage && hasMultipleLines ? (
+                    <button
+                      onClick={() => toggleErrorExpansion(index)}
+                      className="transition-colors hover:opacity-70"
+                    >
+                      {getEntryIcon(entry.entry_type)}
+                    </button>
+                  ) : (
+                    getEntryIcon(entry.entry_type)
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  {isErrorMessage && hasMultipleLines ? (
+                    <div className={isExpanded ? 'space-y-2' : ''}>
+                      <div className={getContentClassName(entry.entry_type)}>
+                        {isExpanded ? (
+                          shouldRenderMarkdown(entry.entry_type) ? (
+                            <MarkdownRenderer
+                              content={entry.content}
+                              className="whitespace-pre-wrap break-words"
+                            />
+                          ) : (
+                            entry.content
+                          )
                         ) : (
-                          entry.content
-                        )
-                      ) : (
-                        <>
-                          {entry.content.split('\n')[0]}
-                          <button
-                            onClick={() => toggleErrorExpansion(index)}
-                            className="ml-2 inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                          >
-                            <ChevronRight className="h-3 w-3" />
-                            Show more
-                          </button>
-                        </>
+                          <>
+                            {entry.content.split('\n')[0]}
+                            <button
+                              onClick={() => toggleErrorExpansion(index)}
+                              className="ml-2 inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                            >
+                              <ChevronRight className="h-3 w-3" />
+                              Show more
+                            </button>
+                          </>
+                        )}
+                      </div>
+                      {isExpanded && (
+                        <button
+                          onClick={() => toggleErrorExpansion(index)}
+                          className="flex items-center gap-1 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                        >
+                          <ChevronUp className="h-3 w-3" />
+                          Show less
+                        </button>
                       )}
                     </div>
-                    {isExpanded && (
-                      <button
-                        onClick={() => toggleErrorExpansion(index)}
-                        className="flex items-center gap-1 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                      >
-                        <ChevronUp className="h-3 w-3" />
-                        Show less
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className={getContentClassName(entry.entry_type)}>
-                    {shouldRenderMarkdown(entry.entry_type) ? (
-                      <MarkdownRenderer
-                        content={entry.content}
-                        className="whitespace-pre-wrap break-words"
-                      />
-                    ) : (
-                      entry.content
-                    )}
-                  </div>
-                )}
+                  ) : (
+                    <div className={getContentClassName(entry.entry_type)}>
+                      {shouldRenderMarkdown(entry.entry_type) ? (
+                        <MarkdownRenderer
+                          content={entry.content}
+                          className="whitespace-pre-wrap break-words"
+                        />
+                      ) : (
+                        entry.content
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {/* Render incremental diff card inline after file modification entries */}
+              {shouldShowDiff && incrementalDiff && (
+                <div className="mt-4 mb-2">
+                  <DiffCard
+                    diff={incrementalDiff}
+                    isBackgroundRefreshing={isBackgroundRefreshing}
+                    onDeleteFile={onDeleteFile}
+                    deletingFiles={deletingFiles}
+                    compact={true}
+                  />
+                </div>
+              )}
             </div>
           );
         })}
