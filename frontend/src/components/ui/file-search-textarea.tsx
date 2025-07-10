@@ -177,17 +177,6 @@ export function FileSearchTextarea({
     const dropdownWidth = 256; // min-w-64 = 256px
     const maxDropdownHeight = 320;
     const minDropdownHeight = 120;
-    const itemHeight = 60; // Increased to account for px-3 py-2 padding + two lines of text
-    const dropdownPadding = 8; // py-1 padding on container
-    
-    // Calculate actual height needed based on number of results
-    const actualHeight = Math.min(
-      maxDropdownHeight,
-      Math.max(
-        minDropdownHeight,
-        searchResults.length * itemHeight + dropdownPadding
-      )
-    );
 
     // Position dropdown below the textarea by default
     let finalTop = textareaRect.bottom + 4; // 4px gap
@@ -210,7 +199,8 @@ export function FileSearchTextarea({
 
     // If not enough space below, position above
     if (availableSpaceBelow < minDropdownHeight && availableSpaceAbove > availableSpaceBelow) {
-      // Use actual height for positioning above to avoid gaps
+      // Get actual height from rendered dropdown
+      const actualHeight = dropdownRef.current?.getBoundingClientRect().height || minDropdownHeight;
       finalTop = textareaRect.top - actualHeight - 4;
       maxHeight = Math.min(maxDropdownHeight, Math.max(availableSpaceAbove, minDropdownHeight));
     } else {
@@ -220,6 +210,21 @@ export function FileSearchTextarea({
 
     return { top: finalTop, left: finalLeft, maxHeight };
   };
+
+  // Use effect to reposition when dropdown content changes
+  useEffect(() => {
+    if (showDropdown && dropdownRef.current) {
+      // Small delay to ensure content is rendered
+      setTimeout(() => {
+        const newPosition = getDropdownPosition();
+        if (dropdownRef.current) {
+          dropdownRef.current.style.top = `${newPosition.top}px`;
+          dropdownRef.current.style.left = `${newPosition.left}px`;
+          dropdownRef.current.style.maxHeight = `${newPosition.maxHeight}px`;
+        }
+      }, 0);
+    }
+  }, [searchResults.length, showDropdown]);
 
   const dropdownPosition = getDropdownPosition();
 
