@@ -52,7 +52,6 @@ import type {
   ExecutionProcess,
   ExecutionProcessSummary,
   GitBranch,
-  Project,
   TaskAttempt,
   TaskWithAttemptStatus,
 } from 'shared/types';
@@ -66,7 +65,7 @@ interface ApiResponse<T> {
 
 interface TaskDetailsToolbarProps {
   task: TaskWithAttemptStatus;
-  project: Project | null;
+  projectHasDevScript?: boolean;
   projectId: string;
   selectedAttempt: TaskAttempt | null;
   taskAttempts: TaskAttempt[];
@@ -98,7 +97,7 @@ const availableExecutors = [
 
 export function TaskDetailsToolbar({
   task,
-  project,
+  projectHasDevScript,
   projectId,
   selectedAttempt,
   taskAttempts,
@@ -743,7 +742,7 @@ export function TaskDetailsToolbar({
                       <div className="flex items-center gap-2 flex-wrap">
                         <div
                           className={
-                            !project?.dev_script ? 'cursor-not-allowed' : ''
+                            !projectHasDevScript ? 'cursor-not-allowed' : ''
                           }
                           onMouseEnter={() => onSetIsHoveringDevServer(true)}
                           onMouseLeave={() => onSetIsHoveringDevServer(false)}
@@ -762,7 +761,7 @@ export function TaskDetailsToolbar({
                                       : onStartDevServer
                                   }
                                   disabled={
-                                    isStartingDevServer || !project?.dev_script
+                                    isStartingDevServer || !projectHasDevScript
                                   }
                                   className="gap-1"
                                 >
@@ -787,7 +786,7 @@ export function TaskDetailsToolbar({
                                 align="center"
                                 avoidCollisions={true}
                               >
-                                {!project?.dev_script ? (
+                                {!projectHasDevScript ? (
                                   <p>
                                     Configure a dev server command in project
                                     settings

@@ -1,9 +1,10 @@
+import { useMemo } from 'react';
 import {
-  KanbanProvider,
-  KanbanBoard,
-  KanbanHeader,
-  KanbanCards,
   type DragEndEvent,
+  KanbanBoard,
+  KanbanCards,
+  KanbanHeader,
+  KanbanProvider,
 } from '@/components/ui/shadcn-io/kanban';
 import { TaskCard } from './TaskCard';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
@@ -51,46 +52,39 @@ export function TaskKanbanBoard({
   onDeleteTask,
   onViewTaskDetails,
 }: TaskKanbanBoardProps) {
-  const filterTasks = (tasks: Task[]) => {
+  // Memoize filtered tasks
+  const filteredTasks = useMemo(() => {
     if (!searchQuery.trim()) {
       return tasks;
     }
-
     const query = searchQuery.toLowerCase();
     return tasks.filter(
       (task) =>
         task.title.toLowerCase().includes(query) ||
         (task.description && task.description.toLowerCase().includes(query))
     );
-  };
+  }, [tasks, searchQuery]);
 
-  const groupTasksByStatus = () => {
+  // Memoize grouped tasks
+  const groupedTasks = useMemo(() => {
     const groups: Record<TaskStatus, Task[]> = {} as Record<TaskStatus, Task[]>;
-
-    // Initialize groups for all possible statuses
     allTaskStatuses.forEach((status) => {
       groups[status] = [];
     });
-
-    const filteredTasks = filterTasks(tasks);
-
     filteredTasks.forEach((task) => {
-      // Convert old capitalized status to lowercase if needed
       const normalizedStatus = task.status.toLowerCase() as TaskStatus;
       if (groups[normalizedStatus]) {
         groups[normalizedStatus].push(task);
       } else {
-        // Default to todo if status doesn't match any expected value
         groups['todo'].push(task);
       }
     });
-
     return groups;
-  };
+  }, [filteredTasks]);
 
   return (
     <KanbanProvider onDragEnd={onDragEnd}>
-      {Object.entries(groupTasksByStatus()).map(([status, statusTasks]) => (
+      {Object.entries(groupedTasks).map(([status, statusTasks]) => (
         <KanbanBoard key={status} id={status as TaskStatus}>
           <KanbanHeader
             name={statusLabels[status as TaskStatus]}

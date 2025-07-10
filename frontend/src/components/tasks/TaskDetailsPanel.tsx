@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { TaskDetailsHeader } from './TaskDetailsHeader';
 import { TaskDetailsToolbar } from './TaskDetailsToolbar';
 import { NormalizedConversationViewer } from './NormalizedConversationViewer';
@@ -6,8 +6,8 @@ import { TaskFollowUpSection } from './TaskFollowUpSection';
 import { EditorSelectionDialog } from './EditorSelectionDialog';
 import { useTaskDetails } from '@/hooks/useTaskDetails';
 import {
-  getTaskPanelClasses,
   getBackdropClasses,
+  getTaskPanelClasses,
 } from '@/lib/responsive-config';
 import { makeRequest } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -22,20 +22,19 @@ import {
 import {
   ChevronDown,
   ChevronUp,
-  MessageSquare,
   GitCompare,
+  MessageSquare,
 } from 'lucide-react';
 import { DiffCard } from './DiffCard';
 import type {
-  TaskWithAttemptStatus,
   EditorType,
-  Project,
+  TaskWithAttemptStatus,
   WorktreeDiff,
 } from 'shared/types';
 
 interface TaskDetailsPanelProps {
   task: TaskWithAttemptStatus | null;
-  project: Project | null;
+  projectHasDevScript?: boolean;
   projectId: string;
   isOpen: boolean;
   onClose: () => void;
@@ -52,7 +51,7 @@ interface ApiResponse<T> {
 
 export function TaskDetailsPanel({
   task,
-  project,
+  projectHasDevScript,
   projectId,
   isOpen,
   onClose,
@@ -739,7 +738,7 @@ export function TaskDetailsPanel({
                 {!isHeaderCollapsed && (
                   <TaskDetailsToolbar
                     task={task}
-                    project={project}
+                    projectHasDevScript={projectHasDevScript}
                     projectId={projectId}
                     selectedAttempt={selectedAttempt}
                     taskAttempts={taskAttempts}

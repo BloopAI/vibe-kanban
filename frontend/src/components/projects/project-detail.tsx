@@ -99,7 +99,7 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
 
   if (error || !project) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 py-12 px-4">
         <Button variant="outline" onClick={onBack}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Projects
@@ -124,7 +124,7 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 py-12 px-4">
       <div className="flex justify-between items-start">
         <div className="flex items-center space-x-4">
           <Button variant="outline" onClick={onBack}>

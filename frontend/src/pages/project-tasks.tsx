@@ -1,26 +1,26 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Plus, Settings, FolderOpen } from 'lucide-react';
+import { FolderOpen, Plus, Settings } from 'lucide-react';
 import { makeRequest } from '@/lib/api';
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
 import { ProjectForm } from '@/components/projects/project-form';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
 import {
-  getMainContainerClasses,
   getKanbanSectionClasses,
+  getMainContainerClasses,
 } from '@/lib/responsive-config';
 
 import { TaskKanbanBoard } from '@/components/tasks/TaskKanbanBoard';
 import { TaskDetailsPanel } from '@/components/tasks/TaskDetailsPanel';
 import type {
+  CreateTaskAndStart,
+  ExecutorConfig,
+  ProjectWithBranch,
   TaskStatus,
   TaskWithAttemptStatus,
-  ProjectWithBranch,
-  ExecutorConfig,
-  CreateTaskAndStart,
 } from 'shared/types';
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 
@@ -459,7 +459,7 @@ export function ProjectTasks() {
       {isPanelOpen && (
         <TaskDetailsPanel
           task={selectedTask}
-          project={project}
+          projectHasDevScript={!!project?.dev_script}
           projectId={projectId!}
           isOpen={isPanelOpen}
           onClose={handleClosePanel}
