@@ -198,14 +198,25 @@ export function FileSearchTextarea({
     const availableSpaceAbove = textareaRect.top - 32;
 
     // If not enough space below, position above
-    if (availableSpaceBelow < minDropdownHeight && availableSpaceAbove > availableSpaceBelow) {
+    if (
+      availableSpaceBelow < minDropdownHeight &&
+      availableSpaceAbove > availableSpaceBelow
+    ) {
       // Get actual height from rendered dropdown
-      const actualHeight = dropdownRef.current?.getBoundingClientRect().height || minDropdownHeight;
+      const actualHeight =
+        dropdownRef.current?.getBoundingClientRect().height ||
+        minDropdownHeight;
       finalTop = textareaRect.top - actualHeight - 4;
-      maxHeight = Math.min(maxDropdownHeight, Math.max(availableSpaceAbove, minDropdownHeight));
+      maxHeight = Math.min(
+        maxDropdownHeight,
+        Math.max(availableSpaceAbove, minDropdownHeight)
+      );
     } else {
       // Position below with available space
-      maxHeight = Math.min(maxDropdownHeight, Math.max(availableSpaceBelow, minDropdownHeight));
+      maxHeight = Math.min(
+        maxDropdownHeight,
+        Math.max(availableSpaceBelow, minDropdownHeight)
+      );
     }
 
     return { top: finalTop, left: finalLeft, maxHeight };
