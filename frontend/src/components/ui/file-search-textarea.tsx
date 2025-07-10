@@ -169,92 +169,41 @@ export function FileSearchTextarea({
     }, 0);
   };
 
-  // Calculate dropdown position relative to viewport
+  // Calculate dropdown position relative to textarea (simpler, more stable approach)
   const getDropdownPosition = () => {
-    if (!textareaRef.current || atSymbolPosition === -1)
-      return { top: 0, left: 0, maxHeight: 240 };
+    if (!textareaRef.current) return { top: 0, left: 0, maxHeight: 240 };
 
     const textareaRect = textareaRef.current.getBoundingClientRect();
-    const textBeforeAt = value.slice(0, atSymbolPosition);
-    const lines = textBeforeAt.split('\n');
-    const currentLine = lines.length - 1;
-    const charInLine = lines[lines.length - 1].length;
-
-    // More accurate calculation using computed styles
-    const computedStyle = window.getComputedStyle(textareaRef.current);
-    const lineHeight = parseInt(computedStyle.lineHeight) || 20;
-    const fontSize = parseInt(computedStyle.fontSize) || 14;
-    const charWidth = fontSize * 0.6; // Approximate character width
-    const paddingLeft = parseInt(computedStyle.paddingLeft) || 12;
-    const paddingTop = parseInt(computedStyle.paddingTop) || 8;
-
-    // Position relative to textarea
-    const relativeTop = paddingTop + currentLine * lineHeight + lineHeight;
-    const relativeLeft = paddingLeft + charWidth * charInLine;
-
-    // Convert to viewport coordinates
-    const viewportTop = textareaRect.top + relativeTop;
-    const viewportLeft = textareaRect.left + relativeLeft;
-
-    // Dropdown dimensions
     const dropdownWidth = 256; // min-w-64 = 256px
+    const maxDropdownHeight = 320;
     const minDropdownHeight = 120;
-    const maxDropdownHeight = 400; // Increased to show more results without scrolling
 
-    let finalTop = viewportTop;
-    let finalLeft = viewportLeft;
+    // Position dropdown below the textarea by default
+    let finalTop = textareaRect.bottom + 4; // 4px gap
+    let finalLeft = textareaRect.left;
     let maxHeight = maxDropdownHeight;
 
-    // Prevent going off the right edge
-    if (viewportLeft + dropdownWidth > window.innerWidth - 16) {
+    // Ensure dropdown doesn't go off the right edge
+    if (finalLeft + dropdownWidth > window.innerWidth - 16) {
       finalLeft = window.innerWidth - dropdownWidth - 16;
     }
 
-    // Prevent going off the left edge
+    // Ensure dropdown doesn't go off the left edge
     if (finalLeft < 16) {
       finalLeft = 16;
     }
 
-    // Smart positioning: avoid clipping by positioning above when needed
-    const availableSpaceBelow = window.innerHeight - viewportTop - 32;
-    const availableSpaceAbove =
-      textareaRect.top + currentLine * lineHeight - 32;
+    // Calculate available space below and above textarea
+    const availableSpaceBelow = window.innerHeight - textareaRect.bottom - 32;
+    const availableSpaceAbove = textareaRect.top - 32;
 
-    // Check if dropdown would be clipped at bottom - if so, try positioning above
-    const wouldBeClippedBelow = availableSpaceBelow < maxDropdownHeight;
-    const hasEnoughSpaceAbove = availableSpaceAbove >= maxDropdownHeight;
-
-    if (wouldBeClippedBelow && hasEnoughSpaceAbove) {
-      // Position above the cursor line with full height
-      finalTop =
-        textareaRect.top +
-        paddingTop +
-        currentLine * lineHeight -
-        maxDropdownHeight;
-      maxHeight = maxDropdownHeight;
-    } else if (
-      wouldBeClippedBelow &&
-      availableSpaceAbove > availableSpaceBelow
-    ) {
-      // Position above but with reduced height if not enough space
-      finalTop =
-        textareaRect.top +
-        paddingTop +
-        currentLine * lineHeight -
-        availableSpaceAbove;
-      maxHeight = Math.max(availableSpaceAbove, minDropdownHeight);
+    // If not enough space below, position above
+    if (availableSpaceBelow < minDropdownHeight && availableSpaceAbove > availableSpaceBelow) {
+      finalTop = textareaRect.top - maxDropdownHeight - 4;
+      maxHeight = Math.min(maxDropdownHeight, Math.max(availableSpaceAbove, minDropdownHeight));
     } else {
-      // Position below the cursor line
-      maxHeight = Math.min(
-        maxDropdownHeight,
-        Math.max(availableSpaceBelow, minDropdownHeight)
-      );
-    }
-
-    // Ensure minimum height
-    if (maxHeight < minDropdownHeight) {
-      maxHeight = minDropdownHeight;
-      finalTop = Math.max(16, window.innerHeight - minDropdownHeight - 16);
+      // Position below with available space
+      maxHeight = Math.min(maxDropdownHeight, Math.max(availableSpaceBelow, minDropdownHeight));
     }
 
     return { top: finalTop, left: finalLeft, maxHeight };
