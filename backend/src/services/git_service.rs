@@ -181,12 +181,10 @@ impl GitService {
         let main_repo = self.open_repo()?;
 
         // Open the worktree repository to get the latest commit
-        let worktree_repo = Repository::open(worktree_path)?;
-        let worktree_head = worktree_repo.head()?;
-        let worktree_commit = worktree_head.peel_to_commit()?;
+        let _worktree_repo = Repository::open(worktree_path)?;
 
         // Verify the branch exists in the main repo
-        main_repo
+        let branch = main_repo
             .find_branch(branch_name, BranchType::Local)
             .map_err(|_| GitServiceError::BranchNotFound(branch_name.to_string()))?;
 
@@ -197,29 +195,38 @@ impl GitService {
         // Get the signature for the merge commit
         let signature = main_repo.signature()?;
 
-        // Get the tree from the worktree commit and find it in the main repo
-        let worktree_tree_id = worktree_commit.tree_id();
-        let main_tree = main_repo.find_tree(worktree_tree_id)?;
+        // Get the branch commit (this should be the same as the worktree commit)
+        let branch_commit = branch.get().peel_to_commit()?;
 
-        // Find the worktree commit in the main repo
-        let main_worktree_commit = main_repo.find_commit(worktree_commit.id())?;
+        // Perform a merge operation using git2's merge facilities
+        let annotated_commit = main_repo.find_annotated_commit(branch_commit.id())?;
+        let analysis = main_repo.merge_analysis(&[&annotated_commit])?;
 
-        // Create a merge commit
-        let merge_commit_id = main_repo.commit(
-            Some("HEAD"),                                    // Update HEAD
-            &signature,                                      // Author
-            &signature,                                      // Committer
-            &format!("Merge: {} (vibe-kanban)", task_title), // Message using task title
-            &main_tree,                                      // Use the tree from worktree
-            &[&main_commit, &main_worktree_commit], // Parents: main HEAD and worktree commit
-        )?;
+        if analysis.0.is_fast_forward() {
+            // Fast-forward merge - just update HEAD
+            let refname = format!("refs/heads/{}", main_head.shorthand().unwrap_or("main"));
+            main_repo.reference(&refname, branch_commit.id(), true, "Fast-forward merge")?;
+            main_repo.reset(branch_commit.as_object(), git2::ResetType::Hard, None)?;
+            info!("Fast-forward merge completed");
+            Ok(branch_commit.id().to_string())
+        } else {
+            // Create a proper merge commit
+            let merge_commit_id = main_repo.commit(
+                Some("HEAD"),                                    // Update HEAD
+                &signature,                                      // Author
+                &signature,                                      // Committer
+                &format!("Merge: {} (vibe-kanban)", task_title), // Message using task title
+                &branch_commit.tree()?,                          // Use the tree from branch
+                &[&main_commit, &branch_commit], // Parents: main HEAD and branch commit
+            )?;
 
-        // Reset the working directory to match the new HEAD
-        let merge_commit = main_repo.find_commit(merge_commit_id)?;
-        main_repo.reset(merge_commit.as_object(), git2::ResetType::Hard, None)?;
+            // Reset the working directory to match the new HEAD
+            let merge_commit = main_repo.find_commit(merge_commit_id)?;
+            main_repo.reset(merge_commit.as_object(), git2::ResetType::Hard, None)?;
 
-        info!("Created merge commit: {}", merge_commit_id);
-        Ok(merge_commit_id.to_string())
+            info!("Created merge commit: {}", merge_commit_id);
+            Ok(merge_commit_id.to_string())
+        }
     }
 
     /// Rebase a worktree branch onto a new base
