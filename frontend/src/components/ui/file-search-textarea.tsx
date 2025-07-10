@@ -177,8 +177,8 @@ export function FileSearchTextarea({
     const dropdownWidth = 256; // min-w-64 = 256px
     const maxDropdownHeight = 320;
     const minDropdownHeight = 120;
-    const itemHeight = 48; // Approximate height per item (adjust based on your item styling)
-    const dropdownPadding = 16; // Padding inside dropdown
+    const itemHeight = 60; // Increased to account for px-3 py-2 padding + two lines of text
+    const dropdownPadding = 8; // py-1 padding on container
     
     // Calculate actual height needed based on number of results
     const actualHeight = Math.min(
