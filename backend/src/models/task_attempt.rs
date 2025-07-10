@@ -14,6 +14,10 @@ use crate::services::{
     GitServiceError, ProcessService,
 };
 
+// Constants for git diff operations
+const GIT_DIFF_CONTEXT_LINES: u32 = 3;
+const GIT_DIFF_INTERHUNK_LINES: u32 = 0;
+
 #[derive(Debug)]
 pub enum TaskAttemptError {
     Database(sqlx::Error),
@@ -23,6 +27,7 @@ pub enum TaskAttemptError {
     TaskNotFound,
     ProjectNotFound,
     ValidationError(String),
+    BranchNotFound(String),
 }
 
 impl std::fmt::Display for TaskAttemptError {
@@ -35,6 +40,7 @@ impl std::fmt::Display for TaskAttemptError {
             TaskAttemptError::TaskNotFound => write!(f, "Task not found"),
             TaskAttemptError::ProjectNotFound => write!(f, "Project not found"),
             TaskAttemptError::ValidationError(e) => write!(f, "Validation error: {}", e),
+            TaskAttemptError::BranchNotFound(branch) => write!(f, "Branch '{}' not found", branch),
         }
     }
 }
@@ -189,6 +195,13 @@ pub struct TaskAttemptState {
     pub has_setup_script: bool,
     pub setup_process_id: Option<String>,
     pub coding_agent_process_id: Option<String>,
+}
+
+/// Context data for resume operations (simplified)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AttemptResumeContext {
+    pub execution_history: String,
+    pub cumulative_diffs: String,
 }
 
 #[derive(Debug)]
@@ -1042,5 +1055,113 @@ impl TaskAttempt {
         .await?;
 
         Ok(())
+    }
+
+    /// Get execution history from current attempt only (simplified)
+    pub async fn get_attempt_execution_history(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+    ) -> Result<String, TaskAttemptError> {
+        // Get all coding agent processes for this attempt
+        let processes =
+            crate::models::execution_process::ExecutionProcess::find_by_task_attempt_id(
+                pool, attempt_id,
+            )
+            .await?;
+
+        // Filter to coding agent processes only and aggregate stdout
+        let coding_processes: Vec<_> = processes
+            .into_iter()
+            .filter(|p| {
+                matches!(
+                    p.process_type,
+                    crate::models::execution_process::ExecutionProcessType::CodingAgent
+                )
+            })
+            .collect();
+
+        let mut history = String::new();
+        for process in coding_processes {
+            if let Some(stdout) = process.stdout {
+                if !stdout.trim().is_empty() {
+                    history.push_str(&stdout);
+                    history.push('\n');
+                }
+            }
+        }
+
+        Ok(history)
+    }
+
+    /// Get diff between base_branch and current attempt (simplified)
+    pub async fn get_attempt_diff(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+        project_id: Uuid,
+    ) -> Result<String, TaskAttemptError> {
+        // Get the task attempt with base_branch
+        let attempt = Self::find_by_id(pool, attempt_id)
+            .await?
+            .ok_or(TaskAttemptError::TaskNotFound)?;
+
+        // Get the project
+        let project = Project::find_by_id(pool, project_id)
+            .await?
+            .ok_or(TaskAttemptError::ProjectNotFound)?;
+
+        // Open the main repository
+        let repo = Repository::open(&project.git_repo_path)?;
+
+        // Get base branch commit
+        let base_branch = repo
+            .find_branch(&attempt.base_branch, git2::BranchType::Local)
+            .map_err(|_| TaskAttemptError::BranchNotFound(attempt.base_branch.clone()))?;
+        let base_commit = base_branch.get().peel_to_commit()?;
+
+        // Get current branch commit
+        let current_branch = repo
+            .find_branch(&attempt.branch, git2::BranchType::Local)
+            .map_err(|_| TaskAttemptError::BranchNotFound(attempt.branch.clone()))?;
+        let current_commit = current_branch.get().peel_to_commit()?;
+
+        // Create diff between base and current
+        let base_tree = base_commit.tree()?;
+        let current_tree = current_commit.tree()?;
+
+        let mut diff_opts = git2::DiffOptions::new();
+        diff_opts.context_lines(GIT_DIFF_CONTEXT_LINES);
+        diff_opts.interhunk_lines(GIT_DIFF_INTERHUNK_LINES);
+
+        let diff =
+            repo.diff_tree_to_tree(Some(&base_tree), Some(&current_tree), Some(&mut diff_opts))?;
+
+        // Convert to text format
+        let mut diff_text = String::new();
+        diff.print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
+            let content = std::str::from_utf8(line.content()).unwrap_or("");
+            diff_text.push_str(&format!("{}{}", line.origin(), content));
+            true
+        })?;
+
+        Ok(diff_text)
+    }
+
+    /// Get comprehensive resume context for Gemini followup execution (simplified)
+    pub async fn get_attempt_resume_context(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+        _task_id: Uuid,
+        project_id: Uuid,
+    ) -> Result<AttemptResumeContext, TaskAttemptError> {
+        // Get execution history from current attempt only
+        let execution_history = Self::get_attempt_execution_history(pool, attempt_id).await?;
+
+        // Get diff between base_branch and current attempt
+        let cumulative_diffs = Self::get_attempt_diff(pool, attempt_id, project_id).await?;
+
+        Ok(AttemptResumeContext {
+            execution_history,
+            cumulative_diffs,
+        })
     }
 }

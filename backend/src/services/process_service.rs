@@ -827,14 +827,11 @@ impl ProcessService {
                         }
                     }
                     crate::executor::ExecutorConfig::Gemini => {
-                        if let Some(sid) = session_id {
-                            Box::new(GeminiFollowupExecutor {
-                                session_id: sid.clone(),
-                                prompt: prompt.clone(),
-                            })
-                        } else {
-                            return Err(TaskAttemptError::TaskNotFound); // No session ID for followup
-                        }
+                        // For Gemini, we don't use real session IDs, we pass the context directly
+                        Box::new(GeminiFollowupExecutor {
+                            attempt_id,
+                            prompt: prompt.clone(),
+                        })
                     }
                     crate::executor::ExecutorConfig::Echo => {
                         // Echo doesn't support followup, use regular echo

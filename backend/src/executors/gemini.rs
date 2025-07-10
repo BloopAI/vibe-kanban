@@ -13,12 +13,15 @@ use crate::{
     utils::shell::get_shell_command,
 };
 
+// Constants for configuration
+const PATTERN_BREAK_TIMEOUT_SECS: u64 = 5;
+
 /// An executor that uses Gemini CLI to process tasks
 pub struct GeminiExecutor;
 
-/// An executor that resumes a Gemini session
+/// An executor that continues a Gemini task with context from previous execution
 pub struct GeminiFollowupExecutor {
-    pub session_id: String,
+    pub attempt_id: Uuid,
     pub prompt: String,
 }
 
@@ -118,6 +121,27 @@ Task title: {}"#,
             attempt_id
         );
 
+        // Update ExecutorSession with the session_id immediately
+        if let Err(e) = crate::models::executor_session::ExecutorSession::update_session_id(
+            pool,
+            execution_process_id,
+            &attempt_id.to_string(),
+        )
+        .await
+        {
+            tracing::error!(
+                "Failed to update session ID for Gemini execution process {}: {}",
+                execution_process_id,
+                e
+            );
+        } else {
+            tracing::info!(
+                "Updated session ID {} for Gemini execution process {}",
+                attempt_id,
+                execution_process_id
+            );
+        }
+
         let mut child = self.spawn(pool, task_id, worktree_path).await?;
 
         tracing::info!(
@@ -175,39 +199,40 @@ Task title: {}"#,
                 continue;
             }
 
-            match serde_json::from_str::<NormalizedEntry>(trimmed) {
-                Ok(entry) => {
-                    entries.push(entry);
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        "Failed to parse JSONL line {} in Gemini logs: {} - Line: {}",
-                        line_num + 1,
-                        e,
-                        trimmed
-                    );
-                    parse_errors.push(format!("Line {}: {}", line_num + 1, e));
+            // Try to parse as JSON first (for NormalizedEntry format)
+            if trimmed.starts_with('{') {
+                match serde_json::from_str::<NormalizedEntry>(trimmed) {
+                    Ok(entry) => {
+                        entries.push(entry);
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "Failed to parse JSONL line {} in Gemini logs: {} - Line: {}",
+                            line_num + 1,
+                            e,
+                            trimmed
+                        );
+                        parse_errors.push(format!("Line {}: {}", line_num + 1, e));
 
-                    // If this is clearly a JSONL line (starts with {), create a fallback entry
-                    if trimmed.starts_with('{') {
+                        // Create a fallback entry for unrecognized JSON
                         let fallback_entry = NormalizedEntry {
                             timestamp: Some(chrono::Utc::now().to_rfc3339()),
                             entry_type: NormalizedEntryType::SystemMessage,
-                            content: format!("Parse error for JSONL line: {}", trimmed),
+                            content: format!("Raw output: {}", trimmed),
                             metadata: None,
                         };
                         entries.push(fallback_entry);
-                    } else {
-                        // For non-JSON lines, treat as plain text content
-                        let text_entry = NormalizedEntry {
-                            timestamp: Some(chrono::Utc::now().to_rfc3339()),
-                            entry_type: NormalizedEntryType::AssistantMessage,
-                            content: trimmed.to_string(),
-                            metadata: None,
-                        };
-                        entries.push(text_entry);
                     }
                 }
+            } else {
+                // For non-JSON lines, treat as plain text content
+                let text_entry = NormalizedEntry {
+                    timestamp: Some(chrono::Utc::now().to_rfc3339()),
+                    entry_type: NormalizedEntryType::AssistantMessage,
+                    content: trimmed.to_string(),
+                    metadata: None,
+                };
+                entries.push(text_entry);
             }
         }
 
@@ -227,7 +252,7 @@ Task title: {}"#,
 
         Ok(NormalizedConversation {
             entries,
-            session_id: None, // session_id is not available in the current Gemini implementation
+            session_id: None, // Session ID is managed directly via database, not extracted from logs
             executor_type: "gemini".to_string(),
             prompt: None,
             summary: None,
@@ -436,7 +461,8 @@ impl GeminiExecutor {
                 if let Some(&next_ch) = chars.peek() {
                     let is_capital = next_ch.is_uppercase() && next_ch.is_alphabetic();
                     let is_space = next_ch.is_whitespace();
-                    let should_force_break = is_space && last_emit_time.elapsed().as_secs() > 5;
+                    let should_force_break =
+                        is_space && last_emit_time.elapsed().as_secs() > PATTERN_BREAK_TIMEOUT_SECS;
 
                     if is_capital || should_force_break {
                         // Pattern break detected - current segment ends here
@@ -510,20 +536,97 @@ impl GeminiExecutor {
     }
 }
 
-#[async_trait]
-impl Executor for GeminiFollowupExecutor {
-    async fn spawn(
+impl GeminiFollowupExecutor {
+    async fn load_task(
         &self,
-        _pool: &sqlx::SqlitePool,
-        _task_id: Uuid,
-        worktree_path: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
-        // --resume is currently not supported by the gemini-cli. This will error!
-        // TODO: Check again when this issue has been addressed: https://github.com/google-gemini/gemini-cli/issues/2222
+        pool: &sqlx::SqlitePool,
+        task_id: Uuid,
+    ) -> Result<Task, ExecutorError> {
+        Task::find_by_id(pool, task_id)
+            .await?
+            .ok_or(ExecutorError::TaskNotFound)
+    }
 
-        // Use shell command for cross-platform compatibility
+    async fn collect_resume_context(
+        &self,
+        pool: &sqlx::SqlitePool,
+        task: &Task,
+    ) -> Result<crate::models::task_attempt::AttemptResumeContext, ExecutorError> {
+        crate::models::task_attempt::TaskAttempt::get_attempt_resume_context(
+            pool,
+            self.attempt_id,
+            task.id,
+            task.project_id,
+        )
+        .await
+        .map_err(ExecutorError::from)
+    }
+
+    fn build_comprehensive_prompt(
+        &self,
+        task: &Task,
+        resume_context: &crate::models::task_attempt::AttemptResumeContext,
+    ) -> String {
+        format!(
+            r#"RESUME CONTEXT FOR CONTINUING TASK
+
+=== TASK INFORMATION ===
+Project ID: {}
+Task ID: {}
+Task Title: {}
+Task Description: {}
+
+=== EXECUTION HISTORY ===
+The following is the execution history from this task attempt:
+
+{}
+
+=== CURRENT CHANGES ===
+The following git diff shows changes made from the base branch to the current state:
+
+```diff
+{}
+```
+
+=== CURRENT REQUEST ===
+{}
+
+=== INSTRUCTIONS ===
+You are continuing work on the above task. The execution history shows what has been done previously, and the git diff shows the current state of all changes. Please continue from where the previous execution left off, taking into account all the context provided above.
+"#,
+            task.project_id,
+            task.id,
+            task.title,
+            task.description
+                .as_deref()
+                .unwrap_or("No description provided"),
+            if resume_context.execution_history.trim().is_empty() {
+                "(No previous execution history)"
+            } else {
+                &resume_context.execution_history
+            },
+            if resume_context.cumulative_diffs.trim().is_empty() {
+                "(No changes detected)"
+            } else {
+                &resume_context.cumulative_diffs
+            },
+            self.prompt
+        )
+    }
+
+    async fn spawn_process(
+        &self,
+        worktree_path: &str,
+        comprehensive_prompt: &str,
+    ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let gemini_command = format!("npx @google/gemini-cli --yolo --resume={}", self.session_id);
+        let gemini_command = "npx @google/gemini-cli --yolo";
+
+        tracing::info!(
+            "Spawning Gemini followup execution for attempt {} with resume context ({} chars)",
+            self.attempt_id,
+            comprehensive_prompt.len()
+        );
 
         let mut command = Command::new(shell_cmd);
         command
@@ -533,40 +636,156 @@ impl Executor for GeminiFollowupExecutor {
             .stderr(Stdio::piped())
             .current_dir(worktree_path)
             .arg(shell_arg)
-            .arg(&gemini_command)
+            .arg(gemini_command)
             .env("NODE_NO_WARNINGS", "1");
 
-        let mut child = command
-            .group_spawn() // Create new process group so we can kill entire tree
-            .map_err(|e| {
-                crate::executor::SpawnContext::from_command(&command, "Gemini")
+        let mut child = command.group_spawn().map_err(|e| {
+            crate::executor::SpawnContext::from_command(&command, "Gemini")
+                .with_context(format!(
+                    "Gemini CLI followup execution with context for attempt {}",
+                    self.attempt_id
+                ))
+                .spawn_error(e)
+        })?;
+
+        self.send_prompt_to_stdin(&mut child, &command, comprehensive_prompt)
+            .await?;
+        Ok(child)
+    }
+
+    async fn send_prompt_to_stdin(
+        &self,
+        child: &mut AsyncGroupChild,
+        command: &Command,
+        comprehensive_prompt: &str,
+    ) -> Result<(), ExecutorError> {
+        if let Some(mut stdin) = child.inner().stdin.take() {
+            tracing::debug!(
+                "Sending resume context to Gemini for attempt {}: {} characters",
+                self.attempt_id,
+                comprehensive_prompt.len()
+            );
+
+            stdin
+                .write_all(comprehensive_prompt.as_bytes())
+                .await
+                .map_err(|e| {
+                    let context = crate::executor::SpawnContext::from_command(command, "Gemini")
+                        .with_context(format!(
+                            "Failed to write resume prompt to Gemini CLI stdin for attempt {}",
+                            self.attempt_id
+                        ));
+                    ExecutorError::spawn_failed(e, context)
+                })?;
+
+            stdin.shutdown().await.map_err(|e| {
+                let context = crate::executor::SpawnContext::from_command(command, "Gemini")
                     .with_context(format!(
-                        "Gemini CLI followup execution for session {}",
-                        self.session_id
-                    ))
-                    .spawn_error(e)
+                        "Failed to close Gemini CLI stdin for attempt {}",
+                        self.attempt_id
+                    ));
+                ExecutorError::spawn_failed(e, context)
             })?;
 
-        // Send the prompt via stdin instead of command line arguments
-        // This avoids Windows command line parsing issues
-        if let Some(mut stdin) = child.inner().stdin.take() {
-            stdin.write_all(self.prompt.as_bytes()).await.map_err(|e| {
-                let context = crate::executor::SpawnContext::from_command(&command, "Gemini")
-                    .with_context(format!(
-                        "Failed to write prompt to Gemini CLI stdin for session {}",
-                        self.session_id
-                    ));
-                ExecutorError::spawn_failed(e, context)
-            })?;
-            stdin.shutdown().await.map_err(|e| {
-                let context = crate::executor::SpawnContext::from_command(&command, "Gemini")
-                    .with_context(format!(
-                        "Failed to close Gemini CLI stdin for session {}",
-                        self.session_id
-                    ));
-                ExecutorError::spawn_failed(e, context)
-            })?;
+            tracing::info!(
+                "Successfully sent resume context to Gemini for attempt {}",
+                self.attempt_id
+            );
         }
+
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl Executor for GeminiFollowupExecutor {
+    async fn spawn(
+        &self,
+        pool: &sqlx::SqlitePool,
+        task_id: Uuid,
+        worktree_path: &str,
+    ) -> Result<AsyncGroupChild, ExecutorError> {
+        let task = self.load_task(pool, task_id).await?;
+        let resume_context = self.collect_resume_context(pool, &task).await?;
+        let comprehensive_prompt = self.build_comprehensive_prompt(&task, &resume_context);
+        self.spawn_process(worktree_path, &comprehensive_prompt)
+            .await
+    }
+
+    async fn execute_streaming(
+        &self,
+        pool: &sqlx::SqlitePool,
+        task_id: Uuid,
+        attempt_id: Uuid,
+        execution_process_id: Uuid,
+        worktree_path: &str,
+    ) -> Result<AsyncGroupChild, ExecutorError> {
+        tracing::info!(
+            "Starting Gemini followup execution for task {} attempt {} with resume context",
+            task_id,
+            attempt_id
+        );
+
+        // Update ExecutorSession with the session_id immediately
+        if let Err(e) = crate::models::executor_session::ExecutorSession::update_session_id(
+            pool,
+            execution_process_id,
+            &self.attempt_id.to_string(),
+        )
+        .await
+        {
+            tracing::error!(
+                "Failed to update session ID for Gemini followup execution process {}: {}",
+                execution_process_id,
+                e
+            );
+        } else {
+            tracing::info!(
+                "Updated session ID {} for Gemini followup execution process {}",
+                self.attempt_id,
+                execution_process_id
+            );
+        }
+
+        let mut child = self.spawn(pool, task_id, worktree_path).await?;
+
+        tracing::info!(
+            "Gemini followup process spawned successfully for attempt {}, PID: {:?}",
+            attempt_id,
+            child.inner().id()
+        );
+
+        // Take stdout and stderr pipes for streaming
+        let stdout = child
+            .inner()
+            .stdout
+            .take()
+            .expect("Failed to take stdout from child process");
+        let stderr = child
+            .inner()
+            .stderr
+            .take()
+            .expect("Failed to take stderr from child process");
+
+        // Start streaming tasks with Gemini-specific line-based message updates
+        let pool_clone1 = pool.clone();
+        let pool_clone2 = pool.clone();
+
+        tokio::spawn(GeminiExecutor::stream_gemini_with_lines(
+            stdout,
+            pool_clone1,
+            attempt_id,
+            execution_process_id,
+            true,
+        ));
+        // Use default stderr streaming (no custom parsing)
+        tokio::spawn(crate::executor::stream_output_to_db(
+            stderr,
+            pool_clone2,
+            attempt_id,
+            execution_process_id,
+            false,
+        ));
 
         Ok(child)
     }

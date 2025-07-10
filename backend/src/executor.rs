@@ -10,6 +10,10 @@ use crate::executors::{
     AmpExecutor, ClaudeExecutor, EchoExecutor, GeminiExecutor, OpencodeExecutor,
 };
 
+// Constants for database streaming
+const STDOUT_UPDATE_THRESHOLD: usize = 1;
+const BUFFER_SIZE_THRESHOLD: usize = 1024;
+
 /// Normalized conversation representation for different executor formats
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
@@ -139,6 +143,8 @@ pub enum ExecutorError {
     },
     TaskNotFound,
     DatabaseError(sqlx::Error),
+    ContextCollectionFailed(String),
+    GitError(String),
 }
 
 impl std::fmt::Display for ExecutorError {
@@ -173,6 +179,10 @@ impl std::fmt::Display for ExecutorError {
             }
             ExecutorError::TaskNotFound => write!(f, "Task not found"),
             ExecutorError::DatabaseError(e) => write!(f, "Database error: {}", e),
+            ExecutorError::ContextCollectionFailed(msg) => {
+                write!(f, "Context collection failed: {}", msg)
+            }
+            ExecutorError::GitError(msg) => write!(f, "Git operation error: {}", msg),
         }
     }
 }
@@ -182,6 +192,37 @@ impl std::error::Error for ExecutorError {}
 impl From<sqlx::Error> for ExecutorError {
     fn from(err: sqlx::Error) -> Self {
         ExecutorError::DatabaseError(err)
+    }
+}
+
+impl From<crate::models::task_attempt::TaskAttemptError> for ExecutorError {
+    fn from(err: crate::models::task_attempt::TaskAttemptError) -> Self {
+        match err {
+            crate::models::task_attempt::TaskAttemptError::Database(e) => {
+                ExecutorError::DatabaseError(e)
+            }
+            crate::models::task_attempt::TaskAttemptError::Git(e) => {
+                ExecutorError::GitError(format!("Git operation failed: {}", e))
+            }
+            crate::models::task_attempt::TaskAttemptError::TaskNotFound => {
+                ExecutorError::TaskNotFound
+            }
+            crate::models::task_attempt::TaskAttemptError::ProjectNotFound => {
+                ExecutorError::ContextCollectionFailed("Project not found".to_string())
+            }
+            crate::models::task_attempt::TaskAttemptError::ValidationError(msg) => {
+                ExecutorError::ContextCollectionFailed(format!("Validation failed: {}", msg))
+            }
+            crate::models::task_attempt::TaskAttemptError::BranchNotFound(branch) => {
+                ExecutorError::GitError(format!("Branch '{}' not found", branch))
+            }
+            crate::models::task_attempt::TaskAttemptError::GitService(e) => {
+                ExecutorError::GitError(format!("Git service error: {}", e))
+            }
+            crate::models::task_attempt::TaskAttemptError::GitHubService(e) => {
+                ExecutorError::GitError(format!("GitHub service error: {}", e))
+            }
+        }
     }
 }
 
@@ -462,8 +503,10 @@ async fn stream_stdout_to_db(
                 accumulated_output.push_str(&line);
                 update_counter += 1;
 
-                // Update database every 1 lines or when we have a significant amount of data
-                if update_counter >= 1 || accumulated_output.len() > 1024 {
+                // Update database every threshold lines or when we have a significant amount of data
+                if update_counter >= STDOUT_UPDATE_THRESHOLD
+                    || accumulated_output.len() > BUFFER_SIZE_THRESHOLD
+                {
                     if let Err(e) = ExecutionProcess::append_output(
                         &pool,
                         execution_process_id,
@@ -516,7 +559,8 @@ async fn stream_stderr_to_db(
     let mut reader = BufReader::new(output);
     let mut line = String::new();
     let mut accumulated_output = String::new();
-    const STDERR_FLUSH_TIMEOUT: Duration = Duration::from_millis(1000); // 1000ms timeout
+    const STDERR_FLUSH_TIMEOUT_MS: u64 = 1000;
+    const STDERR_FLUSH_TIMEOUT: Duration = Duration::from_millis(STDERR_FLUSH_TIMEOUT_MS); // 1000ms timeout
 
     loop {
         line.clear();
