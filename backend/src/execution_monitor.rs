@@ -804,23 +804,28 @@ async fn handle_coding_agent_completion(
         };
 
         let notification_service = NotificationService::new(notification_config);
-        
+
         // Get task attempt and task details for richer notification
         let (notification_title, notification_message) = if let Ok(Some(task_attempt)) =
             TaskAttempt::find_by_id(&app_state.db_pool, task_attempt_id).await
         {
-            if let Ok(Some(task)) = Task::find_by_id(&app_state.db_pool, task_attempt.task_id).await {
+            if let Ok(Some(task)) = Task::find_by_id(&app_state.db_pool, task_attempt.task_id).await
+            {
                 let title = format!("Task Complete: {}", task.title);
                 let message = if success {
-                    format!("✅ '{}' completed successfully\nBranch: {}\nExecutor: {}", 
-                        task.title, 
+                    format!(
+                        "✅ '{}' completed successfully\nBranch: {}\nExecutor: {}",
+                        task.title,
                         task_attempt.branch,
-                        task_attempt.executor.as_deref().unwrap_or("default"))
+                        task_attempt.executor.as_deref().unwrap_or("default")
+                    )
                 } else {
-                    format!("❌ '{}' execution failed\nBranch: {}\nExecutor: {}", 
-                        task.title, 
+                    format!(
+                        "❌ '{}' execution failed\nBranch: {}\nExecutor: {}",
+                        task.title,
                         task_attempt.branch,
-                        task_attempt.executor.as_deref().unwrap_or("default"))
+                        task_attempt.executor.as_deref().unwrap_or("default")
+                    )
                 };
                 (title, message)
             } else {
