@@ -185,7 +185,7 @@ export function FileSearchTextarea({
       maxDropdownHeight,
       Math.max(
         minDropdownHeight,
-        filteredFiles.length * itemHeight + dropdownPadding
+        searchResults.length * itemHeight + dropdownPadding
       )
     );
 
