@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT  ta.id                AS \"id!: Uuid\",\n                       ta.task_id           AS \"task_id!: Uuid\",\n                       ta.worktree_path,\n                       ta.branch,\n                       ta.base_branch,\n                       ta.merge_commit,\n                       ta.executor,\n                       ta.pr_url,\n                       ta.pr_number,\n                       ta.pr_status,\n                       ta.pr_merged_at      AS \"pr_merged_at: DateTime<Utc>\",\n                       ta.worktree_deleted  AS \"worktree_deleted!: bool\",\n                       ta.created_at        AS \"created_at!: DateTime<Utc>\",\n                       ta.updated_at        AS \"updated_at!: DateTime<Utc>\"\n               FROM    task_attempts ta\n               JOIN    tasks t ON ta.task_id = t.id\n               WHERE   ta.id = $1 AND t.id = $2 AND t.project_id = $3",
+  "query": "SELECT  id                AS \"id!: Uuid\",\n                       task_id           AS \"task_id!: Uuid\",\n                       worktree_path,\n                       branch,\n                       base_branch,\n                       merge_commit,\n                       executor,\n                       pr_url,\n                       pr_number,\n                       pr_status,\n                       pr_merged_at      AS \"pr_merged_at: DateTime<Utc>\",\n                       worktree_deleted  AS \"worktree_deleted!: bool\",\n                       setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                       created_at        AS \"created_at!: DateTime<Utc>\",\n                       updated_at        AS \"updated_at!: DateTime<Utc>\"\n               FROM    task_attempts\n               WHERE   task_id = $1\n               ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -64,18 +64,23 @@
         "type_info": "Bool"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "setup_completed_at: DateTime<Utc>",
         "ordinal": 12,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 13,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 13,
+        "ordinal": 14,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 3
+      "Right": 1
     },
     "nullable": [
       true,
@@ -90,9 +95,10 @@
       true,
       true,
       false,
+      true,
       false,
       false
     ]
   },
-  "hash": "8a8e1a2a5156b6d0fce8dbfdf4d2fd19501c4246d9b362abc0c489ec0331bf4c"
+  "hash": "a9e93d5b09b29faf66e387e4d7596a792d81e75c4d3726e83c2963e8d7c9b56f"
 }

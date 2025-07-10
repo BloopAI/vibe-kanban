@@ -13,6 +13,122 @@ use crate::{
     utils::worktree_manager::WorktreeManager,
 };
 
+/// Delegation context structure
+#[derive(Debug, serde::Deserialize)]
+struct DelegationContext {
+    delegate_to: String,
+    operation_params: DelegationOperationParams,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct DelegationOperationParams {
+    task_id: uuid::Uuid,
+    project_id: uuid::Uuid,
+    attempt_id: uuid::Uuid,
+    additional: Option<serde_json::Value>,
+}
+
+/// Parse delegation context from process args JSON
+fn parse_delegation_context(args_json: &str) -> Option<DelegationContext> {
+    // Parse the args JSON array
+    if let Ok(args_array) = serde_json::from_str::<serde_json::Value>(args_json) {
+        if let Some(args) = args_array.as_array() {
+            // Look for --delegation-context flag
+            for (i, arg) in args.iter().enumerate() {
+                if let Some(arg_str) = arg.as_str() {
+                    if arg_str == "--delegation-context" && i + 1 < args.len() {
+                        // Next argument should be the delegation context JSON
+                        if let Some(context_str) = args[i + 1].as_str() {
+                            if let Ok(context) =
+                                serde_json::from_str::<DelegationContext>(context_str)
+                            {
+                                return Some(context);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Handle delegation after setup completion
+async fn handle_setup_delegation(app_state: &AppState, delegation_context: DelegationContext) {
+    let params = &delegation_context.operation_params;
+    let task_id = params.task_id;
+    let project_id = params.project_id;
+    let attempt_id = params.attempt_id;
+
+    tracing::info!(
+        "Delegating to {} after setup completion for attempt {}",
+        delegation_context.delegate_to,
+        attempt_id
+    );
+
+    let result = match delegation_context.delegate_to.as_str() {
+        "dev_server" => {
+            ProcessService::start_dev_server_direct(
+                &app_state.db_pool,
+                app_state,
+                attempt_id,
+                task_id,
+                project_id,
+            )
+            .await
+        }
+        "coding_agent" => {
+            ProcessService::start_coding_agent(
+                &app_state.db_pool,
+                app_state,
+                attempt_id,
+                task_id,
+                project_id,
+            )
+            .await
+        }
+        "followup" => {
+            let prompt = params
+                .additional
+                .as_ref()
+                .and_then(|a| a.get("prompt"))
+                .and_then(|p| p.as_str())
+                .unwrap_or("");
+
+            ProcessService::start_followup_execution_direct(
+                &app_state.db_pool,
+                app_state,
+                attempt_id,
+                task_id,
+                project_id,
+                prompt,
+            )
+            .await
+            .map(|_| ())
+        }
+        _ => {
+            tracing::error!(
+                "Unknown delegation target: {}",
+                delegation_context.delegate_to
+            );
+            return;
+        }
+    };
+
+    if let Err(e) = result {
+        tracing::error!(
+            "Failed to delegate to {} after setup completion: {}",
+            delegation_context.delegate_to,
+            e
+        );
+    } else {
+        tracing::info!(
+            "Successfully delegated to {} after setup completion",
+            delegation_context.delegate_to
+        );
+    }
+}
+
 /// Commit any unstaged changes in the worktree after execution completion
 async fn commit_execution_changes(
     worktree_path: &str,
@@ -651,7 +767,7 @@ async fn handle_setup_completion(
     app_state: &AppState,
     task_attempt_id: Uuid,
     execution_process_id: Uuid,
-    _execution_process: ExecutionProcess,
+    execution_process: ExecutionProcess,
     success: bool,
     exit_code: Option<i64>,
 ) {
@@ -662,6 +778,16 @@ async fn handle_setup_completion(
     };
 
     if success {
+        // Mark setup as completed in database
+        if let Err(e) = TaskAttempt::mark_setup_completed(&app_state.db_pool, task_attempt_id).await
+        {
+            tracing::error!(
+                "Failed to mark setup as completed for attempt {}: {}",
+                task_attempt_id,
+                e
+            );
+        }
+
         // Setup completed successfully, create activity
         let activity_id = Uuid::new_v4();
         let create_activity = CreateTaskAttemptActivity {
@@ -682,23 +808,39 @@ async fn handle_setup_completion(
             return;
         }
 
-        // Get task and project info to start coding agent
-        if let Ok(Some(task_attempt)) =
-            TaskAttempt::find_by_id(&app_state.db_pool, task_attempt_id).await
-        {
-            if let Ok(Some(task)) = Task::find_by_id(&app_state.db_pool, task_attempt.task_id).await
+        // Check for delegation context in process args
+        let delegation_result = if let Some(args_json) = &execution_process.args {
+            parse_delegation_context(args_json)
+        } else {
+            None
+        };
+
+        if let Some(delegation_context) = delegation_result {
+            // Delegate to the original operation
+            handle_setup_delegation(app_state, delegation_context).await;
+        } else {
+            // Fallback to original behavior - start coding agent
+            if let Ok(Some(task_attempt)) =
+                TaskAttempt::find_by_id(&app_state.db_pool, task_attempt_id).await
             {
-                // Start the coding agent
-                if let Err(e) = ProcessService::start_coding_agent(
-                    &app_state.db_pool,
-                    app_state,
-                    task_attempt_id,
-                    task.id,
-                    task.project_id,
-                )
-                .await
+                if let Ok(Some(task)) =
+                    Task::find_by_id(&app_state.db_pool, task_attempt.task_id).await
                 {
-                    tracing::error!("Failed to start coding agent after setup completion: {}", e);
+                    // Start the coding agent
+                    if let Err(e) = ProcessService::start_coding_agent(
+                        &app_state.db_pool,
+                        app_state,
+                        task_attempt_id,
+                        task.id,
+                        task.project_id,
+                    )
+                    .await
+                    {
+                        tracing::error!(
+                            "Failed to start coding agent after setup completion: {}",
+                            e
+                        );
+                    }
                 }
             }
         }

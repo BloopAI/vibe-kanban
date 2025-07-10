@@ -93,6 +93,7 @@ pub struct TaskAttempt {
     pub pr_status: Option<String>, // open, closed, merged
     pub pr_merged_at: Option<DateTime<Utc>>, // When PR was merged
     pub worktree_deleted: bool,    // Flag indicating if worktree has been cleaned up
+    pub setup_completed_at: Option<DateTime<Utc>>, // When setup script was last completed
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -220,6 +221,7 @@ impl TaskAttempt {
                        ta.pr_status,
                        ta.pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
                        ta.worktree_deleted  AS "worktree_deleted!: bool",
+                       ta.setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                        ta.created_at        AS "created_at!: DateTime<Utc>",
                        ta.updated_at        AS "updated_at!: DateTime<Utc>"
                FROM    task_attempts ta
@@ -293,6 +295,7 @@ impl TaskAttempt {
                        pr_status,
                        pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
                        worktree_deleted  AS "worktree_deleted!: bool",
+                       setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                        created_at        AS "created_at!: DateTime<Utc>",
                        updated_at        AS "updated_at!: DateTime<Utc>"
                FROM    task_attempts
@@ -321,6 +324,7 @@ impl TaskAttempt {
                        pr_status,
                        pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
                        worktree_deleted  AS "worktree_deleted!: bool",
+                       setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                        created_at        AS "created_at!: DateTime<Utc>",
                        updated_at        AS "updated_at!: DateTime<Utc>"
                FROM    task_attempts
@@ -370,7 +374,7 @@ impl TaskAttempt {
             WHERE ep.completed_at IS NOT NULL
                 AND ta.worktree_deleted = FALSE
             GROUP BY ta.id, ta.worktree_path, p.git_repo_path
-            HAVING datetime('now', '-24 hours') > datetime(MAX(ep.completed_at))
+            HAVING datetime('now', '-1 minutes') > datetime(MAX(ep.completed_at))
                 AND ta.id NOT IN (
                     SELECT DISTINCT ep2.task_attempt_id
                     FROM execution_processes ep2
@@ -442,9 +446,9 @@ impl TaskAttempt {
         // Insert the record into the database
         Ok(sqlx::query_as!(
             TaskAttempt,
-            r#"INSERT INTO task_attempts (id, task_id, worktree_path, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at, worktree_deleted)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", worktree_path, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at as "pr_merged_at: DateTime<Utc>", worktree_deleted as "worktree_deleted!: bool", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO task_attempts (id, task_id, worktree_path, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at, worktree_deleted, setup_completed_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", worktree_path, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at as "pr_merged_at: DateTime<Utc>", worktree_deleted as "worktree_deleted!: bool", setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             attempt_id,
             task_id,
             worktree_path_str,
@@ -456,7 +460,8 @@ impl TaskAttempt {
             Option::<i64>::None, // pr_number is None during creation
             Option::<String>::None, // pr_status is None during creation
             Option::<DateTime<Utc>>::None, // pr_merged_at is None during creation
-            false // worktree_deleted is false during creation
+            false, // worktree_deleted is false during creation
+            Option::<DateTime<Utc>>::None // setup_completed_at is None during creation
         )
         .fetch_one(pool)
         .await?)
@@ -607,9 +612,9 @@ impl TaskAttempt {
         let new_worktree_path =
             Self::recreate_worktree_from_branch(pool, &task_attempt, project_id).await?;
 
-        // Update database with new path and reset worktree_deleted flag
+        // Update database with new path, reset worktree_deleted flag, and clear setup completion
         sqlx::query!(
-            "UPDATE task_attempts SET worktree_path = $1, worktree_deleted = FALSE, updated_at = datetime('now') WHERE id = $2",
+            "UPDATE task_attempts SET worktree_path = $1, worktree_deleted = FALSE, setup_completed_at = NULL, updated_at = datetime('now') WHERE id = $2",
             new_worktree_path,
             attempt_id
         )
@@ -1004,5 +1009,32 @@ impl TaskAttempt {
             setup_process_id: setup_process.map(|p| p.id.to_string()),
             coding_agent_process_id: coding_agent_process.map(|p| p.id.to_string()),
         })
+    }
+
+    /// Check if setup script has been completed for this worktree
+    pub async fn is_setup_completed(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+    ) -> Result<bool, TaskAttemptError> {
+        let task_attempt = Self::find_by_id(pool, attempt_id)
+            .await?
+            .ok_or(TaskAttemptError::TaskNotFound)?;
+
+        Ok(task_attempt.setup_completed_at.is_some())
+    }
+
+    /// Mark setup script as completed for this worktree
+    pub async fn mark_setup_completed(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+    ) -> Result<(), TaskAttemptError> {
+        sqlx::query!(
+            "UPDATE task_attempts SET setup_completed_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
+            attempt_id
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(())
     }
 }

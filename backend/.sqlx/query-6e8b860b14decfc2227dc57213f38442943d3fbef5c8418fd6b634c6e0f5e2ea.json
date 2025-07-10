@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT  id                AS \"id!: Uuid\",\n                       task_id           AS \"task_id!: Uuid\",\n                       worktree_path,\n                       branch,\n                       base_branch,\n                       merge_commit,\n                       executor,\n                       pr_url,\n                       pr_number,\n                       pr_status,\n                       pr_merged_at      AS \"pr_merged_at: DateTime<Utc>\",\n                       worktree_deleted  AS \"worktree_deleted!: bool\",\n                       created_at        AS \"created_at!: DateTime<Utc>\",\n                       updated_at        AS \"updated_at!: DateTime<Utc>\"\n               FROM    task_attempts\n               WHERE   task_id = $1\n               ORDER BY created_at DESC",
+  "query": "INSERT INTO task_attempts (id, task_id, worktree_path, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at, worktree_deleted, setup_completed_at)\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)\n               RETURNING id as \"id!: Uuid\", task_id as \"task_id!: Uuid\", worktree_path, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at as \"pr_merged_at: DateTime<Utc>\", worktree_deleted as \"worktree_deleted!: bool\", setup_completed_at as \"setup_completed_at: DateTime<Utc>\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -64,18 +64,23 @@
         "type_info": "Bool"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "setup_completed_at: DateTime<Utc>",
         "ordinal": 12,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 13,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 13,
+        "ordinal": 14,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 13
     },
     "nullable": [
       true,
@@ -90,9 +95,10 @@
       true,
       true,
       false,
+      true,
       false,
       false
     ]
   },
-  "hash": "430f8b4d013ce5bf1bd93242eea086c60e0125d76f9ffa6445addd155ec41059"
+  "hash": "6e8b860b14decfc2227dc57213f38442943d3fbef5c8418fd6b634c6e0f5e2ea"
 }

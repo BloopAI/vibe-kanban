@@ -19,6 +19,151 @@ use crate::{
 pub struct ProcessService;
 
 impl ProcessService {
+    /// Automatically run setup if needed, then continue with the specified operation
+    pub async fn auto_setup_and_execute(
+        pool: &SqlitePool,
+        app_state: &crate::app_state::AppState,
+        attempt_id: Uuid,
+        task_id: Uuid,
+        project_id: Uuid,
+        operation: &str, // "dev_server", "coding_agent", or "followup"
+        operation_params: Option<serde_json::Value>,
+    ) -> Result<(), TaskAttemptError> {
+        // Check if setup is completed for this worktree
+        let setup_completed = TaskAttempt::is_setup_completed(pool, attempt_id).await?;
+
+        // Get project to check if setup script exists
+        let project = Project::find_by_id(pool, project_id)
+            .await?
+            .ok_or(TaskAttemptError::ProjectNotFound)?;
+
+        let needs_setup = Self::should_run_setup_script(&project) && !setup_completed;
+
+        if needs_setup {
+            // Run setup with delegation to the original operation
+            Self::execute_setup_with_delegation(
+                pool,
+                app_state,
+                attempt_id,
+                task_id,
+                project_id,
+                operation,
+                operation_params,
+            )
+            .await
+        } else {
+            // Setup not needed or already completed, continue with original operation
+            match operation {
+                "dev_server" => {
+                    Self::start_dev_server_direct(pool, app_state, attempt_id, task_id, project_id)
+                        .await
+                }
+                "coding_agent" => {
+                    Self::start_coding_agent(pool, app_state, attempt_id, task_id, project_id).await
+                }
+                "followup" => {
+                    let prompt = operation_params
+                        .as_ref()
+                        .and_then(|p| p.get("prompt"))
+                        .and_then(|p| p.as_str())
+                        .unwrap_or("");
+                    Self::start_followup_execution_direct(
+                        pool, app_state, attempt_id, task_id, project_id, prompt,
+                    )
+                    .await
+                    .map(|_| ())
+                }
+                _ => Err(TaskAttemptError::ValidationError(format!(
+                    "Unknown operation: {}",
+                    operation
+                ))),
+            }
+        }
+    }
+
+    /// Execute setup script with delegation context for continuing after completion
+    async fn execute_setup_with_delegation(
+        pool: &SqlitePool,
+        app_state: &crate::app_state::AppState,
+        attempt_id: Uuid,
+        task_id: Uuid,
+        project_id: Uuid,
+        delegate_to: &str,
+        operation_params: Option<serde_json::Value>,
+    ) -> Result<(), TaskAttemptError> {
+        let (task_attempt, project) =
+            Self::load_execution_context(pool, attempt_id, project_id).await?;
+
+        // Create delegation context for execution monitor
+        let delegation_context = serde_json::json!({
+            "delegate_to": delegate_to,
+            "operation_params": {
+                "task_id": task_id,
+                "project_id": project_id,
+                "attempt_id": attempt_id,
+                "additional": operation_params
+            }
+        });
+
+        // Create modified setup script execution with delegation context in args
+        let setup_script = project.setup_script.as_ref().unwrap();
+        let process_id = Uuid::new_v4();
+
+        // Create execution process record with delegation context
+        let _execution_process = Self::create_execution_process_record_with_delegation(
+            pool,
+            attempt_id,
+            process_id,
+            setup_script,
+            &task_attempt.worktree_path,
+            delegation_context,
+        )
+        .await?;
+
+        // Create activity record
+        Self::create_activity_record(
+            pool,
+            process_id,
+            TaskAttemptStatus::SetupRunning,
+            "Starting setup script with delegation",
+        )
+        .await?;
+
+        tracing::info!(
+            "Starting setup script with delegation to {} for task attempt {}",
+            delegate_to,
+            attempt_id
+        );
+
+        // Execute the setup script
+        let child = Self::execute_setup_script_process(
+            setup_script,
+            pool,
+            task_id,
+            attempt_id,
+            process_id,
+            &task_attempt.worktree_path,
+        )
+        .await?;
+
+        // Register for monitoring
+        Self::register_for_monitoring(
+            app_state,
+            process_id,
+            attempt_id,
+            &ExecutionProcessType::SetupScript,
+            child,
+        )
+        .await;
+
+        tracing::info!(
+            "Started setup execution with delegation {} for task attempt {}",
+            process_id,
+            attempt_id
+        );
+        Ok(())
+    }
+
     /// Start the execution flow for a task attempt (setup script + executor)
     pub async fn start_execution(
         pool: &SqlitePool,
@@ -80,8 +225,33 @@ impl ProcessService {
         .await
     }
 
-    /// Start a dev server for this task attempt
+    /// Start a dev server for this task attempt (with automatic setup)
     pub async fn start_dev_server(
+        pool: &SqlitePool,
+        app_state: &crate::app_state::AppState,
+        attempt_id: Uuid,
+        task_id: Uuid,
+        project_id: Uuid,
+    ) -> Result<(), TaskAttemptError> {
+        // Ensure worktree exists (recreate if needed for cold task support)
+        let _worktree_path =
+            TaskAttempt::ensure_worktree_exists(pool, attempt_id, project_id, "dev server").await?;
+
+        // Use automatic setup logic
+        Self::auto_setup_and_execute(
+            pool,
+            app_state,
+            attempt_id,
+            task_id,
+            project_id,
+            "dev_server",
+            None,
+        )
+        .await
+    }
+
+    /// Start a dev server directly without setup check (internal method)
+    pub async fn start_dev_server_direct(
         pool: &SqlitePool,
         app_state: &crate::app_state::AppState,
         attempt_id: Uuid,
@@ -138,7 +308,7 @@ impl ProcessService {
         result
     }
 
-    /// Start a follow-up execution using the same executor type as the first process
+    /// Start a follow-up execution using the same executor type as the first process (with automatic setup)
     /// Returns the attempt_id that was actually used (always the original attempt_id for session continuity)
     pub async fn start_followup_execution(
         pool: &SqlitePool,
@@ -174,9 +344,42 @@ impl ProcessService {
 
         // Ensure worktree exists (recreate if needed for cold task support)
         // This will resurrect the worktree at the exact same path for session continuity
-        let worktree_path =
+        let _worktree_path =
             TaskAttempt::ensure_worktree_exists(pool, actual_attempt_id, project_id, "followup")
                 .await?;
+
+        // Use automatic setup logic with followup parameters
+        let operation_params = serde_json::json!({
+            "prompt": prompt
+        });
+
+        Self::auto_setup_and_execute(
+            pool,
+            app_state,
+            attempt_id,
+            task_id,
+            project_id,
+            "followup",
+            Some(operation_params),
+        )
+        .await?;
+
+        Ok(actual_attempt_id)
+    }
+
+    /// Start a follow-up execution directly without setup check (internal method)
+    pub async fn start_followup_execution_direct(
+        pool: &SqlitePool,
+        app_state: &crate::app_state::AppState,
+        attempt_id: Uuid,
+        task_id: Uuid,
+        project_id: Uuid,
+        prompt: &str,
+    ) -> Result<Uuid, TaskAttemptError> {
+        // Ensure worktree exists (recreate if needed for cold task support)
+        // This will resurrect the worktree at the exact same path for session continuity
+        let worktree_path =
+            TaskAttempt::ensure_worktree_exists(pool, attempt_id, project_id, "followup").await?;
 
         // Find the most recent coding agent execution process to get the executor type
         // Look up processes from the ORIGINAL attempt to find the session
@@ -261,7 +464,7 @@ impl ProcessService {
         let execution_result = Self::start_process_execution(
             pool,
             app_state,
-            actual_attempt_id,
+            attempt_id,
             task_id,
             followup_executor,
             "Starting follow-up executor".to_string(),
@@ -287,7 +490,7 @@ impl ProcessService {
             Self::start_process_execution(
                 pool,
                 app_state,
-                actual_attempt_id,
+                attempt_id,
                 task_id,
                 new_session_executor,
                 "Starting new executor session (follow-up session failed)".to_string(),
@@ -301,7 +504,7 @@ impl ProcessService {
             execution_result?;
         }
 
-        Ok(actual_attempt_id)
+        Ok(attempt_id)
     }
 
     /// Unified function to start any type of process execution
@@ -682,5 +885,59 @@ impl ProcessService {
                 },
             )
             .await;
+    }
+
+    /// Create execution process database record with delegation context
+    async fn create_execution_process_record_with_delegation(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+        process_id: Uuid,
+        _setup_script: &str,
+        worktree_path: &str,
+        delegation_context: serde_json::Value,
+    ) -> Result<ExecutionProcess, TaskAttemptError> {
+        let (shell_cmd, shell_arg) = get_shell_command();
+
+        // Store delegation context in args for execution monitor to read
+        let args_with_delegation = serde_json::json!([
+            shell_arg,
+            "setup_script",
+            "--delegation-context",
+            delegation_context.to_string()
+        ]);
+
+        let create_process = CreateExecutionProcess {
+            task_attempt_id: attempt_id,
+            process_type: ExecutionProcessType::SetupScript,
+            executor_type: None, // Setup scripts don't have an executor type
+            command: shell_cmd.to_string(),
+            args: Some(args_with_delegation.to_string()),
+            working_directory: worktree_path.to_string(),
+        };
+
+        ExecutionProcess::create(pool, &create_process, process_id)
+            .await
+            .map_err(TaskAttemptError::from)
+    }
+
+    /// Execute setup script process specifically
+    async fn execute_setup_script_process(
+        setup_script: &str,
+        pool: &SqlitePool,
+        task_id: Uuid,
+        attempt_id: Uuid,
+        process_id: Uuid,
+        worktree_path: &str,
+    ) -> Result<command_group::AsyncGroupChild, TaskAttemptError> {
+        use crate::executors::SetupScriptExecutor;
+
+        let executor = SetupScriptExecutor {
+            script: setup_script.to_string(),
+        };
+
+        executor
+            .execute_streaming(pool, task_id, attempt_id, process_id, worktree_path)
+            .await
+            .map_err(|e| TaskAttemptError::Git(git2::Error::from_str(&e.to_string())))
     }
 }
