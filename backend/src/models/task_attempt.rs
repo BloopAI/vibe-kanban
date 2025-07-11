@@ -379,7 +379,9 @@ impl TaskAttempt {
             .collect())
     }
 
-    /// Find task attempts that are expired (4+ minutes since last activity) and eligible for worktree cleanup
+    /// Find task attempts that are expired (24+ hours since last activity) and eligible for worktree cleanup
+    /// Activity includes: execution completion, task attempt updates (including worktree recreation),
+    /// and any attempts that are currently in progress
     pub async fn find_expired_for_cleanup(
         pool: &SqlitePool,
     ) -> Result<Vec<(Uuid, String, String)>, sqlx::Error> {
@@ -387,19 +389,31 @@ impl TaskAttempt {
             r#"
             SELECT ta.id as "attempt_id!: Uuid", ta.worktree_path, p.git_repo_path as "git_repo_path!"
             FROM task_attempts ta
-            JOIN execution_processes ep ON ta.id = ep.task_attempt_id
+            LEFT JOIN execution_processes ep ON ta.id = ep.task_attempt_id AND ep.completed_at IS NOT NULL
             JOIN tasks t ON ta.task_id = t.id
             JOIN projects p ON t.project_id = p.id
-            WHERE ep.completed_at IS NOT NULL
-                AND ta.worktree_deleted = FALSE
-            GROUP BY ta.id, ta.worktree_path, p.git_repo_path
-            HAVING datetime('now', '-1 minutes') > datetime(MAX(ep.completed_at))
+            WHERE ta.worktree_deleted = FALSE
+                -- Exclude attempts with any running processes (in progress)
                 AND ta.id NOT IN (
                     SELECT DISTINCT ep2.task_attempt_id
                     FROM execution_processes ep2
                     WHERE ep2.completed_at IS NULL
                 )
-            ORDER BY MAX(ep.completed_at) ASC
+            GROUP BY ta.id, ta.worktree_path, p.git_repo_path, ta.updated_at
+            HAVING datetime('now', '-24 hours') > datetime(
+                MAX(
+                    CASE
+                        WHEN ep.completed_at IS NOT NULL THEN ep.completed_at
+                        ELSE ta.updated_at
+                    END
+                )
+            )
+            ORDER BY MAX(
+                CASE
+                    WHEN ep.completed_at IS NOT NULL THEN ep.completed_at
+                    ELSE ta.updated_at
+                END
+            ) ASC
             "#
         )
         .fetch_all(pool)
