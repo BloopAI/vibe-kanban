@@ -16,6 +16,7 @@ import {
 import { TaskKanbanBoard } from '@/components/tasks/TaskKanbanBoard';
 import { TaskDetailsPanel } from '@/components/tasks/TaskDetailsPanel';
 import type {
+  ApiResponse,
   CreateTaskAndStart,
   ExecutorConfig,
   ProjectWithBranch,
@@ -25,12 +26,6 @@ import type {
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 
 type Task = TaskWithAttemptStatus;
-
-interface ApiResponse<T> {
-  success: boolean;
-  data: T | null;
-  message: string | null;
-}
 
 export function ProjectTasks() {
   const { projectId, taskId } = useParams<{

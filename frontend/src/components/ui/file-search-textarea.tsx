@@ -1,17 +1,12 @@
-import { useState, useRef, useEffect, KeyboardEvent } from 'react';
+import { KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Textarea } from '@/components/ui/textarea';
 import { makeRequest } from '@/lib/api';
+import { ApiResponse } from 'shared/types.ts';
 
 interface FileSearchResult {
   path: string;
   name: string;
-}
-
-interface ApiResponse<T> {
-  success: boolean;
-  data: T | null;
-  message: string | null;
 }
 
 interface FileSearchTextareaProps {

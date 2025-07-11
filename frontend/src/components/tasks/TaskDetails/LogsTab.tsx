@@ -2,28 +2,14 @@ import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { MessageSquare } from 'lucide-react';
 import { NormalizedConversationViewer } from '@/components/tasks/TaskDetails/NormalizedConversationViewer.tsx';
 import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import Conversation from '@/components/tasks/TaskDetails/Conversation.tsx';
 
 function LogsTab() {
   const { loading, selectedAttempt, executionState, attemptData } =
     useContext(TaskDetailsContext);
-
-  const [shouldAutoScrollLogs, setShouldAutoScrollLogs] = useState(true);
   const [conversationUpdateTrigger, setConversationUpdateTrigger] = useState(0);
 
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const setupScrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (shouldAutoScrollLogs && scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop =
-        scrollContainerRef.current.scrollHeight;
-    }
-  }, [
-    attemptData.activities,
-    attemptData.processes,
-    conversationUpdateTrigger,
-    shouldAutoScrollLogs,
-  ]);
 
   // Auto-scroll setup script logs to bottom
   useEffect(() => {
@@ -31,20 +17,6 @@ function LogsTab() {
       setupScrollRef.current.scrollTop = setupScrollRef.current.scrollHeight;
     }
   }, [attemptData.runningProcessDetails]);
-
-  const handleLogsScroll = useCallback(() => {
-    if (scrollContainerRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } =
-        scrollContainerRef.current;
-      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 5;
-
-      if (isAtBottom && !shouldAutoScrollLogs) {
-        setShouldAutoScrollLogs(true);
-      } else if (!isAtBottom && shouldAutoScrollLogs) {
-        setShouldAutoScrollLogs(false);
-      }
-    }
-  }, [shouldAutoScrollLogs]);
 
   // Callback to trigger auto-scroll when conversation updates
   const handleConversationUpdate = useCallback(() => {
@@ -220,101 +192,10 @@ function LogsTab() {
   // When coding agent is running or complete, show conversation
   if (isCodingAgentRunning || isCodingAgentComplete || hasChanges) {
     return (
-      <div
-        ref={scrollContainerRef}
-        onScroll={handleLogsScroll}
-        className="h-full overflow-y-auto"
-      >
-        {(() => {
-          // Find main coding agent process (command: "executor")
-          let mainCodingAgentProcess = Object.values(
-            attemptData.runningProcessDetails
-          ).find(
-            (process) =>
-              process.process_type === 'codingagent' &&
-              process.command === 'executor'
-          );
-
-          if (!mainCodingAgentProcess) {
-            const mainCodingAgentSummary = attemptData.processes.find(
-              (process) =>
-                process.process_type === 'codingagent' &&
-                process.command === 'executor'
-            );
-
-            if (mainCodingAgentSummary) {
-              mainCodingAgentProcess = Object.values(
-                attemptData.runningProcessDetails
-              ).find((process) => process.id === mainCodingAgentSummary.id);
-
-              if (!mainCodingAgentProcess) {
-                mainCodingAgentProcess = {
-                  ...mainCodingAgentSummary,
-                  stdout: null,
-                  stderr: null,
-                } as any;
-              }
-            }
-          }
-
-          // Find follow up executor processes (command: "followup_executor")
-          const followUpProcesses = attemptData.processes
-            .filter(
-              (process) =>
-                process.process_type === 'codingagent' &&
-                process.command === 'followup_executor'
-            )
-            .map((summary) => {
-              const detailedProcess = Object.values(
-                attemptData.runningProcessDetails
-              ).find((process) => process.id === summary.id);
-              return (
-                detailedProcess ||
-                ({
-                  ...summary,
-                  stdout: null,
-                  stderr: null,
-                } as any)
-              );
-            });
-
-          if (mainCodingAgentProcess || followUpProcesses.length > 0) {
-            return (
-              <div className="space-y-8">
-                {mainCodingAgentProcess && (
-                  <div className="space-y-6">
-                    <NormalizedConversationViewer
-                      executionProcess={mainCodingAgentProcess}
-                      onConversationUpdate={handleConversationUpdate}
-                      diffDeletable
-                    />
-                  </div>
-                )}
-                {followUpProcesses.map((followUpProcess) => (
-                  <div key={followUpProcess.id}>
-                    <div className="border-t border-border mb-8"></div>
-                    <NormalizedConversationViewer
-                      executionProcess={followUpProcess}
-                      onConversationUpdate={handleConversationUpdate}
-                      diffDeletable
-                    />
-                  </div>
-                ))}
-              </div>
-            );
-          }
-
-          return (
-            <div className="text-center py-8 text-muted-foreground">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-              <p className="text-lg font-semibold mb-2">
-                Coding Agent Starting
-              </p>
-              <p>Initializing conversation...</p>
-            </div>
-          );
-        })()}
-      </div>
+      <Conversation
+        conversationUpdateTrigger={conversationUpdateTrigger}
+        handleConversationUpdate={handleConversationUpdate}
+      />
     );
   }
 

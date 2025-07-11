@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button.tsx';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { TaskDetailsToolbar } from '@/components/tasks/TaskDetailsToolbar.tsx';
+import TaskDetailsToolbar from '@/components/tasks/TaskDetailsToolbar.tsx';
 
 function CollapsibleToolbar() {
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);

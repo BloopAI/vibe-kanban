@@ -3,17 +3,11 @@ import { Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useConfig } from '@/components/config-provider';
 import { makeRequest } from '@/lib/api';
-import type { GitBranch, TaskAttempt } from 'shared/types';
+import type { ApiResponse, GitBranch, TaskAttempt } from 'shared/types';
 import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
 import CreatePRDialog from '@/components/tasks/Toolbar/CreatePRDialog.tsx';
 import CreateAttempt from '@/components/tasks/Toolbar/CreateAttempt.tsx';
 import CurrentAttempt from '@/components/tasks/Toolbar/CurrentAttempt.tsx';
-
-interface ApiResponse<T> {
-  success: boolean;
-  data: T | null;
-  message: string | null;
-}
 
 const availableExecutors = [
   { id: 'echo', name: 'Echo' },
@@ -23,7 +17,7 @@ const availableExecutors = [
   { id: 'opencode', name: 'OpenCode' },
 ];
 
-export function TaskDetailsToolbar() {
+function TaskDetailsToolbar() {
   const {
     task,
     projectId,
@@ -226,6 +220,7 @@ export function TaskDetailsToolbar() {
             setCreateAttemptBranch={setCreateAttemptBranch}
             setIsInCreateAttemptMode={setIsInCreateAttemptMode}
             setCreateAttemptExecutor={setCreateAttemptExecutor}
+            availableExecutors={availableExecutors}
           />
         ) : (
           <div className="space-y-3 p-3 bg-muted/20 rounded-lg border">
@@ -282,3 +277,5 @@ export function TaskDetailsToolbar() {
     </>
   );
 }
+
+export default TaskDetailsToolbar;

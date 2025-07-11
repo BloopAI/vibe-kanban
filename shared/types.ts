@@ -198,6 +198,21 @@ export type DiffChunkType = "Equal" | "Insert" | "Delete";
 
 export type DiffChunk = { chunk_type: DiffChunkType, content: string, };
 
+export interface ProcessedLine {
+    content: string;
+    chunkType: DiffChunkType;
+    oldLineNumber?: number;
+    newLineNumber?: number;
+}
+
+export interface ProcessedSection {
+    type: 'context' | 'change' | 'expanded';
+    lines: ProcessedLine[];
+    expandKey?: string;
+    expandedAbove?: boolean;
+    expandedBelow?: boolean;
+}
+
 export type FileDiff = { path: string, chunks: Array<DiffChunk>, };
 
 export type WorktreeDiff = { files: Array<FileDiff>, };

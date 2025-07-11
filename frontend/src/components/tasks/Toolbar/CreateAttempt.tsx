@@ -19,7 +19,6 @@ import { Input } from '@/components/ui/input.tsx';
 import type { GitBranch, TaskAttempt } from 'shared/types.ts';
 import { makeRequest } from '@/lib/api.ts';
 import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
-import { availableExecutors } from '@/components/tasks/TaskDetailsToolbar.tsx';
 import { useConfig } from '@/components/config-provider.tsx';
 
 type Props = {
@@ -33,6 +32,10 @@ type Props = {
   setIsInCreateAttemptMode: Dispatch<SetStateAction<boolean>>;
   setCreateAttemptBranch: Dispatch<SetStateAction<string | null>>;
   setCreateAttemptExecutor: Dispatch<SetStateAction<string>>;
+  availableExecutors: {
+    id: string;
+    name: string;
+  }[];
 };
 
 function CreateAttempt({
@@ -46,6 +49,7 @@ function CreateAttempt({
   setIsInCreateAttemptMode,
   setCreateAttemptBranch,
   setCreateAttemptExecutor,
+  availableExecutors,
 }: Props) {
   const { task, projectId, isAttemptRunning } = useContext(TaskDetailsContext);
   const { config } = useConfig();
