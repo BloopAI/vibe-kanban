@@ -73,3 +73,15 @@ This will start the frontend and backend with live reloading. A blank DB will be
 1. Run `build-npm-package.sh`
 2. In the `npx-cli` folder run `npm pack`
 3. You can run your build with `npx [GENERATED FILE].tgz`
+
+### Custom GitHub OAuth App (Optional)
+
+By default, Vibe Kanban uses Bloop AI's GitHub OAuth app for authentication. To use your own GitHub app for self-hosting or custom branding:
+
+1. Create a GitHub OAuth App at [GitHub Developer Settings](https://github.com/settings/developers)
+2. Enable "Device Flow" in the app settings
+3. Set scopes to include `user:email,repo`
+4. Build with your client ID:
+   ```bash
+   GITHUB_CLIENT_ID=your_client_id_here pnpm run build
+   ```
