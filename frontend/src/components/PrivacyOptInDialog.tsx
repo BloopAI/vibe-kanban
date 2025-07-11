@@ -26,7 +26,7 @@ export function PrivacyOptInDialog({ open, onComplete }: PrivacyOptInDialogProps
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <Shield className="h-6 w-6 text-primary" />
@@ -45,7 +45,7 @@ export function PrivacyOptInDialog({ open, onComplete }: PrivacyOptInDialogProps
             <CardContent className="space-y-3">
               <div className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                <div>
+                <div className="min-w-0">
                   <p className="font-medium">High-level usage metrics</p>
                   <p className="text-sm text-muted-foreground">
                     Number of tasks created, projects managed, and feature usage patterns
@@ -54,7 +54,7 @@ export function PrivacyOptInDialog({ open, onComplete }: PrivacyOptInDialogProps
               </div>
               <div className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                <div>
+                <div className="min-w-0">
                   <p className="font-medium">Performance and error data</p>
                   <p className="text-sm text-muted-foreground">
                     Application crashes, response times, and technical issues
@@ -63,7 +63,7 @@ export function PrivacyOptInDialog({ open, onComplete }: PrivacyOptInDialogProps
               </div>
               <div className="flex items-start gap-3">
                 <XCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
-                <div>
+                <div className="min-w-0">
                   <p className="font-medium">We do NOT collect</p>
                   <p className="text-sm text-muted-foreground">
                     Task contents, code snippets, project names, or any personal data
@@ -84,21 +84,21 @@ export function PrivacyOptInDialog({ open, onComplete }: PrivacyOptInDialogProps
           </Card>
 
           <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
-            <Settings className="h-4 w-4" />
+            <Settings className="h-4 w-4 flex-shrink-0" />
             <span>
               You can change this preference at any time in Settings → Privacy
             </span>
           </div>
         </div>
 
-        <DialogFooter className="gap-3">
+        <DialogFooter className="gap-3 flex-col sm:flex-row">
           <Button
             variant="outline"
             onClick={handleOptOut}
             className="flex-1"
           >
             <XCircle className="h-4 w-4 mr-2" />
-            No, I'd prefer not to share
+            No thanks
           </Button>
           <Button
             onClick={handleOptIn}
