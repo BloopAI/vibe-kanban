@@ -3,7 +3,7 @@
     <picture>
       <source srcset="frontend/public/vibe-kanban-logo.svg" media="(prefers-color-scheme: dark)">
       <source srcset="frontend/public/vibe-kanban-logo-light.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/web/src/assets/logo-ornate-light.svg" alt="Vibe Kanban Logo">
+      <img src="frontend/public/vibe-kanban-logo.svg" alt="Vibe Kanban Logo">
     </picture>
   </a>
 </p>
