@@ -8,6 +8,7 @@ import { Settings } from '@/pages/Settings';
 import { McpServers } from '@/pages/McpServers';
 import { DisclaimerDialog } from '@/components/DisclaimerDialog';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
+import { PrivacyOptInDialog } from '@/components/PrivacyOptInDialog';
 import { ConfigProvider, useConfig } from '@/components/config-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 import type {
@@ -25,6 +26,7 @@ function AppContent() {
   const { config, updateConfig, loading, githubTokenInvalid } = useConfig();
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showPrivacyOptIn, setShowPrivacyOptIn] = useState(false);
   const [showGitHubLogin, setShowGitHubLogin] = useState(false);
   const showNavbar = true;
 
@@ -33,6 +35,9 @@ function AppContent() {
       setShowDisclaimer(!config.disclaimer_acknowledged);
       if (config.disclaimer_acknowledged) {
         setShowOnboarding(!config.onboarding_acknowledged);
+        if (config.onboarding_acknowledged) {
+          setShowPrivacyOptIn(config.analytics_enabled === null);
+        }
       }
       const notAuthenticated =
         !config.github?.username || !config.github?.token;
@@ -96,6 +101,38 @@ function AppContent() {
 
       if (data.success) {
         setShowOnboarding(false);
+        if (config.analytics_enabled === null) {
+          setShowPrivacyOptIn(true);
+        }
+      }
+    } catch (err) {
+      console.error('Error saving config:', err);
+    }
+  };
+
+  const handlePrivacyOptInComplete = async (telemetryEnabled: boolean) => {
+    if (!config) return;
+
+    const updatedConfig = {
+      ...config,
+      analytics_enabled: telemetryEnabled,
+    };
+
+    updateConfig(updatedConfig);
+
+    try {
+      const response = await fetch('/api/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedConfig),
+      });
+
+      const data: ApiResponse<Config> = await response.json();
+
+      if (data.success) {
+        setShowPrivacyOptIn(false);
       }
     } catch (err) {
       console.error('Error saving config:', err);
@@ -127,6 +164,10 @@ function AppContent() {
         <OnboardingDialog
           open={showOnboarding}
           onComplete={handleOnboardingComplete}
+        />
+        <PrivacyOptInDialog
+          open={showPrivacyOptIn}
+          onComplete={handlePrivacyOptInComplete}
         />
         {showNavbar && <Navbar />}
         <div className="flex-1 overflow-y-scroll">
