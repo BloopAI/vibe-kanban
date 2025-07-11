@@ -57,7 +57,7 @@ Task title: {}"#,
 
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
-        let gemini_command = "npx @google/gemini-cli --yolo";
+        let gemini_command = "npx @google/gemini-cli@latest --yolo";
 
         let mut command = Command::new(shell_cmd);
         command

@@ -56,7 +56,7 @@ Task title: {}"#,
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
         // Pass prompt via stdin instead of command line to avoid shell escaping issues
-        let claude_command = "npx -y @anthropic-ai/claude-code -p --dangerously-skip-permissions --verbose --output-format=stream-json";
+        let claude_command = "npx -y @anthropic-ai/claude-code@latest -p --dangerously-skip-permissions --verbose --output-format=stream-json";
 
         let mut command = Command::new(shell_cmd);
         command
