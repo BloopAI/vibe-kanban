@@ -229,6 +229,7 @@ async fn device_poll(
                 });
             }
         }
+        app_state.update_sentry_scope().await;
         // Identify user in PostHog
         let mut props = serde_json::Map::new();
         if let Some(ref username) = username {
@@ -304,18 +305,6 @@ pub async fn sentry_user_context_middleware(
     req: Request,
     next: Next,
 ) -> Response {
-    let config = app_state.get_config().read().await;
-    let username = config.github.username.clone();
-    let email = config.github.primary_email.clone();
-    drop(config);
-    if username.is_some() || email.is_some() {
-        sentry::configure_scope(|scope| {
-            scope.set_user(Some(sentry::User {
-                username,
-                email,
-                ..Default::default()
-            }));
-        });
-    }
+    app_state.update_sentry_scope().await;
     next.run(req).await
 }

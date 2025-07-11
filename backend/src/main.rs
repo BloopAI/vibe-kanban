@@ -167,6 +167,8 @@ fn main() -> anyhow::Result<()> {
             // Create app state
             let app_state = AppState::new(pool.clone(), config_arc.clone()).await;
 
+            app_state.update_sentry_scope().await;
+
             // Track session start event
             app_state.track_analytics_event("session_start", None).await;
             // Start background task to check for init status and spawn processes
