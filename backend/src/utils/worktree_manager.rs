@@ -202,19 +202,41 @@ impl WorktreeManager {
         worktree_path: &Path,
         worktree_name: &str,
     ) -> Result<(), GitError> {
-        let git_repo_path = git_repo_path.to_string();
-        let worktree_path = worktree_path.to_path_buf();
-        let worktree_name = worktree_name.to_string();
+        let git_repo_path_owned = git_repo_path.to_string();
+        let worktree_path_owned = worktree_path.to_path_buf();
+        let worktree_name_owned = worktree_name.to_string();
 
-        tokio::task::spawn_blocking(move || {
-            // Open repository in blocking context
-            let repo = Repository::open(&git_repo_path)
-                .map_err(|e| GitError::from_str(&format!("Failed to open repository: {}", e)))?;
-
-            Self::comprehensive_worktree_cleanup(&repo, &worktree_path, &worktree_name)
+        // First, try to open the repository to see if it exists
+        let repo_result = tokio::task::spawn_blocking({
+            let git_repo_path = git_repo_path_owned.clone();
+            move || Repository::open(&git_repo_path)
         })
-        .await
-        .map_err(|e| GitError::from_str(&format!("Task join error: {}", e)))?
+        .await;
+
+        match repo_result {
+            Ok(Ok(repo)) => {
+                // Repository exists, perform comprehensive cleanup
+                tokio::task::spawn_blocking(move || {
+                    Self::comprehensive_worktree_cleanup(
+                        &repo,
+                        &worktree_path_owned,
+                        &worktree_name_owned,
+                    )
+                })
+                .await
+                .map_err(|e| GitError::from_str(&format!("Task join error: {}", e)))?
+            }
+            Ok(Err(e)) => {
+                // Repository doesn't exist (likely deleted project), fall back to simple cleanup
+                debug!(
+                    "Failed to open repository at {}: {}. Falling back to simple cleanup for worktree at {}",
+                    git_repo_path_owned, e, worktree_path_owned.display()
+                );
+                Self::simple_worktree_cleanup(&worktree_path_owned).await?;
+                Ok(())
+            }
+            Err(e) => Err(GitError::from_str(&format!("Task join error: {}", e))),
+        }
     }
 
     /// Create worktree with retry logic in non-blocking manner
