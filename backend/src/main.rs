@@ -29,7 +29,7 @@ mod utils;
 use app_state::AppState;
 use execution_monitor::execution_monitor;
 use models::{ApiResponse, Config};
-use routes::{auth, config, filesystem, health, projects, task_attempts, tasks};
+use routes::{auth, config, filesystem, health, projects, stream, task_attempts, tasks};
 use services::PrMonitorService;
 
 async fn echo_handler(
@@ -198,6 +198,7 @@ fn main() -> anyhow::Result<()> {
                         .merge(projects::projects_router())
                         .merge(tasks::tasks_router())
                         .merge(task_attempts::task_attempts_router())
+                        .merge(stream::stream_router())
                         .merge(filesystem::filesystem_router())
                         .merge(config::config_router())
                         .merge(auth::auth_router())

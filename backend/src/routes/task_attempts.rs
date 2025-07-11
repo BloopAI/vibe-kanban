@@ -13,9 +13,7 @@ use crate::{
     executor::{ExecutorConfig, NormalizedConversation, NormalizedEntry, NormalizedEntryType},
     models::{
         config::Config,
-        execution_process::{
-            ExecutionProcess, ExecutionProcessStatus, ExecutionProcessSummary, ExecutionProcessType,
-        },
+        execution_process::{ExecutionProcess, ExecutionProcessSummary, ExecutionProcessType},
         executor_session::ExecutorSession,
         task::Task,
         task_attempt::{
@@ -1178,36 +1176,29 @@ pub async fn get_execution_process_normalized_logs(
             }
         };
 
-    // Handle the case where no logs are available
+    // Check if logs are available
     let has_stdout =
         process.stdout.is_some() && !process.stdout.as_ref().unwrap().trim().is_empty();
     let has_stderr =
         process.stderr.is_some() && !process.stderr.as_ref().unwrap().trim().is_empty();
 
-    // If the process is still running and has no stdout/stderr, return empty logs
-    if process.status == ExecutionProcessStatus::Running && !has_stdout && !has_stderr {
+    // If no logs available, return empty conversation
+    if !has_stdout && !has_stderr {
+        let empty_conversation = NormalizedConversation {
+            entries: vec![],
+            session_id: None,
+            executor_type: process
+                .executor_type
+                .clone()
+                .unwrap_or("unknown".to_string()),
+            prompt: executor_session.as_ref().and_then(|s| s.prompt.clone()),
+            summary: executor_session.as_ref().and_then(|s| s.summary.clone()),
+        };
+
         return Ok(ResponseJson(ApiResponse {
             success: true,
-            data: Some(NormalizedConversation {
-                entries: vec![],
-                session_id: None,
-                executor_type: process
-                    .executor_type
-                    .clone()
-                    .unwrap_or("unknown".to_string()),
-                prompt: executor_session.as_ref().and_then(|s| s.prompt.clone()),
-                summary: executor_session.as_ref().and_then(|s| s.summary.clone()),
-            }),
+            data: Some(empty_conversation),
             message: None,
-        }));
-    }
-
-    // If process is completed but has no logs, return appropriate error
-    if process.status != ExecutionProcessStatus::Running && !has_stdout && !has_stderr {
-        return Ok(ResponseJson(ApiResponse {
-            success: false,
-            data: None,
-            message: Some("No logs available for this execution process".to_string()),
         }));
     }
 

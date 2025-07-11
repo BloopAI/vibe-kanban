@@ -11,9 +11,9 @@ use crate::executors::{
     SetupScriptExecutor,
 };
 
-// Constants for database streaming
+// Constants for database streaming - fast for near-real-time updates
 const STDOUT_UPDATE_THRESHOLD: usize = 1;
-const BUFFER_SIZE_THRESHOLD: usize = 1024;
+const BUFFER_SIZE_THRESHOLD: usize = 256;
 
 /// Normalized conversation representation for different executor formats
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -276,6 +276,10 @@ pub trait Executor: Send + Sync {
             summary: None,
         })
     }
+
+    // Note: Fast-path streaming is now handled by the Gemini WAL system.
+    // The Gemini executor uses its own push_patch() method to emit patches,
+    // which are automatically served via SSE endpoints with resumable streaming.
 
     /// Execute the command and stream output to database in real-time
     async fn execute_streaming(
@@ -588,8 +592,8 @@ async fn stream_stderr_to_db(
     let mut reader = BufReader::new(output);
     let mut line = String::new();
     let mut accumulated_output = String::new();
-    const STDERR_FLUSH_TIMEOUT_MS: u64 = 1000;
-    const STDERR_FLUSH_TIMEOUT: Duration = Duration::from_millis(STDERR_FLUSH_TIMEOUT_MS); // 1000ms timeout
+    const STDERR_FLUSH_TIMEOUT_MS: u64 = 100; // Fast flush for near-real-time streaming
+    const STDERR_FLUSH_TIMEOUT: Duration = Duration::from_millis(STDERR_FLUSH_TIMEOUT_MS);
 
     loop {
         line.clear();
