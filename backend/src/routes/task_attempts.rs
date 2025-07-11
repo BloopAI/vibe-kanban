@@ -1217,7 +1217,6 @@ pub async fn get_execution_process_normalized_logs(
         if !stdout.trim().is_empty() {
             // Determine executor type and create appropriate executor for normalization
             let executor_type = process.executor_type.as_deref().unwrap_or("unknown");
-
             let executor_config = if process.process_type == ExecutionProcessType::SetupScript {
                 // For setup scripts, use the setup script executor
                 ExecutorConfig::SetupScript {
@@ -1232,7 +1231,7 @@ pub async fn get_execution_process_normalized_logs(
                     "claude" => ExecutorConfig::Claude,
                     "echo" => ExecutorConfig::Echo,
                     "gemini" => ExecutorConfig::Gemini,
-                    "opencode" => ExecutorConfig::Opencode,
+                    "opencode" => ExecutorConfig::CharmOpencode,
                     _ => {
                         tracing::warn!(
                             "Unsupported executor type: {}, cannot normalize logs properly",

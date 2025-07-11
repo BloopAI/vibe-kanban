@@ -11,5 +11,5 @@ pub use claude::{ClaudeExecutor, ClaudeFollowupExecutor};
 pub use dev_server::DevServerExecutor;
 pub use echo::EchoExecutor;
 pub use gemini::{GeminiExecutor, GeminiFollowupExecutor};
-pub use opencode::{OpencodeExecutor, OpencodeFollowupExecutor};
+pub use opencode::{CharmOpencodeExecutor, CharmOpencodeFollowupExecutor};
 pub use setup_script::SetupScriptExecutor;

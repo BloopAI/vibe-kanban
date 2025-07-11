@@ -7,7 +7,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use crate::executors::{
-    AmpExecutor, ClaudeExecutor, EchoExecutor, GeminiExecutor, OpencodeExecutor,
+    AmpExecutor, CharmOpencodeExecutor, ClaudeExecutor, EchoExecutor, GeminiExecutor,
     SetupScriptExecutor,
 };
 
@@ -345,8 +345,8 @@ pub enum ExecutorConfig {
     Claude,
     Amp,
     Gemini,
-    Opencode,
     SetupScript { script: String },
+    CharmOpencode,
     // Future executors can be added here
     // Shell { command: String },
     // Docker { image: String, command: String },
@@ -369,10 +369,10 @@ impl FromStr for ExecutorConfig {
             "claude" => Ok(ExecutorConfig::Claude),
             "amp" => Ok(ExecutorConfig::Amp),
             "gemini" => Ok(ExecutorConfig::Gemini),
-            "opencode" => Ok(ExecutorConfig::Opencode),
             "setup_script" => Ok(ExecutorConfig::SetupScript {
                 script: "setup script".to_string(),
             }),
+            "charm/opencode" => Ok(ExecutorConfig::CharmOpencode),
             _ => Err(format!("Unknown executor type: {}", s)),
         }
     }
@@ -385,17 +385,19 @@ impl ExecutorConfig {
             ExecutorConfig::Claude => Box::new(ClaudeExecutor),
             ExecutorConfig::Amp => Box::new(AmpExecutor),
             ExecutorConfig::Gemini => Box::new(GeminiExecutor),
-            ExecutorConfig::Opencode => Box::new(OpencodeExecutor),
             ExecutorConfig::SetupScript { script } => {
                 Box::new(SetupScriptExecutor::new(script.clone()))
             }
+            ExecutorConfig::CharmOpencode => Box::new(CharmOpencodeExecutor),
         }
     }
 
     pub fn config_path(&self) -> Option<std::path::PathBuf> {
         match self {
             ExecutorConfig::Echo => None,
-            ExecutorConfig::Opencode => dirs::home_dir().map(|home| home.join(".opencode.json")),
+            ExecutorConfig::CharmOpencode => {
+                dirs::home_dir().map(|home| home.join(".opencode.json"))
+            }
             ExecutorConfig::Claude => dirs::home_dir().map(|home| home.join(".claude.json")),
             ExecutorConfig::Amp => {
                 dirs::config_dir().map(|config| config.join("amp").join("settings.json"))
@@ -411,7 +413,7 @@ impl ExecutorConfig {
     pub fn mcp_attribute_path(&self) -> Option<Vec<&'static str>> {
         match self {
             ExecutorConfig::Echo => None, // Echo doesn't support MCP
-            ExecutorConfig::Opencode => Some(vec!["mcpServers"]),
+            ExecutorConfig::CharmOpencode => Some(vec!["mcpServers"]),
             ExecutorConfig::Claude => Some(vec!["mcpServers"]),
             ExecutorConfig::Amp => Some(vec!["amp", "mcpServers"]), // Nested path for Amp
             ExecutorConfig::Gemini => Some(vec!["mcpServers"]),
@@ -431,7 +433,7 @@ impl ExecutorConfig {
     pub fn display_name(&self) -> &'static str {
         match self {
             ExecutorConfig::Echo => "Echo (Test Mode)",
-            ExecutorConfig::Opencode => "Opencode",
+            ExecutorConfig::CharmOpencode => "Charm/Opencode",
             ExecutorConfig::Claude => "Claude",
             ExecutorConfig::Amp => "Amp",
             ExecutorConfig::Gemini => "Gemini",
@@ -447,8 +449,8 @@ impl std::fmt::Display for ExecutorConfig {
             ExecutorConfig::Claude => "claude",
             ExecutorConfig::Amp => "amp",
             ExecutorConfig::Gemini => "gemini",
-            ExecutorConfig::Opencode => "opencode",
             ExecutorConfig::SetupScript { .. } => "setup_script",
+            ExecutorConfig::CharmOpencode => "charm/opencode",
         };
         write!(f, "{}", s)
     }

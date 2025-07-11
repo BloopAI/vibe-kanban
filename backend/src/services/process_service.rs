@@ -638,7 +638,7 @@ impl ProcessService {
             Some("claude") => crate::executor::ExecutorConfig::Claude,
             Some("amp") => crate::executor::ExecutorConfig::Amp,
             Some("gemini") => crate::executor::ExecutorConfig::Gemini,
-            Some("opencode") => crate::executor::ExecutorConfig::Opencode,
+            Some("opencode") => crate::executor::ExecutorConfig::CharmOpencode,
             _ => crate::executor::ExecutorConfig::Echo, // Default for "echo" or None
         }
     }
@@ -779,8 +779,8 @@ impl ProcessService {
                 prompt,
             } => {
                 use crate::executors::{
-                    AmpFollowupExecutor, ClaudeFollowupExecutor, GeminiFollowupExecutor,
-                    OpencodeFollowupExecutor,
+                    AmpFollowupExecutor, CharmOpencodeFollowupExecutor, ClaudeFollowupExecutor,
+                    GeminiFollowupExecutor,
                 };
 
                 let executor: Box<dyn crate::executor::Executor> = match config {
@@ -815,9 +815,9 @@ impl ProcessService {
                         // Echo doesn't support followup, use regular echo
                         config.create_executor()
                     }
-                    crate::executor::ExecutorConfig::Opencode => {
+                    crate::executor::ExecutorConfig::CharmOpencode => {
                         if let Some(sid) = session_id {
-                            Box::new(OpencodeFollowupExecutor {
+                            Box::new(CharmOpencodeFollowupExecutor {
                                 session_id: sid.clone(),
                                 prompt: prompt.clone(),
                             })

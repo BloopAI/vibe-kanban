@@ -9,16 +9,16 @@ use crate::{
 };
 
 /// An executor that uses OpenCode to process tasks
-pub struct OpencodeExecutor;
+pub struct CharmOpencodeExecutor;
 
 /// An executor that continues an OpenCode thread
-pub struct OpencodeFollowupExecutor {
+pub struct CharmOpencodeFollowupExecutor {
     pub session_id: String,
     pub prompt: String,
 }
 
 #[async_trait]
-impl Executor for OpencodeExecutor {
+impl Executor for CharmOpencodeExecutor {
     async fn spawn(
         &self,
         pool: &sqlx::SqlitePool,
@@ -70,9 +70,9 @@ Task title: {}"#,
         let child = command
             .group_spawn() // Create new process group so we can kill entire tree
             .map_err(|e| {
-                crate::executor::SpawnContext::from_command(&command, "OpenCode")
+                crate::executor::SpawnContext::from_command(&command, "CharmOpenCode")
                     .with_task(task_id, Some(task.title.clone()))
-                    .with_context("OpenCode CLI execution for new task")
+                    .with_context("CharmOpenCode CLI execution for new task")
                     .spawn_error(e)
             })?;
 
@@ -81,7 +81,7 @@ Task title: {}"#,
 }
 
 #[async_trait]
-impl Executor for OpencodeFollowupExecutor {
+impl Executor for CharmOpencodeFollowupExecutor {
     async fn spawn(
         &self,
         _pool: &sqlx::SqlitePool,
@@ -111,9 +111,9 @@ impl Executor for OpencodeFollowupExecutor {
         let child = command
             .group_spawn() // Create new process group so we can kill entire tree
             .map_err(|e| {
-                crate::executor::SpawnContext::from_command(&command, "OpenCode")
+                crate::executor::SpawnContext::from_command(&command, "CharmOpenCode")
                     .with_context(format!(
-                        "OpenCode CLI followup execution for session {}",
+                        "CharmOpenCode CLI followup execution for session {}",
                         self.session_id
                     ))
                     .spawn_error(e)
