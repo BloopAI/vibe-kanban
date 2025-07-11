@@ -309,6 +309,7 @@ impl GitService {
         &self,
         worktree_path: &Path,
         merge_commit_id: Option<&str>,
+        base_branch: &str,
     ) -> Result<WorktreeDiff, GitServiceError> {
         let mut files = Vec::new();
 
@@ -317,7 +318,7 @@ impl GitService {
             self.get_merged_diff(merge_commit_id, &mut files)?;
         } else {
             // Task attempt not yet merged - get worktree diff
-            self.get_worktree_diff(worktree_path, &mut files)?;
+            self.get_worktree_diff(worktree_path, base_branch, &mut files)?;
         }
 
         Ok(WorktreeDiff { files })
@@ -417,18 +418,24 @@ impl GitService {
     fn get_worktree_diff(
         &self,
         worktree_path: &Path,
+        base_branch: &str,
         files: &mut Vec<FileDiff>,
     ) -> Result<(), GitServiceError> {
         let worktree_repo = Repository::open(worktree_path)?;
         let main_repo = self.open_repo()?;
-        let main_head_oid = main_repo.head()?.peel_to_commit()?.id();
+        
+        // Get the base branch commit
+        let base_branch_ref = main_repo
+            .find_branch(base_branch, BranchType::Local)
+            .map_err(|_| GitServiceError::BranchNotFound(base_branch.to_string()))?;
+        let base_branch_oid = base_branch_ref.get().peel_to_commit()?.id();
 
         // Get the current worktree HEAD commit
         let worktree_head = worktree_repo.head()?;
         let worktree_head_oid = worktree_head.peel_to_commit()?.id();
 
-        // Find the merge base (common ancestor)
-        let base_oid = worktree_repo.merge_base(main_head_oid, worktree_head_oid)?;
+        // Find the merge base (common ancestor) between the base branch and worktree head
+        let base_oid = worktree_repo.merge_base(base_branch_oid, worktree_head_oid)?;
         let base_commit = worktree_repo.find_commit(base_oid)?;
         let base_tree = base_commit.tree()?;
 
