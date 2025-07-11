@@ -26,72 +26,62 @@ export function PrivacyOptInDialog({ open, onComplete }: PrivacyOptInDialogProps
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <Shield className="h-6 w-6 text-primary" />
             <DialogTitle>Privacy & Telemetry</DialogTitle>
           </div>
-          <DialogDescription className="text-left pt-2">
+          <DialogDescription className="text-left pt-1">
             Help us improve Vibe Kanban by sharing anonymous usage data.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-3 py-3">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">What data do we collect?</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">What data do we collect?</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-start gap-3">
-                <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+            <CardContent className="space-y-2 pt-0">
+              <div className="flex items-start gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
                 <div className="min-w-0">
-                  <p className="font-medium">High-level usage metrics</p>
-                  <p className="text-sm text-muted-foreground">
-                    Number of tasks created, projects managed, and feature usage patterns
+                  <p className="text-sm font-medium">High-level usage metrics</p>
+                  <p className="text-xs text-muted-foreground">
+                    Number of tasks created, projects managed, feature usage
                   </p>
                 </div>
               </div>
-              <div className="flex items-start gap-3">
-                <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+              <div className="flex items-start gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
                 <div className="min-w-0">
-                  <p className="font-medium">Performance and error data</p>
-                  <p className="text-sm text-muted-foreground">
-                    Application crashes, response times, and technical issues
+                  <p className="text-sm font-medium">Performance and error data</p>
+                  <p className="text-xs text-muted-foreground">
+                    Application crashes, response times, technical issues
                   </p>
                 </div>
               </div>
-              <div className="flex items-start gap-3">
-                <XCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+              <div className="flex items-start gap-2">
+                <XCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
                 <div className="min-w-0">
-                  <p className="font-medium">We do NOT collect</p>
-                  <p className="text-sm text-muted-foreground">
-                    Task contents, code snippets, project names, or any personal data
+                  <p className="text-sm font-medium">We do NOT collect</p>
+                  <p className="text-xs text-muted-foreground">
+                    Task contents, code snippets, project names, or personal data
                   </p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Why does this help?</CardTitle>
-              <CardDescription>
-                Your anonymous usage data helps us understand how Vibe Kanban is used
-                and prioritize improvements that matter most to our users.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-
-          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
-            <Settings className="h-4 w-4 flex-shrink-0" />
+          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 p-2 rounded-lg">
+            <Settings className="h-3 w-3 flex-shrink-0" />
             <span>
-              You can change this preference at any time in Settings → Privacy
+              This helps us prioritize improvements. You can change this preference anytime in Settings.
             </span>
           </div>
         </div>
 
-        <DialogFooter className="gap-3 flex-col sm:flex-row">
+        <DialogFooter className="gap-3 flex-col sm:flex-row pt-2">
           <Button
             variant="outline"
             onClick={handleOptOut}
