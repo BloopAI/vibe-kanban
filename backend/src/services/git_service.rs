@@ -423,7 +423,7 @@ impl GitService {
     ) -> Result<(), GitServiceError> {
         let worktree_repo = Repository::open(worktree_path)?;
         let main_repo = self.open_repo()?;
-        
+
         // Get the base branch commit
         let base_branch_ref = main_repo
             .find_branch(base_branch, BranchType::Local)

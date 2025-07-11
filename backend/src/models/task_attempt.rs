@@ -670,7 +670,11 @@ impl TaskAttempt {
         if let Some(merge_commit_id) = &ctx.task_attempt.merge_commit {
             // Task attempt has been merged - show the diff from the merge commit
             git_service
-                .get_enhanced_diff(Path::new(""), Some(merge_commit_id), &ctx.task_attempt.base_branch)
+                .get_enhanced_diff(
+                    Path::new(""),
+                    Some(merge_commit_id),
+                    &ctx.task_attempt.base_branch,
+                )
                 .map_err(TaskAttemptError::from)
         } else {
             // Task attempt not yet merged - get worktree diff
@@ -679,7 +683,11 @@ impl TaskAttempt {
                 Self::ensure_worktree_exists(pool, attempt_id, project_id, "diff").await?;
 
             git_service
-                .get_enhanced_diff(Path::new(&worktree_path), None, &ctx.task_attempt.base_branch)
+                .get_enhanced_diff(
+                    Path::new(&worktree_path),
+                    None,
+                    &ctx.task_attempt.base_branch,
+                )
                 .map_err(TaskAttemptError::from)
         }
     }
