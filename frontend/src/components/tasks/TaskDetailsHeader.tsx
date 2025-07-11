@@ -9,7 +9,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
-import { TaskDetailsContext } from './TaskDetailsContext';
+import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
 
 interface TaskDetailsHeaderProps {
   onClose: () => void;

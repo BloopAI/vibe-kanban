@@ -1,7 +1,7 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { MessageSquare } from 'lucide-react';
 import { NormalizedConversationViewer } from '@/components/tasks/TaskDetails/NormalizedConversationViewer.tsx';
-import { TaskDetailsContext } from '@/components/tasks/TaskDetailsContext.tsx';
+import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
 
 function LogsTab() {
   const { loading, selectedAttempt, executionState, attemptData } =

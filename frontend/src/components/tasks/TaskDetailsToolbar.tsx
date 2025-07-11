@@ -54,7 +54,7 @@ import type {
   TaskAttempt,
 } from 'shared/types';
 import { ProvidePatDialog } from '@/components/ProvidePatDialog';
-import { TaskDetailsContext } from '@/components/tasks/TaskDetailsContext.tsx';
+import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
 
 interface ApiResponse<T> {
   success: boolean;

@@ -1,5 +1,4 @@
 import {
-  createContext,
   Dispatch,
   FC,
   ReactNode,
@@ -21,47 +20,11 @@ import type {
   TaskAttemptState,
   TaskWithAttemptStatus,
   WorktreeDiff,
-} from 'shared/types';
+} from 'shared/types.ts';
 import { makeRequest } from '@/lib/api.ts';
+import { TaskDetailsContext } from './taskDetailsContext.ts';
 
-export interface TaskDetailsContextValue {
-  task: TaskWithAttemptStatus;
-  projectId: string;
-  loading: boolean;
-  setLoading: Dispatch<SetStateAction<boolean>>;
-  selectedAttempt: TaskAttempt | null;
-  setSelectedAttempt: Dispatch<SetStateAction<TaskAttempt | null>>;
-  isStopping: boolean;
-  setIsStopping: Dispatch<SetStateAction<boolean>>;
-  deletingFiles: Set<string>;
-  setDeletingFiles: Dispatch<SetStateAction<Set<string>>>;
-  fileToDelete: string | null;
-  setFileToDelete: Dispatch<SetStateAction<string | null>>;
-  setDiffError: Dispatch<SetStateAction<string | null>>;
-  fetchDiff: (isBackgroundRefresh?: boolean) => Promise<void>;
-  diff: WorktreeDiff | null;
-  diffError: string | null;
-  diffLoading: boolean;
-  isBackgroundRefreshing: boolean;
-  setDiff: Dispatch<SetStateAction<WorktreeDiff | null>>;
-  setDiffLoading: Dispatch<SetStateAction<boolean>>;
-  handleOpenInEditor: (editorType?: EditorType) => Promise<void>;
-  isAttemptRunning: boolean;
-  fetchExecutionState: (
-    attemptId: string,
-    taskId: string
-  ) => Promise<void> | void;
-  executionState: TaskAttemptState | null;
-  attemptData: AttemptData;
-  setAttemptData: Dispatch<SetStateAction<AttemptData>>;
-  fetchAttemptData: (attemptId: string, taskId: string) => Promise<void> | void;
-}
-
-export const TaskDetailsContext = createContext<TaskDetailsContextValue>(
-  {} as TaskDetailsContextValue
-);
-
-export const TaskDetailsProvider: FC<{
+const TaskDetailsProvider: FC<{
   task: TaskWithAttemptStatus;
   projectId: string;
   children: ReactNode;
@@ -210,7 +173,7 @@ export const TaskDetailsProvider: FC<{
         }
       }
     },
-    [task, projectId, selectedAttempt]
+    [task, projectId, selectedAttempt, setShowEditorDialog]
   );
 
   const fetchAttemptData = useCallback(
@@ -370,7 +333,7 @@ export const TaskDetailsProvider: FC<{
 
   // Refresh diff when coding agent completes or changes state
   useEffect(() => {
-    if (!executionState || !isOpen || !selectedAttempt) return;
+    if (!executionState?.execution_state || !isOpen || !selectedAttempt) return;
 
     const isCodingAgentComplete =
       executionState.execution_state === 'CodingAgentComplete';
@@ -398,6 +361,7 @@ export const TaskDetailsProvider: FC<{
     fetchDiff,
     activeTab,
     userSelectedTab,
+    setActiveTab,
   ]);
 
   const value = useMemo(
@@ -457,3 +421,5 @@ export const TaskDetailsProvider: FC<{
     </TaskDetailsContext.Provider>
   );
 };
+
+export default TaskDetailsProvider;

@@ -2,7 +2,7 @@ import { useCallback, useContext, useState } from 'react';
 import { Button } from '@/components/ui/button.tsx';
 import { ChevronDown, ChevronUp, GitCompare, Trash2 } from 'lucide-react';
 import type { DiffChunk, DiffChunkType, WorktreeDiff } from 'shared/types.ts';
-import { TaskDetailsContext } from '@/components/tasks/TaskDetailsContext.tsx';
+import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
 
 interface ProcessedLine {
   content: string;

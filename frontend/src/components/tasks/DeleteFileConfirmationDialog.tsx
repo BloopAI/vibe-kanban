@@ -9,8 +9,8 @@ import {
 import { Button } from '@/components/ui/button.tsx';
 import { makeRequest } from '@/lib/api.ts';
 import { useContext } from 'react';
-import { TaskDetailsContext } from '@/components/tasks/TaskDetailsContext.tsx';
 import { ApiResponse } from 'shared/types.ts';
+import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
 
 function DeleteFileConfirmationDialog() {
   const {

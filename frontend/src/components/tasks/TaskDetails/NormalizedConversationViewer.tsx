@@ -29,7 +29,7 @@ import type {
   NormalizedEntryType,
   WorktreeDiff,
 } from 'shared/types.ts';
-import { TaskDetailsContext } from '../TaskDetailsContext';
+import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
 
 interface NormalizedConversationViewerProps {
   executionProcess: ExecutionProcess;

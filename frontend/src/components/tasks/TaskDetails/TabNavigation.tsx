@@ -1,6 +1,6 @@
 import { GitCompare, MessageSquare } from 'lucide-react';
 import { useContext } from 'react';
-import { TaskDetailsContext } from '@/components/tasks/TaskDetailsContext.tsx';
+import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
 
 type Props = {
   activeTab: 'logs' | 'diffs';

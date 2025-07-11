@@ -12,7 +12,7 @@ import LogsTab from '@/components/tasks/TaskDetails/LogsTab.tsx';
 import DeleteFileConfirmationDialog from '@/components/tasks/DeleteFileConfirmationDialog.tsx';
 import TabNavigation from '@/components/tasks/TaskDetails/TabNavigation.tsx';
 import CollapsibleToolbar from '@/components/tasks/TaskDetails/CollapsibleToolbar.tsx';
-import { TaskDetailsProvider } from './TaskDetailsContext';
+import TaskDetailsProvider from '../context/TaskDetailsContextProvider.tsx';
 
 interface TaskDetailsPanelProps {
   task: TaskWithAttemptStatus | null;
@@ -43,7 +43,7 @@ export function TaskDetailsPanel({
 
   // Reset to logs tab when task changes
   useEffect(() => {
-    if (task) {
+    if (task?.id) {
       setActiveTab('logs');
       setUserSelectedTab(true); // Treat this as a user selection to prevent auto-switching
     }

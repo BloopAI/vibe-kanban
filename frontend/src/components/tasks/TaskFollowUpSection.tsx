@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
 import { useContext, useMemo, useState } from 'react';
 import { makeRequest } from '@/lib/api.ts';
-import { TaskDetailsContext } from './TaskDetailsContext';
+import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
 
 export function TaskFollowUpSection() {
   const {
