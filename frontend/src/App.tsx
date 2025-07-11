@@ -39,7 +39,7 @@ function AppContent() {
           setShowPrivacyOptIn(!config.telemetry_acknowledged);
         }
       }
-      
+
       // Only show GitHub login if telemetry dialog is not being shown
       if (config.telemetry_acknowledged) {
         const notAuthenticated =
