@@ -33,7 +33,7 @@ export function PrivacyOptInDialog({ open, onComplete }: PrivacyOptInDialogProps
             <DialogTitle>Privacy & Telemetry</DialogTitle>
           </div>
           <DialogDescription className="text-left pt-1">
-            Help us improve Vibe Kanban by sharing anonymous usage data.
+            Help us improve Vibe Kanban by sharing usage data and allowing us to contact you if needed.
           </DialogDescription>
         </DialogHeader>
 
@@ -43,6 +43,15 @@ export function PrivacyOptInDialog({ open, onComplete }: PrivacyOptInDialogProps
               <CardTitle className="text-base">What data do we collect?</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 pt-0">
+              <div className="flex items-start gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">GitHub profile information</p>
+                  <p className="text-xs text-muted-foreground">
+                    Username and email so we can contact you if necessary
+                  </p>
+                </div>
+              </div>
               <div className="flex items-start gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
                 <div className="min-w-0">
@@ -66,7 +75,7 @@ export function PrivacyOptInDialog({ open, onComplete }: PrivacyOptInDialogProps
                 <div className="min-w-0">
                   <p className="text-sm font-medium">We do NOT collect</p>
                   <p className="text-xs text-muted-foreground">
-                    Task contents, code snippets, project names, or personal data
+                    Task contents, code snippets, project names, or other personal data
                   </p>
                 </div>
               </div>
