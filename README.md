@@ -14,7 +14,7 @@
   <a href="https://github.com/bloop/vibe-kanban/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/bloop/vibe-kanban/publish.yml?style=flat-square&branch=dev" /></a>
 </p>
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/TFT3KnZOOAk" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+![](frontend/public/vibe-kanban-screenshot-overview.png)
 
 ## Overview
 
@@ -25,6 +25,8 @@ AI coding agents are increasingly writing the world's code and human engineers n
 - Quickly review work and start dev servers
 - Track the status of tasks that your coding agents are working on
 - Centralise configuration of coding agent MCP configs
+
+You can watch a video overview [here](https://youtu.be/TFT3KnZOOAk).
 
 ## Installation
 
