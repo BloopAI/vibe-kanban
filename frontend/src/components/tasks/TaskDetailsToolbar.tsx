@@ -15,15 +15,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,14 +22,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import {
   Tooltip,
   TooltipContent,
@@ -53,8 +36,8 @@ import type {
   GitBranch,
   TaskAttempt,
 } from 'shared/types';
-import { ProvidePatDialog } from '@/components/ProvidePatDialog';
 import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import CreatePRDialog from '@/components/tasks/Toolbar/CreatePRDialog.tsx';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -119,14 +102,7 @@ export function TaskDetailsToolbar({
   const [rebasing, setRebasing] = useState(false);
   const [creatingPR, setCreatingPR] = useState(false);
   const [showCreatePRDialog, setShowCreatePRDialog] = useState(false);
-  const [prTitle, setPrTitle] = useState('');
-  const [prBody, setPrBody] = useState('');
-  const [prBaseBranch, setPrBaseBranch] = useState(
-    selectedAttempt?.base_branch || 'main'
-  );
   const [error, setError] = useState<string | null>(null);
-  const [showPatDialog, setShowPatDialog] = useState(false);
-  const [patDialogError, setPatDialogError] = useState<string | null>(null);
 
   const [devServerDetails, setDevServerDetails] =
     useState<ExecutionProcess | null>(null);
@@ -241,13 +217,6 @@ export function TaskDetailsToolbar({
       }
     }
   }, [taskAttempts, branches, availableExecutors]);
-
-  // Update PR base branch when selected attempt changes
-  useEffect(() => {
-    if (selectedAttempt?.base_branch) {
-      setPrBaseBranch(selectedAttempt.base_branch);
-    }
-  }, [selectedAttempt?.base_branch]);
 
   const onCreateNewAttempt = async (executor?: string, baseBranch?: string) => {
     if (!task) return;
@@ -519,82 +488,7 @@ export function TaskDetailsToolbar({
       return;
     }
 
-    // Auto-fill with task details if available
-    setPrTitle(`${task.title} (vibe-kanban)`);
-    setPrBody(task.description || '');
-
     setShowCreatePRDialog(true);
-  };
-
-  const handleConfirmCreatePR = async () => {
-    if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
-
-    try {
-      setCreatingPR(true);
-      const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/create-pr`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            title: prTitle,
-            body: prBody || null,
-            base_branch: prBaseBranch || null,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        const result: ApiResponse<string> = await response.json();
-        if (result.success && result.data) {
-          // Open the PR URL in a new tab
-          window.open(result.data, '_blank');
-          setShowCreatePRDialog(false);
-          // Reset form
-          setPrTitle('');
-          setPrBody('');
-          setPrBaseBranch(selectedAttempt?.base_branch || 'main');
-        } else if (result.message === 'insufficient_github_permissions') {
-          setShowCreatePRDialog(false);
-          setPatDialogError(null);
-          setShowPatDialog(true);
-        } else if (result.message === 'github_repo_not_found_or_no_access') {
-          setShowCreatePRDialog(false);
-          setPatDialogError(
-            'Your token does not have access to this repository, or the repository does not exist. Please check the repository URL and/or provide a Personal Access Token with access.'
-          );
-          setShowPatDialog(true);
-        } else {
-          setError(result.message || 'Failed to create GitHub PR');
-        }
-      } else if (response.status === 403) {
-        setShowCreatePRDialog(false);
-        setPatDialogError(null);
-        setShowPatDialog(true);
-      } else if (response.status === 404) {
-        setShowCreatePRDialog(false);
-        setPatDialogError(
-          'Your token does not have access to this repository, or the repository does not exist. Please check the repository URL and/or provide a Personal Access Token with access.'
-        );
-        setShowPatDialog(true);
-      } else {
-        setError('Failed to create GitHub PR');
-      }
-    } catch (err) {
-      setError('Failed to create GitHub PR');
-    } finally {
-      setCreatingPR(false);
-    }
-  };
-
-  const handleCancelCreatePR = () => {
-    setShowCreatePRDialog(false);
-    // Reset form to empty state
-    setPrTitle('');
-    setPrBody('');
-    setPrBaseBranch('main');
   };
 
   // Filter branches based on search term
@@ -836,14 +730,6 @@ export function TaskDetailsToolbar({
 
   return (
     <>
-      <ProvidePatDialog
-        open={showPatDialog}
-        onOpenChange={(open) => {
-          setShowPatDialog(open);
-          if (!open) setPatDialogError(null);
-        }}
-        errorMessage={patDialogError || undefined}
-      />
       <div className="px-6 pb-4 border-b">
         {/* Error Display */}
         {error && (
@@ -1202,78 +1088,14 @@ export function TaskDetailsToolbar({
         )}
       </div>
 
-      {/* Create PR Dialog */}
-      <Dialog
-        open={showCreatePRDialog}
-        onOpenChange={() => handleCancelCreatePR()}
-      >
-        <DialogContent className="sm:max-w-[525px]">
-          <DialogHeader>
-            <DialogTitle>Create GitHub Pull Request</DialogTitle>
-            <DialogDescription>
-              Create a pull request for this task attempt on GitHub.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="pr-title">Title</Label>
-              <Input
-                id="pr-title"
-                value={prTitle}
-                onChange={(e) => setPrTitle(e.target.value)}
-                placeholder="Enter PR title"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="pr-body">Description (optional)</Label>
-              <Textarea
-                id="pr-body"
-                value={prBody}
-                onChange={(e) => setPrBody(e.target.value)}
-                placeholder="Enter PR description"
-                rows={4}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="pr-base">Base Branch</Label>
-              <Select value={prBaseBranch} onValueChange={setPrBaseBranch}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select base branch" />
-                </SelectTrigger>
-                <SelectContent>
-                  {branches
-                    .filter((branch) => !branch.is_remote) // Only show local branches
-                    .map((branch) => (
-                      <SelectItem key={branch.name} value={branch.name}>
-                        {branch.name}
-                        {branch.is_current && ' (current)'}
-                      </SelectItem>
-                    ))}
-                  {/* Add common branches as fallback if not in the list */}
-                  {!branches.some((b) => b.name === 'main' && !b.is_remote) && (
-                    <SelectItem value="main">main</SelectItem>
-                  )}
-                  {!branches.some(
-                    (b) => b.name === 'master' && !b.is_remote
-                  ) && <SelectItem value="master">master</SelectItem>}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={handleCancelCreatePR}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleConfirmCreatePR}
-              disabled={creatingPR || !prTitle.trim()}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {creatingPR ? 'Creating...' : 'Create PR'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreatePRDialog
+        creatingPR={creatingPR}
+        setShowCreatePRDialog={setShowCreatePRDialog}
+        showCreatePRDialog={showCreatePRDialog}
+        setCreatingPR={setCreatingPR}
+        setError={setError}
+        branches={branches}
+      />
     </>
   );
 }

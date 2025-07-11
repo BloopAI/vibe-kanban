@@ -51,17 +51,12 @@ export function ConfigProvider({ children }: ConfigProviderProps) {
   useEffect(() => {
     if (loading) return;
     const checkToken = async () => {
-      try {
-        const response = await fetch('/api/auth/github/check');
-        const data: ApiResponse<null> = await response.json();
-        if (!data.success && data.message === 'github_token_invalid') {
-          setGithubTokenInvalid(true);
-        } else {
-          setGithubTokenInvalid(false);
-        }
-      } catch (err) {
-        // If the check fails, assume token is invalid
+      const response = await fetch('/api/auth/github/check');
+      const data: ApiResponse<null> = await response.json();
+      if (!data.success && data.message === 'github_token_invalid') {
         setGithubTokenInvalid(true);
+      } else {
+        setGithubTokenInvalid(false);
       }
     };
     checkToken();
