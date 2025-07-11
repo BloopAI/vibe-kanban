@@ -39,6 +39,7 @@ export interface TaskDetailsContextValue {
   attemptData: AttemptData;
   setAttemptData: Dispatch<SetStateAction<AttemptData>>;
   fetchAttemptData: (attemptId: string, taskId: string) => Promise<void> | void;
+  projectHasDevScript?: boolean;
 }
 
 export const TaskDetailsContext = createContext<TaskDetailsContextValue>(

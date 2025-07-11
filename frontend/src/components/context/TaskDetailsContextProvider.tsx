@@ -33,6 +33,7 @@ const TaskDetailsProvider: FC<{
   setShowEditorDialog: Dispatch<SetStateAction<boolean>>;
   isOpen: boolean;
   userSelectedTab: boolean;
+  projectHasDevScript?: boolean;
 }> = ({
   task,
   projectId,
@@ -42,6 +43,7 @@ const TaskDetailsProvider: FC<{
   setShowEditorDialog,
   isOpen,
   userSelectedTab,
+  projectHasDevScript,
 }) => {
   const [loading, setLoading] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
@@ -393,6 +395,7 @@ const TaskDetailsProvider: FC<{
       attemptData,
       setAttemptData,
       fetchAttemptData,
+      projectHasDevScript,
     }),
     [
       task,
@@ -413,6 +416,7 @@ const TaskDetailsProvider: FC<{
       executionState,
       attemptData,
       fetchAttemptData,
+      projectHasDevScript,
     ]
   );
   return (

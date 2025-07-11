@@ -76,6 +76,7 @@ export function TaskDetailsPanel({
           setActiveTab={setActiveTab}
           isOpen={isOpen}
           userSelectedTab={userSelectedTab}
+          projectHasDevScript={projectHasDevScript}
         >
           {/* Backdrop - only on smaller screens (overlay mode) */}
           <div className={getBackdropClasses()} onClick={onClose} />
@@ -89,7 +90,7 @@ export function TaskDetailsPanel({
                 onDeleteTask={onDeleteTask}
               />
 
-              <CollapsibleToolbar projectHasDevScript={projectHasDevScript} />
+              <CollapsibleToolbar />
 
               <TabNavigation
                 activeTab={activeTab}
