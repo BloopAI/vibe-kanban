@@ -146,6 +146,7 @@ jobs:
           release: ${{ needs.bump-version.outputs.new_version }}
           environment: production
           sourcemaps: "./frontend/dist"
+          ignore_missing: true
 
       - name: Upload frontend artifact
         uses: actions/upload-artifact@v4
