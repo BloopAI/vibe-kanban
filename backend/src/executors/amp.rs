@@ -96,19 +96,17 @@ impl AmpJson {
 
     pub fn has_streaming_content(&self) -> bool {
         match self {
-            AmpJson::Messages { messages, .. } => {
-                messages.iter().any(|(_index, message)| {
-                    if let Some(state) = &message.state {
-                        if let Some(state_type) = state.get("type").and_then(|t| t.as_str()) {
-                            state_type == "streaming"
-                        } else {
-                            false
-                        }
+            AmpJson::Messages { messages, .. } => messages.iter().any(|(_index, message)| {
+                if let Some(state) = &message.state {
+                    if let Some(state_type) = state.get("type").and_then(|t| t.as_str()) {
+                        state_type == "streaming"
                     } else {
                         false
                     }
-                })
-            }
+                } else {
+                    false
+                }
+            }),
             _ => false,
         }
     }
@@ -128,7 +126,9 @@ impl AmpJson {
                 for (_index, message) in messages {
                     let role = &message.role;
                     for content_item in &message.content {
-                        if let Some(entry) = content_item.to_normalized_entry(role, message, executor, worktree_path) {
+                        if let Some(entry) =
+                            content_item.to_normalized_entry(role, message, executor, worktree_path)
+                        {
                             entries.push(entry);
                         }
                     }
@@ -187,7 +187,7 @@ impl AmpContentItem {
                     metadata: Some(serde_json::to_value(self).unwrap_or(Value::Null)),
                 })
             }
-            AmpContentItem::ToolResult { tool_use_id, .. } => None,
+            AmpContentItem::ToolResult { .. } => None,
         }
     }
 }
@@ -263,8 +263,6 @@ Task title: {}"#,
         logs: &str,
         worktree_path: &str,
     ) -> Result<NormalizedConversation, String> {
-        use serde_json::Value;
-
         let mut entries = Vec::new();
         let mut session_id = None;
 
@@ -332,7 +330,6 @@ impl AmpExecutor {
         // If we can't make it relative, return the original path
         path.to_string()
     }
-
 
     fn generate_concise_content(
         &self,
