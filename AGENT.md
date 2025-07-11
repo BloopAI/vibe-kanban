@@ -29,33 +29,6 @@
 - **Imports**: Workspace deps, @/ aliases for frontend, absolute imports
 - **Naming**: PascalCase components, camelCase vars, kebab-case files
 
-## Project Structure
-
-```
-repo/
-├── backend/               # Rust backend (Axum API)
-│   ├── Cargo.toml
-│   └── src/
-│       ├── main.rs
-│       ├── routes/
-│       └── models/
-├── frontend/              # React + TypeScript app
-│   ├── package.json
-│   ├── vite.config.ts
-│   ├── components.json    # shadcn/ui config
-│   ├── tailwind.config.js
-│   └── src/
-│       ├── components/
-│       │   └── ui/        # shadcn/ui components
-│       ├── lib/
-│       └── app/
-├── shared/                # Shared types/schemas
-│   └── types.ts
-├── Cargo.toml             # Workspace configuration
-├── pnpm-workspace.yaml    # pnpm workspace
-└── package.json           # Root scripts
-```
-
 # Managing Shared Types Between Rust and TypeScript
 
 ts-rs allows you to derive TypeScript types from Rust structs/enums. By annotating your Rust types with #[derive(TS)] and related macros, ts-rs will generate .ts declaration files for those types.
