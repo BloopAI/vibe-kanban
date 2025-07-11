@@ -1,6 +1,5 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
-  ArrowDown,
   ExternalLink,
   GitBranch as GitBranchIcon,
   GitPullRequest,
@@ -8,18 +7,13 @@ import {
   Play,
   Plus,
   RefreshCw,
-  Search,
-  Settings2,
   StopCircle,
-  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -38,6 +32,7 @@ import type {
 } from 'shared/types';
 import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
 import CreatePRDialog from '@/components/tasks/Toolbar/CreatePRDialog.tsx';
+import CreateAttempt from '@/components/tasks/Toolbar/CreateAttempt.tsx';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -49,7 +44,7 @@ interface TaskDetailsToolbarProps {
   projectHasDevScript?: boolean;
 }
 
-const availableExecutors = [
+export const availableExecutors = [
   { id: 'echo', name: 'Echo' },
   { id: 'claude', name: 'Claude' },
   { id: 'amp', name: 'Amp' },
@@ -78,7 +73,6 @@ export function TaskDetailsToolbar({
   const [taskAttempts, setTaskAttempts] = useState<TaskAttempt[]>([]);
 
   const { config } = useConfig();
-  const [branchSearchTerm, setBranchSearchTerm] = useState('');
 
   const [branches, setBranches] = useState<GitBranch[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
@@ -217,29 +211,6 @@ export function TaskDetailsToolbar({
       }
     }
   }, [taskAttempts, branches, availableExecutors]);
-
-  const onCreateNewAttempt = async (executor?: string, baseBranch?: string) => {
-    if (!task) return;
-
-    try {
-      const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${task.id}/attempts`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            executor: executor || selectedExecutor,
-            base_branch: baseBranch || selectedBranch,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        fetchTaskAttempts();
-      }
-    } catch (err) {
-      console.error('Failed to create new attempt:', err);
-    }
-  };
 
   const fetchTaskAttempts = useCallback(async () => {
     if (!task) return;
@@ -491,16 +462,6 @@ export function TaskDetailsToolbar({
     setShowCreatePRDialog(true);
   };
 
-  // Filter branches based on search term
-  const filteredBranches = useMemo(() => {
-    if (!branchSearchTerm.trim()) {
-      return branches;
-    }
-    return branches.filter((branch) =>
-      branch.name.toLowerCase().includes(branchSearchTerm.toLowerCase())
-    );
-  }, [branches, branchSearchTerm]);
-
   // Get display name for selected branch
   const selectedBranchDisplayName = useMemo(() => {
     if (!selectedBranch) return 'current';
@@ -551,183 +512,6 @@ export function TaskDetailsToolbar({
     }
   };
 
-  // Handle exiting create attempt mode
-  const handleExitCreateAttemptMode = () => {
-    setIsInCreateAttemptMode(false);
-  };
-
-  // Handle creating the attempt
-  const handleCreateAttempt = () => {
-    onCreateNewAttempt(createAttemptExecutor, createAttemptBranch || undefined);
-    handleExitCreateAttemptMode();
-  };
-
-  // Render create attempt UI
-  const renderCreateAttemptUI = () => (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold">Create Attempt</h3>
-        {taskAttempts.length > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleExitCreateAttemptMode}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
-      <div className="flex items-center w-4/5">
-        <label className="text-xs font-medium text-muted-foreground">
-          Each time you start an attempt, a new session is initiated with your
-          selected coding agent, and a git worktree and corresponding task
-          branch are created.
-        </label>
-      </div>
-
-      <div className="grid grid-cols-3 gap-3 items-end">
-        {/* Step 1: Choose Base Branch */}
-        <div className="space-y-1">
-          <div className="flex items-center gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">
-              Base branch
-            </label>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-between text-xs"
-              >
-                <div className="flex items-center gap-1.5">
-                  <GitBranchIcon className="h-3 w-3" />
-                  <span className="truncate">
-                    {createAttemptBranch
-                      ? createAttemptBranch.includes('/')
-                        ? createAttemptBranch.split('/').pop()
-                        : createAttemptBranch
-                      : 'current'}
-                  </span>
-                </div>
-                <ArrowDown className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-80">
-              <div className="p-2">
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search branches..."
-                    value={branchSearchTerm}
-                    onChange={(e) => setBranchSearchTerm(e.target.value)}
-                    className="pl-8"
-                  />
-                </div>
-              </div>
-              <DropdownMenuSeparator />
-              <div className="max-h-64 overflow-y-auto">
-                {filteredBranches.length === 0 ? (
-                  <div className="p-2 text-sm text-muted-foreground text-center">
-                    No branches found
-                  </div>
-                ) : (
-                  filteredBranches.map((branch) => (
-                    <DropdownMenuItem
-                      key={branch.name}
-                      onClick={() => {
-                        setCreateAttemptBranch(branch.name);
-                        setBranchSearchTerm('');
-                      }}
-                      className={
-                        createAttemptBranch === branch.name ? 'bg-accent' : ''
-                      }
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span
-                          className={branch.is_current ? 'font-medium' : ''}
-                        >
-                          {branch.name}
-                        </span>
-                        <div className="flex gap-1">
-                          {branch.is_current && (
-                            <span className="text-xs bg-green-100 text-green-800 px-1 rounded">
-                              current
-                            </span>
-                          )}
-                          {branch.is_remote && (
-                            <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">
-                              remote
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </DropdownMenuItem>
-                  ))
-                )}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* Step 2: Choose Coding Agent */}
-        <div className="space-y-1">
-          <div className="flex items-center gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">
-              Coding agent
-            </label>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-between text-xs"
-              >
-                <div className="flex items-center gap-1.5">
-                  <Settings2 className="h-3 w-3" />
-                  <span className="truncate">
-                    {availableExecutors.find(
-                      (e) => e.id === createAttemptExecutor
-                    )?.name || 'Select agent'}
-                  </span>
-                </div>
-                <ArrowDown className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-full">
-              {availableExecutors.map((executor) => (
-                <DropdownMenuItem
-                  key={executor.id}
-                  onClick={() => setCreateAttemptExecutor(executor.id)}
-                  className={
-                    createAttemptExecutor === executor.id ? 'bg-accent' : ''
-                  }
-                >
-                  {executor.name}
-                  {config?.executor.type === executor.id && ' (Default)'}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* Step 3: Start Attempt */}
-        <div className="space-y-1">
-          <Button
-            onClick={handleCreateAttempt}
-            disabled={!createAttemptExecutor || isAttemptRunning}
-            size="sm"
-            className="w-full text-xs"
-          >
-            <Play className="h-3 w-3 mr-1.5" />
-            Start
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <>
       <div className="px-6 pb-4 border-b">
@@ -739,326 +523,333 @@ export function TaskDetailsToolbar({
         )}
 
         {isInCreateAttemptMode ? (
-          <div className="p-4 bg-muted/20 rounded-lg border">
-            {renderCreateAttemptUI()}
-          </div>
+          <CreateAttempt
+            fetchTaskAttempts={fetchTaskAttempts}
+            createAttemptBranch={createAttemptBranch}
+            selectedBranch={selectedBranch}
+            createAttemptExecutor={createAttemptExecutor}
+            selectedExecutor={selectedExecutor}
+            taskAttempts={taskAttempts}
+            branches={branches}
+            setCreateAttemptBranch={setCreateAttemptBranch}
+            setIsInCreateAttemptMode={setIsInCreateAttemptMode}
+            setCreateAttemptExecutor={setCreateAttemptExecutor}
+          />
         ) : (
           <div className="space-y-3 p-3 bg-muted/20 rounded-lg border">
             {/* Current Attempt Info */}
             <div className="space-y-2">
               {selectedAttempt ? (
-                <>
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-4 gap-3 items-start">
-                      <div>
-                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                          Started
-                        </div>
-                        <div className="text-sm font-medium">
-                          {new Date(
-                            selectedAttempt.created_at
-                          ).toLocaleDateString()}{' '}
-                          {new Date(
-                            selectedAttempt.created_at
-                          ).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </div>
+                <div className="space-y-2">
+                  <div className="grid grid-cols-4 gap-3 items-start">
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                        Started
                       </div>
-
-                      <div>
-                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                          Agent
-                        </div>
-                        <div className="text-sm font-medium">
-                          {availableExecutors.find(
-                            (e) => e.id === selectedAttempt.executor
-                          )?.name ||
-                            selectedAttempt.executor ||
-                            'Unknown'}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                          Base Branch
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <GitBranchIcon className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-sm font-medium">
-                            {branchStatus?.base_branch_name ||
-                              selectedBranchDisplayName}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                          Merge Status
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          {selectedAttempt.merge_commit ? (
-                            <div className="flex items-center gap-1.5">
-                              <div className="h-2 w-2 bg-green-500 rounded-full" />
-                              <span className="text-sm font-medium text-green-700">
-                                Merged
-                              </span>
-                              <span className="text-xs font-mono text-muted-foreground">
-                                ({selectedAttempt.merge_commit.slice(0, 8)})
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1.5">
-                              <div className="h-2 w-2 bg-yellow-500 rounded-full" />
-                              <span className="text-sm font-medium text-yellow-700">
-                                Not merged
-                              </span>
-                            </div>
-                          )}
-                        </div>
+                      <div className="text-sm font-medium">
+                        {new Date(
+                          selectedAttempt.created_at
+                        ).toLocaleDateString()}{' '}
+                        {new Date(
+                          selectedAttempt.created_at
+                        ).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
                       </div>
                     </div>
 
-                    <div className="col-span-4">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                          Worktree Path
-                        </div>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleOpenInEditor()}
-                                className="h-4 w-4 p-0 hover:bg-muted"
-                              >
-                                <ExternalLink className="h-3 w-3" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Open in editor</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                        Agent
                       </div>
-                      <div className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded break-all">
-                        {selectedAttempt.worktree_path}
+                      <div className="text-sm font-medium">
+                        {availableExecutors.find(
+                          (e) => e.id === selectedAttempt.executor
+                        )?.name ||
+                          selectedAttempt.executor ||
+                          'Unknown'}
                       </div>
                     </div>
 
-                    <div className="col-span-4 flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <div
-                          className={
-                            !projectHasDevScript ? 'cursor-not-allowed' : ''
-                          }
-                          onMouseEnter={() => setIsHoveringDevServer(true)}
-                          onMouseLeave={() => setIsHoveringDevServer(false)}
-                        >
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant={
-                                    runningDevServer ? 'destructive' : 'outline'
-                                  }
-                                  size="sm"
-                                  onClick={
-                                    runningDevServer
-                                      ? stopDevServer
-                                      : startDevServer
-                                  }
-                                  disabled={
-                                    isStartingDevServer || !projectHasDevScript
-                                  }
-                                  className="gap-1"
-                                >
-                                  {runningDevServer ? (
-                                    <>
-                                      <StopCircle className="h-3 w-3" />
-                                      Stop Dev
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Play className="h-3 w-3" />
-                                      Dev Server
-                                    </>
-                                  )}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent
-                                className={
-                                  runningDevServer ? 'max-w-2xl p-4' : ''
-                                }
-                                side="top"
-                                align="center"
-                                avoidCollisions={true}
-                              >
-                                {!projectHasDevScript ? (
-                                  <p>
-                                    Configure a dev server command in project
-                                    settings
-                                  </p>
-                                ) : runningDevServer && devServerDetails ? (
-                                  <div className="space-y-2">
-                                    <p className="text-sm font-medium">
-                                      Dev Server Logs (Last 10 lines):
-                                    </p>
-                                    <pre className="text-xs bg-muted p-2 rounded max-h-64 overflow-y-auto whitespace-pre-wrap">
-                                      {processedDevServerLogs}
-                                    </pre>
-                                  </div>
-                                ) : runningDevServer ? (
-                                  <p>Stop the running dev server</p>
-                                ) : (
-                                  <p>Start the dev server</p>
-                                )}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                        Base Branch
                       </div>
+                      <div className="flex items-center gap-1.5">
+                        <GitBranchIcon className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-sm font-medium">
+                          {branchStatus?.base_branch_name ||
+                            selectedBranchDisplayName}
+                        </span>
+                      </div>
+                    </div>
 
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {taskAttempts.length > 1 && (
-                          <DropdownMenu>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="gap-2"
-                                    >
-                                      <History className="h-4 w-4" />
-                                      History
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>View attempt history</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                            <DropdownMenuContent align="start" className="w-64">
-                              {taskAttempts.map((attempt) => (
-                                <DropdownMenuItem
-                                  key={attempt.id}
-                                  onClick={() => handleAttemptChange(attempt)}
-                                  className={
-                                    selectedAttempt?.id === attempt.id
-                                      ? 'bg-accent'
-                                      : ''
-                                  }
-                                >
-                                  <div className="flex flex-col w-full">
-                                    <span className="font-medium text-sm">
-                                      {new Date(
-                                        attempt.created_at
-                                      ).toLocaleDateString()}{' '}
-                                      {new Date(
-                                        attempt.created_at
-                                      ).toLocaleTimeString()}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {attempt.executor || 'executor'}
-                                    </span>
-                                  </div>
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-
-                        {/* Git Operations */}
-                        {selectedAttempt && branchStatus && (
-                          <>
-                            {branchStatus.is_behind === true &&
-                              !branchStatus.merged && (
-                                <Button
-                                  onClick={handleRebaseClick}
-                                  disabled={
-                                    rebasing ||
-                                    branchStatusLoading ||
-                                    isAttemptRunning
-                                  }
-                                  variant="outline"
-                                  size="sm"
-                                  className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1"
-                                >
-                                  <RefreshCw
-                                    className={`h-3 w-3 ${rebasing ? 'animate-spin' : ''}`}
-                                  />
-                                  {rebasing ? 'Rebasing...' : `Rebase`}
-                                </Button>
-                              )}
-                            {!branchStatus.merged && (
-                              <>
-                                <Button
-                                  onClick={handleCreatePRClick}
-                                  disabled={
-                                    creatingPR ||
-                                    Boolean(branchStatus.is_behind) ||
-                                    isAttemptRunning
-                                  }
-                                  variant="outline"
-                                  size="sm"
-                                  className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1"
-                                >
-                                  <GitPullRequest className="h-3 w-3" />
-                                  {selectedAttempt.pr_url
-                                    ? 'Open PR'
-                                    : creatingPR
-                                      ? 'Creating...'
-                                      : 'Create PR'}
-                                </Button>
-                                <Button
-                                  onClick={handleMergeClick}
-                                  disabled={
-                                    merging ||
-                                    Boolean(branchStatus.is_behind) ||
-                                    isAttemptRunning
-                                  }
-                                  size="sm"
-                                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"
-                                >
-                                  <GitBranchIcon className="h-3 w-3" />
-                                  {merging ? 'Merging...' : 'Merge'}
-                                </Button>
-                              </>
-                            )}
-                          </>
-                        )}
-
-                        {isStopping || isAttemptRunning ? (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={stopAllExecutions}
-                            disabled={isStopping}
-                            className="gap-2"
-                          >
-                            <StopCircle className="h-4 w-4" />
-                            {isStopping ? 'Stopping...' : 'Stop Attempt'}
-                          </Button>
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                        Merge Status
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {selectedAttempt.merge_commit ? (
+                          <div className="flex items-center gap-1.5">
+                            <div className="h-2 w-2 bg-green-500 rounded-full" />
+                            <span className="text-sm font-medium text-green-700">
+                              Merged
+                            </span>
+                            <span className="text-xs font-mono text-muted-foreground">
+                              ({selectedAttempt.merge_commit.slice(0, 8)})
+                            </span>
+                          </div>
                         ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleEnterCreateAttemptMode}
-                            className="gap-2"
-                          >
-                            <Plus className="h-4 w-4" />
-                            New Attempt
-                          </Button>
+                          <div className="flex items-center gap-1.5">
+                            <div className="h-2 w-2 bg-yellow-500 rounded-full" />
+                            <span className="text-sm font-medium text-yellow-700">
+                              Not merged
+                            </span>
+                          </div>
                         )}
                       </div>
                     </div>
                   </div>
-                </>
+
+                  <div className="col-span-4">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Worktree Path
+                      </div>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenInEditor()}
+                              className="h-4 w-4 p-0 hover:bg-muted"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Open in editor</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <div className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded break-all">
+                      {selectedAttempt.worktree_path}
+                    </div>
+                  </div>
+
+                  <div className="col-span-4 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div
+                        className={
+                          !projectHasDevScript ? 'cursor-not-allowed' : ''
+                        }
+                        onMouseEnter={() => setIsHoveringDevServer(true)}
+                        onMouseLeave={() => setIsHoveringDevServer(false)}
+                      >
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant={
+                                  runningDevServer ? 'destructive' : 'outline'
+                                }
+                                size="sm"
+                                onClick={
+                                  runningDevServer
+                                    ? stopDevServer
+                                    : startDevServer
+                                }
+                                disabled={
+                                  isStartingDevServer || !projectHasDevScript
+                                }
+                                className="gap-1"
+                              >
+                                {runningDevServer ? (
+                                  <>
+                                    <StopCircle className="h-3 w-3" />
+                                    Stop Dev
+                                  </>
+                                ) : (
+                                  <>
+                                    <Play className="h-3 w-3" />
+                                    Dev Server
+                                  </>
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              className={
+                                runningDevServer ? 'max-w-2xl p-4' : ''
+                              }
+                              side="top"
+                              align="center"
+                              avoidCollisions={true}
+                            >
+                              {!projectHasDevScript ? (
+                                <p>
+                                  Configure a dev server command in project
+                                  settings
+                                </p>
+                              ) : runningDevServer && devServerDetails ? (
+                                <div className="space-y-2">
+                                  <p className="text-sm font-medium">
+                                    Dev Server Logs (Last 10 lines):
+                                  </p>
+                                  <pre className="text-xs bg-muted p-2 rounded max-h-64 overflow-y-auto whitespace-pre-wrap">
+                                    {processedDevServerLogs}
+                                  </pre>
+                                </div>
+                              ) : runningDevServer ? (
+                                <p>Stop the running dev server</p>
+                              ) : (
+                                <p>Start the dev server</p>
+                              )}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {taskAttempts.length > 1 && (
+                        <DropdownMenu>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-2"
+                                  >
+                                    <History className="h-4 w-4" />
+                                    History
+                                  </Button>
+                                </DropdownMenuTrigger>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>View attempt history</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <DropdownMenuContent align="start" className="w-64">
+                            {taskAttempts.map((attempt) => (
+                              <DropdownMenuItem
+                                key={attempt.id}
+                                onClick={() => handleAttemptChange(attempt)}
+                                className={
+                                  selectedAttempt?.id === attempt.id
+                                    ? 'bg-accent'
+                                    : ''
+                                }
+                              >
+                                <div className="flex flex-col w-full">
+                                  <span className="font-medium text-sm">
+                                    {new Date(
+                                      attempt.created_at
+                                    ).toLocaleDateString()}{' '}
+                                    {new Date(
+                                      attempt.created_at
+                                    ).toLocaleTimeString()}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {attempt.executor || 'executor'}
+                                  </span>
+                                </div>
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+
+                      {/* Git Operations */}
+                      {selectedAttempt && branchStatus && (
+                        <>
+                          {branchStatus.is_behind === true &&
+                            !branchStatus.merged && (
+                              <Button
+                                onClick={handleRebaseClick}
+                                disabled={
+                                  rebasing ||
+                                  branchStatusLoading ||
+                                  isAttemptRunning
+                                }
+                                variant="outline"
+                                size="sm"
+                                className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1"
+                              >
+                                <RefreshCw
+                                  className={`h-3 w-3 ${rebasing ? 'animate-spin' : ''}`}
+                                />
+                                {rebasing ? 'Rebasing...' : `Rebase`}
+                              </Button>
+                            )}
+                          {!branchStatus.merged && (
+                            <>
+                              <Button
+                                onClick={handleCreatePRClick}
+                                disabled={
+                                  creatingPR ||
+                                  Boolean(branchStatus.is_behind) ||
+                                  isAttemptRunning
+                                }
+                                variant="outline"
+                                size="sm"
+                                className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1"
+                              >
+                                <GitPullRequest className="h-3 w-3" />
+                                {selectedAttempt.pr_url
+                                  ? 'Open PR'
+                                  : creatingPR
+                                    ? 'Creating...'
+                                    : 'Create PR'}
+                              </Button>
+                              <Button
+                                onClick={handleMergeClick}
+                                disabled={
+                                  merging ||
+                                  Boolean(branchStatus.is_behind) ||
+                                  isAttemptRunning
+                                }
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"
+                              >
+                                <GitBranchIcon className="h-3 w-3" />
+                                {merging ? 'Merging...' : 'Merge'}
+                              </Button>
+                            </>
+                          )}
+                        </>
+                      )}
+
+                      {isStopping || isAttemptRunning ? (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={stopAllExecutions}
+                          disabled={isStopping}
+                          className="gap-2"
+                        >
+                          <StopCircle className="h-4 w-4" />
+                          {isStopping ? 'Stopping...' : 'Stop Attempt'}
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleEnterCreateAttemptMode}
+                          className="gap-2"
+                        >
+                          <Plus className="h-4 w-4" />
+                          New Attempt
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <div className="text-center py-8 flex-1">
                   <div className="text-lg font-medium text-muted-foreground">
