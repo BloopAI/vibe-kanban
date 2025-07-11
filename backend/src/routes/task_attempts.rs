@@ -410,14 +410,22 @@ pub async fn create_github_pr(
                 crate::models::task_attempt::TaskAttemptError::GitHubService(
                     crate::services::GitHubServiceError::TokenInvalid,
                 ) => Some("github_token_invalid".to_string()),
-                crate::models::task_attempt::TaskAttemptError::Git(err)
-                    if err.message().contains("status code: 403") =>
+                crate::models::task_attempt::TaskAttemptError::GitService(
+                    crate::services::git_service::GitServiceError::Git(err),
+                ) if err
+                    .message()
+                    .contains("too many redirects or authentication replays") =>
                 {
+                    Some("insufficient_github_permissions".to_string()) // PAT is invalid
+                }
+                crate::models::task_attempt::TaskAttemptError::GitService(
+                    crate::services::git_service::GitServiceError::Git(err),
+                ) if err.message().contains("status code: 403") => {
                     Some("insufficient_github_permissions".to_string())
                 }
-                crate::models::task_attempt::TaskAttemptError::Git(err)
-                    if err.message().contains("status code: 404") =>
-                {
+                crate::models::task_attempt::TaskAttemptError::GitService(
+                    crate::services::git_service::GitServiceError::Git(err),
+                ) if err.message().contains("status code: 404") => {
                     Some("github_repo_not_found_or_no_access".to_string())
                 }
                 _ => Some(format!("Failed to create PR: {}", e)),
