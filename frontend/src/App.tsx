@@ -32,11 +32,19 @@ function AppContent() {
 
   useEffect(() => {
     if (config) {
+      console.log('Config loaded:', {
+        disclaimer_acknowledged: config.disclaimer_acknowledged,
+        onboarding_acknowledged: config.onboarding_acknowledged,
+        analytics_enabled: config.analytics_enabled
+      });
+      
       setShowDisclaimer(!config.disclaimer_acknowledged);
       if (config.disclaimer_acknowledged) {
         setShowOnboarding(!config.onboarding_acknowledged);
         if (config.onboarding_acknowledged) {
-          setShowPrivacyOptIn(config.analytics_enabled === null);
+          const shouldShowPrivacy = config.analytics_enabled === null;
+          console.log('Should show privacy dialog:', shouldShowPrivacy);
+          setShowPrivacyOptIn(shouldShowPrivacy);
         }
       }
       const notAuthenticated =
