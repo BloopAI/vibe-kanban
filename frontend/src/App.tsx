@@ -32,24 +32,16 @@ function AppContent() {
 
   useEffect(() => {
     if (config) {
-      console.log('Config loaded:', {
-        disclaimer_acknowledged: config.disclaimer_acknowledged,
-        onboarding_acknowledged: config.onboarding_acknowledged,
-        analytics_enabled: config.analytics_enabled
-      });
-      
       setShowDisclaimer(!config.disclaimer_acknowledged);
       if (config.disclaimer_acknowledged) {
         setShowOnboarding(!config.onboarding_acknowledged);
         if (config.onboarding_acknowledged) {
-          const shouldShowPrivacy = config.analytics_enabled === null;
-          console.log('Should show privacy dialog:', shouldShowPrivacy);
-          setShowPrivacyOptIn(shouldShowPrivacy);
+          setShowPrivacyOptIn(!config.telemetry_acknowledged);
         }
       }
       
-      // Only show GitHub login if privacy dialog is not being shown
-      if (config.analytics_enabled !== null) {
+      // Only show GitHub login if telemetry dialog is not being shown
+      if (config.telemetry_acknowledged) {
         const notAuthenticated =
           !config.github?.username || !config.github?.token;
         setShowGitHubLogin(notAuthenticated || githubTokenInvalid);
@@ -126,6 +118,7 @@ function AppContent() {
 
     const updatedConfig = {
       ...config,
+      telemetry_acknowledged: true,
       analytics_enabled: telemetryEnabled,
     };
 
