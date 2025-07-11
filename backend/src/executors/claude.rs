@@ -55,23 +55,21 @@ Task title: {}"#,
 
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
-        let claude_command = format!(
-            "npx -y @anthropic-ai/claude-code \"{}\" -p --dangerously-skip-permissions --verbose --output-format=stream-json",
-            prompt.replace("\"", "\\\"")
-        );
+        // Pass prompt via stdin instead of command line to avoid shell escaping issues
+        let claude_command = "npx -y @anthropic-ai/claude-code -p --dangerously-skip-permissions --verbose --output-format=stream-json";
 
         let mut command = Command::new(shell_cmd);
         command
             .kill_on_drop(true)
-            .stdin(std::process::Stdio::null())
+            .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .current_dir(worktree_path)
             .arg(shell_arg)
-            .arg(&claude_command)
+            .arg(claude_command)
             .env("NODE_NO_WARNINGS", "1");
 
-        let child = command
+        let mut child = command
             .group_spawn() // Create new process group so we can kill entire tree
             .map_err(|e| {
                 crate::executor::SpawnContext::from_command(&command, "Claude")
@@ -79,6 +77,28 @@ Task title: {}"#,
                     .with_context("Claude CLI execution for new task")
                     .spawn_error(e)
             })?;
+
+        // Write prompt to stdin safely
+        if let Some(mut stdin) = child.inner().stdin.take() {
+            use tokio::io::AsyncWriteExt;
+            tracing::debug!(
+                "Writing prompt to Claude stdin for task {}: {:?}",
+                task_id,
+                prompt
+            );
+            stdin.write_all(prompt.as_bytes()).await.map_err(|e| {
+                let context = crate::executor::SpawnContext::from_command(&command, "Claude")
+                    .with_task(task_id, Some(task.title.clone()))
+                    .with_context("Failed to write prompt to Claude CLI stdin");
+                ExecutorError::spawn_failed(e, context)
+            })?;
+            stdin.shutdown().await.map_err(|e| {
+                let context = crate::executor::SpawnContext::from_command(&command, "Claude")
+                    .with_task(task_id, Some(task.title.clone()))
+                    .with_context("Failed to close Claude CLI stdin");
+                ExecutorError::spawn_failed(e, context)
+            })?;
+        }
 
         Ok(child)
     }
@@ -487,23 +507,23 @@ impl Executor for ClaudeFollowupExecutor {
     ) -> Result<AsyncGroupChild, ExecutorError> {
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
+        // Pass prompt via stdin instead of command line to avoid shell escaping issues
         let claude_command = format!(
-            "npx -y @anthropic-ai/claude-code \"{}\" -p --dangerously-skip-permissions --verbose --output-format=stream-json --resume={}",
-            self.prompt.replace("\"", "\\\""),
+            "npx -y @anthropic-ai/claude-code -p --dangerously-skip-permissions --verbose --output-format=stream-json --resume={}",
             self.session_id
         );
 
         let mut command = Command::new(shell_cmd);
         command
             .kill_on_drop(true)
-            .stdin(std::process::Stdio::null())
+            .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .current_dir(worktree_path)
             .arg(shell_arg)
             .arg(&claude_command);
 
-        let child = command
+        let mut child = command
             .group_spawn() // Create new process group so we can kill entire tree
             .map_err(|e| {
                 crate::executor::SpawnContext::from_command(&command, "Claude")
@@ -513,6 +533,32 @@ impl Executor for ClaudeFollowupExecutor {
                     ))
                     .spawn_error(e)
             })?;
+
+        // Write prompt to stdin safely
+        if let Some(mut stdin) = child.inner().stdin.take() {
+            use tokio::io::AsyncWriteExt;
+            tracing::debug!(
+                "Writing prompt to Claude stdin for session {}: {:?}",
+                self.session_id,
+                self.prompt
+            );
+            stdin.write_all(self.prompt.as_bytes()).await.map_err(|e| {
+                let context = crate::executor::SpawnContext::from_command(&command, "Claude")
+                    .with_context(format!(
+                        "Failed to write prompt to Claude CLI stdin for session {}",
+                        self.session_id
+                    ));
+                ExecutorError::spawn_failed(e, context)
+            })?;
+            stdin.shutdown().await.map_err(|e| {
+                let context = crate::executor::SpawnContext::from_command(&command, "Claude")
+                    .with_context(format!(
+                        "Failed to close Claude CLI stdin for session {}",
+                        self.session_id
+                    ));
+                ExecutorError::spawn_failed(e, context)
+            })?;
+        }
 
         Ok(child)
     }
