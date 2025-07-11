@@ -1,35 +1,52 @@
-# Mission Control
+<p align="center">
+  <a href="https://vibekanban.com">
+    <picture>
+      <source srcset="frontend/public/vibe-kanban-logo.svg" media="(prefers-color-scheme: dark)">
+      <source srcset="frontend/public/vibe-kanban-logo-light.svg" media="(prefers-color-scheme: light)">
+      <img src="packages/web/src/assets/logo-ornate-light.svg" alt="Vibe Kanban Logo">
+    </picture>
+  </a>
+</p>
 
-Orchestration and visualisation over multiple coding agents.
+<p align="center">Get 10X more out of Claude Code, Gemini CLI, Codex, Amp and other coding agents...</p>
+<p align="center">
+  <a href="https://www.npmjs.com/package/vibe-kanban"><img alt="npm" src="https://img.shields.io/npm/v/vibe-kanban?style=flat-square" /></a>
+  <a href="https://github.com/bloop/vibe-kanban/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/bloop/vibe-kanban/publish.yml?style=flat-square&branch=dev" /></a>
+</p>
 
-## Project Structure
+<iframe width="560" height="315" src="https://www.youtube.com/embed/TFT3KnZOOAk" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
+## Overview
+
+AI coding agents are increasingly writing the world's code and human engineers now spend the majority of their time planning, reviewing, and orchestrating tasks. Vibe Kanban streamlines this process, enabling you to:
+
+- Easily switch between different coding agents
+- Orchestrate the execution of multiple coding agents in parallel or in sequence
+- Quickly review work and start dev servers
+- Track the status of tasks that your coding agents are working on
+- Centralise configuration of coding agent MCP configs
+
+## Installation
+
+Make sure you have authenticated with your favourite coding agent. A full list of supported coding agents can be found in the [docs](https://vibekanban.com/). Then in your terminal run:
+
+```bash
+npx vibe-kanban
 ```
-repo/
-├── backend/               # Rust backend (Axum API)
-│   ├── Cargo.toml
-│   └── src/
-│       ├── main.rs
-│       ├── routes/
-│       └── models/
-├── frontend/              # React + TypeScript app
-│   ├── package.json
-│   ├── vite.config.ts
-│   ├── components.json    # shadcn/ui config
-│   ├── tailwind.config.js
-│   └── src/
-│       ├── components/
-│       │   └── ui/        # shadcn/ui components
-│       ├── lib/
-│       └── app/
-├── shared/                # Shared types/schemas
-│   └── types.ts
-├── Cargo.toml             # Workspace configuration
-├── pnpm-workspace.yaml    # pnpm workspace
-└── package.json           # Root scripts
-```
 
-## Getting Started
+## Documentation
+
+Please head to the [website](https://vibekanban.com) for the latest documentation and user guides.
+
+## Support
+
+Please open an issue on this repo if you find any bugs or have any feature requests.
+
+## Contributing
+
+We would prefer that ideas and changes are raised with the core team via GitHub issues, where we can discuss implementation details and alignment with the existing roadmap. Please do not open PRs without first discussing your proposal with the team.
+
+## Development
 
 ### Prerequisites
 
@@ -37,44 +54,20 @@ repo/
 - [Node.js](https://nodejs.org/) (>=18)
 - [pnpm](https://pnpm.io/) (>=8)
 
-### Installation
-
-1. Install dependencies
-
 ```bash
-# Install dependencies
-npm install
+pnpm i
 ```
 
-### Development
+### Running the dev server
 
 ```bash
-# Run both frontend and backend in development mode
-npm dev
+pnpm run dev
 ```
 
-## Tech Stack
+This will start the frontend and backend with live reloading. A blank DB will be copied from the `dev_assets_seed` folder.
 
-### Backend
+### Build from source
 
-- **Rust** with **Axum** web framework
-- **Tokio** async runtime
-- **Tower** middleware
-- **Serde** for JSON serialization
-
-### Frontend
-
-- **React 18** with **TypeScript**
-- **Vite** for build tooling
-- **Tailwind CSS** for styling
-- **shadcn/ui** component library
-- **Radix UI** primitives
-
-## Adding shadcn/ui Components
-
-```bash
-cd frontend
-npx shadcn-ui@latest add button
-npx shadcn-ui@latest add card
-# etc.
-```
+1. Run `build-npm-package.sh`
+2. In the `npx-cli` folder run `npm pack`
+3. You can run your build with `npx [GENERATED FILE].tgz`
