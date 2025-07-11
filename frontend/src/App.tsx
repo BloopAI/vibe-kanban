@@ -47,9 +47,15 @@ function AppContent() {
           setShowPrivacyOptIn(shouldShowPrivacy);
         }
       }
-      const notAuthenticated =
-        !config.github?.username || !config.github?.token;
-      setShowGitHubLogin(notAuthenticated || githubTokenInvalid);
+      
+      // Only show GitHub login if privacy dialog is not being shown
+      if (config.analytics_enabled !== null) {
+        const notAuthenticated =
+          !config.github?.username || !config.github?.token;
+        setShowGitHubLogin(notAuthenticated || githubTokenInvalid);
+      } else {
+        setShowGitHubLogin(false);
+      }
     }
     if (githubTokenInvalid) {
       setShowGitHubLogin(true);
@@ -109,9 +115,6 @@ function AppContent() {
 
       if (data.success) {
         setShowOnboarding(false);
-        if (config.analytics_enabled === null) {
-          setShowPrivacyOptIn(true);
-        }
       }
     } catch (err) {
       console.error('Error saving config:', err);
@@ -141,6 +144,10 @@ function AppContent() {
 
       if (data.success) {
         setShowPrivacyOptIn(false);
+        // Now show GitHub login after privacy choice is made
+        const notAuthenticated =
+          !updatedConfig.github?.username || !updatedConfig.github?.token;
+        setShowGitHubLogin(notAuthenticated);
       }
     } catch (err) {
       console.error('Error saving config:', err);
