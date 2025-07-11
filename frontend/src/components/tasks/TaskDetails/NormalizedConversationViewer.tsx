@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import {
   AlertCircle,
   Bot,
@@ -29,15 +29,14 @@ import type {
   NormalizedEntryType,
   WorktreeDiff,
 } from 'shared/types.ts';
+import { TaskDetailsContext } from '../TaskDetailsContext';
 
 interface NormalizedConversationViewerProps {
   executionProcess: ExecutionProcess;
-  projectId: string;
   onConversationUpdate?: () => void;
   diff?: WorktreeDiff | null;
   isBackgroundRefreshing?: boolean;
-  onDeleteFile?: (filePath: string) => void;
-  deletingFiles?: Set<string>;
+  diffDeletable?: boolean;
 }
 
 const getEntryIcon = (entryType: NormalizedEntryType) => {
@@ -356,13 +355,10 @@ const shouldRenderMarkdown = (entryType: NormalizedEntryType) => {
 
 export function NormalizedConversationViewer({
   executionProcess,
-  projectId,
+  diffDeletable,
   onConversationUpdate,
-  diff,
-  isBackgroundRefreshing = false,
-  onDeleteFile,
-  deletingFiles = new Set(),
 }: NormalizedConversationViewerProps) {
+  const { projectId, diff } = useContext(TaskDetailsContext);
   const [conversation, setConversation] =
     useState<NormalizedConversation | null>(null);
   const [loading, setLoading] = useState(true);
@@ -642,9 +638,7 @@ export function NormalizedConversationViewer({
                 <div className="mt-4 mb-2">
                   <DiffCard
                     diff={incrementalDiff}
-                    isBackgroundRefreshing={isBackgroundRefreshing}
-                    onDeleteFile={onDeleteFile}
-                    deletingFiles={deletingFiles}
+                    deletable={diffDeletable}
                     compact={true}
                   />
                 </div>

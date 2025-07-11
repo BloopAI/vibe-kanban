@@ -15,7 +15,6 @@ interface TaskActivityHistoryProps {
   selectedAttempt: TaskAttempt | null;
   activities: TaskAttemptActivityWithPrompt[];
   runningProcessDetails: Record<string, ExecutionProcess>;
-  projectId: string;
 }
 
 const getAttemptStatusDisplay = (
@@ -64,7 +63,6 @@ export function TaskActivityHistory({
   selectedAttempt,
   activities,
   runningProcessDetails,
-  projectId,
 }: TaskActivityHistoryProps) {
   const [expandedOutputs, setExpandedOutputs] = useState<Set<string>>(
     new Set()
@@ -169,7 +167,6 @@ export function TaskActivityHistory({
                         executionProcess={
                           runningProcessDetails[activity.execution_process_id]
                         }
-                        projectId={projectId}
                       />
                     </div>
                     <Button

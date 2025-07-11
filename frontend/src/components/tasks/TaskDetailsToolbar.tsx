@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   ArrowDown,
   ExternalLink,
@@ -50,12 +50,11 @@ import { makeRequest } from '@/lib/api';
 import type {
   BranchStatus,
   ExecutionProcess,
-  ExecutionProcessSummary,
   GitBranch,
   TaskAttempt,
-  TaskWithAttemptStatus,
 } from 'shared/types';
 import { ProvidePatDialog } from '@/components/ProvidePatDialog';
+import { TaskDetailsContext } from '@/components/tasks/TaskDetailsContext.tsx';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -64,27 +63,7 @@ interface ApiResponse<T> {
 }
 
 interface TaskDetailsToolbarProps {
-  task: TaskWithAttemptStatus;
   projectHasDevScript?: boolean;
-  projectId: string;
-  selectedAttempt: TaskAttempt | null;
-  taskAttempts: TaskAttempt[];
-  isAttemptRunning: boolean;
-  isStopping: boolean;
-  selectedExecutor: string;
-  runningDevServer: ExecutionProcessSummary | undefined;
-  isStartingDevServer: boolean;
-  devServerDetails: ExecutionProcess | null;
-  processedDevServerLogs: string;
-  branches: GitBranch[];
-  selectedBranch: string | null;
-  onAttemptChange: (attemptId: string) => void;
-  onCreateNewAttempt: (executor?: string, baseBranch?: string) => void;
-  onStopAllExecutions: () => void;
-  onStartDevServer: () => void;
-  onStopDevServer: () => void;
-  onOpenInEditor: () => void;
-  onSetIsHoveringDevServer: (hovering: boolean) => void;
 }
 
 const availableExecutors = [
@@ -96,30 +75,34 @@ const availableExecutors = [
 ];
 
 export function TaskDetailsToolbar({
-  task,
   projectHasDevScript,
-  projectId,
-  selectedAttempt,
-  taskAttempts,
-  isAttemptRunning,
-  isStopping,
-  selectedExecutor,
-  runningDevServer,
-  isStartingDevServer,
-  devServerDetails,
-  processedDevServerLogs,
-  branches,
-  selectedBranch,
-  onAttemptChange,
-  onCreateNewAttempt,
-  onStopAllExecutions,
-  onStartDevServer,
-  onStopDevServer,
-  onOpenInEditor,
-  onSetIsHoveringDevServer,
 }: TaskDetailsToolbarProps) {
+  const {
+    task,
+    projectId,
+    setLoading,
+    setSelectedAttempt,
+    isStopping,
+    handleOpenInEditor,
+    isAttemptRunning,
+    setAttemptData,
+    fetchAttemptData,
+    fetchExecutionState,
+    selectedAttempt,
+    setIsStopping,
+    attemptData,
+  } = useContext(TaskDetailsContext);
+  const [taskAttempts, setTaskAttempts] = useState<TaskAttempt[]>([]);
+
   const { config } = useConfig();
   const [branchSearchTerm, setBranchSearchTerm] = useState('');
+
+  const [branches, setBranches] = useState<GitBranch[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+
+  const [selectedExecutor, setSelectedExecutor] = useState<string>(
+    config?.executor.type || 'claude'
+  );
 
   // State for create attempt mode
   const [isInCreateAttemptMode, setIsInCreateAttemptMode] = useState(false);
@@ -144,6 +127,88 @@ export function TaskDetailsToolbar({
   const [error, setError] = useState<string | null>(null);
   const [showPatDialog, setShowPatDialog] = useState(false);
   const [patDialogError, setPatDialogError] = useState<string | null>(null);
+
+  const [devServerDetails, setDevServerDetails] =
+    useState<ExecutionProcess | null>(null);
+  const [isHoveringDevServer, setIsHoveringDevServer] = useState(false);
+
+  // Find running dev server in current project
+  const runningDevServer = useMemo(() => {
+    return attemptData.processes.find(
+      (process) =>
+        process.process_type === 'devserver' && process.status === 'running'
+    );
+  }, [attemptData.processes]);
+
+  const fetchDevServerDetails = useCallback(async () => {
+    if (!runningDevServer || !task || !selectedAttempt) return;
+
+    try {
+      const response = await makeRequest(
+        `/api/projects/${projectId}/execution-processes/${runningDevServer.id}`
+      );
+      if (response.ok) {
+        const result: ApiResponse<ExecutionProcess> = await response.json();
+        if (result.success && result.data) {
+          setDevServerDetails(result.data);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch dev server details:', err);
+    }
+  }, [runningDevServer, task, selectedAttempt, projectId]);
+
+  useEffect(() => {
+    if (!isHoveringDevServer || !runningDevServer) {
+      setDevServerDetails(null);
+      return;
+    }
+
+    fetchDevServerDetails();
+    const interval = setInterval(fetchDevServerDetails, 2000);
+    return () => clearInterval(interval);
+  }, [isHoveringDevServer, runningDevServer, fetchDevServerDetails]);
+
+  const processedDevServerLogs = useMemo(() => {
+    if (!devServerDetails) return 'No output yet...';
+
+    const stdout = devServerDetails.stdout || '';
+    const stderr = devServerDetails.stderr || '';
+    const allOutput = stdout + (stderr ? '\n' + stderr : '');
+    const lines = allOutput.split('\n').filter((line) => line.trim());
+    const lastLines = lines.slice(-10);
+    return lastLines.length > 0 ? lastLines.join('\n') : 'No output yet...';
+  }, [devServerDetails]);
+
+  const fetchProjectBranches = useCallback(async () => {
+    try {
+      const response = await makeRequest(`/api/projects/${projectId}/branches`);
+      if (response.ok) {
+        const result: ApiResponse<GitBranch[]> = await response.json();
+        if (result.success && result.data) {
+          setBranches(result.data);
+          // Set current branch as default
+          const currentBranch = result.data.find((b) => b.is_current);
+          if (currentBranch && !selectedBranch) {
+            setSelectedBranch(currentBranch.name);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch project branches:', err);
+    }
+  }, [projectId, selectedBranch]);
+
+  useEffect(() => {
+    fetchProjectBranches();
+  }, [fetchProjectBranches]);
+
+  // Set default executor from config
+  useEffect(() => {
+    if (config && config.executor.type !== selectedExecutor) {
+      setSelectedExecutor(config.executor.type);
+    }
+  }, [config, selectedExecutor]);
 
   // Set create attempt mode when there are no attempts
   useEffect(() => {
@@ -183,6 +248,165 @@ export function TaskDetailsToolbar({
       setPrBaseBranch(selectedAttempt.base_branch);
     }
   }, [selectedAttempt?.base_branch]);
+
+  const onCreateNewAttempt = async (executor?: string, baseBranch?: string) => {
+    if (!task) return;
+
+    try {
+      const response = await makeRequest(
+        `/api/projects/${projectId}/tasks/${task.id}/attempts`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            executor: executor || selectedExecutor,
+            base_branch: baseBranch || selectedBranch,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        fetchTaskAttempts();
+      }
+    } catch (err) {
+      console.error('Failed to create new attempt:', err);
+    }
+  };
+
+  const fetchTaskAttempts = useCallback(async () => {
+    if (!task) return;
+
+    try {
+      setLoading(true);
+      const response = await makeRequest(
+        `/api/projects/${projectId}/tasks/${task.id}/attempts`
+      );
+
+      if (response.ok) {
+        const result: ApiResponse<TaskAttempt[]> = await response.json();
+        if (result.success && result.data) {
+          setTaskAttempts(result.data);
+
+          if (result.data.length > 0) {
+            const latestAttempt = result.data.reduce((latest, current) =>
+              new Date(current.created_at) > new Date(latest.created_at)
+                ? current
+                : latest
+            );
+            setSelectedAttempt(latestAttempt);
+            fetchAttemptData(latestAttempt.id, latestAttempt.task_id);
+            fetchExecutionState(latestAttempt.id, latestAttempt.task_id);
+          } else {
+            setSelectedAttempt(null);
+            setAttemptData({
+              activities: [],
+              processes: [],
+              runningProcessDetails: {},
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch task attempts:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [task, projectId, fetchAttemptData, fetchExecutionState]);
+
+  useEffect(() => {
+    fetchTaskAttempts();
+  }, [fetchTaskAttempts]);
+
+  const [isStartingDevServer, setIsStartingDevServer] = useState(false);
+
+  const startDevServer = async () => {
+    if (!task || !selectedAttempt) return;
+
+    setIsStartingDevServer(true);
+
+    try {
+      const response = await makeRequest(
+        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/start-dev-server`,
+        {
+          method: 'POST',
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to start dev server');
+      }
+
+      const data: ApiResponse<null> = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to start dev server');
+      }
+
+      fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
+    } catch (err) {
+      console.error('Failed to start dev server:', err);
+    } finally {
+      setIsStartingDevServer(false);
+    }
+  };
+
+  const stopDevServer = async () => {
+    if (!task || !selectedAttempt || !runningDevServer) return;
+
+    setIsStartingDevServer(true);
+
+    try {
+      const response = await makeRequest(
+        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/execution-processes/${runningDevServer.id}/stop`,
+        {
+          method: 'POST',
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to stop dev server');
+      }
+
+      fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
+    } catch (err) {
+      console.error('Failed to stop dev server:', err);
+    } finally {
+      setIsStartingDevServer(false);
+    }
+  };
+
+  const stopAllExecutions = async () => {
+    if (!task || !selectedAttempt) return;
+
+    try {
+      setIsStopping(true);
+      const response = await makeRequest(
+        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/stop`,
+        {
+          method: 'POST',
+        }
+      );
+
+      if (response.ok) {
+        await fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
+        setTimeout(() => {
+          fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
+        }, 1000);
+      }
+    } catch (err) {
+      console.error('Failed to stop executions:', err);
+    } finally {
+      setIsStopping(false);
+    }
+  };
+
+  const handleAttemptChange = useCallback(
+    (attempt: TaskAttempt) => {
+      setSelectedAttempt(attempt);
+      fetchAttemptData(attempt.id, attempt.task_id);
+      fetchExecutionState(attempt.id, attempt.task_id);
+    },
+    [fetchAttemptData, fetchExecutionState, setSelectedAttempt]
+  );
 
   // Branch status fetching
   const fetchBranchStatus = useCallback(async () => {
@@ -721,7 +945,7 @@ export function TaskDetailsToolbar({
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => onOpenInEditor()}
+                                onClick={() => handleOpenInEditor()}
                                 className="h-4 w-4 p-0 hover:bg-muted"
                               >
                                 <ExternalLink className="h-3 w-3" />
@@ -744,8 +968,8 @@ export function TaskDetailsToolbar({
                           className={
                             !projectHasDevScript ? 'cursor-not-allowed' : ''
                           }
-                          onMouseEnter={() => onSetIsHoveringDevServer(true)}
-                          onMouseLeave={() => onSetIsHoveringDevServer(false)}
+                          onMouseEnter={() => setIsHoveringDevServer(true)}
+                          onMouseLeave={() => setIsHoveringDevServer(false)}
                         >
                           <TooltipProvider>
                             <Tooltip>
@@ -757,8 +981,8 @@ export function TaskDetailsToolbar({
                                   size="sm"
                                   onClick={
                                     runningDevServer
-                                      ? onStopDevServer
-                                      : onStartDevServer
+                                      ? stopDevServer
+                                      : startDevServer
                                   }
                                   disabled={
                                     isStartingDevServer || !projectHasDevScript
@@ -837,7 +1061,7 @@ export function TaskDetailsToolbar({
                               {taskAttempts.map((attempt) => (
                                 <DropdownMenuItem
                                   key={attempt.id}
-                                  onClick={() => onAttemptChange(attempt.id)}
+                                  onClick={() => handleAttemptChange(attempt)}
                                   className={
                                     selectedAttempt?.id === attempt.id
                                       ? 'bg-accent'
@@ -927,7 +1151,7 @@ export function TaskDetailsToolbar({
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={onStopAllExecutions}
+                            onClick={stopAllExecutions}
                             disabled={isStopping}
                             className="gap-2"
                           >

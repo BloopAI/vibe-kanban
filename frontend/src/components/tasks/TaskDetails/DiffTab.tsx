@@ -1,23 +1,10 @@
 import { DiffCard } from '@/components/tasks/TaskDetails/DiffCard.tsx';
-import { WorktreeDiff } from 'shared/types.ts';
+import { useContext } from 'react';
+import { TaskDetailsContext } from '@/components/tasks/TaskDetailsContext.tsx';
 
-type Props = {
-  diffLoading: boolean;
-  diffError: string | null;
-  diff: WorktreeDiff | null;
-  isBackgroundRefreshing: boolean;
-  handleDeleteFileClick: (fileId: string) => void;
-  deletingFiles: Set<string>;
-};
+function DiffTab() {
+  const { diff, diffLoading, diffError } = useContext(TaskDetailsContext);
 
-function DiffTab({
-  diffLoading,
-  diffError,
-  diff,
-  isBackgroundRefreshing,
-  handleDeleteFileClick,
-  deletingFiles,
-}: Props) {
   if (diffLoading) {
     return (
       <div className="flex items-center justify-center h-32">
@@ -37,14 +24,7 @@ function DiffTab({
 
   return (
     <div className="h-full px-4 pb-4">
-      <DiffCard
-        diff={diff}
-        isBackgroundRefreshing={isBackgroundRefreshing}
-        onDeleteFile={handleDeleteFileClick}
-        deletingFiles={deletingFiles}
-        compact={false}
-        className="h-full"
-      />
+      <DiffCard diff={diff} deletable compact={false} className="h-full" />
     </div>
   );
 }

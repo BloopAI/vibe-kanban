@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -16,11 +16,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { EditorType } from 'shared/types';
+import { TaskDetailsContext } from '@/components/tasks/TaskDetailsContext.tsx';
 
 interface EditorSelectionDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectEditor: (editorType: EditorType) => void;
 }
 
 const editorOptions: {
@@ -63,12 +63,12 @@ const editorOptions: {
 export function EditorSelectionDialog({
   isOpen,
   onClose,
-  onSelectEditor,
 }: EditorSelectionDialogProps) {
+  const { handleOpenInEditor } = useContext(TaskDetailsContext);
   const [selectedEditor, setSelectedEditor] = useState<EditorType>('vscode');
 
   const handleConfirm = () => {
-    onSelectEditor(selectedEditor);
+    handleOpenInEditor(selectedEditor);
     onClose();
   };
 

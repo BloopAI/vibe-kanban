@@ -7,20 +7,64 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog.tsx';
 import { Button } from '@/components/ui/button.tsx';
+import { makeRequest } from '@/lib/api.ts';
+import { useContext } from 'react';
+import { TaskDetailsContext } from '@/components/tasks/TaskDetailsContext.tsx';
+import { ApiResponse } from 'shared/types.ts';
 
-type Props = {
-  fileToDelete: string | null;
-  handleCancelDelete: () => void;
-  handleConfirmDelete: () => void;
-  deletingFiles: Set<string>;
-};
+function DeleteFileConfirmationDialog() {
+  const {
+    task,
+    projectId,
+    selectedAttempt,
+    setDeletingFiles,
+    fileToDelete,
+    deletingFiles,
+    setFileToDelete,
+    fetchDiff,
+    setDiffError,
+  } = useContext(TaskDetailsContext);
+  const handleConfirmDelete = async () => {
+    if (!fileToDelete || !projectId || !task?.id || !selectedAttempt?.id)
+      return;
 
-function DeleteFileConfirmationDialog({
-  fileToDelete,
-  handleCancelDelete,
-  handleConfirmDelete,
-  deletingFiles,
-}: Props) {
+    try {
+      setDeletingFiles((prev) => new Set(prev).add(fileToDelete));
+      const response = await makeRequest(
+        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/delete-file?file_path=${encodeURIComponent(
+          fileToDelete
+        )}`,
+        {
+          method: 'POST',
+        }
+      );
+
+      if (response.ok) {
+        const result: ApiResponse<null> = await response.json();
+        if (result.success) {
+          fetchDiff();
+        } else {
+          setDiffError(result.message || 'Failed to delete file');
+        }
+      } else {
+        setDiffError('Failed to delete file');
+      }
+    } catch (err) {
+      setDiffError('Failed to delete file');
+    } finally {
+      setDeletingFiles((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(fileToDelete);
+        return newSet;
+      });
+      setFileToDelete(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setFileToDelete(null);
+  };
+
   return (
     <Dialog open={!!fileToDelete} onOpenChange={() => handleCancelDelete()}>
       <DialogContent>

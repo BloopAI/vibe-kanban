@@ -1,19 +1,15 @@
 import { GitCompare, MessageSquare } from 'lucide-react';
-import { WorktreeDiff } from 'shared/types.ts';
+import { useContext } from 'react';
+import { TaskDetailsContext } from '@/components/tasks/TaskDetailsContext.tsx';
 
 type Props = {
   activeTab: 'logs' | 'diffs';
   setActiveTab: (tab: 'logs' | 'diffs') => void;
-  diff: WorktreeDiff | null;
   setUserSelectedTab: (tab: boolean) => void;
 };
 
-function TabNavigation({
-  activeTab,
-  setActiveTab,
-  diff,
-  setUserSelectedTab,
-}: Props) {
+function TabNavigation({ activeTab, setActiveTab, setUserSelectedTab }: Props) {
+  const { diff } = useContext(TaskDetailsContext);
   return (
     <div className="border-b bg-muted/30">
       <div className="flex px-4">

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Edit, Trash2, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { useContext, useState } from 'react';
+import { ChevronDown, ChevronUp, Edit, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import {
@@ -9,9 +9,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
+import { TaskDetailsContext } from './TaskDetailsContext';
 
 interface TaskDetailsHeaderProps {
-  task: TaskWithAttemptStatus;
   onClose: () => void;
   onEditTask?: (task: TaskWithAttemptStatus) => void;
   onDeleteTask?: (taskId: string) => void;
@@ -43,11 +43,11 @@ const getTaskStatusDotColor = (status: TaskStatus): string => {
 };
 
 export function TaskDetailsHeader({
-  task,
   onClose,
   onEditTask,
   onDeleteTask,
 }: TaskDetailsHeaderProps) {
+  const { task } = useContext(TaskDetailsContext);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   return (

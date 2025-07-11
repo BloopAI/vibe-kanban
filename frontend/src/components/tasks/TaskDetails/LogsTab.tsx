@@ -1,50 +1,56 @@
-import { RefObject } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { MessageSquare } from 'lucide-react';
 import { NormalizedConversationViewer } from '@/components/tasks/TaskDetails/NormalizedConversationViewer.tsx';
-import type {
-  ExecutionProcess,
-  ExecutionProcessSummary,
-  TaskAttempt,
-  TaskAttemptActivityWithPrompt,
-  TaskAttemptState,
-  WorktreeDiff,
-} from 'shared/types.ts';
+import { TaskDetailsContext } from '@/components/tasks/TaskDetailsContext.tsx';
 
-type Props = {
-  loading: boolean;
-  selectedAttempt: TaskAttempt | null;
-  attemptData: {
-    activities: TaskAttemptActivityWithPrompt[];
-    processes: ExecutionProcessSummary[];
-    runningProcessDetails: Record<string, ExecutionProcess>;
-  };
-  executionState: TaskAttemptState | null;
-  diff: WorktreeDiff | null;
-  isBackgroundRefreshing: boolean;
-  deletingFiles: Set<string>;
-  handleConversationUpdate: () => void;
-  handleDeleteFileClick: (file: string) => void;
-  projectId: string;
-  scrollContainerRef: RefObject<HTMLDivElement>;
-  setupScrollRef: RefObject<HTMLDivElement>;
-  handleLogsScroll: () => void;
-};
+function LogsTab() {
+  const { loading, selectedAttempt, executionState, attemptData } =
+    useContext(TaskDetailsContext);
 
-function LogsTab({
-  loading,
-  selectedAttempt,
-  attemptData,
-  executionState,
-  diff,
-  isBackgroundRefreshing,
-  deletingFiles,
-  handleConversationUpdate,
-  handleDeleteFileClick,
-  projectId,
-  scrollContainerRef,
-  setupScrollRef,
-  handleLogsScroll,
-}: Props) {
+  const [shouldAutoScrollLogs, setShouldAutoScrollLogs] = useState(true);
+  const [conversationUpdateTrigger, setConversationUpdateTrigger] = useState(0);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const setupScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (shouldAutoScrollLogs && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop =
+        scrollContainerRef.current.scrollHeight;
+    }
+  }, [
+    attemptData.activities,
+    attemptData.processes,
+    conversationUpdateTrigger,
+    shouldAutoScrollLogs,
+  ]);
+
+  // Auto-scroll setup script logs to bottom
+  useEffect(() => {
+    if (setupScrollRef.current) {
+      setupScrollRef.current.scrollTop = setupScrollRef.current.scrollHeight;
+    }
+  }, [attemptData.runningProcessDetails]);
+
+  const handleLogsScroll = useCallback(() => {
+    if (scrollContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } =
+        scrollContainerRef.current;
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 5;
+
+      if (isAtBottom && !shouldAutoScrollLogs) {
+        setShouldAutoScrollLogs(true);
+      } else if (!isAtBottom && shouldAutoScrollLogs) {
+        setShouldAutoScrollLogs(false);
+      }
+    }
+  }, [shouldAutoScrollLogs]);
+
+  // Callback to trigger auto-scroll when conversation updates
+  const handleConversationUpdate = useCallback(() => {
+    setConversationUpdateTrigger((prev) => prev + 1);
+  }, []);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -112,12 +118,9 @@ function LogsTab({
 
         {setupProcess && (
           <div className="font-mono text-sm whitespace-pre-wrap text-muted-foreground">
-            {(() => {
-              const stdout = setupProcess.stdout || '';
-              const stderr = setupProcess.stderr || '';
-              const combined = [stdout, stderr].filter(Boolean).join('\n');
-              return combined || 'Waiting for setup script output...';
-            })()}
+            {[setupProcess.stdout || '', setupProcess.stderr || '']
+              .filter(Boolean)
+              .join('\n') || 'Waiting for setup script output...'}
           </div>
         )}
       </div>
@@ -146,7 +149,6 @@ function LogsTab({
         {setupProcess && (
           <NormalizedConversationViewer
             executionProcess={setupProcess}
-            projectId={projectId}
             onConversationUpdate={handleConversationUpdate}
           />
         )}
@@ -178,7 +180,6 @@ function LogsTab({
         {codingAgentProcess && (
           <NormalizedConversationViewer
             executionProcess={codingAgentProcess}
-            projectId={projectId}
             onConversationUpdate={handleConversationUpdate}
           />
         )}
@@ -224,110 +225,95 @@ function LogsTab({
         onScroll={handleLogsScroll}
         className="h-full overflow-y-auto"
       >
-        {loading ? (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading...</p>
-          </div>
-        ) : (
-          (() => {
-            // Find main coding agent process (command: "executor")
-            let mainCodingAgentProcess = Object.values(
-              attemptData.runningProcessDetails
-            ).find(
+        {(() => {
+          // Find main coding agent process (command: "executor")
+          let mainCodingAgentProcess = Object.values(
+            attemptData.runningProcessDetails
+          ).find(
+            (process) =>
+              process.process_type === 'codingagent' &&
+              process.command === 'executor'
+          );
+
+          if (!mainCodingAgentProcess) {
+            const mainCodingAgentSummary = attemptData.processes.find(
               (process) =>
                 process.process_type === 'codingagent' &&
                 process.command === 'executor'
             );
 
-            if (!mainCodingAgentProcess) {
-              const mainCodingAgentSummary = attemptData.processes.find(
-                (process) =>
-                  process.process_type === 'codingagent' &&
-                  process.command === 'executor'
-              );
+            if (mainCodingAgentSummary) {
+              mainCodingAgentProcess = Object.values(
+                attemptData.runningProcessDetails
+              ).find((process) => process.id === mainCodingAgentSummary.id);
 
-              if (mainCodingAgentSummary) {
-                mainCodingAgentProcess = Object.values(
-                  attemptData.runningProcessDetails
-                ).find((process) => process.id === mainCodingAgentSummary.id);
-
-                if (!mainCodingAgentProcess) {
-                  mainCodingAgentProcess = {
-                    ...mainCodingAgentSummary,
-                    stdout: null,
-                    stderr: null,
-                  } as any;
-                }
+              if (!mainCodingAgentProcess) {
+                mainCodingAgentProcess = {
+                  ...mainCodingAgentSummary,
+                  stdout: null,
+                  stderr: null,
+                } as any;
               }
             }
+          }
 
-            // Find follow up executor processes (command: "followup_executor")
-            const followUpProcesses = attemptData.processes
-              .filter(
-                (process) =>
-                  process.process_type === 'codingagent' &&
-                  process.command === 'followup_executor'
-              )
-              .map((summary) => {
-                const detailedProcess = Object.values(
-                  attemptData.runningProcessDetails
-                ).find((process) => process.id === summary.id);
-                return (
-                  detailedProcess ||
-                  ({
-                    ...summary,
-                    stdout: null,
-                    stderr: null,
-                  } as any)
-                );
-              });
-
-            if (mainCodingAgentProcess || followUpProcesses.length > 0) {
+          // Find follow up executor processes (command: "followup_executor")
+          const followUpProcesses = attemptData.processes
+            .filter(
+              (process) =>
+                process.process_type === 'codingagent' &&
+                process.command === 'followup_executor'
+            )
+            .map((summary) => {
+              const detailedProcess = Object.values(
+                attemptData.runningProcessDetails
+              ).find((process) => process.id === summary.id);
               return (
-                <div className="space-y-8">
-                  {mainCodingAgentProcess && (
-                    <div className="space-y-6">
-                      <NormalizedConversationViewer
-                        executionProcess={mainCodingAgentProcess}
-                        projectId={projectId}
-                        onConversationUpdate={handleConversationUpdate}
-                        diff={diff}
-                        isBackgroundRefreshing={isBackgroundRefreshing}
-                        onDeleteFile={handleDeleteFileClick}
-                        deletingFiles={deletingFiles}
-                      />
-                    </div>
-                  )}
-                  {followUpProcesses.map((followUpProcess) => (
-                    <div key={followUpProcess.id}>
-                      <div className="border-t border-border mb-8"></div>
-                      <NormalizedConversationViewer
-                        executionProcess={followUpProcess}
-                        projectId={projectId}
-                        onConversationUpdate={handleConversationUpdate}
-                        diff={diff}
-                        isBackgroundRefreshing={isBackgroundRefreshing}
-                        onDeleteFile={handleDeleteFileClick}
-                        deletingFiles={deletingFiles}
-                      />
-                    </div>
-                  ))}
-                </div>
+                detailedProcess ||
+                ({
+                  ...summary,
+                  stdout: null,
+                  stderr: null,
+                } as any)
               );
-            }
+            });
 
+          if (mainCodingAgentProcess || followUpProcesses.length > 0) {
             return (
-              <div className="text-center py-8 text-muted-foreground">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                <p className="text-lg font-semibold mb-2">
-                  Coding Agent Starting
-                </p>
-                <p>Initializing conversation...</p>
+              <div className="space-y-8">
+                {mainCodingAgentProcess && (
+                  <div className="space-y-6">
+                    <NormalizedConversationViewer
+                      executionProcess={mainCodingAgentProcess}
+                      onConversationUpdate={handleConversationUpdate}
+                      diffDeletable
+                    />
+                  </div>
+                )}
+                {followUpProcesses.map((followUpProcess) => (
+                  <div key={followUpProcess.id}>
+                    <div className="border-t border-border mb-8"></div>
+                    <NormalizedConversationViewer
+                      executionProcess={followUpProcess}
+                      onConversationUpdate={handleConversationUpdate}
+                      diffDeletable
+                    />
+                  </div>
+                ))}
               </div>
             );
-          })()
-        )}
+          }
+
+          return (
+            <div className="text-center py-8 text-muted-foreground">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-lg font-semibold mb-2">
+                Coding Agent Starting
+              </p>
+              <p>Initializing conversation...</p>
+            </div>
+          );
+        })()}
       </div>
     );
   }

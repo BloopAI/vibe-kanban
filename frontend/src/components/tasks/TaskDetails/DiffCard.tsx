@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useCallback, useContext, useState } from 'react';
 import { Button } from '@/components/ui/button.tsx';
 import { ChevronDown, ChevronUp, GitCompare, Trash2 } from 'lucide-react';
 import type { DiffChunk, DiffChunkType, WorktreeDiff } from 'shared/types.ts';
+import { TaskDetailsContext } from '@/components/tasks/TaskDetailsContext.tsx';
 
 interface ProcessedLine {
   content: string;
@@ -20,24 +21,29 @@ interface ProcessedSection {
 
 interface DiffCardProps {
   diff: WorktreeDiff | null;
-  isBackgroundRefreshing?: boolean;
-  onDeleteFile?: (filePath: string) => void;
-  deletingFiles?: Set<string>;
+  deletable?: boolean;
   compact?: boolean;
   className?: string;
 }
 
 export function DiffCard({
   diff,
-  isBackgroundRefreshing = false,
-  onDeleteFile,
-  deletingFiles = new Set(),
+  deletable = false,
   compact = false,
   className = '',
 }: DiffCardProps) {
+  const { deletingFiles, setFileToDelete, isBackgroundRefreshing } =
+    useContext(TaskDetailsContext);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set()
+  );
+
+  const onDeleteFile = useCallback(
+    (filePath: string) => {
+      setFileToDelete(filePath);
+    },
+    [setFileToDelete]
   );
 
   // Diff processing functions
@@ -361,7 +367,7 @@ export function DiffCard({
                     </div>
                   )}
                 </div>
-                {onDeleteFile && (
+                {deletable && (
                   <Button
                     variant="ghost"
                     size="sm"
