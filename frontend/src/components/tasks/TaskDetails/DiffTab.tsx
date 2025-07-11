@@ -1,9 +1,9 @@
 import { DiffCard } from '@/components/tasks/TaskDetails/DiffCard.tsx';
 import { useContext } from 'react';
-import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import { TaskDiffContext } from '@/components/context/taskDetailsContext.ts';
 
 function DiffTab() {
-  const { diff, diffLoading, diffError } = useContext(TaskDetailsContext);
+  const { diff, diffLoading, diffError } = useContext(TaskDiffContext);
 
   if (diffLoading) {
     return (

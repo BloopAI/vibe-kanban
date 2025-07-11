@@ -14,7 +14,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import { TaskDeletingFilesContext } from '@/components/context/taskDetailsContext.ts';
 
 type Props = {
   collapsedFiles: Set<string>;
@@ -33,7 +33,9 @@ function DiffFile({
   fileIndex,
   setCollapsedFiles,
 }: Props) {
-  const { deletingFiles, setFileToDelete } = useContext(TaskDetailsContext);
+  const { deletingFiles, setFileToDelete } = useContext(
+    TaskDeletingFilesContext
+  );
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set()
   );

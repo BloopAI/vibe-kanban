@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react';
+import { memo, useContext, useState } from 'react';
 import { ChevronDown, ChevronUp, Edit, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
@@ -42,7 +42,7 @@ const getTaskStatusDotColor = (status: TaskStatus): string => {
   }
 };
 
-export function TaskDetailsHeader({
+function TaskDetailsHeader({
   onClose,
   onEditTask,
   onDeleteTask,
@@ -165,3 +165,5 @@ export function TaskDetailsHeader({
     </div>
   );
 }
+
+export default memo(TaskDetailsHeader);

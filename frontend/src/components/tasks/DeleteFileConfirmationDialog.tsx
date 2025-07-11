@@ -10,20 +10,20 @@ import { Button } from '@/components/ui/button.tsx';
 import { makeRequest } from '@/lib/api.ts';
 import { useContext } from 'react';
 import { ApiResponse } from 'shared/types.ts';
-import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import {
+  TaskDeletingFilesContext,
+  TaskDetailsContext,
+  TaskDiffContext,
+  TaskSelectedAttemptContext,
+} from '@/components/context/taskDetailsContext.ts';
 
 function DeleteFileConfirmationDialog() {
-  const {
-    task,
-    projectId,
-    selectedAttempt,
-    setDeletingFiles,
-    fileToDelete,
-    deletingFiles,
-    setFileToDelete,
-    fetchDiff,
-    setDiffError,
-  } = useContext(TaskDetailsContext);
+  const { task, projectId } = useContext(TaskDetailsContext);
+  const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
+  const { setDeletingFiles, fileToDelete, deletingFiles, setFileToDelete } =
+    useContext(TaskDeletingFilesContext);
+  const { fetchDiff, setDiffError } = useContext(TaskDiffContext);
+
   const handleConfirmDelete = async () => {
     if (!fileToDelete || !projectId || !task?.id || !selectedAttempt?.id)
       return;

@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import { TaskAttemptDataContext } from '@/components/context/taskDetailsContext.ts';
 
 type Props = {
   conversationUpdateTrigger: number;
@@ -18,7 +18,7 @@ function Conversation({
   conversationUpdateTrigger,
   handleConversationUpdate,
 }: Props) {
-  const { attemptData } = useContext(TaskDetailsContext);
+  const { attemptData } = useContext(TaskAttemptDataContext);
   const [shouldAutoScrollLogs, setShouldAutoScrollLogs] = useState(true);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);

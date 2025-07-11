@@ -4,17 +4,19 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
 import { useContext, useMemo, useState } from 'react';
 import { makeRequest } from '@/lib/api.ts';
-import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import {
+  TaskAttemptDataContext,
+  TaskDetailsContext,
+  TaskSelectedAttemptContext,
+} from '@/components/context/taskDetailsContext.ts';
 
 export function TaskFollowUpSection() {
-  const {
-    task,
-    projectId,
-    selectedAttempt,
-    isAttemptRunning,
-    attemptData,
-    fetchAttemptData,
-  } = useContext(TaskDetailsContext);
+  const { task, projectId } = useContext(TaskDetailsContext);
+  const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
+  const { attemptData, fetchAttemptData, isAttemptRunning } = useContext(
+    TaskAttemptDataContext
+  );
+
   const [followUpMessage, setFollowUpMessage] = useState('');
   const [isSendingFollowUp, setIsSendingFollowUp] = useState(false);
   const [followUpError, setFollowUpError] = useState<string | null>(null);

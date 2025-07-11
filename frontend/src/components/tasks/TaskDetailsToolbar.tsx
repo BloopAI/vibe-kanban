@@ -4,7 +4,14 @@ import { Button } from '@/components/ui/button';
 import { useConfig } from '@/components/config-provider';
 import { makeRequest } from '@/lib/api';
 import type { ApiResponse, GitBranch, TaskAttempt } from 'shared/types';
-import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import {
+  TaskAttemptDataContext,
+  TaskAttemptLoadingContext,
+  TaskAttemptStoppingContext,
+  TaskDetailsContext,
+  TaskExecutionStateContext,
+  TaskSelectedAttemptContext,
+} from '@/components/context/taskDetailsContext.ts';
 import CreatePRDialog from '@/components/tasks/Toolbar/CreatePRDialog.tsx';
 import CreateAttempt from '@/components/tasks/Toolbar/CreateAttempt.tsx';
 import CurrentAttempt from '@/components/tasks/Toolbar/CurrentAttempt.tsx';
@@ -18,18 +25,17 @@ const availableExecutors = [
 ];
 
 function TaskDetailsToolbar() {
-  const {
-    task,
-    projectId,
-    setLoading,
-    setSelectedAttempt,
-    isStopping,
-    isAttemptRunning,
-    setAttemptData,
-    fetchAttemptData,
-    fetchExecutionState,
-    selectedAttempt,
-  } = useContext(TaskDetailsContext);
+  const { task, projectId } = useContext(TaskDetailsContext);
+  const { setLoading } = useContext(TaskAttemptLoadingContext);
+  const { selectedAttempt, setSelectedAttempt } = useContext(
+    TaskSelectedAttemptContext
+  );
+  const { isStopping } = useContext(TaskAttemptStoppingContext);
+  const { fetchAttemptData, setAttemptData, isAttemptRunning } = useContext(
+    TaskAttemptDataContext
+  );
+  const { fetchExecutionState } = useContext(TaskExecutionStateContext);
+
   const [taskAttempts, setTaskAttempts] = useState<TaskAttempt[]>([]);
 
   const { config } = useConfig();
@@ -128,7 +134,11 @@ function TaskDetailsToolbar() {
       if (response.ok) {
         const result: ApiResponse<TaskAttempt[]> = await response.json();
         if (result.success && result.data) {
-          setTaskAttempts(result.data);
+          setTaskAttempts((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(result.data))
+              return prev;
+            return result.data || prev;
+          });
 
           if (result.data.length > 0) {
             const latestAttempt = result.data.reduce((latest, current) =>
@@ -136,7 +146,11 @@ function TaskDetailsToolbar() {
                 ? current
                 : latest
             );
-            setSelectedAttempt(latestAttempt);
+            setSelectedAttempt((prev) => {
+              if (JSON.stringify(prev) === JSON.stringify(latestAttempt))
+                return prev;
+              return latestAttempt;
+            });
             fetchAttemptData(latestAttempt.id, latestAttempt.task_id);
             fetchExecutionState(latestAttempt.id, latestAttempt.task_id);
           } else {
@@ -161,7 +175,7 @@ function TaskDetailsToolbar() {
   }, [fetchTaskAttempts]);
 
   // Handle entering create attempt mode
-  const handleEnterCreateAttemptMode = () => {
+  const handleEnterCreateAttemptMode = useCallback(() => {
     setIsInCreateAttemptMode(true);
 
     // Use latest attempt's settings as defaults if available
@@ -196,7 +210,7 @@ function TaskDetailsToolbar() {
       setCreateAttemptBranch(selectedBranch);
       setCreateAttemptExecutor(selectedExecutor);
     }
-  };
+  }, [taskAttempts, branches, selectedBranch, selectedExecutor]);
 
   return (
     <>

@@ -1,6 +1,6 @@
 import { GitCompare, MessageSquare } from 'lucide-react';
 import { useContext } from 'react';
-import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import { TaskDiffContext } from '@/components/context/taskDetailsContext.ts';
 
 type Props = {
   activeTab: 'logs' | 'diffs';
@@ -9,7 +9,7 @@ type Props = {
 };
 
 function TabNavigation({ activeTab, setActiveTab, setUserSelectedTab }: Props) {
-  const { diff } = useContext(TaskDetailsContext);
+  const { diff } = useContext(TaskDiffContext);
   return (
     <div className="border-b bg-muted/30">
       <div className="flex px-4">

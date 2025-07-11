@@ -2,7 +2,7 @@ import { useContext, useState } from 'react';
 import { Button } from '@/components/ui/button.tsx';
 import { GitCompare } from 'lucide-react';
 import type { WorktreeDiff } from 'shared/types.ts';
-import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import { TaskBackgroundRefreshContext } from '@/components/context/taskDetailsContext.ts';
 import DiffFile from '@/components/tasks/TaskDetails/DiffFile.tsx';
 
 interface DiffCardProps {
@@ -18,7 +18,7 @@ export function DiffCard({
   compact = false,
   className = '',
 }: DiffCardProps) {
-  const { isBackgroundRefreshing } = useContext(TaskDetailsContext);
+  const { isBackgroundRefreshing } = useContext(TaskBackgroundRefreshContext);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
 
   const collapseAllFiles = () => {

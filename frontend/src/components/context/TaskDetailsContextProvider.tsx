@@ -22,7 +22,17 @@ import type {
   WorktreeDiff,
 } from 'shared/types.ts';
 import { makeRequest } from '@/lib/api.ts';
-import { TaskDetailsContext } from './taskDetailsContext.ts';
+import {
+  TaskAttemptDataContext,
+  TaskAttemptLoadingContext,
+  TaskAttemptStoppingContext,
+  TaskBackgroundRefreshContext,
+  TaskDeletingFilesContext,
+  TaskDetailsContext,
+  TaskDiffContext,
+  TaskExecutionStateContext,
+  TaskSelectedAttemptContext,
+} from './taskDetailsContext.ts';
 
 const TaskDetailsProvider: FC<{
   task: TaskWithAttemptStatus;
@@ -138,7 +148,11 @@ const TaskDetailsProvider: FC<{
         if (response.ok) {
           const result: ApiResponse<TaskAttemptState> = await response.json();
           if (result.success && result.data) {
-            setExecutionState(result.data);
+            setExecutionState((prev) => {
+              if (JSON.stringify(prev) === JSON.stringify(result.data))
+                return prev;
+              return result.data;
+            });
           }
         }
       } catch (err) {
@@ -258,10 +272,14 @@ const TaskDetailsProvider: FC<{
               }
             }
 
-            setAttemptData({
-              activities: activitiesResult.data,
-              processes: processesResult.data,
-              runningProcessDetails,
+            setAttemptData((prev) => {
+              const newData = {
+                activities: activitiesResult.data || [],
+                processes: processesResult.data || [],
+                runningProcessDetails,
+              };
+              if (JSON.stringify(prev) === JSON.stringify(newData)) return prev;
+              return newData;
             });
           }
         }
@@ -370,58 +388,98 @@ const TaskDetailsProvider: FC<{
     () => ({
       task,
       projectId,
-      loading,
-      setLoading,
-      selectedAttempt,
-      setSelectedAttempt,
-      isStopping,
-      setIsStopping,
+      handleOpenInEditor,
+      projectHasDevScript,
+    }),
+    [task, projectId, handleOpenInEditor, projectHasDevScript]
+  );
+
+  const taskAttemptLoadingValue = useMemo(
+    () => ({ loading, setLoading }),
+    [loading]
+  );
+
+  const selectedAttemptValue = useMemo(
+    () => ({ selectedAttempt, setSelectedAttempt }),
+    [selectedAttempt]
+  );
+
+  const attemptStoppingValue = useMemo(
+    () => ({ isStopping, setIsStopping }),
+    [isStopping]
+  );
+
+  const deletingFilesValue = useMemo(
+    () => ({
       deletingFiles,
       fileToDelete,
       setFileToDelete,
       setDeletingFiles,
-      fetchDiff,
+    }),
+    [deletingFiles, fileToDelete]
+  );
+
+  const diffValue = useMemo(
+    () => ({
       setDiffError,
+      fetchDiff,
       diff,
       diffError,
       diffLoading,
-      setDiffLoading,
       setDiff,
+      setDiffLoading,
+    }),
+    [fetchDiff, diff, diffError, diffLoading]
+  );
+
+  const backgroundRefreshingValue = useMemo(
+    () => ({
       isBackgroundRefreshing,
-      handleOpenInEditor,
-      isAttemptRunning,
-      fetchExecutionState,
-      executionState,
+    }),
+    [isBackgroundRefreshing]
+  );
+
+  const attemptDataValue = useMemo(
+    () => ({
       attemptData,
       setAttemptData,
       fetchAttemptData,
-      projectHasDevScript,
-    }),
-    [
-      task,
-      projectId,
-      loading,
-      selectedAttempt,
-      isStopping,
-      deletingFiles,
-      fileToDelete,
-      fetchDiff,
-      diff,
-      diffError,
-      diffLoading,
-      isBackgroundRefreshing,
-      handleOpenInEditor,
       isAttemptRunning,
-      fetchExecutionState,
-      executionState,
-      attemptData,
-      fetchAttemptData,
-      projectHasDevScript,
-    ]
+    }),
+    [attemptData, fetchAttemptData, isAttemptRunning]
   );
+
+  const executionStateValue = useMemo(
+    () => ({
+      executionState,
+      fetchExecutionState,
+    }),
+    [executionState, fetchExecutionState]
+  );
+
   return (
     <TaskDetailsContext.Provider value={value}>
-      {children}
+      <TaskAttemptLoadingContext.Provider value={taskAttemptLoadingValue}>
+        <TaskSelectedAttemptContext.Provider value={selectedAttemptValue}>
+          <TaskAttemptStoppingContext.Provider value={attemptStoppingValue}>
+            <TaskDeletingFilesContext.Provider value={deletingFilesValue}>
+              <TaskDiffContext.Provider value={diffValue}>
+                <TaskAttemptDataContext.Provider value={attemptDataValue}>
+                  <TaskExecutionStateContext.Provider
+                    value={executionStateValue}
+                  >
+                    <TaskBackgroundRefreshContext.Provider
+                      value={backgroundRefreshingValue}
+                    >
+                      {children}
+                    </TaskBackgroundRefreshContext.Provider>
+                  </TaskExecutionStateContext.Provider>
+                </TaskAttemptDataContext.Provider>
+              </TaskDiffContext.Provider>
+            </TaskDeletingFilesContext.Provider>
+          </TaskAttemptStoppingContext.Provider>
+        </TaskSelectedAttemptContext.Provider>
+      </TaskAttemptLoadingContext.Provider>
     </TaskDetailsContext.Provider>
   );
 };

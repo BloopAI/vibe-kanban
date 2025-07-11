@@ -37,7 +37,13 @@ import type {
   ExecutionProcess,
   TaskAttempt,
 } from 'shared/types.ts';
-import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import {
+  TaskAttemptDataContext,
+  TaskAttemptStoppingContext,
+  TaskDetailsContext,
+  TaskExecutionStateContext,
+  TaskSelectedAttemptContext,
+} from '@/components/context/taskDetailsContext.ts';
 
 type Props = {
   setError: Dispatch<SetStateAction<string | null>>;
@@ -63,19 +69,14 @@ function CurrentAttempt({
   handleEnterCreateAttemptMode,
   availableExecutors,
 }: Props) {
-  const {
-    task,
-    projectId,
-    setSelectedAttempt,
-    isStopping,
-    handleOpenInEditor,
-    isAttemptRunning,
-    fetchAttemptData,
-    fetchExecutionState,
-    setIsStopping,
-    attemptData,
-    projectHasDevScript,
-  } = useContext(TaskDetailsContext);
+  const { task, projectId, handleOpenInEditor, projectHasDevScript } =
+    useContext(TaskDetailsContext);
+  const { setSelectedAttempt } = useContext(TaskSelectedAttemptContext);
+  const { isStopping, setIsStopping } = useContext(TaskAttemptStoppingContext);
+  const { attemptData, fetchAttemptData, isAttemptRunning } = useContext(
+    TaskAttemptDataContext
+  );
+  const { fetchExecutionState } = useContext(TaskExecutionStateContext);
 
   const [isStartingDevServer, setIsStartingDevServer] = useState(false);
   const [merging, setMerging] = useState(false);
@@ -243,7 +244,11 @@ function CurrentAttempt({
       if (response.ok) {
         const result: ApiResponse<BranchStatus> = await response.json();
         if (result.success && result.data) {
-          setBranchStatus(result.data);
+          setBranchStatus((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(result.data))
+              return prev;
+            return result.data;
+          });
         } else {
           setError('Failed to load branch status');
         }

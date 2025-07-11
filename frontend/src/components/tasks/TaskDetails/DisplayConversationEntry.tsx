@@ -22,7 +22,7 @@ import {
   type NormalizedEntryType,
   type WorktreeDiff,
 } from 'shared/types.ts';
-import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import { TaskDiffContext } from '@/components/context/taskDetailsContext.ts';
 
 type Props = {
   entry: NormalizedEntry;
@@ -254,7 +254,7 @@ const shouldRenderMarkdown = (entryType: NormalizedEntryType) => {
 };
 
 function DisplayConversationEntry({ entry, index, diffDeletable }: Props) {
-  const { diff } = useContext(TaskDetailsContext);
+  const { diff } = useContext(TaskDiffContext);
   const [expandedErrors, setExpandedErrors] = useState<Set<number>>(new Set());
 
   const toggleErrorExpansion = (index: number) => {

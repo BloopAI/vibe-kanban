@@ -18,7 +18,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCallback, useContext, useEffect, useState } from 'react';
-import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import {
+  TaskDetailsContext,
+  TaskSelectedAttemptContext,
+} from '@/components/context/taskDetailsContext.ts';
 import { makeRequest } from '@/lib/api.ts';
 import { ProvidePatDialog } from '@/components/ProvidePatDialog';
 import { ApiResponse, GitBranch } from 'shared/types.ts';
@@ -40,7 +43,8 @@ function CreatePrDialog({
   setError,
   branches,
 }: Props) {
-  const { selectedAttempt, projectId, task } = useContext(TaskDetailsContext);
+  const { projectId, task } = useContext(TaskDetailsContext);
+  const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
   const [prTitle, setPrTitle] = useState('');
   const [prBody, setPrBody] = useState('');
   const [prBaseBranch, setPrBaseBranch] = useState(

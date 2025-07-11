@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Button } from '@/components/ui/button.tsx';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import TaskDetailsToolbar from '@/components/tasks/TaskDetailsToolbar.tsx';
@@ -30,4 +30,4 @@ function CollapsibleToolbar() {
   );
 }
 
-export default CollapsibleToolbar;
+export default memo(CollapsibleToolbar);

@@ -1,12 +1,20 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { MessageSquare } from 'lucide-react';
 import { NormalizedConversationViewer } from '@/components/tasks/TaskDetails/NormalizedConversationViewer.tsx';
-import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import {
+  TaskAttemptDataContext,
+  TaskAttemptLoadingContext,
+  TaskExecutionStateContext,
+  TaskSelectedAttemptContext,
+} from '@/components/context/taskDetailsContext.ts';
 import Conversation from '@/components/tasks/TaskDetails/Conversation.tsx';
 
 function LogsTab() {
-  const { loading, selectedAttempt, executionState, attemptData } =
-    useContext(TaskDetailsContext);
+  const { loading } = useContext(TaskAttemptLoadingContext);
+  const { executionState } = useContext(TaskExecutionStateContext);
+  const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
+  const { attemptData } = useContext(TaskAttemptDataContext);
+
   const [conversationUpdateTrigger, setConversationUpdateTrigger] = useState(0);
 
   const setupScrollRef = useRef<HTMLDivElement>(null);

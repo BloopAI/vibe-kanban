@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { TaskDetailsHeader } from './TaskDetailsHeader';
+import TaskDetailsHeader from './TaskDetailsHeader';
 import { TaskFollowUpSection } from './TaskFollowUpSection';
 import { EditorSelectionDialog } from './EditorSelectionDialog';
 import {

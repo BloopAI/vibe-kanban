@@ -18,7 +18,10 @@ import {
 import { Input } from '@/components/ui/input.tsx';
 import type { GitBranch, TaskAttempt } from 'shared/types.ts';
 import { makeRequest } from '@/lib/api.ts';
-import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import {
+  TaskAttemptDataContext,
+  TaskDetailsContext,
+} from '@/components/context/taskDetailsContext.ts';
 import { useConfig } from '@/components/config-provider.tsx';
 
 type Props = {
@@ -51,7 +54,8 @@ function CreateAttempt({
   setCreateAttemptExecutor,
   availableExecutors,
 }: Props) {
-  const { task, projectId, isAttemptRunning } = useContext(TaskDetailsContext);
+  const { task, projectId } = useContext(TaskDetailsContext);
+  const { isAttemptRunning } = useContext(TaskAttemptDataContext);
   const { config } = useConfig();
 
   const [branchSearchTerm, setBranchSearchTerm] = useState('');

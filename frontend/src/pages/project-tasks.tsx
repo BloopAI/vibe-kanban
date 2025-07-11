@@ -47,12 +47,12 @@ export function ProjectTasks() {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   // Define task creation handler
-  const handleCreateNewTask = () => {
+  const handleCreateNewTask = useCallback(() => {
     setEditingTask(null);
     setIsTaskDialogOpen(true);
-  };
+  }, []);
 
-  const handleOpenInIDE = async () => {
+  const handleOpenInIDE = useCallback(async () => {
     if (!projectId) return;
 
     try {
@@ -74,7 +74,7 @@ export function ProjectTasks() {
       console.error('Failed to open project in IDE:', error);
       setError('Failed to open project in IDE');
     }
-  };
+  }, [projectId]);
 
   // Setup keyboard shortcuts
   useKeyboardShortcuts({
@@ -105,7 +105,10 @@ export function ProjectTasks() {
     if (taskId && tasks.length > 0) {
       const task = tasks.find((t) => t.id === taskId);
       if (task) {
-        setSelectedTask(task);
+        setSelectedTask((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(task)) return prev;
+          return task;
+        });
         setIsPanelOpen(true);
       }
     }
@@ -149,19 +152,19 @@ export function ProjectTasks() {
                 return prevTasks; // Return same reference to prevent re-render
               }
 
-              // Update selectedTask if it exists and has been modified
-              if (selectedTask) {
+              setSelectedTask((prev) => {
+                if (!prev) return prev;
+
                 const updatedSelectedTask = newTasks.find(
-                  (task) => task.id === selectedTask.id
+                  (task) => task.id === prev.id
                 );
+
                 if (
-                  updatedSelectedTask &&
-                  JSON.stringify(selectedTask) !==
-                    JSON.stringify(updatedSelectedTask)
-                ) {
-                  setSelectedTask(updatedSelectedTask);
-                }
-              }
+                  JSON.stringify(prev) === JSON.stringify(updatedSelectedTask)
+                )
+                  return prev;
+                return updatedSelectedTask || prev;
+              });
 
               return newTasks;
             });
@@ -177,173 +180,190 @@ export function ProjectTasks() {
         }
       }
     },
-    [projectId, selectedTask]
+    [projectId]
   );
 
-  const handleCreateTask = async (title: string, description: string) => {
-    try {
-      const response = await makeRequest(`/api/projects/${projectId}/tasks`, {
-        method: 'POST',
-        body: JSON.stringify({
-          project_id: projectId,
-          title,
-          description: description || null,
-        }),
-      });
-
-      if (response.ok) {
-        await fetchTasks();
-      } else {
-        setError('Failed to create task');
-      }
-    } catch (err) {
-      setError('Failed to create task');
-    }
-  };
-
-  const handleCreateAndStartTask = async (
-    title: string,
-    description: string,
-    executor?: ExecutorConfig
-  ) => {
-    try {
-      const payload: CreateTaskAndStart = {
-        project_id: projectId!,
-        title,
-        description: description || null,
-        executor: executor || null,
-      };
-
-      const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/create-and-start`,
-        {
+  const handleCreateTask = useCallback(
+    async (title: string, description: string) => {
+      try {
+        const response = await makeRequest(`/api/projects/${projectId}/tasks`, {
           method: 'POST',
-          body: JSON.stringify(payload),
-        }
-      );
-
-      if (response.ok) {
-        const result: ApiResponse<Task> = await response.json();
-        if (result.success && result.data) {
-          await fetchTasks();
-          // Open the newly created task in the details panel
-          handleViewTaskDetails(result.data);
-        }
-      } else {
-        setError('Failed to create and start task');
-      }
-    } catch (err) {
-      setError('Failed to create and start task');
-    }
-  };
-
-  const handleUpdateTask = async (
-    title: string,
-    description: string,
-    status: TaskStatus
-  ) => {
-    if (!editingTask) return;
-
-    try {
-      const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${editingTask.id}`,
-        {
-          method: 'PUT',
           body: JSON.stringify({
+            project_id: projectId,
             title,
             description: description || null,
-            status,
           }),
-        }
-      );
+        });
 
-      if (response.ok) {
-        await fetchTasks();
-        setEditingTask(null);
-      } else {
+        if (response.ok) {
+          await fetchTasks();
+        } else {
+          setError('Failed to create task');
+        }
+      } catch (err) {
+        setError('Failed to create task');
+      }
+    },
+    [projectId, fetchTasks]
+  );
+
+  const handleCreateAndStartTask = useCallback(
+    async (title: string, description: string, executor?: ExecutorConfig) => {
+      try {
+        const payload: CreateTaskAndStart = {
+          project_id: projectId!,
+          title,
+          description: description || null,
+          executor: executor || null,
+        };
+
+        const response = await makeRequest(
+          `/api/projects/${projectId}/tasks/create-and-start`,
+          {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          }
+        );
+
+        if (response.ok) {
+          const result: ApiResponse<Task> = await response.json();
+          if (result.success && result.data) {
+            await fetchTasks();
+            // Open the newly created task in the details panel
+            handleViewTaskDetails(result.data);
+          }
+        } else {
+          setError('Failed to create and start task');
+        }
+      } catch (err) {
+        setError('Failed to create and start task');
+      }
+    },
+    [projectId, fetchTasks]
+  );
+
+  const handleUpdateTask = useCallback(
+    async (title: string, description: string, status: TaskStatus) => {
+      if (!editingTask) return;
+
+      try {
+        const response = await makeRequest(
+          `/api/projects/${projectId}/tasks/${editingTask.id}`,
+          {
+            method: 'PUT',
+            body: JSON.stringify({
+              title,
+              description: description || null,
+              status,
+            }),
+          }
+        );
+
+        if (response.ok) {
+          await fetchTasks();
+          setEditingTask(null);
+        } else {
+          setError('Failed to update task');
+        }
+      } catch (err) {
         setError('Failed to update task');
       }
-    } catch (err) {
-      setError('Failed to update task');
-    }
-  };
+    },
+    [projectId, editingTask, fetchTasks]
+  );
 
-  const handleDeleteTask = async (taskId: string) => {
-    if (!confirm('Are you sure you want to delete this task?')) return;
+  const handleDeleteTask = useCallback(
+    async (taskId: string) => {
+      if (!confirm('Are you sure you want to delete this task?')) return;
 
-    try {
-      const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${taskId}`,
-        {
-          method: 'DELETE',
+      try {
+        const response = await makeRequest(
+          `/api/projects/${projectId}/tasks/${taskId}`,
+          {
+            method: 'DELETE',
+          }
+        );
+
+        if (response.ok) {
+          await fetchTasks();
+        } else {
+          setError('Failed to delete task');
         }
-      );
-
-      if (response.ok) {
-        await fetchTasks();
-      } else {
+      } catch (err) {
         setError('Failed to delete task');
       }
-    } catch (err) {
-      setError('Failed to delete task');
-    }
-  };
+    },
+    [projectId, fetchTasks]
+  );
 
-  const handleEditTask = (task: Task) => {
+  const handleEditTask = useCallback((task: Task) => {
     setEditingTask(task);
     setIsTaskDialogOpen(true);
-  };
+  }, []);
 
-  const handleViewTaskDetails = (task: Task) => {
-    setSelectedTask(task);
-    setIsPanelOpen(true);
-    // Update URL to include task ID
-    navigate(`/projects/${projectId}/tasks/${task.id}`, { replace: true });
-  };
+  const handleViewTaskDetails = useCallback(
+    (task: Task) => {
+      setSelectedTask(task);
+      setIsPanelOpen(true);
+      // Update URL to include task ID
+      navigate(`/projects/${projectId}/tasks/${task.id}`, { replace: true });
+    },
+    [projectId, navigate]
+  );
 
-  const handleClosePanel = () => {
+  const handleClosePanel = useCallback(() => {
     setIsPanelOpen(false);
     setSelectedTask(null);
     // Remove task ID from URL when closing panel
     navigate(`/projects/${projectId}/tasks`, { replace: true });
-  };
+  }, [projectId, navigate]);
 
-  const handleProjectSettingsSuccess = () => {
+  const handleProjectSettingsSuccess = useCallback(() => {
     setIsProjectSettingsOpen(false);
     fetchProject(); // Refresh project data after settings change
-  };
+  }, [fetchProject]);
 
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
+  const handleDragEnd = useCallback(
+    async (event: DragEndEvent) => {
+      const { active, over } = event;
 
-    if (!over || !active.data.current) return;
+      if (!over || !active.data.current) return;
 
-    const taskId = active.id as string;
-    const newStatus = over.id as Task['status'];
-    const task = tasks.find((t) => t.id === taskId);
+      const taskId = active.id as string;
+      const newStatus = over.id as Task['status'];
+      const task = tasks.find((t) => t.id === taskId);
 
-    if (!task || task.status === newStatus) return;
+      if (!task || task.status === newStatus) return;
 
-    // Optimistically update the UI immediately
-    const previousStatus = task.status;
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
-    );
-
-    try {
-      const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${taskId}`,
-        {
-          method: 'PUT',
-          body: JSON.stringify({
-            title: task.title,
-            description: task.description,
-            status: newStatus,
-          }),
-        }
+      // Optimistically update the UI immediately
+      const previousStatus = task.status;
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
       );
 
-      if (!response.ok) {
+      try {
+        const response = await makeRequest(
+          `/api/projects/${projectId}/tasks/${taskId}`,
+          {
+            method: 'PUT',
+            body: JSON.stringify({
+              title: task.title,
+              description: task.description,
+              status: newStatus,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          // Revert the optimistic update if the API call failed
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === taskId ? { ...t, status: previousStatus } : t
+            )
+          );
+          setError('Failed to update task status');
+        }
+      } catch (err) {
         // Revert the optimistic update if the API call failed
         setTasks((prev) =>
           prev.map((t) =>
@@ -352,16 +372,9 @@ export function ProjectTasks() {
         );
         setError('Failed to update task status');
       }
-    } catch (err) {
-      // Revert the optimistic update if the API call failed
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === taskId ? { ...t, status: previousStatus } : t
-        )
-      );
-      setError('Failed to update task status');
-    }
-  };
+    },
+    [projectId, tasks]
+  );
 
   if (loading) {
     return <div className="text-center py-8">Loading tasks...</div>;
@@ -370,6 +383,7 @@ export function ProjectTasks() {
   if (error) {
     return <div className="text-center py-8 text-destructive">{error}</div>;
   }
+  console.log('selectedTask', selectedTask);
 
   return (
     <div className={getMainContainerClasses(isPanelOpen)}>
