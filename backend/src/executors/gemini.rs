@@ -620,7 +620,7 @@ You are continuing work on the above task. The execution history shows what has 
         comprehensive_prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let gemini_command = "npx @google/gemini-cli --yolo";
+        let gemini_command = "npx @google/gemini-cli@latest --yolo";
 
         tracing::info!(
             "Spawning Gemini followup execution for attempt {} with resume context ({} chars)",
