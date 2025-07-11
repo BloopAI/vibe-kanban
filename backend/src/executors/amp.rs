@@ -565,7 +565,7 @@ impl Executor for AmpFollowupExecutor {
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
         let amp_command = format!(
-            "npx @sourcegraph/amp threads continue {} --format=jsonl",
+            "npx @sourcegraph/amp@0.0.1752148945-gd8844f threads continue {} --format=jsonl",
             self.thread_id
         );
 
