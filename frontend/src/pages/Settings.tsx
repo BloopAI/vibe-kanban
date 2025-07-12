@@ -485,6 +485,30 @@ export function Settings() {
                   </p>
                 </div>
               </div>
+              <div className="space-y-2 pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Telemetry Acknowledgment</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {config.telemetry_acknowledged
+                        ? 'You have acknowledged the telemetry notice.'
+                        : 'The telemetry notice has not been acknowledged.'}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => updateConfig({ telemetry_acknowledged: false })}
+                    variant="outline"
+                    size="sm"
+                    disabled={!config.telemetry_acknowledged}
+                  >
+                    Reset Acknowledgment
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Resetting the acknowledgment will require you to acknowledge the
+                  telemetry notice again on next app start.
+                </p>
+              </div>
             </CardContent>
           </Card>
 
