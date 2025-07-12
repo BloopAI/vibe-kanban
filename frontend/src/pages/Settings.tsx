@@ -554,7 +554,9 @@ export function Settings() {
                     </p>
                   </div>
                   <Button
-                    onClick={() => updateConfig({ telemetry_acknowledged: false })}
+                    onClick={() =>
+                      updateConfig({ telemetry_acknowledged: false })
+                    }
                     variant="outline"
                     size="sm"
                     disabled={!config.telemetry_acknowledged}
@@ -563,8 +565,8 @@ export function Settings() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Resetting the acknowledgment will require you to acknowledge the
-                  telemetry notice again.
+                  Resetting the acknowledgment will require you to acknowledge
+                  the telemetry notice again.
                 </p>
               </div>
             </CardContent>
