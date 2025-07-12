@@ -517,7 +517,7 @@ export function Settings() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Resetting the disclaimer will require you to acknowledge the
-                  safety warning again on next app start.
+                  safety warning again.
                 </p>
               </div>
               <div className="space-y-2">
@@ -540,8 +540,7 @@ export function Settings() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Resetting the onboarding will show the setup screen again on
-                  next app start.
+                  Resetting the onboarding will show the setup screen again.
                 </p>
               </div>
               <div className="space-y-2">
@@ -565,7 +564,7 @@ export function Settings() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Resetting the acknowledgment will require you to acknowledge the
-                  telemetry notice again on next app start.
+                  telemetry notice again.
                 </p>
               </div>
             </CardContent>
