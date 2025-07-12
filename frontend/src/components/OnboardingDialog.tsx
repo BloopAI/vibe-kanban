@@ -163,7 +163,7 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
             disabled={!isValid}
             className="w-full"
           >
-            Complete Setup
+            Continue
           </Button>
         </DialogFooter>
       </DialogContent>
