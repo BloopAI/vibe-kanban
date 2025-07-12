@@ -73,3 +73,31 @@ This will start the frontend and backend with live reloading. A blank DB will be
 1. Run `build-npm-package.sh`
 2. In the `npx-cli` folder run `npm pack`
 3. You can run your build with `npx [GENERATED FILE].tgz`
+
+
+### Environment Variables
+
+The following environment variables can be configured at build time or runtime:
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `GITHUB_CLIENT_ID` | Build-time | `Ov23li9bxz3kKfPOIsGm` | GitHub OAuth app client ID for authentication |
+| `POSTHOG_API_KEY` | Build-time | Empty | PostHog analytics API key (disables analytics if empty) |
+| `POSTHOG_API_ENDPOINT` | Build-time | Empty | PostHog analytics endpoint (disables analytics if empty) |
+| `BACKEND_PORT` | Runtime | `0` (auto-assign) | Backend server port |
+| `FRONTEND_PORT` | Runtime | `3000` | Frontend development server port |
+| `DISABLE_WORKTREE_ORPHAN_CLEANUP` | Runtime | Not set | Disable git worktree cleanup (for debugging) |
+
+**Build-time variables** must be set when running `pnpm run build`. **Runtime variables** are read when the application starts.
+
+#### Custom GitHub OAuth App (Optional)
+
+By default, Vibe Kanban uses Bloop AI's GitHub OAuth app for authentication. To use your own GitHub app for self-hosting or custom branding:
+
+1. Create a GitHub OAuth App at [GitHub Developer Settings](https://github.com/settings/developers)
+2. Enable "Device Flow" in the app settings
+3. Set scopes to include `user:email,repo`
+4. Build with your client ID:
+   ```bash
+   GITHUB_CLIENT_ID=your_client_id_here pnpm run build
+   ```
