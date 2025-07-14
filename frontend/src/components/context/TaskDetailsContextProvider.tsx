@@ -10,18 +10,15 @@ import {
   useState,
 } from 'react';
 import type {
-  ApiResponse,
   AttemptData,
   EditorType,
   ExecutionProcess,
-  ExecutionProcessSummary,
   TaskAttempt,
-  TaskAttemptActivityWithPrompt,
   TaskAttemptState,
   TaskWithAttemptStatus,
   WorktreeDiff,
 } from 'shared/types.ts';
-import { makeRequest } from '@/lib/api.ts';
+import { attemptsApi, executionProcessesApi, withErrorHandling } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,
   TaskAttemptLoadingContext,
@@ -94,30 +91,25 @@ const TaskDetailsProvider: FC<{
         return;
       }
 
+      diffLoadingRef.current = true;
+      if (isBackgroundRefresh) {
+        setIsBackgroundRefreshing(true);
+      } else {
+        setDiffLoading(true);
+      }
+      setDiffError(null);
+      
       try {
-        diffLoadingRef.current = true;
-        if (isBackgroundRefresh) {
-          setIsBackgroundRefreshing(true);
-        } else {
-          setDiffLoading(true);
-        }
-        setDiffError(null);
-        const response = await makeRequest(
-          `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/diff`
-        );
-
-        if (response.ok) {
-          const result: ApiResponse<WorktreeDiff> = await response.json();
-          if (result.success && result.data) {
-            setDiff(result.data);
-          } else {
+        const result = await withErrorHandling(
+          () => attemptsApi.getDiff(projectId, selectedAttempt.task_id, selectedAttempt.id),
+          () => {
             setDiffError('Failed to load diff');
           }
-        } else {
-          setDiffError('Failed to load diff');
+        );
+        
+        if (result !== undefined) {
+          setDiff(result);
         }
-      } catch (err) {
-        setDiffError('Failed to load diff');
       } finally {
         diffLoadingRef.current = false;
         if (isBackgroundRefresh) {
@@ -140,23 +132,19 @@ const TaskDetailsProvider: FC<{
     async (attemptId: string, taskId: string) => {
       if (!task) return;
 
-      try {
-        const response = await makeRequest(
-          `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}`
-        );
-
-        if (response.ok) {
-          const result: ApiResponse<TaskAttemptState> = await response.json();
-          if (result.success && result.data) {
-            setExecutionState((prev) => {
-              if (JSON.stringify(prev) === JSON.stringify(result.data))
-                return prev;
-              return result.data;
-            });
-          }
+      const result = await withErrorHandling(
+        () => attemptsApi.getState(projectId, taskId, attemptId),
+        () => {
+          console.error('Failed to fetch execution state');
         }
-      } catch (err) {
-        console.error('Failed to fetch execution state:', err);
+      );
+      
+      if (result !== undefined) {
+        setExecutionState((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(result))
+            return prev;
+          return result;
+        });
       }
     },
     [task, projectId]
@@ -166,27 +154,18 @@ const TaskDetailsProvider: FC<{
     async (editorType?: EditorType) => {
       if (!task || !selectedAttempt) return;
 
-      try {
-        const response = await makeRequest(
-          `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/open-editor`,
-          {
-            method: 'POST',
-            body: JSON.stringify(
-              editorType ? { editor_type: editorType } : null
-            ),
-          }
-        );
-
-        if (!response.ok) {
+      const result = await withErrorHandling(
+        () => attemptsApi.openEditor(projectId, selectedAttempt.task_id, selectedAttempt.id),
+        () => {
+          console.error('Failed to open editor');
           if (!editorType) {
             setShowEditorDialog(true);
           }
         }
-      } catch (err) {
-        console.error('Failed to open editor:', err);
-        if (!editorType) {
-          setShowEditorDialog(true);
-        }
+      );
+      
+      if (result === undefined && !editorType) {
+        setShowEditorDialog(true);
       }
     },
     [task, projectId, selectedAttempt, setShowEditorDialog]
@@ -197,91 +176,74 @@ const TaskDetailsProvider: FC<{
       if (!task) return;
 
       try {
-        const [activitiesResponse, processesResponse] = await Promise.all([
-          makeRequest(
-            `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/activities`
+        const [activitiesResult, processesResult] = await Promise.all([
+          withErrorHandling(
+            () => attemptsApi.getActivities(projectId, taskId, attemptId),
+            () => {
+              console.error('Failed to fetch activities');
+            }
           ),
-          makeRequest(
-            `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/execution-processes`
+          withErrorHandling(
+            () => attemptsApi.getExecutionProcesses(projectId, taskId, attemptId),
+            () => {
+              console.error('Failed to fetch execution processes');
+            }
           ),
         ]);
 
-        if (activitiesResponse.ok && processesResponse.ok) {
-          const activitiesResult: ApiResponse<TaskAttemptActivityWithPrompt[]> =
-            await activitiesResponse.json();
-          const processesResult: ApiResponse<ExecutionProcessSummary[]> =
-            await processesResponse.json();
+        if (activitiesResult !== undefined && processesResult !== undefined) {
+          const runningActivities = activitiesResult.filter(
+            (activity) =>
+              activity.status === 'setuprunning' ||
+              activity.status === 'executorrunning'
+          );
 
-          if (
-            activitiesResult.success &&
-            processesResult.success &&
-            activitiesResult.data &&
-            processesResult.data
-          ) {
-            const runningActivities = activitiesResult.data.filter(
-              (activity) =>
-                activity.status === 'setuprunning' ||
-                activity.status === 'executorrunning'
-            );
+          const runningProcessDetails: Record<string, ExecutionProcess> = {};
 
-            const runningProcessDetails: Record<string, ExecutionProcess> = {};
-
-            // Fetch details for running activities
-            for (const activity of runningActivities) {
-              try {
-                const detailResponse = await makeRequest(
-                  `/api/projects/${projectId}/execution-processes/${activity.execution_process_id}`
-                );
-                if (detailResponse.ok) {
-                  const detailResult: ApiResponse<ExecutionProcess> =
-                    await detailResponse.json();
-                  if (detailResult.success && detailResult.data) {
-                    runningProcessDetails[activity.execution_process_id] =
-                      detailResult.data;
-                  }
-                }
-              } catch (err) {
+          // Fetch details for running activities
+          for (const activity of runningActivities) {
+            const result = await withErrorHandling(
+              () => executionProcessesApi.getDetails(projectId, activity.execution_process_id),
+              () => {
                 console.error(
-                  `Failed to fetch execution process ${activity.execution_process_id}:`,
-                  err
+                  `Failed to fetch execution process ${activity.execution_process_id}`
                 );
               }
-            }
-
-            // Also fetch setup script process details if it exists in the processes
-            const setupProcess = processesResult.data.find(
-              (process) => process.process_type === 'setupscript'
             );
-            if (setupProcess && !runningProcessDetails[setupProcess.id]) {
-              try {
-                const detailResponse = await makeRequest(
-                  `/api/projects/${projectId}/execution-processes/${setupProcess.id}`
-                );
-                if (detailResponse.ok) {
-                  const detailResult: ApiResponse<ExecutionProcess> =
-                    await detailResponse.json();
-                  if (detailResult.success && detailResult.data) {
-                    runningProcessDetails[setupProcess.id] = detailResult.data;
-                  }
-                }
-              } catch (err) {
-                console.error(
-                  `Failed to fetch setup process details ${setupProcess.id}:`,
-                  err
-                );
-              }
+            
+            if (result !== undefined) {
+              runningProcessDetails[activity.execution_process_id] = result;
             }
-
-            setAttemptData((prev) => {
-              const newData = {
-                activities: activitiesResult.data || [],
-                processes: processesResult.data || [],
-                runningProcessDetails,
-              };
-              if (JSON.stringify(prev) === JSON.stringify(newData)) return prev;
-              return newData;
-            });
           }
+
+          // Also fetch setup script process details if it exists in the processes
+          const setupProcess = processesResult.find(
+            (process) => process.process_type === 'setupscript'
+          );
+          if (setupProcess && !runningProcessDetails[setupProcess.id]) {
+            const result = await withErrorHandling(
+              () => executionProcessesApi.getDetails(projectId, setupProcess.id),
+              () => {
+                console.error(
+                  `Failed to fetch setup process details ${setupProcess.id}`
+                );
+              }
+            );
+            
+            if (result !== undefined) {
+              runningProcessDetails[setupProcess.id] = result;
+            }
+          }
+
+          setAttemptData((prev) => {
+            const newData = {
+              activities: activitiesResult,
+              processes: processesResult,
+              runningProcessDetails,
+            };
+            if (JSON.stringify(prev) === JSON.stringify(newData)) return prev;
+            return newData;
+          });
         }
       } catch (err) {
         console.error('Failed to fetch attempt data:', err);

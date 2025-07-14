@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { FolderOpen, Plus, Settings } from 'lucide-react';
-import { makeRequest } from '@/lib/api';
+import { projectsApi, tasksApi, ApiError, withErrorHandling } from '@/lib/api';
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
 import { ProjectForm } from '@/components/projects/project-form';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
@@ -16,7 +16,6 @@ import {
 import { TaskKanbanBoard } from '@/components/tasks/TaskKanbanBoard';
 import { TaskDetailsPanel } from '@/components/tasks/TaskDetailsPanel';
 import type {
-  ApiResponse,
   CreateTaskAndStart,
   ExecutorConfig,
   ProjectWithBranch,
@@ -55,25 +54,13 @@ export function ProjectTasks() {
   const handleOpenInIDE = useCallback(async () => {
     if (!projectId) return;
 
-    try {
-      const response = await makeRequest(
-        `/api/projects/${projectId}/open-editor`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(null),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to open project in IDE');
+    const result = await withErrorHandling(
+      () => projectsApi.openEditor(projectId),
+      (error: ApiError) => {
+        console.error('Failed to open project in IDE:', error);
+        setError('Failed to open project in IDE');
       }
-    } catch (error) {
-      console.error('Failed to open project in IDE:', error);
-      setError('Failed to open project in IDE');
-    }
+    );
   }, [projectId]);
 
   // Setup keyboard shortcuts
@@ -115,69 +102,59 @@ export function ProjectTasks() {
   }, [taskId, tasks]);
 
   const fetchProject = useCallback(async () => {
-    try {
-      const response = await makeRequest(
-        `/api/projects/${projectId}/with-branch`
-      );
-
-      if (response.ok) {
-        const result: ApiResponse<ProjectWithBranch> = await response.json();
-        if (result.success && result.data) {
-          setProject(result.data);
-        }
-      } else if (response.status === 404) {
-        setError('Project not found');
-        navigate('/projects');
+    const result = await withErrorHandling(
+      () => projectsApi.getWithBranch(projectId!),
+      () => {
+        setError('Failed to load project');
       }
-    } catch (err) {
-      setError('Failed to load project');
+    );
+    
+    if (result !== undefined) {
+      setProject(result);
     }
   }, [projectId, navigate]);
 
   const fetchTasks = useCallback(
     async (skipLoading = false) => {
-      try {
-        if (!skipLoading) {
-          setLoading(true);
-        }
-        const response = await makeRequest(`/api/projects/${projectId}/tasks`);
-
-        if (response.ok) {
-          const result: ApiResponse<Task[]> = await response.json();
-          if (result.success && result.data) {
-            // Only update if data has actually changed
-            setTasks((prevTasks) => {
-              const newTasks = result.data!;
-              if (JSON.stringify(prevTasks) === JSON.stringify(newTasks)) {
-                return prevTasks; // Return same reference to prevent re-render
-              }
-
-              setSelectedTask((prev) => {
-                if (!prev) return prev;
-
-                const updatedSelectedTask = newTasks.find(
-                  (task) => task.id === prev.id
-                );
-
-                if (
-                  JSON.stringify(prev) === JSON.stringify(updatedSelectedTask)
-                )
-                  return prev;
-                return updatedSelectedTask || prev;
-              });
-
-              return newTasks;
-            });
-          }
-        } else {
+      if (!skipLoading) {
+        setLoading(true);
+      }
+      
+      const result = await withErrorHandling(
+        () => tasksApi.getAll(projectId!),
+        () => {
           setError('Failed to load tasks');
         }
-      } catch (err) {
-        setError('Failed to load tasks');
-      } finally {
-        if (!skipLoading) {
-          setLoading(false);
-        }
+      );
+
+      if (result !== undefined) {
+        // Only update if data has actually changed
+        setTasks((prevTasks) => {
+          const newTasks = result;
+          if (JSON.stringify(prevTasks) === JSON.stringify(newTasks)) {
+            return prevTasks; // Return same reference to prevent re-render
+          }
+
+          setSelectedTask((prev) => {
+            if (!prev) return prev;
+
+            const updatedSelectedTask = newTasks.find(
+              (task) => task.id === prev.id
+            );
+
+            if (
+              JSON.stringify(prev) === JSON.stringify(updatedSelectedTask)
+            )
+              return prev;
+            return updatedSelectedTask || prev;
+          });
+
+          return newTasks;
+        });
+      }
+
+      if (!skipLoading) {
+        setLoading(false);
       }
     },
     [projectId]
@@ -185,23 +162,19 @@ export function ProjectTasks() {
 
   const handleCreateTask = useCallback(
     async (title: string, description: string) => {
-      try {
-        const response = await makeRequest(`/api/projects/${projectId}/tasks`, {
-          method: 'POST',
-          body: JSON.stringify({
-            project_id: projectId,
-            title,
-            description: description || null,
-          }),
-        });
-
-        if (response.ok) {
-          await fetchTasks();
-        } else {
+      const result = await withErrorHandling(
+        () => tasksApi.create(projectId!, {
+          project_id: projectId,
+          title,
+          description: description || null,
+        }),
+        () => {
           setError('Failed to create task');
         }
-      } catch (err) {
-        setError('Failed to create task');
+      );
+
+      if (result !== undefined) {
+        fetchTasks();
       }
     },
     [projectId, fetchTasks]
@@ -209,34 +182,24 @@ export function ProjectTasks() {
 
   const handleCreateAndStartTask = useCallback(
     async (title: string, description: string, executor?: ExecutorConfig) => {
-      try {
-        const payload: CreateTaskAndStart = {
-          project_id: projectId!,
-          title,
-          description: description || null,
-          executor: executor || null,
-        };
+      const payload: CreateTaskAndStart = {
+        project_id: projectId!,
+        title,
+        description: description || null,
+        executor: executor || null,
+      };
 
-        const response = await makeRequest(
-          `/api/projects/${projectId}/tasks/create-and-start`,
-          {
-            method: 'POST',
-            body: JSON.stringify(payload),
-          }
-        );
-
-        if (response.ok) {
-          const result: ApiResponse<Task> = await response.json();
-          if (result.success && result.data) {
-            await fetchTasks();
-            // Open the newly created task in the details panel
-            handleViewTaskDetails(result.data);
-          }
-        } else {
+      const result = await withErrorHandling(
+        () => tasksApi.createAndStart(projectId!, payload),
+        () => {
           setError('Failed to create and start task');
         }
-      } catch (err) {
-        setError('Failed to create and start task');
+      );
+
+      if (result !== undefined) {
+        fetchTasks();
+        // Open the newly created task in the details panel
+        handleViewTaskDetails(result);
       }
     },
     [projectId, fetchTasks]
@@ -246,27 +209,20 @@ export function ProjectTasks() {
     async (title: string, description: string, status: TaskStatus) => {
       if (!editingTask) return;
 
-      try {
-        const response = await makeRequest(
-          `/api/projects/${projectId}/tasks/${editingTask.id}`,
-          {
-            method: 'PUT',
-            body: JSON.stringify({
-              title,
-              description: description || null,
-              status,
-            }),
-          }
-        );
-
-        if (response.ok) {
-          await fetchTasks();
-          setEditingTask(null);
-        } else {
+      const result = await withErrorHandling(
+        () => tasksApi.update(projectId!, editingTask.id, {
+          title,
+          description: description || null,
+          status,
+        }),
+        () => {
           setError('Failed to update task');
         }
-      } catch (err) {
-        setError('Failed to update task');
+      );
+
+      if (result !== undefined) {
+        fetchTasks();
+        setEditingTask(null);
       }
     },
     [projectId, editingTask, fetchTasks]
@@ -276,21 +232,15 @@ export function ProjectTasks() {
     async (taskId: string) => {
       if (!confirm('Are you sure you want to delete this task?')) return;
 
-      try {
-        const response = await makeRequest(
-          `/api/projects/${projectId}/tasks/${taskId}`,
-          {
-            method: 'DELETE',
-          }
-        );
-
-        if (response.ok) {
-          await fetchTasks();
-        } else {
+      const result = await withErrorHandling(
+        () => tasksApi.delete(projectId!, taskId),
+        () => {
           setError('Failed to delete task');
         }
-      } catch (err) {
-        setError('Failed to delete task');
+      );
+
+      if (result !== undefined) {
+        fetchTasks();
       }
     },
     [projectId, fetchTasks]
@@ -341,20 +291,13 @@ export function ProjectTasks() {
         prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
       );
 
-      try {
-        const response = await makeRequest(
-          `/api/projects/${projectId}/tasks/${taskId}`,
-          {
-            method: 'PUT',
-            body: JSON.stringify({
-              title: task.title,
-              description: task.description,
-              status: newStatus,
-            }),
-          }
-        );
-
-        if (!response.ok) {
+      const result = await withErrorHandling(
+        () => tasksApi.update(projectId!, taskId, {
+          title: task.title,
+          description: task.description,
+          status: newStatus,
+        }),
+        () => {
           // Revert the optimistic update if the API call failed
           setTasks((prev) =>
             prev.map((t) =>
@@ -363,15 +306,7 @@ export function ProjectTasks() {
           );
           setError('Failed to update task status');
         }
-      } catch (err) {
-        // Revert the optimistic update if the API call failed
-        setTasks((prev) =>
-          prev.map((t) =>
-            t.id === taskId ? { ...t, status: previousStatus } : t
-          )
-        );
-        setError('Failed to update task status');
-      }
+      );
     },
     [projectId, tasks]
   );

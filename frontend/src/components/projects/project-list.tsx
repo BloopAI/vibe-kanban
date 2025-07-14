@@ -10,9 +10,9 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Project, ApiResponse } from 'shared/types';
+import { Project } from 'shared/types';
 import { ProjectForm } from './project-form';
-import { makeRequest } from '@/lib/api';
+import { projectsApi, withErrorHandling } from '@/lib/api';
 import {
   Plus,
   Edit,
@@ -42,20 +42,20 @@ export function ProjectList() {
   const fetchProjects = async () => {
     setLoading(true);
     setError('');
-    try {
-      const response = await makeRequest('/api/projects');
-      const data: ApiResponse<Project[]> = await response.json();
-      if (data.success && data.data) {
-        setProjects(data.data);
-      } else {
-        setError('Failed to load projects');
+    
+    const result = await withErrorHandling(
+      () => projectsApi.getAll(),
+      (error) => {
+        console.error('Failed to fetch projects:', error);
+        setError(error.message || 'Failed to load projects');
       }
-    } catch (error) {
-      console.error('Failed to fetch projects:', error);
-      setError('Failed to connect to server');
-    } finally {
-      setLoading(false);
+    );
+    
+    if (result) {
+      setProjects(result as Project[]);
     }
+    
+    setLoading(false);
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -66,16 +66,16 @@ export function ProjectList() {
     )
       return;
 
-    try {
-      const response = await makeRequest(`/api/projects/${id}`, {
-        method: 'DELETE',
-      });
-      if (response.ok) {
-        fetchProjects();
+    const result = await withErrorHandling(
+      () => projectsApi.delete(id),
+      (error) => {
+        console.error('Failed to delete project:', error);
+        setError(error.message || 'Failed to delete project');
       }
-    } catch (error) {
-      console.error('Failed to delete project:', error);
-      setError('Failed to delete project');
+    );
+    
+    if (result !== undefined) {
+      fetchProjects();
     }
   };
 
@@ -85,25 +85,13 @@ export function ProjectList() {
   };
 
   const handleOpenInIDE = async (projectId: string) => {
-    try {
-      const response = await makeRequest(
-        `/api/projects/${projectId}/open-editor`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(null),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to open project in IDE');
+    await withErrorHandling(
+      () => projectsApi.openEditor(projectId),
+      (error) => {
+        console.error('Failed to open project in IDE:', error);
+        setError(error.message || 'Failed to open project in IDE');
       }
-    } catch (error) {
-      console.error('Failed to open project in IDE:', error);
-      setError('Failed to open project in IDE');
-    }
+    );
   };
 
   const handleFormSuccess = () => {
