@@ -1,6 +1,7 @@
 import { DiffCard } from '@/components/tasks/TaskDetails/DiffCard.tsx';
 import { useContext } from 'react';
 import { TaskDiffContext } from '@/components/context/taskDetailsContext.ts';
+import { Loader } from '@/components/ui/loader';
 
 function DiffTab() {
   const { diff, diffLoading, diffError } = useContext(TaskDiffContext);
@@ -8,8 +9,7 @@ function DiffTab() {
   if (diffLoading) {
     return (
       <div className="flex items-center justify-center h-32">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
-        <p className="text-muted-foreground ml-4">Loading changes...</p>
+        <Loader message="Loading changes..." size={32} />
       </div>
     );
   }

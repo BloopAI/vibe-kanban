@@ -18,6 +18,7 @@ import type {
   ExecutorConfig,
 } from 'shared/types';
 import * as Sentry from '@sentry/react';
+import { Loader } from '@/components/ui/loader';
 import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
@@ -150,10 +151,7 @@ function AppContent() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Loading...</p>
-        </div>
+        <Loader message="Loading..." size={32} />
       </div>
     );
   }

@@ -4,6 +4,7 @@ import { GitCompare } from 'lucide-react';
 import type { WorktreeDiff } from 'shared/types.ts';
 import { TaskBackgroundRefreshContext } from '@/components/context/taskDetailsContext.ts';
 import DiffFile from '@/components/tasks/TaskDetails/DiffFile.tsx';
+import { Loader } from '@/components/ui/loader';
 
 interface DiffCardProps {
   diff: WorktreeDiff | null;
@@ -57,10 +58,7 @@ export function DiffCard({
           </div>
           {isBackgroundRefreshing && (
             <div className="flex items-center gap-1">
-              <div className="animate-spin h-3 w-3 border border-blue-500 border-t-transparent rounded-full"></div>
-              <span className="text-xs text-blue-600 dark:text-blue-400">
-                Updating...
-              </span>
+              <Loader size={12} className="mr-1" message="Updating..." />
             </div>
           )}
         </div>

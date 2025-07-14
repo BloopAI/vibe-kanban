@@ -1,5 +1,6 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Bot, Hammer, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Loader } from '@/components/ui/loader';
 import { executionProcessesApi, withErrorHandling } from '@/lib/api.ts';
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer.tsx';
 import type {
@@ -133,7 +134,10 @@ export function NormalizedConversationViewer({
 
       const result = await withErrorHandling(
         async () => {
-          return await executionProcessesApi.getNormalizedLogs(projectId, executionProcess.id);
+          return await executionProcessesApi.getNormalizedLogs(
+            projectId,
+            executionProcess.id
+          );
         },
         () => {
           if (!isPolling) {
@@ -145,10 +149,7 @@ export function NormalizedConversationViewer({
       if (result !== undefined) {
         setConversation((prev) => {
           // Only update if content actually changed
-          if (
-            !prev ||
-            JSON.stringify(prev) !== JSON.stringify(result)
-          ) {
+          if (!prev || JSON.stringify(prev) !== JSON.stringify(result)) {
             // Notify parent component of conversation update
             if (onConversationUpdate) {
               // Use setTimeout to ensure state update happens first
@@ -205,9 +206,7 @@ export function NormalizedConversationViewer({
 
   if (loading) {
     return (
-      <div className="text-xs text-muted-foreground italic text-center">
-        Loading conversation...
-      </div>
+      <Loader message="Loading conversation..." size={24} className="py-4" />
     );
   }
 

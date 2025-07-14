@@ -18,7 +18,6 @@ interface TaskDetailsPanelProps {
   task: TaskWithAttemptStatus | null;
   projectHasDevScript?: boolean;
   projectId: string;
-  isOpen: boolean;
   onClose: () => void;
   onEditTask?: (task: TaskWithAttemptStatus) => void;
   onDeleteTask?: (taskId: string) => void;
@@ -29,7 +28,6 @@ export function TaskDetailsPanel({
   task,
   projectHasDevScript,
   projectId,
-  isOpen,
   onClose,
   onEditTask,
   onDeleteTask,
@@ -51,7 +49,7 @@ export function TaskDetailsPanel({
 
   // Handle ESC key locally to prevent global navigation
   useEffect(() => {
-    if (!isOpen || isDialogOpen) return;
+    if (isDialogOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -63,18 +61,17 @@ export function TaskDetailsPanel({
 
     document.addEventListener('keydown', handleKeyDown, true);
     return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [isOpen, onClose, isDialogOpen]);
+  }, [onClose, isDialogOpen]);
 
   return (
     <>
-      {!task || !isOpen ? null : (
+      {!task ? null : (
         <TaskDetailsProvider
           task={task}
           projectId={projectId}
           setShowEditorDialog={setShowEditorDialog}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          isOpen={isOpen}
           userSelectedTab={userSelectedTab}
           projectHasDevScript={projectHasDevScript}
         >

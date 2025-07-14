@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { FolderOpen, Plus, Settings } from 'lucide-react';
-import { projectsApi, tasksApi, ApiError, withErrorHandling } from '@/lib/api';
+import { Loader } from '@/components/ui/loader';
+import { ApiError, projectsApi, tasksApi, withErrorHandling } from '@/lib/api';
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
 import { ProjectForm } from '@/components/projects/project-form';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
@@ -108,7 +109,7 @@ export function ProjectTasks() {
         setError('Failed to load project');
       }
     );
-    
+
     if (result !== undefined) {
       setProject(result);
     }
@@ -119,7 +120,7 @@ export function ProjectTasks() {
       if (!skipLoading) {
         setLoading(true);
       }
-      
+
       const result = await withErrorHandling(
         () => tasksApi.getAll(projectId!),
         () => {
@@ -142,9 +143,7 @@ export function ProjectTasks() {
               (task) => task.id === prev.id
             );
 
-            if (
-              JSON.stringify(prev) === JSON.stringify(updatedSelectedTask)
-            )
+            if (JSON.stringify(prev) === JSON.stringify(updatedSelectedTask))
               return prev;
             return updatedSelectedTask || prev;
           });
@@ -163,11 +162,12 @@ export function ProjectTasks() {
   const handleCreateTask = useCallback(
     async (title: string, description: string) => {
       const result = await withErrorHandling(
-        () => tasksApi.create(projectId!, {
-          project_id: projectId!,
-          title,
-          description: description || null,
-        }),
+        () =>
+          tasksApi.create(projectId!, {
+            project_id: projectId!,
+            title,
+            description: description || null,
+          }),
         () => {
           setError('Failed to create task');
         }
@@ -210,11 +210,12 @@ export function ProjectTasks() {
       if (!editingTask) return;
 
       const result = await withErrorHandling(
-        () => tasksApi.update(projectId!, editingTask.id, {
-          title,
-          description: description || null,
-          status,
-        }),
+        () =>
+          tasksApi.update(projectId!, editingTask.id, {
+            title,
+            description: description || null,
+            status,
+          }),
         () => {
           setError('Failed to update task');
         }
@@ -253,8 +254,8 @@ export function ProjectTasks() {
 
   const handleViewTaskDetails = useCallback(
     (task: Task) => {
-      setSelectedTask(task);
-      setIsPanelOpen(true);
+      // setSelectedTask(task);
+      // setIsPanelOpen(true);
       // Update URL to include task ID
       navigate(`/projects/${projectId}/tasks/${task.id}`, { replace: true });
     },
@@ -262,8 +263,8 @@ export function ProjectTasks() {
   );
 
   const handleClosePanel = useCallback(() => {
-    setIsPanelOpen(false);
-    setSelectedTask(null);
+    // setIsPanelOpen(false);
+    // setSelectedTask(null);
     // Remove task ID from URL when closing panel
     navigate(`/projects/${projectId}/tasks`, { replace: true });
   }, [projectId, navigate]);
@@ -292,11 +293,12 @@ export function ProjectTasks() {
       );
 
       await withErrorHandling(
-        () => tasksApi.update(projectId!, taskId, {
-          title: task.title,
-          description: task.description,
-          status: newStatus,
-        }),
+        () =>
+          tasksApi.update(projectId!, taskId, {
+            title: task.title,
+            description: task.description,
+            status: newStatus,
+          }),
         () => {
           // Revert the optimistic update if the API call failed
           setTasks((prev) =>
@@ -312,13 +314,12 @@ export function ProjectTasks() {
   );
 
   if (loading) {
-    return <div className="text-center py-8">Loading tasks...</div>;
+    return <Loader message="Loading tasks..." size={32} className="py-8" />;
   }
 
   if (error) {
     return <div className="text-center py-8 text-destructive">{error}</div>;
   }
-  console.log('selectedTask', selectedTask);
 
   return (
     <div className={getMainContainerClasses(isPanelOpen)}>
@@ -405,7 +406,6 @@ export function ProjectTasks() {
           task={selectedTask}
           projectHasDevScript={!!project?.dev_script}
           projectId={projectId!}
-          isOpen={isPanelOpen}
           onClose={handleClosePanel}
           onEditTask={handleEditTask}
           onDeleteTask={handleDeleteTask}

@@ -18,7 +18,11 @@ import type {
   TaskWithAttemptStatus,
   WorktreeDiff,
 } from 'shared/types.ts';
-import { attemptsApi, executionProcessesApi, withErrorHandling } from '@/lib/api.ts';
+import {
+  attemptsApi,
+  executionProcessesApi,
+  withErrorHandling,
+} from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,
   TaskAttemptLoadingContext,
@@ -38,7 +42,6 @@ const TaskDetailsProvider: FC<{
   activeTab: 'logs' | 'diffs';
   setActiveTab: Dispatch<SetStateAction<'logs' | 'diffs'>>;
   setShowEditorDialog: Dispatch<SetStateAction<boolean>>;
-  isOpen: boolean;
   userSelectedTab: boolean;
   projectHasDevScript?: boolean;
 }> = ({
@@ -48,7 +51,6 @@ const TaskDetailsProvider: FC<{
   activeTab,
   setActiveTab,
   setShowEditorDialog,
-  isOpen,
   userSelectedTab,
   projectHasDevScript,
 }) => {
@@ -98,15 +100,20 @@ const TaskDetailsProvider: FC<{
         setDiffLoading(true);
       }
       setDiffError(null);
-      
+
       try {
         const result = await withErrorHandling(
-          () => attemptsApi.getDiff(projectId, selectedAttempt.task_id, selectedAttempt.id),
+          () =>
+            attemptsApi.getDiff(
+              projectId,
+              selectedAttempt.task_id,
+              selectedAttempt.id
+            ),
           () => {
             setDiffError('Failed to load diff');
           }
         );
-        
+
         if (result !== undefined) {
           setDiff(result);
         }
@@ -123,23 +130,20 @@ const TaskDetailsProvider: FC<{
   );
 
   useEffect(() => {
-    if (isOpen) {
-      fetchDiff();
-    }
-  }, [isOpen, fetchDiff]);
+    fetchDiff();
+  }, [fetchDiff]);
 
   const fetchExecutionState = useCallback(
     async (attemptId: string, taskId: string) => {
       if (!task) return;
 
-      const result = await withErrorHandling(
-        () => attemptsApi.getState(projectId, taskId, attemptId)
+      const result = await withErrorHandling(() =>
+        attemptsApi.getState(projectId, taskId, attemptId)
       );
-      
+
       if (result !== undefined) {
         setExecutionState((prev) => {
-          if (JSON.stringify(prev) === JSON.stringify(result))
-            return prev;
+          if (JSON.stringify(prev) === JSON.stringify(result)) return prev;
           return result;
         });
       }
@@ -152,14 +156,19 @@ const TaskDetailsProvider: FC<{
       if (!task || !selectedAttempt) return;
 
       const result = await withErrorHandling(
-        () => attemptsApi.openEditor(projectId, selectedAttempt.task_id, selectedAttempt.id),
+        () =>
+          attemptsApi.openEditor(
+            projectId,
+            selectedAttempt.task_id,
+            selectedAttempt.id
+          ),
         () => {
           if (!editorType) {
             setShowEditorDialog(true);
           }
         }
       );
-      
+
       if (result === undefined && !editorType) {
         setShowEditorDialog(true);
       }
@@ -173,11 +182,11 @@ const TaskDetailsProvider: FC<{
 
       try {
         const [activitiesResult, processesResult] = await Promise.all([
-          withErrorHandling(
-            () => attemptsApi.getActivities(projectId, taskId, attemptId)
+          withErrorHandling(() =>
+            attemptsApi.getActivities(projectId, taskId, attemptId)
           ),
-          withErrorHandling(
-            () => attemptsApi.getExecutionProcesses(projectId, taskId, attemptId)
+          withErrorHandling(() =>
+            attemptsApi.getExecutionProcesses(projectId, taskId, attemptId)
           ),
         ]);
 
@@ -192,10 +201,13 @@ const TaskDetailsProvider: FC<{
 
           // Fetch details for running activities
           for (const activity of runningActivities) {
-            const result = await withErrorHandling(
-              () => executionProcessesApi.getDetails(projectId, activity.execution_process_id)
+            const result = await withErrorHandling(() =>
+              executionProcessesApi.getDetails(
+                projectId,
+                activity.execution_process_id
+              )
             );
-            
+
             if (result !== undefined) {
               runningProcessDetails[activity.execution_process_id] = result;
             }
@@ -206,10 +218,10 @@ const TaskDetailsProvider: FC<{
             (process) => process.process_type === 'setupscript'
           );
           if (setupProcess && !runningProcessDetails[setupProcess.id]) {
-            const result = await withErrorHandling(
-              () => executionProcessesApi.getDetails(projectId, setupProcess.id)
+            const result = await withErrorHandling(() =>
+              executionProcessesApi.getDetails(projectId, setupProcess.id)
             );
-            
+
             if (result !== undefined) {
               runningProcessDetails[setupProcess.id] = result;
             }
@@ -273,7 +285,7 @@ const TaskDetailsProvider: FC<{
 
   // Refresh diff when coding agent is running and making changes
   useEffect(() => {
-    if (!executionState || !isOpen || !selectedAttempt) return;
+    if (!executionState || !selectedAttempt) return;
 
     const isCodingAgentRunning =
       executionState.execution_state === 'CodingAgentRunning';
@@ -291,11 +303,11 @@ const TaskDetailsProvider: FC<{
         clearInterval(interval);
       };
     }
-  }, [executionState, isOpen, selectedAttempt, fetchDiff]);
+  }, [executionState, selectedAttempt, fetchDiff]);
 
   // Refresh diff when coding agent completes or changes state
   useEffect(() => {
-    if (!executionState?.execution_state || !isOpen || !selectedAttempt) return;
+    if (!executionState?.execution_state || !selectedAttempt) return;
 
     const isCodingAgentComplete =
       executionState.execution_state === 'CodingAgentComplete';
@@ -318,7 +330,6 @@ const TaskDetailsProvider: FC<{
   }, [
     executionState?.execution_state,
     executionState?.has_changes,
-    isOpen,
     selectedAttempt,
     fetchDiff,
     activeTab,

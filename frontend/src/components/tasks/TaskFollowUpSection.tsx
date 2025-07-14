@@ -9,6 +9,7 @@ import {
   TaskDetailsContext,
   TaskSelectedAttemptContext,
 } from '@/components/context/taskDetailsContext.ts';
+import { Loader } from '@/components/ui/loader';
 
 export function TaskFollowUpSection() {
   const { task, projectId } = useContext(TaskDetailsContext);
@@ -111,7 +112,7 @@ export function TaskFollowUpSection() {
               size="sm"
             >
               {isSendingFollowUp ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+                <Loader size={16} className="mr-2" />
               ) : (
                 <>
                   <Send className="h-4 w-4 mr-2" />

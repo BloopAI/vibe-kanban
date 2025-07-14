@@ -8,6 +8,7 @@ import {
   TaskSelectedAttemptContext,
 } from '@/components/context/taskDetailsContext.ts';
 import Conversation from '@/components/tasks/TaskDetails/Conversation.tsx';
+import { Loader } from '@/components/ui/loader';
 
 function LogsTab() {
   const { loading } = useContext(TaskAttemptLoadingContext);
@@ -34,8 +35,7 @@ function LogsTab() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4"></div>
-        <p className="text-muted-foreground ml-4">Loading...</p>
+        <Loader message="Loading..." size={32} />
       </div>
     );
   }

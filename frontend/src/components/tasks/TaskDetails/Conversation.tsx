@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import { TaskAttemptDataContext } from '@/components/context/taskDetailsContext.ts';
+import { Loader } from '@/components/ui/loader.tsx';
 
 type Props = {
   conversationUpdateTrigger: number;
@@ -130,11 +131,17 @@ function Conversation({
           ))}
         </div>
       ) : (
-        <div className="text-center py-8 text-muted-foreground">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-lg font-semibold mb-2">Coding Agent Starting</p>
-          <p>Initializing conversation...</p>
-        </div>
+        <Loader
+          message={
+            <>
+              Coding Agent Starting
+              <br />
+              Initializing conversation...
+            </>
+          }
+          size={48}
+          className="py-8"
+        />
       )}
     </div>
   );

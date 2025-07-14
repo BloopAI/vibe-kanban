@@ -10,6 +10,7 @@ import {
 import { Button } from './ui/button';
 import { useConfig } from './config-provider';
 import { Check, Clipboard } from 'lucide-react';
+import { Loader } from './ui/loader';
 
 export function GitHubLoginDialog({
   open,
@@ -121,7 +122,7 @@ export function GitHubLoginDialog({
           </DialogDescription>
         </DialogHeader>
         {loading ? (
-          <div className="py-8 text-center">Loading…</div>
+          <Loader message="Loading…" size={32} className="py-8" />
         ) : isAuthenticated ? (
           <div className="py-8 text-center">
             <div className="mb-2">
