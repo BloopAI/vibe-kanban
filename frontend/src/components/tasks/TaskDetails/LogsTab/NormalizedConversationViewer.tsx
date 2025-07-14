@@ -127,12 +127,11 @@ export function NormalizedConversationViewer({
 
   const fetchNormalizedLogs = useCallback(
     async (isPolling = false) => {
-      if (!isPolling) {
-        setLoading(true);
-        setError(null);
-      }
-
       try {
+        if (!isPolling) {
+          setLoading(true);
+          setError(null);
+        }
         const result = await executionProcessesApi.getNormalizedLogs(
           projectId,
           executionProcess.id
@@ -149,14 +148,16 @@ export function NormalizedConversationViewer({
           }
           return prev;
         });
-      } catch (error) {
+      } catch (err) {
         if (!isPolling) {
-          setError('Failed to load logs');
+          setError(
+            `Error fetching logs: ${err instanceof Error ? err.message : 'Unknown error'}`
+          );
         }
-      }
-
-      if (!isPolling) {
-        setLoading(false);
+      } finally {
+        if (!isPolling) {
+          setLoading(false);
+        }
       }
     },
     [executionProcess.id, projectId, onConversationUpdate]

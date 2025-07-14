@@ -47,13 +47,17 @@ export function TaskFollowUpSection() {
   const onSendFollowUp = async () => {
     if (!task || !selectedAttempt || !followUpMessage.trim()) return;
 
-    setIsSendingFollowUp(true);
-    setFollowUpError(null);
-
     try {
-      await attemptsApi.followUp(projectId!, task.id, selectedAttempt.id, {
-        prompt: followUpMessage.trim(),
-      });
+      setIsSendingFollowUp(true);
+      setFollowUpError(null);
+      await attemptsApi.followUp(
+        projectId!,
+        selectedAttempt.task_id,
+        selectedAttempt.id,
+        {
+          prompt: followUpMessage.trim(),
+        }
+      );
       setFollowUpMessage('');
       fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
     } catch (error: unknown) {

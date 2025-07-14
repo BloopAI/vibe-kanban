@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { FolderPicker } from '@/components/ui/folder-picker';
-import { Project, CreateProject, UpdateProject } from 'shared/types';
+import { CreateProject, Project, UpdateProject } from 'shared/types';
 import { AlertCircle, Folder } from 'lucide-react';
 import { projectsApi } from '@/lib/api';
 
@@ -96,15 +96,10 @@ export function ProjectForm({
           dev_script: devScript.trim() || null,
         };
 
-        let result;
         try {
-          result = await projectsApi.update(project.id, updateData);
+          await projectsApi.update(project.id, updateData);
         } catch (error) {
           setError('Failed to update project');
-          return;
-        }
-
-        if (result === undefined) {
           return;
         }
       } else {
@@ -116,15 +111,10 @@ export function ProjectForm({
           dev_script: devScript.trim() || null,
         };
 
-        let result;
         try {
-          result = await projectsApi.create(createData);
+          await projectsApi.create(createData);
         } catch (error) {
           setError('Failed to create project');
-          return;
-        }
-
-        if (result === undefined) {
           return;
         }
       }

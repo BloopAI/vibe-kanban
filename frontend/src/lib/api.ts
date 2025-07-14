@@ -8,6 +8,7 @@ import {
   CreateTaskAndStart,
   CreateTaskAttempt,
   DirectoryEntry,
+  type EditorType,
   ExecutionProcess,
   ExecutionProcessSummary,
   GitBranch,
@@ -315,15 +316,14 @@ export const attemptsApi = {
     projectId: string,
     taskId: string,
     attemptId: string,
-    data: {
-      file_path: string;
-    }
+    fileToDelete: string
   ): Promise<void> => {
     const response = await makeRequest(
-      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/delete-file`,
+      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/delete-filefile_path=${encodeURIComponent(
+        fileToDelete
+      )}`,
       {
         method: 'POST',
-        body: JSON.stringify(data),
       }
     );
     return handleApiResponse<void>(response);
@@ -332,12 +332,14 @@ export const attemptsApi = {
   openEditor: async (
     projectId: string,
     taskId: string,
-    attemptId: string
+    attemptId: string,
+    editorType?: EditorType
   ): Promise<void> => {
     const response = await makeRequest(
       `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/open-editor`,
       {
         method: 'POST',
+        body: JSON.stringify(editorType ? { editor_type: editorType } : null),
       }
     );
     return handleApiResponse<void>(response);
@@ -388,7 +390,8 @@ export const attemptsApi = {
     attemptId: string,
     data: {
       title: string;
-      body: string;
+      body: string | null;
+      base_branch: string | null;
     }
   ): Promise<string> => {
     const response = await makeRequest(

@@ -102,25 +102,20 @@ export function ProjectTasks() {
   }, [taskId, tasks]);
 
   const fetchProject = useCallback(async () => {
-    let result;
     try {
-      result = await projectsApi.getWithBranch(projectId!);
-    } catch (error) {
-      setError('Failed to load project');
-    }
-
-    if (result !== undefined) {
+      const result = await projectsApi.getWithBranch(projectId!);
       setProject(result);
+    } catch (err) {
+      setError('Failed to load project');
     }
   }, [projectId, navigate]);
 
   const fetchTasks = useCallback(
     async (skipLoading = false) => {
-      if (!skipLoading) {
-        setLoading(true);
-      }
-
       try {
+        if (!skipLoading) {
+          setLoading(true);
+        }
         const result = await tasksApi.getAll(projectId!);
         // Only update if data has actually changed
         setTasks((prevTasks) => {
@@ -143,12 +138,12 @@ export function ProjectTasks() {
 
           return newTasks;
         });
-      } catch (error) {
+      } catch (err) {
         setError('Failed to load tasks');
-      }
-
-      if (!skipLoading) {
-        setLoading(false);
+      } finally {
+        if (!skipLoading) {
+          setLoading(false);
+        }
       }
     },
     [projectId]
@@ -156,19 +151,15 @@ export function ProjectTasks() {
 
   const handleCreateTask = useCallback(
     async (title: string, description: string) => {
-      let result;
       try {
-        result = await tasksApi.create(projectId!, {
+        await tasksApi.create(projectId!, {
           project_id: projectId!,
           title,
           description: description || null,
         });
-      } catch (error) {
+        await fetchTasks();
+      } catch (err) {
         setError('Failed to create task');
-      }
-
-      if (result !== undefined) {
-        fetchTasks();
       }
     },
     [projectId, fetchTasks]
@@ -176,24 +167,19 @@ export function ProjectTasks() {
 
   const handleCreateAndStartTask = useCallback(
     async (title: string, description: string, executor?: ExecutorConfig) => {
-      const payload: CreateTaskAndStart = {
-        project_id: projectId!,
-        title,
-        description: description || null,
-        executor: executor || null,
-      };
-
-      let result;
       try {
-        result = await tasksApi.createAndStart(projectId!, payload);
-      } catch (error) {
-        setError('Failed to create and start task');
-      }
-
-      if (result !== undefined) {
-        fetchTasks();
+        const payload: CreateTaskAndStart = {
+          project_id: projectId!,
+          title,
+          description: description || null,
+          executor: executor || null,
+        };
+        const result = await tasksApi.createAndStart(projectId!, payload);
+        await fetchTasks();
         // Open the newly created task in the details panel
         handleViewTaskDetails(result);
+      } catch (err) {
+        setError('Failed to create and start task');
       }
     },
     [projectId, fetchTasks]
@@ -203,20 +189,16 @@ export function ProjectTasks() {
     async (title: string, description: string, status: TaskStatus) => {
       if (!editingTask) return;
 
-      let result;
       try {
-        result = await tasksApi.update(projectId!, editingTask.id, {
+        await tasksApi.update(projectId!, editingTask.id, {
           title,
           description: description || null,
           status,
         });
-      } catch (error) {
-        setError('Failed to update task');
-      }
-
-      if (result !== undefined) {
-        fetchTasks();
+        await fetchTasks();
         setEditingTask(null);
+      } catch (err) {
+        setError('Failed to update task');
       }
     },
     [projectId, editingTask, fetchTasks]
@@ -226,15 +208,11 @@ export function ProjectTasks() {
     async (taskId: string) => {
       if (!confirm('Are you sure you want to delete this task?')) return;
 
-      let result;
       try {
-        result = await tasksApi.delete(projectId!, taskId);
+        await tasksApi.delete(projectId!, taskId);
+        await fetchTasks();
       } catch (error) {
         setError('Failed to delete task');
-      }
-
-      if (result !== undefined) {
-        fetchTasks();
       }
     },
     [projectId, fetchTasks]
@@ -291,7 +269,7 @@ export function ProjectTasks() {
           description: task.description,
           status: newStatus,
         });
-      } catch (error) {
+      } catch (err) {
         // Revert the optimistic update if the API call failed
         setTasks((prev) =>
           prev.map((t) =>

@@ -2,7 +2,7 @@ import { useCallback, useContext, useEffect, useState } from 'react';
 import { Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useConfig } from '@/components/config-provider';
-import { projectsApi, attemptsApi } from '@/lib/api';
+import { attemptsApi, projectsApi } from '@/lib/api';
 import type { GitBranch, TaskAttempt } from 'shared/types';
 import {
   TaskAttemptDataContext,
@@ -63,13 +63,11 @@ function TaskDetailsToolbar() {
   const fetchProjectBranches = useCallback(async () => {
     const result = await projectsApi.getBranches(projectId);
 
-    if (result !== undefined) {
-      setBranches(result);
-      // Set current branch as default
-      const currentBranch = result.find((b) => b.is_current);
-      if (currentBranch && !selectedBranch) {
-        setSelectedBranch(currentBranch.name);
-      }
+    setBranches(result);
+    // Set current branch as default
+    const currentBranch = result.find((b) => b.is_current);
+    if (currentBranch && !selectedBranch) {
+      setSelectedBranch(currentBranch.name);
     }
   }, [projectId, selectedBranch]);
 
@@ -119,10 +117,10 @@ function TaskDetailsToolbar() {
   const fetchTaskAttempts = useCallback(async () => {
     if (!task) return;
 
-    setLoading(true);
-    const result = await attemptsApi.getAll(projectId, task.id);
+    try {
+      setLoading(true);
+      const result = await attemptsApi.getAll(projectId, task.id);
 
-    if (result !== undefined) {
       setTaskAttempts((prev) => {
         if (JSON.stringify(prev) === JSON.stringify(result)) return prev;
         return result || prev;
@@ -149,9 +147,11 @@ function TaskDetailsToolbar() {
           runningProcessDetails: {},
         });
       }
+    } catch (error) {
+      // we already logged error
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }, [task, projectId, fetchAttemptData, fetchExecutionState]);
 
   useEffect(() => {

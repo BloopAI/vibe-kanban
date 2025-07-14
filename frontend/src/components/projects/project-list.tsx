@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,15 +14,15 @@ import { Project } from 'shared/types';
 import { ProjectForm } from './project-form';
 import { projectsApi } from '@/lib/api';
 import {
-  Plus,
-  Edit,
-  Trash2,
-  Calendar,
   AlertCircle,
-  Loader2,
-  MoreHorizontal,
+  Calendar,
+  Edit,
   ExternalLink,
   FolderOpen,
+  Loader2,
+  MoreHorizontal,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -43,19 +43,15 @@ export function ProjectList() {
     setLoading(true);
     setError('');
 
-    let result;
     try {
-      result = await projectsApi.getAll();
+      const result = await projectsApi.getAll();
+      setProjects(result);
     } catch (error) {
       console.error('Failed to fetch projects:', error);
       setError('Failed to fetch projects');
+    } finally {
+      setLoading(false);
     }
-
-    if (result) {
-      setProjects(result as Project[]);
-    }
-
-    setLoading(false);
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -66,16 +62,12 @@ export function ProjectList() {
     )
       return;
 
-    let result;
     try {
-      result = await projectsApi.delete(id);
+      await projectsApi.delete(id);
+      fetchProjects();
     } catch (error) {
       console.error('Failed to delete project:', error);
       setError('Failed to delete project');
-    }
-
-    if (result !== undefined) {
-      fetchProjects();
     }
   };
 

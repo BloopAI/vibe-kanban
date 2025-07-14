@@ -80,7 +80,8 @@ function CreatePrDialog({
         selectedAttempt.id,
         {
           title: prTitle,
-          body: prBody || '',
+          body: prBody || null,
+          base_branch: prBaseBranch || null,
         }
       );
       // Open the PR URL in a new tab
@@ -115,9 +116,9 @@ function CreatePrDialog({
       } else {
         setError(error.message || 'Failed to create GitHub PR');
       }
+    } finally {
+      setCreatingPR(false);
     }
-
-    setCreatingPR(false);
   }, [
     projectId,
     selectedAttempt,

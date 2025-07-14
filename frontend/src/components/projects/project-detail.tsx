@@ -40,17 +40,13 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
     setLoading(true);
     setError('');
 
-    let result;
     try {
-      result = await projectsApi.getWithBranch(projectId);
+      const result = await projectsApi.getWithBranch(projectId);
+      setProject(result);
     } catch (error) {
       console.error('Failed to fetch project:', error);
       // @ts-expect-error it is type ApiError
       setError(error.message || 'Failed to load project');
-    }
-
-    if (result) {
-      setProject(result as ProjectWithBranch);
     }
 
     setLoading(false);
@@ -65,17 +61,13 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
     )
       return;
 
-    let result;
     try {
-      result = await projectsApi.delete(projectId);
+      await projectsApi.delete(projectId);
+      onBack();
     } catch (error) {
       console.error('Failed to delete project:', error);
       // @ts-expect-error it is type ApiError
       setError(error.message || 'Failed to delete project');
-    }
-
-    if (result !== undefined) {
-      onBack();
     }
   };
 

@@ -154,7 +154,8 @@ const TaskDetailsProvider: FC<{
         const result = await attemptsApi.openEditor(
           projectId,
           selectedAttempt.task_id,
-          selectedAttempt.id
+          selectedAttempt.id,
+          editorType
         );
 
         if (result === undefined && !editorType) {

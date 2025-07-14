@@ -34,9 +34,7 @@ function DeleteFileConfirmationDialog() {
         projectId!,
         selectedAttempt.task_id,
         selectedAttempt.id,
-        {
-          file_path: fileToDelete,
-        }
+        fileToDelete
       );
       await fetchDiff();
     } catch (error: unknown) {

@@ -108,18 +108,14 @@ function CurrentAttempt({
   const fetchDevServerDetails = useCallback(async () => {
     if (!runningDevServer || !task || !selectedAttempt) return;
 
-    let result;
     try {
-      result = await executionProcessesApi.getDetails(
+      const result = await executionProcessesApi.getDetails(
         projectId,
         runningDevServer.id
       );
-    } catch (error) {
-      console.error('Failed to fetch dev server details:', error);
-    }
-
-    if (result !== undefined) {
       setDevServerDetails(result);
+    } catch (err) {
+      console.error('Failed to fetch dev server details:', err);
     }
   }, [runningDevServer, task, selectedAttempt, projectId]);
 
@@ -146,11 +142,11 @@ function CurrentAttempt({
         selectedAttempt.id
       );
       fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
-    } catch (error) {
-      console.error('Failed to start dev server:', error);
+    } catch (err) {
+      console.error('Failed to start dev server:', err);
+    } finally {
+      setIsStartingDevServer(false);
     }
-
-    setIsStartingDevServer(false);
   };
 
   const stopDevServer = async () => {
@@ -166,19 +162,18 @@ function CurrentAttempt({
         runningDevServer.id
       );
       fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
-    } catch (error) {
-      console.error('Failed to stop dev server:', error);
+    } catch (err) {
+      console.error('Failed to stop dev server:', err);
+    } finally {
+      setIsStartingDevServer(false);
     }
-
-    setIsStartingDevServer(false);
   };
 
   const stopAllExecutions = async () => {
     if (!task || !selectedAttempt) return;
 
-    setIsStopping(true);
-
     try {
+      setIsStopping(true);
       await attemptsApi.stop(
         projectId,
         selectedAttempt.task_id,
@@ -188,11 +183,11 @@ function CurrentAttempt({
       setTimeout(() => {
         fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
       }, 1000);
-    } catch (error) {
-      console.error('Failed to stop all executions:', error);
+    } catch (err) {
+      console.error('Failed to stop executions:', err);
+    } finally {
+      setIsStopping(false);
     }
-
-    setIsStopping(false);
   };
 
   const handleAttemptChange = useCallback(
@@ -214,9 +209,8 @@ function CurrentAttempt({
   const fetchBranchStatus = useCallback(async () => {
     if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
 
-    setBranchStatusLoading(true);
-
     try {
+      setBranchStatusLoading(true);
       const result = await attemptsApi.getBranchStatus(
         projectId,
         selectedAttempt.task_id,
@@ -226,11 +220,11 @@ function CurrentAttempt({
         if (JSON.stringify(prev) === JSON.stringify(result)) return prev;
         return result;
       });
-    } catch (error) {
+    } catch (err) {
       setError('Failed to load branch status');
+    } finally {
+      setBranchStatusLoading(false);
     }
-
-    setBranchStatusLoading(false);
   }, [projectId, selectedAttempt?.id, selectedAttempt?.task_id, setError]);
 
   // Fetch branch status when selected attempt changes
@@ -243,9 +237,8 @@ function CurrentAttempt({
   const performMerge = async () => {
     if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
 
-    setMerging(true);
-
     try {
+      setMerging(true);
       await attemptsApi.merge(
         projectId,
         selectedAttempt.task_id,
@@ -257,17 +250,16 @@ function CurrentAttempt({
       console.error('Failed to merge changes:', error);
       // @ts-expect-error it is type ApiError
       setError(error.message || 'Failed to merge changes');
+    } finally {
+      setMerging(false);
     }
-
-    setMerging(false);
   };
 
   const handleRebaseClick = async () => {
     if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
 
-    setRebasing(true);
-
     try {
+      setRebasing(true);
       await attemptsApi.rebase(
         projectId,
         selectedAttempt.task_id,
@@ -275,12 +267,11 @@ function CurrentAttempt({
       );
       // Refresh branch status after rebase
       fetchBranchStatus();
-    } catch (error) {
-      // @ts-expect-error it is type ApiError
-      setError(error.message || 'Failed to rebase branch');
+    } catch (err) {
+      setError('Failed to rebase branch');
+    } finally {
+      setRebasing(false);
     }
-
-    setRebasing(false);
   };
 
   const handleCreatePRClick = async () => {

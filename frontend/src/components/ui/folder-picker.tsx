@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -11,12 +11,12 @@ import {
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
+  AlertCircle,
+  ChevronUp,
+  File,
   Folder,
   FolderOpen,
-  File,
-  AlertCircle,
   Home,
-  ChevronUp,
   Search,
 } from 'lucide-react';
 import { fileSystemApi } from '@/lib/api';
@@ -64,14 +64,8 @@ export function FolderPicker({
     setLoading(true);
     setError('');
 
-    let result;
     try {
-      result = await fileSystemApi.list(path);
-    } catch (error) {
-      console.error('Failed to list directory:', error);
-    }
-
-    if (result !== undefined) {
+      const result = await fileSystemApi.list(path);
       setEntries(result.entries || []);
       const newPath = result.current_path || '';
       setCurrentPath(newPath);
@@ -79,9 +73,11 @@ export function FolderPicker({
       if (path) {
         setManualPath(newPath);
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load directory');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const handleFolderClick = (entry: DirectoryEntry) => {

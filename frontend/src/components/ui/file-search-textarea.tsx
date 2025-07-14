@@ -51,22 +51,16 @@ export function FileSearchTextarea({
     const searchFiles = async () => {
       setIsLoading(true);
 
-      let result;
       try {
-        if (!projectId) return [];
-        result = await projectsApi.searchFiles(projectId, searchQuery);
-      } catch (error) {
-        console.error('Failed to search files:', error);
-        return [];
-      }
-
-      if (result !== undefined) {
+        const result = await projectsApi.searchFiles(projectId, searchQuery);
         setSearchResults(result);
         setShowDropdown(true);
         setSelectedIndex(-1);
+      } catch (error) {
+        console.error('Failed to search files:', error);
+      } finally {
+        setIsLoading(false);
       }
-
-      setIsLoading(false);
     };
 
     const debounceTimer = setTimeout(searchFiles, 300);
