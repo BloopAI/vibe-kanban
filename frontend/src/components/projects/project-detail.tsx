@@ -10,9 +10,9 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ProjectWithBranch, ApiResponse } from 'shared/types';
+import { ProjectWithBranch } from 'shared/types';
 import { ProjectForm } from './project-form';
-import { makeRequest } from '@/lib/api';
+import { projectsApi, withErrorHandling } from '@/lib/api';
 import {
   ArrowLeft,
   Edit,
@@ -39,22 +39,20 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
   const fetchProject = useCallback(async () => {
     setLoading(true);
     setError('');
-    try {
-      const response = await makeRequest(
-        `/api/projects/${projectId}/with-branch`
-      );
-      const data: ApiResponse<ProjectWithBranch> = await response.json();
-      if (data.success && data.data) {
-        setProject(data.data);
-      } else {
-        setError('Project not found');
+    
+    const result = await withErrorHandling(
+      () => projectsApi.getWithBranch(projectId),
+      (error) => {
+        console.error('Failed to fetch project:', error);
+        setError(error.message || 'Failed to load project');
       }
-    } catch (error) {
-      console.error('Failed to fetch project:', error);
-      setError('Failed to load project');
-    } finally {
-      setLoading(false);
+    );
+    
+    if (result) {
+      setProject(result as ProjectWithBranch);
     }
+    
+    setLoading(false);
   }, [projectId]);
 
   const handleDelete = async () => {
@@ -66,16 +64,16 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
     )
       return;
 
-    try {
-      const response = await makeRequest(`/api/projects/${projectId}`, {
-        method: 'DELETE',
-      });
-      if (response.ok) {
-        onBack();
+    const result = await withErrorHandling(
+      () => projectsApi.delete(projectId),
+      (error) => {
+        console.error('Failed to delete project:', error);
+        setError(error.message || 'Failed to delete project');
       }
-    } catch (error) {
-      console.error('Failed to delete project:', error);
-      setError('Failed to delete project');
+    );
+    
+    if (result !== undefined) {
+      onBack();
     }
   };
 

@@ -21,7 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
-import { makeRequest } from '@/lib/api.ts';
+import { attemptsApi, executionProcessesApi, ApiError, withErrorHandling } from '@/lib/api.ts';
 import {
   Dispatch,
   SetStateAction,
@@ -32,7 +32,6 @@ import {
   useState,
 } from 'react';
 import type {
-  ApiResponse,
   BranchStatus,
   ExecutionProcess,
   TaskAttempt,
@@ -109,18 +108,15 @@ function CurrentAttempt({
   const fetchDevServerDetails = useCallback(async () => {
     if (!runningDevServer || !task || !selectedAttempt) return;
 
-    try {
-      const response = await makeRequest(
-        `/api/projects/${projectId}/execution-processes/${runningDevServer.id}`
-      );
-      if (response.ok) {
-        const result: ApiResponse<ExecutionProcess> = await response.json();
-        if (result.success && result.data) {
-          setDevServerDetails(result.data);
-        }
+    const result = await withErrorHandling(
+      async () => {
+        const details = await executionProcessesApi.getDetails(projectId, runningDevServer.id);
+        return details;
       }
-    } catch (err) {
-      console.error('Failed to fetch dev server details:', err);
+    );
+
+    if (result !== undefined) {
+      setDevServerDetails(result);
     }
   }, [runningDevServer, task, selectedAttempt, projectId]);
 
@@ -140,30 +136,14 @@ function CurrentAttempt({
 
     setIsStartingDevServer(true);
 
-    try {
-      const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/start-dev-server`,
-        {
-          method: 'POST',
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to start dev server');
+    await withErrorHandling(
+      async () => {
+        await attemptsApi.startDevServer(projectId, selectedAttempt.task_id, selectedAttempt.id);
+        fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
       }
+    );
 
-      const data: ApiResponse<null> = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to start dev server');
-      }
-
-      fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
-    } catch (err) {
-      console.error('Failed to start dev server:', err);
-    } finally {
-      setIsStartingDevServer(false);
-    }
+    setIsStartingDevServer(false);
   };
 
   const stopDevServer = async () => {
@@ -171,49 +151,32 @@ function CurrentAttempt({
 
     setIsStartingDevServer(true);
 
-    try {
-      const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/execution-processes/${runningDevServer.id}/stop`,
-        {
-          method: 'POST',
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to stop dev server');
+    await withErrorHandling(
+      async () => {
+        await attemptsApi.stopExecutionProcess(projectId, selectedAttempt.task_id, selectedAttempt.id, runningDevServer.id);
+        fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
       }
+    );
 
-      fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
-    } catch (err) {
-      console.error('Failed to stop dev server:', err);
-    } finally {
-      setIsStartingDevServer(false);
-    }
+    setIsStartingDevServer(false);
   };
 
   const stopAllExecutions = async () => {
     if (!task || !selectedAttempt) return;
 
-    try {
-      setIsStopping(true);
-      const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/stop`,
-        {
-          method: 'POST',
-        }
-      );
+    setIsStopping(true);
 
-      if (response.ok) {
+    await withErrorHandling(
+      async () => {
+        await attemptsApi.stop(projectId, selectedAttempt.task_id, selectedAttempt.id);
         await fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
         setTimeout(() => {
           fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
         }, 1000);
       }
-    } catch (err) {
-      console.error('Failed to stop executions:', err);
-    } finally {
-      setIsStopping(false);
-    }
+    );
+
+    setIsStopping(false);
   };
 
   const handleAttemptChange = useCallback(
@@ -235,32 +198,28 @@ function CurrentAttempt({
   const fetchBranchStatus = useCallback(async () => {
     if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
 
-    try {
-      setBranchStatusLoading(true);
-      const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/branch-status`
-      );
+    setBranchStatusLoading(true);
 
-      if (response.ok) {
-        const result: ApiResponse<BranchStatus> = await response.json();
-        if (result.success && result.data) {
-          setBranchStatus((prev) => {
-            if (JSON.stringify(prev) === JSON.stringify(result.data))
-              return prev;
-            return result.data;
-          });
-        } else {
-          setError('Failed to load branch status');
-        }
-      } else {
+    const result = await withErrorHandling(
+      async () => {
+        const result = await attemptsApi.getBranchStatus(projectId, selectedAttempt.task_id, selectedAttempt.id);
+        return result;
+      },
+      () => {
         setError('Failed to load branch status');
       }
-    } catch (err) {
-      setError('Failed to load branch status');
-    } finally {
-      setBranchStatusLoading(false);
+    );
+
+    if (result !== undefined) {
+      setBranchStatus((prev) => {
+        if (JSON.stringify(prev) === JSON.stringify(result))
+          return prev;
+        return result;
+      });
     }
-  }, [projectId, selectedAttempt?.id, selectedAttempt?.task_id]);
+
+    setBranchStatusLoading(false);
+  }, [projectId, selectedAttempt?.id, selectedAttempt?.task_id, setError]);
 
   // Fetch branch status when selected attempt changes
   useEffect(() => {
@@ -272,61 +231,39 @@ function CurrentAttempt({
   const performMerge = async () => {
     if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
 
-    try {
-      setMerging(true);
-      const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/merge`,
-        {
-          method: 'POST',
-        }
-      );
+    setMerging(true);
 
-      if (response.ok) {
-        const result: ApiResponse<string> = await response.json();
-        if (result.success) {
-          // Refetch branch status to show updated state
-          fetchBranchStatus();
-        } else {
-          setError(result.message || 'Failed to merge changes');
-        }
-      } else {
-        setError('Failed to merge changes');
+    await withErrorHandling(
+      async () => {
+        await attemptsApi.merge(projectId, selectedAttempt.task_id, selectedAttempt.id);
+        // Refetch branch status to show updated state
+        fetchBranchStatus();
+      },
+      (error: ApiError) => {
+        setError(error.message || 'Failed to merge changes');
       }
-    } catch (err) {
-      setError('Failed to merge changes');
-    } finally {
-      setMerging(false);
-    }
+    );
+
+    setMerging(false);
   };
 
   const handleRebaseClick = async () => {
     if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
 
-    try {
-      setRebasing(true);
-      const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/rebase`,
-        {
-          method: 'POST',
-        }
-      );
+    setRebasing(true);
 
-      if (response.ok) {
-        const result: ApiResponse<string> = await response.json();
-        if (result.success) {
-          // Refresh branch status after rebase
-          fetchBranchStatus();
-        } else {
-          setError(result.message || 'Failed to rebase branch');
-        }
-      } else {
-        setError('Failed to rebase branch');
+    await withErrorHandling(
+      async () => {
+        await attemptsApi.rebase(projectId, selectedAttempt.task_id, selectedAttempt.id);
+        // Refresh branch status after rebase
+        fetchBranchStatus();
+      },
+      (error: ApiError) => {
+        setError(error.message || 'Failed to rebase branch');
       }
-    } catch (err) {
-      setError('Failed to rebase branch');
-    } finally {
-      setRebasing(false);
-    }
+    );
+
+    setRebasing(false);
   };
 
   const handleCreatePRClick = async () => {

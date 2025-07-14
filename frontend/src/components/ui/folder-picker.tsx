@@ -19,7 +19,7 @@ import {
   ChevronUp,
   Search,
 } from 'lucide-react';
-import { makeRequest } from '@/lib/api';
+import { fileSystemApi, withErrorHandling } from '@/lib/api';
 import { DirectoryEntry } from 'shared/types';
 
 interface FolderPickerProps {
@@ -64,32 +64,26 @@ export function FolderPicker({
     setLoading(true);
     setError('');
 
-    try {
-      const queryParam = path ? `?path=${encodeURIComponent(path)}` : '';
-      const response = await makeRequest(`/api/filesystem/list${queryParam}`);
-
-      if (!response.ok) {
-        throw new Error('Failed to load directory');
+    const result = await withErrorHandling(
+      async () => {
+        return await fileSystemApi.list(path);
+      },
+      () => {
+        setError('Failed to load directory');
       }
+    );
 
-      const data = await response.json();
-
-      if (data.success) {
-        setEntries(data.data || []);
-        const newPath = path || data.message || '';
-        setCurrentPath(newPath);
-        // Update manual path if we have a specific path (not for initial home directory load)
-        if (path) {
-          setManualPath(newPath);
-        }
-      } else {
-        setError(data.message || 'Failed to load directory');
+    if (result !== undefined) {
+      setEntries(result.entries || []);
+      const newPath = result.current_path || '';
+      setCurrentPath(newPath);
+      // Update manual path if we have a specific path (not for initial home directory load)
+      if (path) {
+        setManualPath(newPath);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load directory');
-    } finally {
-      setLoading(false);
     }
+
+    setLoading(false);
   };
 
   const handleFolderClick = (entry: DirectoryEntry) => {

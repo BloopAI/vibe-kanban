@@ -2,8 +2,8 @@ import { useCallback, useContext, useEffect, useState } from 'react';
 import { Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useConfig } from '@/components/config-provider';
-import { makeRequest } from '@/lib/api';
-import type { ApiResponse, GitBranch, TaskAttempt } from 'shared/types';
+import { projectsApi, attemptsApi, withErrorHandling } from '@/lib/api';
+import type { GitBranch, TaskAttempt } from 'shared/types';
 import {
   TaskAttemptDataContext,
   TaskAttemptLoadingContext,
@@ -61,21 +61,17 @@ function TaskDetailsToolbar() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchProjectBranches = useCallback(async () => {
-    try {
-      const response = await makeRequest(`/api/projects/${projectId}/branches`);
-      if (response.ok) {
-        const result: ApiResponse<GitBranch[]> = await response.json();
-        if (result.success && result.data) {
-          setBranches(result.data);
-          // Set current branch as default
-          const currentBranch = result.data.find((b) => b.is_current);
-          if (currentBranch && !selectedBranch) {
-            setSelectedBranch(currentBranch.name);
-          }
-        }
+    const result = await withErrorHandling(
+      () => projectsApi.getBranches(projectId)
+    );
+    
+    if (result !== undefined) {
+      setBranches(result);
+      // Set current branch as default
+      const currentBranch = result.find((b) => b.is_current);
+      if (currentBranch && !selectedBranch) {
+        setSelectedBranch(currentBranch.name);
       }
-    } catch (err) {
-      console.error('Failed to fetch project branches:', err);
     }
   }, [projectId, selectedBranch]);
 
@@ -125,49 +121,42 @@ function TaskDetailsToolbar() {
   const fetchTaskAttempts = useCallback(async () => {
     if (!task) return;
 
-    try {
-      setLoading(true);
-      const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${task.id}/attempts`
-      );
+    setLoading(true);
+    const result = await withErrorHandling(
+      () => attemptsApi.getAll(projectId, task.id)
+    );
+    
+    if (result !== undefined) {
+      setTaskAttempts((prev) => {
+        if (JSON.stringify(prev) === JSON.stringify(result))
+          return prev;
+        return result || prev;
+      });
 
-      if (response.ok) {
-        const result: ApiResponse<TaskAttempt[]> = await response.json();
-        if (result.success && result.data) {
-          setTaskAttempts((prev) => {
-            if (JSON.stringify(prev) === JSON.stringify(result.data))
-              return prev;
-            return result.data || prev;
-          });
-
-          if (result.data.length > 0) {
-            const latestAttempt = result.data.reduce((latest, current) =>
-              new Date(current.created_at) > new Date(latest.created_at)
-                ? current
-                : latest
-            );
-            setSelectedAttempt((prev) => {
-              if (JSON.stringify(prev) === JSON.stringify(latestAttempt))
-                return prev;
-              return latestAttempt;
-            });
-            fetchAttemptData(latestAttempt.id, latestAttempt.task_id);
-            fetchExecutionState(latestAttempt.id, latestAttempt.task_id);
-          } else {
-            setSelectedAttempt(null);
-            setAttemptData({
-              activities: [],
-              processes: [],
-              runningProcessDetails: {},
-            });
-          }
-        }
+      if (result.length > 0) {
+        const latestAttempt = result.reduce((latest, current) =>
+          new Date(current.created_at) > new Date(latest.created_at)
+            ? current
+            : latest
+        );
+        setSelectedAttempt((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(latestAttempt))
+            return prev;
+          return latestAttempt;
+        });
+        fetchAttemptData(latestAttempt.id, latestAttempt.task_id);
+        fetchExecutionState(latestAttempt.id, latestAttempt.task_id);
+      } else {
+        setSelectedAttempt(null);
+        setAttemptData({
+          activities: [],
+          processes: [],
+          runningProcessDetails: {},
+        });
       }
-    } catch (err) {
-      console.error('Failed to fetch task attempts:', err);
-    } finally {
-      setLoading(false);
     }
+    
+    setLoading(false);
   }, [task, projectId, fetchAttemptData, fetchExecutionState]);
 
   useEffect(() => {

@@ -1,9 +1,8 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Bot, Hammer, ToggleLeft, ToggleRight } from 'lucide-react';
-import { makeRequest } from '@/lib/api.ts';
+import { executionProcessesApi, withErrorHandling } from '@/lib/api.ts';
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer.tsx';
 import type {
-  ApiResponse,
   ExecutionProcess,
   NormalizedConversation,
   NormalizedEntry,
@@ -127,52 +126,42 @@ export function NormalizedConversationViewer({
 
   const fetchNormalizedLogs = useCallback(
     async (isPolling = false) => {
-      try {
-        if (!isPolling) {
-          setLoading(true);
-          setError(null);
-        }
+      if (!isPolling) {
+        setLoading(true);
+        setError(null);
+      }
 
-        const response = await makeRequest(
-          `/api/projects/${projectId}/execution-processes/${executionProcess.id}/normalized-logs`
-        );
-
-        if (response.ok) {
-          const result: ApiResponse<NormalizedConversation> =
-            await response.json();
-          if (result.success && result.data) {
-            setConversation((prev) => {
-              // Only update if content actually changed
-              if (
-                !prev ||
-                JSON.stringify(prev) !== JSON.stringify(result.data)
-              ) {
-                // Notify parent component of conversation update
-                if (onConversationUpdate) {
-                  // Use setTimeout to ensure state update happens first
-                  setTimeout(onConversationUpdate, 0);
-                }
-                return result.data;
-              }
-              return prev;
-            });
-          } else if (!isPolling) {
-            setError(result.message || 'Failed to fetch normalized logs');
+      const result = await withErrorHandling(
+        async () => {
+          return await executionProcessesApi.getNormalizedLogs(projectId, executionProcess.id);
+        },
+        () => {
+          if (!isPolling) {
+            setError(`Error fetching logs`);
           }
-        } else if (!isPolling) {
-          const errorText = await response.text();
-          setError(`Failed to fetch logs: ${errorText || response.statusText}`);
         }
-      } catch (err) {
-        if (!isPolling) {
-          setError(
-            `Error fetching logs: ${err instanceof Error ? err.message : 'Unknown error'}`
-          );
-        }
-      } finally {
-        if (!isPolling) {
-          setLoading(false);
-        }
+      );
+
+      if (result !== undefined) {
+        setConversation((prev) => {
+          // Only update if content actually changed
+          if (
+            !prev ||
+            JSON.stringify(prev) !== JSON.stringify(result)
+          ) {
+            // Notify parent component of conversation update
+            if (onConversationUpdate) {
+              // Use setTimeout to ensure state update happens first
+              setTimeout(onConversationUpdate, 0);
+            }
+            return result;
+          }
+          return prev;
+        });
+      }
+
+      if (!isPolling) {
+        setLoading(false);
       }
     },
     [executionProcess.id, projectId, onConversationUpdate]

@@ -1,8 +1,7 @@
 import { KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Textarea } from '@/components/ui/textarea';
-import { makeRequest } from '@/lib/api';
-import { ApiResponse } from 'shared/types.ts';
+import { projectsApi, withErrorHandling } from '@/lib/api';
 
 interface FileSearchResult {
   path: string;
@@ -51,24 +50,20 @@ export function FileSearchTextarea({
 
     const searchFiles = async () => {
       setIsLoading(true);
-      try {
-        const response = await makeRequest(
-          `/api/projects/${projectId}/search?q=${encodeURIComponent(searchQuery)}`
-        );
-
-        if (response.ok) {
-          const result: ApiResponse<FileSearchResult[]> = await response.json();
-          if (result.success && result.data) {
-            setSearchResults(result.data);
-            setShowDropdown(true);
-            setSelectedIndex(-1);
-          }
+      
+      const result = await withErrorHandling(
+        async () => {
+          return await projectsApi.searchFiles(projectId, searchQuery);
         }
-      } catch (error) {
-        console.error('Failed to search files:', error);
-      } finally {
-        setIsLoading(false);
+      );
+
+      if (result !== undefined) {
+        setSearchResults(result);
+        setShowDropdown(true);
+        setSelectedIndex(-1);
       }
+
+      setIsLoading(false);
     };
 
     const debounceTimer = setTimeout(searchFiles, 300);

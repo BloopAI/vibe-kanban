@@ -14,7 +14,7 @@ import {
 import { FolderPicker } from '@/components/ui/folder-picker';
 import { Project, CreateProject, UpdateProject } from 'shared/types';
 import { AlertCircle, Folder } from 'lucide-react';
-import { makeRequest } from '@/lib/api';
+import { projectsApi, withErrorHandling } from '@/lib/api';
 
 interface ProjectFormProps {
   open: boolean;
@@ -95,18 +95,16 @@ export function ProjectForm({
           setup_script: setupScript.trim() || null,
           dev_script: devScript.trim() || null,
         };
-        const response = await makeRequest(`/api/projects/${project.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(updateData),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to update project');
-        }
-
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.message || 'Failed to update project');
+        
+        const result = await withErrorHandling(
+          () => projectsApi.update(project.id, updateData),
+          (error) => {
+            throw new Error(error.message || 'Failed to update project');
+          }
+        );
+        
+        if (result === undefined) {
+          return; // Error was handled by withErrorHandling
         }
       } else {
         const createData: CreateProject = {
@@ -116,18 +114,16 @@ export function ProjectForm({
           setup_script: setupScript.trim() || null,
           dev_script: devScript.trim() || null,
         };
-        const response = await makeRequest('/api/projects', {
-          method: 'POST',
-          body: JSON.stringify(createData),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to create project');
-        }
-
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.message || 'Failed to create project');
+        
+        const result = await withErrorHandling(
+          () => projectsApi.create(createData),
+          (error) => {
+            throw new Error(error.message || 'Failed to create project');
+          }
+        );
+        
+        if (result === undefined) {
+          return; // Error was handled by withErrorHandling
         }
       }
 

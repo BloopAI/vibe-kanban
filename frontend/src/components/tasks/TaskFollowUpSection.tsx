@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
 import { useContext, useMemo, useState } from 'react';
-import { makeRequest } from '@/lib/api.ts';
+import { attemptsApi, ApiError, withErrorHandling } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,
   TaskDetailsContext,
@@ -46,42 +46,26 @@ export function TaskFollowUpSection() {
   const onSendFollowUp = async () => {
     if (!task || !selectedAttempt || !followUpMessage.trim()) return;
 
-    try {
-      setIsSendingFollowUp(true);
-      setFollowUpError(null);
-      const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${selectedAttempt.task_id}/attempts/${selectedAttempt.id}/follow-up`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            prompt: followUpMessage.trim(),
-          }),
-        }
-      );
-
-      if (response.ok) {
-        setFollowUpMessage('');
-        fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
-      } else {
-        const errorText = await response.text();
+    setIsSendingFollowUp(true);
+    setFollowUpError(null);
+    
+    await withErrorHandling(
+      () => attemptsApi.followUp(projectId, selectedAttempt.task_id, selectedAttempt.id, {
+        prompt: followUpMessage.trim(),
+      }),
+      (error: ApiError) => {
         setFollowUpError(
-          `Failed to start follow-up execution: ${
-            errorText || response.statusText
-          }`
+          `Failed to start follow-up execution: ${error.message}`
         );
       }
-    } catch (err) {
-      setFollowUpError(
-        `Failed to send follow-up: ${
-          err instanceof Error ? err.message : 'Unknown error'
-        }`
-      );
-    } finally {
+    ).then((result) => {
+      if (result) {
+        setFollowUpMessage('');
+        fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
+      }
+    }).finally(() => {
       setIsSendingFollowUp(false);
-    }
+    });
   };
 
   return (
