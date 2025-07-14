@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { Navbar } from '@/components/layout/navbar';
 import { Projects } from '@/pages/projects';
 import { ProjectTasks } from '@/pages/project-tasks';
@@ -12,10 +12,10 @@ import { PrivacyOptInDialog } from '@/components/PrivacyOptInDialog';
 import { ConfigProvider, useConfig } from '@/components/config-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 import type {
-  Config,
   ApiResponse,
-  ExecutorConfig,
+  Config,
   EditorType,
+  ExecutorConfig,
 } from 'shared/types';
 import * as Sentry from '@sentry/react';
 import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
@@ -44,7 +44,7 @@ function AppContent() {
       if (config.telemetry_acknowledged) {
         const notAuthenticated =
           !config.github?.username || !config.github?.token;
-        setShowGitHubLogin(notAuthenticated || githubTokenInvalid);
+        setShowGitHubLogin(notAuthenticated);
       } else {
         setShowGitHubLogin(false);
       }
