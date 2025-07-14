@@ -105,11 +105,39 @@ export function GitHubLoginDialog({
   // Automatically copy code to clipboard when deviceState is set
   useEffect(() => {
     if (deviceState?.user_code) {
-      navigator.clipboard.writeText(deviceState.user_code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      copyToClipboard(deviceState.user_code);
     }
   }, [deviceState?.user_code]);
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } else {
+        // Fallback for environments where clipboard API is not available
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+          console.warn('Copy to clipboard failed:', err);
+        }
+        document.body.removeChild(textArea);
+      }
+    } catch (err) {
+      console.warn('Copy to clipboard failed:', err);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} uncloseable>
@@ -166,11 +194,7 @@ export function GitHubLoginDialog({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        navigator.clipboard.writeText(deviceState.user_code);
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 2000);
-                      }}
+                      onClick={() => copyToClipboard(deviceState.user_code)}
                       disabled={copied}
                     >
                       {copied ? (
