@@ -50,4 +50,74 @@ impl Executor for SetupScriptExecutor {
 
         Ok(child)
     }
+
+    /// Normalize setup script logs into a readable format
+    fn normalize_logs(
+        &self,
+        logs: &str,
+        _worktree_path: &str,
+    ) -> Result<crate::executor::NormalizedConversation, String> {
+        let mut entries = Vec::new();
+        
+        // Add script command as first entry
+        entries.push(crate::executor::NormalizedEntry {
+            timestamp: None,
+            entry_type: crate::executor::NormalizedEntryType::SystemMessage,
+            content: format!("Executing setup script:\n{}", self.script),
+            metadata: None,
+        });
+
+        // Process the logs - split by lines and create entries
+        if !logs.trim().is_empty() {
+            let lines: Vec<&str> = logs.lines().collect();
+            let mut current_chunk = String::new();
+            
+            for line in lines {
+                current_chunk.push_str(line);
+                current_chunk.push('\n');
+                
+                // Create entry for every 10 lines or when we encounter an error-like line
+                if current_chunk.lines().count() >= 10 
+                    || line.to_lowercase().contains("error")
+                    || line.to_lowercase().contains("failed")
+                    || line.to_lowercase().contains("exception") {
+                    
+                    let entry_type = if line.to_lowercase().contains("error") 
+                        || line.to_lowercase().contains("failed") 
+                        || line.to_lowercase().contains("exception") {
+                        crate::executor::NormalizedEntryType::ErrorMessage
+                    } else {
+                        crate::executor::NormalizedEntryType::SystemMessage
+                    };
+                    
+                    entries.push(crate::executor::NormalizedEntry {
+                        timestamp: Some(chrono::Utc::now().to_rfc3339()),
+                        entry_type,
+                        content: current_chunk.trim().to_string(),
+                        metadata: None,
+                    });
+                    
+                    current_chunk.clear();
+                }
+            }
+            
+            // Add any remaining content
+            if !current_chunk.trim().is_empty() {
+                entries.push(crate::executor::NormalizedEntry {
+                    timestamp: Some(chrono::Utc::now().to_rfc3339()),
+                    entry_type: crate::executor::NormalizedEntryType::SystemMessage,
+                    content: current_chunk.trim().to_string(),
+                    metadata: None,
+                });
+            }
+        }
+
+        Ok(crate::executor::NormalizedConversation {
+            entries,
+            session_id: None,
+            executor_type: "setup_script".to_string(),
+            prompt: Some(self.script.clone()),
+            summary: None,
+        })
+    }
 }

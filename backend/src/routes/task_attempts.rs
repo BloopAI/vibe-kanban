@@ -13,7 +13,7 @@ use crate::{
     executor::{ExecutorConfig, NormalizedConversation, NormalizedEntry, NormalizedEntryType},
     models::{
         config::Config,
-        execution_process::{ExecutionProcess, ExecutionProcessStatus, ExecutionProcessSummary},
+        execution_process::{ExecutionProcess, ExecutionProcessStatus, ExecutionProcessSummary, ExecutionProcessType},
         executor_session::ExecutorSession,
         task::Task,
         task_attempt::{
@@ -1215,67 +1215,81 @@ pub async fn get_execution_process_normalized_logs(
         if !stdout.trim().is_empty() {
             // Determine executor type and create appropriate executor for normalization
             let executor_type = process.executor_type.as_deref().unwrap_or("unknown");
-            let executor_config = match executor_type {
-                "amp" => ExecutorConfig::Amp,
-                "claude" => ExecutorConfig::Claude,
-                "echo" => ExecutorConfig::Echo,
-                "gemini" => ExecutorConfig::Gemini,
-                "opencode" => ExecutorConfig::Opencode,
-                _ => {
-                    tracing::warn!(
-                        "Unsupported executor type: {}, cannot normalize logs properly",
-                        executor_type
-                    );
-                    return Ok(ResponseJson(ApiResponse {
-                        success: false,
-                        data: None,
-                        message: Some(format!("Unsupported executor type: {}", executor_type)),
-                    }));
-                }
-            };
+            
+            // Special handling for setup scripts (process_type = 'setupscript' with executor_type = None)
+            if process.process_type == ExecutionProcessType::SetupScript && executor_type == "unknown" {
+                // For setup scripts, create a simple normalized conversation with stdout content
+                stdout_entries = vec![
+                    crate::executor::NormalizedEntry {
+                        timestamp: None,
+                        entry_type: crate::executor::NormalizedEntryType::SystemMessage,
+                        content: format!("Setup script execution output:\n\n{}", stdout),
+                        metadata: None,
+                    }
+                ];
+            } else {
+                let executor_config = match executor_type {
+                    "amp" => ExecutorConfig::Amp,
+                    "claude" => ExecutorConfig::Claude,
+                    "echo" => ExecutorConfig::Echo,
+                    "gemini" => ExecutorConfig::Gemini,
+                    "opencode" => ExecutorConfig::Opencode,
+                    _ => {
+                        tracing::warn!(
+                            "Unsupported executor type: {}, cannot normalize logs properly",
+                            executor_type
+                        );
+                        return Ok(ResponseJson(ApiResponse {
+                            success: false,
+                            data: None,
+                            message: Some(format!("Unsupported executor type: {}", executor_type)),
+                        }));
+                    }
+                };
 
-            let executor = executor_config.create_executor();
+                let executor = executor_config.create_executor();
 
-            // Use the working directory path for normalization
-            // Try to canonicalize if the directory exists, otherwise use the stored path as-is
-            let working_dir_path = match std::fs::canonicalize(&process.working_directory) {
-                Ok(canonical_path) => {
-                    tracing::debug!(
-                        "Using canonical path for normalization: {}",
-                        canonical_path.display()
-                    );
-                    canonical_path.to_string_lossy().to_string()
-                }
-                Err(_) => {
-                    tracing::debug!(
-                        "Working directory {} no longer exists, using stored path for normalization",
-                        process.working_directory
-                    );
-                    process.working_directory.clone()
-                }
-            };
+                // Use the working directory path for normalization
+                // Try to canonicalize if the directory exists, otherwise use the stored path as-is
+                let working_dir_path = match std::fs::canonicalize(&process.working_directory) {
+                    Ok(canonical_path) => {
+                        tracing::debug!(
+                            "Using canonical path for normalization: {}",
+                            canonical_path.display()
+                        );
+                        canonical_path.to_string_lossy().to_string()
+                    }
+                    Err(_) => {
+                        tracing::debug!(
+                            "Working directory {} no longer exists, using stored path for normalization",
+                            process.working_directory
+                        );
+                        process.working_directory.clone()
+                    }
+                };
 
-            // Normalize stdout logs with error handling
-            match executor.normalize_logs(stdout, &working_dir_path) {
-                Ok(normalized) => {
-                    stdout_entries = normalized.entries;
-                    tracing::debug!(
-                        "Successfully normalized {} stdout entries for process {}",
-                        stdout_entries.len(),
-                        process_id
-                    );
-                }
-                Err(e) => {
-                    tracing::error!(
-                        "Failed to normalize stdout for process {}: {}",
-                        process_id,
-                        e
-                    );
-                    return Ok(ResponseJson(ApiResponse {
-                        success: false,
-                        data: None,
-                        message: Some(format!("Failed to normalize logs: {}", e)),
-                    }));
+                // Normalize stdout logs with error handling
+                match executor.normalize_logs(stdout, &working_dir_path) {
+                    Ok(normalized) => {
+                        stdout_entries = normalized.entries;
+                        tracing::debug!(
+                            "Successfully normalized {} stdout entries for process {}",
+                            stdout_entries.len(),
+                            process_id
+                        );
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to normalize stdout for process {}: {}",
+                            process_id,
+                            e
+                        );
+                        return Ok(ResponseJson(ApiResponse {
+                            success: false,
+                            data: None,
+                            message: Some(format!("Failed to normalize logs: {}", e)),
+                        }));
+                    }
                 }
             }
         }
@@ -1323,13 +1337,16 @@ pub async fn get_execution_process_normalized_logs(
     });
 
     // Create final normalized conversation
+    let executor_type = if process.process_type == ExecutionProcessType::SetupScript {
+        "setup_script".to_string()
+    } else {
+        process.executor_type.clone().unwrap_or("unknown".to_string())
+    };
+    
     let normalized_conversation = NormalizedConversation {
         entries: all_entries,
         session_id: None,
-        executor_type: process
-            .executor_type
-            .clone()
-            .unwrap_or("unknown".to_string()),
+        executor_type,
         prompt: executor_session.as_ref().and_then(|s| s.prompt.clone()),
         summary: executor_session.as_ref().and_then(|s| s.summary.clone()),
     };
