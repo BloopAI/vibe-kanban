@@ -13,7 +13,9 @@ use crate::{
     executor::{ExecutorConfig, NormalizedConversation, NormalizedEntry, NormalizedEntryType},
     models::{
         config::Config,
-        execution_process::{ExecutionProcess, ExecutionProcessStatus, ExecutionProcessSummary, ExecutionProcessType},
+        execution_process::{
+            ExecutionProcess, ExecutionProcessStatus, ExecutionProcessSummary, ExecutionProcessType,
+        },
         executor_session::ExecutorSession,
         task::Task,
         task_attempt::{
@@ -1215,18 +1217,18 @@ pub async fn get_execution_process_normalized_logs(
         if !stdout.trim().is_empty() {
             // Determine executor type and create appropriate executor for normalization
             let executor_type = process.executor_type.as_deref().unwrap_or("unknown");
-            
+
             // Special handling for setup scripts (process_type = 'setupscript' with executor_type = None)
-            if process.process_type == ExecutionProcessType::SetupScript && executor_type == "unknown" {
+            if process.process_type == ExecutionProcessType::SetupScript
+                && executor_type == "unknown"
+            {
                 // For setup scripts, create a simple normalized conversation with stdout content
-                stdout_entries = vec![
-                    crate::executor::NormalizedEntry {
-                        timestamp: None,
-                        entry_type: crate::executor::NormalizedEntryType::SystemMessage,
-                        content: format!("Setup script execution output:\n\n{}", stdout),
-                        metadata: None,
-                    }
-                ];
+                stdout_entries = vec![crate::executor::NormalizedEntry {
+                    timestamp: None,
+                    entry_type: crate::executor::NormalizedEntryType::SystemMessage,
+                    content: format!("Setup script execution output:\n\n{}", stdout),
+                    metadata: None,
+                }];
             } else {
                 let executor_config = match executor_type {
                     "amp" => ExecutorConfig::Amp,
@@ -1340,9 +1342,12 @@ pub async fn get_execution_process_normalized_logs(
     let executor_type = if process.process_type == ExecutionProcessType::SetupScript {
         "setup_script".to_string()
     } else {
-        process.executor_type.clone().unwrap_or("unknown".to_string())
+        process
+            .executor_type
+            .clone()
+            .unwrap_or("unknown".to_string())
     };
-    
+
     let normalized_conversation = NormalizedConversation {
         entries: all_entries,
         session_id: None,
