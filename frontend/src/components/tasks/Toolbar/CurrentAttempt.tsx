@@ -112,9 +112,6 @@ function CurrentAttempt({
       async () => {
         const details = await executionProcessesApi.getDetails(projectId, runningDevServer.id);
         return details;
-      },
-      () => {
-        console.error('Failed to fetch dev server details');
       }
     );
 
@@ -143,9 +140,6 @@ function CurrentAttempt({
       async () => {
         await attemptsApi.startDevServer(projectId, selectedAttempt.task_id, selectedAttempt.id);
         fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
-      },
-      (error: ApiError) => {
-        console.error('Failed to start dev server:', error.message);
       }
     );
 
@@ -161,9 +155,6 @@ function CurrentAttempt({
       async () => {
         await attemptsApi.stopExecutionProcess(projectId, selectedAttempt.task_id, selectedAttempt.id, runningDevServer.id);
         fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
-      },
-      (error: ApiError) => {
-        console.error('Failed to stop dev server:', error.message);
       }
     );
 
@@ -182,9 +173,6 @@ function CurrentAttempt({
         setTimeout(() => {
           fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
         }, 1000);
-      },
-      (error: ApiError) => {
-        console.error('Failed to stop executions:', error.message);
       }
     );
 

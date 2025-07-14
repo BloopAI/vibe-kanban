@@ -62,10 +62,7 @@ function TaskDetailsToolbar() {
 
   const fetchProjectBranches = useCallback(async () => {
     const result = await withErrorHandling(
-      () => projectsApi.getBranches(projectId),
-      () => {
-        console.error('Failed to fetch project branches');
-      }
+      () => projectsApi.getBranches(projectId)
     );
     
     if (result !== undefined) {
@@ -126,10 +123,7 @@ function TaskDetailsToolbar() {
 
     setLoading(true);
     const result = await withErrorHandling(
-      () => attemptsApi.getAll(projectId, task.id),
-      () => {
-        console.error('Failed to fetch task attempts');
-      }
+      () => attemptsApi.getAll(projectId, task.id)
     );
     
     if (result !== undefined) {

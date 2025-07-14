@@ -316,19 +316,57 @@ export const fileSystemApi = {
   },
 };
 
+// Extract endpoint information from API function calls for better logging
+const getEndpointFromApiCall = (apiCall: () => Promise<any>): string => {
+  const apiCallString = apiCall.toString();
+  
+  // Try to extract the endpoint from the function string
+  // Look for patterns like /api/projects, /api/tasks, etc.
+  const endpointMatch = apiCallString.match(/\/api\/[^'"`\s)]+/);
+  if (endpointMatch) {
+    return endpointMatch[0];
+  }
+  
+  // Try to extract API function name as fallback
+  const functionMatch = apiCallString.match(/(\w+Api\.\w+)/);
+  if (functionMatch) {
+    return functionMatch[1];
+  }
+  
+  return 'unknown endpoint';
+};
+
 // Utility function for error handling in components
 export const withErrorHandling = async <T>(
   apiCall: () => Promise<T>,
-  onError: (error: ApiError) => void
+  onError?: (error: ApiError) => void
 ): Promise<T | undefined> => {
   try {
     return await apiCall();
   } catch (error) {
+    const endpoint = getEndpointFromApiCall(apiCall);
+    
+    let apiError: ApiError;
     if (error instanceof ApiError) {
-      onError(error);
+      apiError = error;
     } else {
-      onError(new ApiError('An unexpected error occurred'));
+      apiError = new ApiError('An unexpected error occurred');
     }
+    
+    // Default logging - always log the endpoint and full error details to console
+    console.error(`[API Error] ${endpoint}:`, {
+      message: apiError.message,
+      status: apiError.status,
+      endpoint,
+      timestamp: new Date().toISOString(),
+      fullError: apiError
+    });
+    
+    // If custom error handler is provided, call it
+    if (onError) {
+      onError(apiError);
+    }
+    
     return undefined;
   }
 };

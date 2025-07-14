@@ -133,10 +133,7 @@ const TaskDetailsProvider: FC<{
       if (!task) return;
 
       const result = await withErrorHandling(
-        () => attemptsApi.getState(projectId, taskId, attemptId),
-        () => {
-          console.error('Failed to fetch execution state');
-        }
+        () => attemptsApi.getState(projectId, taskId, attemptId)
       );
       
       if (result !== undefined) {
@@ -157,7 +154,6 @@ const TaskDetailsProvider: FC<{
       const result = await withErrorHandling(
         () => attemptsApi.openEditor(projectId, selectedAttempt.task_id, selectedAttempt.id),
         () => {
-          console.error('Failed to open editor');
           if (!editorType) {
             setShowEditorDialog(true);
           }
@@ -178,16 +174,10 @@ const TaskDetailsProvider: FC<{
       try {
         const [activitiesResult, processesResult] = await Promise.all([
           withErrorHandling(
-            () => attemptsApi.getActivities(projectId, taskId, attemptId),
-            () => {
-              console.error('Failed to fetch activities');
-            }
+            () => attemptsApi.getActivities(projectId, taskId, attemptId)
           ),
           withErrorHandling(
-            () => attemptsApi.getExecutionProcesses(projectId, taskId, attemptId),
-            () => {
-              console.error('Failed to fetch execution processes');
-            }
+            () => attemptsApi.getExecutionProcesses(projectId, taskId, attemptId)
           ),
         ]);
 
@@ -203,12 +193,7 @@ const TaskDetailsProvider: FC<{
           // Fetch details for running activities
           for (const activity of runningActivities) {
             const result = await withErrorHandling(
-              () => executionProcessesApi.getDetails(projectId, activity.execution_process_id),
-              () => {
-                console.error(
-                  `Failed to fetch execution process ${activity.execution_process_id}`
-                );
-              }
+              () => executionProcessesApi.getDetails(projectId, activity.execution_process_id)
             );
             
             if (result !== undefined) {
@@ -222,12 +207,7 @@ const TaskDetailsProvider: FC<{
           );
           if (setupProcess && !runningProcessDetails[setupProcess.id]) {
             const result = await withErrorHandling(
-              () => executionProcessesApi.getDetails(projectId, setupProcess.id),
-              () => {
-                console.error(
-                  `Failed to fetch setup process details ${setupProcess.id}`
-                );
-              }
+              () => executionProcessesApi.getDetails(projectId, setupProcess.id)
             );
             
             if (result !== undefined) {

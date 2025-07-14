@@ -54,9 +54,6 @@ export function FileSearchTextarea({
       const result = await withErrorHandling(
         async () => {
           return await projectsApi.searchFiles(projectId, searchQuery);
-        },
-        () => {
-          console.error('Failed to search files');
         }
       );
 

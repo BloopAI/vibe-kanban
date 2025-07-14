@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu.tsx';
 import { Input } from '@/components/ui/input.tsx';
 import type { GitBranch, TaskAttempt } from 'shared/types.ts';
-import { attemptsApi, ApiError, withErrorHandling } from '@/lib/api.ts';
+import { attemptsApi, withErrorHandling } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,
   TaskDetailsContext,
@@ -78,9 +78,6 @@ function CreateAttempt({
           base_branch: baseBranch || selectedBranch,
         });
         fetchTaskAttempts();
-      },
-      (error: ApiError) => {
-        console.error('Failed to create new attempt:', error.message);
       }
     );
   };
