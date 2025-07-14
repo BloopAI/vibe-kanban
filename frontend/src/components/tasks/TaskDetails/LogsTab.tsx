@@ -1,36 +1,21 @@
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useContext } from 'react';
 import { MessageSquare } from 'lucide-react';
-import { NormalizedConversationViewer } from '@/components/tasks/TaskDetails/NormalizedConversationViewer.tsx';
+import { NormalizedConversationViewer } from '@/components/tasks/TaskDetails/LogsTab/NormalizedConversationViewer.tsx';
 import {
   TaskAttemptDataContext,
   TaskAttemptLoadingContext,
   TaskExecutionStateContext,
   TaskSelectedAttemptContext,
 } from '@/components/context/taskDetailsContext.ts';
-import Conversation from '@/components/tasks/TaskDetails/Conversation.tsx';
+import Conversation from '@/components/tasks/TaskDetails/LogsTab/Conversation.tsx';
 import { Loader } from '@/components/ui/loader';
+import SetupScriptRunning from '@/components/tasks/TaskDetails/LogsTab/SetupScriptRunning.tsx';
 
 function LogsTab() {
   const { loading } = useContext(TaskAttemptLoadingContext);
   const { executionState } = useContext(TaskExecutionStateContext);
   const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
   const { attemptData } = useContext(TaskAttemptDataContext);
-
-  const [conversationUpdateTrigger, setConversationUpdateTrigger] = useState(0);
-
-  const setupScrollRef = useRef<HTMLDivElement>(null);
-
-  // Auto-scroll setup script logs to bottom
-  useEffect(() => {
-    if (setupScrollRef.current) {
-      setupScrollRef.current.scrollTop = setupScrollRef.current.scrollHeight;
-    }
-  }, [attemptData.runningProcessDetails]);
-
-  // Callback to trigger auto-scroll when conversation updates
-  const handleConversationUpdate = useCallback(() => {
-    setConversationUpdateTrigger((prev) => prev + 1);
-  }, []);
 
   if (loading) {
     return (
@@ -80,30 +65,11 @@ function LogsTab() {
 
   // When setup script is running, show setup execution stdio
   if (isSetupRunning) {
-    // Find the setup script process in runningProcessDetails first, then fallback to processes
-    const setupProcess = executionState.setup_process_id
-      ? attemptData.runningProcessDetails[executionState.setup_process_id]
-      : Object.values(attemptData.runningProcessDetails).find(
-          (process) => process.process_type === 'setupscript'
-        );
-
     return (
-      <div ref={setupScrollRef} className="h-full overflow-y-auto">
-        <div className="mb-4">
-          <p className="text-lg font-semibold mb-2">Setup Script Running</p>
-          <p className="text-muted-foreground mb-4">
-            Preparing the environment for the coding agent...
-          </p>
-        </div>
-
-        {setupProcess && (
-          <div className="font-mono text-sm whitespace-pre-wrap text-muted-foreground">
-            {[setupProcess.stdout || '', setupProcess.stderr || '']
-              .filter(Boolean)
-              .join('\n') || 'Waiting for setup script output...'}
-          </div>
-        )}
-      </div>
+      <SetupScriptRunning
+        setupProcessId={executionState.setup_process_id}
+        runningProcessDetails={attemptData.runningProcessDetails}
+      />
     );
   }
 
@@ -127,10 +93,7 @@ function LogsTab() {
         </div>
 
         {setupProcess && (
-          <NormalizedConversationViewer
-            executionProcess={setupProcess}
-            onConversationUpdate={handleConversationUpdate}
-          />
+          <NormalizedConversationViewer executionProcess={setupProcess} />
         )}
       </div>
     );
@@ -158,10 +121,7 @@ function LogsTab() {
         </div>
 
         {codingAgentProcess && (
-          <NormalizedConversationViewer
-            executionProcess={codingAgentProcess}
-            onConversationUpdate={handleConversationUpdate}
-          />
+          <NormalizedConversationViewer executionProcess={codingAgentProcess} />
         )}
       </div>
     );
@@ -199,12 +159,7 @@ function LogsTab() {
 
   // When coding agent is running or complete, show conversation
   if (isCodingAgentRunning || isCodingAgentComplete || hasChanges) {
-    return (
-      <Conversation
-        conversationUpdateTrigger={conversationUpdateTrigger}
-        handleConversationUpdate={handleConversationUpdate}
-      />
-    );
+    return <Conversation />;
   }
 
   // Default case - unexpected state

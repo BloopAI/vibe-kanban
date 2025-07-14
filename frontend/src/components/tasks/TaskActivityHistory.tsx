@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp, Clock, Code } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Chip } from '@/components/ui/chip';
-import { NormalizedConversationViewer } from './TaskDetails/NormalizedConversationViewer.tsx';
+import { NormalizedConversationViewer } from './TaskDetails/LogsTab/NormalizedConversationViewer.tsx';
 import type {
   ExecutionProcess,
   TaskAttempt,
