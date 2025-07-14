@@ -287,7 +287,7 @@ export function NormalizedConversationViewer({
       <div className="space-y-2">
         {displayEntries.map((entry, index) => (
           <DisplayConversationEntry
-            key={index}
+            key={entry.timestamp || index}
             entry={entry}
             index={index}
             diffDeletable={diffDeletable}
