@@ -54,7 +54,7 @@ export function ProjectTasks() {
   const handleOpenInIDE = useCallback(async () => {
     if (!projectId) return;
 
-    const result = await withErrorHandling(
+    await withErrorHandling(
       () => projectsApi.openEditor(projectId),
       (error: ApiError) => {
         console.error('Failed to open project in IDE:', error);
@@ -164,7 +164,7 @@ export function ProjectTasks() {
     async (title: string, description: string) => {
       const result = await withErrorHandling(
         () => tasksApi.create(projectId!, {
-          project_id: projectId,
+          project_id: projectId!,
           title,
           description: description || null,
         }),
@@ -291,7 +291,7 @@ export function ProjectTasks() {
         prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
       );
 
-      const result = await withErrorHandling(
+      await withErrorHandling(
         () => tasksApi.update(projectId!, taskId, {
           title: task.title,
           description: task.description,

@@ -77,8 +77,7 @@ function CreatePrDialog({
       async () => {
         return await attemptsApi.createPR(projectId, selectedAttempt.task_id, selectedAttempt.id, {
           title: prTitle,
-          body: prBody || null,
-          base_branch: prBaseBranch || null,
+          body: prBody || '',
         });
       },
       (error: ApiError) => {
