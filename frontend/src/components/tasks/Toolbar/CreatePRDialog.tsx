@@ -22,7 +22,7 @@ import {
   TaskDetailsContext,
   TaskSelectedAttemptContext,
 } from '@/components/context/taskDetailsContext.ts';
-import { attemptsApi, ApiError, withErrorHandling } from '@/lib/api.ts';
+import { ApiError, attemptsApi } from '@/lib/api.ts';
 import { ProvidePatDialog } from '@/components/ProvidePatDialog';
 import { GitBranch } from 'shared/types.ts';
 
@@ -73,46 +73,16 @@ function CreatePrDialog({
 
     setCreatingPR(true);
 
-    const prUrl = await withErrorHandling(
-      async () => {
-        return await attemptsApi.createPR(
-          projectId,
-          selectedAttempt.task_id,
-          selectedAttempt.id,
-          {
-            title: prTitle,
-            body: prBody || '',
-          }
-        );
-      },
-      (error: ApiError) => {
-        if (error.message === 'insufficient_github_permissions') {
-          setShowCreatePRDialog(false);
-          setPatDialogError(null);
-          setShowPatDialog(true);
-        } else if (error.message === 'github_repo_not_found_or_no_access') {
-          setShowCreatePRDialog(false);
-          setPatDialogError(
-            'Your token does not have access to this repository, or the repository does not exist. Please check the repository URL and/or provide a Personal Access Token with access.'
-          );
-          setShowPatDialog(true);
-        } else if (error.status === 403) {
-          setShowCreatePRDialog(false);
-          setPatDialogError(null);
-          setShowPatDialog(true);
-        } else if (error.status === 404) {
-          setShowCreatePRDialog(false);
-          setPatDialogError(
-            'Your token does not have access to this repository, or the repository does not exist. Please check the repository URL and/or provide a Personal Access Token with access.'
-          );
-          setShowPatDialog(true);
-        } else {
-          setError(error.message || 'Failed to create GitHub PR');
+    try {
+      const prUrl = await attemptsApi.createPR(
+        projectId!,
+        selectedAttempt.task_id,
+        selectedAttempt.id,
+        {
+          title: prTitle,
+          body: prBody || '',
         }
-      }
-    );
-
-    if (prUrl !== undefined && typeof prUrl === 'string') {
+      );
       // Open the PR URL in a new tab
       window.open(prUrl, '_blank');
       setShowCreatePRDialog(false);
@@ -120,6 +90,31 @@ function CreatePrDialog({
       setPrTitle('');
       setPrBody('');
       setPrBaseBranch(selectedAttempt?.base_branch || 'main');
+    } catch (err) {
+      const error = err as ApiError;
+      if (error.message === 'insufficient_github_permissions') {
+        setShowCreatePRDialog(false);
+        setPatDialogError(null);
+        setShowPatDialog(true);
+      } else if (error.message === 'github_repo_not_found_or_no_access') {
+        setShowCreatePRDialog(false);
+        setPatDialogError(
+          'Your token does not have access to this repository, or the repository does not exist. Please check the repository URL and/or provide a Personal Access Token with access.'
+        );
+        setShowPatDialog(true);
+      } else if (error.status === 403) {
+        setShowCreatePRDialog(false);
+        setPatDialogError(null);
+        setShowPatDialog(true);
+      } else if (error.status === 404) {
+        setShowCreatePRDialog(false);
+        setPatDialogError(
+          'Your token does not have access to this repository, or the repository does not exist. Please check the repository URL and/or provide a Personal Access Token with access.'
+        );
+        setShowPatDialog(true);
+      } else {
+        setError(error.message || 'Failed to create GitHub PR');
+      }
     }
 
     setCreatingPR(false);

@@ -1,7 +1,7 @@
 import { KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Textarea } from '@/components/ui/textarea';
-import { projectsApi, withErrorHandling } from '@/lib/api';
+import { projectsApi } from '@/lib/api';
 
 interface FileSearchResult {
   path: string;
@@ -51,9 +51,14 @@ export function FileSearchTextarea({
     const searchFiles = async () => {
       setIsLoading(true);
 
-      const result = await withErrorHandling(async () => {
-        return await projectsApi.searchFiles(projectId, searchQuery);
-      });
+      let result;
+      try {
+        if (!projectId) return [];
+        result = await projectsApi.searchFiles(projectId, searchQuery);
+      } catch (error) {
+        console.error('Failed to search files:', error);
+        return [];
+      }
 
       if (result !== undefined) {
         setSearchResults(result);

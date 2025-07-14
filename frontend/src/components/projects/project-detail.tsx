@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,16 +12,16 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ProjectWithBranch } from 'shared/types';
 import { ProjectForm } from './project-form';
-import { projectsApi, withErrorHandling } from '@/lib/api';
+import { projectsApi } from '@/lib/api';
 import {
-  ArrowLeft,
-  Edit,
-  Trash2,
-  Calendar,
-  Clock,
   AlertCircle,
-  Loader2,
+  ArrowLeft,
+  Calendar,
   CheckSquare,
+  Clock,
+  Edit,
+  Loader2,
+  Trash2,
 } from 'lucide-react';
 
 interface ProjectDetailProps {
@@ -40,13 +40,14 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
     setLoading(true);
     setError('');
 
-    const result = await withErrorHandling(
-      () => projectsApi.getWithBranch(projectId),
-      (error) => {
-        console.error('Failed to fetch project:', error);
-        setError(error.message || 'Failed to load project');
-      }
-    );
+    let result;
+    try {
+      result = await projectsApi.getWithBranch(projectId);
+    } catch (error) {
+      console.error('Failed to fetch project:', error);
+      // @ts-expect-error it is type ApiError
+      setError(error.message || 'Failed to load project');
+    }
 
     if (result) {
       setProject(result as ProjectWithBranch);
@@ -64,13 +65,14 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
     )
       return;
 
-    const result = await withErrorHandling(
-      () => projectsApi.delete(projectId),
-      (error) => {
-        console.error('Failed to delete project:', error);
-        setError(error.message || 'Failed to delete project');
-      }
-    );
+    let result;
+    try {
+      result = await projectsApi.delete(projectId);
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      // @ts-expect-error it is type ApiError
+      setError(error.message || 'Failed to delete project');
+    }
 
     if (result !== undefined) {
       onBack();

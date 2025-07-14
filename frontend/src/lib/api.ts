@@ -80,12 +80,26 @@ const handleApiResponse = async <T>(response: Response): Promise<T> => {
       errorMessage = response.statusText || errorMessage;
     }
 
+    console.error('[API Error]', {
+      message: errorMessage,
+      status: response.status,
+      response,
+      endpoint: response.url,
+      timestamp: new Date().toISOString(),
+    });
     throw new ApiError(errorMessage, response.status, response);
   }
 
   const result: ApiResponse<T> = await response.json();
 
   if (!result.success) {
+    console.error('[API Error]', {
+      message: result.message || 'API request failed',
+      status: response.status,
+      response,
+      endpoint: response.url,
+      timestamp: new Date().toISOString(),
+    });
     throw new ApiError(result.message || 'API request failed');
   }
 
@@ -524,6 +538,12 @@ export const mcpServersApi = {
     );
     if (!response.ok) {
       const errorData = await response.json();
+      console.error('[API Error] Failed to save MCP servers', {
+        message: errorData.message,
+        status: response.status,
+        response,
+        timestamp: new Date().toISOString(),
+      });
       throw new ApiError(
         errorData.message || 'Failed to save MCP servers',
         response.status,
@@ -531,59 +551,4 @@ export const mcpServersApi = {
       );
     }
   },
-};
-
-// Extract endpoint information from API function calls for better logging
-const getEndpointFromApiCall = (apiCall: () => Promise<any>): string => {
-  const apiCallString = apiCall.toString();
-
-  // Try to extract the endpoint from the function string
-  // Look for patterns like /api/projects, /api/tasks, etc.
-  const endpointMatch = apiCallString.match(/\/api\/[^'"`\s)]+/);
-  if (endpointMatch) {
-    return endpointMatch[0];
-  }
-
-  // Try to extract API function name as fallback
-  const functionMatch = apiCallString.match(/(\w+Api\.\w+)/);
-  if (functionMatch) {
-    return functionMatch[1];
-  }
-
-  return 'unknown endpoint';
-};
-
-// Utility function for error handling in components
-export const withErrorHandling = async <T>(
-  apiCall: () => Promise<T>,
-  onError?: (error: ApiError) => void
-): Promise<T | undefined> => {
-  try {
-    return await apiCall();
-  } catch (error) {
-    const endpoint = getEndpointFromApiCall(apiCall);
-
-    let apiError: ApiError;
-    if (error instanceof ApiError) {
-      apiError = error;
-    } else {
-      apiError = new ApiError('An unexpected error occurred');
-    }
-
-    // Default logging - always log the endpoint and full error details to console
-    console.error(`[API Error] ${endpoint}:`, {
-      message: apiError.message,
-      status: apiError.status,
-      endpoint,
-      timestamp: new Date().toISOString(),
-      fullError: apiError,
-    });
-
-    // If custom error handler is provided, call it
-    if (onError) {
-      onError(apiError);
-    }
-
-    return undefined;
-  }
 };

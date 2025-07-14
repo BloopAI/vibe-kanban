@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu.tsx';
 import { Input } from '@/components/ui/input.tsx';
 import type { GitBranch, TaskAttempt } from 'shared/types.ts';
-import { attemptsApi, withErrorHandling } from '@/lib/api.ts';
+import { attemptsApi } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,
   TaskDetailsContext,
@@ -71,13 +71,15 @@ function CreateAttempt({
   }, [branches, branchSearchTerm]);
 
   const onCreateNewAttempt = async (executor?: string, baseBranch?: string) => {
-    await withErrorHandling(async () => {
-      await attemptsApi.create(projectId, task.id, {
+    try {
+      await attemptsApi.create(projectId!, task.id, {
         executor: executor || selectedExecutor,
         base_branch: baseBranch || selectedBranch,
       });
       fetchTaskAttempts();
-    });
+    } catch (error) {
+      // Optionally handle error
+    }
   };
 
   const handleExitCreateAttemptMode = () => {

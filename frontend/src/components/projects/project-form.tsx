@@ -14,7 +14,7 @@ import {
 import { FolderPicker } from '@/components/ui/folder-picker';
 import { Project, CreateProject, UpdateProject } from 'shared/types';
 import { AlertCircle, Folder } from 'lucide-react';
-import { projectsApi, withErrorHandling } from '@/lib/api';
+import { projectsApi } from '@/lib/api';
 
 interface ProjectFormProps {
   open: boolean;
@@ -96,15 +96,16 @@ export function ProjectForm({
           dev_script: devScript.trim() || null,
         };
 
-        const result = await withErrorHandling(
-          () => projectsApi.update(project.id, updateData),
-          (error) => {
-            throw new Error(error.message || 'Failed to update project');
-          }
-        );
+        let result;
+        try {
+          result = await projectsApi.update(project.id, updateData);
+        } catch (error) {
+          setError('Failed to update project');
+          return;
+        }
 
         if (result === undefined) {
-          return; // Error was handled by withErrorHandling
+          return;
         }
       } else {
         const createData: CreateProject = {
@@ -115,15 +116,16 @@ export function ProjectForm({
           dev_script: devScript.trim() || null,
         };
 
-        const result = await withErrorHandling(
-          () => projectsApi.create(createData),
-          (error) => {
-            throw new Error(error.message || 'Failed to create project');
-          }
-        );
+        let result;
+        try {
+          result = await projectsApi.create(createData);
+        } catch (error) {
+          setError('Failed to create project');
+          return;
+        }
 
         if (result === undefined) {
-          return; // Error was handled by withErrorHandling
+          return;
         }
       }
 

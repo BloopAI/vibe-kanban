@@ -18,11 +18,7 @@ import type {
   TaskWithAttemptStatus,
   WorktreeDiff,
 } from 'shared/types.ts';
-import {
-  attemptsApi,
-  executionProcessesApi,
-  withErrorHandling,
-} from '@/lib/api.ts';
+import { attemptsApi, executionProcessesApi } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,
   TaskAttemptLoadingContext,
@@ -102,21 +98,18 @@ const TaskDetailsProvider: FC<{
       setDiffError(null);
 
       try {
-        const result = await withErrorHandling(
-          () =>
-            attemptsApi.getDiff(
-              projectId,
-              selectedAttempt.task_id,
-              selectedAttempt.id
-            ),
-          () => {
-            setDiffError('Failed to load diff');
-          }
+        const result = await attemptsApi.getDiff(
+          projectId,
+          selectedAttempt.task_id,
+          selectedAttempt.id
         );
 
         if (result !== undefined) {
           setDiff(result);
         }
+      } catch (err) {
+        console.error('Failed to load diff:', err);
+        setDiffError('Failed to load diff');
       } finally {
         diffLoadingRef.current = false;
         if (isBackgroundRefresh) {
@@ -137,15 +130,17 @@ const TaskDetailsProvider: FC<{
     async (attemptId: string, taskId: string) => {
       if (!task) return;
 
-      const result = await withErrorHandling(() =>
-        attemptsApi.getState(projectId, taskId, attemptId)
-      );
+      try {
+        const result = await attemptsApi.getState(projectId, taskId, attemptId);
 
-      if (result !== undefined) {
-        setExecutionState((prev) => {
-          if (JSON.stringify(prev) === JSON.stringify(result)) return prev;
-          return result;
-        });
+        if (result !== undefined) {
+          setExecutionState((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(result)) return prev;
+            return result;
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch execution state:', err);
       }
     },
     [task, projectId]
@@ -155,22 +150,21 @@ const TaskDetailsProvider: FC<{
     async (editorType?: EditorType) => {
       if (!task || !selectedAttempt) return;
 
-      const result = await withErrorHandling(
-        () =>
-          attemptsApi.openEditor(
-            projectId,
-            selectedAttempt.task_id,
-            selectedAttempt.id
-          ),
-        () => {
-          if (!editorType) {
-            setShowEditorDialog(true);
-          }
-        }
-      );
+      try {
+        const result = await attemptsApi.openEditor(
+          projectId,
+          selectedAttempt.task_id,
+          selectedAttempt.id
+        );
 
-      if (result === undefined && !editorType) {
-        setShowEditorDialog(true);
+        if (result === undefined && !editorType) {
+          setShowEditorDialog(true);
+        }
+      } catch (err) {
+        console.error('Failed to open editor:', err);
+        if (!editorType) {
+          setShowEditorDialog(true);
+        }
       }
     },
     [task, projectId, selectedAttempt, setShowEditorDialog]
@@ -182,12 +176,8 @@ const TaskDetailsProvider: FC<{
 
       try {
         const [activitiesResult, processesResult] = await Promise.all([
-          withErrorHandling(() =>
-            attemptsApi.getActivities(projectId, taskId, attemptId)
-          ),
-          withErrorHandling(() =>
-            attemptsApi.getExecutionProcesses(projectId, taskId, attemptId)
-          ),
+          attemptsApi.getActivities(projectId, taskId, attemptId),
+          attemptsApi.getExecutionProcesses(projectId, taskId, attemptId),
         ]);
 
         if (activitiesResult !== undefined && processesResult !== undefined) {
@@ -201,11 +191,9 @@ const TaskDetailsProvider: FC<{
 
           // Fetch details for running activities
           for (const activity of runningActivities) {
-            const result = await withErrorHandling(() =>
-              executionProcessesApi.getDetails(
-                projectId,
-                activity.execution_process_id
-              )
+            const result = await executionProcessesApi.getDetails(
+              projectId,
+              activity.execution_process_id
             );
 
             if (result !== undefined) {
@@ -218,8 +206,9 @@ const TaskDetailsProvider: FC<{
             (process) => process.process_type === 'setupscript'
           );
           if (setupProcess && !runningProcessDetails[setupProcess.id]) {
-            const result = await withErrorHandling(() =>
-              executionProcessesApi.getDetails(projectId, setupProcess.id)
+            const result = await executionProcessesApi.getDetails(
+              projectId,
+              setupProcess.id
             );
 
             if (result !== undefined) {

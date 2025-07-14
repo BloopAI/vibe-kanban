@@ -21,12 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
-import {
-  attemptsApi,
-  executionProcessesApi,
-  ApiError,
-  withErrorHandling,
-} from '@/lib/api.ts';
+import { attemptsApi, executionProcessesApi } from '@/lib/api.ts';
 import {
   Dispatch,
   SetStateAction,
@@ -113,13 +108,15 @@ function CurrentAttempt({
   const fetchDevServerDetails = useCallback(async () => {
     if (!runningDevServer || !task || !selectedAttempt) return;
 
-    const result = await withErrorHandling(async () => {
-      const details = await executionProcessesApi.getDetails(
+    let result;
+    try {
+      result = await executionProcessesApi.getDetails(
         projectId,
         runningDevServer.id
       );
-      return details;
-    });
+    } catch (error) {
+      console.error('Failed to fetch dev server details:', error);
+    }
 
     if (result !== undefined) {
       setDevServerDetails(result);
@@ -142,14 +139,16 @@ function CurrentAttempt({
 
     setIsStartingDevServer(true);
 
-    await withErrorHandling(async () => {
+    try {
       await attemptsApi.startDevServer(
         projectId,
         selectedAttempt.task_id,
         selectedAttempt.id
       );
       fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
-    });
+    } catch (error) {
+      console.error('Failed to start dev server:', error);
+    }
 
     setIsStartingDevServer(false);
   };
@@ -159,7 +158,7 @@ function CurrentAttempt({
 
     setIsStartingDevServer(true);
 
-    await withErrorHandling(async () => {
+    try {
       await attemptsApi.stopExecutionProcess(
         projectId,
         selectedAttempt.task_id,
@@ -167,7 +166,9 @@ function CurrentAttempt({
         runningDevServer.id
       );
       fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
-    });
+    } catch (error) {
+      console.error('Failed to stop dev server:', error);
+    }
 
     setIsStartingDevServer(false);
   };
@@ -177,7 +178,7 @@ function CurrentAttempt({
 
     setIsStopping(true);
 
-    await withErrorHandling(async () => {
+    try {
       await attemptsApi.stop(
         projectId,
         selectedAttempt.task_id,
@@ -187,7 +188,9 @@ function CurrentAttempt({
       setTimeout(() => {
         fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
       }, 1000);
-    });
+    } catch (error) {
+      console.error('Failed to stop all executions:', error);
+    }
 
     setIsStopping(false);
   };
@@ -213,25 +216,18 @@ function CurrentAttempt({
 
     setBranchStatusLoading(true);
 
-    const result = await withErrorHandling(
-      async () => {
-        const result = await attemptsApi.getBranchStatus(
-          projectId,
-          selectedAttempt.task_id,
-          selectedAttempt.id
-        );
-        return result;
-      },
-      () => {
-        setError('Failed to load branch status');
-      }
-    );
-
-    if (result !== undefined) {
+    try {
+      const result = await attemptsApi.getBranchStatus(
+        projectId,
+        selectedAttempt.task_id,
+        selectedAttempt.id
+      );
       setBranchStatus((prev) => {
         if (JSON.stringify(prev) === JSON.stringify(result)) return prev;
         return result;
       });
+    } catch (error) {
+      setError('Failed to load branch status');
     }
 
     setBranchStatusLoading(false);
@@ -249,20 +245,19 @@ function CurrentAttempt({
 
     setMerging(true);
 
-    await withErrorHandling(
-      async () => {
-        await attemptsApi.merge(
-          projectId,
-          selectedAttempt.task_id,
-          selectedAttempt.id
-        );
-        // Refetch branch status to show updated state
-        fetchBranchStatus();
-      },
-      (error: ApiError) => {
-        setError(error.message || 'Failed to merge changes');
-      }
-    );
+    try {
+      await attemptsApi.merge(
+        projectId,
+        selectedAttempt.task_id,
+        selectedAttempt.id
+      );
+      // Refetch branch status to show updated state
+      fetchBranchStatus();
+    } catch (error) {
+      console.error('Failed to merge changes:', error);
+      // @ts-expect-error it is type ApiError
+      setError(error.message || 'Failed to merge changes');
+    }
 
     setMerging(false);
   };
@@ -272,20 +267,18 @@ function CurrentAttempt({
 
     setRebasing(true);
 
-    await withErrorHandling(
-      async () => {
-        await attemptsApi.rebase(
-          projectId,
-          selectedAttempt.task_id,
-          selectedAttempt.id
-        );
-        // Refresh branch status after rebase
-        fetchBranchStatus();
-      },
-      (error: ApiError) => {
-        setError(error.message || 'Failed to rebase branch');
-      }
-    );
+    try {
+      await attemptsApi.rebase(
+        projectId,
+        selectedAttempt.task_id,
+        selectedAttempt.id
+      );
+      // Refresh branch status after rebase
+      fetchBranchStatus();
+    } catch (error) {
+      // @ts-expect-error it is type ApiError
+      setError(error.message || 'Failed to rebase branch');
+    }
 
     setRebasing(false);
   };

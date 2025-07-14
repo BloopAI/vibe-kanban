@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog.tsx';
 import { Button } from '@/components/ui/button.tsx';
-import { attemptsApi, ApiError, withErrorHandling } from '@/lib/api.ts';
+import { attemptsApi } from '@/lib/api.ts';
 import { useContext } from 'react';
 import {
   TaskDeletingFilesContext,
@@ -29,33 +29,27 @@ function DeleteFileConfirmationDialog() {
 
     setDeletingFiles((prev) => new Set(prev).add(fileToDelete));
 
-    await withErrorHandling(
-      () =>
-        attemptsApi.deleteFile(
-          projectId,
-          selectedAttempt.task_id,
-          selectedAttempt.id,
-          {
-            file_path: fileToDelete,
-          }
-        ),
-      (error: ApiError) => {
-        setDiffError(error.message || 'Failed to delete file');
-      }
-    )
-      .then((result) => {
-        if (result) {
-          fetchDiff();
+    try {
+      await attemptsApi.deleteFile(
+        projectId!,
+        selectedAttempt.task_id,
+        selectedAttempt.id,
+        {
+          file_path: fileToDelete,
         }
-      })
-      .finally(() => {
-        setDeletingFiles((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(fileToDelete);
-          return newSet;
-        });
-        setFileToDelete(null);
+      );
+      await fetchDiff();
+    } catch (error: unknown) {
+      // @ts-expect-error it is type ApiError
+      setDiffError(error.message || 'Failed to delete file');
+    } finally {
+      setDeletingFiles((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(fileToDelete);
+        return newSet;
       });
+      setFileToDelete(null);
+    }
   };
 
   const handleCancelDelete = () => {

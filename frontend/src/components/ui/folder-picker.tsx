@@ -19,7 +19,7 @@ import {
   ChevronUp,
   Search,
 } from 'lucide-react';
-import { fileSystemApi, withErrorHandling } from '@/lib/api';
+import { fileSystemApi } from '@/lib/api';
 import { DirectoryEntry } from 'shared/types';
 
 interface FolderPickerProps {
@@ -64,14 +64,12 @@ export function FolderPicker({
     setLoading(true);
     setError('');
 
-    const result = await withErrorHandling(
-      async () => {
-        return await fileSystemApi.list(path);
-      },
-      () => {
-        setError('Failed to load directory');
-      }
-    );
+    let result;
+    try {
+      result = await fileSystemApi.list(path);
+    } catch (error) {
+      console.error('Failed to list directory:', error);
+    }
 
     if (result !== undefined) {
       setEntries(result.entries || []);

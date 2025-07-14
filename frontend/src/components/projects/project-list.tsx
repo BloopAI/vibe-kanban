@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Project } from 'shared/types';
 import { ProjectForm } from './project-form';
-import { projectsApi, withErrorHandling } from '@/lib/api';
+import { projectsApi } from '@/lib/api';
 import {
   Plus,
   Edit,
@@ -43,13 +43,13 @@ export function ProjectList() {
     setLoading(true);
     setError('');
 
-    const result = await withErrorHandling(
-      () => projectsApi.getAll(),
-      (error) => {
-        console.error('Failed to fetch projects:', error);
-        setError(error.message || 'Failed to load projects');
-      }
-    );
+    let result;
+    try {
+      result = await projectsApi.getAll();
+    } catch (error) {
+      console.error('Failed to fetch projects:', error);
+      setError('Failed to fetch projects');
+    }
 
     if (result) {
       setProjects(result as Project[]);
@@ -66,13 +66,13 @@ export function ProjectList() {
     )
       return;
 
-    const result = await withErrorHandling(
-      () => projectsApi.delete(id),
-      (error) => {
-        console.error('Failed to delete project:', error);
-        setError(error.message || 'Failed to delete project');
-      }
-    );
+    let result;
+    try {
+      result = await projectsApi.delete(id);
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      setError('Failed to delete project');
+    }
 
     if (result !== undefined) {
       fetchProjects();
@@ -85,13 +85,12 @@ export function ProjectList() {
   };
 
   const handleOpenInIDE = async (projectId: string) => {
-    await withErrorHandling(
-      () => projectsApi.openEditor(projectId),
-      (error) => {
-        console.error('Failed to open project in IDE:', error);
-        setError(error.message || 'Failed to open project in IDE');
-      }
-    );
+    try {
+      await projectsApi.openEditor(projectId);
+    } catch (error) {
+      console.error('Failed to open project in IDE:', error);
+      setError('Failed to open project in IDE');
+    }
   };
 
   const handleFormSuccess = () => {

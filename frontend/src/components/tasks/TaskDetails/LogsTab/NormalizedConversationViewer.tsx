@@ -1,7 +1,7 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Bot, Hammer, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Loader } from '@/components/ui/loader.tsx';
-import { executionProcessesApi, withErrorHandling } from '@/lib/api.ts';
+import { executionProcessesApi } from '@/lib/api.ts';
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer.tsx';
 import type {
   ExecutionProcess,
@@ -132,21 +132,11 @@ export function NormalizedConversationViewer({
         setError(null);
       }
 
-      const result = await withErrorHandling(
-        async () => {
-          return await executionProcessesApi.getNormalizedLogs(
-            projectId,
-            executionProcess.id
-          );
-        },
-        () => {
-          if (!isPolling) {
-            setError(`Error fetching logs`);
-          }
-        }
-      );
-
-      if (result !== undefined) {
+      try {
+        const result = await executionProcessesApi.getNormalizedLogs(
+          projectId,
+          executionProcess.id
+        );
         setConversation((prev) => {
           // Only update if content actually changed
           if (!prev || JSON.stringify(prev) !== JSON.stringify(result)) {
@@ -159,6 +149,10 @@ export function NormalizedConversationViewer({
           }
           return prev;
         });
+      } catch (error) {
+        if (!isPolling) {
+          setError('Failed to load logs');
+        }
       }
 
       if (!isPolling) {

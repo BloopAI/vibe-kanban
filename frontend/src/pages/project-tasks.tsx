@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { FolderOpen, Plus, Settings } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
-import { ApiError, projectsApi, tasksApi, withErrorHandling } from '@/lib/api';
+import { projectsApi, tasksApi } from '@/lib/api';
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
 import { ProjectForm } from '@/components/projects/project-form';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
@@ -55,13 +55,12 @@ export function ProjectTasks() {
   const handleOpenInIDE = useCallback(async () => {
     if (!projectId) return;
 
-    await withErrorHandling(
-      () => projectsApi.openEditor(projectId),
-      (error: ApiError) => {
-        console.error('Failed to open project in IDE:', error);
-        setError('Failed to open project in IDE');
-      }
-    );
+    try {
+      await projectsApi.openEditor(projectId);
+    } catch (error) {
+      console.error('Failed to open project in IDE:', error);
+      setError('Failed to open project in IDE');
+    }
   }, [projectId]);
 
   // Setup keyboard shortcuts
@@ -103,12 +102,12 @@ export function ProjectTasks() {
   }, [taskId, tasks]);
 
   const fetchProject = useCallback(async () => {
-    const result = await withErrorHandling(
-      () => projectsApi.getWithBranch(projectId!),
-      () => {
-        setError('Failed to load project');
-      }
-    );
+    let result;
+    try {
+      result = await projectsApi.getWithBranch(projectId!);
+    } catch (error) {
+      setError('Failed to load project');
+    }
 
     if (result !== undefined) {
       setProject(result);
@@ -121,14 +120,8 @@ export function ProjectTasks() {
         setLoading(true);
       }
 
-      const result = await withErrorHandling(
-        () => tasksApi.getAll(projectId!),
-        () => {
-          setError('Failed to load tasks');
-        }
-      );
-
-      if (result !== undefined) {
+      try {
+        const result = await tasksApi.getAll(projectId!);
         // Only update if data has actually changed
         setTasks((prevTasks) => {
           const newTasks = result;
@@ -150,6 +143,8 @@ export function ProjectTasks() {
 
           return newTasks;
         });
+      } catch (error) {
+        setError('Failed to load tasks');
       }
 
       if (!skipLoading) {
@@ -161,17 +156,16 @@ export function ProjectTasks() {
 
   const handleCreateTask = useCallback(
     async (title: string, description: string) => {
-      const result = await withErrorHandling(
-        () =>
-          tasksApi.create(projectId!, {
-            project_id: projectId!,
-            title,
-            description: description || null,
-          }),
-        () => {
-          setError('Failed to create task');
-        }
-      );
+      let result;
+      try {
+        result = await tasksApi.create(projectId!, {
+          project_id: projectId!,
+          title,
+          description: description || null,
+        });
+      } catch (error) {
+        setError('Failed to create task');
+      }
 
       if (result !== undefined) {
         fetchTasks();
@@ -189,12 +183,12 @@ export function ProjectTasks() {
         executor: executor || null,
       };
 
-      const result = await withErrorHandling(
-        () => tasksApi.createAndStart(projectId!, payload),
-        () => {
-          setError('Failed to create and start task');
-        }
-      );
+      let result;
+      try {
+        result = await tasksApi.createAndStart(projectId!, payload);
+      } catch (error) {
+        setError('Failed to create and start task');
+      }
 
       if (result !== undefined) {
         fetchTasks();
@@ -209,17 +203,16 @@ export function ProjectTasks() {
     async (title: string, description: string, status: TaskStatus) => {
       if (!editingTask) return;
 
-      const result = await withErrorHandling(
-        () =>
-          tasksApi.update(projectId!, editingTask.id, {
-            title,
-            description: description || null,
-            status,
-          }),
-        () => {
-          setError('Failed to update task');
-        }
-      );
+      let result;
+      try {
+        result = await tasksApi.update(projectId!, editingTask.id, {
+          title,
+          description: description || null,
+          status,
+        });
+      } catch (error) {
+        setError('Failed to update task');
+      }
 
       if (result !== undefined) {
         fetchTasks();
@@ -233,12 +226,12 @@ export function ProjectTasks() {
     async (taskId: string) => {
       if (!confirm('Are you sure you want to delete this task?')) return;
 
-      const result = await withErrorHandling(
-        () => tasksApi.delete(projectId!, taskId),
-        () => {
-          setError('Failed to delete task');
-        }
-      );
+      let result;
+      try {
+        result = await tasksApi.delete(projectId!, taskId);
+      } catch (error) {
+        setError('Failed to delete task');
+      }
 
       if (result !== undefined) {
         fetchTasks();
@@ -292,23 +285,21 @@ export function ProjectTasks() {
         prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
       );
 
-      await withErrorHandling(
-        () =>
-          tasksApi.update(projectId!, taskId, {
-            title: task.title,
-            description: task.description,
-            status: newStatus,
-          }),
-        () => {
-          // Revert the optimistic update if the API call failed
-          setTasks((prev) =>
-            prev.map((t) =>
-              t.id === taskId ? { ...t, status: previousStatus } : t
-            )
-          );
-          setError('Failed to update task status');
-        }
-      );
+      try {
+        await tasksApi.update(projectId!, taskId, {
+          title: task.title,
+          description: task.description,
+          status: newStatus,
+        });
+      } catch (error) {
+        // Revert the optimistic update if the API call failed
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.id === taskId ? { ...t, status: previousStatus } : t
+          )
+        );
+        setError('Failed to update task status');
+      }
     },
     [projectId, tasks]
   );

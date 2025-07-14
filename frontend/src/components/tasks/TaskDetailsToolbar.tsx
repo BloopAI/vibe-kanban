@@ -2,7 +2,7 @@ import { useCallback, useContext, useEffect, useState } from 'react';
 import { Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useConfig } from '@/components/config-provider';
-import { projectsApi, attemptsApi, withErrorHandling } from '@/lib/api';
+import { projectsApi, attemptsApi } from '@/lib/api';
 import type { GitBranch, TaskAttempt } from 'shared/types';
 import {
   TaskAttemptDataContext,
@@ -61,9 +61,7 @@ function TaskDetailsToolbar() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchProjectBranches = useCallback(async () => {
-    const result = await withErrorHandling(() =>
-      projectsApi.getBranches(projectId)
-    );
+    const result = await projectsApi.getBranches(projectId);
 
     if (result !== undefined) {
       setBranches(result);
@@ -122,9 +120,7 @@ function TaskDetailsToolbar() {
     if (!task) return;
 
     setLoading(true);
-    const result = await withErrorHandling(() =>
-      attemptsApi.getAll(projectId, task.id)
-    );
+    const result = await attemptsApi.getAll(projectId, task.id);
 
     if (result !== undefined) {
       setTaskAttempts((prev) => {

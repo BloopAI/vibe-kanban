@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
 import { useContext, useMemo, useState } from 'react';
-import { attemptsApi, ApiError, withErrorHandling } from '@/lib/api.ts';
+import { attemptsApi } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,
   TaskDetailsContext,
@@ -50,31 +50,18 @@ export function TaskFollowUpSection() {
     setIsSendingFollowUp(true);
     setFollowUpError(null);
 
-    await withErrorHandling(
-      () =>
-        attemptsApi.followUp(
-          projectId,
-          selectedAttempt.task_id,
-          selectedAttempt.id,
-          {
-            prompt: followUpMessage.trim(),
-          }
-        ),
-      (error: ApiError) => {
-        setFollowUpError(
-          `Failed to start follow-up execution: ${error.message}`
-        );
-      }
-    )
-      .then((result) => {
-        if (result) {
-          setFollowUpMessage('');
-          fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
-        }
-      })
-      .finally(() => {
-        setIsSendingFollowUp(false);
+    try {
+      await attemptsApi.followUp(projectId!, task.id, selectedAttempt.id, {
+        prompt: followUpMessage.trim(),
       });
+      setFollowUpMessage('');
+      fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
+    } catch (error: unknown) {
+      // @ts-expect-error it is type ApiError
+      setFollowUpError(`Failed to start follow-up execution: ${error.message}`);
+    } finally {
+      setIsSendingFollowUp(false);
+    }
   };
 
   return (
