@@ -75,10 +75,15 @@ function CreatePrDialog({
 
     const prUrl = await withErrorHandling(
       async () => {
-        return await attemptsApi.createPR(projectId, selectedAttempt.task_id, selectedAttempt.id, {
-          title: prTitle,
-          body: prBody || '',
-        });
+        return await attemptsApi.createPR(
+          projectId,
+          selectedAttempt.task_id,
+          selectedAttempt.id,
+          {
+            title: prTitle,
+            body: prBody || '',
+          }
+        );
       },
       (error: ApiError) => {
         if (error.message === 'insufficient_github_permissions') {

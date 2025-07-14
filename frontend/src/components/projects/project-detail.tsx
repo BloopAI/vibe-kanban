@@ -39,7 +39,7 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
   const fetchProject = useCallback(async () => {
     setLoading(true);
     setError('');
-    
+
     const result = await withErrorHandling(
       () => projectsApi.getWithBranch(projectId),
       (error) => {
@@ -47,11 +47,11 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
         setError(error.message || 'Failed to load project');
       }
     );
-    
+
     if (result) {
       setProject(result as ProjectWithBranch);
     }
-    
+
     setLoading(false);
   }, [projectId]);
 
@@ -71,7 +71,7 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
         setError(error.message || 'Failed to delete project');
       }
     );
-    
+
     if (result !== undefined) {
       onBack();
     }

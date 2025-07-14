@@ -1,26 +1,28 @@
 // Import all necessary types from shared types
-import type {
-  Project,
-  ProjectWithBranch,
+import {
+  BranchStatus,
+  Config,
+  CreateFollowUpAttempt,
   CreateProject,
-  UpdateProject,
-  GitBranch,
-  Task,
-  TaskWithAttemptStatus,
   CreateTask,
   CreateTaskAndStart,
-  UpdateTask,
-  TaskAttempt,
   CreateTaskAttempt,
-  CreateFollowUpAttempt,
-  TaskAttemptActivityWithPrompt,
-  TaskAttemptState,
-  WorktreeDiff,
-  BranchStatus,
+  DirectoryEntry,
   ExecutionProcess,
   ExecutionProcessSummary,
+  GitBranch,
   NormalizedConversation,
-  DirectoryEntry,
+  Project,
+  ProjectWithBranch,
+  StartGitHubDeviceFlowType,
+  Task,
+  TaskAttempt,
+  TaskAttemptActivityWithPrompt,
+  TaskAttemptState,
+  TaskWithAttemptStatus,
+  UpdateProject,
+  UpdateTask,
+  WorktreeDiff,
 } from 'shared/types';
 
 export const makeRequest = async (url: string, options: RequestInit = {}) => {
@@ -67,7 +69,7 @@ export class ApiError extends Error {
 const handleApiResponse = async <T>(response: Response): Promise<T> => {
   if (!response.ok) {
     let errorMessage = `Request failed with status ${response.status}`;
-    
+
     try {
       const errorData = await response.json();
       if (errorData.message) {
@@ -77,16 +79,16 @@ const handleApiResponse = async <T>(response: Response): Promise<T> => {
       // Fallback to status text if JSON parsing fails
       errorMessage = response.statusText || errorMessage;
     }
-    
+
     throw new ApiError(errorMessage, response.status, response);
   }
 
   const result: ApiResponse<T> = await response.json();
-  
+
   if (!result.success) {
     throw new ApiError(result.message || 'API request failed');
   }
-  
+
   return result.data as T;
 };
 
@@ -142,8 +144,13 @@ export const projectsApi = {
     return handleApiResponse<GitBranch[]>(response);
   },
 
-  searchFiles: async (id: string, query: string): Promise<FileSearchResult[]> => {
-    const response = await makeRequest(`/api/projects/${id}/search?q=${encodeURIComponent(query)}`);
+  searchFiles: async (
+    id: string,
+    query: string
+  ): Promise<FileSearchResult[]> => {
+    const response = await makeRequest(
+      `/api/projects/${id}/search?q=${encodeURIComponent(query)}`
+    );
     return handleApiResponse<FileSearchResult[]>(response);
   },
 };
@@ -163,26 +170,42 @@ export const tasksApi = {
     return handleApiResponse<Task>(response);
   },
 
-  createAndStart: async (projectId: string, data: CreateTaskAndStart): Promise<TaskWithAttemptStatus> => {
-    const response = await makeRequest(`/api/projects/${projectId}/tasks/create-and-start`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  createAndStart: async (
+    projectId: string,
+    data: CreateTaskAndStart
+  ): Promise<TaskWithAttemptStatus> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/create-and-start`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<TaskWithAttemptStatus>(response);
   },
 
-  update: async (projectId: string, taskId: string, data: UpdateTask): Promise<Task> => {
-    const response = await makeRequest(`/api/projects/${projectId}/tasks/${taskId}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+  update: async (
+    projectId: string,
+    taskId: string,
+    data: UpdateTask
+  ): Promise<Task> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<Task>(response);
   },
 
   delete: async (projectId: string, taskId: string): Promise<void> => {
-    const response = await makeRequest(`/api/projects/${projectId}/tasks/${taskId}`, {
-      method: 'DELETE',
-    });
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}`,
+      {
+        method: 'DELETE',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 };
@@ -190,119 +213,240 @@ export const tasksApi = {
 // Task Attempts APIs
 export const attemptsApi = {
   getAll: async (projectId: string, taskId: string): Promise<TaskAttempt[]> => {
-    const response = await makeRequest(`/api/projects/${projectId}/tasks/${taskId}/attempts`);
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts`
+    );
     return handleApiResponse<TaskAttempt[]>(response);
   },
 
-  create: async (projectId: string, taskId: string, data: CreateTaskAttempt): Promise<TaskAttempt> => {
-    const response = await makeRequest(`/api/projects/${projectId}/tasks/${taskId}/attempts`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  create: async (
+    projectId: string,
+    taskId: string,
+    data: CreateTaskAttempt
+  ): Promise<TaskAttempt> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<TaskAttempt>(response);
   },
 
-  getState: async (projectId: string, taskId: string, attemptId: string): Promise<TaskAttemptState> => {
-    const response = await makeRequest(`/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}`);
+  getState: async (
+    projectId: string,
+    taskId: string,
+    attemptId: string
+  ): Promise<TaskAttemptState> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}`
+    );
     return handleApiResponse<TaskAttemptState>(response);
   },
 
-  stop: async (projectId: string, taskId: string, attemptId: string): Promise<void> => {
-    const response = await makeRequest(`/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/stop`, {
-      method: 'POST',
-    });
+  stop: async (
+    projectId: string,
+    taskId: string,
+    attemptId: string
+  ): Promise<void> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/stop`,
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 
-  followUp: async (projectId: string, taskId: string, attemptId: string, data: CreateFollowUpAttempt): Promise<void> => {
-    const response = await makeRequest(`/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/follow-up`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  followUp: async (
+    projectId: string,
+    taskId: string,
+    attemptId: string,
+    data: CreateFollowUpAttempt
+  ): Promise<void> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/follow-up`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<void>(response);
   },
 
-  getActivities: async (projectId: string, taskId: string, attemptId: string): Promise<TaskAttemptActivityWithPrompt[]> => {
-    const response = await makeRequest(`/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/activities`);
+  getActivities: async (
+    projectId: string,
+    taskId: string,
+    attemptId: string
+  ): Promise<TaskAttemptActivityWithPrompt[]> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/activities`
+    );
     return handleApiResponse<TaskAttemptActivityWithPrompt[]>(response);
   },
 
-  getDiff: async (projectId: string, taskId: string, attemptId: string): Promise<WorktreeDiff> => {
-    const response = await makeRequest(`/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/diff`);
+  getDiff: async (
+    projectId: string,
+    taskId: string,
+    attemptId: string
+  ): Promise<WorktreeDiff> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/diff`
+    );
     return handleApiResponse<WorktreeDiff>(response);
   },
 
-  deleteFile: async (projectId: string, taskId: string, attemptId: string, data: { file_path: string }): Promise<void> => {
-    const response = await makeRequest(`/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/delete-file`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  deleteFile: async (
+    projectId: string,
+    taskId: string,
+    attemptId: string,
+    data: {
+      file_path: string;
+    }
+  ): Promise<void> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/delete-file`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<void>(response);
   },
 
-  openEditor: async (projectId: string, taskId: string, attemptId: string): Promise<void> => {
-    const response = await makeRequest(`/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/open-editor`, {
-      method: 'POST',
-    });
+  openEditor: async (
+    projectId: string,
+    taskId: string,
+    attemptId: string
+  ): Promise<void> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/open-editor`,
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 
-  getBranchStatus: async (projectId: string, taskId: string, attemptId: string): Promise<BranchStatus> => {
-    const response = await makeRequest(`/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/branch-status`);
+  getBranchStatus: async (
+    projectId: string,
+    taskId: string,
+    attemptId: string
+  ): Promise<BranchStatus> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/branch-status`
+    );
     return handleApiResponse<BranchStatus>(response);
   },
 
-  merge: async (projectId: string, taskId: string, attemptId: string): Promise<void> => {
-    const response = await makeRequest(`/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/merge`, {
-      method: 'POST',
-    });
+  merge: async (
+    projectId: string,
+    taskId: string,
+    attemptId: string
+  ): Promise<void> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/merge`,
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 
-  rebase: async (projectId: string, taskId: string, attemptId: string): Promise<void> => {
-    const response = await makeRequest(`/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/rebase`, {
-      method: 'POST',
-    });
+  rebase: async (
+    projectId: string,
+    taskId: string,
+    attemptId: string
+  ): Promise<void> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/rebase`,
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 
-  createPR: async (projectId: string, taskId: string, attemptId: string, data: { title: string; body: string }): Promise<string> => {
-    const response = await makeRequest(`/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/create-pr`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  createPR: async (
+    projectId: string,
+    taskId: string,
+    attemptId: string,
+    data: {
+      title: string;
+      body: string;
+    }
+  ): Promise<string> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/create-pr`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<string>(response);
   },
 
-  startDevServer: async (projectId: string, taskId: string, attemptId: string): Promise<void> => {
-    const response = await makeRequest(`/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/start-dev-server`, {
-      method: 'POST',
-    });
+  startDevServer: async (
+    projectId: string,
+    taskId: string,
+    attemptId: string
+  ): Promise<void> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/start-dev-server`,
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 
-  getExecutionProcesses: async (projectId: string, taskId: string, attemptId: string): Promise<ExecutionProcessSummary[]> => {
-    const response = await makeRequest(`/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/execution-processes`);
+  getExecutionProcesses: async (
+    projectId: string,
+    taskId: string,
+    attemptId: string
+  ): Promise<ExecutionProcessSummary[]> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/execution-processes`
+    );
     return handleApiResponse<ExecutionProcessSummary[]>(response);
   },
 
-  stopExecutionProcess: async (projectId: string, taskId: string, attemptId: string, processId: string): Promise<void> => {
-    const response = await makeRequest(`/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/execution-processes/${processId}/stop`, {
-      method: 'POST',
-    });
+  stopExecutionProcess: async (
+    projectId: string,
+    taskId: string,
+    attemptId: string,
+    processId: string
+  ): Promise<void> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/execution-processes/${processId}/stop`,
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 };
 
 // Execution Process APIs
 export const executionProcessesApi = {
-  getDetails: async (projectId: string, processId: string): Promise<ExecutionProcess> => {
-    const response = await makeRequest(`/api/projects/${projectId}/execution-processes/${processId}`);
+  getDetails: async (
+    projectId: string,
+    processId: string
+  ): Promise<ExecutionProcess> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/execution-processes/${processId}`
+    );
     return handleApiResponse<ExecutionProcess>(response);
   },
 
-  getNormalizedLogs: async (projectId: string, processId: string): Promise<NormalizedConversation> => {
-    const response = await makeRequest(`/api/projects/${projectId}/execution-processes/${processId}/normalized-logs`);
+  getNormalizedLogs: async (
+    projectId: string,
+    processId: string
+  ): Promise<NormalizedConversation> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/execution-processes/${processId}/normalized-logs`
+    );
     return handleApiResponse<NormalizedConversation>(response);
   },
 };
@@ -316,23 +460,96 @@ export const fileSystemApi = {
   },
 };
 
+// Config APIs
+export const configApi = {
+  getConfig: async (): Promise<Config> => {
+    const response = await makeRequest('/api/config');
+    return handleApiResponse<Config>(response);
+  },
+  saveConfig: async (config: Config): Promise<Config> => {
+    const response = await makeRequest('/api/config', {
+      method: 'POST',
+      body: JSON.stringify(config),
+    });
+    return handleApiResponse<Config>(response);
+  },
+};
+
+// GitHub Device Auth APIs
+export const githubAuthApi = {
+  checkGithubToken: async (): Promise<boolean | undefined> => {
+    try {
+      const response = await makeRequest('/api/auth/github/check');
+      const result: ApiResponse<null> = await response.json();
+      if (!result.success && result.message === 'github_token_invalid') {
+        return false;
+      }
+      return result.success;
+    } catch (err) {
+      // On network/server error, return undefined (unknown)
+      return undefined;
+    }
+  },
+  start: async (): Promise<StartGitHubDeviceFlowType> => {
+    const response = await makeRequest('/api/auth/github/device/start', {
+      method: 'POST',
+    });
+    return handleApiResponse<StartGitHubDeviceFlowType>(response);
+  },
+  poll: async (device_code: string): Promise<string> => {
+    const response = await makeRequest('/api/auth/github/device/poll', {
+      method: 'POST',
+      body: JSON.stringify({ device_code }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return handleApiResponse<string>(response);
+  },
+};
+
+// MCP Servers APIs
+export const mcpServersApi = {
+  load: async (executor: string): Promise<any> => {
+    const response = await makeRequest(
+      `/api/mcp-servers?executor=${encodeURIComponent(executor)}`
+    );
+    return handleApiResponse<any>(response);
+  },
+  save: async (executor: string, serversConfig: any): Promise<void> => {
+    const response = await makeRequest(
+      `/api/mcp-servers?executor=${encodeURIComponent(executor)}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(serversConfig),
+      }
+    );
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new ApiError(
+        errorData.message || 'Failed to save MCP servers',
+        response.status,
+        response
+      );
+    }
+  },
+};
+
 // Extract endpoint information from API function calls for better logging
 const getEndpointFromApiCall = (apiCall: () => Promise<any>): string => {
   const apiCallString = apiCall.toString();
-  
+
   // Try to extract the endpoint from the function string
   // Look for patterns like /api/projects, /api/tasks, etc.
   const endpointMatch = apiCallString.match(/\/api\/[^'"`\s)]+/);
   if (endpointMatch) {
     return endpointMatch[0];
   }
-  
+
   // Try to extract API function name as fallback
   const functionMatch = apiCallString.match(/(\w+Api\.\w+)/);
   if (functionMatch) {
     return functionMatch[1];
   }
-  
+
   return 'unknown endpoint';
 };
 
@@ -345,28 +562,28 @@ export const withErrorHandling = async <T>(
     return await apiCall();
   } catch (error) {
     const endpoint = getEndpointFromApiCall(apiCall);
-    
+
     let apiError: ApiError;
     if (error instanceof ApiError) {
       apiError = error;
     } else {
       apiError = new ApiError('An unexpected error occurred');
     }
-    
+
     // Default logging - always log the endpoint and full error details to console
     console.error(`[API Error] ${endpoint}:`, {
       message: apiError.message,
       status: apiError.status,
       endpoint,
       timestamp: new Date().toISOString(),
-      fullError: apiError
+      fullError: apiError,
     });
-    
+
     // If custom error handler is provided, call it
     if (onError) {
       onError(apiError);
     }
-    
+
     return undefined;
   }
 };

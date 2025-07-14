@@ -21,7 +21,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
-import { attemptsApi, executionProcessesApi, ApiError, withErrorHandling } from '@/lib/api.ts';
+import {
+  attemptsApi,
+  executionProcessesApi,
+  ApiError,
+  withErrorHandling,
+} from '@/lib/api.ts';
 import {
   Dispatch,
   SetStateAction,
@@ -108,12 +113,13 @@ function CurrentAttempt({
   const fetchDevServerDetails = useCallback(async () => {
     if (!runningDevServer || !task || !selectedAttempt) return;
 
-    const result = await withErrorHandling(
-      async () => {
-        const details = await executionProcessesApi.getDetails(projectId, runningDevServer.id);
-        return details;
-      }
-    );
+    const result = await withErrorHandling(async () => {
+      const details = await executionProcessesApi.getDetails(
+        projectId,
+        runningDevServer.id
+      );
+      return details;
+    });
 
     if (result !== undefined) {
       setDevServerDetails(result);
@@ -136,12 +142,14 @@ function CurrentAttempt({
 
     setIsStartingDevServer(true);
 
-    await withErrorHandling(
-      async () => {
-        await attemptsApi.startDevServer(projectId, selectedAttempt.task_id, selectedAttempt.id);
-        fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
-      }
-    );
+    await withErrorHandling(async () => {
+      await attemptsApi.startDevServer(
+        projectId,
+        selectedAttempt.task_id,
+        selectedAttempt.id
+      );
+      fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
+    });
 
     setIsStartingDevServer(false);
   };
@@ -151,12 +159,15 @@ function CurrentAttempt({
 
     setIsStartingDevServer(true);
 
-    await withErrorHandling(
-      async () => {
-        await attemptsApi.stopExecutionProcess(projectId, selectedAttempt.task_id, selectedAttempt.id, runningDevServer.id);
-        fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
-      }
-    );
+    await withErrorHandling(async () => {
+      await attemptsApi.stopExecutionProcess(
+        projectId,
+        selectedAttempt.task_id,
+        selectedAttempt.id,
+        runningDevServer.id
+      );
+      fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
+    });
 
     setIsStartingDevServer(false);
   };
@@ -166,15 +177,17 @@ function CurrentAttempt({
 
     setIsStopping(true);
 
-    await withErrorHandling(
-      async () => {
-        await attemptsApi.stop(projectId, selectedAttempt.task_id, selectedAttempt.id);
-        await fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
-        setTimeout(() => {
-          fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
-        }, 1000);
-      }
-    );
+    await withErrorHandling(async () => {
+      await attemptsApi.stop(
+        projectId,
+        selectedAttempt.task_id,
+        selectedAttempt.id
+      );
+      await fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
+      setTimeout(() => {
+        fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
+      }, 1000);
+    });
 
     setIsStopping(false);
   };
@@ -202,7 +215,11 @@ function CurrentAttempt({
 
     const result = await withErrorHandling(
       async () => {
-        const result = await attemptsApi.getBranchStatus(projectId, selectedAttempt.task_id, selectedAttempt.id);
+        const result = await attemptsApi.getBranchStatus(
+          projectId,
+          selectedAttempt.task_id,
+          selectedAttempt.id
+        );
         return result;
       },
       () => {
@@ -212,8 +229,7 @@ function CurrentAttempt({
 
     if (result !== undefined) {
       setBranchStatus((prev) => {
-        if (JSON.stringify(prev) === JSON.stringify(result))
-          return prev;
+        if (JSON.stringify(prev) === JSON.stringify(result)) return prev;
         return result;
       });
     }
@@ -235,7 +251,11 @@ function CurrentAttempt({
 
     await withErrorHandling(
       async () => {
-        await attemptsApi.merge(projectId, selectedAttempt.task_id, selectedAttempt.id);
+        await attemptsApi.merge(
+          projectId,
+          selectedAttempt.task_id,
+          selectedAttempt.id
+        );
         // Refetch branch status to show updated state
         fetchBranchStatus();
       },
@@ -254,7 +274,11 @@ function CurrentAttempt({
 
     await withErrorHandling(
       async () => {
-        await attemptsApi.rebase(projectId, selectedAttempt.task_id, selectedAttempt.id);
+        await attemptsApi.rebase(
+          projectId,
+          selectedAttempt.task_id,
+          selectedAttempt.id
+        );
         // Refresh branch status after rebase
         fetchBranchStatus();
       },

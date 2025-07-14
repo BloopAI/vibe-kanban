@@ -49,24 +49,32 @@ export function TaskFollowUpSection() {
 
     setIsSendingFollowUp(true);
     setFollowUpError(null);
-    
+
     await withErrorHandling(
-      () => attemptsApi.followUp(projectId, selectedAttempt.task_id, selectedAttempt.id, {
-        prompt: followUpMessage.trim(),
-      }),
+      () =>
+        attemptsApi.followUp(
+          projectId,
+          selectedAttempt.task_id,
+          selectedAttempt.id,
+          {
+            prompt: followUpMessage.trim(),
+          }
+        ),
       (error: ApiError) => {
         setFollowUpError(
           `Failed to start follow-up execution: ${error.message}`
         );
       }
-    ).then((result) => {
-      if (result) {
-        setFollowUpMessage('');
-        fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
-      }
-    }).finally(() => {
-      setIsSendingFollowUp(false);
-    });
+    )
+      .then((result) => {
+        if (result) {
+          setFollowUpMessage('');
+          fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
+        }
+      })
+      .finally(() => {
+        setIsSendingFollowUp(false);
+      });
   };
 
   return (

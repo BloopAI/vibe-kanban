@@ -50,12 +50,10 @@ export function FileSearchTextarea({
 
     const searchFiles = async () => {
       setIsLoading(true);
-      
-      const result = await withErrorHandling(
-        async () => {
-          return await projectsApi.searchFiles(projectId, searchQuery);
-        }
-      );
+
+      const result = await withErrorHandling(async () => {
+        return await projectsApi.searchFiles(projectId, searchQuery);
+      });
 
       if (result !== undefined) {
         setSearchResults(result);

@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
 import { EXECUTOR_TYPES, EXECUTOR_LABELS } from 'shared/types';
 import { useConfig } from '@/components/config-provider';
+import { mcpServersApi } from '../lib/api';
 
 export function McpServers() {
   const { config } = useConfig();
@@ -55,45 +56,31 @@ export function McpServers() {
 
       try {
         // Load MCP servers for the selected executor
-        const response = await fetch(
-          `/api/mcp-servers?executor=${executorType}`
-        );
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success) {
-            // Handle new response format with servers and config_path
-            const data = result.data || {};
-            const servers = data.servers || {};
-            const configPath = data.config_path || '';
+        const result = await mcpServersApi.load(executorType);
+        // Handle new response format with servers and config_path
+        const data = result || {};
+        const servers = data.servers || {};
+        const configPath = data.config_path || '';
 
-            // Create the full configuration structure based on executor type
-            let fullConfig;
-            if (executorType === 'amp') {
-              // For AMP, use the amp.mcpServers structure
-              fullConfig = { 'amp.mcpServers': servers };
-            } else {
-              // For other executors, use the standard mcpServers structure
-              fullConfig = { mcpServers: servers };
-            }
-
-            const configJson = JSON.stringify(fullConfig, null, 2);
-            setMcpServers(configJson);
-            setMcpConfigPath(configPath);
-          }
+        // Create the full configuration structure based on executor type
+        let fullConfig;
+        if (executorType === 'amp') {
+          // For AMP, use the amp.mcpServers structure
+          fullConfig = { 'amp.mcpServers': servers };
         } else {
-          const result = await response.json();
-          if (
-            result.message &&
-            result.message.includes('does not support MCP')
-          ) {
-            // This executor doesn't support MCP - show warning message
-            setMcpError(result.message);
-          } else {
-            console.warn('Failed to load MCP servers:', response.statusText);
-          }
+          // For other executors, use the standard mcpServers structure
+          fullConfig = { mcpServers: servers };
         }
-      } catch (err) {
-        console.error('Error loading MCP servers:', err);
+
+        const configJson = JSON.stringify(fullConfig, null, 2);
+        setMcpServers(configJson);
+        setMcpConfigPath(configPath);
+      } catch (err: any) {
+        if (err?.message && err.message.includes('does not support MCP')) {
+          setMcpError(err.message);
+        } else {
+          console.error('Error loading MCP servers:', err);
+        }
       } finally {
         setMcpLoading(false);
       }
@@ -215,21 +202,7 @@ export function McpServers() {
             mcpServersConfig = fullConfig.mcpServers;
           }
 
-          const mcpResponse = await fetch(
-            `/api/mcp-servers?executor=${selectedMcpExecutor}`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(mcpServersConfig),
-            }
-          );
-
-          if (!mcpResponse.ok) {
-            const errorData = await mcpResponse.json();
-            throw new Error(errorData.message || 'Failed to save MCP servers');
-          }
+          await mcpServersApi.save(selectedMcpExecutor, mcpServersConfig);
 
           // Show success feedback
           setSuccess(true);

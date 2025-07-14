@@ -11,12 +11,8 @@ import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { PrivacyOptInDialog } from '@/components/PrivacyOptInDialog';
 import { ConfigProvider, useConfig } from '@/components/config-provider';
 import { ThemeProvider } from '@/components/theme-provider';
-import type {
-  ApiResponse,
-  Config,
-  EditorType,
-  ExecutorConfig,
-} from 'shared/types';
+import type { EditorType, ExecutorConfig } from 'shared/types';
+import { configApi } from '@/lib/api';
 import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
 import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
@@ -61,20 +57,9 @@ function AppContent() {
     updateConfig({ disclaimer_acknowledged: true });
 
     try {
-      const response = await fetch('/api/config', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ ...config, disclaimer_acknowledged: true }),
-      });
-
-      const data: ApiResponse<Config> = await response.json();
-
-      if (data.success) {
-        setShowDisclaimer(false);
-        setShowOnboarding(!config.onboarding_acknowledged);
-      }
+      await configApi.saveConfig({ ...config, disclaimer_acknowledged: true });
+      setShowDisclaimer(false);
+      setShowOnboarding(!config.onboarding_acknowledged);
     } catch (err) {
       console.error('Error saving config:', err);
     }
@@ -96,19 +81,8 @@ function AppContent() {
     updateConfig(updatedConfig);
 
     try {
-      const response = await fetch('/api/config', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedConfig),
-      });
-
-      const data: ApiResponse<Config> = await response.json();
-
-      if (data.success) {
-        setShowOnboarding(false);
-      }
+      await configApi.saveConfig(updatedConfig);
+      setShowOnboarding(false);
     } catch (err) {
       console.error('Error saving config:', err);
     }
@@ -126,23 +100,12 @@ function AppContent() {
     updateConfig(updatedConfig);
 
     try {
-      const response = await fetch('/api/config', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedConfig),
-      });
-
-      const data: ApiResponse<Config> = await response.json();
-
-      if (data.success) {
-        setShowPrivacyOptIn(false);
-        // Now show GitHub login after privacy choice is made
-        const notAuthenticated =
-          !updatedConfig.github?.username || !updatedConfig.github?.token;
-        setShowGitHubLogin(notAuthenticated);
-      }
+      await configApi.saveConfig(updatedConfig);
+      setShowPrivacyOptIn(false);
+      // Now show GitHub login after privacy choice is made
+      const notAuthenticated =
+        !updatedConfig.github?.username || !updatedConfig.github?.token;
+      setShowGitHubLogin(notAuthenticated);
     } catch (err) {
       console.error('Error saving config:', err);
     }

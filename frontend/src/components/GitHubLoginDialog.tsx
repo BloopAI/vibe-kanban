@@ -11,6 +11,8 @@ import { Button } from './ui/button';
 import { useConfig } from './config-provider';
 import { Check, Clipboard } from 'lucide-react';
 import { Loader } from './ui/loader';
+import { githubAuthApi } from '../lib/api';
+import { StartGitHubDeviceFlowType } from 'shared/types.ts';
 
 export function GitHubLoginDialog({
   open,
@@ -22,13 +24,8 @@ export function GitHubLoginDialog({
   const { config, loading, githubTokenInvalid } = useConfig();
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [deviceState, setDeviceState] = useState<null | {
-    device_code: string;
-    user_code: string;
-    verification_uri: string;
-    expires_in: number;
-    interval: number;
-  }>(null);
+  const [deviceState, setDeviceState] =
+    useState<null | StartGitHubDeviceFlowType>(null);
   const [polling, setPolling] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -41,19 +38,12 @@ export function GitHubLoginDialog({
     setError(null);
     setDeviceState(null);
     try {
-      const res = await fetch('/api/auth/github/device/start', {
-        method: 'POST',
-      });
-      const data = await res.json();
-      if (data.success && data.data) {
-        setDeviceState(data.data);
-        setPolling(true);
-      } else {
-        setError(data.message || 'Failed to start GitHub login.');
-      }
-    } catch (e) {
+      const data = await githubAuthApi.start();
+      setDeviceState(data);
+      setPolling(true);
+    } catch (e: any) {
       console.error(e);
-      setError('Network error');
+      setError(e?.message || 'Network error');
     } finally {
       setFetching(false);
     }
@@ -65,35 +55,25 @@ export function GitHubLoginDialog({
     if (polling && deviceState) {
       const poll = async () => {
         try {
-          const res = await fetch('/api/auth/github/device/poll', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ device_code: deviceState.device_code }),
-          });
-          const data = await res.json();
-          if (data.success) {
-            setPolling(false);
-            setDeviceState(null);
-            setError(null);
-            window.location.reload(); // reload config
-          } else if (data.message === 'authorization_pending') {
-            // keep polling
+          await githubAuthApi.poll(deviceState.device_code);
+          setPolling(false);
+          setDeviceState(null);
+          setError(null);
+          window.location.reload(); // reload config
+        } catch (e: any) {
+          if (e?.message === 'authorization_pending') {
             timer = setTimeout(poll, (deviceState.interval || 5) * 1000);
-          } else if (data.message === 'slow_down') {
-            // increase interval
+          } else if (e?.message === 'slow_down') {
             timer = setTimeout(poll, (deviceState.interval + 5) * 1000);
-          } else if (data.message === 'expired_token') {
+          } else if (e?.message === 'expired_token') {
             setPolling(false);
             setError('Device code expired. Please try again.');
             setDeviceState(null);
           } else {
             setPolling(false);
-            setError(data.message || 'Login failed.');
+            setError(e?.message || 'Login failed.');
             setDeviceState(null);
           }
-        } catch (e) {
-          setPolling(false);
-          setError('Network error');
         }
       };
       timer = setTimeout(poll, deviceState.interval * 1000);

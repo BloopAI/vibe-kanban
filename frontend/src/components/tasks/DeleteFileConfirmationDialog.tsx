@@ -28,26 +28,34 @@ function DeleteFileConfirmationDialog() {
       return;
 
     setDeletingFiles((prev) => new Set(prev).add(fileToDelete));
-    
+
     await withErrorHandling(
-      () => attemptsApi.deleteFile(projectId, selectedAttempt.task_id, selectedAttempt.id, {
-        file_path: fileToDelete,
-      }),
+      () =>
+        attemptsApi.deleteFile(
+          projectId,
+          selectedAttempt.task_id,
+          selectedAttempt.id,
+          {
+            file_path: fileToDelete,
+          }
+        ),
       (error: ApiError) => {
         setDiffError(error.message || 'Failed to delete file');
       }
-    ).then((result) => {
-      if (result) {
-        fetchDiff();
-      }
-    }).finally(() => {
-      setDeletingFiles((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(fileToDelete);
-        return newSet;
+    )
+      .then((result) => {
+        if (result) {
+          fetchDiff();
+        }
+      })
+      .finally(() => {
+        setDeletingFiles((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(fileToDelete);
+          return newSet;
+        });
+        setFileToDelete(null);
       });
-      setFileToDelete(null);
-    });
   };
 
   const handleCancelDelete = () => {

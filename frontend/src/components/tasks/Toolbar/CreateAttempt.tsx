@@ -71,15 +71,13 @@ function CreateAttempt({
   }, [branches, branchSearchTerm]);
 
   const onCreateNewAttempt = async (executor?: string, baseBranch?: string) => {
-    await withErrorHandling(
-      async () => {
-        await attemptsApi.create(projectId, task.id, {
-          executor: executor || selectedExecutor,
-          base_branch: baseBranch || selectedBranch,
-        });
-        fetchTaskAttempts();
-      }
-    );
+    await withErrorHandling(async () => {
+      await attemptsApi.create(projectId, task.id, {
+        executor: executor || selectedExecutor,
+        base_branch: baseBranch || selectedBranch,
+      });
+      fetchTaskAttempts();
+    });
   };
 
   const handleExitCreateAttemptMode = () => {

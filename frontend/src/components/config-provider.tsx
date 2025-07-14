@@ -6,7 +6,8 @@ import {
   useEffect,
   useState,
 } from 'react';
-import type { ApiResponse, Config } from 'shared/types';
+import type { Config } from 'shared/types';
+import { configApi, githubAuthApi } from '../lib/api';
 
 interface ConfigContextType {
   config: Config | null;
@@ -31,12 +32,8 @@ export function ConfigProvider({ children }: ConfigProviderProps) {
   useEffect(() => {
     const loadConfig = async () => {
       try {
-        const response = await fetch('/api/config');
-        const data: ApiResponse<Config> = await response.json();
-
-        if (data.success && data.data) {
-          setConfig(data.data);
-        }
+        const config = await configApi.getConfig();
+        setConfig(config);
       } catch (err) {
         console.error('Error loading config:', err);
       } finally {
@@ -51,13 +48,12 @@ export function ConfigProvider({ children }: ConfigProviderProps) {
   useEffect(() => {
     if (loading) return;
     const checkToken = async () => {
-      const response = await fetch('/api/auth/github/check');
-      const data: ApiResponse<null> = await response.json();
-      if (!data.success && data.message === 'github_token_invalid') {
-        setGithubTokenInvalid(true);
-      } else {
-        setGithubTokenInvalid(false);
+      const valid = await githubAuthApi.checkGithubToken();
+      if (valid === undefined) {
+        // Network/server error: do not update githubTokenInvalid
+        return;
       }
+      setGithubTokenInvalid(!valid);
     };
     checkToken();
   }, [loading]);
@@ -68,18 +64,9 @@ export function ConfigProvider({ children }: ConfigProviderProps) {
 
   const saveConfig = useCallback(async (): Promise<boolean> => {
     if (!config) return false;
-
     try {
-      const response = await fetch('/api/config', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(config),
-      });
-
-      const data: ApiResponse<Config> = await response.json();
-      return data.success;
+      await configApi.saveConfig(config);
+      return true;
     } catch (err) {
       console.error('Error saving config:', err);
       return false;
@@ -92,19 +79,11 @@ export function ConfigProvider({ children }: ConfigProviderProps) {
       const newConfig: Config | null = config
         ? { ...config, ...updates }
         : null;
-
       try {
-        const response = await fetch('/api/config', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(newConfig),
-        });
-
-        const data: ApiResponse<Config> = await response.json();
-        setConfig(data.data);
-        return data.success;
+        if (!newConfig) return false;
+        const saved = await configApi.saveConfig(newConfig);
+        setConfig(saved);
+        return true;
       } catch (err) {
         console.error('Error saving config:', err);
         return false;

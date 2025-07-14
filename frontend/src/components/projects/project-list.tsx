@@ -42,7 +42,7 @@ export function ProjectList() {
   const fetchProjects = async () => {
     setLoading(true);
     setError('');
-    
+
     const result = await withErrorHandling(
       () => projectsApi.getAll(),
       (error) => {
@@ -50,11 +50,11 @@ export function ProjectList() {
         setError(error.message || 'Failed to load projects');
       }
     );
-    
+
     if (result) {
       setProjects(result as Project[]);
     }
-    
+
     setLoading(false);
   };
 
@@ -73,7 +73,7 @@ export function ProjectList() {
         setError(error.message || 'Failed to delete project');
       }
     );
-    
+
     if (result !== undefined) {
       fetchProjects();
     }

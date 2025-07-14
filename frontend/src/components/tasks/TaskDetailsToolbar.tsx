@@ -61,10 +61,10 @@ function TaskDetailsToolbar() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchProjectBranches = useCallback(async () => {
-    const result = await withErrorHandling(
-      () => projectsApi.getBranches(projectId)
+    const result = await withErrorHandling(() =>
+      projectsApi.getBranches(projectId)
     );
-    
+
     if (result !== undefined) {
       setBranches(result);
       // Set current branch as default
@@ -122,14 +122,13 @@ function TaskDetailsToolbar() {
     if (!task) return;
 
     setLoading(true);
-    const result = await withErrorHandling(
-      () => attemptsApi.getAll(projectId, task.id)
+    const result = await withErrorHandling(() =>
+      attemptsApi.getAll(projectId, task.id)
     );
-    
+
     if (result !== undefined) {
       setTaskAttempts((prev) => {
-        if (JSON.stringify(prev) === JSON.stringify(result))
-          return prev;
+        if (JSON.stringify(prev) === JSON.stringify(result)) return prev;
         return result || prev;
       });
 
@@ -155,7 +154,7 @@ function TaskDetailsToolbar() {
         });
       }
     }
-    
+
     setLoading(false);
   }, [task, projectId, fetchAttemptData, fetchExecutionState]);
 

@@ -95,14 +95,14 @@ export function ProjectForm({
           setup_script: setupScript.trim() || null,
           dev_script: devScript.trim() || null,
         };
-        
+
         const result = await withErrorHandling(
           () => projectsApi.update(project.id, updateData),
           (error) => {
             throw new Error(error.message || 'Failed to update project');
           }
         );
-        
+
         if (result === undefined) {
           return; // Error was handled by withErrorHandling
         }
@@ -114,14 +114,14 @@ export function ProjectForm({
           setup_script: setupScript.trim() || null,
           dev_script: devScript.trim() || null,
         };
-        
+
         const result = await withErrorHandling(
           () => projectsApi.create(createData),
           (error) => {
             throw new Error(error.message || 'Failed to create project');
           }
         );
-        
+
         if (result === undefined) {
           return; // Error was handled by withErrorHandling
         }
