@@ -1,6 +1,12 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { FolderOpen, Settings, BookOpen, Server, MessageCircleQuestion } from 'lucide-react';
+import {
+  FolderOpen,
+  Settings,
+  BookOpen,
+  Server,
+  MessageCircleQuestion,
+} from 'lucide-react';
 import { Logo } from '@/components/logo';
 
 export function Navbar() {
