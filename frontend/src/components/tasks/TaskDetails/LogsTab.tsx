@@ -8,6 +8,7 @@ import {
   TaskSelectedAttemptContext,
 } from '@/components/context/taskDetailsContext.ts';
 import Conversation from '@/components/tasks/TaskDetails/Conversation.tsx';
+import { filterStderrBoundaryMarkers } from '@/utils/logUtils.ts';
 
 function LogsTab() {
   const { loading } = useContext(TaskAttemptLoadingContext);
@@ -98,7 +99,10 @@ function LogsTab() {
 
         {setupProcess && (
           <div className="font-mono text-sm whitespace-pre-wrap text-muted-foreground">
-            {[setupProcess.stdout || '', setupProcess.stderr || '']
+            {[
+              setupProcess.stdout || '',
+              filterStderrBoundaryMarkers(setupProcess.stderr || ''),
+            ]
               .filter(Boolean)
               .join('\n') || 'Waiting for setup script output...'}
           </div>
