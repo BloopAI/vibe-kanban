@@ -1,10 +1,26 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 use sqlx::{FromRow, SqlitePool, Type};
 use ts_rs::TS;
 use uuid::Uuid;
 
 use crate::app_state::ExecutionType;
+
+/// Filter out stderr boundary markers from output
+fn filter_stderr_boundary_markers(stderr: &Option<String>) -> Option<String> {
+    stderr
+        .as_ref()
+        .map(|s| s.replace("---STDERR_CHUNK_BOUNDARY---", ""))
+}
+
+/// Custom serializer for stderr field that filters out boundary markers
+fn serialize_filtered_stderr<S>(stderr: &Option<String>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let filtered = filter_stderr_boundary_markers(stderr);
+    filtered.serialize(serializer)
+}
 
 #[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
 #[sqlx(type_name = "execution_process_status", rename_all = "lowercase")]
@@ -59,6 +75,7 @@ pub struct ExecutionProcess {
     pub args: Option<String>, // JSON array of arguments
     pub working_directory: String,
     pub stdout: Option<String>,
+    #[serde(serialize_with = "serialize_filtered_stderr")]
     pub stderr: Option<String>,
     pub exit_code: Option<i64>,
     pub started_at: DateTime<Utc>,

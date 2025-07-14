@@ -14,6 +14,12 @@ pub struct SetupScriptExecutor {
     pub script: String,
 }
 
+impl SetupScriptExecutor {
+    pub fn new(script: String) -> Self {
+        Self { script }
+    }
+}
+
 #[async_trait]
 impl Executor for SetupScriptExecutor {
     async fn spawn(

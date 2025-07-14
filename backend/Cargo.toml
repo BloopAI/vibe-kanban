@@ -24,7 +24,7 @@ tracing-subscriber = { workspace = true }
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
-ts-rs = { version = "9.0", features = ["uuid-impl", "chrono-impl"] }
+ts-rs = { version = "9.0", features = ["uuid-impl", "chrono-impl", "no-serde-warnings"] }
 dirs = "5.0"
 git2 = "0.18"
 async-trait = "0.1"
@@ -56,7 +56,7 @@ tempfile = "3.8"
 
 [build-dependencies]
 dotenv = "0.15"
-ts-rs = { version = "9.0", features = ["uuid-impl", "chrono-impl"] }
+ts-rs = { version = "9.0", features = ["uuid-impl", "chrono-impl", "no-serde-warnings"] }
 
 [profile.release]
 debug = true

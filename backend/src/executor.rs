@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use crate::executors::{
     AmpExecutor, ClaudeExecutor, EchoExecutor, GeminiExecutor, OpencodeExecutor,
+    SetupScriptExecutor,
 };
 
 // Constants for database streaming
@@ -345,6 +346,7 @@ pub enum ExecutorConfig {
     Amp,
     Gemini,
     Opencode,
+    SetupScript { script: String },
     // Future executors can be added here
     // Shell { command: String },
     // Docker { image: String, command: String },
@@ -368,6 +370,9 @@ impl FromStr for ExecutorConfig {
             "amp" => Ok(ExecutorConfig::Amp),
             "gemini" => Ok(ExecutorConfig::Gemini),
             "opencode" => Ok(ExecutorConfig::Opencode),
+            "setup_script" => Ok(ExecutorConfig::SetupScript {
+                script: "setup script".to_string(),
+            }),
             _ => Err(format!("Unknown executor type: {}", s)),
         }
     }
@@ -381,6 +386,9 @@ impl ExecutorConfig {
             ExecutorConfig::Amp => Box::new(AmpExecutor),
             ExecutorConfig::Gemini => Box::new(GeminiExecutor),
             ExecutorConfig::Opencode => Box::new(OpencodeExecutor),
+            ExecutorConfig::SetupScript { script } => {
+                Box::new(SetupScriptExecutor::new(script.clone()))
+            }
         }
     }
 
@@ -395,6 +403,7 @@ impl ExecutorConfig {
             ExecutorConfig::Gemini => {
                 dirs::home_dir().map(|home| home.join(".gemini").join("settings.json"))
             }
+            ExecutorConfig::SetupScript { .. } => None,
         }
     }
 
@@ -406,12 +415,16 @@ impl ExecutorConfig {
             ExecutorConfig::Claude => Some(vec!["mcpServers"]),
             ExecutorConfig::Amp => Some(vec!["amp", "mcpServers"]), // Nested path for Amp
             ExecutorConfig::Gemini => Some(vec!["mcpServers"]),
+            ExecutorConfig::SetupScript { .. } => None, // Setup scripts don't support MCP
         }
     }
 
     /// Check if this executor supports MCP configuration
     pub fn supports_mcp(&self) -> bool {
-        !matches!(self, ExecutorConfig::Echo)
+        !matches!(
+            self,
+            ExecutorConfig::Echo | ExecutorConfig::SetupScript { .. }
+        )
     }
 
     /// Get the display name for this executor
@@ -422,6 +435,7 @@ impl ExecutorConfig {
             ExecutorConfig::Claude => "Claude",
             ExecutorConfig::Amp => "Amp",
             ExecutorConfig::Gemini => "Gemini",
+            ExecutorConfig::SetupScript { .. } => "Setup Script",
         }
     }
 }
@@ -434,6 +448,7 @@ impl std::fmt::Display for ExecutorConfig {
             ExecutorConfig::Amp => "amp",
             ExecutorConfig::Gemini => "gemini",
             ExecutorConfig::Opencode => "opencode",
+            ExecutorConfig::SetupScript { .. } => "setup_script",
         };
         write!(f, "{}", s)
     }

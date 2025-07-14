@@ -673,6 +673,7 @@ impl ProcessService {
                     crate::executor::ExecutorConfig::Amp => "amp",
                     crate::executor::ExecutorConfig::Gemini => "gemini",
                     crate::executor::ExecutorConfig::Opencode => "opencode",
+                    crate::executor::ExecutorConfig::SetupScript { .. } => "setup_script",
                 };
                 (
                     "executor".to_string(),
@@ -687,6 +688,7 @@ impl ProcessService {
                     crate::executor::ExecutorConfig::Amp => "amp",
                     crate::executor::ExecutorConfig::Gemini => "gemini",
                     crate::executor::ExecutorConfig::Opencode => "opencode",
+                    crate::executor::ExecutorConfig::SetupScript { .. } => "setup_script",
                 };
                 (
                     "followup_executor".to_string(),
@@ -846,6 +848,10 @@ impl ProcessService {
                         } else {
                             return Err(TaskAttemptError::TaskNotFound); // No session ID for followup
                         }
+                    }
+                    crate::executor::ExecutorConfig::SetupScript { .. } => {
+                        // Setup scripts don't support followup, use regular setup script
+                        config.create_executor()
                     }
                 };
 

@@ -44,7 +44,6 @@ import {
   TaskExecutionStateContext,
   TaskSelectedAttemptContext,
 } from '@/components/context/taskDetailsContext.ts';
-import { filterStderrBoundaryMarkers } from '@/utils/logUtils.ts';
 
 type Props = {
   setError: Dispatch<SetStateAction<string | null>>;
@@ -92,7 +91,7 @@ function CurrentAttempt({
     if (!devServerDetails) return 'No output yet...';
 
     const stdout = devServerDetails.stdout || '';
-    const stderr = filterStderrBoundaryMarkers(devServerDetails.stderr || '');
+    const stderr = devServerDetails.stderr || '';
     const allOutput = stdout + (stderr ? '\n' + stderr : '');
     const lines = allOutput.split('\n').filter((line) => line.trim());
     const lastLines = lines.slice(-10);
