@@ -44,6 +44,27 @@ import {
   TaskExecutionStateContext,
   TaskSelectedAttemptContext,
 } from '@/components/context/taskDetailsContext.ts';
+import { useConfig } from '@/components/config-provider.tsx';
+
+// Helper function to get the display name for different editor types
+function getEditorDisplayName(editorType: string): string {
+  switch (editorType) {
+    case 'vscode':
+      return 'Visual Studio Code';
+    case 'cursor':
+      return 'Cursor';
+    case 'windsurf':
+      return 'Windsurf';
+    case 'intellij':
+      return 'IntelliJ IDEA';
+    case 'zed':
+      return 'Zed';
+    case 'custom':
+      return 'Custom Editor';
+    default:
+      return 'Editor';
+  }
+}
 
 type Props = {
   setError: Dispatch<SetStateAction<string | null>>;
@@ -71,6 +92,7 @@ function CurrentAttempt({
 }: Props) {
   const { task, projectId, handleOpenInEditor, projectHasDevScript } =
     useContext(TaskDetailsContext);
+  const { config } = useConfig();
   const { setSelectedAttempt } = useContext(TaskSelectedAttemptContext);
   const { isStopping, setIsStopping } = useContext(TaskAttemptStoppingContext);
   const { attemptData, fetchAttemptData, isAttemptRunning } = useContext(
@@ -353,6 +375,12 @@ function CurrentAttempt({
     return selectedBranch;
   }, [selectedBranch]);
 
+  // Get display name for the configured editor
+  const editorDisplayName = useMemo(() => {
+    if (!config?.editor?.editor_type) return 'Editor';
+    return getEditorDisplayName(config.editor.editor_type);
+  }, [config?.editor?.editor_type]);
+
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-4 gap-3 items-start">
@@ -425,23 +453,15 @@ function CurrentAttempt({
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             Worktree Path
           </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleOpenInEditor()}
-                  className="h-4 w-4 p-0 hover:bg-muted"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Open in editor</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleOpenInEditor()}
+            className="h-6 px-2 text-xs hover:bg-muted gap-1"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Open in {editorDisplayName}
+          </Button>
         </div>
         <div className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded break-all">
           {selectedAttempt.worktree_path}
