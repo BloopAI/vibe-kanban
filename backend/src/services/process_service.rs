@@ -636,6 +636,7 @@ impl ProcessService {
     fn resolve_executor_config(executor_name: &Option<String>) -> crate::executor::ExecutorConfig {
         match executor_name.as_ref().map(|s| s.as_str()) {
             Some("claude") => crate::executor::ExecutorConfig::Claude,
+            Some("claude-code-router") => crate::executor::ExecutorConfig::ClaudeCodeRouter,
             Some("amp") => crate::executor::ExecutorConfig::Amp,
             Some("gemini") => crate::executor::ExecutorConfig::Gemini,
             Some("charmopencode") => crate::executor::ExecutorConfig::CharmOpencode,
@@ -779,17 +780,14 @@ impl ProcessService {
                 prompt,
             } => {
                 use crate::executors::{
-                    AmpFollowupExecutor, CharmOpencodeFollowupExecutor, ClaudeFollowupExecutor,
-                    GeminiFollowupExecutor,
+                    AmpFollowupExecutor, CCRFollowupExecutor, CharmOpencodeFollowupExecutor,
+                    ClaudeFollowupExecutor, GeminiFollowupExecutor,
                 };
 
                 let executor: Box<dyn crate::executor::Executor> = match config {
                     crate::executor::ExecutorConfig::Claude => {
                         if let Some(sid) = session_id {
-                            Box::new(ClaudeFollowupExecutor {
-                                session_id: sid.clone(),
-                                prompt: prompt.clone(),
-                            })
+                            Box::new(ClaudeFollowupExecutor::new(sid.clone(), prompt.clone()))
                         } else {
                             return Err(TaskAttemptError::TaskNotFound); // No session ID for followup
                         }
@@ -821,6 +819,13 @@ impl ProcessService {
                                 session_id: sid.clone(),
                                 prompt: prompt.clone(),
                             })
+                        } else {
+                            return Err(TaskAttemptError::TaskNotFound); // No session ID for followup
+                        }
+                    }
+                    crate::executor::ExecutorConfig::ClaudeCodeRouter => {
+                        if let Some(sid) = session_id {
+                            Box::new(CCRFollowupExecutor::new(sid.clone(), prompt.clone()))
                         } else {
                             return Err(TaskAttemptError::TaskNotFound); // No session ID for followup
                         }
