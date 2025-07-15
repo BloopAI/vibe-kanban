@@ -98,6 +98,10 @@ export function ProjectTasks() {
         });
         setIsPanelOpen(true);
       }
+    } else {
+      // Close panel when no taskId in URL
+      setIsPanelOpen(false);
+      setSelectedTask(null);
     }
   }, [taskId, tasks]);
 
