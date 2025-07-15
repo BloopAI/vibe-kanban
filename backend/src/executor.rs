@@ -433,7 +433,7 @@ impl ExecutorConfig {
     pub fn display_name(&self) -> &'static str {
         match self {
             ExecutorConfig::Echo => "Echo (Test Mode)",
-            ExecutorConfig::CharmOpencode => "Charm/Opencode",
+            ExecutorConfig::CharmOpencode => "Charm Opencode",
             ExecutorConfig::Claude => "Claude",
             ExecutorConfig::Amp => "Amp",
             ExecutorConfig::Gemini => "Gemini",
@@ -449,7 +449,7 @@ impl std::fmt::Display for ExecutorConfig {
             ExecutorConfig::Claude => "claude",
             ExecutorConfig::Amp => "amp",
             ExecutorConfig::Gemini => "gemini",
-            ExecutorConfig::CharmOpencode => "charm/opencode",
+            ExecutorConfig::CharmOpencode => "charmopencode",
             ExecutorConfig::SetupScript { .. } => "setup_script",
         };
         write!(f, "{}", s)

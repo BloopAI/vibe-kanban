@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useConfig } from '@/components/config-provider';
 import { attemptsApi, projectsApi } from '@/lib/api';
 import type { GitBranch, TaskAttempt } from 'shared/types';
+import { EXECUTOR_TYPES, EXECUTOR_LABELS } from 'shared/types';
 import {
   TaskAttemptDataContext,
   TaskAttemptLoadingContext,
@@ -16,13 +17,10 @@ import CreatePRDialog from '@/components/tasks/Toolbar/CreatePRDialog.tsx';
 import CreateAttempt from '@/components/tasks/Toolbar/CreateAttempt.tsx';
 import CurrentAttempt from '@/components/tasks/Toolbar/CurrentAttempt.tsx';
 
-const availableExecutors = [
-  { id: 'echo', name: 'Echo' },
-  { id: 'claude', name: 'Claude' },
-  { id: 'amp', name: 'Amp' },
-  { id: 'gemini', name: 'Gemini' },
-  { id: 'charmopencode', name: 'Charm/Opencode' },
-];
+const availableExecutors = EXECUTOR_TYPES.map((id) => ({
+  id,
+  name: EXECUTOR_LABELS[id] || id,
+}));
 
 function TaskDetailsToolbar() {
   const { task, projectId } = useContext(TaskDetailsContext);

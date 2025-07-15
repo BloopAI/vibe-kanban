@@ -26,7 +26,7 @@ export const EXECUTOR_LABELS: Record<string, string> = {
     "claude": "Claude",
     "amp": "Amp",
     "gemini": "Gemini",
-    "charmopencode": "CharmOpencode"
+    "charmopencode": "Charm Opencode"
 };
 
 export const EDITOR_LABELS: Record<string, string> = {

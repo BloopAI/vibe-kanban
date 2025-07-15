@@ -81,9 +81,7 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
                 <Label htmlFor="executor">Default Executor</Label>
                 <Select
                   value={executor.type}
-                  onValueChange={(value: 'echo' | 'claude' | 'amp') =>
-                    setExecutor({ type: value })
-                  }
+                  onValueChange={(value) => setExecutor({ type: value as any })}
                 >
                   <SelectTrigger id="executor">
                     <SelectValue placeholder="Select your preferred coding agent" />
@@ -100,6 +98,8 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
                   {executor.type === 'claude' && 'Claude Code from Anthropic'}
                   {executor.type === 'amp' && 'From Sourcegraph'}
                   {executor.type === 'gemini' && 'Google Gemini from Bloop'}
+                  {executor.type === 'charmopencode' &&
+                    'Charm/Opencode AI assistant'}
                   {executor.type === 'echo' &&
                     'This is just for debugging vibe-kanban itself'}
                 </p>
