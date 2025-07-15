@@ -17,7 +17,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useConfig } from '@/components/config-provider';
-import type { TaskStatus, ExecutorConfig } from 'shared/types';
+import { templatesApi } from '@/lib/api';
+import type { TaskStatus, ExecutorConfig, TaskTemplate } from 'shared/types';
 
 interface Task {
   id: string;
@@ -61,6 +62,8 @@ export function TaskFormDialog({
   const [status, setStatus] = useState<TaskStatus>('todo');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittingAndStart, setIsSubmittingAndStart] = useState(false);
+  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
 
   const { config } = useConfig();
   const isEditMode = Boolean(task);
@@ -76,8 +79,28 @@ export function TaskFormDialog({
       setTitle('');
       setDescription('');
       setStatus('todo');
+      setSelectedTemplate('');
     }
   }, [task, isOpen]);
+
+  // Fetch templates when dialog opens in create mode
+  useEffect(() => {
+    if (isOpen && !isEditMode && projectId) {
+      templatesApi.listByProject(projectId).then(setTemplates).catch(console.error);
+    }
+  }, [isOpen, isEditMode, projectId]);
+
+  // Handle template selection
+  const handleTemplateChange = (templateId: string) => {
+    setSelectedTemplate(templateId);
+    if (templateId && templateId !== 'none') {
+      const template = templates.find((t) => t.id === templateId);
+      if (template) {
+        setTitle(template.title);
+        setDescription(template.description || '');
+      }
+    }
+  };
 
   const handleSubmit = async () => {
     if (!title.trim()) return;
@@ -140,6 +163,7 @@ export function TaskFormDialog({
       setTitle('');
       setDescription('');
       setStatus('todo');
+      setSelectedTemplate('');
     }
     onOpenChange(false);
   }, [task, onOpenChange]);
@@ -202,6 +226,29 @@ export function TaskFormDialog({
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {!isEditMode && templates.length > 0 && (
+            <div>
+              <Label htmlFor="task-template">Template (optional)</Label>
+              <Select
+                value={selectedTemplate}
+                onValueChange={handleTemplateChange}
+              >
+                <SelectTrigger id="task-template">
+                  <SelectValue placeholder="Select a template" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No template</SelectItem>
+                  {templates.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      {template.template_name}
+                      {template.project_id === null && ' (Global)'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div>
             <Label htmlFor="task-title">Title</Label>
             <Input

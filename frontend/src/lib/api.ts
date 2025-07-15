@@ -8,6 +8,7 @@ import {
   CreateTaskAndStart,
   CreateTaskAttempt,
   DeviceStartResponse,
+  CreateTaskTemplate,
   DirectoryEntry,
   type EditorType,
   ExecutionProcess,
@@ -20,9 +21,11 @@ import {
   TaskAttempt,
   TaskAttemptActivityWithPrompt,
   TaskAttemptState,
+  TaskTemplate,
   TaskWithAttemptStatus,
   UpdateProject,
   UpdateTask,
+  UpdateTaskTemplate,
   WorktreeDiff,
 } from 'shared/types';
 
@@ -528,6 +531,55 @@ export const githubAuthApi = {
       headers: { 'Content-Type': 'application/json' },
     });
     return handleApiResponse<string>(response);
+  },
+};
+
+// Task Templates APIs
+export const templatesApi = {
+  list: async (): Promise<TaskTemplate[]> => {
+    const response = await makeRequest('/api/templates');
+    return handleApiResponse<TaskTemplate[]>(response);
+  },
+
+  listGlobal: async (): Promise<TaskTemplate[]> => {
+    const response = await makeRequest('/api/templates/global');
+    return handleApiResponse<TaskTemplate[]>(response);
+  },
+
+  listByProject: async (projectId: string): Promise<TaskTemplate[]> => {
+    const response = await makeRequest(`/api/projects/${projectId}/templates`);
+    return handleApiResponse<TaskTemplate[]>(response);
+  },
+
+  get: async (templateId: string): Promise<TaskTemplate> => {
+    const response = await makeRequest(`/api/templates/${templateId}`);
+    return handleApiResponse<TaskTemplate>(response);
+  },
+
+  create: async (data: CreateTaskTemplate): Promise<TaskTemplate> => {
+    const response = await makeRequest('/api/templates', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<TaskTemplate>(response);
+  },
+
+  update: async (
+    templateId: string,
+    data: UpdateTaskTemplate
+  ): Promise<TaskTemplate> => {
+    const response = await makeRequest(`/api/templates/${templateId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<TaskTemplate>(response);
+  },
+
+  delete: async (templateId: string): Promise<void> => {
+    const response = await makeRequest(`/api/templates/${templateId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
   },
 };
 

@@ -54,6 +54,12 @@ export type TaskWithAttemptStatus = { id: string, project_id: string, title: str
 
 export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, };
 
+export type TaskTemplate = { id: string, project_id: string | null, title: string, description: string | null, template_name: string, created_at: string, updated_at: string, };
+
+export type CreateTaskTemplate = { project_id: string | null, title: string, description: string | null, template_name: string, };
+
+export type UpdateTaskTemplate = { title: string | null, description: string | null, template_name: string | null, };
+
 export type TaskAttemptStatus = "setuprunning" | "setupcomplete" | "setupfailed" | "executorrunning" | "executorcomplete" | "executorfailed";
 
 export type TaskAttempt = { id: string, task_id: string, worktree_path: string, branch: string, base_branch: string, merge_commit: string | null, executor: string | null, pr_url: string | null, pr_number: bigint | null, pr_status: string | null, pr_merged_at: string | null, worktree_deleted: boolean, setup_completed_at: string | null, created_at: string, updated_at: string, };
@@ -118,57 +124,57 @@ export type ActionType = { "action": "file_read", path: string, } | { "action": 
 
 // Generated constants
 export const EXECUTOR_TYPES: string[] = [
-    "echo",
-    "claude",
-    "amp",
-    "gemini",
-    "charmopencode",
-    "claude-code-router"
+  "echo",
+  "claude",
+  "amp",
+  "gemini",
+  "charmopencode",
+  "claude-code-router"
 ];
 
 export const EDITOR_TYPES: EditorType[] = [
-    "vscode",
-    "cursor", 
-    "windsurf",
-    "intellij",
-    "zed",
-    "custom"
+  "vscode",
+  "cursor",
+  "windsurf",
+  "intellij",
+  "zed",
+  "custom"
 ];
 
 export const EXECUTOR_LABELS: Record<string, string> = {
-    "echo": "Echo (Test Mode)",
-    "claude": "Claude",
-    "amp": "Amp",
-    "gemini": "Gemini",
-    "charmopencode": "Charm Opencode",
-    "claude-code-router": "Claude Code Router"
+  "echo": "Echo (Test Mode)",
+  "claude": "Claude",
+  "amp": "Amp",
+  "gemini": "Gemini",
+  "charmopencode": "Charm Opencode",
+  "claude-code-router": "Claude Code Router"
 };
 
 export const EDITOR_LABELS: Record<string, string> = {
-    "vscode": "VS Code",
-    "cursor": "Cursor",
-    "windsurf": "Windsurf",
-    "intellij": "IntelliJ IDEA",
-    "zed": "Zed",
-    "custom": "Custom"
+  "vscode": "VS Code",
+  "cursor": "Cursor",
+  "windsurf": "Windsurf",
+  "intellij": "IntelliJ IDEA",
+  "zed": "Zed",
+  "custom": "Custom"
 };
 
 export const SOUND_FILES: SoundFile[] = [
-    "abstract-sound1",
-    "abstract-sound2",
-    "abstract-sound3",
-    "abstract-sound4",
-    "cow-mooing",
-    "phone-vibration",
-    "rooster"
+  "abstract-sound1",
+  "abstract-sound2",
+  "abstract-sound3",
+  "abstract-sound4",
+  "cow-mooing",
+  "phone-vibration",
+  "rooster"
 ];
 
 export const SOUND_LABELS: Record<string, string> = {
-    "abstract-sound1": "Gentle Chime",
-    "abstract-sound2": "Soft Bell",
-    "abstract-sound3": "Digital Tone",
-    "abstract-sound4": "Subtle Alert",
-    "cow-mooing": "Cow Mooing",
-    "phone-vibration": "Phone Vibration",
-    "rooster": "Rooster Call"
+  "abstract-sound1": "Gentle Chime",
+  "abstract-sound2": "Soft Bell",
+  "abstract-sound3": "Digital Tone",
+  "abstract-sound4": "Subtle Alert",
+  "cow-mooing": "Cow Mooing",
+  "phone-vibration": "Phone Vibration",
+  "rooster": "Rooster Call"
 };

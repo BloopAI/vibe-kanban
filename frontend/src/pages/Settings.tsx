@@ -31,6 +31,7 @@ import {
 import { useTheme } from '@/components/theme-provider';
 import { useConfig } from '@/components/config-provider';
 import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
+import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 
 export function Settings() {
   const { config, updateConfig, saveConfig, loading, updateAndSaveConfig } =
@@ -485,6 +486,18 @@ export function Settings() {
                   </p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Task Templates</CardTitle>
+              <CardDescription>
+                Manage global task templates that can be used across all projects.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TaskTemplateManager isGlobal={true} />
             </CardContent>
           </Card>
 

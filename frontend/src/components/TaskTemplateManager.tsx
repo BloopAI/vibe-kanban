@@ -1,0 +1,267 @@
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
+import { templatesApi } from '@/lib/api';
+import type { TaskTemplate, CreateTaskTemplate, UpdateTaskTemplate } from 'shared/types';
+
+interface TaskTemplateManagerProps {
+  projectId?: string;
+  isGlobal?: boolean;
+}
+
+export function TaskTemplateManager({ projectId, isGlobal = false }: TaskTemplateManagerProps) {
+  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<TaskTemplate | null>(null);
+  const [formData, setFormData] = useState({
+    template_name: '',
+    title: '',
+    description: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [projectId, isGlobal]);
+
+  const fetchTemplates = async () => {
+    setLoading(true);
+    try {
+      const data = isGlobal
+        ? await templatesApi.listGlobal()
+        : projectId
+        ? await templatesApi.listByProject(projectId)
+        : [];
+      
+      // Filter to show only templates for this specific scope
+      const filtered = data.filter(template => 
+        isGlobal ? template.project_id === null : template.project_id === projectId
+      );
+      
+      setTemplates(filtered);
+    } catch (err) {
+      console.error('Failed to fetch templates:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenDialog = (template?: TaskTemplate) => {
+    if (template) {
+      setEditingTemplate(template);
+      setFormData({
+        template_name: template.template_name,
+        title: template.title,
+        description: template.description || '',
+      });
+    } else {
+      setEditingTemplate(null);
+      setFormData({
+        template_name: '',
+        title: '',
+        description: '',
+      });
+    }
+    setError(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setEditingTemplate(null);
+    setFormData({
+      template_name: '',
+      title: '',
+      description: '',
+    });
+    setError(null);
+  };
+
+  const handleSave = async () => {
+    if (!formData.template_name.trim() || !formData.title.trim()) {
+      setError('Template name and title are required');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      if (editingTemplate) {
+        const updateData: UpdateTaskTemplate = {
+          template_name: formData.template_name,
+          title: formData.title,
+          description: formData.description || null,
+        };
+        await templatesApi.update(editingTemplate.id, updateData);
+      } else {
+        const createData: CreateTaskTemplate = {
+          project_id: isGlobal ? null : projectId || null,
+          template_name: formData.template_name,
+          title: formData.title,
+          description: formData.description || null,
+        };
+        await templatesApi.create(createData);
+      }
+      await fetchTemplates();
+      handleCloseDialog();
+    } catch (err: any) {
+      setError(err.message || 'Failed to save template');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (template: TaskTemplate) => {
+    if (!confirm(`Are you sure you want to delete the template "${template.template_name}"?`)) {
+      return;
+    }
+
+    try {
+      await templatesApi.delete(template.id);
+      await fetchTemplates();
+    } catch (err) {
+      console.error('Failed to delete template:', err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold">
+          {isGlobal ? 'Global Task Templates' : 'Project Task Templates'}
+        </h3>
+        <Button onClick={() => handleOpenDialog()} size="sm">
+          <Plus className="h-4 w-4 mr-2" />
+          Add Template
+        </Button>
+      </div>
+
+      {templates.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          No templates yet. Create your first template to get started.
+        </div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Template Name</TableHead>
+              <TableHead>Title</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead className="w-[100px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {templates.map((template) => (
+              <TableRow key={template.id}>
+                <TableCell>{template.template_name}</TableCell>
+                <TableCell>{template.title}</TableCell>
+                <TableCell className="max-w-[300px] truncate">
+                  {template.description || '-'}
+                </TableCell>
+                <TableCell>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleOpenDialog(template)}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(template)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingTemplate ? 'Edit Template' : 'Create Template'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="template-name">Template Name</Label>
+              <Input
+                id="template-name"
+                value={formData.template_name}
+                onChange={(e) => setFormData({ ...formData, template_name: e.target.value })}
+                placeholder="e.g., Bug Fix, Feature Request"
+              />
+            </div>
+            <div>
+              <Label htmlFor="template-title">Default Title</Label>
+              <Input
+                id="template-title"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                placeholder="e.g., Fix bug in..."
+              />
+            </div>
+            <div>
+              <Label htmlFor="template-description">Default Description</Label>
+              <Textarea
+                id="template-description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Enter a default description for tasks created with this template"
+                rows={4}
+              />
+            </div>
+            {error && (
+              <div className="text-sm text-red-600">{error}</div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseDialog} disabled={saving}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {editingTemplate ? 'Update' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
