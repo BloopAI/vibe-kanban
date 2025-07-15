@@ -16,7 +16,6 @@ import {
 import { useConfig } from '@/components/config-provider.tsx';
 import BranchSelector from '@/components/tasks/BranchSelector.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
-import { Badge } from '@/components/ui/badge.tsx';
 
 type Props = {
   branches: GitBranch[];
@@ -171,7 +170,6 @@ function CreateAttempt({
             >
               <Play className="h-3 w-3 mr-1.5" />
               Start
-              <Badge variant="default">↵</Badge>
             </Button>
           </div>
         </div>

@@ -24,7 +24,6 @@ import type {
   TaskWithAttemptStatus,
 } from 'shared/types';
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
-import { Badge } from '@/components/ui/badge';
 
 type Task = TaskWithAttemptStatus;
 
@@ -341,9 +340,6 @@ export function ProjectTasks() {
             <Button onClick={handleCreateNewTask}>
               <Plus className="h-4 w-4 mr-2" />
               Add Task
-              <Badge variant="secondary" className="ml-2">
-                C
-              </Badge>
             </Button>
           </div>
         </div>
@@ -359,9 +355,6 @@ export function ProjectTasks() {
                 <Button className="mt-4" onClick={handleCreateNewTask}>
                   <Plus className="h-4 w-4 mr-2" />
                   Create First Task
-                  <Badge variant="secondary" className="ml-2">
-                    C
-                  </Badge>
                 </Button>
               </CardContent>
             </Card>

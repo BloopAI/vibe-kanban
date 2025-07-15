@@ -55,7 +55,6 @@ import {
   TaskSelectedAttemptContext,
 } from '@/components/context/taskDetailsContext.ts';
 import { useConfig } from '@/components/config-provider.tsx';
-import { Badge } from '@/components/ui/badge.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
 
 // Helper function to get the display name for different editor types
@@ -659,7 +658,6 @@ function CurrentAttempt({
             >
               <StopCircle className="h-4 w-4" />
               {isStopping ? 'Stopping...' : 'Stop Attempt'}
-              {!isStopping && <Badge variant="secondary">S</Badge>}
             </Button>
           ) : (
             <Button
@@ -670,7 +668,6 @@ function CurrentAttempt({
             >
               <Plus className="h-4 w-4" />
               New Attempt
-              <Badge variant="secondary">N</Badge>
             </Button>
           )}
         </div>
