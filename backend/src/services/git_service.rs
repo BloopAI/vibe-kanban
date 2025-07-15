@@ -234,6 +234,7 @@ impl GitService {
         &self,
         worktree_path: &Path,
         new_base_branch: Option<&str>,
+        github_token: Option<&str>,
     ) -> Result<String, GitServiceError> {
         let worktree_repo = Repository::open(worktree_path)?;
         let main_repo = self.open_repo()?;
@@ -261,12 +262,12 @@ impl GitService {
                     match main_repo.find_branch(remote_branch_name, BranchType::Local) {
                         Ok(local_branch) => {
                             // Local tracking branch exists, fetch to update it
-                            self.fetch_from_remote(&main_repo)?;
+                            self.fetch_from_remote(&main_repo, github_token)?;
                             local_branch
                         }
                         Err(_) => {
                             // Local tracking branch doesn't exist, create it
-                            self.fetch_from_remote(&main_repo)?;
+                            self.fetch_from_remote(&main_repo, github_token)?;
                             let remote_branch = main_repo.find_branch(base_branch_name, BranchType::Remote)?;
                             let remote_commit = remote_branch.get().peel_to_commit()?;
                             main_repo.branch(remote_branch_name, &remote_commit, false)?
@@ -275,7 +276,7 @@ impl GitService {
                 }
                 Err(_) => {
                     // Remote branch doesn't exist, try to fetch it
-                    self.fetch_from_remote(&main_repo)?;
+                    self.fetch_from_remote(&main_repo, github_token)?;
                     match main_repo.find_branch(base_branch_name, BranchType::Remote) {
                         Ok(remote_branch) => {
                             // Now create local tracking branch
@@ -1043,13 +1044,30 @@ impl GitService {
     }
 
     /// Fetch from remote repository
-    fn fetch_from_remote(&self, repo: &Repository) -> Result<(), GitServiceError> {
+    fn fetch_from_remote(&self, repo: &Repository, github_token: Option<&str>) -> Result<(), GitServiceError> {
         let mut remote = repo.find_remote("origin")
             .map_err(|_| GitServiceError::Git(git2::Error::from_str("Remote 'origin' not found")))?;
         
-        // Fetch from remote
-        remote.fetch(&[] as &[&str], None, None)
-            .map_err(|e| GitServiceError::Git(e))?;
+        // If we have a GitHub token, use it for authentication
+        if let Some(token) = github_token {
+            // Set up authentication callback using the GitHub token
+            let mut callbacks = git2::RemoteCallbacks::new();
+            callbacks.credentials(|_url, username_from_url, _allowed_types| {
+                git2::Cred::userpass_plaintext(username_from_url.unwrap_or("git"), token)
+            });
+            
+            // Configure fetch options
+            let mut fetch_options = git2::FetchOptions::new();
+            fetch_options.remote_callbacks(callbacks);
+            
+            // Fetch from remote with authentication
+            remote.fetch(&[] as &[&str], Some(&mut fetch_options), None)
+                .map_err(|e| GitServiceError::Git(e))?;
+        } else {
+            // Fetch without authentication (might fail for private repos)
+            remote.fetch(&[] as &[&str], None, None)
+                .map_err(|e| GitServiceError::Git(e))?;
+        }
         
         Ok(())
     }

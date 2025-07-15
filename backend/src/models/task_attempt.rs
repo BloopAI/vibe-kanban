@@ -8,7 +8,7 @@ use tracing::info;
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::{project::Project, task::Task};
+use super::{project::Project, task::Task, config::Config};
 use crate::services::{
     CreatePrRequest, GitHubRepoInfo, GitHubService, GitHubServiceError, GitService,
     GitServiceError, ProcessService,
@@ -539,12 +539,13 @@ impl TaskAttempt {
         worktree_path: &str,
         main_repo_path: &str,
         new_base_branch: Option<String>,
+        github_token: Option<&str>,
     ) -> Result<String, TaskAttemptError> {
         let git_service = GitService::new(main_repo_path)?;
         let worktree_path = Path::new(worktree_path);
 
         git_service
-            .rebase_branch(worktree_path, new_base_branch.as_deref())
+            .rebase_branch(worktree_path, new_base_branch.as_deref(), github_token)
             .map_err(TaskAttemptError::from)
     }
 
@@ -816,11 +817,18 @@ impl TaskAttempt {
         let worktree_path =
             Self::ensure_worktree_exists(pool, attempt_id, project_id, "rebase").await?;
 
+        // Load config to get GitHub token for authentication
+        let config = Config::load(&crate::utils::config_path())
+            .map_err(|e| TaskAttemptError::ValidationError(format!("Failed to load config: {}", e)))?;
+        
+        let github_token = config.github.token.or(config.github.pat);
+
         // Perform the git rebase operations (synchronous)
         let new_base_commit = Self::perform_rebase_operation(
             &worktree_path,
             &ctx.project.git_repo_path,
             effective_base_branch,
+            github_token.as_deref(),
         )?;
 
         // No need to update database as we now get base_commit live from git
