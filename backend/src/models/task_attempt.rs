@@ -827,11 +827,23 @@ impl TaskAttempt {
         let new_base_commit = Self::perform_rebase_operation(
             &worktree_path,
             &ctx.project.git_repo_path,
-            effective_base_branch,
+            effective_base_branch.clone(),
             github_token.as_deref(),
         )?;
 
-        // No need to update database as we now get base_commit live from git
+        // Update the database with the new base branch if it was changed
+        if let Some(new_base_branch) = &effective_base_branch {
+            if new_base_branch != &ctx.task_attempt.base_branch {
+                sqlx::query!(
+                    "UPDATE task_attempts SET base_branch = $1, updated_at = datetime('now') WHERE id = $2",
+                    new_base_branch,
+                    attempt_id
+                )
+                .execute(pool)
+                .await?;
+            }
+        }
+
         Ok(new_base_commit)
     }
 

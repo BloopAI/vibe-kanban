@@ -402,14 +402,8 @@ function CurrentAttempt({
         </div>
 
         <div>
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-            Base Branch
-          </div>
-          <div className="flex items-center gap-1.5">
-            <GitBranchIcon className="h-3 w-3 text-muted-foreground" />
-            <span className="text-sm font-medium">
-              {branchStatus?.base_branch_name || selectedBranchDisplayName}
-            </span>
+          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+            <span>Base Branch</span>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -418,7 +412,7 @@ function CurrentAttempt({
                     size="sm"
                     onClick={handleRebaseDialogOpen}
                     disabled={rebasing || branchStatusLoading || isAttemptRunning}
-                    className="h-6 w-6 p-0 hover:bg-muted"
+                    className="h-4 w-4 p-0 hover:bg-muted"
                   >
                     <Settings className="h-3 w-3" />
                   </Button>
@@ -428,6 +422,12 @@ function CurrentAttempt({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <GitBranchIcon className="h-3 w-3 text-muted-foreground" />
+            <span className="text-sm font-medium">
+              {branchStatus?.base_branch_name || selectedBranchDisplayName}
+            </span>
           </div>
         </div>
 
