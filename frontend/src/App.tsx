@@ -33,9 +33,7 @@ function AppContent() {
       if (config.disclaimer_acknowledged) {
         setShowOnboarding(!config.onboarding_acknowledged);
         if (config.onboarding_acknowledged) {
-          // Check if GitHub authentication is configured
-          const githubAuthenticated = config.github?.username && config.github?.token;
-          if (!githubAuthenticated && !config.github_login_acknowledged) {
+          if (!config.github_login_acknowledged) {
             setShowGitHubLogin(true);
           } else if (!config.telemetry_acknowledged) {
             setShowPrivacyOptIn(true);
