@@ -10,26 +10,27 @@ const AutoExpandingTextarea = React.forwardRef<
   AutoExpandingTextareaProps
 >(({ className, maxRows = 10, ...props }, ref) => {
   const internalRef = React.useRef<HTMLTextAreaElement>(null);
-  
+
   // Get the actual ref to use
   const textareaRef = ref || internalRef;
 
   const adjustHeight = React.useCallback(() => {
-    const textarea = (textareaRef as React.RefObject<HTMLTextAreaElement>).current;
+    const textarea = (textareaRef as React.RefObject<HTMLTextAreaElement>)
+      .current;
     if (!textarea) return;
 
     // Reset height to auto to get the natural height
     textarea.style.height = 'auto';
-    
+
     // Calculate line height
     const style = window.getComputedStyle(textarea);
     const lineHeight = parseInt(style.lineHeight) || 20;
     const paddingTop = parseInt(style.paddingTop) || 0;
     const paddingBottom = parseInt(style.paddingBottom) || 0;
-    
+
     // Calculate max height based on maxRows
     const maxHeight = lineHeight * maxRows + paddingTop + paddingBottom;
-    
+
     // Set the height to scrollHeight, but cap at maxHeight
     const newHeight = Math.min(textarea.scrollHeight, maxHeight);
     textarea.style.height = `${newHeight}px`;
@@ -41,12 +42,15 @@ const AutoExpandingTextarea = React.forwardRef<
   }, [adjustHeight, props.value]);
 
   // Adjust height on input
-  const handleInput = React.useCallback((e: React.FormEvent<HTMLTextAreaElement>) => {
-    adjustHeight();
-    if (props.onInput) {
-      props.onInput(e);
-    }
-  }, [adjustHeight, props.onInput]);
+  const handleInput = React.useCallback(
+    (e: React.FormEvent<HTMLTextAreaElement>) => {
+      adjustHeight();
+      if (props.onInput) {
+        props.onInput(e);
+      }
+    },
+    [adjustHeight, props.onInput]
+  );
 
   return (
     <textarea
