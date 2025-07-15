@@ -17,7 +17,7 @@ import type {
   TaskWithAttemptStatus,
   WorktreeDiff,
 } from 'shared/types.ts';
-import type { AttemptData } from '@/types/frontend-only';
+import type { AttemptData } from './taskDetailsContext';
 import { attemptsApi, executionProcessesApi } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,

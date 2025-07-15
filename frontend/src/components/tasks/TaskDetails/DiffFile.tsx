@@ -3,8 +3,24 @@ import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import DiffChunkSection from '@/components/tasks/TaskDetails/DiffChunkSection.tsx';
 import {
   FileDiff,
+  DiffChunkType,
 } from 'shared/types.ts';
-import type { ProcessedLine, ProcessedSection } from '@/types/frontend-only';
+
+// Types for processing diff content in the frontend
+export interface ProcessedLine {
+  content: string;
+  chunkType: DiffChunkType;
+  oldLineNumber?: number;
+  newLineNumber?: number;
+}
+
+export interface ProcessedSection {
+  type: 'context' | 'change' | 'expanded';
+  lines: ProcessedLine[];
+  expandKey?: string;
+  expandedAbove?: boolean;
+  expandedBelow?: boolean;
+}
 import {
   Dispatch,
   SetStateAction,
