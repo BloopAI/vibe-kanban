@@ -8,7 +8,7 @@ use tracing::info;
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::{project::Project, task::Task, config::Config};
+use super::{config::Config, project::Project, task::Task};
 use crate::services::{
     CreatePrRequest, GitHubRepoInfo, GitHubService, GitHubServiceError, GitService,
     GitServiceError, ProcessService,
@@ -818,9 +818,10 @@ impl TaskAttempt {
             Self::ensure_worktree_exists(pool, attempt_id, project_id, "rebase").await?;
 
         // Load config to get GitHub token for authentication
-        let config = Config::load(&crate::utils::config_path())
-            .map_err(|e| TaskAttemptError::ValidationError(format!("Failed to load config: {}", e)))?;
-        
+        let config = Config::load(&crate::utils::config_path()).map_err(|e| {
+            TaskAttemptError::ValidationError(format!("Failed to load config: {}", e))
+        })?;
+
         let github_token = config.github.token.or(config.github.pat);
 
         // Perform the git rebase operations (synchronous)
@@ -840,7 +841,7 @@ impl TaskAttempt {
                 } else {
                     new_base_branch
                 };
-                
+
                 sqlx::query!(
                     "UPDATE task_attempts SET base_branch = $1, updated_at = datetime('now') WHERE id = $2",
                     db_branch_name,

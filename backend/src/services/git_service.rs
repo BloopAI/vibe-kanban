@@ -241,9 +241,10 @@ impl GitService {
 
         // Check if there's an existing rebase in progress and abort it
         let state = worktree_repo.state();
-        if state == git2::RepositoryState::Rebase 
-            || state == git2::RepositoryState::RebaseInteractive 
-            || state == git2::RepositoryState::RebaseMerge {
+        if state == git2::RepositoryState::Rebase
+            || state == git2::RepositoryState::RebaseInteractive
+            || state == git2::RepositoryState::RebaseMerge
+        {
             tracing::warn!("Existing rebase in progress, aborting it first");
             // Try to abort the existing rebase
             if let Ok(mut existing_rebase) = worktree_repo.open_rebase(None) {
@@ -266,21 +267,23 @@ impl GitService {
         let local_branch_name = if base_branch_name.starts_with("origin/") {
             // This is a remote branch, fetch it and create/update local tracking branch
             let remote_branch_name = base_branch_name.strip_prefix("origin/").unwrap();
-            
+
             // First, fetch the latest changes from remote
             self.fetch_from_remote(&main_repo, github_token)?;
-            
+
             // Try to find the remote branch after fetch
             let remote_branch = main_repo
                 .find_branch(base_branch_name, BranchType::Remote)
                 .map_err(|_| GitServiceError::BranchNotFound(base_branch_name.to_string()))?;
-            
+
             // Check if local tracking branch exists
             match main_repo.find_branch(remote_branch_name, BranchType::Local) {
                 Ok(mut local_branch) => {
                     // Local tracking branch exists, update it to match remote
                     let remote_commit = remote_branch.get().peel_to_commit()?;
-                    local_branch.get_mut().set_target(remote_commit.id(), "Update local branch to match remote")?;
+                    local_branch
+                        .get_mut()
+                        .set_target(remote_commit.id(), "Update local branch to match remote")?;
                 }
                 Err(_) => {
                     // Local tracking branch doesn't exist, create it
@@ -288,7 +291,7 @@ impl GitService {
                     main_repo.branch(remote_branch_name, &remote_commit, false)?;
                 }
             }
-            
+
             // Use the local branch name for rebase
             remote_branch_name
         } else {
@@ -1049,14 +1052,19 @@ impl GitService {
     }
 
     /// Fetch from remote repository
-    fn fetch_from_remote(&self, repo: &Repository, github_token: Option<&str>) -> Result<(), GitServiceError> {
-        let remote = repo.find_remote("origin")
-            .map_err(|_| GitServiceError::Git(git2::Error::from_str("Remote 'origin' not found")))?;
-        
+    fn fetch_from_remote(
+        &self,
+        repo: &Repository,
+        github_token: Option<&str>,
+    ) -> Result<(), GitServiceError> {
+        let remote = repo.find_remote("origin").map_err(|_| {
+            GitServiceError::Git(git2::Error::from_str("Remote 'origin' not found"))
+        })?;
+
         let remote_url = remote.url().ok_or_else(|| {
             GitServiceError::InvalidRepository("Remote origin has no URL".to_string())
         })?;
-        
+
         // If we have a GitHub token, use HTTPS with authentication
         if let Some(token) = github_token {
             // Convert SSH URL to HTTPS URL if necessary (same as push_to_github)
@@ -1069,41 +1077,42 @@ impl GitService {
             } else {
                 remote_url.to_string()
             };
-            
+
             // Create a temporary remote with HTTPS URL for fetching
             let temp_remote_name = "temp_https_origin_fetch";
-            
+
             // Remove any existing temp remote
             let _ = repo.remote_delete(temp_remote_name);
-            
+
             // Create temporary HTTPS remote
             let mut temp_remote = repo.remote(temp_remote_name, &https_url)?;
-            
+
             // Set up authentication callback using the GitHub token
             let mut callbacks = git2::RemoteCallbacks::new();
             callbacks.credentials(|_url, username_from_url, _allowed_types| {
                 git2::Cred::userpass_plaintext(username_from_url.unwrap_or("git"), token)
             });
-            
+
             // Configure fetch options
             let mut fetch_options = git2::FetchOptions::new();
             fetch_options.remote_callbacks(callbacks);
-            
+
             // Fetch from temporary remote with authentication
             let fetch_result = temp_remote.fetch(&[] as &[&str], Some(&mut fetch_options), None);
-            
+
             // Clean up the temporary remote
             let _ = repo.remote_delete(temp_remote_name);
-            
+
             // Check fetch result
             fetch_result.map_err(|e| GitServiceError::Git(e))?;
         } else {
             // Fetch without authentication (might fail for private repos)
             let mut original_remote = repo.find_remote("origin")?;
-            original_remote.fetch(&[] as &[&str], None, None)
+            original_remote
+                .fetch(&[] as &[&str], None, None)
                 .map_err(|e| GitServiceError::Git(e))?;
         }
-        
+
         Ok(())
     }
 }
