@@ -25,7 +25,6 @@ function AppContent() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showPrivacyOptIn, setShowPrivacyOptIn] = useState(false);
   const [showGitHubLogin, setShowGitHubLogin] = useState(false);
-  const [gitHubLoginCompleted, setGitHubLoginCompleted] = useState(false);
   const showNavbar = true;
 
   useEffect(() => {
@@ -36,7 +35,7 @@ function AppContent() {
         if (config.onboarding_acknowledged) {
           // Check if GitHub authentication is configured
           const githubAuthenticated = config.github?.username && config.github?.token;
-          if (!githubAuthenticated && !gitHubLoginCompleted) {
+          if (!githubAuthenticated && !config.github_login_acknowledged) {
             setShowGitHubLogin(true);
           } else if (!config.telemetry_acknowledged) {
             setShowPrivacyOptIn(true);
@@ -44,13 +43,12 @@ function AppContent() {
         }
       }
     }
-  }, [config, gitHubLoginCompleted]);
+  }, [config]);
 
   // Handle GitHub token invalidation
   useEffect(() => {
     if (githubTokenInvalid && config?.onboarding_acknowledged) {
       setShowGitHubLogin(true);
-      setGitHubLoginCompleted(false); // Reset completion state when token is invalid
     }
   }, [githubTokenInvalid, config?.onboarding_acknowledged]);
 
@@ -114,20 +112,29 @@ function AppContent() {
     if (!config) return;
 
     setShowGitHubLogin(false);
-    setGitHubLoginCompleted(true);
     
-    // Refresh the config to get the latest GitHub authentication state
+    // Mark GitHub login as acknowledged and save config
+    const updatedConfig = {
+      ...config,
+      github_login_acknowledged: true,
+    };
+    
+    updateConfig(updatedConfig);
+    
     try {
-      const updatedConfig = await configApi.getConfig();
-      updateConfig(updatedConfig);
+      await configApi.saveConfig(updatedConfig);
+      
+      // Refresh the config to get the latest GitHub authentication state
+      const latestConfig = await configApi.getConfig();
+      updateConfig(latestConfig);
       
       // After GitHub login (success or skip), show privacy opt-in if not acknowledged
       if (!config.telemetry_acknowledged) {
         setShowPrivacyOptIn(true);
       }
     } catch (err) {
-      console.error('Error refreshing config:', err);
-      // Still show privacy opt-in even if config refresh fails
+      console.error('Error saving config:', err);
+      // Still show privacy opt-in even if config save fails
       if (!config.telemetry_acknowledged) {
         setShowPrivacyOptIn(true);
       }
