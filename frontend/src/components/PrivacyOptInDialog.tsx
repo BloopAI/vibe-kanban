@@ -21,9 +21,10 @@ export function PrivacyOptInDialog({
   onComplete,
 }: PrivacyOptInDialogProps) {
   const { config } = useConfig();
-  
+
   // Check if user is authenticated with GitHub
-  const isGitHubAuthenticated = config?.github?.username && config?.github?.token;
+  const isGitHubAuthenticated =
+    config?.github?.username && config?.github?.token;
 
   const handleOptIn = () => {
     onComplete(true);

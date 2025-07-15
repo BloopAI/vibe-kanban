@@ -134,7 +134,8 @@ export function GitHubLoginDialog({
             <DialogTitle>Sign in with GitHub</DialogTitle>
           </div>
           <DialogDescription className="text-left pt-1">
-            Connect your GitHub account to create and manage pull requests directly from Vibe Kanban.
+            Connect your GitHub account to create and manage pull requests
+            directly from Vibe Kanban.
           </DialogDescription>
         </DialogHeader>
         {loading ? (
@@ -233,13 +234,13 @@ export function GitHubLoginDialog({
                   : 'Waiting for you to authorize this application on GitHub...'}
               </span>
             </div>
-            
+
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                 <div className="text-red-600 text-sm">{error}</div>
               </div>
             )}
-            
+
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Skip
@@ -290,12 +291,20 @@ export function GitHubLoginDialog({
                 <div className="text-red-600 text-sm">{error}</div>
               </div>
             )}
-            
+
             <DialogFooter className="gap-3 flex-col sm:flex-row">
-              <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                className="flex-1"
+              >
                 Skip
               </Button>
-              <Button onClick={handleLogin} disabled={fetching} className="flex-1">
+              <Button
+                onClick={handleLogin}
+                disabled={fetching}
+                className="flex-1"
+              >
                 <Github className="h-4 w-4 mr-2" />
                 {fetching ? 'Starting…' : 'Sign in with GitHub'}
               </Button>

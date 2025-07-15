@@ -95,7 +95,10 @@ function CreatePrDialog({
       setPrBaseBranch(selectedAttempt?.base_branch || 'main');
     } catch (err) {
       const error = err as ApiError;
-      if (error.message === 'GitHub authentication not configured. Please sign in with GitHub.') {
+      if (
+        error.message ===
+        'GitHub authentication not configured. Please sign in with GitHub.'
+      ) {
         setShowCreatePRDialog(false);
         setShowGitHubLoginDialog(true);
       } else if (error.message === 'insufficient_github_permissions') {

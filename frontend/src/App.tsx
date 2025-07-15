@@ -103,16 +103,16 @@ function AppContent() {
     if (!config) return;
 
     setShowGitHubLogin(false);
-    
+
     try {
       // Add a delay to ensure backend has time to save the GitHub token
       // (if user authenticated) before refreshing the config
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // Refresh the config to get the latest GitHub authentication state
       const latestConfig = await configApi.getConfig();
       updateConfig(latestConfig);
-      
+
       // If user skipped (no GitHub token), we need to manually set the acknowledgment
       if (!latestConfig.github?.token) {
         const updatedConfig = {
@@ -122,7 +122,7 @@ function AppContent() {
         updateConfig(updatedConfig);
         await configApi.saveConfig(updatedConfig);
       }
-      
+
       // After GitHub login (success or skip), show privacy opt-in if not acknowledged
       if (!config.telemetry_acknowledged) {
         setShowPrivacyOptIn(true);
