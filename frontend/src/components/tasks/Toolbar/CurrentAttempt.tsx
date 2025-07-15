@@ -680,7 +680,7 @@ function CurrentAttempt({
                 selectedBranch={selectedRebaseBranch}
                 onBranchSelect={setSelectedRebaseBranch}
                 placeholder="Select a base branch"
-                excludeCurrentBranch={true}
+                excludeCurrentBranch={false}
               />
             </div>
           </div>
