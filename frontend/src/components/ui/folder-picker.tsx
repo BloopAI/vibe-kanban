@@ -66,7 +66,7 @@ export function FolderPicker({
 
     try {
       const result = await fileSystemApi.list(path);
-      
+
       // Ensure result exists and has the expected structure
       if (!result || typeof result !== 'object') {
         throw new Error('Invalid response from file system API');
