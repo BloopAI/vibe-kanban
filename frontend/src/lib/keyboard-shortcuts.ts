@@ -1,5 +1,5 @@
-import { useEffect, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useCallback, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 // Define available keyboard shortcuts
 export interface KeyboardShortcut {
@@ -17,6 +17,9 @@ export interface KeyboardShortcutContext {
   currentPath?: string;
   hasOpenDialog?: boolean;
   location?: ReturnType<typeof useLocation>;
+  stopExecution?: () => void;
+  newAttempt?: () => void;
+  onEnter?: () => void;
 }
 
 // Centralized shortcut definitions
@@ -59,6 +62,15 @@ export const createKeyboardShortcuts = (
       }
     },
   },
+  Enter: {
+    key: 'Enter',
+    description: 'Enter or submit',
+    action: () => {
+      if (context.onEnter) {
+        context.onEnter();
+      }
+    },
+  },
   KeyC: {
     key: 'c',
     description: 'Create new task',
@@ -66,6 +78,20 @@ export const createKeyboardShortcuts = (
       if (context.openCreateTask) {
         context.openCreateTask();
       }
+    },
+  },
+  KeyS: {
+    key: 's',
+    description: 'Stop all executions',
+    action: () => {
+      context.stopExecution && context.stopExecution();
+    },
+  },
+  KeyN: {
+    key: 'n',
+    description: 'Create new task attempt',
+    action: () => {
+      context.newAttempt && context.newAttempt();
     },
   },
 });

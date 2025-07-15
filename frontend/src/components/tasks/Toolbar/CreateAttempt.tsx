@@ -1,4 +1,4 @@
-import { Dispatch, SetStateAction, useContext } from 'react';
+import { Dispatch, SetStateAction, useCallback, useContext } from 'react';
 import { Button } from '@/components/ui/button.tsx';
 import { ArrowDown, Play, Settings2, X } from 'lucide-react';
 import {
@@ -15,6 +15,8 @@ import {
 } from '@/components/context/taskDetailsContext.ts';
 import { useConfig } from '@/components/config-provider.tsx';
 import BranchSelector from '@/components/tasks/BranchSelector.tsx';
+import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
+import { Badge } from '@/components/ui/badge.tsx';
 
 type Props = {
   branches: GitBranch[];
@@ -50,17 +52,24 @@ function CreateAttempt({
   const { isAttemptRunning } = useContext(TaskAttemptDataContext);
   const { config } = useConfig();
 
-  const onCreateNewAttempt = async (executor?: string, baseBranch?: string) => {
-    try {
-      await attemptsApi.create(projectId!, task.id, {
-        executor: executor || selectedExecutor,
-        base_branch: baseBranch || selectedBranch,
-      });
-      fetchTaskAttempts();
-    } catch (error) {
-      // Optionally handle error
-    }
-  };
+  const onCreateNewAttempt = useCallback(
+    async (executor?: string, baseBranch?: string) => {
+      try {
+        await attemptsApi.create(projectId!, task.id, {
+          executor: executor || selectedExecutor,
+          base_branch: baseBranch || selectedBranch,
+        });
+        fetchTaskAttempts();
+      } catch (error) {
+        // Optionally handle error
+      }
+    },
+    [projectId, task.id, selectedExecutor, selectedBranch, fetchTaskAttempts]
+  );
+
+  useKeyboardShortcuts({
+    onEnter: onCreateNewAttempt,
+  });
 
   const handleExitCreateAttemptMode = () => {
     setIsInCreateAttemptMode(false);
@@ -158,10 +167,11 @@ function CreateAttempt({
               onClick={handleCreateAttempt}
               disabled={!createAttemptExecutor || isAttemptRunning}
               size="sm"
-              className="w-full text-xs"
+              className="w-full text-xs gap-2"
             >
               <Play className="h-3 w-3 mr-1.5" />
               Start
+              <Badge variant="default">↵</Badge>
             </Button>
           </div>
         </div>
