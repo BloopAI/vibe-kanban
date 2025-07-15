@@ -197,6 +197,41 @@ pub struct TaskAttemptState {
     pub coding_agent_process_id: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct AttemptData {
+    pub activities: Vec<crate::models::task_attempt_activity::TaskAttemptActivityWithPrompt>,
+    pub processes: Vec<crate::models::execution_process::ExecutionProcessSummary>,
+    #[serde(rename = "runningProcessDetails")]
+    pub running_process_details: std::collections::HashMap<String, crate::models::execution_process::ExecutionProcess>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ProcessedLine {
+    pub content: String,
+    #[serde(rename = "chunkType")]
+    pub chunk_type: DiffChunkType,
+    #[serde(rename = "oldLineNumber")]
+    pub old_line_number: Option<u32>,
+    #[serde(rename = "newLineNumber")]
+    pub new_line_number: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ProcessedSection {
+    #[serde(rename = "type")]
+    pub section_type: String, // "context" | "change" | "expanded"
+    pub lines: Vec<ProcessedLine>,
+    #[serde(rename = "expandKey")]
+    pub expand_key: Option<String>,
+    #[serde(rename = "expandedAbove")]
+    pub expanded_above: Option<bool>,
+    #[serde(rename = "expandedBelow")]
+    pub expanded_below: Option<bool>,
+}
+
 /// Context data for resume operations (simplified)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AttemptResumeContext {

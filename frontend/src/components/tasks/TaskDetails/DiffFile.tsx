@@ -73,6 +73,8 @@ function DiffFile({
           const processedLine: ProcessedLine = {
             content: line,
             chunkType: chunk.chunk_type,
+            oldLineNumber: null,
+            newLineNumber: null,
           };
 
           switch (chunk.chunk_type) {
@@ -121,12 +123,18 @@ function DiffFile({
           sections.push({
             type: 'context',
             lines: lines.slice(i, nextChangeIndex),
+            expandKey: null,
+            expandedAbove: null,
+            expandedBelow: null,
           });
         } else {
           if (hasPrevChange) {
             sections.push({
               type: 'context',
               lines: lines.slice(i, i + CONTEXT_LINES),
+              expandKey: null,
+              expandedAbove: null,
+              expandedBelow: null,
             });
             i += CONTEXT_LINES;
           }
@@ -144,12 +152,16 @@ function DiffFile({
                   type: 'expanded',
                   lines: lines.slice(expandStart, expandEnd),
                   expandKey,
+                  expandedAbove: null,
+                  expandedBelow: null,
                 });
               } else {
                 sections.push({
                   type: 'context',
                   lines: [],
                   expandKey,
+                  expandedAbove: null,
+                  expandedBelow: null,
                 });
               }
             }
@@ -160,11 +172,17 @@ function DiffFile({
                 nextChangeIndex - CONTEXT_LINES,
                 nextChangeIndex
               ),
+              expandKey: null,
+              expandedAbove: null,
+              expandedBelow: null,
             });
           } else if (!hasPrevChange) {
             sections.push({
               type: 'context',
               lines: lines.slice(i, i + CONTEXT_LINES),
+              expandKey: null,
+              expandedAbove: null,
+              expandedBelow: null,
             });
           }
         }
@@ -179,6 +197,9 @@ function DiffFile({
         sections.push({
           type: 'change',
           lines: lines.slice(changeStart, i),
+          expandKey: null,
+          expandedAbove: null,
+          expandedBelow: null,
         });
       }
     }

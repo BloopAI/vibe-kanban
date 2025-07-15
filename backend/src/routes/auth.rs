@@ -27,6 +27,16 @@ struct DeviceStartResponse {
     interval: u64,
 }
 
+#[derive(serde::Serialize, ts_rs::TS)]
+#[ts(export)]
+pub struct StartGitHubDeviceFlowType {
+    pub device_code: String,
+    pub user_code: String,
+    pub verification_uri: String,
+    pub expires_in: u32,
+    pub interval: u32,
+}
+
 #[derive(serde::Deserialize)]
 struct DevicePollRequest {
     device_code: String,
