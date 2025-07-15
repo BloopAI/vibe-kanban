@@ -137,9 +137,7 @@ function AppContent() {
       <div className="h-screen flex flex-col bg-background">
         <GitHubLoginDialog
           open={showGitHubLogin}
-          onOpenChange={(_) => {
-            handleGitHubLoginComplete();
-          }}
+          onOpenChange={handleGitHubLoginComplete}
         />
         <DisclaimerDialog
           open={showDisclaimer}
