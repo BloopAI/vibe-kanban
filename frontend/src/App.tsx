@@ -25,6 +25,7 @@ function AppContent() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showPrivacyOptIn, setShowPrivacyOptIn] = useState(false);
   const [showGitHubLogin, setShowGitHubLogin] = useState(false);
+  const [gitHubLoginCompleted, setGitHubLoginCompleted] = useState(false);
   const showNavbar = true;
 
   useEffect(() => {
@@ -35,7 +36,7 @@ function AppContent() {
         if (config.onboarding_acknowledged) {
           // Check if GitHub authentication is configured
           const githubAuthenticated = config.github?.username && config.github?.token;
-          if (!githubAuthenticated) {
+          if (!githubAuthenticated && !gitHubLoginCompleted) {
             setShowGitHubLogin(true);
           } else if (!config.telemetry_acknowledged) {
             setShowPrivacyOptIn(true);
@@ -43,12 +44,13 @@ function AppContent() {
         }
       }
     }
-  }, [config]);
+  }, [config, gitHubLoginCompleted]);
 
   // Handle GitHub token invalidation
   useEffect(() => {
     if (githubTokenInvalid && config?.onboarding_acknowledged) {
       setShowGitHubLogin(true);
+      setGitHubLoginCompleted(false); // Reset completion state when token is invalid
     }
   }, [githubTokenInvalid, config?.onboarding_acknowledged]);
 
@@ -112,6 +114,7 @@ function AppContent() {
     if (!config) return;
 
     setShowGitHubLogin(false);
+    setGitHubLoginCompleted(true);
     
     // Refresh the config to get the latest GitHub authentication state
     try {
