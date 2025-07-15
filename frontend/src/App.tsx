@@ -39,19 +39,23 @@ function AppContent() {
       }
 
       // Only show GitHub login if telemetry dialog is not being shown
-      if (config.telemetry_acknowledged) {
+      if (config.telemetry_acknowledged && !gitHubLoginSkipped) {
         const notAuthenticated =
           !config.github?.username || !config.github?.token;
-        setShowGitHubLogin(notAuthenticated && !gitHubLoginSkipped);
+        setShowGitHubLogin(notAuthenticated);
       } else {
         setShowGitHubLogin(false);
       }
     }
+  }, [config, gitHubLoginSkipped]);
+
+  // Separate effect for handling invalid GitHub token
+  useEffect(() => {
     if (githubTokenInvalid) {
       setShowGitHubLogin(true);
       setGitHubLoginSkipped(false); // Reset skip state when token is invalid
     }
-  }, [config, githubTokenInvalid, gitHubLoginSkipped]);
+  }, [githubTokenInvalid]);
 
   const handleDisclaimerAccept = async () => {
     if (!config) return;
@@ -127,8 +131,8 @@ function AppContent() {
         <GitHubLoginDialog
           open={showGitHubLogin}
           onOpenChange={(open) => {
-            setShowGitHubLogin(open);
             if (!open) {
+              setShowGitHubLogin(false);
               setGitHubLoginSkipped(true);
             }
           }}
