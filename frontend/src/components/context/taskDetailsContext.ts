@@ -5,17 +5,8 @@ import type {
   TaskAttemptState,
   TaskWithAttemptStatus,
   WorktreeDiff,
-  TaskAttemptActivityWithPrompt,
-  ExecutionProcessSummary,
-  ExecutionProcess,
 } from 'shared/types.ts';
-
-// Frontend-only type for combining attempt data
-export interface AttemptData {
-  activities: TaskAttemptActivityWithPrompt[];
-  processes: ExecutionProcessSummary[];
-  runningProcessDetails: Record<string, ExecutionProcess>;
-}
+import { AttemptData } from '@/lib/types.ts';
 
 export interface TaskDetailsContextValue {
   task: TaskWithAttemptStatus;

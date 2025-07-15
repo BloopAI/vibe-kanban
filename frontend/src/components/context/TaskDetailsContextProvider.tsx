@@ -17,7 +17,6 @@ import type {
   TaskWithAttemptStatus,
   WorktreeDiff,
 } from 'shared/types.ts';
-import type { AttemptData } from './taskDetailsContext';
 import { attemptsApi, executionProcessesApi } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,
@@ -30,6 +29,7 @@ import {
   TaskExecutionStateContext,
   TaskSelectedAttemptContext,
 } from './taskDetailsContext.ts';
+import { AttemptData } from '@/lib/types.ts';
 
 const TaskDetailsProvider: FC<{
   task: TaskWithAttemptStatus;

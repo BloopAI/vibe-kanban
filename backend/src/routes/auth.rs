@@ -5,6 +5,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use ts_rs::TS;
 
 use crate::{app_state::AppState, models::ApiResponse};
 
@@ -18,7 +19,7 @@ pub fn auth_router() -> Router<AppState> {
 #[derive(serde::Deserialize)]
 struct DeviceStartRequest {}
 
-#[derive(serde::Serialize, ts_rs::TS)]
+#[derive(serde::Serialize, TS)]
 #[ts(export)]
 pub struct DeviceStartResponse {
     pub device_code: String,

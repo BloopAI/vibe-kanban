@@ -1,6 +1,7 @@
 use std::{env, fs, path::Path};
 
-use ts_rs::TS; // in [build-dependencies]
+use ts_rs::TS;
+// in [build-dependencies]
 
 fn generate_constants() -> String {
     r#"// Generated constants
@@ -105,6 +106,7 @@ fn generate_types_content() -> String {
         vibe_kanban::models::task_attempt_activity::CreateTaskAttemptActivity::decl(),
         vibe_kanban::routes::filesystem::DirectoryEntry::decl(),
         vibe_kanban::routes::filesystem::DirectoryListResponse::decl(),
+        vibe_kanban::routes::auth::DeviceStartResponse::decl(),
         vibe_kanban::models::task_attempt::DiffChunkType::decl(),
         vibe_kanban::models::task_attempt::DiffChunk::decl(),
         vibe_kanban::models::task_attempt::FileDiff::decl(),
@@ -125,7 +127,6 @@ fn generate_types_content() -> String {
         vibe_kanban::executor::NormalizedEntry::decl(),
         vibe_kanban::executor::NormalizedEntryType::decl(),
         vibe_kanban::executor::ActionType::decl(),
-        vibe_kanban::routes::auth::DeviceStartResponse::decl(),
     ];
 
     let body = decls
