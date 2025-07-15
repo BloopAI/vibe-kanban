@@ -411,7 +411,9 @@ function CurrentAttempt({
                     variant="ghost"
                     size="sm"
                     onClick={handleRebaseDialogOpen}
-                    disabled={rebasing || branchStatusLoading || isAttemptRunning}
+                    disabled={
+                      rebasing || branchStatusLoading || isAttemptRunning
+                    }
                     className="h-4 w-4 p-0 hover:bg-muted"
                   >
                     <Settings className="h-3 w-3" />
@@ -667,7 +669,7 @@ function CurrentAttempt({
               Choose a new base branch to rebase this task attempt onto.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="base-branch" className="text-sm font-medium">

@@ -1,10 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button.tsx';
-import {
-  ArrowDown,
-  GitBranch as GitBranchIcon,
-  Search,
-} from 'lucide-react';
+import { ArrowDown, GitBranch as GitBranchIcon, Search } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,8 +30,8 @@ function BranchSelector({
   branches,
   selectedBranch,
   onBranchSelect,
-  placeholder = "Select a branch",
-  className = "",
+  placeholder = 'Select a branch',
+  className = '',
   excludeCurrentBranch = false,
 }: Props) {
   const [branchSearchTerm, setBranchSearchTerm] = useState('');
@@ -44,20 +40,20 @@ function BranchSelector({
   // Filter branches based on search term and options
   const filteredBranches = useMemo(() => {
     let filtered = branches;
-    
+
     // Don't filter out current branch, we'll handle it in the UI
     if (branchSearchTerm.trim()) {
       filtered = filtered.filter((branch) =>
         branch.name.toLowerCase().includes(branchSearchTerm.toLowerCase())
       );
     }
-    
+
     return filtered;
   }, [branches, branchSearchTerm]);
 
   const displayName = useMemo(() => {
     if (!selectedBranch) return placeholder;
-    
+
     // For remote branches, show just the branch name without the remote prefix
     if (selectedBranch.includes('/')) {
       const parts = selectedBranch.split('/');
@@ -112,8 +108,9 @@ function BranchSelector({
             </div>
           ) : (
             filteredBranches.map((branch) => {
-              const isCurrentAndExcluded = excludeCurrentBranch && branch.is_current;
-              
+              const isCurrentAndExcluded =
+                excludeCurrentBranch && branch.is_current;
+
               const menuItem = (
                 <DropdownMenuItem
                   key={branch.name}
@@ -151,9 +148,7 @@ function BranchSelector({
                 return (
                   <TooltipProvider key={branch.name}>
                     <Tooltip>
-                      <TooltipTrigger asChild>
-                        {menuItem}
-                      </TooltipTrigger>
+                      <TooltipTrigger asChild>{menuItem}</TooltipTrigger>
                       <TooltipContent>
                         <p>Cannot rebase a branch onto itself</p>
                       </TooltipContent>

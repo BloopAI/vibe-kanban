@@ -1,11 +1,6 @@
 import { Dispatch, SetStateAction, useContext } from 'react';
 import { Button } from '@/components/ui/button.tsx';
-import {
-  ArrowDown,
-  Play,
-  Settings2,
-  X,
-} from 'lucide-react';
+import { ArrowDown, Play, Settings2, X } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,8 +49,6 @@ function CreateAttempt({
   const { task, projectId } = useContext(TaskDetailsContext);
   const { isAttemptRunning } = useContext(TaskAttemptDataContext);
   const { config } = useConfig();
-
-
 
   const onCreateNewAttempt = async (executor?: string, baseBranch?: string) => {
     try {
