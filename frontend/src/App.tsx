@@ -104,32 +104,32 @@ function AppContent() {
 
     setShowGitHubLogin(false);
     
-    // Mark GitHub login as acknowledged and save config
-    const updatedConfig = {
-      ...config,
-      github_login_acknowledged: true,
-    };
-    
-    updateConfig(updatedConfig);
-    
     try {
-      await configApi.saveConfig(updatedConfig);
-      
       // Add a delay to ensure backend has time to save the GitHub token
-      // before refreshing the config
+      // (if user authenticated) before refreshing the config
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Refresh the config to get the latest GitHub authentication state
       const latestConfig = await configApi.getConfig();
       updateConfig(latestConfig);
       
+      // If user skipped (no GitHub token), we need to manually set the acknowledgment
+      if (!latestConfig.github?.token) {
+        const updatedConfig = {
+          ...latestConfig,
+          github_login_acknowledged: true,
+        };
+        updateConfig(updatedConfig);
+        await configApi.saveConfig(updatedConfig);
+      }
+      
       // After GitHub login (success or skip), show privacy opt-in if not acknowledged
       if (!config.telemetry_acknowledged) {
         setShowPrivacyOptIn(true);
       }
     } catch (err) {
-      console.error('Error saving config:', err);
-      // Still show privacy opt-in even if config save fails
+      console.error('Error refreshing config:', err);
+      // Still show privacy opt-in even if config refresh fails
       if (!config.telemetry_acknowledged) {
         setShowPrivacyOptIn(true);
       }

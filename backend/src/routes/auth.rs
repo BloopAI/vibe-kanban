@@ -221,6 +221,7 @@ async fn device_poll(
             config.github.username = username.clone();
             config.github.primary_email = primary_email.clone();
             config.github.token = Some(access_token.to_string());
+            config.github_login_acknowledged = true;  // Also acknowledge the GitHub login step
             let config_path = crate::utils::config_path();
             if config.save(&config_path).is_err() {
                 return ResponseJson(ApiResponse {
