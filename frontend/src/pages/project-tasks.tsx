@@ -159,7 +159,9 @@ export function ProjectTasks() {
         });
         await fetchTasks();
         // Open the newly created task in the details panel
-        navigate(`/projects/${projectId}/tasks/${createdTask.id}`, { replace: true });
+        navigate(`/projects/${projectId}/tasks/${createdTask.id}`, {
+          replace: true,
+        });
       } catch (err) {
         setError('Failed to create task');
       }
