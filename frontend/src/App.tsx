@@ -25,6 +25,7 @@ function AppContent() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showPrivacyOptIn, setShowPrivacyOptIn] = useState(false);
   const [showGitHubLogin, setShowGitHubLogin] = useState(false);
+  const [gitHubLoginSkipped, setGitHubLoginSkipped] = useState(false);
   const showNavbar = true;
 
   useEffect(() => {
@@ -41,15 +42,16 @@ function AppContent() {
       if (config.telemetry_acknowledged) {
         const notAuthenticated =
           !config.github?.username || !config.github?.token;
-        setShowGitHubLogin(notAuthenticated);
+        setShowGitHubLogin(notAuthenticated && !gitHubLoginSkipped);
       } else {
         setShowGitHubLogin(false);
       }
     }
     if (githubTokenInvalid) {
       setShowGitHubLogin(true);
+      setGitHubLoginSkipped(false); // Reset skip state when token is invalid
     }
-  }, [config, githubTokenInvalid]);
+  }, [config, githubTokenInvalid, gitHubLoginSkipped]);
 
   const handleDisclaimerAccept = async () => {
     if (!config) return;
@@ -124,7 +126,12 @@ function AppContent() {
       <div className="h-screen flex flex-col bg-background">
         <GitHubLoginDialog
           open={showGitHubLogin}
-          onOpenChange={setShowGitHubLogin}
+          onOpenChange={(open) => {
+            setShowGitHubLogin(open);
+            if (!open) {
+              setGitHubLoginSkipped(true);
+            }
+          }}
         />
         <DisclaimerDialog
           open={showDisclaimer}
