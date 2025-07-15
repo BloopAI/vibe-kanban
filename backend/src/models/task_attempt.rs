@@ -8,7 +8,7 @@ use tracing::info;
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::{config::Config, project::Project, task::Task};
+use super::{project::Project, task::Task};
 use crate::services::{
     CreatePrRequest, GitHubRepoInfo, GitHubService, GitHubServiceError, GitService,
     GitServiceError, ProcessService,

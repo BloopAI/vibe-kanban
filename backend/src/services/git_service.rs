@@ -1060,7 +1060,7 @@ impl GitService {
 
         // Prepare callbacks for authentication
         let mut callbacks = RemoteCallbacks::new();
-        callbacks.credentials(|url, username_from_url, _| {
+        callbacks.credentials(|_url, username_from_url, _| {
             // Try SSH agent first
             if let Some(username) = username_from_url {
                 if let Ok(cred) = Cred::ssh_key_from_agent(username) {
