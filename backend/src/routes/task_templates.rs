@@ -1,12 +1,19 @@
-use crate::app_state::AppState;
-use crate::models::api_response::ApiResponse;
-use crate::models::task_template::{CreateTaskTemplate, TaskTemplate, UpdateTaskTemplate};
-use axum::extract::{Path, State};
-use axum::http::StatusCode;
-use axum::response::IntoResponse;
-use axum::routing::{delete, get, post, put};
-use axum::{Json, Router};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    response::IntoResponse,
+    routing::get,
+    Json, Router,
+};
 use uuid::Uuid;
+
+use crate::{
+    app_state::AppState,
+    models::{
+        api_response::ApiResponse,
+        task_template::{CreateTaskTemplate, TaskTemplate, UpdateTaskTemplate},
+    },
+};
 
 pub async fn list_templates(
     State(state): State<AppState>,
@@ -160,7 +167,12 @@ pub fn templates_router() -> Router<AppState> {
         .route("/templates/global", get(list_global_templates))
         .route(
             "/templates/:id",
-            get(get_template).put(update_template).delete(delete_template),
+            get(get_template)
+                .put(update_template)
+                .delete(delete_template),
         )
-        .route("/projects/:project_id/templates", get(list_project_templates))
+        .route(
+            "/projects/:project_id/templates",
+            get(list_project_templates),
+        )
 }

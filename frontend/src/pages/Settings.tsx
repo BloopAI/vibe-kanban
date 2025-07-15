@@ -493,7 +493,8 @@ export function Settings() {
             <CardHeader>
               <CardTitle>Task Templates</CardTitle>
               <CardDescription>
-                Manage global task templates that can be used across all projects.
+                Manage global task templates that can be used across all
+                projects.
               </CardDescription>
             </CardHeader>
             <CardContent>

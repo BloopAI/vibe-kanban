@@ -293,8 +293,8 @@ export function ProjectForm({
         />
         <p className="text-sm text-muted-foreground">
           This script will run after creating the worktree and before the
-          executor starts. Use it for setup tasks like installing
-          dependencies or preparing the environment.
+          executor starts. Use it for setup tasks like installing dependencies
+          or preparing the environment.
         </p>
       </div>
 
@@ -310,8 +310,8 @@ export function ProjectForm({
         />
         <p className="text-sm text-muted-foreground">
           This script can be run from task attempts to start a development
-          server. Use it to quickly start your project's dev server for
-          testing changes.
+          server. Use it to quickly start your project's dev server for testing
+          changes.
         </p>
       </div>
 
@@ -326,7 +326,9 @@ export function ProjectForm({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className={isEditing ? "sm:max-w-[600px]" : "sm:max-w-[425px]"}>
+      <DialogContent
+        className={isEditing ? 'sm:max-w-[600px]' : 'sm:max-w-[425px]'}
+      >
         <DialogHeader>
           <DialogTitle>
             {isEditing ? 'Edit Project' : 'Create New Project'}
@@ -339,8 +341,8 @@ export function ProjectForm({
         </DialogHeader>
 
         {isEditing ? (
-          <Tabs defaultValue="general" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+          <Tabs defaultValue="general" className="w-full -mt-2">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="templates">Task Templates</TabsTrigger>
             </TabsList>
@@ -358,18 +360,14 @@ export function ProjectForm({
                   </Button>
                   <Button
                     type="submit"
-                    disabled={
-                      loading ||
-                      !name.trim() ||
-                      !gitRepoPath.trim()
-                    }
+                    disabled={loading || !name.trim() || !gitRepoPath.trim()}
                   >
                     {loading ? 'Saving...' : 'Save Changes'}
                   </Button>
                 </DialogFooter>
               </form>
             </TabsContent>
-            <TabsContent value="templates" className="space-y-4">
+            <TabsContent value="templates" className="mt-0 pt-0">
               <TaskTemplateManager projectId={project?.id} />
             </TabsContent>
           </Tabs>

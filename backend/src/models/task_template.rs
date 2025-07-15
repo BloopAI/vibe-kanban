@@ -87,10 +87,7 @@ impl TaskTemplate {
         .await
     }
 
-    pub async fn create(
-        pool: &SqlitePool,
-        data: &CreateTaskTemplate,
-    ) -> Result<Self, sqlx::Error> {
+    pub async fn create(pool: &SqlitePool, data: &CreateTaskTemplate) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
         sqlx::query_as!(
             TaskTemplate,
@@ -113,13 +110,18 @@ impl TaskTemplate {
         data: &UpdateTaskTemplate,
     ) -> Result<Self, sqlx::Error> {
         // Get existing template first
-        let existing = Self::find_by_id(pool, id).await?.ok_or(sqlx::Error::RowNotFound)?;
-        
+        let existing = Self::find_by_id(pool, id)
+            .await?
+            .ok_or(sqlx::Error::RowNotFound)?;
+
         // Use let bindings to create longer-lived values
         let title = data.title.as_ref().unwrap_or(&existing.title);
         let description = data.description.as_ref().or(existing.description.as_ref());
-        let template_name = data.template_name.as_ref().unwrap_or(&existing.template_name);
-        
+        let template_name = data
+            .template_name
+            .as_ref()
+            .unwrap_or(&existing.template_name);
+
         sqlx::query_as!(
             TaskTemplate,
             r#"UPDATE task_templates 
@@ -136,12 +138,9 @@ impl TaskTemplate {
     }
 
     pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<u64, sqlx::Error> {
-        let result = sqlx::query!(
-            "DELETE FROM task_templates WHERE id = $1",
-            id
-        )
-        .execute(pool)
-        .await?;
+        let result = sqlx::query!("DELETE FROM task_templates WHERE id = $1", id)
+            .execute(pool)
+            .await?;
         Ok(result.rows_affected())
     }
 }
