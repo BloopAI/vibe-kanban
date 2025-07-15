@@ -61,7 +61,7 @@ export function GitHubLoginDialog({
           setPolling(false);
           setDeviceState(null);
           setError(null);
-          window.location.reload(); // reload config
+          onOpenChange(false); // Close the dialog on successful authentication
         } catch (e: any) {
           if (e?.message === 'authorization_pending') {
             timer = setTimeout(poll, (deviceState.interval || 5) * 1000);

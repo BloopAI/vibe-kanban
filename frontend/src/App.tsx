@@ -20,7 +20,7 @@ import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
-  const { config, updateConfig, loading } = useConfig();
+  const { config, updateConfig, loading, githubTokenInvalid } = useConfig();
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showPrivacyOptIn, setShowPrivacyOptIn] = useState(false);
@@ -33,11 +33,24 @@ function AppContent() {
       if (config.disclaimer_acknowledged) {
         setShowOnboarding(!config.onboarding_acknowledged);
         if (config.onboarding_acknowledged) {
-          setShowPrivacyOptIn(!config.telemetry_acknowledged);
+          // Check if GitHub authentication is configured
+          const githubAuthenticated = config.github?.username && config.github?.token;
+          if (!githubAuthenticated) {
+            setShowGitHubLogin(true);
+          } else if (!config.telemetry_acknowledged) {
+            setShowPrivacyOptIn(true);
+          }
         }
       }
     }
   }, [config]);
+
+  // Handle GitHub token invalidation
+  useEffect(() => {
+    if (githubTokenInvalid && config?.onboarding_acknowledged) {
+      setShowGitHubLogin(true);
+    }
+  }, [githubTokenInvalid, config?.onboarding_acknowledged]);
 
   const handleDisclaimerAccept = async () => {
     if (!config) return;
@@ -90,12 +103,31 @@ function AppContent() {
     try {
       await configApi.saveConfig(updatedConfig);
       setShowPrivacyOptIn(false);
-      // Now show GitHub login after privacy choice is made
-      const notAuthenticated =
-        !updatedConfig.github?.username || !updatedConfig.github?.token;
-      setShowGitHubLogin(notAuthenticated);
     } catch (err) {
       console.error('Error saving config:', err);
+    }
+  };
+
+  const handleGitHubLoginComplete = async () => {
+    if (!config) return;
+
+    setShowGitHubLogin(false);
+    
+    // Refresh the config to get the latest GitHub authentication state
+    try {
+      const updatedConfig = await configApi.getConfig();
+      updateConfig(updatedConfig);
+      
+      // After GitHub login (success or skip), show privacy opt-in if not acknowledged
+      if (!config.telemetry_acknowledged) {
+        setShowPrivacyOptIn(true);
+      }
+    } catch (err) {
+      console.error('Error refreshing config:', err);
+      // Still show privacy opt-in even if config refresh fails
+      if (!config.telemetry_acknowledged) {
+        setShowPrivacyOptIn(true);
+      }
     }
   };
 
@@ -112,7 +144,11 @@ function AppContent() {
       <div className="h-screen flex flex-col bg-background">
         <GitHubLoginDialog
           open={showGitHubLogin}
-          onOpenChange={setShowGitHubLogin}
+          onOpenChange={(open) => {
+            if (!open) {
+              handleGitHubLoginComplete();
+            }
+          }}
         />
         <DisclaimerDialog
           open={showDisclaimer}
