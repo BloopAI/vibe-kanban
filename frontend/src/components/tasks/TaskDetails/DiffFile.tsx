@@ -1,10 +1,7 @@
 import { Button } from '@/components/ui/button.tsx';
 import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import DiffChunkSection from '@/components/tasks/TaskDetails/DiffChunkSection.tsx';
-import {
-  FileDiff,
-  DiffChunkType,
-} from 'shared/types.ts';
+import { FileDiff, DiffChunkType } from 'shared/types.ts';
 
 // Types for processing diff content in the frontend
 export interface ProcessedLine {

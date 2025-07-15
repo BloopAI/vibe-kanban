@@ -515,10 +515,10 @@ export const githubAuthApi = {
     }
   },
   start: async (): Promise<DeviceStartResponse> => {
-  const response = await makeRequest('/api/auth/github/device/start', {
-  method: 'POST',
-  });
-  return handleApiResponse<DeviceStartResponse>(response);
+    const response = await makeRequest('/api/auth/github/device/start', {
+      method: 'POST',
+    });
+    return handleApiResponse<DeviceStartResponse>(response);
   },
   poll: async (device_code: string): Promise<string> => {
     const response = await makeRequest('/api/auth/github/device/poll', {

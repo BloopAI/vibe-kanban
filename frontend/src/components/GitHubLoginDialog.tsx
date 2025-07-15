@@ -24,8 +24,9 @@ export function GitHubLoginDialog({
   const { config, loading, githubTokenInvalid } = useConfig();
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [deviceState, setDeviceState] =
-    useState<null | DeviceStartResponse>(null);
+  const [deviceState, setDeviceState] = useState<null | DeviceStartResponse>(
+    null
+  );
   const [polling, setPolling] = useState(false);
   const [copied, setCopied] = useState(false);
 
