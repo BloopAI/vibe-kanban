@@ -107,14 +107,13 @@ function AppContent() {
       setShowGitHubLogin(false);
 
       // If user skipped (no GitHub token), we need to manually set the acknowledgment
-      if (!latestConfig.github?.token) {
-        const updatedConfig = {
-          ...latestConfig,
-          github_login_acknowledged: true,
-        };
-        updateConfig(updatedConfig);
-        await configApi.saveConfig(updatedConfig);
-      }
+
+      const updatedConfig = {
+        ...latestConfig,
+        github_login_acknowledged: true,
+      };
+      updateConfig(updatedConfig);
+      await configApi.saveConfig(updatedConfig);
     } catch (err) {
       console.error('Error refreshing config:', err);
     } finally {
