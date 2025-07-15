@@ -9,10 +9,11 @@ import {
 } from './ui/dialog';
 import { Button } from './ui/button';
 import { useConfig } from './config-provider';
-import { Check, Clipboard } from 'lucide-react';
+import { Check, Clipboard, Github } from 'lucide-react';
 import { Loader } from './ui/loader';
 import { githubAuthApi } from '../lib/api';
 import { DeviceStartResponse } from 'shared/types.ts';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 export function GitHubLoginDialog({
   open,
@@ -125,85 +126,117 @@ export function GitHubLoginDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Sign in with GitHub</DialogTitle>
-          <DialogDescription>
+          <div className="flex items-center gap-3">
+            <Github className="h-6 w-6 text-primary" />
+            <DialogTitle>Sign in with GitHub</DialogTitle>
+          </div>
+          <DialogDescription className="text-left pt-1">
             Connect your GitHub account to create and manage pull requests directly from Vibe Kanban.
           </DialogDescription>
         </DialogHeader>
         {loading ? (
           <Loader message="Loading…" size={32} className="py-8" />
         ) : isAuthenticated ? (
-          <div className="py-8 text-center">
-            <div className="mb-2">
-              You are signed in as <b>{config?.github?.username ?? ''}</b>.
-            </div>
-            <Button onClick={() => onOpenChange(false)}>Close</Button>
+          <div className="space-y-4 py-3">
+            <Card>
+              <CardContent className="text-center py-8">
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <Check className="h-8 w-8 text-green-500" />
+                  <Github className="h-8 w-8 text-gray-600" />
+                </div>
+                <div className="text-lg font-medium text-gray-900 mb-1">
+                  Successfully connected!
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  You are signed in as <b>{config?.github?.username ?? ''}</b>
+                </div>
+              </CardContent>
+            </Card>
+            <DialogFooter>
+              <Button onClick={() => onOpenChange(false)} className="w-full">
+                Close
+              </Button>
+            </DialogFooter>
           </div>
         ) : deviceState ? (
-          <div className="py-6 space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm font-semibold">
-                  1
-                </span>
-                <div>
-                  <p className="text-sm font-medium text-gray-900 mb-1">
-                    Go to GitHub Device Authorization
-                  </p>
-                  <a
-                    href={deviceState.verification_uri}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 text-sm underline"
-                  >
-                    {deviceState.verification_uri}
-                  </a>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm font-semibold">
-                  2
-                </span>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900 mb-3">
-                    Enter this code:
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl font-mono font-bold tracking-[0.2em] bg-gray-50 border rounded-lg px-4 py-2 text-gray-900">
-                      {deviceState.user_code}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyToClipboard(deviceState.user_code)}
-                      disabled={copied}
+          <div className="space-y-4 py-3">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">
+                  Complete GitHub Authorization
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-0">
+                <div className="flex items-start gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm font-semibold">
+                    1
+                  </span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 mb-1">
+                      Go to GitHub Device Authorization
+                    </p>
+                    <a
+                      href={deviceState.verification_uri}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 text-sm underline"
                     >
-                      {copied ? (
-                        <>
-                          <Check className="w-4 h-4 mr-1" />
-                          Copied
-                        </>
-                      ) : (
-                        <>
-                          <Clipboard className="w-4 h-4 mr-1" />
-                          Copy
-                        </>
-                      )}
-                    </Button>
+                      {deviceState.verification_uri}
+                    </a>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            <div className="text-center">
-              <div className="text-sm text-muted-foreground">
+                <div className="flex items-start gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm font-semibold">
+                    2
+                  </span>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900 mb-3">
+                      Enter this code:
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl font-mono font-bold tracking-[0.2em] bg-gray-50 border rounded-lg px-4 py-2 text-gray-900">
+                        {deviceState.user_code}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => copyToClipboard(deviceState.user_code)}
+                        disabled={copied}
+                      >
+                        {copied ? (
+                          <>
+                            <Check className="w-4 h-4 mr-1" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Clipboard className="w-4 h-4 mr-1" />
+                            Copy
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 p-2 rounded-lg">
+              <Github className="h-3 w-3 flex-shrink-0" />
+              <span>
                 {copied
-                  ? 'Code copied to clipboard!'
-                  : 'Waiting for you to authorize…'}
-              </div>
+                  ? 'Code copied to clipboard! Complete the authorization on GitHub.'
+                  : 'Waiting for you to authorize this application on GitHub...'}
+              </span>
             </div>
-            {error && <div className="text-red-500 mt-2">{error}</div>}
+            
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="text-red-600 text-sm">{error}</div>
+              </div>
+            )}
+            
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Skip
@@ -211,17 +244,60 @@ export function GitHubLoginDialog({
             </DialogFooter>
           </div>
         ) : (
-          <>
-            {error && <div className="text-red-500 mb-2">{error}</div>}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="space-y-4 py-3">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">
+                  Why do you need GitHub access?
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 pt-0">
+                <div className="flex items-start gap-3">
+                  <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Create pull requests</p>
+                    <p className="text-xs text-muted-foreground">
+                      Generate PRs directly from your task attempts
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Manage repositories</p>
+                    <p className="text-xs text-muted-foreground">
+                      Access your repos to push changes and create branches
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Streamline workflow</p>
+                    <p className="text-xs text-muted-foreground">
+                      Skip manual PR creation and focus on coding
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="text-red-600 text-sm">{error}</div>
+              </div>
+            )}
+            
+            <DialogFooter className="gap-3 flex-col sm:flex-row">
+              <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
                 Skip
               </Button>
-              <Button onClick={handleLogin} disabled={fetching}>
+              <Button onClick={handleLogin} disabled={fetching} className="flex-1">
+                <Github className="h-4 w-4 mr-2" />
                 {fetching ? 'Starting…' : 'Sign in with GitHub'}
               </Button>
             </DialogFooter>
-          </>
+          </div>
         )}
       </DialogContent>
     </Dialog>
