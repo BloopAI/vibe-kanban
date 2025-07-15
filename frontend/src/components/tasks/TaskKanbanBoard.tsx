@@ -9,7 +9,10 @@ import {
 import { TaskCard } from './TaskCard';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
+import {
+  useKeyboardShortcuts,
+  useKanbanKeyboardNavigation,
+} from '@/lib/keyboard-shortcuts.ts';
 
 type Task = TaskWithAttemptStatus;
 
@@ -125,78 +128,16 @@ function TaskKanbanBoard({
   }, [taskId, focusedTaskId, groupedTasks]);
 
   // Keyboard navigation handler
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      // Don't handle if typing in input, textarea, or select
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (
-        tag === 'INPUT' ||
-        tag === 'TEXTAREA' ||
-        tag === 'SELECT' ||
-        (e.target as HTMLElement)?.isContentEditable
-      )
-        return;
-      if (!focusedTaskId || !focusedStatus) return;
-      const currentColumn = groupedTasks[focusedStatus];
-      const currentIndex = currentColumn.findIndex(
-        (t) => t.id === focusedTaskId
-      );
-      let newStatus = focusedStatus;
-      let newTaskId = focusedTaskId;
-      if (e.key === 'ArrowDown') {
-        if (currentIndex < currentColumn.length - 1) {
-          newTaskId = currentColumn[currentIndex + 1].id;
-        }
-      } else if (e.key === 'ArrowUp') {
-        if (currentIndex > 0) {
-          newTaskId = currentColumn[currentIndex - 1].id;
-        }
-      } else if (e.key === 'ArrowRight') {
-        let colIdx = allTaskStatuses.indexOf(focusedStatus);
-        while (colIdx < allTaskStatuses.length - 1) {
-          colIdx++;
-          const nextStatus = allTaskStatuses[colIdx];
-          if (groupedTasks[nextStatus] && groupedTasks[nextStatus].length > 0) {
-            newStatus = nextStatus;
-            newTaskId = groupedTasks[nextStatus][0].id;
-            break;
-          }
-        }
-      } else if (e.key === 'ArrowLeft') {
-        let colIdx = allTaskStatuses.indexOf(focusedStatus);
-        while (colIdx > 0) {
-          colIdx--;
-          const prevStatus = allTaskStatuses[colIdx];
-          if (groupedTasks[prevStatus] && groupedTasks[prevStatus].length > 0) {
-            newStatus = prevStatus;
-            newTaskId = groupedTasks[prevStatus][0].id;
-            break;
-          }
-        }
-      } else if (e.key === 'Enter' || e.key === ' ') {
-        const task = filteredTasks.find((t) => t.id === focusedTaskId);
-        if (task) {
-          onViewTaskDetails(task);
-        }
-      } else {
-        return;
-      }
-      e.preventDefault();
-      setFocusedTaskId(newTaskId);
-      setFocusedStatus(newStatus);
-    }
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [
+  useKanbanKeyboardNavigation({
     focusedTaskId,
+    setFocusedTaskId: (id) => setFocusedTaskId(id as string | null),
     focusedStatus,
+    setFocusedStatus: (status) => setFocusedStatus(status as TaskStatus | null),
     groupedTasks,
     filteredTasks,
+    allTaskStatuses,
     onViewTaskDetails,
-    projectId,
-    navigate,
-  ]);
+  });
 
   return (
     <KanbanProvider onDragEnd={onDragEnd}>

@@ -123,3 +123,98 @@ export function useDialogKeyboardShortcuts(onClose: () => void) {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 }
+
+// Kanban board keyboard navigation hook
+export function useKanbanKeyboardNavigation({
+  focusedTaskId,
+  setFocusedTaskId,
+  focusedStatus,
+  setFocusedStatus,
+  groupedTasks,
+  filteredTasks,
+  allTaskStatuses,
+  onViewTaskDetails,
+}: {
+  focusedTaskId: string | null;
+  setFocusedTaskId: (id: string | null) => void;
+  focusedStatus: string | null;
+  setFocusedStatus: (status: string | null) => void;
+  groupedTasks: Record<string, any[]>;
+  filteredTasks: any[];
+  allTaskStatuses: string[];
+  onViewTaskDetails: (task: any) => void;
+}) {
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Don't handle if typing in input, textarea, or select
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        (e.target as HTMLElement)?.isContentEditable
+      )
+        return;
+      if (!focusedTaskId || !focusedStatus) return;
+      const currentColumn = groupedTasks[focusedStatus];
+      const currentIndex = currentColumn.findIndex(
+        (t: any) => t.id === focusedTaskId
+      );
+      let newStatus = focusedStatus;
+      let newTaskId = focusedTaskId;
+      if (e.key === 'ArrowDown') {
+        if (currentIndex < currentColumn.length - 1) {
+          newTaskId = currentColumn[currentIndex + 1].id;
+        }
+      } else if (e.key === 'ArrowUp') {
+        if (currentIndex > 0) {
+          newTaskId = currentColumn[currentIndex - 1].id;
+        }
+      } else if (e.key === 'ArrowRight') {
+        let colIdx = allTaskStatuses.indexOf(focusedStatus);
+        while (colIdx < allTaskStatuses.length - 1) {
+          colIdx++;
+          const nextStatus = allTaskStatuses[colIdx];
+          if (groupedTasks[nextStatus] && groupedTasks[nextStatus].length > 0) {
+            newStatus = nextStatus;
+            newTaskId = groupedTasks[nextStatus][0].id;
+            break;
+          }
+        }
+      } else if (e.key === 'ArrowLeft') {
+        let colIdx = allTaskStatuses.indexOf(focusedStatus);
+        while (colIdx > 0) {
+          colIdx--;
+          const prevStatus = allTaskStatuses[colIdx];
+          if (groupedTasks[prevStatus] && groupedTasks[prevStatus].length > 0) {
+            newStatus = prevStatus;
+            newTaskId = groupedTasks[prevStatus][0].id;
+            break;
+          }
+        }
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        const task = filteredTasks.find((t: any) => t.id === focusedTaskId);
+        if (task) {
+          onViewTaskDetails(task);
+        }
+      } else {
+        return;
+      }
+      e.preventDefault();
+      setFocusedTaskId(newTaskId);
+      setFocusedStatus(newStatus);
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    focusedTaskId,
+    focusedStatus,
+    groupedTasks,
+    filteredTasks,
+    onViewTaskDetails,
+    allTaskStatuses,
+    setFocusedTaskId,
+    setFocusedStatus,
+  ]);
+}
