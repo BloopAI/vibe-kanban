@@ -220,6 +220,7 @@ export function TaskFormDialog({
               onChange={setDescription}
               placeholder="Enter task description (optional). Type @ to search files."
               rows={3}
+              maxRows={8}
               disabled={isSubmitting || isSubmittingAndStart}
               projectId={projectId}
             />

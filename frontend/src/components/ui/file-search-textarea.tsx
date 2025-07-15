@@ -1,6 +1,6 @@
 import { KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Textarea } from '@/components/ui/textarea';
+import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { projectsApi } from '@/lib/api';
 
 interface FileSearchResult {
@@ -17,6 +17,7 @@ interface FileSearchTextareaProps {
   className?: string;
   projectId?: string;
   onKeyDown?: (e: React.KeyboardEvent) => void;
+  maxRows?: number;
 }
 
 export function FileSearchTextarea({
@@ -28,6 +29,7 @@ export function FileSearchTextarea({
   className,
   projectId,
   onKeyDown,
+  maxRows = 10,
 }: FileSearchTextareaProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FileSearchResult[]>([]);
@@ -230,7 +232,7 @@ export function FileSearchTextarea({
     <div
       className={`relative ${className?.includes('flex-1') ? 'flex-1' : ''}`}
     >
-      <Textarea
+      <AutoExpandingTextarea
         ref={textareaRef}
         value={value}
         onChange={handleChange}
@@ -239,6 +241,7 @@ export function FileSearchTextarea({
         rows={rows}
         disabled={disabled}
         className={className}
+        maxRows={maxRows}
       />
 
       {showDropdown &&
