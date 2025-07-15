@@ -12,6 +12,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip.tsx';
 import { Input } from '@/components/ui/input.tsx';
 import type { GitBranch } from 'shared/types.ts';
 
@@ -39,10 +45,7 @@ function BranchSelector({
   const filteredBranches = useMemo(() => {
     let filtered = branches;
     
-    if (excludeCurrentBranch) {
-      filtered = filtered.filter(branch => !branch.is_current);
-    }
-    
+    // Don't filter out current branch, we'll handle it in the UI
     if (branchSearchTerm.trim()) {
       filtered = filtered.filter((branch) =>
         branch.name.toLowerCase().includes(branchSearchTerm.toLowerCase())
@@ -50,7 +53,7 @@ function BranchSelector({
     }
     
     return filtered;
-  }, [branches, branchSearchTerm, excludeCurrentBranch]);
+  }, [branches, branchSearchTerm]);
 
   const displayName = useMemo(() => {
     if (!selectedBranch) return placeholder;
@@ -108,31 +111,59 @@ function BranchSelector({
               No branches found
             </div>
           ) : (
-            filteredBranches.map((branch) => (
-              <DropdownMenuItem
-                key={branch.name}
-                onClick={() => handleBranchSelect(branch.name)}
-                className={selectedBranch === branch.name ? 'bg-accent' : ''}
-              >
-                <div className="flex items-center justify-between w-full">
-                  <span className={branch.is_current ? 'font-medium' : ''}>
-                    {branch.name}
-                  </span>
-                  <div className="flex gap-1">
-                    {branch.is_current && (
-                      <span className="text-xs bg-green-100 text-green-800 px-1 rounded">
-                        current
-                      </span>
-                    )}
-                    {branch.is_remote && (
-                      <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">
-                        remote
-                      </span>
-                    )}
+            filteredBranches.map((branch) => {
+              const isCurrentAndExcluded = excludeCurrentBranch && branch.is_current;
+              
+              const menuItem = (
+                <DropdownMenuItem
+                  key={branch.name}
+                  onClick={() => {
+                    if (!isCurrentAndExcluded) {
+                      handleBranchSelect(branch.name);
+                    }
+                  }}
+                  disabled={isCurrentAndExcluded}
+                  className={`${selectedBranch === branch.name ? 'bg-accent' : ''} ${
+                    isCurrentAndExcluded ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span className={branch.is_current ? 'font-medium' : ''}>
+                      {branch.name}
+                    </span>
+                    <div className="flex gap-1">
+                      {branch.is_current && (
+                        <span className="text-xs bg-green-100 text-green-800 px-1 rounded">
+                          current
+                        </span>
+                      )}
+                      {branch.is_remote && (
+                        <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">
+                          remote
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </DropdownMenuItem>
-            ))
+                </DropdownMenuItem>
+              );
+
+              if (isCurrentAndExcluded) {
+                return (
+                  <TooltipProvider key={branch.name}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        {menuItem}
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Cannot rebase a branch onto itself</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                );
+              }
+
+              return menuItem;
+            })
           )}
         </div>
       </DropdownMenuContent>
