@@ -369,10 +369,10 @@ impl FromStr for ExecutorConfig {
             "claude" => Ok(ExecutorConfig::Claude),
             "amp" => Ok(ExecutorConfig::Amp),
             "gemini" => Ok(ExecutorConfig::Gemini),
+            "charmopencode" => Ok(ExecutorConfig::CharmOpencode),
             "setup_script" => Ok(ExecutorConfig::SetupScript {
                 script: "setup script".to_string(),
             }),
-            "charm/opencode" => Ok(ExecutorConfig::CharmOpencode),
             _ => Err(format!("Unknown executor type: {}", s)),
         }
     }
@@ -385,10 +385,10 @@ impl ExecutorConfig {
             ExecutorConfig::Claude => Box::new(ClaudeExecutor),
             ExecutorConfig::Amp => Box::new(AmpExecutor),
             ExecutorConfig::Gemini => Box::new(GeminiExecutor),
+            ExecutorConfig::CharmOpencode => Box::new(CharmOpencodeExecutor),
             ExecutorConfig::SetupScript { script } => {
                 Box::new(SetupScriptExecutor::new(script.clone()))
             }
-            ExecutorConfig::CharmOpencode => Box::new(CharmOpencodeExecutor),
         }
     }
 
@@ -449,8 +449,8 @@ impl std::fmt::Display for ExecutorConfig {
             ExecutorConfig::Claude => "claude",
             ExecutorConfig::Amp => "amp",
             ExecutorConfig::Gemini => "gemini",
-            ExecutorConfig::SetupScript { .. } => "setup_script",
             ExecutorConfig::CharmOpencode => "charm/opencode",
+            ExecutorConfig::SetupScript { .. } => "setup_script",
         };
         write!(f, "{}", s)
     }

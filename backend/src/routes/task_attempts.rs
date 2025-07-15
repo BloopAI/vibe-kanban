@@ -1226,13 +1226,9 @@ pub async fn get_execution_process_normalized_logs(
                         .unwrap_or_else(|| "setup script".to_string()),
                 }
             } else {
-                match executor_type {
-                    "amp" => ExecutorConfig::Amp,
-                    "claude" => ExecutorConfig::Claude,
-                    "echo" => ExecutorConfig::Echo,
-                    "gemini" => ExecutorConfig::Gemini,
-                    "opencode" => ExecutorConfig::CharmOpencode,
-                    _ => {
+                match executor_type.to_string().parse() {
+                    Ok(config) => config,
+                    Err(_) => {
                         tracing::warn!(
                             "Unsupported executor type: {}, cannot normalize logs properly",
                             executor_type

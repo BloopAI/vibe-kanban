@@ -9,7 +9,7 @@ export const EXECUTOR_TYPES: string[] = [
     "claude",
     "amp",
     "gemini",
-    "opencode"
+    "charmopencode"
 ];
 
 export const EDITOR_TYPES: EditorType[] = [
@@ -26,7 +26,7 @@ export const EXECUTOR_LABELS: Record<string, string> = {
     "claude": "Claude",
     "amp": "Amp",
     "gemini": "Gemini",
-    "opencode": "OpenCode"
+    "charmopencode": "CharmOpencode"
 };
 
 export const EDITOR_LABELS: Record<string, string> = {

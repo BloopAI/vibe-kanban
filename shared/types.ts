@@ -5,17 +5,17 @@
 export type ApiResponse<T> = { success: boolean, data: T | null, message: string | null, };
 
 export type Config = {
-    theme: ThemeMode,
-    executor: ExecutorConfig,
-    disclaimer_acknowledged: boolean,
-    onboarding_acknowledged: boolean,
-    telemetry_acknowledged: boolean,
-    sound_alerts: boolean,
-    sound_file: SoundFile,
-    push_notifications: boolean,
-    editor: EditorConfig,
-    github: GitHubConfig,
-    analytics_enabled: boolean | null,
+  theme: ThemeMode,
+  executor: ExecutorConfig,
+  disclaimer_acknowledged: boolean,
+  onboarding_acknowledged: boolean,
+  telemetry_acknowledged: boolean,
+  sound_alerts: boolean,
+  sound_file: SoundFile,
+  push_notifications: boolean,
+  editor: EditorConfig,
+  github: GitHubConfig,
+  analytics_enabled: boolean | null,
 };
 
 export type ThemeMode = "light" | "dark" | "system" | "purple" | "green" | "blue" | "orange" | "red";
@@ -23,11 +23,11 @@ export type ThemeMode = "light" | "dark" | "system" | "purple" | "green" | "blue
 export type EditorConfig = { editor_type: EditorType, custom_command: string | null, };
 
 export type GitHubConfig = {
-    pat: string | null,
-    token: string | null,
-    username: string | null,
-    primary_email: string | null,
-    default_pr_base: string | null,
+  pat: string | null,
+  token: string | null,
+  username: string | null,
+  primary_email: string | null,
+  default_pr_base: string | null,
 };
 
 export type EditorType = "vscode" | "cursor" | "windsurf" | "intellij" | "zed" | "custom";
@@ -35,58 +35,58 @@ export type EditorType = "vscode" | "cursor" | "windsurf" | "intellij" | "zed" |
 export type EditorConstants = { editor_types: Array<EditorType>, editor_labels: Array<string>, };
 
 export type SoundFile =
-    "abstract-sound1"
-    | "abstract-sound2"
-    | "abstract-sound3"
-    | "abstract-sound4"
-    | "cow-mooing"
-    | "phone-vibration"
-    | "rooster";
+  "abstract-sound1"
+  | "abstract-sound2"
+  | "abstract-sound3"
+  | "abstract-sound4"
+  | "cow-mooing"
+  | "phone-vibration"
+  | "rooster";
 
 export type SoundConstants = { sound_files: Array<SoundFile>, sound_labels: Array<string>, };
 
 export type ConfigConstants = { editor: EditorConstants, sound: SoundConstants, };
 
 export type ExecutorConfig = { "type": "echo" } | { "type": "claude" } | { "type": "amp" } | { "type": "gemini" } | {
-    "type": "opencode"
+  "type": "charmopencode"
 };
 
 export type ExecutorConstants = { executor_types: Array<ExecutorConfig>, executor_labels: Array<string>, };
 
 export type CreateProject = {
-    name: string,
-    git_repo_path: string,
-    use_existing_repo: boolean,
-    setup_script: string | null,
-    dev_script: string | null,
+  name: string,
+  git_repo_path: string,
+  use_existing_repo: boolean,
+  setup_script: string | null,
+  dev_script: string | null,
 };
 
 export type Project = {
-    id: string,
-    name: string,
-    git_repo_path: string,
-    setup_script: string | null,
-    dev_script: string | null,
-    created_at: Date,
-    updated_at: Date,
+  id: string,
+  name: string,
+  git_repo_path: string,
+  setup_script: string | null,
+  dev_script: string | null,
+  created_at: Date,
+  updated_at: Date,
 };
 
 export type ProjectWithBranch = {
-    id: string,
-    name: string,
-    git_repo_path: string,
-    setup_script: string | null,
-    dev_script: string | null,
-    current_branch: string | null,
-    created_at: Date,
-    updated_at: Date,
+  id: string,
+  name: string,
+  git_repo_path: string,
+  setup_script: string | null,
+  dev_script: string | null,
+  current_branch: string | null,
+  created_at: Date,
+  updated_at: Date,
 };
 
 export type UpdateProject = {
-    name: string | null,
-    git_repo_path: string | null,
-    setup_script: string | null,
-    dev_script: string | null,
+  name: string | null,
+  git_repo_path: string | null,
+  setup_script: string | null,
+  dev_script: string | null,
 };
 
 export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, };
@@ -100,63 +100,63 @@ export type CreateBranch = { name: string, base_branch: string | null, };
 export type CreateTask = { project_id: string, title: string, description: string | null, };
 
 export type CreateTaskAndStart = {
-    project_id: string,
-    title: string,
-    description: string | null,
-    executor: ExecutorConfig | null,
+  project_id: string,
+  title: string,
+  description: string | null,
+  executor: ExecutorConfig | null,
 };
 
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
 export type Task = {
-    id: string,
-    project_id: string,
-    title: string,
-    description: string | null,
-    status: TaskStatus,
-    created_at: string,
-    updated_at: string,
+  id: string,
+  project_id: string,
+  title: string,
+  description: string | null,
+  status: TaskStatus,
+  created_at: string,
+  updated_at: string,
 };
 
 export type TaskWithAttemptStatus = {
-    id: string,
-    project_id: string,
-    title: string,
-    description: string | null,
-    status: TaskStatus,
-    created_at: string,
-    updated_at: string,
-    has_in_progress_attempt: boolean,
-    has_merged_attempt: boolean,
-    has_failed_attempt: boolean,
+  id: string,
+  project_id: string,
+  title: string,
+  description: string | null,
+  status: TaskStatus,
+  created_at: string,
+  updated_at: string,
+  has_in_progress_attempt: boolean,
+  has_merged_attempt: boolean,
+  has_failed_attempt: boolean,
 };
 
 export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, };
 
 export type TaskAttemptStatus =
-    "setuprunning"
-    | "setupcomplete"
-    | "setupfailed"
-    | "executorrunning"
-    | "executorcomplete"
-    | "executorfailed";
+  "setuprunning"
+  | "setupcomplete"
+  | "setupfailed"
+  | "executorrunning"
+  | "executorcomplete"
+  | "executorfailed";
 
 export type TaskAttempt = {
-    id: string,
-    task_id: string,
-    worktree_path: string,
-    branch: string,
-    base_branch: string,
-    merge_commit: string | null,
-    executor: string | null,
-    pr_url: string | null,
-    pr_number: bigint | null,
-    pr_status: string | null,
-    pr_merged_at: string | null,
-    worktree_deleted: boolean,
-    setup_completed_at: string | null,
-    created_at: string,
-    updated_at: string,
+  id: string,
+  task_id: string,
+  worktree_path: string,
+  branch: string,
+  base_branch: string,
+  merge_commit: string | null,
+  executor: string | null,
+  pr_url: string | null,
+  pr_number: bigint | null,
+  pr_status: string | null,
+  pr_merged_at: string | null,
+  worktree_deleted: boolean,
+  setup_completed_at: string | null,
+  created_at: string,
+  updated_at: string,
 };
 
 export type CreateTaskAttempt = { executor: string | null, base_branch: string | null, };
@@ -166,47 +166,47 @@ export type UpdateTaskAttempt = Record<string, never>;
 export type CreateFollowUpAttempt = { prompt: string, };
 
 export type TaskAttemptActivity = {
-    id: string,
-    execution_process_id: string,
-    status: TaskAttemptStatus,
-    note: string | null,
-    created_at: string,
+  id: string,
+  execution_process_id: string,
+  status: TaskAttemptStatus,
+  note: string | null,
+  created_at: string,
 };
 
 export type TaskAttemptActivityWithPrompt = {
-    id: string,
-    execution_process_id: string,
-    status: TaskAttemptStatus,
-    note: string | null,
-    created_at: string,
-    prompt: string | null,
+  id: string,
+  execution_process_id: string,
+  status: TaskAttemptStatus,
+  note: string | null,
+  created_at: string,
+  prompt: string | null,
 };
 
 export type CreateTaskAttemptActivity = {
-    execution_process_id: string,
-    status: TaskAttemptStatus | null,
-    note: string | null,
+  execution_process_id: string,
+  status: TaskAttemptStatus | null,
+  note: string | null,
 };
 
 export type AttemptData = {
-    activities: TaskAttemptActivityWithPrompt[];
-    processes: ExecutionProcessSummary[];
-    runningProcessDetails: Record<string, ExecutionProcess>;
+  activities: TaskAttemptActivityWithPrompt[];
+  processes: ExecutionProcessSummary[];
+  runningProcessDetails: Record<string, ExecutionProcess>;
 }
 
 export interface ProcessedLine {
-    content: string;
-    chunkType: DiffChunkType;
-    oldLineNumber?: number;
-    newLineNumber?: number;
+  content: string;
+  chunkType: DiffChunkType;
+  oldLineNumber?: number;
+  newLineNumber?: number;
 }
 
 export interface ProcessedSection {
-    type: 'context' | 'change' | 'expanded';
-    lines: ProcessedLine[];
-    expandKey?: string;
-    expandedAbove?: boolean;
-    expandedBelow?: boolean;
+  type: 'context' | 'change' | 'expanded';
+  lines: ProcessedLine[];
+  expandKey?: string;
+  expandedAbove?: boolean;
+  expandedBelow?: boolean;
 }
 
 export type DirectoryEntry = { name: string, path: string, is_directory: boolean, is_git_repo: boolean, };
@@ -220,65 +220,65 @@ export type FileDiff = { path: string, chunks: Array<DiffChunk>, };
 export type WorktreeDiff = { files: Array<FileDiff>, };
 
 export type BranchStatus = {
-    is_behind: boolean,
-    commits_behind: number,
-    commits_ahead: number,
-    up_to_date: boolean,
-    merged: boolean,
-    has_uncommitted_changes: boolean,
-    base_branch_name: string,
+  is_behind: boolean,
+  commits_behind: number,
+  commits_ahead: number,
+  up_to_date: boolean,
+  merged: boolean,
+  has_uncommitted_changes: boolean,
+  base_branch_name: string,
 };
 
 export type ExecutionState =
-    "NotStarted"
-    | "SetupRunning"
-    | "SetupComplete"
-    | "SetupFailed"
-    | "CodingAgentRunning"
-    | "CodingAgentComplete"
-    | "CodingAgentFailed"
-    | "Complete";
+  "NotStarted"
+  | "SetupRunning"
+  | "SetupComplete"
+  | "SetupFailed"
+  | "CodingAgentRunning"
+  | "CodingAgentComplete"
+  | "CodingAgentFailed"
+  | "Complete";
 
 export type TaskAttemptState = {
-    execution_state: ExecutionState,
-    has_changes: boolean,
-    has_setup_script: boolean,
-    setup_process_id: string | null,
-    coding_agent_process_id: string | null,
+  execution_state: ExecutionState,
+  has_changes: boolean,
+  has_setup_script: boolean,
+  setup_process_id: string | null,
+  coding_agent_process_id: string | null,
 };
 
 export type ExecutionProcess = {
-    id: string,
-    task_attempt_id: string,
-    process_type: ExecutionProcessType,
-    executor_type: string | null,
-    status: ExecutionProcessStatus,
-    command: string,
-    args: string | null,
-    working_directory: string,
-    stdout: string | null,
-    stderr: string | null,
-    exit_code: bigint | null,
-    started_at: string,
-    completed_at: string | null,
-    created_at: string,
-    updated_at: string,
+  id: string,
+  task_attempt_id: string,
+  process_type: ExecutionProcessType,
+  executor_type: string | null,
+  status: ExecutionProcessStatus,
+  command: string,
+  args: string | null,
+  working_directory: string,
+  stdout: string | null,
+  stderr: string | null,
+  exit_code: bigint | null,
+  started_at: string,
+  completed_at: string | null,
+  created_at: string,
+  updated_at: string,
 };
 
 export type ExecutionProcessSummary = {
-    id: string,
-    task_attempt_id: string,
-    process_type: ExecutionProcessType,
-    executor_type: string | null,
-    status: ExecutionProcessStatus,
-    command: string,
-    args: string | null,
-    working_directory: string,
-    exit_code: bigint | null,
-    started_at: string,
-    completed_at: string | null,
-    created_at: string,
-    updated_at: string,
+  id: string,
+  task_attempt_id: string,
+  process_type: ExecutionProcessType,
+  executor_type: string | null,
+  status: ExecutionProcessStatus,
+  command: string,
+  args: string | null,
+  working_directory: string,
+  exit_code: bigint | null,
+  started_at: string,
+  completed_at: string | null,
+  created_at: string,
+  updated_at: string,
 };
 
 export type ExecutionProcessStatus = "running" | "completed" | "failed" | "killed";
@@ -286,29 +286,29 @@ export type ExecutionProcessStatus = "running" | "completed" | "failed" | "kille
 export type ExecutionProcessType = "setupscript" | "codingagent" | "devserver";
 
 export type CreateExecutionProcess = {
-    task_attempt_id: string,
-    process_type: ExecutionProcessType,
-    executor_type: string | null,
-    command: string,
-    args: string | null,
-    working_directory: string,
+  task_attempt_id: string,
+  process_type: ExecutionProcessType,
+  executor_type: string | null,
+  command: string,
+  args: string | null,
+  working_directory: string,
 };
 
 export type UpdateExecutionProcess = {
-    status: ExecutionProcessStatus | null,
-    exit_code: bigint | null,
-    completed_at: string | null,
+  status: ExecutionProcessStatus | null,
+  exit_code: bigint | null,
+  completed_at: string | null,
 };
 
 export type ExecutorSession = {
-    id: string,
-    task_attempt_id: string,
-    execution_process_id: string,
-    session_id: string | null,
-    prompt: string | null,
-    summary: string | null,
-    created_at: string,
-    updated_at: string,
+  id: string,
+  task_attempt_id: string,
+  execution_process_id: string,
+  session_id: string | null,
+  prompt: string | null,
+  summary: string | null,
+  created_at: string,
+  updated_at: string,
 };
 
 export type CreateExecutorSession = { task_attempt_id: string, execution_process_id: string, prompt: string | null, };
@@ -316,88 +316,88 @@ export type CreateExecutorSession = { task_attempt_id: string, execution_process
 export type UpdateExecutorSession = { session_id: string | null, prompt: string | null, summary: string | null, };
 
 export type NormalizedConversation = {
-    entries: Array<NormalizedEntry>,
-    session_id: string | null,
-    executor_type: string,
-    prompt: string | null,
-    summary: string | null,
+  entries: Array<NormalizedEntry>,
+  session_id: string | null,
+  executor_type: string,
+  prompt: string | null,
+  summary: string | null,
 };
 
 export type NormalizedEntry = { timestamp: string | null, entry_type: NormalizedEntryType, content: string, };
 
 export type NormalizedEntryType = { "type": "user_message" } | { "type": "assistant_message" } | {
-    "type": "tool_use",
-    tool_name: string,
-    action_type: ActionType,
+  "type": "tool_use",
+  tool_name: string,
+  action_type: ActionType,
 } | { "type": "system_message" } | { "type": "error_message" } | { "type": "thinking" };
 
 export type ActionType = { "action": "file_read", path: string, } | { "action": "file_write", path: string, } | {
-    "action": "command_run",
-    command: string,
+  "action": "command_run",
+  command: string,
 } | { "action": "search", query: string, } | { "action": "web_fetch", url: string, } | {
-    "action": "task_create",
-    description: string,
+  "action": "task_create",
+  description: string,
 } | { "action": "other", description: string, };
 
 export type StartGitHubDeviceFlowType = {
-    device_code: string;
-    user_code: string;
-    verification_uri: string;
-    expires_in: number;
-    interval: number;
+  device_code: string;
+  user_code: string;
+  verification_uri: string;
+  expires_in: number;
+  interval: number;
 };
 
 // Generated constants
 export const EXECUTOR_TYPES: string[] = [
-    "echo",
-    "claude",
-    "amp",
-    "gemini",
-    "opencode"
+  "echo",
+  "claude",
+  "amp",
+  "gemini",
+  "charmopencode"
 ];
 
 export const EDITOR_TYPES: EditorType[] = [
-    "vscode",
-    "cursor",
-    "windsurf",
-    "intellij",
-    "zed",
-    "custom"
+  "vscode",
+  "cursor",
+  "windsurf",
+  "intellij",
+  "zed",
+  "custom"
 ];
 
 export const EXECUTOR_LABELS: Record<string, string> = {
-    "echo": "Echo (Test Mode)",
-    "claude": "Claude",
-    "amp": "Amp",
-    "gemini": "Gemini",
-    "opencode": "OpenCode"
+  "echo": "Echo (Test Mode)",
+  "claude": "Claude",
+  "amp": "Amp",
+  "gemini": "Gemini",
+  "charmopencode": "Charm/Opencode"
 };
 
 export const EDITOR_LABELS: Record<string, string> = {
-    "vscode": "VS Code",
-    "cursor": "Cursor",
-    "windsurf": "Windsurf",
-    "intellij": "IntelliJ IDEA",
-    "zed": "Zed",
-    "custom": "Custom"
+  "vscode": "VS Code",
+  "cursor": "Cursor",
+  "windsurf": "Windsurf",
+  "intellij": "IntelliJ IDEA",
+  "zed": "Zed",
+  "custom": "Custom"
 };
 
 export const SOUND_FILES: SoundFile[] = [
-    "abstract-sound1",
-    "abstract-sound2",
-    "abstract-sound3",
-    "abstract-sound4",
-    "cow-mooing",
-    "phone-vibration",
-    "rooster"
+  "abstract-sound1",
+  "abstract-sound2",
+  "abstract-sound3",
+  "abstract-sound4",
+  "cow-mooing",
+  "phone-vibration",
+  "rooster"
 ];
 
 export const SOUND_LABELS: Record<string, string> = {
-    "abstract-sound1": "Gentle Chime",
-    "abstract-sound2": "Soft Bell",
-    "abstract-sound3": "Digital Tone",
-    "abstract-sound4": "Subtle Alert",
-    "cow-mooing": "Cow Mooing",
-    "phone-vibration": "Phone Vibration",
-    "rooster": "Rooster Call"
+  "abstract-sound1": "Gentle Chime",
+  "abstract-sound2": "Soft Bell",
+  "abstract-sound3": "Digital Tone",
+  "abstract-sound4": "Subtle Alert",
+  "cow-mooing": "Cow Mooing",
+  "phone-vibration": "Phone Vibration",
+  "rooster": "Rooster Call"
 };

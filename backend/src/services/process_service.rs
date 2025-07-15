@@ -638,7 +638,7 @@ impl ProcessService {
             Some("claude") => crate::executor::ExecutorConfig::Claude,
             Some("amp") => crate::executor::ExecutorConfig::Amp,
             Some("gemini") => crate::executor::ExecutorConfig::Gemini,
-            Some("opencode") => crate::executor::ExecutorConfig::CharmOpencode,
+            Some("charmopencode") => crate::executor::ExecutorConfig::CharmOpencode,
             _ => crate::executor::ExecutorConfig::Echo, // Default for "echo" or None
         }
     }
