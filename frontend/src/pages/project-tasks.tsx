@@ -14,7 +14,7 @@ import {
   getMainContainerClasses,
 } from '@/lib/responsive-config';
 
-import { TaskKanbanBoard } from '@/components/tasks/TaskKanbanBoard';
+import TaskKanbanBoard from '@/components/tasks/TaskKanbanBoard';
 import { TaskDetailsPanel } from '@/components/tasks/TaskDetailsPanel';
 import type {
   CreateTaskAndStart,

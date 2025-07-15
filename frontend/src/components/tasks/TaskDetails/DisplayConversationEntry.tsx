@@ -1,6 +1,6 @@
 import { useContext, useMemo, useState } from 'react';
 import { DiffCard } from './DiffCard';
-import { MarkdownRenderer } from '@/components/ui/markdown-renderer.tsx';
+import MarkdownRenderer from '@/components/ui/markdown-renderer.tsx';
 import {
   AlertCircle,
   Bot,

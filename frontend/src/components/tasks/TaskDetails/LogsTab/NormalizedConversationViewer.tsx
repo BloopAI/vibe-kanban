@@ -2,7 +2,7 @@ import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Bot, Hammer, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Loader } from '@/components/ui/loader.tsx';
 import { executionProcessesApi } from '@/lib/api.ts';
-import { MarkdownRenderer } from '@/components/ui/markdown-renderer.tsx';
+import MarkdownRenderer from '@/components/ui/markdown-renderer.tsx';
 import type {
   ExecutionProcess,
   NormalizedConversation,
