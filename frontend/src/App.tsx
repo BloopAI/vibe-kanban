@@ -20,12 +20,11 @@ import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
-  const { config, updateConfig, loading, githubTokenInvalid } = useConfig();
+  const { config, updateConfig, loading } = useConfig();
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showPrivacyOptIn, setShowPrivacyOptIn] = useState(false);
   const [showGitHubLogin, setShowGitHubLogin] = useState(false);
-  const [gitHubLoginSkipped, setGitHubLoginSkipped] = useState(false);
   const showNavbar = true;
 
   useEffect(() => {
@@ -37,25 +36,8 @@ function AppContent() {
           setShowPrivacyOptIn(!config.telemetry_acknowledged);
         }
       }
-
-      // Only show GitHub login if telemetry dialog is not being shown
-      if (config.telemetry_acknowledged && !gitHubLoginSkipped) {
-        const notAuthenticated =
-          !config.github?.username || !config.github?.token;
-        setShowGitHubLogin(notAuthenticated);
-      } else {
-        setShowGitHubLogin(false);
-      }
     }
-  }, [config, gitHubLoginSkipped]);
-
-  // Separate effect for handling invalid GitHub token
-  useEffect(() => {
-    if (githubTokenInvalid) {
-      setShowGitHubLogin(true);
-      setGitHubLoginSkipped(false); // Reset skip state when token is invalid
-    }
-  }, [githubTokenInvalid]);
+  }, [config]);
 
   const handleDisclaimerAccept = async () => {
     if (!config) return;
@@ -130,12 +112,7 @@ function AppContent() {
       <div className="h-screen flex flex-col bg-background">
         <GitHubLoginDialog
           open={showGitHubLogin}
-          onOpenChange={(open) => {
-            if (!open) {
-              setShowGitHubLogin(false);
-              setGitHubLoginSkipped(true);
-            }
-          }}
+          onOpenChange={setShowGitHubLogin}
         />
         <DisclaimerDialog
           open={showDisclaimer}
