@@ -1104,13 +1104,13 @@ impl GitService {
             let _ = repo.remote_delete(temp_remote_name);
 
             // Check fetch result
-            fetch_result.map_err(|e| GitServiceError::Git(e))?;
+            fetch_result.map_err(GitServiceError::Git)?;
         } else {
             // Fetch without authentication (might fail for private repos)
             let mut original_remote = repo.find_remote("origin")?;
             original_remote
                 .fetch(&[] as &[&str], None, None)
-                .map_err(|e| GitServiceError::Git(e))?;
+                .map_err(GitServiceError::Git)?;
         }
 
         Ok(())
