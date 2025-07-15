@@ -1045,11 +1045,38 @@ impl GitService {
 
     /// Fetch from remote repository
     fn fetch_from_remote(&self, repo: &Repository, github_token: Option<&str>) -> Result<(), GitServiceError> {
-        let mut remote = repo.find_remote("origin")
+        let remote = repo.find_remote("origin")
             .map_err(|_| GitServiceError::Git(git2::Error::from_str("Remote 'origin' not found")))?;
         
-        // If we have a GitHub token, use it for authentication
+        let remote_url = remote.url().ok_or_else(|| {
+            GitServiceError::InvalidRepository("Remote origin has no URL".to_string())
+        })?;
+        
+        // If we have a GitHub token, use HTTPS with authentication
         if let Some(token) = github_token {
+            // Convert SSH URL to HTTPS URL if necessary (same as push_to_github)
+            let https_url = if remote_url.starts_with("git@github.com:") {
+                // Convert git@github.com:owner/repo.git to https://github.com/owner/repo.git
+                tracing::info!("Converting SSH URL to HTTPS for fetch: {} -> {}", remote_url, remote_url.replace("git@github.com:", "https://github.com/"));
+                remote_url.replace("git@github.com:", "https://github.com/")
+            } else if remote_url.starts_with("ssh://git@github.com/") {
+                // Convert ssh://git@github.com/owner/repo.git to https://github.com/owner/repo.git
+                tracing::info!("Converting SSH URL to HTTPS for fetch: {} -> {}", remote_url, remote_url.replace("ssh://git@github.com/", "https://github.com/"));
+                remote_url.replace("ssh://git@github.com/", "https://github.com/")
+            } else {
+                tracing::info!("Using existing HTTPS URL for fetch: {}", remote_url);
+                remote_url.to_string()
+            };
+            
+            // Create a temporary remote with HTTPS URL for fetching
+            let temp_remote_name = "temp_https_origin_fetch";
+            
+            // Remove any existing temp remote
+            let _ = repo.remote_delete(temp_remote_name);
+            
+            // Create temporary HTTPS remote
+            let mut temp_remote = repo.remote(temp_remote_name, &https_url)?;
+            
             // Set up authentication callback using the GitHub token
             let mut callbacks = git2::RemoteCallbacks::new();
             callbacks.credentials(|_url, username_from_url, _allowed_types| {
@@ -1060,12 +1087,24 @@ impl GitService {
             let mut fetch_options = git2::FetchOptions::new();
             fetch_options.remote_callbacks(callbacks);
             
-            // Fetch from remote with authentication
-            remote.fetch(&[] as &[&str], Some(&mut fetch_options), None)
-                .map_err(|e| GitServiceError::Git(e))?;
+            // Fetch from temporary remote with authentication
+            tracing::info!("Fetching from remote with GitHub token authentication");
+            let fetch_result = temp_remote.fetch(&[] as &[&str], Some(&mut fetch_options), None);
+            
+            // Clean up the temporary remote
+            let _ = repo.remote_delete(temp_remote_name);
+            
+            // Check fetch result
+            fetch_result.map_err(|e| {
+                tracing::error!("Failed to fetch from remote: {}", e);
+                GitServiceError::Git(e)
+            })?;
+            tracing::info!("Successfully fetched from remote");
         } else {
             // Fetch without authentication (might fail for private repos)
-            remote.fetch(&[] as &[&str], None, None)
+            tracing::info!("Fetching from remote without authentication");
+            let mut original_remote = repo.find_remote("origin")?;
+            original_remote.fetch(&[] as &[&str], None, None)
                 .map_err(|e| GitServiceError::Git(e))?;
         }
         
