@@ -128,10 +128,7 @@ fn main() {
         vibe_kanban::executor::NormalizedEntry::decl(),
         vibe_kanban::executor::NormalizedEntryType::decl(),
         vibe_kanban::executor::ActionType::decl(),
-        vibe_kanban::routes::auth::StartGitHubDeviceFlowType::decl(),
-        vibe_kanban::models::task_attempt::AttemptData::decl(),
-        vibe_kanban::models::task_attempt::ProcessedLine::decl(),
-        vibe_kanban::models::task_attempt::ProcessedSection::decl(),
+        vibe_kanban::routes::auth::DeviceStartResponse::decl(),
     ];
 
     // 4. Friendly banner

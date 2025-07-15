@@ -18,18 +18,9 @@ pub fn auth_router() -> Router<AppState> {
 #[derive(serde::Deserialize)]
 struct DeviceStartRequest {}
 
-#[derive(serde::Serialize)]
-struct DeviceStartResponse {
-    device_code: String,
-    user_code: String,
-    verification_uri: String,
-    expires_in: u64,
-    interval: u64,
-}
-
 #[derive(serde::Serialize, ts_rs::TS)]
 #[ts(export)]
-pub struct StartGitHubDeviceFlowType {
+pub struct DeviceStartResponse {
     pub device_code: String,
     pub user_code: String,
     pub verification_uri: String,
@@ -94,8 +85,8 @@ async fn device_start() -> ResponseJson<ApiResponse<DeviceStartResponse>> {
                 device_code: device_code.to_string(),
                 user_code: user_code.to_string(),
                 verification_uri: verification_uri.to_string(),
-                expires_in,
-                interval,
+                expires_in: expires_in.try_into().unwrap_or(600),
+                interval: interval.try_into().unwrap_or(5),
             }),
             message: None,
         })

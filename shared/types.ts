@@ -114,13 +114,7 @@ export type NormalizedEntryType = { "type": "user_message" } | { "type": "assist
 
 export type ActionType = { "action": "file_read", path: string, } | { "action": "file_write", path: string, } | { "action": "command_run", command: string, } | { "action": "search", query: string, } | { "action": "web_fetch", url: string, } | { "action": "task_create", description: string, } | { "action": "other", description: string, };
 
-export type StartGitHubDeviceFlowType = { device_code: string, user_code: string, verification_uri: string, expires_in: number, interval: number, };
-
-export type AttemptData = { activities: Array<TaskAttemptActivityWithPrompt>, processes: Array<ExecutionProcessSummary>, runningProcessDetails: { [key: string]: ExecutionProcess }, };
-
-export type ProcessedLine = { content: string, chunkType: DiffChunkType, oldLineNumber: number | null, newLineNumber: number | null, };
-
-export type ProcessedSection = { type: string, lines: Array<ProcessedLine>, expandKey: string | null, expandedAbove: boolean | null, expandedBelow: boolean | null, };
+export type DeviceStartResponse = { device_code: string, user_code: string, verification_uri: string, expires_in: number, interval: number, };
 
 // Generated constants
 export const EXECUTOR_TYPES: string[] = [

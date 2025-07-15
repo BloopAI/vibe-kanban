@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button.tsx';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import type { DiffChunkType, ProcessedSection } from 'shared/types.ts';
+import type { DiffChunkType } from 'shared/types.ts';
+import type { ProcessedSection } from '@/types/frontend-only';
 import { Dispatch, SetStateAction } from 'react';
 
 type Props = {

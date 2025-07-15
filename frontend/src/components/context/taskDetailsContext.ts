@@ -1,12 +1,12 @@
 import { createContext, Dispatch, SetStateAction } from 'react';
 import type {
-  AttemptData,
   EditorType,
   TaskAttempt,
   TaskAttemptState,
   TaskWithAttemptStatus,
   WorktreeDiff,
 } from 'shared/types.ts';
+import type { AttemptData } from '@/types/frontend-only';
 
 export interface TaskDetailsContextValue {
   task: TaskWithAttemptStatus;
