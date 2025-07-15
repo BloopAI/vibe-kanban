@@ -249,10 +249,51 @@ impl GitService {
         };
         let base_branch_name = base_branch_name.as_str();
 
-        // Check if the specified base branch exists in the main repo
-        let base_branch = main_repo
-            .find_branch(base_branch_name, BranchType::Local)
-            .map_err(|_| GitServiceError::BranchNotFound(base_branch_name.to_string()))?;
+        // Handle remote branches by fetching them first and creating local tracking branches
+        let base_branch = if base_branch_name.starts_with("origin/") {
+            // This is a remote branch, fetch it and create a local tracking branch
+            let remote_branch_name = base_branch_name.strip_prefix("origin/").unwrap();
+            
+            // Try to find the remote branch
+            match main_repo.find_branch(base_branch_name, BranchType::Remote) {
+                Ok(_remote_branch) => {
+                    // Check if local tracking branch already exists
+                    match main_repo.find_branch(remote_branch_name, BranchType::Local) {
+                        Ok(local_branch) => {
+                            // Local tracking branch exists, fetch to update it
+                            self.fetch_from_remote(&main_repo)?;
+                            local_branch
+                        }
+                        Err(_) => {
+                            // Local tracking branch doesn't exist, create it
+                            self.fetch_from_remote(&main_repo)?;
+                            let remote_branch = main_repo.find_branch(base_branch_name, BranchType::Remote)?;
+                            let remote_commit = remote_branch.get().peel_to_commit()?;
+                            main_repo.branch(remote_branch_name, &remote_commit, false)?
+                        }
+                    }
+                }
+                Err(_) => {
+                    // Remote branch doesn't exist, try to fetch it
+                    self.fetch_from_remote(&main_repo)?;
+                    match main_repo.find_branch(base_branch_name, BranchType::Remote) {
+                        Ok(remote_branch) => {
+                            // Now create local tracking branch
+                            let remote_commit = remote_branch.get().peel_to_commit()?;
+                            main_repo.branch(remote_branch_name, &remote_commit, false)?
+                        }
+                        Err(_) => {
+                            return Err(GitServiceError::BranchNotFound(base_branch_name.to_string()));
+                        }
+                    }
+                }
+            }
+        } else {
+            // This is a local branch, check if it exists
+            main_repo
+                .find_branch(base_branch_name, BranchType::Local)
+                .map_err(|_| GitServiceError::BranchNotFound(base_branch_name.to_string()))?
+        };
 
         let base_commit_id = base_branch.get().peel_to_commit()?.id();
 
@@ -998,6 +1039,18 @@ impl GitService {
         push_result?;
 
         info!("Pushed branch {} to GitHub using HTTPS", branch_name);
+        Ok(())
+    }
+
+    /// Fetch from remote repository
+    fn fetch_from_remote(&self, repo: &Repository) -> Result<(), GitServiceError> {
+        let mut remote = repo.find_remote("origin")
+            .map_err(|_| GitServiceError::Git(git2::Error::from_str("Remote 'origin' not found")))?;
+        
+        // Fetch from remote
+        remote.fetch(&[] as &[&str], None, None)
+            .map_err(|e| GitServiceError::Git(e))?;
+        
         Ok(())
     }
 }

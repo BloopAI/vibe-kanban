@@ -30,13 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog.tsx';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select.tsx';
+import BranchSelector from '@/components/tasks/BranchSelector.tsx';
 import { attemptsApi, executionProcessesApi } from '@/lib/api.ts';
 import {
   Dispatch,
@@ -679,28 +673,13 @@ function CurrentAttempt({
               <label htmlFor="base-branch" className="text-sm font-medium">
                 Base Branch
               </label>
-              <Select value={selectedRebaseBranch} onValueChange={setSelectedRebaseBranch}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a base branch" />
-                </SelectTrigger>
-                <SelectContent>
-                  {branches
-                    .filter(branch => !branch.is_current)
-                    .map((branch) => (
-                      <SelectItem key={branch.name} value={branch.name}>
-                        <div className="flex items-center gap-2">
-                          <GitBranchIcon className="h-3 w-3" />
-                          {branch.name}
-                          {branch.is_remote && (
-                            <span className="text-xs text-muted-foreground">
-                              (remote)
-                            </span>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <BranchSelector
+                branches={branches}
+                selectedBranch={selectedRebaseBranch}
+                onBranchSelect={setSelectedRebaseBranch}
+                placeholder="Select a base branch"
+                excludeCurrentBranch={true}
+              />
             </div>
           </div>
 
