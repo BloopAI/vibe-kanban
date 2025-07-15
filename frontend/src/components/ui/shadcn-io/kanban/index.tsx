@@ -2,6 +2,7 @@
 
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import type { DragEndEvent } from '@dnd-kit/core';
 import {
   DndContext,
   PointerSensor,
@@ -11,8 +12,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import type { DragEndEvent } from '@dnd-kit/core';
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 
 export type { DragEndEvent } from '@dnd-kit/core';
 
@@ -59,6 +59,8 @@ export type KanbanCardProps = Pick<Feature, 'id' | 'name'> & {
   children?: ReactNode;
   className?: string;
   onClick?: () => void;
+  tabIndex?: number;
+  forwardedRef?: Ref<HTMLDivElement>;
 };
 
 export const KanbanCard = ({
@@ -69,6 +71,8 @@ export const KanbanCard = ({
   children,
   className,
   onClick,
+  tabIndex,
+  forwardedRef,
 }: KanbanCardProps) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -76,10 +80,21 @@ export const KanbanCard = ({
       data: { index, parent },
     });
 
+  // Combine DnD ref and forwarded ref
+  const combinedRef = (node: HTMLDivElement | null) => {
+    setNodeRef(node);
+    if (typeof forwardedRef === 'function') {
+      forwardedRef(node);
+    } else if (forwardedRef && typeof forwardedRef === 'object') {
+      (forwardedRef as React.MutableRefObject<HTMLDivElement | null>).current =
+        node;
+    }
+  };
+
   return (
     <Card
       className={cn(
-        'rounded-md p-3 shadow-sm',
+        'rounded-md p-3 shadow-sm focus:ring-2 focus:ring-primary outline-none',
         isDragging && 'cursor-grabbing',
         className
       )}
@@ -90,7 +105,8 @@ export const KanbanCard = ({
       }}
       {...listeners}
       {...attributes}
-      ref={setNodeRef}
+      ref={combinedRef}
+      tabIndex={tabIndex}
       onClick={onClick}
     >
       {children ?? <p className="m-0 font-medium text-sm">{name}</p>}

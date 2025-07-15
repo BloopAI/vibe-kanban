@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -7,11 +8,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
 import {
-  MoreHorizontal,
-  Trash2,
+  CheckCircle,
   Edit,
   Loader2,
-  CheckCircle,
+  MoreHorizontal,
+  Trash2,
   XCircle,
 } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
@@ -25,6 +26,8 @@ interface TaskCardProps {
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
   onViewDetails: (task: Task) => void;
+  isFocused: boolean;
+  tabIndex?: number;
 }
 
 export function TaskCard({
@@ -34,7 +37,17 @@ export function TaskCard({
   onEdit,
   onDelete,
   onViewDetails,
+  isFocused,
+  tabIndex = -1,
 }: TaskCardProps) {
+  const localRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (isFocused && localRef.current) {
+      localRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      localRef.current.focus();
+    }
+  }, [isFocused]);
+
   return (
     <KanbanCard
       key={task.id}
@@ -43,6 +56,8 @@ export function TaskCard({
       index={index}
       parent={status}
       onClick={() => onViewDetails(task)}
+      tabIndex={tabIndex}
+      forwardedRef={localRef}
     >
       <div className="space-y-2">
         <div className="flex items-start justify-between">

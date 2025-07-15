@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import {
   type DragEndEvent,
   KanbanBoard,
@@ -8,6 +8,8 @@ import {
 } from '@/components/ui/shadcn-io/kanban';
 import { TaskCard } from './TaskCard';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
 
 type Task = TaskWithAttemptStatus;
 
@@ -52,6 +54,22 @@ function TaskKanbanBoard({
   onDeleteTask,
   onViewTaskDetails,
 }: TaskKanbanBoardProps) {
+  const { projectId, taskId } = useParams<{
+    projectId: string;
+    taskId?: string;
+  }>();
+  const navigate = useNavigate();
+
+  useKeyboardShortcuts({
+    navigate,
+    currentPath: `/projects/${projectId}/tasks${taskId ? `/${taskId}` : ''}`,
+  });
+
+  const [focusedTaskId, setFocusedTaskId] = useState<string | null>(
+    taskId || null
+  );
+  const [focusedStatus, setFocusedStatus] = useState<TaskStatus | null>(null);
+
   // Memoize filtered tasks
   const filteredTasks = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -82,6 +100,104 @@ function TaskKanbanBoard({
     return groups;
   }, [filteredTasks]);
 
+  // Sync focus state with taskId param
+  useEffect(() => {
+    if (taskId) {
+      const found = filteredTasks.find((t) => t.id === taskId);
+      if (found) {
+        setFocusedTaskId(taskId);
+        setFocusedStatus((found.status.toLowerCase() as TaskStatus) || null);
+      }
+    }
+  }, [taskId, filteredTasks]);
+
+  // If no taskId in params, keep last focused, or focus first available
+  useEffect(() => {
+    if (!taskId && !focusedTaskId) {
+      for (const status of allTaskStatuses) {
+        if (groupedTasks[status] && groupedTasks[status].length > 0) {
+          setFocusedTaskId(groupedTasks[status][0].id);
+          setFocusedStatus(status);
+          break;
+        }
+      }
+    }
+  }, [taskId, focusedTaskId, groupedTasks]);
+
+  // Keyboard navigation handler
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Don't handle if typing in input, textarea, or select
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        (e.target as HTMLElement)?.isContentEditable
+      )
+        return;
+      if (!focusedTaskId || !focusedStatus) return;
+      const currentColumn = groupedTasks[focusedStatus];
+      const currentIndex = currentColumn.findIndex(
+        (t) => t.id === focusedTaskId
+      );
+      let newStatus = focusedStatus;
+      let newTaskId = focusedTaskId;
+      if (e.key === 'ArrowDown') {
+        if (currentIndex < currentColumn.length - 1) {
+          newTaskId = currentColumn[currentIndex + 1].id;
+        }
+      } else if (e.key === 'ArrowUp') {
+        if (currentIndex > 0) {
+          newTaskId = currentColumn[currentIndex - 1].id;
+        }
+      } else if (e.key === 'ArrowRight') {
+        let colIdx = allTaskStatuses.indexOf(focusedStatus);
+        while (colIdx < allTaskStatuses.length - 1) {
+          colIdx++;
+          const nextStatus = allTaskStatuses[colIdx];
+          if (groupedTasks[nextStatus] && groupedTasks[nextStatus].length > 0) {
+            newStatus = nextStatus;
+            newTaskId = groupedTasks[nextStatus][0].id;
+            break;
+          }
+        }
+      } else if (e.key === 'ArrowLeft') {
+        let colIdx = allTaskStatuses.indexOf(focusedStatus);
+        while (colIdx > 0) {
+          colIdx--;
+          const prevStatus = allTaskStatuses[colIdx];
+          if (groupedTasks[prevStatus] && groupedTasks[prevStatus].length > 0) {
+            newStatus = prevStatus;
+            newTaskId = groupedTasks[prevStatus][0].id;
+            break;
+          }
+        }
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        const task = filteredTasks.find((t) => t.id === focusedTaskId);
+        if (task) {
+          onViewTaskDetails(task);
+        }
+      } else {
+        return;
+      }
+      e.preventDefault();
+      setFocusedTaskId(newTaskId);
+      setFocusedStatus(newStatus);
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    focusedTaskId,
+    focusedStatus,
+    groupedTasks,
+    filteredTasks,
+    onViewTaskDetails,
+    projectId,
+    navigate,
+  ]);
+
   return (
     <KanbanProvider onDragEnd={onDragEnd}>
       {Object.entries(groupedTasks).map(([status, statusTasks]) => (
@@ -100,6 +216,8 @@ function TaskKanbanBoard({
                 onEdit={onEditTask}
                 onDelete={onDeleteTask}
                 onViewDetails={onViewTaskDetails}
+                isFocused={focusedTaskId === task.id}
+                tabIndex={focusedTaskId === task.id ? 0 : -1}
               />
             ))}
           </KanbanCards>
