@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button.tsx';
 import {
   ArrowDown,
@@ -33,6 +33,7 @@ function BranchSelector({
   excludeCurrentBranch = false,
 }: Props) {
   const [branchSearchTerm, setBranchSearchTerm] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Filter branches based on search term and options
   const filteredBranches = useMemo(() => {
@@ -62,6 +63,11 @@ function BranchSelector({
     return selectedBranch;
   }, [selectedBranch, placeholder]);
 
+  const handleBranchSelect = (branchName: string) => {
+    onBranchSelect(branchName);
+    setBranchSearchTerm('');
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -82,10 +88,16 @@ function BranchSelector({
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
+              ref={searchInputRef}
               placeholder="Search branches..."
               value={branchSearchTerm}
               onChange={(e) => setBranchSearchTerm(e.target.value)}
               className="pl-8"
+              onKeyDown={(e) => {
+                // Prevent the dropdown from closing when typing
+                e.stopPropagation();
+              }}
+              autoFocus
             />
           </div>
         </div>
@@ -99,10 +111,7 @@ function BranchSelector({
             filteredBranches.map((branch) => (
               <DropdownMenuItem
                 key={branch.name}
-                onClick={() => {
-                  onBranchSelect(branch.name);
-                  setBranchSearchTerm('');
-                }}
+                onClick={() => handleBranchSelect(branch.name)}
                 className={selectedBranch === branch.name ? 'bg-accent' : ''}
               >
                 <div className="flex items-center justify-between w-full">

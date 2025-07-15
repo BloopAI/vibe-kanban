@@ -281,13 +281,11 @@ impl GitService {
                     // Local tracking branch exists, update it to match remote
                     let remote_commit = remote_branch.get().peel_to_commit()?;
                     local_branch.get_mut().set_target(remote_commit.id(), "Update local branch to match remote")?;
-                    tracing::info!("Updated local tracking branch '{}' to match remote", remote_branch_name);
                 }
                 Err(_) => {
                     // Local tracking branch doesn't exist, create it
                     let remote_commit = remote_branch.get().peel_to_commit()?;
                     main_repo.branch(remote_branch_name, &remote_commit, false)?;
-                    tracing::info!("Created local tracking branch '{}' from remote", remote_branch_name);
                 }
             }
             
@@ -316,7 +314,6 @@ impl GitService {
         let head_annotated = worktree_repo.reference_to_annotated_commit(&head)?;
         let base_annotated = worktree_repo.find_annotated_commit(base_commit_id)?;
 
-        tracing::info!("Starting rebase onto local branch '{}'", local_branch_name);
         let mut rebase = worktree_repo.rebase(
             Some(&head_annotated),
             Some(&base_annotated),
@@ -1065,14 +1062,11 @@ impl GitService {
             // Convert SSH URL to HTTPS URL if necessary (same as push_to_github)
             let https_url = if remote_url.starts_with("git@github.com:") {
                 // Convert git@github.com:owner/repo.git to https://github.com/owner/repo.git
-                tracing::info!("Converting SSH URL to HTTPS for fetch: {} -> {}", remote_url, remote_url.replace("git@github.com:", "https://github.com/"));
                 remote_url.replace("git@github.com:", "https://github.com/")
             } else if remote_url.starts_with("ssh://git@github.com/") {
                 // Convert ssh://git@github.com/owner/repo.git to https://github.com/owner/repo.git
-                tracing::info!("Converting SSH URL to HTTPS for fetch: {} -> {}", remote_url, remote_url.replace("ssh://git@github.com/", "https://github.com/"));
                 remote_url.replace("ssh://git@github.com/", "https://github.com/")
             } else {
-                tracing::info!("Using existing HTTPS URL for fetch: {}", remote_url);
                 remote_url.to_string()
             };
             
@@ -1096,21 +1090,15 @@ impl GitService {
             fetch_options.remote_callbacks(callbacks);
             
             // Fetch from temporary remote with authentication
-            tracing::info!("Fetching from remote with GitHub token authentication");
             let fetch_result = temp_remote.fetch(&[] as &[&str], Some(&mut fetch_options), None);
             
             // Clean up the temporary remote
             let _ = repo.remote_delete(temp_remote_name);
             
             // Check fetch result
-            fetch_result.map_err(|e| {
-                tracing::error!("Failed to fetch from remote: {}", e);
-                GitServiceError::Git(e)
-            })?;
-            tracing::info!("Successfully fetched from remote");
+            fetch_result.map_err(|e| GitServiceError::Git(e))?;
         } else {
             // Fetch without authentication (might fail for private repos)
-            tracing::info!("Fetching from remote without authentication");
             let mut original_remote = repo.find_remote("origin")?;
             original_remote.fetch(&[] as &[&str], None, None)
                 .map_err(|e| GitServiceError::Git(e))?;
