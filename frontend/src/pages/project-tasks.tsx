@@ -98,6 +98,8 @@ export function ProjectTasks() {
         });
         setIsPanelOpen(true);
       }
+    } else if (!taskId) {
+      setIsPanelOpen(false);
     }
   }, [taskId, tasks]);
 
