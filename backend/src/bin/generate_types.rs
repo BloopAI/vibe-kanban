@@ -107,6 +107,7 @@ fn main() {
         vibe_kanban::models::task_attempt_activity::TaskAttemptActivityWithPrompt::decl(),
         vibe_kanban::models::task_attempt_activity::CreateTaskAttemptActivity::decl(),
         vibe_kanban::routes::filesystem::DirectoryEntry::decl(),
+        vibe_kanban::routes::filesystem::DirectoryListResponse::decl(),
         vibe_kanban::models::task_attempt::DiffChunkType::decl(),
         vibe_kanban::models::task_attempt::DiffChunk::decl(),
         vibe_kanban::models::task_attempt::FileDiff::decl(),

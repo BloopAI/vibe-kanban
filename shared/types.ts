@@ -70,28 +70,9 @@ export type TaskAttemptActivityWithPrompt = { id: string, execution_process_id: 
 
 export type CreateTaskAttemptActivity = { execution_process_id: string, status: TaskAttemptStatus | null, note: string | null, };
 
-export type AttemptData = {
-  activities: TaskAttemptActivityWithPrompt[];
-  processes: ExecutionProcessSummary[];
-  runningProcessDetails: Record<string, ExecutionProcess>;
-}
-
-export interface ProcessedLine {
-  content: string;
-  chunkType: DiffChunkType;
-  oldLineNumber?: number;
-  newLineNumber?: number;
-}
-
-export interface ProcessedSection {
-  type: 'context' | 'change' | 'expanded';
-  lines: ProcessedLine[];
-  expandKey?: string;
-  expandedAbove?: boolean;
-  expandedBelow?: boolean;
-}
-
 export type DirectoryEntry = { name: string, path: string, is_directory: boolean, is_git_repo: boolean, };
+
+export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_path: string, };
 
 export type DiffChunkType = "Equal" | "Insert" | "Delete";
 
@@ -141,57 +122,78 @@ export type StartGitHubDeviceFlowType = {
   interval: number;
 };
 
+export type AttemptData = {
+  activities: TaskAttemptActivityWithPrompt[];
+  processes: ExecutionProcessSummary[];
+  runningProcessDetails: Record<string, ExecutionProcess>;
+}
+
+export interface ProcessedLine {
+  content: string;
+  chunkType: DiffChunkType;
+  oldLineNumber?: number;
+  newLineNumber?: number;
+}
+
+export interface ProcessedSection {
+  type: 'context' | 'change' | 'expanded';
+  lines: ProcessedLine[];
+  expandKey?: string;
+  expandedAbove?: boolean;
+  expandedBelow?: boolean;
+}
+
 // Generated constants
 export const EXECUTOR_TYPES: string[] = [
-  "echo",
-  "claude",
-  "amp",
-  "gemini",
-  "charmopencode"
+    "echo",
+    "claude",
+    "amp",
+    "gemini",
+    "charmopencode"
 ];
 
 export const EDITOR_TYPES: EditorType[] = [
-  "vscode",
-  "cursor",
-  "windsurf",
-  "intellij",
-  "zed",
-  "custom"
+    "vscode",
+    "cursor", 
+    "windsurf",
+    "intellij",
+    "zed",
+    "custom"
 ];
 
 export const EXECUTOR_LABELS: Record<string, string> = {
-  "echo": "Echo (Test Mode)",
-  "claude": "Claude",
-  "amp": "Amp",
-  "gemini": "Gemini",
-  "charmopencode": "Charm Opencode"
+    "echo": "Echo (Test Mode)",
+    "claude": "Claude",
+    "amp": "Amp",
+    "gemini": "Gemini",
+    "charmopencode": "Charm Opencode"
 };
 
 export const EDITOR_LABELS: Record<string, string> = {
-  "vscode": "VS Code",
-  "cursor": "Cursor",
-  "windsurf": "Windsurf",
-  "intellij": "IntelliJ IDEA",
-  "zed": "Zed",
-  "custom": "Custom"
+    "vscode": "VS Code",
+    "cursor": "Cursor",
+    "windsurf": "Windsurf",
+    "intellij": "IntelliJ IDEA",
+    "zed": "Zed",
+    "custom": "Custom"
 };
 
 export const SOUND_FILES: SoundFile[] = [
-  "abstract-sound1",
-  "abstract-sound2",
-  "abstract-sound3",
-  "abstract-sound4",
-  "cow-mooing",
-  "phone-vibration",
-  "rooster"
+    "abstract-sound1",
+    "abstract-sound2",
+    "abstract-sound3",
+    "abstract-sound4",
+    "cow-mooing",
+    "phone-vibration",
+    "rooster"
 ];
 
 export const SOUND_LABELS: Record<string, string> = {
-  "abstract-sound1": "Gentle Chime",
-  "abstract-sound2": "Soft Bell",
-  "abstract-sound3": "Digital Tone",
-  "abstract-sound4": "Subtle Alert",
-  "cow-mooing": "Cow Mooing",
-  "phone-vibration": "Phone Vibration",
-  "rooster": "Rooster Call"
+    "abstract-sound1": "Gentle Chime",
+    "abstract-sound2": "Soft Bell",
+    "abstract-sound3": "Digital Tone",
+    "abstract-sound4": "Subtle Alert",
+    "cow-mooing": "Cow Mooing",
+    "phone-vibration": "Phone Vibration",
+    "rooster": "Rooster Call"
 };
