@@ -834,9 +834,16 @@ impl TaskAttempt {
         // Update the database with the new base branch if it was changed
         if let Some(new_base_branch) = &effective_base_branch {
             if new_base_branch != &ctx.task_attempt.base_branch {
+                // For remote branches, store the local branch name in the database
+                let db_branch_name = if new_base_branch.starts_with("origin/") {
+                    new_base_branch.strip_prefix("origin/").unwrap()
+                } else {
+                    new_base_branch
+                };
+                
                 sqlx::query!(
                     "UPDATE task_attempts SET base_branch = $1, updated_at = datetime('now') WHERE id = $2",
-                    new_base_branch,
+                    db_branch_name,
                     attempt_id
                 )
                 .execute(pool)

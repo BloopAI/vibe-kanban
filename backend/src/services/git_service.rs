@@ -239,6 +239,18 @@ impl GitService {
         let worktree_repo = Repository::open(worktree_path)?;
         let main_repo = self.open_repo()?;
 
+        // Check if there's an existing rebase in progress and abort it
+        let state = worktree_repo.state();
+        if state == git2::RepositoryState::Rebase 
+            || state == git2::RepositoryState::RebaseInteractive 
+            || state == git2::RepositoryState::RebaseMerge {
+            tracing::warn!("Existing rebase in progress, aborting it first");
+            // Try to abort the existing rebase
+            if let Ok(mut existing_rebase) = worktree_repo.open_rebase(None) {
+                let _ = existing_rebase.abort();
+            }
+        }
+
         // Get the target base branch reference
         let base_branch_name = match new_base_branch {
             Some(branch) => branch.to_string(),
@@ -250,51 +262,46 @@ impl GitService {
         };
         let base_branch_name = base_branch_name.as_str();
 
-        // Handle remote branches by fetching them first and creating local tracking branches
-        let base_branch = if base_branch_name.starts_with("origin/") {
-            // This is a remote branch, fetch it and create a local tracking branch
+        // Handle remote branches by fetching them first and creating/updating local tracking branches
+        let local_branch_name = if base_branch_name.starts_with("origin/") {
+            // This is a remote branch, fetch it and create/update local tracking branch
             let remote_branch_name = base_branch_name.strip_prefix("origin/").unwrap();
             
-            // Try to find the remote branch
-            match main_repo.find_branch(base_branch_name, BranchType::Remote) {
-                Ok(_remote_branch) => {
-                    // Check if local tracking branch already exists
-                    match main_repo.find_branch(remote_branch_name, BranchType::Local) {
-                        Ok(local_branch) => {
-                            // Local tracking branch exists, fetch to update it
-                            self.fetch_from_remote(&main_repo, github_token)?;
-                            local_branch
-                        }
-                        Err(_) => {
-                            // Local tracking branch doesn't exist, create it
-                            self.fetch_from_remote(&main_repo, github_token)?;
-                            let remote_branch = main_repo.find_branch(base_branch_name, BranchType::Remote)?;
-                            let remote_commit = remote_branch.get().peel_to_commit()?;
-                            main_repo.branch(remote_branch_name, &remote_commit, false)?
-                        }
-                    }
+            // First, fetch the latest changes from remote
+            self.fetch_from_remote(&main_repo, github_token)?;
+            
+            // Try to find the remote branch after fetch
+            let remote_branch = main_repo
+                .find_branch(base_branch_name, BranchType::Remote)
+                .map_err(|_| GitServiceError::BranchNotFound(base_branch_name.to_string()))?;
+            
+            // Check if local tracking branch exists
+            match main_repo.find_branch(remote_branch_name, BranchType::Local) {
+                Ok(mut local_branch) => {
+                    // Local tracking branch exists, update it to match remote
+                    let remote_commit = remote_branch.get().peel_to_commit()?;
+                    local_branch.get_mut().set_target(remote_commit.id(), "Update local branch to match remote")?;
+                    tracing::info!("Updated local tracking branch '{}' to match remote", remote_branch_name);
                 }
                 Err(_) => {
-                    // Remote branch doesn't exist, try to fetch it
-                    self.fetch_from_remote(&main_repo, github_token)?;
-                    match main_repo.find_branch(base_branch_name, BranchType::Remote) {
-                        Ok(remote_branch) => {
-                            // Now create local tracking branch
-                            let remote_commit = remote_branch.get().peel_to_commit()?;
-                            main_repo.branch(remote_branch_name, &remote_commit, false)?
-                        }
-                        Err(_) => {
-                            return Err(GitServiceError::BranchNotFound(base_branch_name.to_string()));
-                        }
-                    }
+                    // Local tracking branch doesn't exist, create it
+                    let remote_commit = remote_branch.get().peel_to_commit()?;
+                    main_repo.branch(remote_branch_name, &remote_commit, false)?;
+                    tracing::info!("Created local tracking branch '{}' from remote", remote_branch_name);
                 }
             }
+            
+            // Use the local branch name for rebase
+            remote_branch_name
         } else {
-            // This is a local branch, check if it exists
-            main_repo
-                .find_branch(base_branch_name, BranchType::Local)
-                .map_err(|_| GitServiceError::BranchNotFound(base_branch_name.to_string()))?
+            // This is already a local branch
+            base_branch_name
         };
+
+        // Get the local branch for rebase
+        let base_branch = main_repo
+            .find_branch(local_branch_name, BranchType::Local)
+            .map_err(|_| GitServiceError::BranchNotFound(local_branch_name.to_string()))?;
 
         let base_commit_id = base_branch.get().peel_to_commit()?.id();
 
@@ -309,6 +316,7 @@ impl GitService {
         let head_annotated = worktree_repo.reference_to_annotated_commit(&head)?;
         let base_annotated = worktree_repo.find_annotated_commit(base_commit_id)?;
 
+        tracing::info!("Starting rebase onto local branch '{}'", local_branch_name);
         let mut rebase = worktree_repo.rebase(
             Some(&head_annotated),
             Some(&base_annotated),
