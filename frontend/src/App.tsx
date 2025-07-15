@@ -100,37 +100,15 @@ function AppContent() {
   };
 
   const handleGitHubLoginComplete = async () => {
-    if (!config) return;
-
-    setShowGitHubLogin(false);
-
     try {
-      // Add a delay to ensure backend has time to save the GitHub token
-      // (if user authenticated) before refreshing the config
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
       // Refresh the config to get the latest GitHub authentication state
       const latestConfig = await configApi.getConfig();
       updateConfig(latestConfig);
-
-      // If user skipped (no GitHub token), we need to manually set the acknowledgment
-      if (!latestConfig.github?.token) {
-        const updatedConfig = {
-          ...latestConfig,
-          github_login_acknowledged: true,
-        };
-        updateConfig(updatedConfig);
-        await configApi.saveConfig(updatedConfig);
-      }
-
-      // After GitHub login (success or skip), show privacy opt-in if not acknowledged
-      if (!config.telemetry_acknowledged) {
-        setShowPrivacyOptIn(true);
-      }
+      setShowGitHubLogin(false);
     } catch (err) {
       console.error('Error refreshing config:', err);
-      // Still show privacy opt-in even if config refresh fails
-      if (!config.telemetry_acknowledged) {
+    } finally {
+      if (!config?.telemetry_acknowledged) {
         setShowPrivacyOptIn(true);
       }
     }
@@ -149,10 +127,8 @@ function AppContent() {
       <div className="h-screen flex flex-col bg-background">
         <GitHubLoginDialog
           open={showGitHubLogin}
-          onOpenChange={(open) => {
-            if (!open) {
-              handleGitHubLoginComplete();
-            }
+          onOpenChange={(_) => {
+            handleGitHubLoginComplete();
           }}
         />
         <DisclaimerDialog
