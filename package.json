@@ -18,6 +18,7 @@
     "backend:run": "npm run cargo -- run --manifest-path backend/Cargo.toml",
     "backend:test": "npm run cargo -- test --lib",
     "generate-types": "cd backend && cargo run --bin generate_types",
+    "generate-types:check": "cd backend && cargo run --bin generate_types -- --check",
     "prepare-db": "node scripts/prepare-db.js",
     "dev:clear-ports": "node scripts/setup-dev-environment.js clear"
   },
