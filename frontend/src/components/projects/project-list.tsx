@@ -1,35 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useKanbanKeyboardNavigation } from '@/lib/keyboard-shortcuts';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Project } from 'shared/types';
 import { ProjectForm } from './project-form';
 import { projectsApi } from '@/lib/api';
-import {
-  AlertCircle,
-  Calendar,
-  Edit,
-  ExternalLink,
-  FolderOpen,
-  Loader2,
-  MoreHorizontal,
-  Plus,
-  Trash2,
-} from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { AlertCircle, Loader2, Plus } from 'lucide-react';
+import ProjectCard from '@/components/projects/ProjectCard.tsx';
 
 export function ProjectList() {
   const navigate = useNavigate();
@@ -38,6 +17,8 @@ export function ProjectList() {
   const [showForm, setShowForm] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [error, setError] = useState('');
+  const [focusedProjectId, setFocusedProjectId] = useState<string | null>(null);
+  const [focusedColumn, setFocusedColumn] = useState<string | null>(null);
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -54,42 +35,83 @@ export function ProjectList() {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (
-      !confirm(
-        `Are you sure you want to delete "${name}"? This action cannot be undone.`
-      )
-    )
-      return;
-
-    try {
-      await projectsApi.delete(id);
-      fetchProjects();
-    } catch (error) {
-      console.error('Failed to delete project:', error);
-      setError('Failed to delete project');
-    }
-  };
-
-  const handleEdit = (project: Project) => {
-    setEditingProject(project);
-    setShowForm(true);
-  };
-
-  const handleOpenInIDE = async (projectId: string) => {
-    try {
-      await projectsApi.openEditor(projectId);
-    } catch (error) {
-      console.error('Failed to open project in IDE:', error);
-      setError('Failed to open project in IDE');
-    }
-  };
-
   const handleFormSuccess = () => {
     setShowForm(false);
     setEditingProject(null);
     fetchProjects();
   };
+
+  // Group projects by grid columns (3 columns for lg, 2 for md, 1 for sm)
+  const getGridColumns = () => {
+    const screenWidth = window.innerWidth;
+    if (screenWidth >= 1024) return 3; // lg
+    if (screenWidth >= 768) return 2; // md
+    return 1; // sm
+  };
+
+  const groupProjectsByColumns = (projects: Project[], columns: number) => {
+    const grouped: Record<string, Project[]> = {};
+    for (let i = 0; i < columns; i++) {
+      grouped[`column-${i}`] = [];
+    }
+
+    projects.forEach((project, index) => {
+      const columnIndex = index % columns;
+      grouped[`column-${columnIndex}`].push(project);
+    });
+
+    return grouped;
+  };
+
+  const columns = getGridColumns();
+  const groupedProjects = groupProjectsByColumns(projects, columns);
+  const allColumnKeys = Object.keys(groupedProjects);
+
+  // Set initial focus when projects are loaded
+  useEffect(() => {
+    if (projects.length > 0 && !focusedProjectId) {
+      setFocusedProjectId(projects[0].id);
+      setFocusedColumn('column-0');
+    }
+  }, [projects, focusedProjectId]);
+
+  const handleViewProjectDetails = (project: Project) => {
+    navigate(`/projects/${project.id}/tasks`);
+  };
+
+  // Setup keyboard navigation
+  useKanbanKeyboardNavigation({
+    focusedTaskId: focusedProjectId,
+    setFocusedTaskId: setFocusedProjectId,
+    focusedStatus: focusedColumn,
+    setFocusedStatus: setFocusedColumn,
+    groupedTasks: groupedProjects,
+    filteredTasks: projects,
+    allTaskStatuses: allColumnKeys,
+    onViewTaskDetails: handleViewProjectDetails,
+    preserveIndexOnColumnSwitch: true,
+  });
+
+  // Handle window resize to update column layout
+  useEffect(() => {
+    const handleResize = () => {
+      // Reset focus when layout changes
+      if (focusedProjectId && projects.length > 0) {
+        const newColumns = getGridColumns();
+
+        // Find which column the focused project should be in
+        const focusedProject = projects.find((p) => p.id === focusedProjectId);
+        if (focusedProject) {
+          const projectIndex = projects.indexOf(focusedProject);
+          const newColumnIndex = projectIndex % newColumns;
+          setFocusedColumn(`column-${newColumnIndex}`);
+        }
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [focusedProjectId, projects]);
 
   useEffect(() => {
     fetchProjects();
@@ -141,77 +163,15 @@ export function ProjectList() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => (
-            <Card
+            <ProjectCard
               key={project.id}
-              className="hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => navigate(`/projects/${project.id}/tasks`)}
-            >
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg">{project.name}</CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">Active</Badge>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        asChild
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/projects/${project.id}`);
-                          }}
-                        >
-                          <ExternalLink className="mr-2 h-4 w-4" />
-                          View Project
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenInIDE(project.id);
-                          }}
-                        >
-                          <FolderOpen className="mr-2 h-4 w-4" />
-                          Open in IDE
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEdit(project);
-                          }}
-                        >
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(project.id, project.name);
-                          }}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-                <CardDescription className="flex items-center">
-                  <Calendar className="mr-1 h-3 w-3" />
-                  Created {new Date(project.created_at).toLocaleDateString()}
-                </CardDescription>
-              </CardHeader>
-            </Card>
+              project={project}
+              isFocused={focusedProjectId === project.id}
+              setError={setError}
+              setEditingProject={setEditingProject}
+              setShowForm={setShowForm}
+              fetchProjects={fetchProjects}
+            />
           ))}
         </div>
       )}

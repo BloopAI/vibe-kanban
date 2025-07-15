@@ -160,6 +160,7 @@ export function useKanbanKeyboardNavigation({
   filteredTasks,
   allTaskStatuses,
   onViewTaskDetails,
+  preserveIndexOnColumnSwitch = false,
 }: {
   focusedTaskId: string | null;
   setFocusedTaskId: (id: string | null) => void;
@@ -169,6 +170,7 @@ export function useKanbanKeyboardNavigation({
   filteredTasks: any[];
   allTaskStatuses: string[];
   onViewTaskDetails: (task: any) => void;
+  preserveIndexOnColumnSwitch?: boolean;
 }) {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -203,7 +205,13 @@ export function useKanbanKeyboardNavigation({
           const nextStatus = allTaskStatuses[colIdx];
           if (groupedTasks[nextStatus] && groupedTasks[nextStatus].length > 0) {
             newStatus = nextStatus;
-            newTaskId = groupedTasks[nextStatus][0].id;
+            if (preserveIndexOnColumnSwitch) {
+              const nextCol = groupedTasks[nextStatus];
+              const idx = Math.min(currentIndex, nextCol.length - 1);
+              newTaskId = nextCol[idx].id;
+            } else {
+              newTaskId = groupedTasks[nextStatus][0].id;
+            }
             break;
           }
         }
@@ -214,7 +222,13 @@ export function useKanbanKeyboardNavigation({
           const prevStatus = allTaskStatuses[colIdx];
           if (groupedTasks[prevStatus] && groupedTasks[prevStatus].length > 0) {
             newStatus = prevStatus;
-            newTaskId = groupedTasks[prevStatus][0].id;
+            if (preserveIndexOnColumnSwitch) {
+              const prevCol = groupedTasks[prevStatus];
+              const idx = Math.min(currentIndex, prevCol.length - 1);
+              newTaskId = prevCol[idx].id;
+            } else {
+              newTaskId = groupedTasks[prevStatus][0].id;
+            }
             break;
           }
         }
@@ -242,5 +256,6 @@ export function useKanbanKeyboardNavigation({
     allTaskStatuses,
     setFocusedTaskId,
     setFocusedStatus,
+    preserveIndexOnColumnSwitch,
   ]);
 }
