@@ -20,7 +20,7 @@ import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
-  const { config, updateConfig, loading, githubTokenInvalid } = useConfig();
+  const { config, updateConfig, loading } = useConfig();
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showPrivacyOptIn, setShowPrivacyOptIn] = useState(false);
@@ -42,13 +42,6 @@ function AppContent() {
       }
     }
   }, [config]);
-
-  // Handle GitHub token invalidation
-  useEffect(() => {
-    if (githubTokenInvalid && config?.onboarding_acknowledged) {
-      setShowGitHubLogin(true);
-    }
-  }, [githubTokenInvalid, config?.onboarding_acknowledged]);
 
   const handleDisclaimerAccept = async () => {
     if (!config) return;
@@ -121,6 +114,10 @@ function AppContent() {
     
     try {
       await configApi.saveConfig(updatedConfig);
+      
+      // Add a delay to ensure backend has time to save the GitHub token
+      // before refreshing the config
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Refresh the config to get the latest GitHub authentication state
       const latestConfig = await configApi.getConfig();

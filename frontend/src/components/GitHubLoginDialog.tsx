@@ -61,7 +61,10 @@ export function GitHubLoginDialog({
           setPolling(false);
           setDeviceState(null);
           setError(null);
-          onOpenChange(false); // Close the dialog on successful authentication
+          // Add a small delay to ensure backend has time to save the token
+          setTimeout(() => {
+            onOpenChange(false);
+          }, 500);
         } catch (e: any) {
           if (e?.message === 'authorization_pending') {
             timer = setTimeout(poll, (deviceState.interval || 5) * 1000);
