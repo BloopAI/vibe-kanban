@@ -26,6 +26,7 @@ impl Executor for SetupScriptExecutor {
         &self,
         pool: &sqlx::SqlitePool,
         task_id: Uuid,
+        _attempt_id: Uuid,
         worktree_path: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         // Validate the task and project exist

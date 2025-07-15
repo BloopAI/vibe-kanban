@@ -198,6 +198,7 @@ impl Executor for AmpExecutor {
         &self,
         pool: &sqlx::SqlitePool,
         task_id: Uuid,
+        _attempt_id: Uuid,
         worktree_path: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         // Get the task to fetch its description
@@ -595,6 +596,7 @@ impl Executor for AmpFollowupExecutor {
         &self,
         _pool: &sqlx::SqlitePool,
         _task_id: Uuid,
+        _attempt_id: Uuid,
         worktree_path: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         use std::process::Stdio;

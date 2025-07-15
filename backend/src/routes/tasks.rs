@@ -156,6 +156,7 @@ pub async fn create_task_and_start(
     let attempt_payload = CreateTaskAttempt {
         executor: executor_string.clone(),
         base_branch: None, // Not supported in task creation endpoint, only in task attempts
+        slash_command: None, // Slash command will be specified per attempt, not at task creation time
     };
 
     match TaskAttempt::create(&app_state.db_pool, &attempt_payload, task_id).await {
@@ -222,28 +223,20 @@ pub async fn update_task(
     Json(payload): Json<UpdateTask>,
 ) -> Result<ResponseJson<ApiResponse<Task>>, StatusCode> {
     // Check if task exists in the specified project
-    let existing_task =
-        match Task::find_by_id_and_project_id(&app_state.db_pool, task_id, project_id).await {
-            Ok(Some(task)) => task,
-            Ok(None) => return Err(StatusCode::NOT_FOUND),
-            Err(e) => {
-                tracing::error!("Failed to check task existence: {}", e);
-                return Err(StatusCode::INTERNAL_SERVER_ERROR);
-            }
-        };
-
-    // Use existing values if not provided in update
-    let title = payload.title.unwrap_or(existing_task.title);
-    let description = payload.description.or(existing_task.description);
-    let status = payload.status.unwrap_or(existing_task.status);
+    match Task::find_by_id_and_project_id(&app_state.db_pool, task_id, project_id).await {
+        Ok(Some(_)) => {},
+        Ok(None) => return Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to check task existence: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
 
     match Task::update(
         &app_state.db_pool,
         task_id,
         project_id,
-        title,
-        description,
-        status,
+        &payload,
     )
     .await
     {

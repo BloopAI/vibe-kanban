@@ -258,6 +258,7 @@ pub trait Executor: Send + Sync {
         &self,
         pool: &sqlx::SqlitePool,
         task_id: Uuid,
+        attempt_id: Uuid,
         worktree_path: &str,
     ) -> Result<command_group::AsyncGroupChild, ExecutorError>;
 
@@ -286,7 +287,7 @@ pub trait Executor: Send + Sync {
         execution_process_id: Uuid,
         worktree_path: &str,
     ) -> Result<command_group::AsyncGroupChild, ExecutorError> {
-        let mut child = self.spawn(pool, task_id, worktree_path).await?;
+        let mut child = self.spawn(pool, task_id, attempt_id, worktree_path).await?;
 
         // Take stdout and stderr pipes for streaming
         let stdout = child

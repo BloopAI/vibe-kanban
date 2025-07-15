@@ -10,7 +10,7 @@ use crate::{
         ActionType, Executor, ExecutorError, NormalizedConversation, NormalizedEntry,
         NormalizedEntryType,
     },
-    models::task::Task,
+    models::{task::Task, task_attempt::TaskAttempt},
     utils::shell::get_shell_command,
 };
 
@@ -29,6 +29,7 @@ impl Executor for ClaudeExecutor {
         &self,
         pool: &sqlx::SqlitePool,
         task_id: Uuid,
+        attempt_id: Uuid,
         worktree_path: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         // Get the task to fetch its description
@@ -36,7 +37,12 @@ impl Executor for ClaudeExecutor {
             .await?
             .ok_or(ExecutorError::TaskNotFound)?;
 
-        let prompt = if let Some(task_description) = task.description {
+        // Get the task attempt to fetch its slash command
+        let task_attempt = TaskAttempt::find_by_id(pool, attempt_id)
+            .await?
+            .ok_or(ExecutorError::TaskNotFound)?;
+
+        let base_prompt = if let Some(task_description) = task.description {
             format!(
                 r#"project_id: {}
             
@@ -51,6 +57,14 @@ Task description: {}"#,
 Task title: {}"#,
                 task.project_id, task.title
             )
+        };
+        
+        // Prepend slash command if present in the task attempt
+        let prompt = if let Some(slash_cmd) = &task_attempt.slash_command {
+            tracing::info!("Prepending slash command '{}' to task prompt", slash_cmd);
+            format!("{} {}", slash_cmd, base_prompt)
+        } else {
+            base_prompt
         };
 
         // Use shell command for cross-platform compatibility
@@ -81,8 +95,8 @@ Task title: {}"#,
         // Write prompt to stdin safely
         if let Some(mut stdin) = child.inner().stdin.take() {
             use tokio::io::AsyncWriteExt;
-            tracing::debug!(
-                "Writing prompt to Claude stdin for task {}: {:?}",
+            tracing::info!(
+                "Writing prompt to Claude for task {}: {}",
                 task_id,
                 prompt
             );
@@ -503,6 +517,7 @@ impl Executor for ClaudeFollowupExecutor {
         &self,
         _pool: &sqlx::SqlitePool,
         _task_id: Uuid,
+        _attempt_id: Uuid,
         worktree_path: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         // Use shell command for cross-platform compatibility

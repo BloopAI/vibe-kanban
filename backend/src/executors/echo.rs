@@ -18,6 +18,7 @@ impl Executor for EchoExecutor {
         &self,
         pool: &sqlx::SqlitePool,
         task_id: Uuid,
+        _attempt_id: Uuid,
         _worktree_path: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         // Get the task to fetch its description

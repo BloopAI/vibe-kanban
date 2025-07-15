@@ -248,11 +248,17 @@ impl Task {
         pool: &SqlitePool,
         id: Uuid,
         project_id: Uuid,
-        title: String,
-        description: Option<String>,
-        status: TaskStatus,
+        data: &UpdateTask,
     ) -> Result<Self, sqlx::Error> {
-        let status_value = status as TaskStatus;
+        // Get the current task to preserve values that aren't being updated
+        let current_task = Self::find_by_id_and_project_id(pool, id, project_id)
+            .await?
+            .ok_or_else(|| sqlx::Error::RowNotFound)?;
+        
+        let title = data.title.as_ref().unwrap_or(&current_task.title);
+        let description = data.description.clone().or(current_task.description);
+        let status_value = data.status.clone().unwrap_or(current_task.status) as TaskStatus;
+        
         sqlx::query_as!(
             Task,
             r#"UPDATE tasks 

@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
 import { Input } from '@/components/ui/input.tsx';
+import { Label } from '@/components/ui/label.tsx';
 import type { GitBranch, TaskAttempt } from 'shared/types.ts';
 import { makeRequest } from '@/lib/api.ts';
 import {
@@ -59,6 +60,7 @@ function CreateAttempt({
   const { config } = useConfig();
 
   const [branchSearchTerm, setBranchSearchTerm] = useState('');
+  const [slashCommand, setSlashCommand] = useState('');
 
   // Filter branches based on search term
   const filteredBranches = useMemo(() => {
@@ -79,6 +81,7 @@ function CreateAttempt({
           body: JSON.stringify({
             executor: executor || selectedExecutor,
             base_branch: baseBranch || selectedBranch,
+            slash_command: slashCommand || null,
           }),
         }
       );
@@ -98,6 +101,14 @@ function CreateAttempt({
   const handleCreateAttempt = () => {
     onCreateNewAttempt(createAttemptExecutor, createAttemptBranch || undefined);
     handleExitCreateAttemptMode();
+  };
+
+  // Clear slash command when executor changes from claude to something else
+  const handleExecutorChange = (newExecutor: string) => {
+    setCreateAttemptExecutor(newExecutor);
+    if (newExecutor !== 'claude') {
+      setSlashCommand('');
+    }
   };
 
   return (
@@ -122,6 +133,26 @@ function CreateAttempt({
             branch are created.
           </label>
         </div>
+
+
+        {/* Conditional slash command input for Claude executor */}
+        {createAttemptExecutor === 'claude' && (
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">
+              Slash Command (Optional)
+            </Label>
+            <Input
+              value={slashCommand}
+              onChange={(e) => setSlashCommand(e.target.value)}
+              placeholder="/read-files"
+              className="text-xs"
+              size="sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Prepend a Claude Code slash command like /read-files
+            </p>
+          </div>
+        )}
 
         <div className="grid grid-cols-3 gap-3 items-end">
           {/* Step 1: Choose Base Branch */}
@@ -237,7 +268,7 @@ function CreateAttempt({
                 {availableExecutors.map((executor) => (
                   <DropdownMenuItem
                     key={executor.id}
-                    onClick={() => setCreateAttemptExecutor(executor.id)}
+                    onClick={() => handleExecutorChange(executor.id)}
                     className={
                       createAttemptExecutor === executor.id ? 'bg-accent' : ''
                     }

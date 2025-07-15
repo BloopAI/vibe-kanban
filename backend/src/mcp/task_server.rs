@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use crate::models::{
     project::Project,
-    task::{CreateTask, Task, TaskStatus},
+    task::{CreateTask, Task, TaskStatus, UpdateTask},
 };
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -545,7 +545,7 @@ impl TaskServer {
             None
         };
 
-        let current_task =
+        let _current_task =
             match Task::find_by_id_and_project_id(&self.pool, task_uuid, project_uuid).await {
                 Ok(Some(task)) => task,
                 Ok(None) => {
@@ -571,17 +571,17 @@ impl TaskServer {
                 }
             };
 
-        let new_title = title.unwrap_or(current_task.title);
-        let new_description = description.or(current_task.description);
-        let new_status = status_enum.unwrap_or(current_task.status);
+        let update_data = UpdateTask {
+            title,
+            description,
+            status: status_enum,
+        };
 
         match Task::update(
             &self.pool,
             task_uuid,
             project_uuid,
-            new_title,
-            new_description,
-            new_status,
+            &update_data,
         )
         .await
         {

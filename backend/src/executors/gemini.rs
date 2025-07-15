@@ -31,6 +31,7 @@ impl Executor for GeminiExecutor {
         &self,
         pool: &sqlx::SqlitePool,
         task_id: Uuid,
+        _attempt_id: Uuid,
         worktree_path: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         // Get the task to fetch its description
@@ -142,7 +143,7 @@ Task title: {}"#,
             );
         }
 
-        let mut child = self.spawn(pool, task_id, worktree_path).await?;
+        let mut child = self.spawn(pool, task_id, attempt_id, worktree_path).await?;
 
         tracing::info!(
             "Gemini process spawned successfully for attempt {}, PID: {:?}",
@@ -703,6 +704,7 @@ impl Executor for GeminiFollowupExecutor {
         &self,
         pool: &sqlx::SqlitePool,
         task_id: Uuid,
+        _attempt_id: Uuid,
         worktree_path: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let task = self.load_task(pool, task_id).await?;
@@ -747,7 +749,7 @@ impl Executor for GeminiFollowupExecutor {
             );
         }
 
-        let mut child = self.spawn(pool, task_id, worktree_path).await?;
+        let mut child = self.spawn(pool, task_id, attempt_id, worktree_path).await?;
 
         tracing::info!(
             "Gemini followup process spawned successfully for attempt {}, PID: {:?}",
