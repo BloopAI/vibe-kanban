@@ -373,12 +373,19 @@ export const attemptsApi = {
   rebase: async (
     projectId: string,
     taskId: string,
-    attemptId: string
+    attemptId: string,
+    newBaseBranch?: string
   ): Promise<void> => {
     const response = await makeRequest(
       `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/rebase`,
       {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          new_base_branch: newBaseBranch || null,
+        }),
       }
     );
     return handleApiResponse<void>(response);
