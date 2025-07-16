@@ -280,7 +280,7 @@ impl GitService {
         let first_uuid_section = task_uuid_str.split('-').next().unwrap_or(&task_uuid_str);
         
         // Create commit message with task title and description
-        let mut commit_message = format!("{} (vibe-kanban [{}])", task_title, first_uuid_section);
+        let mut commit_message = format!("{} (vibe-kanban {})", task_title, first_uuid_section);
         
         // Add description on next line if it exists
         if let Some(description) = task_description {
