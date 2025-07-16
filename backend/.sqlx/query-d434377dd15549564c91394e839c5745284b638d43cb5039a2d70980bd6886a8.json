@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                    UPDATE integrations \n                    SET health_status = ?,\n                        last_health_check_at = datetime('now', 'subsec'),\n                        error_message = ?\n                    WHERE id = ?\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "d434377dd15549564c91394e839c5745284b638d43cb5039a2d70980bd6886a8"
+}

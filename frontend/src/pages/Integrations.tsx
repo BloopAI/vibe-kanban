@@ -11,6 +11,8 @@ import { CategoryFilter } from '@/components/integrations/CategoryFilter';
 import { 
   IntegrationWithCategory, 
   IntegrationCategory,
+  CreateIntegrationRequest,
+  UpdateIntegrationRequest,
   getProviderDisplayName 
 } from '@/lib/types/integrations';
 import { integrationsApi } from '@/lib/api/integrations';
@@ -138,9 +140,9 @@ export function Integrations() {
     }
   };
 
-  const handleCreateIntegration = async (data: any) => {
+  const handleCreateIntegration = async (data: CreateIntegrationRequest | UpdateIntegrationRequest) => {
     try {
-      await integrationsApi.createIntegration(data);
+      await integrationsApi.createIntegration(data as CreateIntegrationRequest);
       await loadData();
       setShowCreateForm(false);
       toast({
@@ -157,9 +159,9 @@ export function Integrations() {
     }
   };
 
-  const handleUpdateIntegration = async (id: string, data: any) => {
+  const handleUpdateIntegration = async (id: string, data: CreateIntegrationRequest | UpdateIntegrationRequest) => {
     try {
-      await integrationsApi.updateIntegration(id, data);
+      await integrationsApi.updateIntegration(id, data as UpdateIntegrationRequest);
       await loadData();
       setEditingIntegration(null);
       toast({

@@ -59,8 +59,8 @@ export function McpServers() {
         const result = await mcpServersApi.load(executorType);
         // Handle new response format with servers and config_path
         const data = result || {};
-        const servers = data.servers || {};
-        const configPath = data.config_path || '';
+        const servers = (data as any).servers || {};
+        const configPath = (data as any).config_path || '';
 
         // Create the full configuration structure based on executor type
         let fullConfig;
@@ -75,9 +75,9 @@ export function McpServers() {
         const configJson = JSON.stringify(fullConfig, null, 2);
         setMcpServers(configJson);
         setMcpConfigPath(configPath);
-      } catch (err: any) {
-        if (err?.message && err.message.includes('does not support MCP')) {
-          setMcpError(err.message);
+      } catch (err: unknown) {
+        if ((err as Error)?.message && (err as Error).message.includes('does not support MCP')) {
+          setMcpError((err as Error).message);
         } else {
           console.error('Error loading MCP servers:', err);
         }

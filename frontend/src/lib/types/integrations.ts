@@ -15,7 +15,7 @@ export interface Integration {
   type: string;
   provider: string;
   category_id: string;
-  config?: Record<string, any>;
+  config?: Record<string, unknown>;
   enabled: boolean;
   health_status: 'healthy' | 'error' | 'warning' | 'unknown';
   last_sync_at?: string;
@@ -34,27 +34,27 @@ export interface CreateIntegrationRequest {
   type: string;
   provider: string;
   category_id: string;
-  config?: Record<string, any>;
+  config?: Record<string, unknown>;
   enabled?: boolean;
 }
 
 export interface UpdateIntegrationRequest {
   name?: string;
-  config?: Record<string, any>;
+  config?: Record<string, unknown>;
   enabled?: boolean;
 }
 
 export interface IntegrationTestResult {
   success: boolean;
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 export interface IntegrationEvent {
   id: string;
   integration_id: string;
   event_type: string;
-  event_data?: Record<string, any>;
+  event_data?: Record<string, unknown>;
   created_at: string;
 }
 
@@ -163,7 +163,7 @@ export type IntegrationConfig =
   | SlackConfig 
   | MCPConfig 
   | JiraConfig 
-  | Record<string, any>;
+  | Record<string, unknown>;
 
 // Helper functions
 export function getProviderDisplayName(provider: string): string {

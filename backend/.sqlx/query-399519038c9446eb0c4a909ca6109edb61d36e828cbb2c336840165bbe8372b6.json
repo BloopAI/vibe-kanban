@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO integrations (\n                id, name, type, provider, category_id, config, enabled,\n                health_status, created_at, updated_at\n            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'subsec'), datetime('now', 'subsec'))\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "399519038c9446eb0c4a909ca6109edb61d36e828cbb2c336840165bbe8372b6"
+}

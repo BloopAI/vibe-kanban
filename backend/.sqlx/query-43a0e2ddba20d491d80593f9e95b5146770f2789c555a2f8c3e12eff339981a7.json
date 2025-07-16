@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            UPDATE integrations \n            SET name = COALESCE(?, name),\n                config = COALESCE(?, config),\n                enabled = COALESCE(?, enabled),\n                updated_at = datetime('now', 'subsec')\n            WHERE id = ?\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "43a0e2ddba20d491d80593f9e95b5146770f2789c555a2f8c3e12eff339981a7"
+}

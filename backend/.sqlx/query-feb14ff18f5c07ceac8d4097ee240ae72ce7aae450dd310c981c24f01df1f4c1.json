@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                    UPDATE integrations \n                    SET last_sync_at = datetime('now', 'subsec')\n                    WHERE id = ?\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "feb14ff18f5c07ceac8d4097ee240ae72ce7aae450dd310c981c24f01df1f4c1"
+}

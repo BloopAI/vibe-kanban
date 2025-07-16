@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { TaskAttemptDataContext } from '@/components/context/taskDetailsContext.ts';
 import { Loader } from '@/components/ui/loader.tsx';
+import type { ExecutionProcess } from 'shared/types';
 
 function Conversation() {
   const { attemptData } = useContext(TaskAttemptDataContext);
@@ -71,7 +72,7 @@ function Conversation() {
             ...mainCodingAgentSummary,
             stdout: null,
             stderr: null,
-          } as any;
+          } as ExecutionProcess;
         }
       }
     }
@@ -95,7 +96,7 @@ function Conversation() {
             ...summary,
             stdout: null,
             stderr: null,
-          } as any)
+          } as ExecutionProcess)
         );
       });
   }, [attemptData.processes, attemptData.runningProcessDetails]);

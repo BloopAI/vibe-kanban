@@ -43,9 +43,9 @@ export function GitHubLoginDialog({
       const data = await githubAuthApi.start();
       setDeviceState(data);
       setPolling(true);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      setError(e?.message || 'Network error');
+      setError((e as Error)?.message || 'Network error');
     } finally {
       setFetching(false);
     }
@@ -62,18 +62,18 @@ export function GitHubLoginDialog({
           setDeviceState(null);
           setError(null);
           onOpenChange(false);
-        } catch (e: any) {
-          if (e?.message === 'authorization_pending') {
+        } catch (e: unknown) {
+          if ((e as Error)?.message === 'authorization_pending') {
             timer = setTimeout(poll, (deviceState.interval || 5) * 1000);
-          } else if (e?.message === 'slow_down') {
+          } else if ((e as Error)?.message === 'slow_down') {
             timer = setTimeout(poll, (deviceState.interval + 5) * 1000);
-          } else if (e?.message === 'expired_token') {
+          } else if ((e as Error)?.message === 'expired_token') {
             setPolling(false);
             setError('Device code expired. Please try again.');
             setDeviceState(null);
           } else {
             setPolling(false);
-            setError(e?.message || 'Login failed.');
+            setError((e as Error)?.message || 'Login failed.');
             setDeviceState(null);
           }
         }

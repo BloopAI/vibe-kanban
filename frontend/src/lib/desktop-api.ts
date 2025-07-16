@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 
 declare global {
   interface Window {
-    __TAURI__?: any;
+    __TAURI__?: unknown;
   }
 }
 

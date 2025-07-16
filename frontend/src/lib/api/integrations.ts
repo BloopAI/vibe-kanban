@@ -110,7 +110,7 @@ export const integrationsApi = {
     return this.updateIntegration(id, { enabled });
   },
 
-  async updateIntegrationConfig(id: string, config: Record<string, any>): Promise<Integration> {
+  async updateIntegrationConfig(id: string, config: Record<string, unknown>): Promise<Integration> {
     return this.updateIntegration(id, { config });
   },
 };

@@ -40,7 +40,7 @@ interface FormData {
   provider: string;
   category_id: string;
   enabled: boolean;
-  config: Record<string, any>;
+  config: Record<string, unknown>;
 }
 
 const providersByType: Record<string, string[]> = {
@@ -128,7 +128,7 @@ export function IntegrationForm({
     }
 
     // Validate JSON config
-    let parsedConfig: Record<string, any> = {};
+    let parsedConfig: Record<string, unknown> = {};
     if (configJson.trim()) {
       try {
         parsedConfig = JSON.parse(configJson);

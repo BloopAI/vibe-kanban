@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO integration_events (id, integration_id, event_type, event_data, created_at)\n            VALUES (?, ?, ?, ?, datetime('now', 'subsec'))\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "95ebadf704e069e0b0047b5565d76a93c76c1de36cffcaa5546304de05377ce3"
+}

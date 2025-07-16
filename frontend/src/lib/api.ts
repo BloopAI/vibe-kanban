@@ -532,13 +532,13 @@ export const githubAuthApi = {
 
 // MCP Servers APIs
 export const mcpServersApi = {
-  load: async (executor: string): Promise<any> => {
+  load: async (executor: string): Promise<unknown> => {
     const response = await makeRequest(
       `/api/mcp-servers?executor=${encodeURIComponent(executor)}`
     );
-    return handleApiResponse<any>(response);
+    return handleApiResponse<unknown>(response);
   },
-  save: async (executor: string, serversConfig: any): Promise<void> => {
+  save: async (executor: string, serversConfig: unknown): Promise<void> => {
     const response = await makeRequest(
       `/api/mcp-servers?executor=${encodeURIComponent(executor)}`,
       {

@@ -1,0 +1,128 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT \n                i.id, i.name, i.type as integration_type, i.provider, i.config, \n                i.enabled, i.health_status, i.last_sync_at, i.last_health_check_at,\n                i.error_message, i.created_at, i.updated_at,\n                c.id as category_id, c.display_name as category_display_name,\n                c.description as category_description, c.icon as category_icon,\n                c.sort_order as category_sort_order, c.created_at as category_created_at,\n                c.updated_at as category_updated_at\n            FROM integrations i\n            JOIN integration_categories c ON i.category_id = c.id\n            WHERE i.id = ?\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "integration_type",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "provider",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "config",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "enabled",
+        "ordinal": 5,
+        "type_info": "Bool"
+      },
+      {
+        "name": "health_status",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_sync_at",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_health_check_at",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "error_message",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "category_id",
+        "ordinal": 12,
+        "type_info": "Text"
+      },
+      {
+        "name": "category_display_name",
+        "ordinal": 13,
+        "type_info": "Text"
+      },
+      {
+        "name": "category_description",
+        "ordinal": 14,
+        "type_info": "Text"
+      },
+      {
+        "name": "category_icon",
+        "ordinal": 15,
+        "type_info": "Text"
+      },
+      {
+        "name": "category_sort_order",
+        "ordinal": 16,
+        "type_info": "Integer"
+      },
+      {
+        "name": "category_created_at",
+        "ordinal": 17,
+        "type_info": "Text"
+      },
+      {
+        "name": "category_updated_at",
+        "ordinal": 18,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "7a27d2113f62c1cf18602ce67e67dc4bb1ab9bded41e8b8d9f03c08f436a5c0d"
+}
