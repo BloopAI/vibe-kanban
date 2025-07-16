@@ -87,8 +87,8 @@ function CreateAttempt({
 
   // Handler for Enter key or Start button
   const onCreateNewAttempt = useCallback(
-    (executor?: string, baseBranch?: string) => {
-      if (task.status === 'todo') {
+    (executor?: string, baseBranch?: string, isKeyTriggered?: boolean) => {
+      if (task.status === 'todo' && isKeyTriggered) {
         setPendingExecutor(executor);
         setPendingBaseBranch(baseBranch);
         setShowCreateAttemptConfirmation(true);
@@ -109,7 +109,8 @@ function CreateAttempt({
       } else {
         onCreateNewAttempt(
           createAttemptExecutor,
-          createAttemptBranch || undefined
+          createAttemptBranch || undefined,
+          true,
         );
       }
     },
