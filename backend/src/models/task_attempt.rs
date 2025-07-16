@@ -532,14 +532,27 @@ impl TaskAttempt {
         let git_service = GitService::new(main_repo_path)?;
         let worktree_path = Path::new(worktree_path);
 
+        // Extract first section of UUID (before first hyphen)
+        let task_uuid_str = task_id.to_string();
+        let first_uuid_section = task_uuid_str.split('-').next().unwrap_or(&task_uuid_str);
+
+        // Create commit message with task title and description
+        let mut commit_message = format!("{} (vibe-kanban {})", task_title, first_uuid_section);
+
+        // Add description on next line if it exists
+        if let Some(description) = task_description {
+            if !description.trim().is_empty() {
+                commit_message.push_str("\n\n");
+                commit_message.push_str(description);
+            }
+        }
+
         git_service
             .merge_changes(
                 worktree_path,
                 branch_name,
                 base_branch,
-                task_title,
-                task_description,
-                task_id,
+                &commit_message,
             )
             .map_err(TaskAttemptError::from)
     }

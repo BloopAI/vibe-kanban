@@ -6,7 +6,7 @@ use git2::{
 };
 use regex;
 use tracing::{debug, info};
-use uuid;
+
 
 use crate::{
     models::task_attempt::{DiffChunk, DiffChunkType, FileDiff, WorktreeDiff},
@@ -183,9 +183,7 @@ impl GitService {
         worktree_path: &Path,
         branch_name: &str,
         base_branch_name: &str,
-        task_title: &str,
-        task_description: &Option<String>,
-        task_id: uuid::Uuid,
+        commit_message: &str,
     ) -> Result<String, GitServiceError> {
         // Open the worktree repository
         let worktree_repo = Repository::open(worktree_path)?;
@@ -216,9 +214,7 @@ impl GitService {
             &base_commit,
             &task_commit,
             &signature,
-            task_title,
-            task_description,
-            task_id,
+            commit_message,
             base_branch_name,
         )?;
 
@@ -272,32 +268,15 @@ impl GitService {
         base_commit: &git2::Commit,
         task_commit: &git2::Commit,
         signature: &git2::Signature,
-        task_title: &str,
-        task_description: &Option<String>,
-        task_id: uuid::Uuid,
+        commit_message: &str,
         base_branch_name: &str,
     ) -> Result<git2::Oid, GitServiceError> {
-        // Extract first section of UUID (before first hyphen)
-        let task_uuid_str = task_id.to_string();
-        let first_uuid_section = task_uuid_str.split('-').next().unwrap_or(&task_uuid_str);
-
-        // Create commit message with task title and description
-        let mut commit_message = format!("{} (vibe-kanban {})", task_title, first_uuid_section);
-
-        // Add description on next line if it exists
-        if let Some(description) = task_description {
-            if !description.trim().is_empty() {
-                commit_message.push_str("\n\n");
-                commit_message.push_str(description);
-            }
-        }
-
         // Create a single commit that squashes all changes from task branch
         let squash_commit_id = repo.commit(
             None,                 // Don't update any reference yet
             signature,            // Author
             signature,            // Committer
-            &commit_message,      // Custom message with title, UUID, and description
+            commit_message,       // Custom message
             &task_commit.tree()?, // Use the tree from task branch (all changes)
             &[base_commit],       // Single parent: base branch commit
         )?;
