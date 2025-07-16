@@ -69,7 +69,7 @@ export function ProjectTasks() {
     currentPath: `/projects/${projectId}/tasks`,
     hasOpenDialog: isTaskDialogOpen,
     closeDialog: () => setIsTaskDialogOpen(false),
-    openCreateTask: handleCreateNewTask,
+    onC: handleCreateNewTask,
   });
 
   useEffect(() => {

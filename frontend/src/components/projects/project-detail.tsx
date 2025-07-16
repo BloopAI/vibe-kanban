@@ -23,6 +23,7 @@ import {
   Loader2,
   Trash2,
 } from 'lucide-react';
+import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
 
 interface ProjectDetailProps {
   projectId: string;
@@ -35,6 +36,11 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
   const [loading, setLoading] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [error, setError] = useState('');
+
+  useKeyboardShortcuts({
+    navigate,
+    currentPath: `/projects/${projectId}`,
+  });
 
   const fetchProject = useCallback(async () => {
     setLoading(true);

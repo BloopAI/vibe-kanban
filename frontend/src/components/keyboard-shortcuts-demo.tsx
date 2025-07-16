@@ -7,7 +7,7 @@ export function KeyboardShortcutsDemo() {
     currentPath: '/demo',
     hasOpenDialog: false,
     closeDialog: () => {},
-    openCreateTask: () => {},
+    onC: () => {},
   });
 
   return (

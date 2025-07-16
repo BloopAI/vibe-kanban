@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useKanbanKeyboardNavigation } from '@/lib/keyboard-shortcuts';
+import {
+  useKanbanKeyboardNavigation,
+  useKeyboardShortcuts,
+} from '@/lib/keyboard-shortcuts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -90,6 +93,13 @@ export function ProjectList() {
     allTaskStatuses: allColumnKeys,
     onViewTaskDetails: handleViewProjectDetails,
     preserveIndexOnColumnSwitch: true,
+  });
+
+  useKeyboardShortcuts({
+    ignoreEscape: true,
+    onC: () => setShowForm(true),
+    navigate,
+    currentPath: '/projects',
   });
 
   // Handle window resize to update column layout

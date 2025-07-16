@@ -13,13 +13,14 @@ export interface KeyboardShortcut {
 export interface KeyboardShortcutContext {
   navigate?: ReturnType<typeof useNavigate>;
   closeDialog?: () => void;
-  openCreateTask?: () => void;
+  onC?: () => void;
   currentPath?: string;
   hasOpenDialog?: boolean;
   location?: ReturnType<typeof useLocation>;
   stopExecution?: () => void;
   newAttempt?: () => void;
   onEnter?: () => void;
+  ignoreEscape?: boolean;
 }
 
 // Centralized shortcut definitions
@@ -30,6 +31,10 @@ export const createKeyboardShortcuts = (
     key: 'Escape',
     description: 'Go back or close dialog',
     action: () => {
+      if (context.ignoreEscape) {
+        return;
+      }
+
       // If there's an open dialog, close it
       if (context.hasOpenDialog && context.closeDialog) {
         context.closeDialog();
@@ -75,8 +80,8 @@ export const createKeyboardShortcuts = (
     key: 'c',
     description: 'Create new task',
     action: () => {
-      if (context.openCreateTask) {
-        context.openCreateTask();
+      if (context.onC) {
+        context.onC();
       }
     },
   },

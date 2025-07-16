@@ -110,7 +110,7 @@ function CreateAttempt({
         onCreateNewAttempt(
           createAttemptExecutor,
           createAttemptBranch || undefined,
-          true,
+          true
         );
       }
     },
