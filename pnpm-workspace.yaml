@@ -1,2 +1,6 @@
 packages:
-  - 'frontend'
+  - frontend
+
+onlyBuiltDependencies:
+  - '@sentry/cli'
+  - esbuild

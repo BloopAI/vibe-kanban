@@ -62,11 +62,19 @@ pnpm i
 
 ### Running the dev server
 
+#### Linux/macOS
 ```bash
 pnpm run dev
 ```
 
+#### Windows
+```bash
+pnpm run dev:windows
+```
+
 This will start the frontend and backend with live reloading. A blank DB will be copied from the `dev_assets_seed` folder.
+
+> **Note for Windows users**: The Windows development scripts use `cross-env` to handle environment variables and fixed ports (backend: 3002, frontend: 3001) instead of dynamic port assignment.
 
 ### Build from source
 

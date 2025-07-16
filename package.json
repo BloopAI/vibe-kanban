@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && concurrently \"npm run backend:dev:watch\" \"npm run frontend:dev\"",
+    "dev:windows": "cross-env BACKEND_PORT=3002 FRONTEND_PORT=3001 concurrently \"npm run backend:dev:watch:windows\" \"npm run frontend:dev:windows\"",
+    "backend:dev:watch:windows": "cross-env BACKEND_PORT=3002 npm run cargo -- watch -w backend -x \"run --manifest-path backend/Cargo.toml -- --port 3002\"",
+    "frontend:dev:windows": "cd frontend && npm run dev -- --port 3001 --open",
     "build": "npm run frontend:build && npm run backend:build",
     "build:single": "npm run frontend:build && npm run backend:build:single",
     "build:npm": "./build-npm-package.sh",
@@ -24,6 +27,7 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
     "vite": "^6.3.5"
   },
   "engines": {
