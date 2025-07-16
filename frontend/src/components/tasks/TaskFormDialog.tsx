@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Globe2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -86,9 +87,15 @@ export function TaskFormDialog({
   // Fetch templates when dialog opens in create mode
   useEffect(() => {
     if (isOpen && !isEditMode && projectId) {
-      templatesApi
-        .listByProject(projectId)
-        .then(setTemplates)
+      // Fetch both project and global templates
+      Promise.all([
+        templatesApi.listByProject(projectId),
+        templatesApi.listGlobal(),
+      ])
+        .then(([projectTemplates, globalTemplates]) => {
+          // Combine templates with project templates first
+          setTemplates([...projectTemplates, ...globalTemplates]);
+        })
         .catch(console.error);
     }
   }, [isOpen, isEditMode, projectId]);
@@ -297,7 +304,12 @@ export function TaskFormDialog({
                       <SelectItem value="none">No template</SelectItem>
                       {templates.map((template) => (
                         <SelectItem key={template.id} value={template.id}>
-                          {template.template_name}
+                          <div className="flex items-center gap-2">
+                            {template.project_id === null && (
+                              <Globe2 className="h-3 w-3 text-muted-foreground" />
+                            )}
+                            <span>{template.template_name}</span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>

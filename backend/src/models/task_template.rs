@@ -50,15 +50,14 @@ impl TaskTemplate {
         project_id: Option<Uuid>,
     ) -> Result<Vec<Self>, sqlx::Error> {
         if let Some(pid) = project_id {
-            // Return both project-specific and global templates
-            sqlx::query_as!(
-                TaskTemplate,
-                r#"SELECT id as "id!: Uuid", project_id as "project_id?: Uuid", title, description, template_name, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            // Return only project-specific templates
+            sqlx::query_as::<_, TaskTemplate>(
+                r#"SELECT id, project_id, title, description, template_name, created_at, updated_at
                    FROM task_templates 
-                   WHERE project_id = $1 OR project_id IS NULL
-                   ORDER BY project_id IS NULL, template_name ASC"#,
-                pid
+                   WHERE project_id = ?
+                   ORDER BY template_name ASC"#,
             )
+            .bind(pid)
             .fetch_all(pool)
             .await
         } else {
