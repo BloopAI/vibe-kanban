@@ -195,19 +195,33 @@ impl Default for GitHubConfig {
 
 impl EditorConfig {
     pub fn get_command(&self) -> Vec<String> {
-        match &self.editor_type {
-            EditorType::VSCode => vec!["code".to_string()],
-            EditorType::Cursor => vec!["cursor".to_string()],
-            EditorType::Windsurf => vec!["windsurf".to_string()],
-            EditorType::IntelliJ => vec!["idea".to_string()],
-            EditorType::Zed => vec!["zed".to_string()],
+        let command = match &self.editor_type {
+            EditorType::VSCode => "code",
+            EditorType::Cursor => "cursor",
+            EditorType::Windsurf => "windsurf",
+            EditorType::IntelliJ => "idea",
+            EditorType::Zed => "zed",
             EditorType::Custom => {
                 if let Some(custom) = &self.custom_command {
-                    custom.split_whitespace().map(|s| s.to_string()).collect()
+                    return custom.split_whitespace().map(|s| s.to_string()).collect();
                 } else {
-                    vec!["code".to_string()] // fallback to VSCode
+                    "code" // fallback to VSCode
                 }
             }
+        };
+
+        // On Windows, add .cmd extension for common editors
+        #[cfg(target_os = "windows")]
+        {
+            match command {
+                "code" | "cursor" | "windsurf" => vec![format!("{}.cmd", command)],
+                _ => vec![command.to_string()],
+            }
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            vec![command.to_string()]
         }
     }
 }
