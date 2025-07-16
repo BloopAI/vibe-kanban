@@ -35,7 +35,9 @@ impl std::fmt::Display for GitServiceError {
 
             GitServiceError::MergeConflicts(e) => write!(f, "Merge conflicts: {}", e),
             GitServiceError::InvalidPath(e) => write!(f, "Invalid path: {}", e),
-            GitServiceError::WorktreeDirty(e) => write!(f, "Worktree has uncommitted changes: {}", e),
+            GitServiceError::WorktreeDirty(e) => {
+                write!(f, "Worktree has uncommitted changes: {}", e)
+            }
         }
     }
 }
@@ -187,10 +189,10 @@ impl GitService {
     ) -> Result<String, GitServiceError> {
         // Open the worktree repository
         let worktree_repo = Repository::open(worktree_path)?;
-        
+
         // Check if worktree is dirty before proceeding
         self.check_worktree_clean(&worktree_repo)?;
-        
+
         // Verify the task branch exists in the worktree
         let task_branch = worktree_repo
             .find_branch(branch_name, BranchType::Local)
@@ -228,11 +230,11 @@ impl GitService {
     fn check_worktree_clean(&self, repo: &Repository) -> Result<(), GitServiceError> {
         let mut status_options = git2::StatusOptions::new();
         status_options
-            .include_untracked(false)  // Don't include untracked files
-            .include_ignored(false);   // Don't include ignored files
-        
+            .include_untracked(false) // Don't include untracked files
+            .include_ignored(false); // Don't include ignored files
+
         let statuses = repo.statuses(Some(&mut status_options))?;
-        
+
         if !statuses.is_empty() {
             let mut dirty_files = Vec::new();
             for entry in statuses.iter() {
@@ -247,19 +249,19 @@ impl GitService {
                         | git2::Status::WT_MODIFIED
                         | git2::Status::WT_DELETED
                         | git2::Status::WT_RENAMED
-                        | git2::Status::WT_TYPECHANGE
+                        | git2::Status::WT_TYPECHANGE,
                 ) {
                     if let Some(path) = entry.path() {
                         dirty_files.push(path.to_string());
                     }
                 }
             }
-            
+
             if !dirty_files.is_empty() {
                 return Err(GitServiceError::WorktreeDirty(dirty_files.join(", ")));
             }
         }
-        
+
         Ok(())
     }
 
@@ -278,10 +280,10 @@ impl GitService {
         // Extract first section of UUID (before first hyphen)
         let task_uuid_str = task_id.to_string();
         let first_uuid_section = task_uuid_str.split('-').next().unwrap_or(&task_uuid_str);
-        
+
         // Create commit message with task title and description
         let mut commit_message = format!("{} (vibe-kanban {})", task_title, first_uuid_section);
-        
+
         // Add description on next line if it exists
         if let Some(description) = task_description {
             if !description.trim().is_empty() {
@@ -292,10 +294,10 @@ impl GitService {
 
         // Create a single commit that squashes all changes from task branch
         let squash_commit_id = repo.commit(
-            None, // Don't update any reference yet
-            signature,    // Author
-            signature,    // Committer
-            &commit_message, // Custom message with title, UUID, and description
+            None,                 // Don't update any reference yet
+            signature,            // Author
+            signature,            // Committer
+            &commit_message,      // Custom message with title, UUID, and description
             &task_commit.tree()?, // Use the tree from task branch (all changes)
             &[base_commit],       // Single parent: base branch commit
         )?;
