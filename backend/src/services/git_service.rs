@@ -6,7 +6,6 @@ use git2::{
 };
 use regex;
 use tracing::{debug, info};
-use uuid;
 
 use crate::{
     models::task_attempt::{DiffChunk, DiffChunkType, FileDiff, WorktreeDiff},
@@ -182,7 +181,7 @@ impl GitService {
         branch_name: &str,
         task_title: &str,
     ) -> Result<String, GitServiceError> {
-        // Open the worktree repository for all operations
+        // Open the worktree repository
         let worktree_repo = Repository::open(worktree_path)?;
         
         // Check if worktree is dirty before proceeding
@@ -191,25 +190,22 @@ impl GitService {
         // Get the base branch name (default to "main")
         let base_branch_name = self.get_default_branch_name_for_repo(&worktree_repo)?;
         
-        // Create a temporary merge branch from the base branch
-        let uuid_str = uuid::Uuid::new_v4().to_string();
-        let merge_branch_name = format!("merge-temp-{}", &uuid_str[..8]);
-        self.create_temporary_branch(&worktree_repo, &merge_branch_name, &base_branch_name)?;
-
-        // Verify the task branch exists
+        // Verify the task branch exists in the worktree
         let task_branch = worktree_repo
             .find_branch(branch_name, BranchType::Local)
             .map_err(|_| GitServiceError::BranchNotFound(branch_name.to_string()))?;
 
-        // Get the current HEAD of the base branch
-        let base_head = worktree_repo.head()?;
-        let base_commit = base_head.peel_to_commit()?;
+        // Get the base branch from the worktree
+        let base_branch = worktree_repo
+            .find_branch(&base_branch_name, BranchType::Local)
+            .map_err(|_| GitServiceError::BranchNotFound(base_branch_name.to_string()))?;
+
+        // Get commits
+        let base_commit = base_branch.get().peel_to_commit()?;
+        let task_commit = task_branch.get().peel_to_commit()?;
 
         // Get the signature for the merge commit
         let signature = worktree_repo.signature()?;
-
-        // Get the task branch commit
-        let task_commit = task_branch.get().peel_to_commit()?;
 
         // Perform a squash merge - create a single commit with all changes
         let squash_commit_id = self.perform_squash_merge(
@@ -220,9 +216,6 @@ impl GitService {
             task_title,
             &base_branch_name,
         )?;
-
-        // Clean up temporary branch
-        self.cleanup_temporary_branch(&worktree_repo, &merge_branch_name)?;
 
         info!("Created squash merge commit: {}", squash_commit_id);
         Ok(squash_commit_id.to_string())
@@ -281,35 +274,6 @@ impl GitService {
         }
     }
 
-    /// Create a temporary branch from the base branch and check it out
-    fn create_temporary_branch(&self, repo: &Repository, temp_branch_name: &str, base_branch_name: &str) -> Result<(), GitServiceError> {
-        // Get the base branch commit
-        let base_branch = repo
-            .find_branch(base_branch_name, BranchType::Local)
-            .map_err(|_| GitServiceError::BranchNotFound(base_branch_name.to_string()))?;
-        
-        let base_commit = base_branch.get().peel_to_commit()?;
-        
-        // Create the temporary branch
-        let _temp_branch = repo.branch(temp_branch_name, &base_commit, false)?;
-        
-        // Checkout the temporary branch
-        repo.set_head(&format!("refs/heads/{}", temp_branch_name))?;
-        repo.reset(base_commit.as_object(), git2::ResetType::Hard, None)?;
-        
-        info!("Created and checked out temporary branch: {}", temp_branch_name);
-        Ok(())
-    }
-
-    /// Clean up temporary branch
-    fn cleanup_temporary_branch(&self, repo: &Repository, temp_branch_name: &str) -> Result<(), GitServiceError> {
-        if let Ok(mut branch) = repo.find_branch(temp_branch_name, BranchType::Local) {
-            branch.delete()?;
-            info!("Deleted temporary branch: {}", temp_branch_name);
-        }
-        Ok(())
-    }
-
     /// Perform a squash merge of task branch into base branch
     fn perform_squash_merge(
         &self,
@@ -322,7 +286,7 @@ impl GitService {
     ) -> Result<git2::Oid, GitServiceError> {
         // Create a single commit that squashes all changes from task branch
         let squash_commit_id = repo.commit(
-            Some("HEAD"), // Update HEAD
+            None, // Don't update any reference yet
             signature,    // Author
             signature,    // Committer
             &format!("Squash merge: {} (vibe-kanban)", task_title), // Message
@@ -333,10 +297,6 @@ impl GitService {
         // Update the base branch reference to point to the new commit
         let refname = format!("refs/heads/{}", base_branch_name);
         repo.reference(&refname, squash_commit_id, true, "Squash merge")?;
-
-        // Reset the working directory to match the new HEAD
-        let squash_commit = repo.find_commit(squash_commit_id)?;
-        repo.reset(squash_commit.as_object(), git2::ResetType::Hard, None)?;
 
         Ok(squash_commit_id)
     }
