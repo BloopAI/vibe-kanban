@@ -150,6 +150,7 @@ export const projectsApi = {
   openEditor: async (id: string): Promise<void> => {
     const response = await makeRequest(`/api/projects/${id}/open-editor`, {
       method: 'POST',
+      body: JSON.stringify(null),
     });
     return handleApiResponse<void>(response);
   },
