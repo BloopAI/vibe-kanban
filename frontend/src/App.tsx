@@ -16,6 +16,7 @@ import { configApi } from '@/lib/api';
 import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
 import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
+import { initializeDesktop, isDesktop } from '@/lib/desktop-api';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
@@ -42,6 +43,13 @@ function AppContent() {
       }
     }
   }, [config]);
+
+  // Initialize desktop features
+  useEffect(() => {
+    if (isDesktop()) {
+      initializeDesktop().catch(console.error);
+    }
+  }, []);
 
   const handleDisclaimerAccept = async () => {
     if (!config) return;

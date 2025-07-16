@@ -5,7 +5,7 @@
   "identifier": "com.vibekanban.desktop",
   "build": {
     "beforeBuildCommand": "npm run frontend:build",
-    "beforeDevCommand": "npm run frontend:dev",
+    "beforeDevCommand": "",
     "devUrl": "http://localhost:3000",
     "frontendDist": "../frontend/dist"
   },
@@ -26,8 +26,10 @@
       "csp": null
     },
     "trayIcon": {
+      "id": "main",
       "iconPath": "icons/icon.png",
-      "iconAsTemplate": true
+      "iconAsTemplate": true,
+      "menuOnLeftClick": false
     }
   },
   "bundle": {
@@ -50,6 +52,9 @@
   "plugins": {
     "shell": {
       "open": true
+    },
+    "notification": {
+      "default": "all"
     }
   }
 }

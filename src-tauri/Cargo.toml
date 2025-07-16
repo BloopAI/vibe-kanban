@@ -17,6 +17,11 @@ serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "2.0", features = ["tray-icon"] }
 tauri-plugin-shell = "2.0"
+tauri-plugin-notification = "2.0"
+tokio = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+vibe-kanban = { path = "../backend" }
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.

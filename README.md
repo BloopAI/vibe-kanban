@@ -36,6 +36,30 @@ Make sure you have authenticated with your favourite coding agent. A full list o
 npx vibe-kanban
 ```
 
+### Desktop Application
+
+Vibe Kanban is also available as a native desktop application built with Tauri:
+
+```bash
+# Development mode
+npm run desktop:dev
+
+# Build desktop application
+npm run desktop:build
+
+# Build release version
+npm run desktop:build:release
+```
+
+**Desktop Features:**
+- **Native Performance** - Built with Rust and Tauri for optimal performance
+- **System Tray Integration** - Minimize to system tray and quick access
+- **Native Notifications** - Desktop notifications for task updates
+- **Embedded Backend** - No need to run separate backend server
+- **Cross-Platform** - Works on Windows, macOS, and Linux
+
+The desktop application automatically starts the backend server and provides the same functionality as the web version with enhanced desktop integration.
+
 ## Documentation
 
 Please head to the [website](https://vibekanban.com) for the latest documentation and user guides.
