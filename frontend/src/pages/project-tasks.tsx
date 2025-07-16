@@ -176,6 +176,7 @@ export function ProjectTasks() {
           project_id: projectId!,
           title,
           description: description || null,
+          parent_task_attempt: null,
         });
         await fetchTasks();
         // Open the newly created task in the details panel
@@ -196,6 +197,7 @@ export function ProjectTasks() {
           project_id: projectId!,
           title,
           description: description || null,
+          parent_task_attempt: null,
           executor: executor || null,
         };
         const result = await tasksApi.createAndStart(projectId!, payload);
@@ -218,6 +220,7 @@ export function ProjectTasks() {
           title,
           description: description || null,
           status,
+          parent_task_attempt: null,
         });
         await fetchTasks();
         setEditingTask(null);
@@ -292,6 +295,7 @@ export function ProjectTasks() {
           title: task.title,
           description: task.description,
           status: newStatus,
+          parent_task_attempt: task.parent_task_attempt,
         });
       } catch (err) {
         // Revert the optimistic update if the API call failed

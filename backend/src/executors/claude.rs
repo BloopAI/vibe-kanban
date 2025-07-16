@@ -35,6 +35,13 @@ impl ClaudeExecutor {
         }
     }
 
+    pub fn new_plan_mode() -> Self {
+        Self {
+            executor_type: "ClaudePlan".to_string(),
+            command: "npx -y @anthropic-ai/claude-code@latest -p --permission-mode=plan --verbose --output-format=stream-json".to_string()
+        }
+    }
+
     /// Create a new ClaudeExecutor with custom settings
     pub fn with_command(executor_type: String, command: String) -> Self {
         Self {
@@ -60,6 +67,15 @@ impl ClaudeFollowupExecutor {
             prompt,
             executor_type: "Claude".to_string(),
             command_base: "npx -y @anthropic-ai/claude-code@latest -p --dangerously-skip-permissions --verbose --output-format=stream-json".to_string(),
+        }
+    }
+
+    pub fn new_plan_mode(session_id: String, prompt: String) -> Self {
+        Self {
+            session_id,
+            prompt,
+            executor_type: "ClaudePlan".to_string(),
+            command_base: "npx -y @anthropic-ai/claude-code@latest -p --permission-mode=plan --verbose --output-format=stream-json".to_string()
         }
     }
 
@@ -338,7 +354,7 @@ Task title: {}"#,
         Ok(NormalizedConversation {
             entries,
             session_id,
-            executor_type: "claude".to_string(),
+            executor_type: self.executor_type.clone(),
             prompt: None,
             summary: None,
         })
@@ -428,6 +444,9 @@ impl ClaudeExecutor {
             ActionType::Search { query } => format!("`{}`", query),
             ActionType::WebFetch { url } => format!("`{}`", url),
             ActionType::TaskCreate { description } => description.clone(),
+            ActionType::PlanPresentation { plan } => {
+                format!("Plan: {}", plan.lines().next().unwrap_or("")).to_string()
+            }
             ActionType::Other { description: _ } => {
                 // For other tools, try to extract key information or fall back to tool name
                 match tool_name.to_lowercase().as_str() {
@@ -595,6 +614,17 @@ impl ClaudeExecutor {
                 } else {
                     ActionType::Other {
                         description: "Task creation".to_string(),
+                    }
+                }
+            }
+            "exit_plan_mode" => {
+                if let Some(plan) = input.get("plan").and_then(|p| p.as_str()) {
+                    ActionType::PlanPresentation {
+                        plan: plan.to_string(),
+                    }
+                } else {
+                    ActionType::Other {
+                        description: "Plan presentation".to_string(),
                     }
                 }
             }

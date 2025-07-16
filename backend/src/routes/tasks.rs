@@ -142,6 +142,7 @@ pub async fn create_task_and_start(
         project_id: payload.project_id,
         title: payload.title.clone(),
         description: payload.description.clone(),
+        parent_task_attempt: payload.parent_task_attempt,
     };
     let task = match Task::create(&app_state.db_pool, &create_task_payload, task_id).await {
         Ok(task) => task,
@@ -236,6 +237,9 @@ pub async fn update_task(
     let title = payload.title.unwrap_or(existing_task.title);
     let description = payload.description.or(existing_task.description);
     let status = payload.status.unwrap_or(existing_task.status);
+    let parent_task_attempt = payload
+        .parent_task_attempt
+        .or(existing_task.parent_task_attempt);
 
     match Task::update(
         &app_state.db_pool,
@@ -244,6 +248,7 @@ pub async fn update_task(
         title,
         description,
         status,
+        parent_task_attempt,
     )
     .await
     {

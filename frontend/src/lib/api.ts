@@ -47,6 +47,12 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
+export interface FollowUpResponse {
+  message: string;
+  actual_attempt_id: string;
+  created_new_attempt: boolean;
+}
+
 // Additional interface for file search results
 export interface FileSearchResult {
   path: string;
@@ -181,6 +187,13 @@ export const tasksApi = {
     return handleApiResponse<TaskWithAttemptStatus[]>(response);
   },
 
+  getById: async (projectId: string, taskId: string): Promise<Task> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}`
+    );
+    return handleApiResponse<Task>(response);
+  },
+
   create: async (projectId: string, data: CreateTask): Promise<Task> => {
     const response = await makeRequest(`/api/projects/${projectId}/tasks`, {
       method: 'POST',
@@ -226,6 +239,17 @@ export const tasksApi = {
       }
     );
     return handleApiResponse<void>(response);
+  },
+
+  getChildren: async (
+    projectId: string,
+    taskId: string,
+    attemptId: string
+  ): Promise<Task[]> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/children`
+    );
+    return handleApiResponse<Task[]>(response);
   },
 };
 
@@ -453,6 +477,11 @@ export const attemptsApi = {
       }
     );
     return handleApiResponse<void>(response);
+  },
+
+  getDetails: async (attemptId: string): Promise<TaskAttempt> => {
+    const response = await makeRequest(`/api/attempts/${attemptId}/details`);
+    return handleApiResponse<TaskAttempt>(response);
   },
 };
 

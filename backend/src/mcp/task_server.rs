@@ -267,6 +267,7 @@ impl TaskServer {
             project_id: project_uuid,
             title: title.clone(),
             description: description.clone(),
+            parent_task_attempt: None,
         };
 
         match Task::create(&self.pool, &create_task_data, task_id).await {
@@ -574,6 +575,7 @@ impl TaskServer {
         let new_title = title.unwrap_or(current_task.title);
         let new_description = description.or(current_task.description);
         let new_status = status_enum.unwrap_or(current_task.status);
+        let new_parent_task_attempt = current_task.parent_task_attempt;
 
         match Task::update(
             &self.pool,
@@ -582,6 +584,7 @@ impl TaskServer {
             new_title,
             new_description,
             new_status,
+            new_parent_task_attempt,
         )
         .await
         {

@@ -1,6 +1,7 @@
 import { createContext, Dispatch, SetStateAction } from 'react';
 import type {
   EditorType,
+  Task,
   TaskAttempt,
   TaskAttemptState,
   TaskWithAttemptStatus,
@@ -105,4 +106,20 @@ interface TaskExecutionStateContextValue {
 export const TaskExecutionStateContext =
   createContext<TaskExecutionStateContextValue>(
     {} as TaskExecutionStateContextValue
+  );
+
+interface TaskRelatedTasksContextValue {
+  relatedTasks: Task[] | null;
+  setRelatedTasks: Dispatch<SetStateAction<Task[] | null>>;
+  relatedTasksLoading: boolean;
+  setRelatedTasksLoading: Dispatch<SetStateAction<boolean>>;
+  relatedTasksError: string | null;
+  setRelatedTasksError: Dispatch<SetStateAction<string | null>>;
+  fetchRelatedTasks: () => Promise<void>;
+  totalRelatedCount: number;
+}
+
+export const TaskRelatedTasksContext =
+  createContext<TaskRelatedTasksContextValue>(
+    {} as TaskRelatedTasksContextValue
   );

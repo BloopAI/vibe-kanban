@@ -8,6 +8,7 @@ fn generate_constants() -> String {
 export const EXECUTOR_TYPES: string[] = [
     "echo",
     "claude",
+    "claudeplan",
     "amp",
     "gemini",
     "charm-opencode",
@@ -26,6 +27,7 @@ export const EDITOR_TYPES: EditorType[] = [
 export const EXECUTOR_LABELS: Record<string, string> = {
     "echo": "Echo (Test Mode)",
     "claude": "Claude",
+    "claudeplan": "Claude Plan",
     "amp": "Amp",
     "gemini": "Gemini",
     "charm-opencode": "Charm Opencode",

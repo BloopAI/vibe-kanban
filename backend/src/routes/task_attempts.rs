@@ -6,16 +6,19 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
+use sqlx::SqlitePool;
 use uuid::Uuid;
 
 use crate::{
     app_state::AppState,
-    executor::{ExecutorConfig, NormalizedConversation, NormalizedEntry, NormalizedEntryType},
+    executor::{
+        ActionType, ExecutorConfig, NormalizedConversation, NormalizedEntry, NormalizedEntryType,
+    },
     models::{
         config::Config,
         execution_process::{ExecutionProcess, ExecutionProcessSummary, ExecutionProcessType},
         executor_session::ExecutorSession,
-        task::Task,
+        task::{Task, TaskStatus},
         task_attempt::{
             BranchStatus, CreateFollowUpAttempt, CreatePrParams, CreateTaskAttempt, TaskAttempt,
             TaskAttemptState, TaskAttemptStatus, WorktreeDiff,
@@ -1354,6 +1357,197 @@ pub async fn get_execution_process_normalized_logs(
     }))
 }
 
+/// Find plan content with context by searching through multiple processes in the same attempt
+async fn find_plan_content_with_context(
+    pool: &SqlitePool,
+    attempt_id: Uuid,
+) -> Result<String, StatusCode> {
+    // Get all execution processes for this attempt
+    let execution_processes =
+        match ExecutionProcess::find_by_task_attempt_id(pool, attempt_id).await {
+            Ok(processes) => processes,
+            Err(e) => {
+                tracing::error!(
+                    "Failed to fetch execution processes for attempt {}: {}",
+                    attempt_id,
+                    e
+                );
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        };
+
+    // Look for claudeplan processes (most recent first)
+    for claudeplan_process in execution_processes
+        .iter()
+        .rev()
+        .filter(|p| p.executor_type.as_deref() == Some("claudeplan"))
+    {
+        if let Some(stdout) = &claudeplan_process.stdout {
+            if !stdout.trim().is_empty() {
+                // Create executor and normalize logs
+                let executor_config = ExecutorConfig::ClaudePlan;
+                let executor = executor_config.create_executor();
+
+                // Use working directory for normalization
+                let working_dir_path =
+                    match std::fs::canonicalize(&claudeplan_process.working_directory) {
+                        Ok(canonical_path) => canonical_path.to_string_lossy().to_string(),
+                        Err(_) => claudeplan_process.working_directory.clone(),
+                    };
+
+                // Normalize logs and extract plan content
+                match executor.normalize_logs(stdout, &working_dir_path) {
+                    Ok(normalized_conversation) => {
+                        // Search for plan content in the normalized conversation
+                        if let Some(plan_content) = normalized_conversation
+                            .entries
+                            .iter()
+                            .rev()
+                            .find_map(|entry| {
+                                if let NormalizedEntryType::ToolUse {
+                                    action_type: ActionType::PlanPresentation { plan },
+                                    ..
+                                } = &entry.entry_type
+                                {
+                                    Some(plan.clone())
+                                } else {
+                                    None
+                                }
+                            })
+                        {
+                            return Ok(plan_content);
+                        }
+                    }
+                    Err(_) => {
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+
+    tracing::error!(
+        "No claudeplan content found in any process in attempt {}",
+        attempt_id
+    );
+    Err(StatusCode::NOT_FOUND)
+}
+
+pub async fn approve_plan(
+    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    State(app_state): State<AppState>,
+) -> Result<ResponseJson<ApiResponse<FollowUpResponse>>, StatusCode> {
+    // Verify task attempt exists and belongs to the correct task
+    match TaskAttempt::exists_for_task(&app_state.db_pool, attempt_id, task_id, project_id).await {
+        Ok(false) => return Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to check task attempt existence: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+        Ok(true) => {}
+    }
+    let current_task = match Task::find_by_id(&app_state.db_pool, task_id).await {
+        Ok(Some(task)) => task,
+        Ok(None) => return Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to fetch current task: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    // Find plan content with context across the task hierarchy
+    let plan_content = find_plan_content_with_context(&app_state.db_pool, attempt_id).await?;
+
+    use crate::models::task::CreateTask;
+    let new_task_id = Uuid::new_v4();
+    let create_task_data = CreateTask {
+        project_id,
+        title: format!("Execute Plan: {}", current_task.title),
+        description: Some(plan_content),
+        parent_task_attempt: Some(attempt_id),
+    };
+
+    let new_task = match Task::create(&app_state.db_pool, &create_task_data, new_task_id).await {
+        Ok(task) => task,
+        Err(e) => {
+            tracing::error!("Failed to create new task: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    // Mark original task as completed since it now has children
+    if let Err(e) =
+        Task::update_status(&app_state.db_pool, task_id, project_id, TaskStatus::Done).await
+    {
+        tracing::error!("Failed to update original task status to Done: {}", e);
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    } else {
+        tracing::info!(
+            "Original task {} marked as Done after plan approval (has children)",
+            task_id
+        );
+    }
+
+    Ok(ResponseJson(ApiResponse {
+        success: true,
+        data: Some(FollowUpResponse {
+            message: format!("Plan approved and new task created: {}", new_task.title),
+            actual_attempt_id: new_task_id, // Return the new task ID
+            created_new_attempt: true,
+        }),
+        message: Some("Plan approved and new task created".to_string()),
+    }))
+}
+
+pub async fn get_task_attempt_details(
+    Path(attempt_id): Path<Uuid>,
+    State(app_state): State<AppState>,
+) -> Result<ResponseJson<ApiResponse<TaskAttempt>>, StatusCode> {
+    match TaskAttempt::find_by_id(&app_state.db_pool, attempt_id).await {
+        Ok(Some(attempt)) => Ok(ResponseJson(ApiResponse {
+            success: true,
+            data: Some(attempt),
+            message: None,
+        })),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to get task attempt {}: {}", attempt_id, e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+pub async fn get_task_attempt_children(
+    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    State(app_state): State<AppState>,
+) -> Result<ResponseJson<ApiResponse<Vec<Task>>>, StatusCode> {
+    // Verify task exists in the specified project
+    match Task::find_by_id_and_project_id(&app_state.db_pool, task_id, project_id).await {
+        Ok(Some(_)) => {} // Task exists, proceed
+        Ok(None) => return Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to check task existence: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    match Task::find_related_tasks_by_attempt_id(&app_state.db_pool, attempt_id, project_id).await {
+        Ok(related_tasks) => Ok(ResponseJson(ApiResponse {
+            success: true,
+            data: Some(related_tasks),
+            message: None,
+        })),
+        Err(e) => {
+            tracing::error!(
+                "Failed to fetch children for task attempt {}: {}",
+                attempt_id,
+                e
+            );
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
 pub fn task_attempts_router() -> Router<AppState> {
     use axum::routing::post;
 
@@ -1426,5 +1620,17 @@ pub fn task_attempts_router() -> Router<AppState> {
         .route(
             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id",
             get(get_task_attempt_execution_state),
+        )
+        .route(
+            "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/approve-plan",
+            post(approve_plan),
+        )
+        .route(
+            "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/children",
+            get(get_task_attempt_children),
+        )
+        .route(
+            "/attempts/:attempt_id/details",
+            get(get_task_attempt_details),
         )
 }

@@ -636,6 +636,7 @@ impl ProcessService {
     fn resolve_executor_config(executor_name: &Option<String>) -> crate::executor::ExecutorConfig {
         match executor_name.as_ref().map(|s| s.as_str()) {
             Some("claude") => crate::executor::ExecutorConfig::Claude,
+            Some("claudeplan") => crate::executor::ExecutorConfig::ClaudePlan,
             Some("claude-code-router") => crate::executor::ExecutorConfig::ClaudeCodeRouter,
             Some("amp") => crate::executor::ExecutorConfig::Amp,
             Some("gemini") => crate::executor::ExecutorConfig::Gemini,
@@ -788,6 +789,16 @@ impl ProcessService {
                     crate::executor::ExecutorConfig::Claude => {
                         if let Some(sid) = session_id {
                             Box::new(ClaudeFollowupExecutor::new(sid.clone(), prompt.clone()))
+                        } else {
+                            return Err(TaskAttemptError::TaskNotFound); // No session ID for followup
+                        }
+                    }
+                    crate::executor::ExecutorConfig::ClaudePlan => {
+                        if let Some(sid) = session_id {
+                            Box::new(ClaudeFollowupExecutor::new_plan_mode(
+                                sid.clone(),
+                                prompt.clone(),
+                            ))
                         } else {
                             return Err(TaskAttemptError::TaskNotFound); // No session ID for followup
                         }

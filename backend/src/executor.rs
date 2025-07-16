@@ -64,6 +64,7 @@ pub enum ActionType {
     Search { query: String },
     WebFetch { url: String },
     TaskCreate { description: String },
+    PlanPresentation { plan: String },
     Other { description: String },
 }
 
@@ -347,6 +348,7 @@ pub enum ExecutorType {
 pub enum ExecutorConfig {
     Echo,
     Claude,
+    ClaudePlan,
     Amp,
     Gemini,
     #[serde(alias = "setup_script")]
@@ -376,6 +378,7 @@ impl FromStr for ExecutorConfig {
         match s {
             "echo" => Ok(ExecutorConfig::Echo),
             "claude" => Ok(ExecutorConfig::Claude),
+            "claudeplan" => Ok(ExecutorConfig::ClaudePlan),
             "amp" => Ok(ExecutorConfig::Amp),
             "gemini" => Ok(ExecutorConfig::Gemini),
             "charm-opencode" => Ok(ExecutorConfig::CharmOpencode),
@@ -393,6 +396,7 @@ impl ExecutorConfig {
         match self {
             ExecutorConfig::Echo => Box::new(EchoExecutor),
             ExecutorConfig::Claude => Box::new(ClaudeExecutor::new()),
+            ExecutorConfig::ClaudePlan => Box::new(ClaudeExecutor::new_plan_mode()),
             ExecutorConfig::Amp => Box::new(AmpExecutor),
             ExecutorConfig::Gemini => Box::new(GeminiExecutor),
             ExecutorConfig::ClaudeCodeRouter => Box::new(CCRExecutor::new()),
@@ -409,7 +413,9 @@ impl ExecutorConfig {
             ExecutorConfig::CharmOpencode => {
                 dirs::home_dir().map(|home| home.join(".opencode.json"))
             }
-            ExecutorConfig::Claude | ExecutorConfig::ClaudeCodeRouter => {
+            ExecutorConfig::Claude => dirs::home_dir().map(|home| home.join(".claude.json")),
+            ExecutorConfig::ClaudePlan => dirs::home_dir().map(|home| home.join(".claude.json")),
+            ExecutorConfig::ClaudeCodeRouter => {
                 dirs::home_dir().map(|home| home.join(".claude.json"))
             }
             ExecutorConfig::Amp => {
@@ -428,6 +434,7 @@ impl ExecutorConfig {
             ExecutorConfig::Echo => None, // Echo doesn't support MCP
             ExecutorConfig::CharmOpencode => Some(vec!["mcpServers"]),
             ExecutorConfig::Claude => Some(vec!["mcpServers"]),
+            ExecutorConfig::ClaudePlan => Some(vec!["mcpServers"]),
             ExecutorConfig::Amp => Some(vec!["amp", "mcpServers"]), // Nested path for Amp
             ExecutorConfig::Gemini => Some(vec!["mcpServers"]),
             ExecutorConfig::ClaudeCodeRouter => Some(vec!["mcpServers"]),
@@ -449,6 +456,7 @@ impl ExecutorConfig {
             ExecutorConfig::Echo => "Echo (Test Mode)",
             ExecutorConfig::CharmOpencode => "Charm Opencode",
             ExecutorConfig::Claude => "Claude",
+            ExecutorConfig::ClaudePlan => "Claude Plan",
             ExecutorConfig::Amp => "Amp",
             ExecutorConfig::Gemini => "Gemini",
             ExecutorConfig::ClaudeCodeRouter => "Claude Code Router",
@@ -462,6 +470,7 @@ impl std::fmt::Display for ExecutorConfig {
         let s = match self {
             ExecutorConfig::Echo => "echo",
             ExecutorConfig::Claude => "claude",
+            ExecutorConfig::ClaudePlan => "claudeplan",
             ExecutorConfig::Amp => "amp",
             ExecutorConfig::Gemini => "gemini",
             ExecutorConfig::CharmOpencode => "charm-opencode",
@@ -930,7 +939,7 @@ mod tests {
             .normalize_logs(claude_logs, "/tmp/test-worktree")
             .unwrap();
 
-        assert_eq!(result.executor_type, "claude");
+        assert_eq!(result.executor_type, "Claude");
         assert_eq!(
             result.session_id,
             Some("499dcce4-04aa-4a3e-9e0c-ea0228fa87c9".to_string())
