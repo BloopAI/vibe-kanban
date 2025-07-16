@@ -6,6 +6,7 @@ use git2::{
 };
 use regex;
 use tracing::{debug, info};
+use uuid;
 
 use crate::{
     models::task_attempt::{DiffChunk, DiffChunkType, FileDiff, WorktreeDiff},
@@ -190,8 +191,10 @@ impl GitService {
         // Get the base branch name (default to "main")
         let base_branch_name = self.get_default_branch_name_for_repo(&worktree_repo)?;
         
-        // Checkout the base branch first
-        self.checkout_branch(&worktree_repo, &base_branch_name)?;
+        // Create a temporary merge branch from the base branch
+        let uuid_str = uuid::Uuid::new_v4().to_string();
+        let merge_branch_name = format!("merge-temp-{}", &uuid_str[..8]);
+        self.create_temporary_branch(&worktree_repo, &merge_branch_name, &base_branch_name)?;
 
         // Verify the task branch exists
         let task_branch = worktree_repo
@@ -217,6 +220,9 @@ impl GitService {
             task_title,
             &base_branch_name,
         )?;
+
+        // Clean up temporary branch
+        self.cleanup_temporary_branch(&worktree_repo, &merge_branch_name)?;
 
         info!("Created squash merge commit: {}", squash_commit_id);
         Ok(squash_commit_id.to_string())
@@ -253,19 +259,32 @@ impl GitService {
         }
     }
 
-    /// Checkout a specific branch
-    fn checkout_branch(&self, repo: &Repository, branch_name: &str) -> Result<(), GitServiceError> {
-        let branch = repo
-            .find_branch(branch_name, BranchType::Local)
-            .map_err(|_| GitServiceError::BranchNotFound(branch_name.to_string()))?;
+    /// Create a temporary branch from the base branch and check it out
+    fn create_temporary_branch(&self, repo: &Repository, temp_branch_name: &str, base_branch_name: &str) -> Result<(), GitServiceError> {
+        // Get the base branch commit
+        let base_branch = repo
+            .find_branch(base_branch_name, BranchType::Local)
+            .map_err(|_| GitServiceError::BranchNotFound(base_branch_name.to_string()))?;
         
-        let commit = branch.get().peel_to_commit()?;
+        let base_commit = base_branch.get().peel_to_commit()?;
         
-        // Checkout the branch
-        repo.set_head(&format!("refs/heads/{}", branch_name))?;
-        repo.reset(commit.as_object(), git2::ResetType::Hard, None)?;
+        // Create the temporary branch
+        let _temp_branch = repo.branch(temp_branch_name, &base_commit, false)?;
         
-        info!("Checked out branch: {}", branch_name);
+        // Checkout the temporary branch
+        repo.set_head(&format!("refs/heads/{}", temp_branch_name))?;
+        repo.reset(base_commit.as_object(), git2::ResetType::Hard, None)?;
+        
+        info!("Created and checked out temporary branch: {}", temp_branch_name);
+        Ok(())
+    }
+
+    /// Clean up temporary branch
+    fn cleanup_temporary_branch(&self, repo: &Repository, temp_branch_name: &str) -> Result<(), GitServiceError> {
+        if let Ok(mut branch) = repo.find_branch(temp_branch_name, BranchType::Local) {
+            branch.delete()?;
+            info!("Deleted temporary branch: {}", temp_branch_name);
+        }
         Ok(())
     }
 
