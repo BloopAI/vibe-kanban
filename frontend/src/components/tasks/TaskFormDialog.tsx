@@ -36,6 +36,7 @@ interface TaskFormDialogProps {
   onOpenChange: (open: boolean) => void;
   task?: Task | null; // Optional for create mode
   projectId?: string; // For file search functionality
+  initialTemplate?: TaskTemplate | null; // For pre-filling from template
   onCreateTask?: (title: string, description: string) => Promise<void>;
   onCreateAndStartTask?: (
     title: string,
@@ -54,6 +55,7 @@ export function TaskFormDialog({
   onOpenChange,
   task,
   projectId,
+  initialTemplate,
   onCreateTask,
   onCreateAndStartTask,
   onUpdateTask,
@@ -75,6 +77,12 @@ export function TaskFormDialog({
       setTitle(task.title);
       setDescription(task.description || '');
       setStatus(task.status);
+    } else if (initialTemplate) {
+      // Create mode with template - pre-fill from template
+      setTitle(initialTemplate.title);
+      setDescription(initialTemplate.description || '');
+      setStatus('todo');
+      setSelectedTemplate('');
     } else {
       // Create mode - reset to defaults
       setTitle('');
@@ -82,7 +90,7 @@ export function TaskFormDialog({
       setStatus('todo');
       setSelectedTemplate('');
     }
-  }, [task, isOpen]);
+  }, [task, initialTemplate, isOpen]);
 
   // Fetch templates when dialog opens in create mode
   useEffect(() => {
