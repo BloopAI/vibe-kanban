@@ -64,14 +64,16 @@ export function TaskCard({
       <div className="space-y-2">
         <div className="flex items-start justify-between">
           <div className="flex-1 pr-2">
-            <div className="flex items-center gap-2 mb-1">
-              <h4 className="font-medium text-sm break-words">{task.title}</h4>
-              {task.latest_attempt_executor &&
-                is_planning_executor_type(task.latest_attempt_executor) && (
-                  <Badge className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 text-xs font-medium px-1.5 py-0.5 h-4 text-[10px]">
-                    PLAN
-                  </Badge>
-                )}
+            <div className="mb-1">
+              <h4 className="font-medium text-sm break-words">
+                {task.latest_attempt_executor &&
+                  is_planning_executor_type(task.latest_attempt_executor) && (
+                    <Badge className="bg-blue-600 text-white hover:bg-blue-700 text-xs font-medium px-1.5 py-0.5 h-4 text-[10px] mr-1">
+                      PLAN
+                    </Badge>
+                  )}
+                {task.title}
+              </h4>
             </div>
           </div>
           <div className="flex items-center space-x-1">
