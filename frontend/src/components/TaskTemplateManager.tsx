@@ -142,6 +142,24 @@ export function TaskTemplateManager({
     handleCloseDialog,
   ]);
 
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Command/Ctrl + Enter to save template
+      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+        if (isDialogOpen && !saving) {
+          event.preventDefault();
+          handleSave();
+        }
+      }
+    };
+
+    if (isDialogOpen) {
+      document.addEventListener('keydown', handleKeyDown, true); // Use capture phase for priority
+      return () => document.removeEventListener('keydown', handleKeyDown, true);
+    }
+  }, [isDialogOpen, saving, handleSave]);
+
   const handleDelete = useCallback(
     async (template: TaskTemplate) => {
       if (
