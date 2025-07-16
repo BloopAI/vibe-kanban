@@ -1,47 +1,91 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity, Alert, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import ProjectCard from '../../components/ProjectCard';
-import { MobileProject } from '../../types';
-
-const mockProjects: MobileProject[] = [
-  {
-    id: '1',
-    name: 'Vibe Kanban Mobile',
-    taskCount: 12,
-    completedTasks: 8,
-    lastActivity: '2 hours ago',
-  },
-  {
-    id: '2',
-    name: 'E-commerce Platform',
-    taskCount: 24,
-    completedTasks: 15,
-    lastActivity: '1 day ago',
-  },
-  {
-    id: '3',
-    name: 'Portfolio Website',
-    taskCount: 8,
-    completedTasks: 8,
-    lastActivity: '3 days ago',
-  },
-];
+import ProjectForm from '../../components/forms/ProjectForm';
+import { MobileProject, Project, CreateProject, TaskWithAttemptStatus } from '../../types';
+import { projectsApi, tasksApi } from '../../services/api';
 
 export default function ProjectsScreen() {
-  const [projects, setProjects] = useState<MobileProject[]>(mockProjects);
+  const [projects, setProjects] = useState<MobileProject[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+
+  useEffect(() => {
+    loadProjects();
+  }, []);
+
+  const loadProjects = async () => {
+    try {
+      const rawProjects = await projectsApi.getAll();
+      const projectsWithStats = await Promise.all(
+        rawProjects.map(async (project) => {
+          try {
+            const tasks = await tasksApi.getAll(project.id);
+            const completedTasks = tasks.filter(task => task.status === 'done').length;
+            const lastUpdated = new Date(project.updated_at);
+            const now = new Date();
+            const diffHours = Math.floor((now.getTime() - lastUpdated.getTime()) / (1000 * 60 * 60));
+            
+            let lastActivity = '';
+            if (diffHours < 1) {
+              lastActivity = 'Just now';
+            } else if (diffHours < 24) {
+              lastActivity = `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+            } else {
+              const diffDays = Math.floor(diffHours / 24);
+              lastActivity = `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+            }
+
+            return {
+              id: project.id,
+              name: project.name,
+              taskCount: tasks.length,
+              completedTasks,
+              lastActivity,
+            };
+          } catch (error) {
+            console.warn(`Failed to load tasks for project ${project.id}:`, error);
+            return {
+              id: project.id,
+              name: project.name,
+              taskCount: 0,
+              completedTasks: 0,
+              lastActivity: 'Unknown',
+            };
+          }
+        })
+      );
+      setProjects(projectsWithStats);
+    } catch (error) {
+      console.error('Failed to load projects:', error);
+      Alert.alert('Error', 'Failed to load projects. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 2000);
+    loadProjects().finally(() => setRefreshing(false));
   }, []);
 
   const handleProjectPress = (projectId: string) => {
     router.push(`/project/${projectId}`);
+  };
+
+  const handleCreateProject = async (data: CreateProject) => {
+    try {
+      await projectsApi.create(data);
+      setShowCreateForm(false);
+      await loadProjects();
+      Alert.alert('Success', 'Project created successfully!');
+    } catch (error) {
+      console.error('Failed to create project:', error);
+      throw error;
+    }
   };
 
   const renderProject = ({ item }: { item: MobileProject }) => (
@@ -58,7 +102,10 @@ export default function ProjectsScreen() {
       <Text style={styles.emptyDescription}>
         Create your first project to start managing tasks
       </Text>
-      <TouchableOpacity style={styles.createButton}>
+      <TouchableOpacity 
+        style={styles.createButton}
+        onPress={() => setShowCreateForm(true)}
+      >
         <Ionicons name="add" size={20} color="#ffffff" />
         <Text style={styles.createButtonText}>Create Project</Text>
       </TouchableOpacity>
@@ -86,9 +133,24 @@ export default function ProjectsScreen() {
         showsVerticalScrollIndicator={false}
       />
 
-      <TouchableOpacity style={styles.fab}>
+      <TouchableOpacity 
+        style={styles.fab}
+        onPress={() => setShowCreateForm(true)}
+      >
         <Ionicons name="add" size={24} color="#ffffff" />
       </TouchableOpacity>
+
+      <Modal
+        visible={showCreateForm}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowCreateForm(false)}
+      >
+        <ProjectForm
+          onSubmit={handleCreateProject}
+          onCancel={() => setShowCreateForm(false)}
+        />
+      </Modal>
     </View>
   );
 }

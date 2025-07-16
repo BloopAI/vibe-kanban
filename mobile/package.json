@@ -24,7 +24,8 @@
     "react-native-screens": "~3.29.0",
     "react-native-gesture-handler": "~2.14.0",
     "react-native-reanimated": "~3.6.2",
-    "react-native-vector-icons": "^10.0.3"
+    "react-native-vector-icons": "^10.0.3",
+    "@react-native-async-storage/async-storage": "^1.21.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
