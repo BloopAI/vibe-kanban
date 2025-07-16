@@ -215,7 +215,7 @@ export function TaskTemplateManager({
                   </th>
                   <th className="text-left p-2 text-sm font-medium">Title</th>
                   <th className="text-left p-2 text-sm font-medium">
-                    Description
+                    Prompt
                   </th>
                   <th className="text-right p-2 text-sm font-medium">
                     Actions
@@ -303,14 +303,14 @@ export function TaskTemplateManager({
               />
             </div>
             <div>
-              <Label htmlFor="template-description">Default Description</Label>
+              <Label htmlFor="template-description">Default Prompt</Label>
               <Textarea
                 id="template-description"
                 value={formData.description}
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
-                placeholder="Enter a default description for tasks created with this template"
+                placeholder="Enter a default prompt for tasks created with this template"
                 rows={4}
               />
             </div>

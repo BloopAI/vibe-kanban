@@ -265,14 +265,14 @@ export function TaskFormDialog({
 
           <div>
             <Label htmlFor="task-description" className="text-sm font-medium">
-              Description
+              Prompt
             </Label>
             <FileSearchTextarea
               value={description}
               onChange={setDescription}
               rows={3}
               maxRows={8}
-              placeholder="Add more details (optional). Type @ to search files."
+              placeholder="Enter prompt for AI (optional). Type @ to search files."
               className="mt-1.5"
               disabled={isSubmitting || isSubmittingAndStart}
               projectId={projectId}

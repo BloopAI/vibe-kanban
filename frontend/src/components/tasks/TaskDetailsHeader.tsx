@@ -117,7 +117,7 @@ function TaskDetailsHeader({
           </div>
         </div>
 
-        {/* Description */}
+        {/* Prompt */}
         <div className="mt-2">
           <div className="p-2 bg-muted/20 rounded border-l-2 border-muted max-h-48 overflow-y-auto">
             {task.description ? (
@@ -156,7 +156,7 @@ function TaskDetailsHeader({
               </div>
             ) : (
               <p className="text-xs text-muted-foreground italic">
-                No description provided
+                No prompt provided
               </p>
             )}
           </div>
