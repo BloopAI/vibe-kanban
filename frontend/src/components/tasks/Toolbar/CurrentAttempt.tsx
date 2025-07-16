@@ -9,6 +9,7 @@ import {
   Settings,
   StopCircle,
 } from 'lucide-react';
+import { is_planning_executor_type } from '@/lib/utils';
 import {
   Tooltip,
   TooltipContent,
@@ -31,7 +32,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog.tsx';
 import BranchSelector from '@/components/tasks/BranchSelector.tsx';
-import { attemptsApi, executionProcessesApi, makeRequest, FollowUpResponse, ApiResponse } from '@/lib/api.ts';
+import {
+  attemptsApi,
+  executionProcessesApi,
+  makeRequest,
+  FollowUpResponse,
+  ApiResponse,
+} from '@/lib/api.ts';
 import {
   Dispatch,
   SetStateAction,
@@ -154,7 +161,8 @@ function CurrentAttempt({
   const isPlanTask = useMemo(() => {
     return attemptData.processes.some(
       (process: ExecutionProcessSummary) =>
-        process.executor_type === 'claudeplan'
+        process.executor_type &&
+        is_planning_executor_type(process.executor_type)
     );
   }, [attemptData.processes]);
 
@@ -410,7 +418,7 @@ function CurrentAttempt({
         const result: ApiResponse<FollowUpResponse> = await response.json();
         if (result.success && result.data) {
           console.log('Plan approved successfully:', result.message);
-          
+
           // If a new task was created, navigate to it
           if (result.data.created_new_attempt) {
             const newTaskId = result.data.actual_attempt_id;

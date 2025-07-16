@@ -378,7 +378,7 @@ impl FromStr for ExecutorConfig {
         match s {
             "echo" => Ok(ExecutorConfig::Echo),
             "claude" => Ok(ExecutorConfig::Claude),
-            "claudeplan" => Ok(ExecutorConfig::ClaudePlan),
+            "claude-plan" => Ok(ExecutorConfig::ClaudePlan),
             "amp" => Ok(ExecutorConfig::Amp),
             "gemini" => Ok(ExecutorConfig::Gemini),
             "charm-opencode" => Ok(ExecutorConfig::CharmOpencode),
@@ -470,7 +470,7 @@ impl std::fmt::Display for ExecutorConfig {
         let s = match self {
             ExecutorConfig::Echo => "echo",
             ExecutorConfig::Claude => "claude",
-            ExecutorConfig::ClaudePlan => "claudeplan",
+            ExecutorConfig::ClaudePlan => "claude-plan",
             ExecutorConfig::Amp => "amp",
             ExecutorConfig::Gemini => "gemini",
             ExecutorConfig::CharmOpencode => "charm-opencode",

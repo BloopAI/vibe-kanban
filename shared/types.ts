@@ -126,7 +126,7 @@ export type ActionType = { "action": "file_read", path: string, } | { "action": 
 export const EXECUTOR_TYPES: string[] = [
     "echo",
     "claude",
-    "claudeplan",
+    "claude-plan",
     "amp",
     "gemini",
     "charm-opencode",
@@ -145,7 +145,7 @@ export const EDITOR_TYPES: EditorType[] = [
 export const EXECUTOR_LABELS: Record<string, string> = {
     "echo": "Echo (Test Mode)",
     "claude": "Claude",
-    "claudeplan": "Claude Plan",
+    "claude-plan": "Claude Plan",
     "amp": "Amp",
     "gemini": "Gemini",
     "charm-opencode": "Charm Opencode",

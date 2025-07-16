@@ -1380,7 +1380,7 @@ async fn find_plan_content_with_context(
     for claudeplan_process in execution_processes
         .iter()
         .rev()
-        .filter(|p| p.executor_type.as_deref() == Some("claudeplan"))
+        .filter(|p| p.executor_type.as_deref() == Some("claude-plan"))
     {
         if let Some(stdout) = &claudeplan_process.stdout {
             if !stdout.trim().is_empty() {
