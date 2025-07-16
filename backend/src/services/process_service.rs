@@ -795,13 +795,9 @@ impl ProcessService {
                     }
                     crate::executor::ExecutorConfig::ClaudePlan => {
                         if let Some(sid) = session_id {
-                            let enhanced_prompt = format!(
-                                "{}\n\nYou MUST wait for user feedback after using the 'exit_plan_mode' tool!",
-                                prompt
-                            );
                             Box::new(ClaudeFollowupExecutor::new_plan_mode(
                                 sid.clone(),
-                                enhanced_prompt,
+                                prompt.clone(),
                             ))
                         } else {
                             return Err(TaskAttemptError::TaskNotFound); // No session ID for followup
