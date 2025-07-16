@@ -7,7 +7,6 @@ use git2::{
 use regex;
 use tracing::{debug, info};
 
-
 use crate::{
     models::task_attempt::{DiffChunk, DiffChunkType, FileDiff, WorktreeDiff},
     utils::worktree_manager::WorktreeManager,

@@ -548,12 +548,7 @@ impl TaskAttempt {
         }
 
         git_service
-            .merge_changes(
-                worktree_path,
-                branch_name,
-                base_branch,
-                &commit_message,
-            )
+            .merge_changes(worktree_path, branch_name, base_branch, &commit_message)
             .map_err(TaskAttemptError::from)
     }
 
