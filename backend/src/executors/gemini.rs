@@ -49,22 +49,7 @@ impl Executor for GeminiExecutor {
             .await?
             .ok_or(ExecutorError::TaskNotFound)?;
 
-        let prompt = if let Some(task_description) = task.description {
-            format!(
-                r#"project_id: {}
-            
-Task title: {}
-Task description: {}"#,
-                task.project_id, task.title, task_description
-            )
-        } else {
-            format!(
-                r#"project_id: {}
-            
-Task title: {}"#,
-                task.project_id, task.title
-            )
-        };
+        let prompt = task.description.clone().unwrap_or(task.title.clone());
 
         let mut command = Self::create_gemini_command(worktree_path);
 

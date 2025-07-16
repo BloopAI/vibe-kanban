@@ -92,22 +92,7 @@ impl Executor for ClaudeExecutor {
             .await?
             .ok_or(ExecutorError::TaskNotFound)?;
 
-        let prompt = if let Some(task_description) = task.description {
-            format!(
-                r#"project_id: {}
-            
-Task title: {}
-Task description: {}"#,
-                task.project_id, task.title, task_description
-            )
-        } else {
-            format!(
-                r#"project_id: {}
-            
-Task title: {}"#,
-                task.project_id, task.title
-            )
-        };
+        let prompt = task.description.clone().unwrap_or(task.title.clone());
 
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
@@ -123,7 +108,8 @@ Task title: {}"#,
             .current_dir(worktree_path)
             .arg(shell_arg)
             .arg(claude_command)
-            .env("NODE_NO_WARNINGS", "1");
+            .env("NODE_NO_WARNINGS", "1")
+            .env("npm_config_loglevel", "error");
 
         let mut child = command
             .group_spawn() // Create new process group so we can kill entire tree
@@ -626,7 +612,9 @@ impl Executor for ClaudeFollowupExecutor {
             .stderr(std::process::Stdio::piped())
             .current_dir(worktree_path)
             .arg(shell_arg)
-            .arg(&claude_command);
+            .arg(&claude_command)
+            .env("NODE_NO_WARNINGS", "1")
+            .env("npm_config_loglevel", "error");
 
         let mut child = command
             .group_spawn() // Create new process group so we can kill entire tree

@@ -209,22 +209,7 @@ impl Executor for AmpExecutor {
 
         use tokio::{io::AsyncWriteExt, process::Command};
 
-        let prompt = if let Some(task_description) = task.description {
-            format!(
-                r#"project_id: {}
-            
-Task title: {}
-Task description: {}"#,
-                task.project_id, task.title, task_description
-            )
-        } else {
-            format!(
-                r#"project_id: {}
-            
-Task title: {}"#,
-                task.project_id, task.title
-            )
-        };
+        let prompt = task.description.clone().unwrap_or(task.title.clone());
 
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
@@ -239,7 +224,9 @@ Task title: {}"#,
             .stderr(Stdio::piped())
             .current_dir(worktree_path)
             .arg(shell_arg)
-            .arg(amp_command);
+            .arg(amp_command)
+            .env("NODE_NO_WARNINGS", "1")
+            .env("npm_config_loglevel", "error");
 
         let mut child = command
             .group_spawn() // Create new process group so we can kill entire tree
@@ -616,7 +603,9 @@ impl Executor for AmpFollowupExecutor {
             .stderr(Stdio::piped())
             .current_dir(worktree_path)
             .arg(shell_arg)
-            .arg(&amp_command);
+            .arg(&amp_command)
+            .env("NODE_NO_WARNINGS", "1")
+            .env("npm_config_loglevel", "error");
 
         let mut child = command
             .group_spawn() // Create new process group so we can kill entire tree
