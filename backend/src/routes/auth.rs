@@ -5,6 +5,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use ts_rs::TS;
 
 use crate::{app_state::AppState, models::ApiResponse};
 
@@ -18,13 +19,14 @@ pub fn auth_router() -> Router<AppState> {
 #[derive(serde::Deserialize)]
 struct DeviceStartRequest {}
 
-#[derive(serde::Serialize)]
-struct DeviceStartResponse {
-    device_code: String,
-    user_code: String,
-    verification_uri: String,
-    expires_in: u64,
-    interval: u64,
+#[derive(serde::Serialize, TS)]
+#[ts(export)]
+pub struct DeviceStartResponse {
+    pub device_code: String,
+    pub user_code: String,
+    pub verification_uri: String,
+    pub expires_in: u32,
+    pub interval: u32,
 }
 
 #[derive(serde::Deserialize)]
@@ -34,10 +36,9 @@ struct DevicePollRequest {
 
 /// POST /auth/github/device/start
 async fn device_start() -> ResponseJson<ApiResponse<DeviceStartResponse>> {
-    let params = [
-        ("client_id", "Ov23li9bxz3kKfPOIsGm"),
-        ("scope", "user:email,repo"),
-    ];
+    let client_id = option_env!("GITHUB_CLIENT_ID").unwrap_or("Ov23li9bxz3kKfPOIsGm");
+
+    let params = [("client_id", client_id), ("scope", "user:email,repo")];
     let client = reqwest::Client::new();
     let res = client
         .post("https://github.com/login/device/code")
@@ -84,8 +85,8 @@ async fn device_start() -> ResponseJson<ApiResponse<DeviceStartResponse>> {
                 device_code: device_code.to_string(),
                 user_code: user_code.to_string(),
                 verification_uri: verification_uri.to_string(),
-                expires_in,
-                interval,
+                expires_in: expires_in.try_into().unwrap_or(600),
+                interval: interval.try_into().unwrap_or(5),
             }),
             message: None,
         })
@@ -103,8 +104,10 @@ async fn device_poll(
     State(app_state): State<AppState>,
     Json(payload): Json<DevicePollRequest>,
 ) -> ResponseJson<ApiResponse<String>> {
+    let client_id = option_env!("GITHUB_CLIENT_ID").unwrap_or("Ov23li9bxz3kKfPOIsGm");
+
     let params = [
-        ("client_id", "Ov23li9bxz3kKfPOIsGm"),
+        ("client_id", client_id),
         ("device_code", payload.device_code.as_str()),
         ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
     ];
@@ -220,6 +223,7 @@ async fn device_poll(
             config.github.username = username.clone();
             config.github.primary_email = primary_email.clone();
             config.github.token = Some(access_token.to_string());
+            config.github_login_acknowledged = true; // Also acknowledge the GitHub login step
             let config_path = crate::utils::config_path();
             if config.save(&config_path).is_err() {
                 return ResponseJson(ApiResponse {

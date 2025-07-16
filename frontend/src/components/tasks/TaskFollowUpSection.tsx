@@ -102,6 +102,7 @@ export function TaskFollowUpSection() {
               disabled={!canSendFollowUp}
               projectId={projectId}
               rows={1}
+              maxRows={6}
             />
             <Button
               onClick={onSendFollowUp}

@@ -7,6 +7,7 @@ import {
   CreateTask,
   CreateTaskAndStart,
   CreateTaskAttempt,
+  DeviceStartResponse,
   DirectoryEntry,
   type EditorType,
   ExecutionProcess,
@@ -15,7 +16,6 @@ import {
   NormalizedConversation,
   Project,
   ProjectWithBranch,
-  StartGitHubDeviceFlowType,
   Task,
   TaskAttempt,
   TaskAttemptActivityWithPrompt,
@@ -514,11 +514,11 @@ export const githubAuthApi = {
       return undefined;
     }
   },
-  start: async (): Promise<StartGitHubDeviceFlowType> => {
+  start: async (): Promise<DeviceStartResponse> => {
     const response = await makeRequest('/api/auth/github/device/start', {
       method: 'POST',
     });
-    return handleApiResponse<StartGitHubDeviceFlowType>(response);
+    return handleApiResponse<DeviceStartResponse>(response);
   },
   poll: async (device_code: string): Promise<string> => {
     const response = await makeRequest('/api/auth/github/device/poll', {

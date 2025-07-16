@@ -2,7 +2,7 @@ name: Test
 
 on:
   pull_request:
-    branches: [main]
+    branches: [ main ]
   workflow_dispatch:
 
 concurrency:
@@ -58,5 +58,6 @@ jobs:
       - name: Checks
         run: |
           cargo fmt --all -- --check
+          npm run generate-types:check
           cargo test --workspace
           cargo clippy --all --all-targets --all-features -- -D warnings

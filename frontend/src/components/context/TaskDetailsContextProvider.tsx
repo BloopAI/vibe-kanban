@@ -10,7 +10,6 @@ import {
   useState,
 } from 'react';
 import type {
-  AttemptData,
   EditorType,
   ExecutionProcess,
   TaskAttempt,
@@ -30,6 +29,7 @@ import {
   TaskExecutionStateContext,
   TaskSelectedAttemptContext,
 } from './taskDetailsContext.ts';
+import { AttemptData } from '@/lib/types.ts';
 
 const TaskDetailsProvider: FC<{
   task: TaskWithAttemptStatus;

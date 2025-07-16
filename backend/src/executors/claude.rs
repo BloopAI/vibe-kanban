@@ -15,12 +15,68 @@ use crate::{
 };
 
 /// An executor that uses Claude CLI to process tasks
-pub struct ClaudeExecutor;
+pub struct ClaudeExecutor {
+    executor_type: String,
+    command: String,
+}
+
+impl Default for ClaudeExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ClaudeExecutor {
+    /// Create a new ClaudeExecutor with default settings
+    pub fn new() -> Self {
+        Self {
+            executor_type: "Claude".to_string(),
+            command: "npx -y @anthropic-ai/claude-code@latest -p --dangerously-skip-permissions --verbose --output-format=stream-json".to_string(),
+        }
+    }
+
+    /// Create a new ClaudeExecutor with custom settings
+    pub fn with_command(executor_type: String, command: String) -> Self {
+        Self {
+            executor_type,
+            command,
+        }
+    }
+}
 
 /// An executor that resumes a Claude session
 pub struct ClaudeFollowupExecutor {
     pub session_id: String,
     pub prompt: String,
+    executor_type: String,
+    command_base: String,
+}
+
+impl ClaudeFollowupExecutor {
+    /// Create a new ClaudeFollowupExecutor with default settings
+    pub fn new(session_id: String, prompt: String) -> Self {
+        Self {
+            session_id,
+            prompt,
+            executor_type: "Claude".to_string(),
+            command_base: "npx -y @anthropic-ai/claude-code@latest -p --dangerously-skip-permissions --verbose --output-format=stream-json".to_string(),
+        }
+    }
+
+    /// Create a new ClaudeFollowupExecutor with custom settings
+    pub fn with_command(
+        session_id: String,
+        prompt: String,
+        executor_type: String,
+        command_base: String,
+    ) -> Self {
+        Self {
+            session_id,
+            prompt,
+            executor_type,
+            command_base,
+        }
+    }
 }
 
 #[async_trait]
@@ -56,7 +112,7 @@ Task title: {}"#,
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
         // Pass prompt via stdin instead of command line to avoid shell escaping issues
-        let claude_command = "npx -y @anthropic-ai/claude-code@latest -p --dangerously-skip-permissions --verbose --output-format=stream-json";
+        let claude_command = &self.command;
 
         let mut command = Command::new(shell_cmd);
         command
@@ -72,9 +128,9 @@ Task title: {}"#,
         let mut child = command
             .group_spawn() // Create new process group so we can kill entire tree
             .map_err(|e| {
-                crate::executor::SpawnContext::from_command(&command, "Claude")
+                crate::executor::SpawnContext::from_command(&command, &self.executor_type)
                     .with_task(task_id, Some(task.title.clone()))
-                    .with_context("Claude CLI execution for new task")
+                    .with_context(format!("{} CLI execution for new task", self.executor_type))
                     .spawn_error(e)
             })?;
 
@@ -87,15 +143,20 @@ Task title: {}"#,
                 prompt
             );
             stdin.write_all(prompt.as_bytes()).await.map_err(|e| {
-                let context = crate::executor::SpawnContext::from_command(&command, "Claude")
-                    .with_task(task_id, Some(task.title.clone()))
-                    .with_context("Failed to write prompt to Claude CLI stdin");
+                let context =
+                    crate::executor::SpawnContext::from_command(&command, &self.executor_type)
+                        .with_task(task_id, Some(task.title.clone()))
+                        .with_context(format!(
+                            "Failed to write prompt to {} CLI stdin",
+                            self.executor_type
+                        ));
                 ExecutorError::spawn_failed(e, context)
             })?;
             stdin.shutdown().await.map_err(|e| {
-                let context = crate::executor::SpawnContext::from_command(&command, "Claude")
-                    .with_task(task_id, Some(task.title.clone()))
-                    .with_context("Failed to close Claude CLI stdin");
+                let context =
+                    crate::executor::SpawnContext::from_command(&command, &self.executor_type)
+                        .with_task(task_id, Some(task.title.clone()))
+                        .with_context(format!("Failed to close {} CLI stdin", self.executor_type));
                 ExecutorError::spawn_failed(e, context)
             })?;
         }
@@ -508,10 +569,7 @@ impl Executor for ClaudeFollowupExecutor {
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
         // Pass prompt via stdin instead of command line to avoid shell escaping issues
-        let claude_command = format!(
-            "npx -y @anthropic-ai/claude-code@latest -p --dangerously-skip-permissions --verbose --output-format=stream-json --resume={}",
-            self.session_id
-        );
+        let claude_command = format!("{} --resume={}", self.command_base, self.session_id);
 
         let mut command = Command::new(shell_cmd);
         command
@@ -526,10 +584,10 @@ impl Executor for ClaudeFollowupExecutor {
         let mut child = command
             .group_spawn() // Create new process group so we can kill entire tree
             .map_err(|e| {
-                crate::executor::SpawnContext::from_command(&command, "Claude")
+                crate::executor::SpawnContext::from_command(&command, &self.executor_type)
                     .with_context(format!(
-                        "Claude CLI followup execution for session {}",
-                        self.session_id
+                        "{} CLI followup execution for session {}",
+                        self.executor_type, self.session_id
                     ))
                     .spawn_error(e)
             })?;
@@ -538,24 +596,27 @@ impl Executor for ClaudeFollowupExecutor {
         if let Some(mut stdin) = child.inner().stdin.take() {
             use tokio::io::AsyncWriteExt;
             tracing::debug!(
-                "Writing prompt to Claude stdin for session {}: {:?}",
+                "Writing prompt to {} stdin for session {}: {:?}",
+                self.executor_type,
                 self.session_id,
                 self.prompt
             );
             stdin.write_all(self.prompt.as_bytes()).await.map_err(|e| {
-                let context = crate::executor::SpawnContext::from_command(&command, "Claude")
-                    .with_context(format!(
-                        "Failed to write prompt to Claude CLI stdin for session {}",
-                        self.session_id
-                    ));
+                let context =
+                    crate::executor::SpawnContext::from_command(&command, &self.executor_type)
+                        .with_context(format!(
+                            "Failed to write prompt to {} CLI stdin for session {}",
+                            self.executor_type, self.session_id
+                        ));
                 ExecutorError::spawn_failed(e, context)
             })?;
             stdin.shutdown().await.map_err(|e| {
-                let context = crate::executor::SpawnContext::from_command(&command, "Claude")
-                    .with_context(format!(
-                        "Failed to close Claude CLI stdin for session {}",
-                        self.session_id
-                    ));
+                let context =
+                    crate::executor::SpawnContext::from_command(&command, &self.executor_type)
+                        .with_context(format!(
+                            "Failed to close {} CLI stdin for session {}",
+                            self.executor_type, self.session_id
+                        ));
                 ExecutorError::spawn_failed(e, context)
             })?;
         }
@@ -569,7 +630,7 @@ impl Executor for ClaudeFollowupExecutor {
         worktree_path: &str,
     ) -> Result<NormalizedConversation, String> {
         // Reuse the same logic as the main ClaudeExecutor
-        let main_executor = ClaudeExecutor;
+        let main_executor = ClaudeExecutor::new();
         main_executor.normalize_logs(logs, worktree_path)
     }
 }
@@ -580,7 +641,7 @@ mod tests {
 
     #[test]
     fn test_normalize_logs_ignores_result_type() {
-        let executor = ClaudeExecutor;
+        let executor = ClaudeExecutor::new();
         let logs = r#"{"type":"system","subtype":"init","cwd":"/private/tmp","session_id":"e988eeea-3712-46a1-82d4-84fbfaa69114","tools":[],"model":"claude-sonnet-4-20250514"}
 {"type":"assistant","message":{"id":"msg_123","type":"message","role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"text","text":"Hello world"}],"stop_reason":null},"session_id":"e988eeea-3712-46a1-82d4-84fbfaa69114"}
 {"type":"result","subtype":"success","is_error":false,"duration_ms":6059,"result":"Final result"}
@@ -606,7 +667,7 @@ mod tests {
 
     #[test]
     fn test_make_path_relative() {
-        let executor = ClaudeExecutor;
+        let executor = ClaudeExecutor::new();
 
         // Test with relative path (should remain unchanged)
         assert_eq!(
@@ -623,7 +684,7 @@ mod tests {
 
     #[test]
     fn test_todo_tool_content_extraction() {
-        let executor = ClaudeExecutor;
+        let executor = ClaudeExecutor::new();
 
         // Test TodoWrite with actual todo list
         let todo_input = serde_json::json!({
@@ -666,7 +727,7 @@ mod tests {
 
     #[test]
     fn test_todo_tool_empty_list() {
-        let executor = ClaudeExecutor;
+        let executor = ClaudeExecutor::new();
 
         // Test TodoWrite with empty todo list
         let empty_input = serde_json::json!({
@@ -687,7 +748,7 @@ mod tests {
 
     #[test]
     fn test_todo_tool_no_todos_field() {
-        let executor = ClaudeExecutor;
+        let executor = ClaudeExecutor::new();
 
         // Test TodoWrite with no todos field
         let no_todos_input = serde_json::json!({
@@ -708,7 +769,7 @@ mod tests {
 
     #[test]
     fn test_glob_tool_content_extraction() {
-        let executor = ClaudeExecutor;
+        let executor = ClaudeExecutor::new();
 
         // Test Glob with pattern and path
         let glob_input = serde_json::json!({
@@ -730,7 +791,7 @@ mod tests {
 
     #[test]
     fn test_glob_tool_pattern_only() {
-        let executor = ClaudeExecutor;
+        let executor = ClaudeExecutor::new();
 
         // Test Glob with pattern only
         let glob_input = serde_json::json!({
@@ -751,7 +812,7 @@ mod tests {
 
     #[test]
     fn test_ls_tool_content_extraction() {
-        let executor = ClaudeExecutor;
+        let executor = ClaudeExecutor::new();
 
         // Test LS with path
         let ls_input = serde_json::json!({

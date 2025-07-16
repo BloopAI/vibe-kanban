@@ -1,11 +1,7 @@
 import { Button } from '@/components/ui/button.tsx';
 import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import DiffChunkSection from '@/components/tasks/TaskDetails/DiffChunkSection.tsx';
-import {
-  FileDiff,
-  type ProcessedLine,
-  type ProcessedSection,
-} from 'shared/types.ts';
+import { FileDiff } from 'shared/types.ts';
 import {
   Dispatch,
   SetStateAction,
@@ -15,6 +11,7 @@ import {
   useState,
 } from 'react';
 import { TaskDeletingFilesContext } from '@/components/context/taskDetailsContext.ts';
+import { ProcessedLine, ProcessedSection } from '@/lib/types.ts';
 
 type Props = {
   collapsedFiles: Set<string>;
@@ -73,6 +70,8 @@ function DiffFile({
           const processedLine: ProcessedLine = {
             content: line,
             chunkType: chunk.chunk_type,
+            oldLineNumber: undefined,
+            newLineNumber: undefined,
           };
 
           switch (chunk.chunk_type) {
@@ -121,12 +120,18 @@ function DiffFile({
           sections.push({
             type: 'context',
             lines: lines.slice(i, nextChangeIndex),
+            expandKey: undefined,
+            expandedAbove: undefined,
+            expandedBelow: undefined,
           });
         } else {
           if (hasPrevChange) {
             sections.push({
               type: 'context',
               lines: lines.slice(i, i + CONTEXT_LINES),
+              expandKey: undefined,
+              expandedAbove: undefined,
+              expandedBelow: undefined,
             });
             i += CONTEXT_LINES;
           }
@@ -144,12 +149,16 @@ function DiffFile({
                   type: 'expanded',
                   lines: lines.slice(expandStart, expandEnd),
                   expandKey,
+                  expandedAbove: undefined,
+                  expandedBelow: undefined,
                 });
               } else {
                 sections.push({
                   type: 'context',
                   lines: [],
                   expandKey,
+                  expandedAbove: undefined,
+                  expandedBelow: undefined,
                 });
               }
             }
@@ -160,11 +169,17 @@ function DiffFile({
                 nextChangeIndex - CONTEXT_LINES,
                 nextChangeIndex
               ),
+              expandKey: undefined,
+              expandedAbove: undefined,
+              expandedBelow: undefined,
             });
           } else if (!hasPrevChange) {
             sections.push({
               type: 'context',
               lines: lines.slice(i, i + CONTEXT_LINES),
+              expandKey: undefined,
+              expandedAbove: undefined,
+              expandedBelow: undefined,
             });
           }
         }
@@ -179,6 +194,9 @@ function DiffFile({
         sections.push({
           type: 'change',
           lines: lines.slice(changeStart, i),
+          expandKey: undefined,
+          expandedAbove: undefined,
+          expandedBelow: undefined,
         });
       }
     }

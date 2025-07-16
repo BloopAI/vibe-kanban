@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Shield, CheckCircle, XCircle, Settings } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useConfig } from '@/components/config-provider';
 
 interface PrivacyOptInDialogProps {
   open: boolean;
@@ -19,6 +20,12 @@ export function PrivacyOptInDialog({
   open,
   onComplete,
 }: PrivacyOptInDialogProps) {
+  const { config } = useConfig();
+
+  // Check if user is authenticated with GitHub
+  const isGitHubAuthenticated =
+    config?.github?.username && config?.github?.token;
+
   const handleOptIn = () => {
     onComplete(true);
   };
@@ -49,18 +56,20 @@ export function PrivacyOptInDialog({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 pt-0">
-              <div className="flex items-start gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">
-                    GitHub profile information
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Username and email address to send you only very important
-                    updates about the project. We promise not to abuse this
-                  </p>
+              {isGitHubAuthenticated && (
+                <div className="flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">
+                      GitHub profile information
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Username and email address to send you only very important
+                      updates about the project. We promise not to abuse this
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="flex items-start gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
                 <div className="min-w-0">

@@ -24,6 +24,7 @@ import {
 } from '@/components/context/taskDetailsContext.ts';
 import { ApiError, attemptsApi } from '@/lib/api.ts';
 import { ProvidePatDialog } from '@/components/ProvidePatDialog';
+import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
 import { GitBranch } from 'shared/types.ts';
 
 type Props = {
@@ -52,6 +53,7 @@ function CreatePrDialog({
   );
   const [showPatDialog, setShowPatDialog] = useState(false);
   const [patDialogError, setPatDialogError] = useState<string | null>(null);
+  const [showGitHubLoginDialog, setShowGitHubLoginDialog] = useState(false);
 
   useEffect(() => {
     if (showCreatePRDialog) {
@@ -93,7 +95,13 @@ function CreatePrDialog({
       setPrBaseBranch(selectedAttempt?.base_branch || 'main');
     } catch (err) {
       const error = err as ApiError;
-      if (error.message === 'insufficient_github_permissions') {
+      if (
+        error.message ===
+        'GitHub authentication not configured. Please sign in with GitHub.'
+      ) {
+        setShowCreatePRDialog(false);
+        setShowGitHubLoginDialog(true);
+      } else if (error.message === 'insufficient_github_permissions') {
         setShowCreatePRDialog(false);
         setPatDialogError(null);
         setShowPatDialog(true);
@@ -130,6 +138,7 @@ function CreatePrDialog({
     setShowCreatePRDialog,
     setPatDialogError,
     setShowPatDialog,
+    setShowGitHubLoginDialog,
   ]);
 
   const handleCancelCreatePR = useCallback(() => {
@@ -221,6 +230,11 @@ function CreatePrDialog({
           if (!open) setPatDialogError(null);
         }}
         errorMessage={patDialogError || undefined}
+      />
+
+      <GitHubLoginDialog
+        open={showGitHubLoginDialog}
+        onOpenChange={setShowGitHubLoginDialog}
       />
     </>
   );
