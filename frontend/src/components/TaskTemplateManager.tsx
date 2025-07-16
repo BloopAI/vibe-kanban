@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,11 +41,7 @@ export function TaskTemplateManager({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchTemplates();
-  }, [projectId, isGlobal]);
-
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     setLoading(true);
     try {
       const data = isGlobal
@@ -67,9 +63,13 @@ export function TaskTemplateManager({
     } finally {
       setLoading(false);
     }
-  };
+  }, [isGlobal, projectId]);
 
-  const handleOpenDialog = (template?: TaskTemplate) => {
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
+
+  const handleOpenDialog = useCallback((template?: TaskTemplate) => {
     if (template) {
       setEditingTemplate(template);
       setFormData({
@@ -87,9 +87,9 @@ export function TaskTemplateManager({
     }
     setError(null);
     setIsDialogOpen(true);
-  };
+  }, []);
 
-  const handleCloseDialog = () => {
+  const handleCloseDialog = useCallback(() => {
     setIsDialogOpen(false);
     setEditingTemplate(null);
     setFormData({
@@ -98,9 +98,9 @@ export function TaskTemplateManager({
       description: '',
     });
     setError(null);
-  };
+  }, []);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!formData.template_name.trim() || !formData.title.trim()) {
       setError('Template name and title are required');
       return;
@@ -133,24 +133,34 @@ export function TaskTemplateManager({
     } finally {
       setSaving(false);
     }
-  };
+  }, [
+    formData,
+    editingTemplate,
+    isGlobal,
+    projectId,
+    fetchTemplates,
+    handleCloseDialog,
+  ]);
 
-  const handleDelete = async (template: TaskTemplate) => {
-    if (
-      !confirm(
-        `Are you sure you want to delete the template "${template.template_name}"?`
-      )
-    ) {
-      return;
-    }
+  const handleDelete = useCallback(
+    async (template: TaskTemplate) => {
+      if (
+        !confirm(
+          `Are you sure you want to delete the template "${template.template_name}"?`
+        )
+      ) {
+        return;
+      }
 
-    try {
-      await templatesApi.delete(template.id);
-      await fetchTemplates();
-    } catch (err) {
-      console.error('Failed to delete template:', err);
-    }
-  };
+      try {
+        await templatesApi.delete(template.id);
+        await fetchTemplates();
+      } catch (err) {
+        console.error('Failed to delete template:', err);
+      }
+    },
+    [fetchTemplates]
+  );
 
   if (loading) {
     return (
