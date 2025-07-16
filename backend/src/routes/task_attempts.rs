@@ -305,7 +305,11 @@ pub async fn merge_task_attempt(
         }
         Err(e) => {
             tracing::error!("Failed to merge task attempt {}: {}", attempt_id, e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Ok(ResponseJson(ApiResponse {
+                success: false,
+                data: None,
+                message: Some(format!("Failed to merge: {}", e)),
+            }))
         }
     }
 }

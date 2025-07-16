@@ -228,18 +228,40 @@ impl GitService {
         Ok(squash_commit_id.to_string())
     }
 
-    /// Check if the worktree is clean (no uncommitted changes)
+    /// Check if the worktree is clean (no uncommitted changes to tracked files)
     fn check_worktree_clean(&self, repo: &Repository) -> Result<(), GitServiceError> {
-        let statuses = repo.statuses(None)?;
+        let mut status_options = git2::StatusOptions::new();
+        status_options
+            .include_untracked(false)  // Don't include untracked files
+            .include_ignored(false);   // Don't include ignored files
+        
+        let statuses = repo.statuses(Some(&mut status_options))?;
         
         if !statuses.is_empty() {
             let mut dirty_files = Vec::new();
             for entry in statuses.iter() {
-                if let Some(path) = entry.path() {
-                    dirty_files.push(path.to_string());
+                let status = entry.status();
+                // Only consider files that are actually tracked and modified
+                if status.intersects(
+                    git2::Status::INDEX_MODIFIED
+                        | git2::Status::INDEX_NEW
+                        | git2::Status::INDEX_DELETED
+                        | git2::Status::INDEX_RENAMED
+                        | git2::Status::INDEX_TYPECHANGE
+                        | git2::Status::WT_MODIFIED
+                        | git2::Status::WT_DELETED
+                        | git2::Status::WT_RENAMED
+                        | git2::Status::WT_TYPECHANGE
+                ) {
+                    if let Some(path) = entry.path() {
+                        dirty_files.push(path.to_string());
+                    }
                 }
             }
-            return Err(GitServiceError::WorktreeDirty(dirty_files.join(", ")));
+            
+            if !dirty_files.is_empty() {
+                return Err(GitServiceError::WorktreeDirty(dirty_files.join(", ")));
+            }
         }
         
         Ok(())
