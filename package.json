@@ -20,9 +20,14 @@
     "generate-types": "cd backend && cargo run --bin generate_types",
     "generate-types:check": "cd backend && cargo run --bin generate_types -- --check",
     "prepare-db": "node scripts/prepare-db.js",
-    "dev:clear-ports": "node scripts/setup-dev-environment.js clear"
+    "dev:clear-ports": "node scripts/setup-dev-environment.js clear",
+    "tauri:dev": "npx tauri dev",
+    "tauri:build": "npx tauri build",
+    "desktop:dev": "npm run tauri:dev",
+    "desktop:build": "npm run tauri:build"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.6.2",
     "concurrently": "^8.2.2",
     "vite": "^6.3.5"
   },

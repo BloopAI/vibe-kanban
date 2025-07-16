@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["backend"]
+members = ["backend", "src-tauri"]
 
 [workspace.dependencies]
 tokio = { version = "1.0", features = ["full"] }
