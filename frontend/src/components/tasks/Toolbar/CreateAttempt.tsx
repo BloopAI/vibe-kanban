@@ -16,6 +16,8 @@ import {
 import { useConfig } from '@/components/config-provider.tsx';
 import BranchSelector from '@/components/tasks/BranchSelector.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog.tsx';
+import { useState } from 'react';
 
 type Props = {
   branches: GitBranch[];
@@ -51,7 +53,12 @@ function CreateAttempt({
   const { isAttemptRunning } = useContext(TaskAttemptDataContext);
   const { config } = useConfig();
 
-  const onCreateNewAttempt = useCallback(
+  const [showCreateAttemptConfirmation, setShowCreateAttemptConfirmation] = useState(false);
+  const [pendingExecutor, setPendingExecutor] = useState<string | undefined>(undefined);
+  const [pendingBaseBranch, setPendingBaseBranch] = useState<string | undefined>(undefined);
+
+  // Create attempt logic
+  const actuallyCreateAttempt = useCallback(
     async (executor?: string, baseBranch?: string) => {
       try {
         await attemptsApi.create(projectId!, task.id, {
@@ -66,8 +73,33 @@ function CreateAttempt({
     [projectId, task.id, selectedExecutor, selectedBranch, fetchTaskAttempts]
   );
 
+  // Handler for Enter key or Start button
+  const onCreateNewAttempt = useCallback(
+    (executor?: string, baseBranch?: string) => {
+      if (task.status === 'todo') {
+        setPendingExecutor(executor);
+        setPendingBaseBranch(baseBranch);
+        setShowCreateAttemptConfirmation(true);
+      } else {
+        actuallyCreateAttempt(executor, baseBranch);
+        setShowCreateAttemptConfirmation(false);
+        setIsInCreateAttemptMode(false);
+      }
+    },
+    [task.status, actuallyCreateAttempt, setIsInCreateAttemptMode]
+  );
+
+  // Keyboard shortcuts
   useKeyboardShortcuts({
-    onEnter: onCreateNewAttempt,
+    onEnter: () => {
+      if (showCreateAttemptConfirmation) {
+        handleConfirmCreateAttempt();
+      } else {
+        onCreateNewAttempt(createAttemptExecutor, createAttemptBranch || undefined);
+      }
+    },
+    hasOpenDialog: showCreateAttemptConfirmation,
+    closeDialog: () => setShowCreateAttemptConfirmation(false),
   });
 
   const handleExitCreateAttemptMode = () => {
@@ -76,7 +108,12 @@ function CreateAttempt({
 
   const handleCreateAttempt = () => {
     onCreateNewAttempt(createAttemptExecutor, createAttemptBranch || undefined);
-    handleExitCreateAttemptMode();
+  };
+
+  const handleConfirmCreateAttempt = () => {
+    actuallyCreateAttempt(pendingExecutor, pendingBaseBranch);
+    setShowCreateAttemptConfirmation(false);
+    setIsInCreateAttemptMode(false);
   };
 
   return (
@@ -174,6 +211,31 @@ function CreateAttempt({
           </div>
         </div>
       </div>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={showCreateAttemptConfirmation} onOpenChange={setShowCreateAttemptConfirmation}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Start New Attempt?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to start a new attempt for this task? This will create a new session and branch.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowCreateAttemptConfirmation(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmCreateAttempt}
+            >
+              Start
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
