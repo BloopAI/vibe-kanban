@@ -62,7 +62,3 @@ tower = { version = "0.4", features = ["util"] }
 dotenv = "0.15"
 ts-rs = { version = "9.0", features = ["uuid-impl", "chrono-impl", "no-serde-warnings"] }
 
-[profile.release]
-debug = true
-split-debuginfo = "packed"
-strip = true

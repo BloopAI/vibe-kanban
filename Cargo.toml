@@ -12,3 +12,8 @@ anyhow = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 openssl-sys = { version = "0.9", features = ["vendored"] }
+
+[profile.release]
+debug = true
+split-debuginfo = "packed"
+strip = true
