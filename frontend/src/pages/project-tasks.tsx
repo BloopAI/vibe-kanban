@@ -8,6 +8,7 @@ import { Loader } from '@/components/ui/loader';
 import { projectsApi, tasksApi, templatesApi } from '@/lib/api';
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
 import { ProjectForm } from '@/components/projects/project-form';
+import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
 import {
   DropdownMenu,
@@ -23,9 +24,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
+
 import {
   getKanbanSectionClasses,
   getMainContainerClasses,
@@ -35,7 +34,6 @@ import TaskKanbanBoard from '@/components/tasks/TaskKanbanBoard';
 import { TaskDetailsPanel } from '@/components/tasks/TaskDetailsPanel';
 import type {
   CreateTaskAndStart,
-  CreateTaskTemplate,
   ExecutorConfig,
   ProjectWithBranch,
   TaskStatus,
@@ -65,15 +63,8 @@ export function ProjectTasks() {
     null
   );
 
-  // Template creation state
-  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
-  const [templateFormData, setTemplateFormData] = useState({
-    template_name: '',
-    title: '',
-    description: '',
-  });
-  const [templatingLoading, setTemplateSaving] = useState(false);
-  const [templateError, setTemplateError] = useState<string | null>(null);
+  // Template management state
+  const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
 
   // Panel state
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -129,76 +120,15 @@ export function ProjectTasks() {
     }
   }, [projectId]);
 
-  // Template creation handlers
-  const handleOpenTemplateDialog = useCallback(() => {
-    setTemplateFormData({
-      template_name: '',
-      title: '',
-      description: '',
-    });
-    setTemplateError(null);
-    setIsTemplateDialogOpen(true);
+  // Template management handlers
+  const handleOpenTemplateManager = useCallback(() => {
+    setIsTemplateManagerOpen(true);
   }, []);
 
-  const handleCloseTemplateDialog = useCallback(() => {
-    setIsTemplateDialogOpen(false);
-    setTemplateFormData({
-      template_name: '',
-      title: '',
-      description: '',
-    });
-    setTemplateError(null);
-  }, []);
-
-  const handleCreateTemplate = useCallback(async () => {
-    if (
-      !templateFormData.template_name.trim() ||
-      !templateFormData.title.trim()
-    ) {
-      setTemplateError('Template name and title are required');
-      return;
-    }
-
-    setTemplateSaving(true);
-    setTemplateError(null);
-
-    try {
-      const createData: CreateTaskTemplate = {
-        project_id: projectId || null,
-        template_name: templateFormData.template_name,
-        title: templateFormData.title,
-        description: templateFormData.description || null,
-      };
-      await templatesApi.create(createData);
-      await fetchTemplates(); // Refresh templates list
-      handleCloseTemplateDialog();
-    } catch (err: any) {
-      setTemplateError(err.message || 'Failed to create template');
-    } finally {
-      setTemplateSaving(false);
-    }
-  }, [templateFormData, projectId, fetchTemplates, handleCloseTemplateDialog]);
-
-  // Handle keyboard shortcuts for template dialog
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!isTemplateDialogOpen) return;
-
-      // Ctrl/Cmd + Enter to save template
-      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-        if (!templatingLoading) {
-          event.preventDefault();
-          event.stopPropagation();
-          handleCreateTemplate();
-        }
-      }
-    };
-
-    if (isTemplateDialogOpen) {
-      document.addEventListener('keydown', handleKeyDown, true);
-      return () => document.removeEventListener('keydown', handleKeyDown, true);
-    }
-  }, [isTemplateDialogOpen, templatingLoading, handleCreateTemplate]);
+  const handleCloseTemplateManager = useCallback(() => {
+    setIsTemplateManagerOpen(false);
+    fetchTemplates(); // Refresh templates list when closing
+  }, [fetchTemplates]);
 
   const fetchTasks = useCallback(
     async (skipLoading = false) => {
@@ -381,7 +311,7 @@ export function ProjectTasks() {
     navigate,
     currentPath: `/projects/${projectId}/tasks`,
     hasOpenDialog:
-      isTaskDialogOpen || isTemplateDialogOpen || isProjectSettingsOpen,
+      isTaskDialogOpen || isTemplateManagerOpen || isProjectSettingsOpen,
     closeDialog: () => setIsTaskDialogOpen(false),
     onC: handleCreateNewTask,
   });
@@ -481,9 +411,9 @@ export function ProjectTasks() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[250px]">
-                <DropdownMenuItem onClick={handleOpenTemplateDialog}>
+                <DropdownMenuItem onClick={handleOpenTemplateManager}>
                   <Plus className="h-3 w-3 mr-2" />
-                  Create New Template
+                  Manage Templates
                 </DropdownMenuItem>
                 {templates.length > 0 && <DropdownMenuSeparator />}
 
@@ -608,81 +538,20 @@ export function ProjectTasks() {
         project={project}
       />
 
-      {/* Template Creation Dialog */}
+      {/* Template Manager Dialog */}
       <Dialog
-        open={isTemplateDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            handleCloseTemplateDialog();
-          }
-        }}
+        open={isTemplateManagerOpen}
+        onOpenChange={setIsTemplateManagerOpen}
       >
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create Template</DialogTitle>
+            <DialogTitle>Manage Templates</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="template-name">Template Name</Label>
-              <Input
-                id="template-name"
-                value={templateFormData.template_name}
-                onChange={(e) =>
-                  setTemplateFormData({
-                    ...templateFormData,
-                    template_name: e.target.value,
-                  })
-                }
-                placeholder="e.g., Bug Fix, Feature Request"
-              />
-            </div>
-            <div>
-              <Label htmlFor="template-title">Default Title</Label>
-              <Input
-                id="template-title"
-                value={templateFormData.title}
-                onChange={(e) =>
-                  setTemplateFormData({
-                    ...templateFormData,
-                    title: e.target.value,
-                  })
-                }
-                placeholder="e.g., Fix bug in..."
-              />
-            </div>
-            <div>
-              <Label htmlFor="template-description">Default Description</Label>
-              <Textarea
-                id="template-description"
-                value={templateFormData.description}
-                onChange={(e) =>
-                  setTemplateFormData({
-                    ...templateFormData,
-                    description: e.target.value,
-                  })
-                }
-                placeholder="Enter a default description for tasks created with this template"
-                rows={4}
-              />
-            </div>
-            {templateError && (
-              <div className="text-sm text-red-600">{templateError}</div>
-            )}
+          <div className="py-4">
+            <TaskTemplateManager projectId={projectId} />
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={handleCloseTemplateDialog}
-              disabled={templatingLoading}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleCreateTemplate} disabled={templatingLoading}>
-              {templatingLoading && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              Create
-            </Button>
+            <Button onClick={handleCloseTemplateManager}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
