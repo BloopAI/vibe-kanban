@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { FolderOpen, Plus, Settings, ChevronDown, Globe2 } from 'lucide-react';
+import { FolderOpen, Plus, Settings, LibraryBig, Globe2 } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { projectsApi, tasksApi, templatesApi } from '@/lib/api';
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
@@ -17,6 +17,16 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2 } from 'lucide-react';
+import {
   getKanbanSectionClasses,
   getMainContainerClasses,
 } from '@/lib/responsive-config';
@@ -25,6 +35,7 @@ import TaskKanbanBoard from '@/components/tasks/TaskKanbanBoard';
 import { TaskDetailsPanel } from '@/components/tasks/TaskDetailsPanel';
 import type {
   CreateTaskAndStart,
+  CreateTaskTemplate,
   ExecutorConfig,
   ProjectWithBranch,
   TaskStatus,
@@ -53,6 +64,16 @@ export function ProjectTasks() {
   const [selectedTemplate, setSelectedTemplate] = useState<TaskTemplate | null>(
     null
   );
+
+  // Template creation state
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+  const [templateFormData, setTemplateFormData] = useState({
+    template_name: '',
+    title: '',
+    description: '',
+  });
+  const [templatingLoading, setTemplateSaving] = useState(false);
+  const [templateError, setTemplateError] = useState<string | null>(null);
 
   // Panel state
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -107,6 +128,53 @@ export function ProjectTasks() {
       console.error('Failed to fetch templates:', err);
     }
   }, [projectId]);
+
+  // Template creation handlers
+  const handleOpenTemplateDialog = useCallback(() => {
+    setTemplateFormData({
+      template_name: '',
+      title: '',
+      description: '',
+    });
+    setTemplateError(null);
+    setIsTemplateDialogOpen(true);
+  }, []);
+
+  const handleCloseTemplateDialog = useCallback(() => {
+    setIsTemplateDialogOpen(false);
+    setTemplateFormData({
+      template_name: '',
+      title: '',
+      description: '',
+    });
+    setTemplateError(null);
+  }, []);
+
+  const handleCreateTemplate = useCallback(async () => {
+    if (!templateFormData.template_name.trim() || !templateFormData.title.trim()) {
+      setTemplateError('Template name and title are required');
+      return;
+    }
+
+    setTemplateSaving(true);
+    setTemplateError(null);
+
+    try {
+      const createData: CreateTaskTemplate = {
+        project_id: projectId || null,
+        template_name: templateFormData.template_name,
+        title: templateFormData.title,
+        description: templateFormData.description || null,
+      };
+      await templatesApi.create(createData);
+      await fetchTemplates(); // Refresh templates list
+      handleCloseTemplateDialog();
+    } catch (err: any) {
+      setTemplateError(err.message || 'Failed to create template');
+    } finally {
+      setTemplateSaving(false);
+    }
+  }, [templateFormData, projectId, fetchTemplates, handleCloseTemplateDialog]);
 
   const fetchTasks = useCallback(
     async (skipLoading = false) => {
@@ -382,14 +450,19 @@ export function ProjectTasks() {
                 <Plus className="h-4 w-4 mr-2" />
                 Add Task
               </Button>
-              {templates.length > 0 && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon">
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <LibraryBig className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-[250px]">
+                    <DropdownMenuItem onClick={handleOpenTemplateDialog}>
+                      <Plus className="h-3 w-3 mr-2" />
+                      Create New Template
+                    </DropdownMenuItem>
+                    {templates.length > 0 && <DropdownMenuSeparator />}
+                    
                     {/* Project Templates */}
                     {templates.filter((t) => t.project_id !== null).length >
                       0 && (
@@ -441,8 +514,7 @@ export function ProjectTasks() {
                       </>
                     )}
                   </DropdownMenuContent>
-                </DropdownMenu>
-              )}
+                  </DropdownMenu>
             </div>
           </div>
         </div>
@@ -514,6 +586,65 @@ export function ProjectTasks() {
         onSuccess={handleProjectSettingsSuccess}
         project={project}
       />
+
+      {/* Template Creation Dialog */}
+      <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Create Template</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="template-name">Template Name</Label>
+              <Input
+                id="template-name"
+                value={templateFormData.template_name}
+                onChange={(e) =>
+                  setTemplateFormData({ ...templateFormData, template_name: e.target.value })
+                }
+                placeholder="e.g., Bug Fix, Feature Request"
+              />
+            </div>
+            <div>
+              <Label htmlFor="template-title">Default Title</Label>
+              <Input
+                id="template-title"
+                value={templateFormData.title}
+                onChange={(e) =>
+                  setTemplateFormData({ ...templateFormData, title: e.target.value })
+                }
+                placeholder="e.g., Fix bug in..."
+              />
+            </div>
+            <div>
+              <Label htmlFor="template-description">Default Description</Label>
+              <Textarea
+                id="template-description"
+                value={templateFormData.description}
+                onChange={(e) =>
+                  setTemplateFormData({ ...templateFormData, description: e.target.value })
+                }
+                placeholder="Enter a default description for tasks created with this template"
+                rows={4}
+              />
+            </div>
+            {templateError && <div className="text-sm text-red-600">{templateError}</div>}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCloseTemplateDialog}
+              disabled={templatingLoading}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleCreateTemplate} disabled={templatingLoading}>
+              {templatingLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
