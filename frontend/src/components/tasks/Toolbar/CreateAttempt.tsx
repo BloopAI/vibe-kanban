@@ -16,7 +16,14 @@ import {
 import { useConfig } from '@/components/config-provider.tsx';
 import BranchSelector from '@/components/tasks/BranchSelector.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog.tsx';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog.tsx';
 import { useState } from 'react';
 
 type Props = {
@@ -53,9 +60,14 @@ function CreateAttempt({
   const { isAttemptRunning } = useContext(TaskAttemptDataContext);
   const { config } = useConfig();
 
-  const [showCreateAttemptConfirmation, setShowCreateAttemptConfirmation] = useState(false);
-  const [pendingExecutor, setPendingExecutor] = useState<string | undefined>(undefined);
-  const [pendingBaseBranch, setPendingBaseBranch] = useState<string | undefined>(undefined);
+  const [showCreateAttemptConfirmation, setShowCreateAttemptConfirmation] =
+    useState(false);
+  const [pendingExecutor, setPendingExecutor] = useState<string | undefined>(
+    undefined
+  );
+  const [pendingBaseBranch, setPendingBaseBranch] = useState<
+    string | undefined
+  >(undefined);
 
   // Create attempt logic
   const actuallyCreateAttempt = useCallback(
@@ -95,7 +107,10 @@ function CreateAttempt({
       if (showCreateAttemptConfirmation) {
         handleConfirmCreateAttempt();
       } else {
-        onCreateNewAttempt(createAttemptExecutor, createAttemptBranch || undefined);
+        onCreateNewAttempt(
+          createAttemptExecutor,
+          createAttemptBranch || undefined
+        );
       }
     },
     hasOpenDialog: showCreateAttemptConfirmation,
@@ -213,12 +228,16 @@ function CreateAttempt({
       </div>
 
       {/* Confirmation Dialog */}
-      <Dialog open={showCreateAttemptConfirmation} onOpenChange={setShowCreateAttemptConfirmation}>
+      <Dialog
+        open={showCreateAttemptConfirmation}
+        onOpenChange={setShowCreateAttemptConfirmation}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Start New Attempt?</DialogTitle>
             <DialogDescription>
-              Are you sure you want to start a new attempt for this task? This will create a new session and branch.
+              Are you sure you want to start a new attempt for this task? This
+              will create a new session and branch.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -228,11 +247,7 @@ function CreateAttempt({
             >
               Cancel
             </Button>
-            <Button
-              onClick={handleConfirmCreateAttempt}
-            >
-              Start
-            </Button>
+            <Button onClick={handleConfirmCreateAttempt}>Start</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
