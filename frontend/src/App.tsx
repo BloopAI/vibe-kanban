@@ -6,6 +6,7 @@ import { ProjectTasks } from '@/pages/project-tasks';
 
 import { Settings } from '@/pages/Settings';
 import { McpServers } from '@/pages/McpServers';
+import { Integrations } from '@/pages/Integrations';
 import { DisclaimerDialog } from '@/components/DisclaimerDialog';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { PrivacyOptInDialog } from '@/components/PrivacyOptInDialog';
@@ -173,6 +174,7 @@ function AppContent() {
               element={<ProjectTasks />}
             />
 
+            <Route path="/integrations" element={<Integrations />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/mcp-servers" element={<McpServers />} />
           </SentryRoutes>

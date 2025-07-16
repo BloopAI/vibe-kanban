@@ -29,7 +29,7 @@ mod utils;
 use app_state::AppState;
 use execution_monitor::execution_monitor;
 use models::{ApiResponse, Config};
-use routes::{auth, config, filesystem, health, projects, task_attempts, tasks};
+use routes::{auth, config, filesystem, health, integrations, projects, task_attempts, tasks};
 use services::PrMonitorService;
 
 async fn echo_handler(
@@ -201,6 +201,7 @@ fn main() -> anyhow::Result<()> {
                         .merge(filesystem::filesystem_router())
                         .merge(config::config_router())
                         .merge(auth::auth_router())
+                        .merge(integrations::integrations_router())
                         .route("/sounds/:filename", get(serve_sound_file))
                         .layer(from_fn_with_state(app_state.clone(), auth::sentry_user_context_middleware)),
                 );
