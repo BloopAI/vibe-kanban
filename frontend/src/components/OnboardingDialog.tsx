@@ -98,8 +98,10 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
                   {executor.type === 'claude' && 'Claude Code from Anthropic'}
                   {executor.type === 'amp' && 'From Sourcegraph'}
                   {executor.type === 'gemini' && 'Google Gemini from Bloop'}
-                  {executor.type === 'charmopencode' &&
+                  {executor.type === 'charm-opencode' &&
                     'Charm/Opencode AI assistant'}
+                  {executor.type === 'claude-code-router' &&
+                    'Claude Code Router'}
                   {executor.type === 'echo' &&
                     'This is just for debugging vibe-kanban itself'}
                 </p>

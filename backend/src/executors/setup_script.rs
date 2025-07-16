@@ -122,7 +122,7 @@ impl Executor for SetupScriptExecutor {
         Ok(crate::executor::NormalizedConversation {
             entries,
             session_id: None,
-            executor_type: "setup_script".to_string(),
+            executor_type: "setup-script".to_string(),
             prompt: Some(self.script.clone()),
             summary: None,
         })

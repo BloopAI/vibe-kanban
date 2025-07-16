@@ -342,19 +342,19 @@ pub enum ExecutorType {
 
 /// Configuration for different executor types
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[serde(tag = "type", rename_all = "lowercase")]
+#[serde(tag = "type", rename_all = "kebab-case")]
 #[ts(export)]
 pub enum ExecutorConfig {
     Echo,
     Claude,
     Amp,
     Gemini,
+    #[serde(alias = "setup_script")]
     SetupScript {
         script: String,
     },
-    #[serde(rename = "claude-code-router")]
-    #[ts(rename = "claude-code-router")]
     ClaudeCodeRouter,
+    #[serde(alias = "charmopencode")]
     CharmOpencode,
     // Future executors can be added here
     // Shell { command: String },
@@ -378,9 +378,9 @@ impl FromStr for ExecutorConfig {
             "claude" => Ok(ExecutorConfig::Claude),
             "amp" => Ok(ExecutorConfig::Amp),
             "gemini" => Ok(ExecutorConfig::Gemini),
-            "charmopencode" => Ok(ExecutorConfig::CharmOpencode),
+            "charm-opencode" => Ok(ExecutorConfig::CharmOpencode),
             "claude-code-router" => Ok(ExecutorConfig::ClaudeCodeRouter),
-            "setup_script" => Ok(ExecutorConfig::SetupScript {
+            "setup-script" => Ok(ExecutorConfig::SetupScript {
                 script: "setup script".to_string(),
             }),
             _ => Err(format!("Unknown executor type: {}", s)),
@@ -464,9 +464,9 @@ impl std::fmt::Display for ExecutorConfig {
             ExecutorConfig::Claude => "claude",
             ExecutorConfig::Amp => "amp",
             ExecutorConfig::Gemini => "gemini",
-            ExecutorConfig::CharmOpencode => "charmopencode",
+            ExecutorConfig::CharmOpencode => "charm-opencode",
             ExecutorConfig::ClaudeCodeRouter => "claude-code-router",
-            ExecutorConfig::SetupScript { .. } => "setup_script",
+            ExecutorConfig::SetupScript { .. } => "setup-script",
         };
         write!(f, "{}", s)
     }

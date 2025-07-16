@@ -639,7 +639,7 @@ impl ProcessService {
             Some("claude-code-router") => crate::executor::ExecutorConfig::ClaudeCodeRouter,
             Some("amp") => crate::executor::ExecutorConfig::Amp,
             Some("gemini") => crate::executor::ExecutorConfig::Gemini,
-            Some("charmopencode") => crate::executor::ExecutorConfig::CharmOpencode,
+            Some("charm-opencode") => crate::executor::ExecutorConfig::CharmOpencode,
             _ => crate::executor::ExecutorConfig::Echo, // Default for "echo" or None
         }
     }
@@ -657,8 +657,8 @@ impl ProcessService {
         let (command, args, executor_type_string) = match executor_type {
             crate::executor::ExecutorType::SetupScript(_) => (
                 shell_cmd.to_string(),
-                Some(serde_json::to_string(&[shell_arg, "setup_script"]).unwrap()),
-                None, // Setup scripts don't have an executor type
+                Some(serde_json::to_string(&[shell_arg, "setup-script"]).unwrap()),
+                Some("setup-script".to_string()),
             ),
             crate::executor::ExecutorType::DevServer(_) => (
                 shell_cmd.to_string(),
@@ -885,7 +885,7 @@ impl ProcessService {
         // Store delegation context in args for execution monitor to read
         let args_with_delegation = serde_json::json!([
             shell_arg,
-            "setup_script",
+            "setup-script",
             "--delegation-context",
             delegation_context.to_string()
         ]);
@@ -893,7 +893,7 @@ impl ProcessService {
         let create_process = CreateExecutionProcess {
             task_attempt_id: attempt_id,
             process_type: ExecutionProcessType::SetupScript,
-            executor_type: None, // Setup scripts don't have an executor type
+            executor_type: Some("setup-script".to_string()),
             command: shell_cmd.to_string(),
             args: Some(args_with_delegation.to_string()),
             working_directory: worktree_path.to_string(),

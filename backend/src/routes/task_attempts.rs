@@ -1331,7 +1331,7 @@ pub async fn get_execution_process_normalized_logs(
 
     // Create final normalized conversation
     let executor_type = if process.process_type == ExecutionProcessType::SetupScript {
-        "setup_script".to_string()
+        "setup-script".to_string()
     } else {
         process
             .executor_type

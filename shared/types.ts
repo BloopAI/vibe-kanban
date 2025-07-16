@@ -22,7 +22,7 @@ export type SoundConstants = { sound_files: Array<SoundFile>, sound_labels: Arra
 
 export type ConfigConstants = { editor: EditorConstants, sound: SoundConstants, };
 
-export type ExecutorConfig = { "type": "echo" } | { "type": "claude" } | { "type": "amp" } | { "type": "gemini" } | { "type": "setupscript", script: string, } | { "type": "claude-code-router" } | { "type": "charmopencode" };
+export type ExecutorConfig = { "type": "echo" } | { "type": "claude" } | { "type": "amp" } | { "type": "gemini" } | { "type": "setup-script", script: string, } | { "type": "claude-code-router" } | { "type": "charm-opencode" };
 
 export type ExecutorConstants = { executor_types: Array<ExecutorConfig>, executor_labels: Array<string>, };
 
@@ -128,7 +128,7 @@ export const EXECUTOR_TYPES: string[] = [
     "claude",
     "amp",
     "gemini",
-    "charmopencode",
+    "charm-opencode",
     "claude-code-router"
 ];
 
@@ -146,7 +146,7 @@ export const EXECUTOR_LABELS: Record<string, string> = {
     "claude": "Claude",
     "amp": "Amp",
     "gemini": "Gemini",
-    "charmopencode": "Charm Opencode",
+    "charm-opencode": "Charm Opencode",
     "claude-code-router": "Claude Code Router"
 };
 
