@@ -123,7 +123,9 @@ function CurrentAttempt({
     TaskAttemptDataContext
   );
   const { relatedTasks } = useContext(TaskRelatedTasksContext);
-  const { fetchExecutionState } = useContext(TaskExecutionStateContext);
+  const { executionState, fetchExecutionState } = useContext(
+    TaskExecutionStateContext
+  );
 
   const [isStartingDevServer, setIsStartingDevServer] = useState(false);
   const [merging, setMerging] = useState(false);
@@ -159,16 +161,11 @@ function CurrentAttempt({
 
   // Check if plan approval is needed
   const isPlanTask = useMemo(() => {
-    return attemptData.processes.some(
-      (process: ExecutionProcessSummary) =>
-        process.executor_type &&
-        is_planning_executor_type(process.executor_type)
+    return (
+      selectedAttempt.executor &&
+      is_planning_executor_type(selectedAttempt.executor)
     );
-  }, [attemptData.processes]);
-
-  const needsPlanApproval = useMemo(() => {
-    return task?.status === 'inreview' && isPlanTask;
-  }, [task?.status, isPlanTask]);
+  }, [selectedAttempt.executor]);
 
   const fetchDevServerDetails = useCallback(async () => {
     if (!runningDevServer || !task || !selectedAttempt) return;
@@ -402,7 +399,7 @@ function CurrentAttempt({
   };
 
   const handlePlanApproval = async () => {
-    if (!task || !selectedAttempt || !needsPlanApproval) return;
+    if (!task || !selectedAttempt || !isPlanTask) return;
 
     setIsApprovingPlan(true);
     try {
@@ -710,60 +707,58 @@ function CurrentAttempt({
                     {rebasing ? 'Rebasing...' : `Rebase`}
                   </Button>
                 )}
-              {!branchStatus.merged && (
-                <>
-                  {isPlanTask ? (
-                    // Plan tasks: only show approval button when in review status
-                    needsPlanApproval ? (
-                      <Button
-                        onClick={handlePlanApproval}
-                        disabled={isApprovingPlan || isAttemptRunning}
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"
-                      >
-                        <GitBranchIcon className="h-3 w-3" />
-                        {isApprovingPlan
-                          ? 'Approving...'
-                          : 'Approve & Create Task'}
-                      </Button>
-                    ) : null
-                  ) : (
-                    // Normal merge and PR buttons for regular tasks
-                    <>
-                      <Button
-                        onClick={handleCreatePRClick}
-                        disabled={
-                          creatingPR ||
-                          Boolean(branchStatus.is_behind) ||
-                          isAttemptRunning
-                        }
-                        variant="outline"
-                        size="sm"
-                        className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1"
-                      >
-                        <GitPullRequest className="h-3 w-3" />
-                        {selectedAttempt.pr_url
-                          ? 'Open PR'
-                          : creatingPR
-                            ? 'Creating...'
-                            : 'Create PR'}
-                      </Button>
-                      <Button
-                        onClick={handleMergeClick}
-                        disabled={
-                          merging ||
-                          Boolean(branchStatus.is_behind) ||
-                          isAttemptRunning
-                        }
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"
-                      >
-                        <GitBranchIcon className="h-3 w-3" />
-                        {merging ? 'Merging...' : 'Merge'}
-                      </Button>
-                    </>
-                  )}
-                </>
+              {isPlanTask ? (
+                // Plan tasks: show approval button
+                <Button
+                  onClick={handlePlanApproval}
+                  disabled={
+                    isAttemptRunning ||
+                    executionState?.execution_state === 'CodingAgentFailed' ||
+                    executionState?.execution_state === 'SetupFailed'
+                  }
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"
+                >
+                  <GitBranchIcon className="h-3 w-3" />
+                  {isApprovingPlan ? 'Approving...' : 'Create Task'}
+                </Button>
+              ) : (
+                // Normal merge and PR buttons for regular tasks
+                !branchStatus.merged && (
+                  <>
+                    <Button
+                      onClick={handleCreatePRClick}
+                      disabled={
+                        creatingPR ||
+                        Boolean(branchStatus.is_behind) ||
+                        isAttemptRunning
+                      }
+                      variant="outline"
+                      size="sm"
+                      className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1"
+                    >
+                      <GitPullRequest className="h-3 w-3" />
+                      {selectedAttempt.pr_url
+                        ? 'Open PR'
+                        : creatingPR
+                          ? 'Creating...'
+                          : 'Create PR'}
+                    </Button>
+                    <Button
+                      onClick={handleMergeClick}
+                      disabled={
+                        merging ||
+                        Boolean(branchStatus.is_behind) ||
+                        isAttemptRunning
+                      }
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"
+                    >
+                      <GitBranchIcon className="h-3 w-3" />
+                      {merging ? 'Merging...' : 'Merge'}
+                    </Button>
+                  </>
+                )
               )}
             </>
           )}
