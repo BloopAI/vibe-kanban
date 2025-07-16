@@ -35,11 +35,8 @@ struct DevicePollRequest {
 /// POST /auth/github/device/start
 async fn device_start() -> ResponseJson<ApiResponse<DeviceStartResponse>> {
     let client_id = option_env!("GITHUB_CLIENT_ID").unwrap_or("Ov23li9bxz3kKfPOIsGm");
-    
-    let params = [
-        ("client_id", client_id),
-        ("scope", "user:email,repo"),
-    ];
+
+    let params = [("client_id", client_id), ("scope", "user:email,repo")];
     let client = reqwest::Client::new();
     let res = client
         .post("https://github.com/login/device/code")
@@ -106,7 +103,7 @@ async fn device_poll(
     Json(payload): Json<DevicePollRequest>,
 ) -> ResponseJson<ApiResponse<String>> {
     let client_id = option_env!("GITHUB_CLIENT_ID").unwrap_or("Ov23li9bxz3kKfPOIsGm");
-    
+
     let params = [
         ("client_id", client_id),
         ("device_code", payload.device_code.as_str()),
