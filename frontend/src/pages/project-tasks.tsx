@@ -151,7 +151,10 @@ export function ProjectTasks() {
   }, []);
 
   const handleCreateTemplate = useCallback(async () => {
-    if (!templateFormData.template_name.trim() || !templateFormData.title.trim()) {
+    if (
+      !templateFormData.template_name.trim() ||
+      !templateFormData.title.trim()
+    ) {
       setTemplateError('Template name and title are required');
       return;
     }
@@ -175,6 +178,27 @@ export function ProjectTasks() {
       setTemplateSaving(false);
     }
   }, [templateFormData, projectId, fetchTemplates, handleCloseTemplateDialog]);
+
+  // Handle keyboard shortcuts for template dialog
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isTemplateDialogOpen) return;
+
+      // Ctrl/Cmd + Enter to save template
+      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+        if (!templatingLoading) {
+          event.preventDefault();
+          event.stopPropagation();
+          handleCreateTemplate();
+        }
+      }
+    };
+
+    if (isTemplateDialogOpen) {
+      document.addEventListener('keydown', handleKeyDown, true);
+      return () => document.removeEventListener('keydown', handleKeyDown, true);
+    }
+  }, [isTemplateDialogOpen, templatingLoading, handleCreateTemplate]);
 
   const fetchTasks = useCallback(
     async (skipLoading = false) => {
@@ -356,7 +380,8 @@ export function ProjectTasks() {
   useKeyboardShortcuts({
     navigate,
     currentPath: `/projects/${projectId}/tasks`,
-    hasOpenDialog: isTaskDialogOpen,
+    hasOpenDialog:
+      isTaskDialogOpen || isTemplateDialogOpen || isProjectSettingsOpen,
     closeDialog: () => setIsTaskDialogOpen(false),
     onC: handleCreateNewTask,
   });
@@ -445,77 +470,73 @@ export function ProjectTasks() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-64"
             />
-            <div className="flex items-center gap-1">
-              <Button onClick={handleCreateNewTask}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Task
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <LibraryBig className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-[250px]">
-                    <DropdownMenuItem onClick={handleOpenTemplateDialog}>
-                      <Plus className="h-3 w-3 mr-2" />
-                      Create New Template
-                    </DropdownMenuItem>
-                    {templates.length > 0 && <DropdownMenuSeparator />}
-                    
-                    {/* Project Templates */}
-                    {templates.filter((t) => t.project_id !== null).length >
-                      0 && (
-                      <>
-                        <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-                          Project Templates
-                        </div>
-                        {templates
-                          .filter((t) => t.project_id !== null)
-                          .map((template) => (
-                            <DropdownMenuItem
-                              key={template.id}
-                              onClick={() => handleTemplateSelect(template)}
-                            >
-                              <span className="truncate">
-                                {template.template_name}
-                              </span>
-                            </DropdownMenuItem>
-                          ))}
-                      </>
-                    )}
+            <Button onClick={handleCreateNewTask}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Task
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <LibraryBig className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[250px]">
+                <DropdownMenuItem onClick={handleOpenTemplateDialog}>
+                  <Plus className="h-3 w-3 mr-2" />
+                  Create New Template
+                </DropdownMenuItem>
+                {templates.length > 0 && <DropdownMenuSeparator />}
 
-                    {/* Separator if both types exist */}
-                    {templates.filter((t) => t.project_id !== null).length >
-                      0 &&
-                      templates.filter((t) => t.project_id === null).length >
-                        0 && <DropdownMenuSeparator />}
+                {/* Project Templates */}
+                {templates.filter((t) => t.project_id !== null).length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
+                      Project Templates
+                    </div>
+                    {templates
+                      .filter((t) => t.project_id !== null)
+                      .map((template) => (
+                        <DropdownMenuItem
+                          key={template.id}
+                          onClick={() => handleTemplateSelect(template)}
+                        >
+                          <span className="truncate">
+                            {template.template_name}
+                          </span>
+                        </DropdownMenuItem>
+                      ))}
+                  </>
+                )}
 
-                    {/* Global Templates */}
-                    {templates.filter((t) => t.project_id === null).length >
-                      0 && (
-                      <>
-                        <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-                          Global Templates
-                        </div>
-                        {templates
-                          .filter((t) => t.project_id === null)
-                          .map((template) => (
-                            <DropdownMenuItem
-                              key={template.id}
-                              onClick={() => handleTemplateSelect(template)}
-                            >
-                              <Globe2 className="h-3 w-3 mr-2 text-muted-foreground" />
-                              <span className="truncate">
-                                {template.template_name}
-                              </span>
-                            </DropdownMenuItem>
-                          ))}
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                  </DropdownMenu>
-            </div>
+                {/* Separator if both types exist */}
+                {templates.filter((t) => t.project_id !== null).length > 0 &&
+                  templates.filter((t) => t.project_id === null).length > 0 && (
+                    <DropdownMenuSeparator />
+                  )}
+
+                {/* Global Templates */}
+                {templates.filter((t) => t.project_id === null).length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
+                      Global Templates
+                    </div>
+                    {templates
+                      .filter((t) => t.project_id === null)
+                      .map((template) => (
+                        <DropdownMenuItem
+                          key={template.id}
+                          onClick={() => handleTemplateSelect(template)}
+                        >
+                          <Globe2 className="h-3 w-3 mr-2 text-muted-foreground" />
+                          <span className="truncate">
+                            {template.template_name}
+                          </span>
+                        </DropdownMenuItem>
+                      ))}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -588,7 +609,14 @@ export function ProjectTasks() {
       />
 
       {/* Template Creation Dialog */}
-      <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+      <Dialog
+        open={isTemplateDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCloseTemplateDialog();
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Create Template</DialogTitle>
@@ -600,7 +628,10 @@ export function ProjectTasks() {
                 id="template-name"
                 value={templateFormData.template_name}
                 onChange={(e) =>
-                  setTemplateFormData({ ...templateFormData, template_name: e.target.value })
+                  setTemplateFormData({
+                    ...templateFormData,
+                    template_name: e.target.value,
+                  })
                 }
                 placeholder="e.g., Bug Fix, Feature Request"
               />
@@ -611,7 +642,10 @@ export function ProjectTasks() {
                 id="template-title"
                 value={templateFormData.title}
                 onChange={(e) =>
-                  setTemplateFormData({ ...templateFormData, title: e.target.value })
+                  setTemplateFormData({
+                    ...templateFormData,
+                    title: e.target.value,
+                  })
                 }
                 placeholder="e.g., Fix bug in..."
               />
@@ -622,13 +656,18 @@ export function ProjectTasks() {
                 id="template-description"
                 value={templateFormData.description}
                 onChange={(e) =>
-                  setTemplateFormData({ ...templateFormData, description: e.target.value })
+                  setTemplateFormData({
+                    ...templateFormData,
+                    description: e.target.value,
+                  })
                 }
                 placeholder="Enter a default description for tasks created with this template"
                 rows={4}
               />
             </div>
-            {templateError && <div className="text-sm text-red-600">{templateError}</div>}
+            {templateError && (
+              <div className="text-sm text-red-600">{templateError}</div>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -639,7 +678,9 @@ export function ProjectTasks() {
               Cancel
             </Button>
             <Button onClick={handleCreateTemplate} disabled={templatingLoading}>
-              {templatingLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {templatingLoading && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Create
             </Button>
           </DialogFooter>
