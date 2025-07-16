@@ -179,6 +179,7 @@ impl GitService {
         &self,
         worktree_path: &Path,
         branch_name: &str,
+        base_branch_name: &str,
         task_title: &str,
     ) -> Result<String, GitServiceError> {
         // Open the worktree repository
@@ -186,9 +187,6 @@ impl GitService {
         
         // Check if worktree is dirty before proceeding
         self.check_worktree_clean(&worktree_repo)?;
-
-        // Get the base branch name (default to "main")
-        let base_branch_name = self.get_default_branch_name_for_repo(&worktree_repo)?;
         
         // Verify the task branch exists in the worktree
         let task_branch = worktree_repo
@@ -197,7 +195,7 @@ impl GitService {
 
         // Get the base branch from the worktree
         let base_branch = worktree_repo
-            .find_branch(&base_branch_name, BranchType::Local)
+            .find_branch(base_branch_name, BranchType::Local)
             .map_err(|_| GitServiceError::BranchNotFound(base_branch_name.to_string()))?;
 
         // Get commits
@@ -214,7 +212,7 @@ impl GitService {
             &task_commit,
             &signature,
             task_title,
-            &base_branch_name,
+            base_branch_name,
         )?;
 
         info!("Created squash merge commit: {}", squash_commit_id);
@@ -258,20 +256,6 @@ impl GitService {
         }
         
         Ok(())
-    }
-
-    /// Get the default branch name for a specific repository (main or master)
-    fn get_default_branch_name_for_repo(&self, repo: &Repository) -> Result<String, GitServiceError> {
-        // Try "main" first, then "master"
-        if repo.find_branch("main", BranchType::Local).is_ok() {
-            Ok("main".to_string())
-        } else if repo.find_branch("master", BranchType::Local).is_ok() {
-            Ok("master".to_string())
-        } else {
-            // Fall back to whatever HEAD points to
-            let head = repo.head()?;
-            Ok(head.shorthand().unwrap_or("main").to_string())
-        }
     }
 
     /// Perform a squash merge of task branch into base branch

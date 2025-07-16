@@ -524,13 +524,14 @@ impl TaskAttempt {
         worktree_path: &str,
         main_repo_path: &str,
         branch_name: &str,
+        base_branch: &str,
         task_title: &str,
     ) -> Result<String, TaskAttemptError> {
         let git_service = GitService::new(main_repo_path)?;
         let worktree_path = Path::new(worktree_path);
 
         git_service
-            .merge_changes(worktree_path, branch_name, task_title)
+            .merge_changes(worktree_path, branch_name, base_branch, task_title)
             .map_err(TaskAttemptError::from)
     }
 
@@ -567,6 +568,7 @@ impl TaskAttempt {
             &worktree_path,
             &ctx.project.git_repo_path,
             &ctx.task_attempt.branch,
+            &ctx.task_attempt.base_branch,
             &ctx.task.title,
         )?;
 
