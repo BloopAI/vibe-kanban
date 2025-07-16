@@ -123,6 +123,7 @@ function CurrentAttempt({
   const [branchStatusLoading, setBranchStatusLoading] = useState(false);
   const [showRebaseDialog, setShowRebaseDialog] = useState(false);
   const [selectedRebaseBranch, setSelectedRebaseBranch] = useState<string>('');
+  const [showStopConfirmation, setShowStopConfirmation] = useState(false);
 
   const processedDevServerLogs = useMemo(() => {
     if (!devServerDetails) return 'No output yet...';
@@ -236,8 +237,14 @@ function CurrentAttempt({
   ]);
 
   useKeyboardShortcuts({
-    stopExecution: stopAllExecutions,
+    stopExecution: () => setShowStopConfirmation(true),
     newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => {},
+    hasOpenDialog: showStopConfirmation,
+    closeDialog: () => setShowStopConfirmation(false),
+    onEnter: () => {
+      setShowStopConfirmation(false);
+      stopAllExecutions();
+    },
   });
 
   const handleAttemptChange = useCallback(
@@ -711,6 +718,41 @@ function CurrentAttempt({
               disabled={rebasing || !selectedRebaseBranch}
             >
               {rebasing ? 'Rebasing...' : 'Rebase'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stop Execution Confirmation Dialog */}
+      <Dialog
+        open={showStopConfirmation}
+        onOpenChange={setShowStopConfirmation}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Stop Current Attempt?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to stop the current execution? This action
+              cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowStopConfirmation(false)}
+              disabled={isStopping}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                setShowStopConfirmation(false);
+                await stopAllExecutions();
+              }}
+              disabled={isStopping}
+            >
+              {isStopping ? 'Stopping...' : 'Stop'}
             </Button>
           </DialogFooter>
         </DialogContent>
