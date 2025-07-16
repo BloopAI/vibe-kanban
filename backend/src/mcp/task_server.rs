@@ -1,8 +1,11 @@
+use std::future::Future;
+
 use rmcp::{
+    handler::server::tool::{Parameters, ToolRouter},
     model::{
         CallToolResult, Content, Implementation, ProtocolVersion, ServerCapabilities, ServerInfo,
     },
-    schemars, tool, Error as RmcpError, ServerHandler,
+    schemars, tool, tool_handler, tool_router, Error as RmcpError, ServerHandler,
 };
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -22,11 +25,6 @@ pub struct CreateTaskRequest {
     pub title: String,
     #[schemars(description = "Optional description of the task")]
     pub description: Option<String>,
-}
-
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct ListProjectsRequest {
-    // Empty for now, but we can add filtering options later
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -196,27 +194,31 @@ pub struct GetTaskResponse {
 #[derive(Debug, Clone)]
 pub struct TaskServer {
     pub pool: SqlitePool,
+    tool_router: ToolRouter<TaskServer>,
 }
 
 impl TaskServer {
     #[allow(dead_code)]
     pub fn new(pool: SqlitePool) -> Self {
-        Self { pool }
+        Self {
+            pool,
+            tool_router: Self::tool_router(),
+        }
     }
 }
 
-#[tool(tool_box)]
+#[tool_router]
 impl TaskServer {
     #[tool(
         description = "Create a new task/ticket in a project. Always pass the `project_id` of the project you want to create the task in - it is required!"
     )]
     async fn create_task(
         &self,
-        #[tool(aggr)] CreateTaskRequest {
+        Parameters(CreateTaskRequest {
             project_id,
             title,
             description,
-        }: CreateTaskRequest,
+        }): Parameters<CreateTaskRequest>,
     ) -> Result<CallToolResult, RmcpError> {
         // Parse project_id from string to UUID
         let project_uuid = match Uuid::parse_str(&project_id) {
@@ -298,10 +300,7 @@ impl TaskServer {
     }
 
     #[tool(description = "List all the available projects")]
-    async fn list_projects(
-        &self,
-        #[tool(aggr)] _request: ListProjectsRequest,
-    ) -> Result<CallToolResult, RmcpError> {
+    async fn list_projects(&self) -> Result<CallToolResult, RmcpError> {
         match Project::find_all(&self.pool).await {
             Ok(projects) => {
                 let count = projects.len();
@@ -352,11 +351,11 @@ impl TaskServer {
     )]
     async fn list_tasks(
         &self,
-        #[tool(aggr)] ListTasksRequest {
+        Parameters(ListTasksRequest {
             project_id,
             status,
             limit,
-        }: ListTasksRequest,
+        }): Parameters<ListTasksRequest>,
     ) -> Result<CallToolResult, RmcpError> {
         let project_uuid = match Uuid::parse_str(&project_id) {
             Ok(uuid) => uuid,
@@ -491,13 +490,13 @@ impl TaskServer {
     )]
     async fn update_task(
         &self,
-        #[tool(aggr)] UpdateTaskRequest {
+        Parameters(UpdateTaskRequest {
             project_id,
             task_id,
             title,
             description,
             status,
-        }: UpdateTaskRequest,
+        }): Parameters<UpdateTaskRequest>,
     ) -> Result<CallToolResult, RmcpError> {
         let project_uuid = match Uuid::parse_str(&project_id) {
             Ok(uuid) => uuid,
@@ -626,10 +625,10 @@ impl TaskServer {
     )]
     async fn delete_task(
         &self,
-        #[tool(aggr)] DeleteTaskRequest {
+        Parameters(DeleteTaskRequest {
             project_id,
             task_id,
-        }: DeleteTaskRequest,
+        }): Parameters<DeleteTaskRequest>,
     ) -> Result<CallToolResult, RmcpError> {
         let project_uuid = match Uuid::parse_str(&project_id) {
             Ok(uuid) => uuid,
@@ -720,10 +719,10 @@ impl TaskServer {
     )]
     async fn get_task(
         &self,
-        #[tool(aggr)] GetTaskRequest {
+        Parameters(GetTaskRequest {
             project_id,
             task_id,
-        }: GetTaskRequest,
+        }): Parameters<GetTaskRequest>,
     ) -> Result<CallToolResult, RmcpError> {
         let project_uuid = match Uuid::parse_str(&project_id) {
             Ok(uuid) => uuid,
@@ -802,11 +801,11 @@ impl TaskServer {
     }
 }
 
-#[tool(tool_box)]
+#[tool_handler]
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
-            protocol_version: ProtocolVersion::V_2024_11_05,
+            protocol_version: ProtocolVersion::V_2025_03_26,
             capabilities: ServerCapabilities::builder()
                 .enable_tools()
                 .build(),
