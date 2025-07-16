@@ -124,57 +124,57 @@ export type ActionType = { "action": "file_read", path: string, } | { "action": 
 
 // Generated constants
 export const EXECUTOR_TYPES: string[] = [
-  "echo",
-  "claude",
-  "amp",
-  "gemini",
-  "charmopencode",
-  "claude-code-router"
+    "echo",
+    "claude",
+    "amp",
+    "gemini",
+    "charmopencode",
+    "claude-code-router"
 ];
 
 export const EDITOR_TYPES: EditorType[] = [
-  "vscode",
-  "cursor",
-  "windsurf",
-  "intellij",
-  "zed",
-  "custom"
+    "vscode",
+    "cursor", 
+    "windsurf",
+    "intellij",
+    "zed",
+    "custom"
 ];
 
 export const EXECUTOR_LABELS: Record<string, string> = {
-  "echo": "Echo (Test Mode)",
-  "claude": "Claude",
-  "amp": "Amp",
-  "gemini": "Gemini",
-  "charmopencode": "Charm Opencode",
-  "claude-code-router": "Claude Code Router"
+    "echo": "Echo (Test Mode)",
+    "claude": "Claude",
+    "amp": "Amp",
+    "gemini": "Gemini",
+    "charmopencode": "Charm Opencode",
+    "claude-code-router": "Claude Code Router"
 };
 
 export const EDITOR_LABELS: Record<string, string> = {
-  "vscode": "VS Code",
-  "cursor": "Cursor",
-  "windsurf": "Windsurf",
-  "intellij": "IntelliJ IDEA",
-  "zed": "Zed",
-  "custom": "Custom"
+    "vscode": "VS Code",
+    "cursor": "Cursor",
+    "windsurf": "Windsurf",
+    "intellij": "IntelliJ IDEA",
+    "zed": "Zed",
+    "custom": "Custom"
 };
 
 export const SOUND_FILES: SoundFile[] = [
-  "abstract-sound1",
-  "abstract-sound2",
-  "abstract-sound3",
-  "abstract-sound4",
-  "cow-mooing",
-  "phone-vibration",
-  "rooster"
+    "abstract-sound1",
+    "abstract-sound2",
+    "abstract-sound3",
+    "abstract-sound4",
+    "cow-mooing",
+    "phone-vibration",
+    "rooster"
 ];
 
 export const SOUND_LABELS: Record<string, string> = {
-  "abstract-sound1": "Gentle Chime",
-  "abstract-sound2": "Soft Bell",
-  "abstract-sound3": "Digital Tone",
-  "abstract-sound4": "Subtle Alert",
-  "cow-mooing": "Cow Mooing",
-  "phone-vibration": "Phone Vibration",
-  "rooster": "Rooster Call"
+    "abstract-sound1": "Gentle Chime",
+    "abstract-sound2": "Soft Bell",
+    "abstract-sound3": "Digital Tone",
+    "abstract-sound4": "Subtle Alert",
+    "cow-mooing": "Cow Mooing",
+    "phone-vibration": "Phone Vibration",
+    "rooster": "Rooster Call"
 };
