@@ -51,7 +51,6 @@ import {
 import type {
   BranchStatus,
   ExecutionProcess,
-  ExecutionProcessSummary,
   GitBranch,
   TaskAttempt,
 } from 'shared/types.ts';
@@ -161,7 +160,7 @@ function CurrentAttempt({
 
   // Check if plan approval is needed
   const isPlanTask = useMemo(() => {
-    return (
+    return !!(
       selectedAttempt.executor &&
       is_planning_executor_type(selectedAttempt.executor)
     );
