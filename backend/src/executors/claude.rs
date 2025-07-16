@@ -444,9 +444,7 @@ impl ClaudeExecutor {
             ActionType::Search { query } => format!("`{}`", query),
             ActionType::WebFetch { url } => format!("`{}`", url),
             ActionType::TaskCreate { description } => description.clone(),
-            ActionType::PlanPresentation { plan } => {
-                format!("Plan: {}", plan.lines().next().unwrap_or("")).to_string()
-            }
+            ActionType::PlanPresentation { plan } => plan.clone(),
             ActionType::Other { description: _ } => {
                 // For other tools, try to extract key information or fall back to tool name
                 match tool_name.to_lowercase().as_str() {
