@@ -46,6 +46,164 @@ pub struct FollowUpResponse {
     pub created_new_attempt: bool,
 }
 
+#[derive(Debug, Serialize)]
+pub struct ProcessLogsResponse {
+    pub id: uuid::Uuid,
+    pub process_type: crate::models::execution_process::ExecutionProcessType,
+    pub command: String,
+    pub executor_type: Option<String>,
+    pub status: crate::models::execution_process::ExecutionProcessStatus,
+    pub normalized_conversation: NormalizedConversation,
+}
+
+// Helper to normalize logs for a process (extracted from get_execution_process_normalized_logs)
+async fn normalize_process_logs(
+    db_pool: &sqlx::SqlitePool,
+    process: &crate::models::execution_process::ExecutionProcess,
+) -> NormalizedConversation {
+    use crate::models::executor_session::ExecutorSession;
+    use crate::models::execution_process::ExecutionProcessType;
+    let executor_session = ExecutorSession::find_by_execution_process_id(db_pool, process.id)
+        .await
+        .ok()
+        .flatten();
+
+    let has_stdout = process.stdout.as_ref().map(|s| !s.trim().is_empty()).unwrap_or(false);
+    let has_stderr = process.stderr.as_ref().map(|s| !s.trim().is_empty()).unwrap_or(false);
+
+    if !has_stdout && !has_stderr {
+        return NormalizedConversation {
+            entries: vec![],
+            session_id: None,
+            executor_type: process.executor_type.clone().unwrap_or("unknown".to_string()),
+            prompt: executor_session.as_ref().and_then(|s| s.prompt.clone()),
+            summary: executor_session.as_ref().and_then(|s| s.summary.clone()),
+        };
+    }
+
+    // Parse stdout as JSONL using executor normalization
+    let mut stdout_entries = Vec::new();
+    if let Some(stdout) = &process.stdout {
+        if !stdout.trim().is_empty() {
+            let executor_type = process.executor_type.as_deref().unwrap_or("unknown");
+            let executor_config = if process.process_type == ExecutionProcessType::SetupScript {
+                ExecutorConfig::SetupScript {
+                    script: executor_session
+                        .as_ref()
+                        .and_then(|s| s.prompt.clone())
+                        .unwrap_or_else(|| "setup script".to_string()),
+                }
+            } else {
+                match executor_type.to_string().parse() {
+                    Ok(config) => config,
+                    Err(_) => {
+                        return NormalizedConversation {
+                            entries: vec![],
+                            session_id: None,
+                            executor_type: executor_type.to_string(),
+                            prompt: executor_session.as_ref().and_then(|s| s.prompt.clone()),
+                            summary: executor_session.as_ref().and_then(|s| s.summary.clone()),
+                        };
+                    }
+                }
+            };
+            let executor = executor_config.create_executor();
+            let working_dir_path = match std::fs::canonicalize(&process.working_directory) {
+                Ok(canonical_path) => canonical_path.to_string_lossy().to_string(),
+                Err(_) => process.working_directory.clone(),
+            };
+            if let Ok(normalized) = executor.normalize_logs(stdout, &working_dir_path) {
+                stdout_entries = normalized.entries;
+            }
+        }
+    }
+    // Parse stderr chunks separated by boundary markers
+    let mut stderr_entries = Vec::new();
+    if let Some(stderr) = &process.stderr {
+        let trimmed = stderr.trim();
+        if !trimmed.is_empty() {
+            let chunks: Vec<&str> = trimmed.split("---STDERR_CHUNK_BOUNDARY---").collect();
+            for chunk in chunks {
+                let chunk_trimmed = chunk.trim();
+                if !chunk_trimmed.is_empty() {
+                    let filtered_content = chunk_trimmed.replace("---STDERR_CHUNK_BOUNDARY---", "");
+                    if !filtered_content.trim().is_empty() {
+                        stderr_entries.push(NormalizedEntry {
+                            timestamp: Some(chrono::Utc::now().to_rfc3339()),
+                            entry_type: NormalizedEntryType::ErrorMessage,
+                            content: filtered_content.trim().to_string(),
+                            metadata: None,
+                        });
+                    }
+                }
+            }
+        }
+    }
+    let mut all_entries = Vec::new();
+    all_entries.extend(stdout_entries);
+    all_entries.extend(stderr_entries);
+    all_entries.sort_by(|a, b| match (&a.timestamp, &b.timestamp) {
+        (Some(a_ts), Some(b_ts)) => a_ts.cmp(b_ts),
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (None, None) => std::cmp::Ordering::Equal,
+    });
+    let executor_type = if process.process_type == ExecutionProcessType::SetupScript {
+        "setup-script".to_string()
+    } else {
+        process.executor_type.clone().unwrap_or("unknown".to_string())
+    };
+    NormalizedConversation {
+        entries: all_entries,
+        session_id: None,
+        executor_type,
+        prompt: executor_session.as_ref().and_then(|s| s.prompt.clone()),
+        summary: executor_session.as_ref().and_then(|s| s.summary.clone()),
+    }
+}
+
+/// New endpoint: Get all normalized logs for all execution processes of a task attempt
+pub async fn get_task_attempt_all_logs(
+    axum::extract::Path((project_id, task_id, attempt_id)): axum::extract::Path<(uuid::Uuid, uuid::Uuid, uuid::Uuid)>,
+    axum::extract::State(app_state): axum::extract::State<crate::app_state::AppState>,
+) -> Result<axum::response::Json<crate::models::ApiResponse<Vec<ProcessLogsResponse>>>, axum::http::StatusCode> {
+    // Validate attempt belongs to task and project
+    let _ctx = match crate::models::task_attempt::TaskAttempt::load_context(
+        &app_state.db_pool,
+        attempt_id,
+        task_id,
+        project_id,
+    )
+    .await
+    {
+        Ok(ctx) => ctx,
+        Err(_) => return Err(axum::http::StatusCode::NOT_FOUND),
+    };
+    // Fetch all execution processes for this attempt
+    let processes = match crate::models::execution_process::ExecutionProcess::find_by_task_attempt_id(&app_state.db_pool, attempt_id).await {
+        Ok(list) => list,
+        Err(_) => return Err(axum::http::StatusCode::INTERNAL_SERVER_ERROR),
+    };
+    // For each process, normalize logs
+    let mut result = Vec::new();
+    for process in processes {
+        let normalized_conversation = normalize_process_logs(&app_state.db_pool, &process).await;
+        result.push(ProcessLogsResponse {
+            id: process.id,
+            process_type: process.process_type.clone(),
+            command: process.command.clone(),
+            executor_type: process.executor_type.clone(),
+            status: process.status.clone(),
+            normalized_conversation,
+        });
+    }
+    Ok(axum::response::Json(crate::models::ApiResponse {
+        success: true,
+        data: Some(result),
+        message: None,
+    }))
+}
+
 pub async fn get_task_attempts(
     Path((project_id, task_id)): Path<(Uuid, Uuid)>,
     State(app_state): State<AppState>,
@@ -1458,6 +1616,10 @@ pub fn task_attempts_router() -> Router<AppState> {
         .route(
             "/projects/:project_id/execution-processes/:process_id/normalized-logs",
             get(get_execution_process_normalized_logs),
+        )
+        .route(
+            "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/logs",
+            axum::routing::get(get_task_attempt_all_logs),
         )
         .route(
             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/follow-up",

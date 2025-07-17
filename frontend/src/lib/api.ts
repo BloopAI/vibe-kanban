@@ -471,6 +471,17 @@ export const attemptsApi = {
     const response = await makeRequest(`/api/attempts/${attemptId}/details`);
     return handleApiResponse<TaskAttempt>(response);
   },
+
+  getAllLogs: async (
+    projectId: string,
+    taskId: string,
+    attemptId: string
+  ) => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/logs`
+    );
+    return handleApiResponse(response);
+  },
 };
 
 // Execution Process APIs

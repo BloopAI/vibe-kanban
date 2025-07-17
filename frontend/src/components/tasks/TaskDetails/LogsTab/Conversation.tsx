@@ -9,6 +9,10 @@ import {
 } from 'react';
 import { TaskAttemptDataContext } from '@/components/context/taskDetailsContext.ts';
 import { Loader } from '@/components/ui/loader.tsx';
+import useNormalizedConversation from '@/hooks/useNormalizedConversation';
+import MarkdownRenderer from '@/components/ui/markdown-renderer';
+import { Hammer } from 'lucide-react';
+import DisplayConversationEntry from '../DisplayConversationEntry';
 
 function Conversation() {
   const { attemptData } = useContext(TaskAttemptDataContext);
@@ -27,7 +31,11 @@ function Conversation() {
       scrollContainerRef.current.scrollTop =
         scrollContainerRef.current.scrollHeight;
     }
-  }, [attemptData.processes, conversationUpdateTrigger, shouldAutoScrollLogs]);
+  }, [
+    attemptData.allLogs,
+    conversationUpdateTrigger,
+    shouldAutoScrollLogs,
+  ]);
 
   const handleLogsScroll = useCallback(() => {
     if (scrollContainerRef.current) {
@@ -43,57 +51,69 @@ function Conversation() {
     }
   }, [shouldAutoScrollLogs]);
 
-  const mainCodingAgentProcess = useMemo(() => {
-    let mainCAProcess = Object.values(attemptData.runningProcessDetails).find(
-      (process) =>
-        process.process_type === 'codingagent' && process.command === 'executor'
-    );
+  // Find main and follow-up processes from allLogs
+  const mainCodingAgentLog = attemptData.allLogs.find(
+    (log) =>
+      log.process_type.toLowerCase() === 'codingagent' &&
+      log.command === 'executor'
+  );
+  const followUpLogs = attemptData.allLogs.filter(
+    (log) =>
+      log.process_type.toLowerCase() === 'codingagent' &&
+      log.command === 'followup_executor'
+  );
 
-    if (!mainCAProcess) {
-      const mainCodingAgentSummary = attemptData.processes.find(
-        (process) =>
-          process.process_type === 'codingagent' &&
-          process.command === 'executor'
-      );
-
-      if (mainCodingAgentSummary) {
-        mainCAProcess = Object.values(attemptData.runningProcessDetails).find(
-          (process) => process.id === mainCodingAgentSummary.id
-        );
-
-        if (!mainCAProcess) {
-          mainCAProcess = {
-            ...mainCodingAgentSummary,
-            stdout: null,
-            stderr: null,
-          } as any;
-        }
-      }
-    }
-    return mainCAProcess;
-  }, [attemptData.processes, attemptData.runningProcessDetails]);
-
-  const followUpProcesses = useMemo(() => {
-    return attemptData.processes
-      .filter(
-        (process) =>
-          process.process_type === 'codingagent' &&
-          process.command === 'followup_executor'
-      )
-      .map((summary) => {
-        const detailedProcess = Object.values(
-          attemptData.runningProcessDetails
-        ).find((process) => process.id === summary.id);
+  // Helper to render a process log (hybrid: SSE for running, static for completed)
+  const renderProcessLog = (log: typeof mainCodingAgentLog | typeof followUpLogs[number]) => {
+    if (!log) return null;
+    if (log.status === 'running') {
+      // Find the full ExecutionProcess for this id (from runningProcessDetails)
+      const runningProcess = attemptData.runningProcessDetails[log.id];
+      if (runningProcess) {
         return (
-          detailedProcess ||
-          ({
-            ...summary,
-            stdout: null,
-            stderr: null,
-          } as any)
+          <NormalizedConversationViewer
+            key={log.id}
+            executionProcess={runningProcess}
+            onConversationUpdate={handleConversationUpdate}
+            diffDeletable
+          />
         );
-      });
-  }, [attemptData.processes, attemptData.runningProcessDetails]);
+      }
+      // Fallback: show loading if not found
+      return <Loader message="Loading live logs..." size={24} className="py-4" />;
+    } else {
+      // Static log rendering (as before)
+      return (
+        <div key={log.id}>
+          {log.normalized_conversation.prompt && (
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 mt-1">
+                <Hammer className="h-4 w-4 text-blue-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm whitespace-pre-wrap text-foreground">
+                  <MarkdownRenderer
+                    content={log.normalized_conversation.prompt}
+                    className="whitespace-pre-wrap break-words"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="space-y-2">
+            {log.normalized_conversation.entries.map((entry, index) => (
+              <DisplayConversationEntry
+                key={entry.timestamp || index}
+                entry={entry}
+                index={index}
+                diffDeletable
+              />
+            ))}
+          </div>
+        </div>
+      );
+    }
+  };
 
   return (
     <div
@@ -101,25 +121,13 @@ function Conversation() {
       onScroll={handleLogsScroll}
       className="h-full overflow-y-auto"
     >
-      {mainCodingAgentProcess || followUpProcesses.length > 0 ? (
+      {mainCodingAgentLog || followUpLogs.length > 0 ? (
         <div className="space-y-8">
-          {mainCodingAgentProcess && (
-            <div className="space-y-6">
-              <NormalizedConversationViewer
-                executionProcess={mainCodingAgentProcess}
-                onConversationUpdate={handleConversationUpdate}
-                diffDeletable
-              />
-            </div>
-          )}
-          {followUpProcesses.map((followUpProcess) => (
-            <div key={followUpProcess.id}>
+          {mainCodingAgentLog && renderProcessLog(mainCodingAgentLog)}
+          {followUpLogs.map((log) => (
+            <div key={log.id}>
               <div className="border-t border-border mb-8"></div>
-              <NormalizedConversationViewer
-                executionProcess={followUpProcess}
-                onConversationUpdate={handleConversationUpdate}
-                diffDeletable
-              />
+              {renderProcessLog(log)}
             </div>
           ))}
         </div>

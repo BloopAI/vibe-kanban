@@ -32,7 +32,7 @@ import {
   TaskRelatedTasksContext,
   TaskSelectedAttemptContext,
 } from './taskDetailsContext.ts';
-import { AttemptData } from '@/lib/types.ts';
+import type { AttemptData } from '@/lib/types.ts';
 
 const TaskDetailsProvider: FC<{
   task: TaskWithAttemptStatus;
@@ -81,6 +81,7 @@ const TaskDetailsProvider: FC<{
   const [attemptData, setAttemptData] = useState<AttemptData>({
     processes: [],
     runningProcessDetails: {},
+    allLogs: [], // new field for all logs
   });
 
   const diffLoadingRef = useRef(false);
@@ -233,13 +234,12 @@ const TaskDetailsProvider: FC<{
       if (!task) return;
 
       try {
-        const processesResult = await attemptsApi.getExecutionProcesses(
-          projectId,
-          taskId,
-          attemptId
-        );
+        const [processesResult, allLogsResult] = await Promise.all([
+          attemptsApi.getExecutionProcesses(projectId, taskId, attemptId),
+          attemptsApi.getAllLogs(projectId, taskId, attemptId),
+        ]);
 
-        if (processesResult !== undefined) {
+        if (processesResult !== undefined && allLogsResult !== undefined) {
           const runningProcesses = processesResult.filter(
             (process) => process.status === 'running'
           );
@@ -277,6 +277,7 @@ const TaskDetailsProvider: FC<{
             const newData = {
               processes: processesResult,
               runningProcessDetails,
+              allLogs: allLogsResult,
             };
             if (JSON.stringify(prev) === JSON.stringify(newData)) return prev;
             return newData;
