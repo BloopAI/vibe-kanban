@@ -12,7 +12,9 @@ export const Loader: React.FC<LoaderProps> = ({
   size = 32,
   className = '',
 }) => (
-  <div className={`flex flex-col items-center justify-center gap-2 ${className}`}>
+  <div
+    className={`flex flex-col items-center justify-center gap-2 ${className}`}
+  >
     <Loader2
       className="animate-spin text-muted-foreground"
       style={{ width: size, height: size }}
