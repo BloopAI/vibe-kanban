@@ -6,11 +6,11 @@
   "build": {
     "beforeBuildCommand": "npm run frontend:build",
     "beforeDevCommand": "",
-    "devUrl": "http://localhost:3001",
+    "devUrl": "http://localhost:3004",
     "frontendDist": "../frontend/dist"
   },
   "app": {
-    "withGlobalTauri": false,
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "Vibe Kanban",

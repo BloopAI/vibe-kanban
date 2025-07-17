@@ -4,11 +4,66 @@ import { invoke } from '@tauri-apps/api/core';
 declare global {
   interface Window {
     __TAURI__?: unknown;
+    __TAURI_INVOKE__?: unknown;
+    __TAURI_PLUGIN_SHELL__?: unknown;
   }
 }
 
+// State to track if we're definitively in a desktop environment
+let desktopDetected = false;
+let desktopChecked = false;
+
 export const isDesktop = (): boolean => {
-  return typeof window !== 'undefined' && window.__TAURI__ !== undefined;
+  // If we've already definitively detected desktop, return it
+  if (desktopChecked && desktopDetected) {
+    return true;
+  }
+  
+  // Check multiple indicators for Tauri environment
+  const hasWindow = typeof window !== 'undefined';
+  const hasTauri = hasWindow && window.__TAURI__ !== undefined;
+  const isTauriEnv = hasWindow && (
+    window.__TAURI__ !== undefined ||
+    // Check for Tauri specific globals
+    window.__TAURI_INVOKE__ !== undefined ||
+    // Check user agent or other indicators
+    navigator.userAgent.includes('Tauri') ||
+    // Check if we're in a Tauri context by looking for specific APIs
+    typeof window.__TAURI_PLUGIN_SHELL__ !== 'undefined' ||
+    // Final fallback - check if we're not in a typical browser environment
+    (hasWindow && window.location.protocol === 'tauri:')
+  );
+  
+  // Try to test if Tauri invoke is available
+  let canInvoke = false;
+  try {
+    if (hasWindow && typeof invoke === 'function') {
+      canInvoke = true;
+    }
+  } catch (e) {
+    // Ignore errors
+  }
+  
+  const result = isTauriEnv || canInvoke;
+  
+  // Debug logging (remove in production)
+  if (import.meta.env.DEV) {
+    console.log('🖥️  Desktop detection:', { 
+      hasWindow, 
+      hasTauri,
+      canInvoke,
+      tauriValue: hasWindow ? (window.__TAURI__ ? 'present' : 'missing') : 'no window',
+      result: result ? '✅ DESKTOP' : '❌ WEB'
+    });
+  }
+  
+  // Cache positive results
+  if (result) {
+    desktopDetected = true;
+    desktopChecked = true;
+  }
+  
+  return result;
 };
 
 export const desktopAPI = {

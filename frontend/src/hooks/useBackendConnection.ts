@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { isDesktop } from '@/lib/desktop-api';
 
 export interface BackendConnectionStatus {
   isConnected: boolean;
@@ -9,8 +10,8 @@ export interface BackendConnectionStatus {
 
 export const useBackendConnection = () => {
   const [status, setStatus] = useState<BackendConnectionStatus>({
-    isConnected: false,
-    isLoading: true,
+    isConnected: !isDesktop(), // Start as connected for web, disconnected for desktop
+    isLoading: isDesktop(),    // Only show loading for desktop
     error: null,
     lastChecked: null
   });
@@ -20,6 +21,10 @@ export const useBackendConnection = () => {
       setStatus(prev => ({ ...prev, isLoading: true, error: null }));
       
       const backendPort = import.meta.env.VITE_BACKEND_PORT || '3002';
+      if (import.meta.env.DEV) {
+        console.log('🔍 Backend connection check - using port:', backendPort);
+      }
+      
       const response = await fetch(`http://localhost:${backendPort}/api/health`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
@@ -47,6 +52,17 @@ export const useBackendConnection = () => {
   };
 
   useEffect(() => {
+    // Only run backend connection checks for desktop
+    if (!isDesktop()) {
+      setStatus({
+        isConnected: true,
+        isLoading: false,
+        error: null,
+        lastChecked: new Date()
+      });
+      return;
+    }
+    
     checkConnection();
     
     const interval = setInterval(checkConnection, 2000);

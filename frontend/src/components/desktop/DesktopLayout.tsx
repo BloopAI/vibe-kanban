@@ -4,7 +4,7 @@ import { DesktopSidebar, DesktopSidebarItem, DesktopSidebarSection } from './Des
 import { DesktopCard } from './DesktopCard';
 import { DesktopButton } from './DesktopButton';
 import { DesktopInput } from './DesktopInput';
-import { isDesktop } from '@/lib/desktop-api';
+import { useDesktopDetection } from '@/hooks/useDesktopDetection';
 
 interface DesktopLayoutProps {
   children: React.ReactNode;
@@ -13,8 +13,14 @@ interface DesktopLayoutProps {
 export const DesktopLayout: React.FC<DesktopLayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isDesktopEnv } = useDesktopDetection();
   
-  if (!isDesktop()) {
+  // Debug logging (development only)
+  if (import.meta.env.DEV) {
+    console.log('🎨 DesktopLayout render - isDesktopEnv:', isDesktopEnv);
+  }
+  
+  if (!isDesktopEnv) {
     return <>{children}</>;
   }
   

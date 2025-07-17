@@ -22,6 +22,7 @@ import { useBackendConnection } from '@/hooks/useBackendConnection';
 import { LoadingScreen } from '@/components/desktop/LoadingScreen';
 import { DesktopLayout } from '@/components/desktop/DesktopLayout';
 import { useDesktopShortcuts } from '@/hooks/useDesktopShortcuts';
+import { useDesktopDetection } from '@/hooks/useDesktopDetection';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
@@ -33,9 +34,16 @@ function AppContent() {
   const [showGitHubLogin, setShowGitHubLogin] = useState(false);
   const showNavbar = true;
   const { isConnected, isLoading, error, retry } = useBackendConnection();
+  const { isDesktopEnv, isReady } = useDesktopDetection();
   
   // Initialize desktop shortcuts
   useDesktopShortcuts();
+  
+  // Debug logging (development only)
+  if (import.meta.env.DEV) {
+    console.log('🚀 App render - Desktop detection:', { isDesktopEnv, isReady });
+    console.log('🔗 App render - Backend connection:', { isConnected, isLoading, error });
+  }
 
   useEffect(() => {
     if (config) {
@@ -148,8 +156,8 @@ function AppContent() {
     );
   }
 
-  // Show loading screen if backend is not connected (desktop only)
-  if (isDesktop() && (!isConnected || isLoading)) {
+  // Show loading screen only for desktop with actual connection issues
+  if (isDesktopEnv && isReady && !isConnected && error) {
     return (
       <LoadingScreen 
         status={{ isConnected, isLoading, error, lastChecked: null }}
@@ -160,7 +168,7 @@ function AppContent() {
 
   return (
     <ThemeProvider initialTheme={config?.theme || 'system'}>
-      <div className={isDesktop() ? "h-screen bg-background" : "h-screen flex flex-col bg-background"}>
+      <div className={isDesktopEnv ? "h-screen bg-background" : "h-screen flex flex-col bg-background"}>
         <GitHubLoginDialog
           open={showGitHubLogin}
           onOpenChange={handleGitHubLoginComplete}
@@ -178,8 +186,8 @@ function AppContent() {
           onComplete={handlePrivacyOptInComplete}
         />
         <DesktopLayout>
-          {!isDesktop() && showNavbar && <Navbar />}
-          <div className={isDesktop() ? "h-full" : "flex-1 overflow-y-scroll"}>
+          {!isDesktopEnv && showNavbar && <Navbar />}
+          <div className={isDesktopEnv ? "h-full" : "flex-1 overflow-y-scroll"}>
             <SentryRoutes>
               <Route path="/" element={<Projects />} />
               <Route path="/projects" element={<Projects />} />
