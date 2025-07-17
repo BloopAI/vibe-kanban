@@ -587,14 +587,14 @@ function CurrentAttempt({
 
       <div className="col-span-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap">
-          <div
-            className={!projectHasDevScript ? 'cursor-not-allowed' : ''}
-            onMouseEnter={() => setIsHoveringDevServer(true)}
-            onMouseLeave={() => setIsHoveringDevServer(false)}
-          >
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className={!projectHasDevScript ? 'cursor-not-allowed' : ''}
+                  onMouseEnter={() => setIsHoveringDevServer(true)}
+                  onMouseLeave={() => setIsHoveringDevServer(false)}
+                >
                   <Button
                     variant={runningDevServer ? 'destructive' : 'outline'}
                     size="sm"
@@ -614,33 +614,33 @@ function CurrentAttempt({
                       </>
                     )}
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent
+                </div>
+              </TooltipTrigger>
+              <TooltipContent
                 className={runningDevServer ? 'max-w-2xl p-4' : ''}
                 side="top"
                 align="center"
                 avoidCollisions={true}
-                >
+              >
                 {!projectHasDevScript ? (
-                <p>Add a dev server script in project settings to enable this feature</p>
+                  <p>Add a dev server script in project settings to enable this feature</p>
                 ) : runningDevServer && devServerDetails ? (
-                <div className="space-y-2">
-                <p className="text-sm font-medium">
-                Dev Server Logs (Last 10 lines):
-                </p>
-                <pre className="text-xs bg-muted p-2 rounded max-h-64 overflow-y-auto whitespace-pre-wrap">
-                {processedDevServerLogs}
-                </pre>
-                </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">
+                      Dev Server Logs (Last 10 lines):
+                    </p>
+                    <pre className="text-xs bg-muted p-2 rounded max-h-64 overflow-y-auto whitespace-pre-wrap">
+                      {processedDevServerLogs}
+                    </pre>
+                  </div>
                 ) : runningDevServer ? (
-                <p>Stop the running dev server</p>
+                  <p>Stop the running dev server</p>
                 ) : (
-                <p>Start the dev server</p>
+                  <p>Start the dev server</p>
                 )}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
