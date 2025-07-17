@@ -229,14 +229,14 @@ fn main() -> anyhow::Result<()> {
                     cleaned.trim().parse::<u16>().ok()
                 })
                 .unwrap_or_else(|| {
-                    tracing::error!("Failed to parse port after stripping ANSI, defaulting to 0");
+                    tracing::info!("No PORT environment variable set, using port 0 for auto-assignment");
                     0
                 }); // Use 0 to find free port if no specific port provided
 
-            let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
+            let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;
             let actual_port = listener.local_addr()?.port(); // get → 53427 (example)
 
-            tracing::info!("Server running on http://0.0.0.0:{actual_port}");
+            tracing::info!("Server running on http://127.0.0.1:{actual_port}");
 
             if !cfg!(debug_assertions) {
                 tracing::info!("Opening browser...");
