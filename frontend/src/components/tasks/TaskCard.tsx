@@ -102,7 +102,7 @@ export function TaskCard({
               <CheckCircle className="h-3 w-3 text-green-500" />
             )}
             {/* Failed Indicator */}
-            {task.has_failed_attempt && !task.has_merged_attempt && (
+            {task.last_attempt_failed && !task.has_merged_attempt && (
               <XCircle className="h-3 w-3 text-red-500" />
             )}
             {/* Actions Menu */}

@@ -171,6 +171,21 @@ function Conversation() {
     allEntries,
   ]);
 
+  // Check if we should show the status banner - only if the most recent process failed/stopped
+  const getMostRecentProcess = () => {
+    if (followUpLogs.length > 0) {
+      // Sort by creation time or use last in array as most recent
+      return followUpLogs[followUpLogs.length - 1];
+    }
+    return mainCodingAgentLog;
+  };
+
+  const mostRecentProcess = getMostRecentProcess();
+  const showStatusBanner =
+    mostRecentProcess &&
+    (mostRecentProcess.status === 'failed' ||
+      mostRecentProcess.status === 'killed');
+
   return (
     <div
       ref={scrollContainerRef}
@@ -208,6 +223,28 @@ function Conversation() {
           size={48}
           className="py-8"
         />
+      )}
+
+      {/* Status banner for failed/stopped states - shown at bottom */}
+      {showStatusBanner && mostRecentProcess && (
+        <div className="mt-4 p-4 rounded-lg border">
+          <p
+            className={`text-lg font-semibold mb-2 ${
+              mostRecentProcess.status === 'failed'
+                ? 'text-destructive'
+                : 'text-orange-600'
+            }`}
+          >
+            {mostRecentProcess.status === 'failed'
+              ? 'Coding Agent Failed'
+              : 'Coding Agent Stopped'}
+          </p>
+          <p className="text-muted-foreground">
+            {mostRecentProcess.status === 'failed'
+              ? 'The coding agent encountered an error.'
+              : 'The coding agent was stopped.'}
+          </p>
+        </div>
       )}
     </div>
   );

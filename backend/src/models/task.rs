@@ -42,7 +42,7 @@ pub struct TaskWithAttemptStatus {
     pub updated_at: DateTime<Utc>,
     pub has_in_progress_attempt: bool,
     pub has_merged_attempt: bool,
-    pub has_failed_attempt: bool,
+    pub last_attempt_failed: bool,
     pub latest_attempt_executor: Option<String>,
 }
 
@@ -100,7 +100,7 @@ impl Task {
             CASE 
               WHEN fa.task_id IS NOT NULL THEN true 
               ELSE false 
-            END                         AS "has_failed_attempt!: i64",
+            END                         AS "last_attempt_failed!: i64",
             latest_executor_attempts.executor AS "latest_attempt_executor"
         FROM tasks t
 
@@ -123,7 +123,7 @@ impl Task {
         ) ma 
           ON t.id = ma.task_id
 
-        -- failed if latest attempt has a failed setupscript/codingagent
+        -- failed if latest execution process has a failed setupscript/codingagent
         LEFT JOIN (
             SELECT sub.task_id
             FROM (
@@ -133,7 +133,7 @@ impl Task {
                   ep.process_type,
                   ROW_NUMBER() OVER (
                     PARTITION BY ta.task_id 
-                    ORDER BY ta.created_at DESC
+                    ORDER BY ep.created_at DESC
                   ) AS rn
                 FROM task_attempts ta
                 JOIN execution_processes ep 
@@ -178,7 +178,7 @@ impl Task {
                 updated_at: rec.updated_at,
                 has_in_progress_attempt: rec.has_in_progress_attempt != 0,
                 has_merged_attempt: rec.has_merged_attempt != 0,
-                has_failed_attempt: rec.has_failed_attempt != 0,
+                last_attempt_failed: rec.last_attempt_failed != 0,
                 latest_attempt_executor: rec.latest_attempt_executor,
             })
             .collect();
