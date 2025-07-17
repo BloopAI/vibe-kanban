@@ -2,17 +2,8 @@ import {
   DiffChunkType,
   ExecutionProcess,
   ExecutionProcessSummary,
+  ProcessLogsResponse,
 } from 'shared/types.ts';
-import type { NormalizedConversation } from 'shared/types.ts';
-
-export type ProcessLogsResponse = {
-  id: string;
-  process_type: string;
-  command: string;
-  executor_type?: string;
-  status: string;
-  normalized_conversation: NormalizedConversation;
-};
 
 export type AttemptData = {
   processes: ExecutionProcessSummary[];

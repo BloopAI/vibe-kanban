@@ -76,6 +76,8 @@ export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_pa
 
 export type DeviceStartResponse = { device_code: string, user_code: string, verification_uri: string, expires_in: number, interval: number, };
 
+export type ProcessLogsResponse = { id: string, process_type: ExecutionProcessType, command: string, executor_type: string | null, status: ExecutionProcessStatus, normalized_conversation: NormalizedConversation, };
+
 export type DiffChunkType = "Equal" | "Insert" | "Delete";
 
 export type DiffChunk = { chunk_type: DiffChunkType, content: string, };

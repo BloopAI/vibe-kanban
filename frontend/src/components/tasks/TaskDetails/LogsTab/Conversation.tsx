@@ -9,7 +9,6 @@ import {
 } from 'react';
 import { TaskAttemptDataContext } from '@/components/context/taskDetailsContext.ts';
 import { Loader } from '@/components/ui/loader.tsx';
-import useNormalizedConversation from '@/hooks/useNormalizedConversation';
 import MarkdownRenderer from '@/components/ui/markdown-renderer';
 import { Hammer } from 'lucide-react';
 import DisplayConversationEntry from '../DisplayConversationEntry';
@@ -33,11 +32,7 @@ function Conversation() {
       scrollContainerRef.current.scrollTop =
         scrollContainerRef.current.scrollHeight;
     }
-  }, [
-    attemptData.allLogs,
-    conversationUpdateTrigger,
-    shouldAutoScrollLogs,
-  ]);
+  }, [attemptData.allLogs, conversationUpdateTrigger, shouldAutoScrollLogs]);
 
   const handleLogsScroll = useCallback(() => {
     if (scrollContainerRef.current) {
@@ -66,7 +61,9 @@ function Conversation() {
   );
 
   // Combine all logs in order (main first, then follow-ups)
-  const allProcessLogs = ([mainCodingAgentLog, ...followUpLogs].filter(Boolean) as Array<NonNullable<typeof mainCodingAgentLog>>);
+  const allProcessLogs = [mainCodingAgentLog, ...followUpLogs].filter(
+    Boolean
+  ) as Array<NonNullable<typeof mainCodingAgentLog>>;
 
   // Flatten all entries, keeping process info for each entry
   const allEntries = useMemo(() => {
@@ -114,7 +111,9 @@ function Conversation() {
   }, [allProcessLogs, attemptData.runningProcessDetails]);
 
   // Identify running processes (main + follow-ups)
-  const runningProcessLogs = allProcessLogs.filter(log => log.status === 'running');
+  const runningProcessLogs = allProcessLogs.filter(
+    (log) => log.status === 'running'
+  );
 
   // Paginate: show only the last visibleCount entries
   const visibleEntries: typeof allEntries = allEntries.slice(-visibleCount);
@@ -128,7 +127,7 @@ function Conversation() {
   });
 
   // Helper to render a process log (hybrid: SSE for running, static for completed)
-  const renderEntry = (item: typeof allEntries[number], idx: number) => {
+  const renderEntry = (item: (typeof allEntries)[number], idx: number) => {
     // Only show the prompt if this is the very first entry of the process
     const showPrompt = item.isFirstInProcess && item.processPrompt;
     // For running processes, render the live viewer below the static entries
@@ -162,7 +161,9 @@ function Conversation() {
         );
       }
       // Fallback: show loading if not found
-      return <Loader message="Loading live logs..." size={24} className="py-4" />;
+      return (
+        <Loader message="Loading live logs..." size={24} className="py-4" />
+      );
     } else {
       return (
         <div key={item.entry.timestamp || idx}>
@@ -202,24 +203,26 @@ function Conversation() {
           <Button
             variant="outline"
             className="w-full"
-            onClick={() => setVisibleCount(c => Math.min(c + 100, allEntries.length))}
+            onClick={() =>
+              setVisibleCount((c) => Math.min(c + 100, allEntries.length))
+            }
           >
             Load previous logs
           </Button>
         </div>
       )}
       {visibleEntries.length > 0 && (
-        <div className="space-y-2">
-          {visibleEntries.map(renderEntry)}
-        </div>
+        <div className="space-y-2">{visibleEntries.map(renderEntry)}</div>
       )}
       {/* Render live viewers for running processes (after paginated list) */}
       {runningProcessLogs.map((log, i) => {
-        const runningProcess = attemptData.runningProcessDetails[String(log.id)];
+        const runningProcess =
+          attemptData.runningProcessDetails[String(log.id)];
         if (!runningProcess) return null;
         // Show prompt only if this is the first entry in the process (i.e., no completed entries for this process)
-        const showPrompt = log.normalized_conversation.prompt &&
-          (!allEntries.some(e => e.processId === String(log.id)));
+        const showPrompt =
+          log.normalized_conversation.prompt &&
+          !allEntries.some((e) => e.processId === String(log.id));
         return (
           <div key={String(log.id)} className={i > 0 ? 'mt-8' : ''}>
             {showPrompt && (

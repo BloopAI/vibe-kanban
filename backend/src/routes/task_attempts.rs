@@ -7,6 +7,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use crate::{
@@ -46,7 +47,8 @@ pub struct FollowUpResponse {
     pub created_new_attempt: bool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
 pub struct ProcessLogsResponse {
     pub id: uuid::Uuid,
     pub process_type: crate::models::execution_process::ExecutionProcessType,
@@ -61,21 +63,33 @@ async fn normalize_process_logs(
     db_pool: &sqlx::SqlitePool,
     process: &crate::models::execution_process::ExecutionProcess,
 ) -> NormalizedConversation {
-    use crate::models::executor_session::ExecutorSession;
-    use crate::models::execution_process::ExecutionProcessType;
+    use crate::models::{
+        execution_process::ExecutionProcessType, executor_session::ExecutorSession,
+    };
     let executor_session = ExecutorSession::find_by_execution_process_id(db_pool, process.id)
         .await
         .ok()
         .flatten();
 
-    let has_stdout = process.stdout.as_ref().map(|s| !s.trim().is_empty()).unwrap_or(false);
-    let has_stderr = process.stderr.as_ref().map(|s| !s.trim().is_empty()).unwrap_or(false);
+    let has_stdout = process
+        .stdout
+        .as_ref()
+        .map(|s| !s.trim().is_empty())
+        .unwrap_or(false);
+    let has_stderr = process
+        .stderr
+        .as_ref()
+        .map(|s| !s.trim().is_empty())
+        .unwrap_or(false);
 
     if !has_stdout && !has_stderr {
         return NormalizedConversation {
             entries: vec![],
             session_id: None,
-            executor_type: process.executor_type.clone().unwrap_or("unknown".to_string()),
+            executor_type: process
+                .executor_type
+                .clone()
+                .unwrap_or("unknown".to_string()),
             prompt: executor_session.as_ref().and_then(|s| s.prompt.clone()),
             summary: executor_session.as_ref().and_then(|s| s.summary.clone()),
         };
@@ -151,7 +165,10 @@ async fn normalize_process_logs(
     let executor_type = if process.process_type == ExecutionProcessType::SetupScript {
         "setup-script".to_string()
     } else {
-        process.executor_type.clone().unwrap_or("unknown".to_string())
+        process
+            .executor_type
+            .clone()
+            .unwrap_or("unknown".to_string())
     };
     NormalizedConversation {
         entries: all_entries,
@@ -164,9 +181,16 @@ async fn normalize_process_logs(
 
 /// New endpoint: Get all normalized logs for all execution processes of a task attempt
 pub async fn get_task_attempt_all_logs(
-    axum::extract::Path((project_id, task_id, attempt_id)): axum::extract::Path<(uuid::Uuid, uuid::Uuid, uuid::Uuid)>,
+    axum::extract::Path((project_id, task_id, attempt_id)): axum::extract::Path<(
+        uuid::Uuid,
+        uuid::Uuid,
+        uuid::Uuid,
+    )>,
     axum::extract::State(app_state): axum::extract::State<crate::app_state::AppState>,
-) -> Result<axum::response::Json<crate::models::ApiResponse<Vec<ProcessLogsResponse>>>, axum::http::StatusCode> {
+) -> Result<
+    axum::response::Json<crate::models::ApiResponse<Vec<ProcessLogsResponse>>>,
+    axum::http::StatusCode,
+> {
     // Validate attempt belongs to task and project
     let _ctx = match crate::models::task_attempt::TaskAttempt::load_context(
         &app_state.db_pool,
@@ -180,10 +204,16 @@ pub async fn get_task_attempt_all_logs(
         Err(_) => return Err(axum::http::StatusCode::NOT_FOUND),
     };
     // Fetch all execution processes for this attempt
-    let processes = match crate::models::execution_process::ExecutionProcess::find_by_task_attempt_id(&app_state.db_pool, attempt_id).await {
-        Ok(list) => list,
-        Err(_) => return Err(axum::http::StatusCode::INTERNAL_SERVER_ERROR),
-    };
+    let processes =
+        match crate::models::execution_process::ExecutionProcess::find_by_task_attempt_id(
+            &app_state.db_pool,
+            attempt_id,
+        )
+        .await
+        {
+            Ok(list) => list,
+            Err(_) => return Err(axum::http::StatusCode::INTERNAL_SERVER_ERROR),
+        };
     // For each process, normalize logs
     let mut result = Vec::new();
     for process in processes {

@@ -1,18 +1,29 @@
-import { TaskDetailsContext } from "@/components/context/taskDetailsContext";
-import { executionProcessesApi } from "@/lib/api";
-import { fetchEventSource } from "@microsoft/fetch-event-source";
-import { applyPatch } from "fast-json-patch";
-import { useContext, useCallback, useState, useRef, useEffect, useMemo } from "react";
-import { ExecutionProcess, NormalizedConversation, NormalizedEntry } from "shared/types";
+import { TaskDetailsContext } from '@/components/context/taskDetailsContext';
+import { executionProcessesApi } from '@/lib/api';
+import { fetchEventSource } from '@microsoft/fetch-event-source';
+import { applyPatch } from 'fast-json-patch';
+import {
+  useContext,
+  useCallback,
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+} from 'react';
+import {
+  ExecutionProcess,
+  NormalizedConversation,
+  NormalizedEntry,
+} from 'shared/types';
 
 const useNormalizedConversation = ({
-    executionProcess,
-    onConversationUpdate,
+  executionProcess,
+  onConversationUpdate,
 }: {
-    executionProcess?: ExecutionProcess;
-    onConversationUpdate?: () => void;
+  executionProcess?: ExecutionProcess;
+  onConversationUpdate?: () => void;
 }) => {
-    const { projectId } = useContext(TaskDetailsContext);
+  const { projectId } = useContext(TaskDetailsContext);
 
   // Development-only logging helper
   const debugLog = useCallback((message: string, ...args: any[]) => {
@@ -314,7 +325,7 @@ const useNormalizedConversation = ({
   // Process-based data fetching - fetch once from appropriate source
   useEffect(() => {
     if (!executionProcess?.id || !executionProcess?.status) {
-        return;
+      return;
     }
     const processId = executionProcess.id;
     const processStatus = executionProcess.status;
@@ -353,7 +364,7 @@ const useNormalizedConversation = ({
   // SSE connection management for running processes only
   useEffect(() => {
     if (!executionProcess?.id || !executionProcess?.status) {
-        return;
+      return;
     }
     const processId = executionProcess.id;
     const processStatus = executionProcess.status;
@@ -419,7 +430,7 @@ const useNormalizedConversation = ({
     conversation,
     loading,
     error,
-  }
-}
+  };
+};
 
 export default useNormalizedConversation;

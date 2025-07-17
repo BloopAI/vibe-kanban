@@ -26,6 +26,7 @@ import {
   UpdateTask,
   UpdateTaskTemplate,
   WorktreeDiff,
+  ProcessLogsResponse,
 } from 'shared/types';
 
 export const makeRequest = async (url: string, options: RequestInit = {}) => {
@@ -476,7 +477,7 @@ export const attemptsApi = {
     projectId: string,
     taskId: string,
     attemptId: string
-  ) => {
+  ): Promise<ProcessLogsResponse[]> => {
     const response = await makeRequest(
       `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/logs`
     );

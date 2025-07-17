@@ -1,24 +1,7 @@
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-  useMemo,
-  useRef,
-} from 'react';
 import { Hammer } from 'lucide-react';
 import { Loader } from '@/components/ui/loader.tsx';
-import { executionProcessesApi } from '@/lib/api.ts';
 import MarkdownRenderer from '@/components/ui/markdown-renderer.tsx';
-import { applyPatch } from 'fast-json-patch';
-import { fetchEventSource } from '@microsoft/fetch-event-source';
-import type {
-  ExecutionProcess,
-  NormalizedConversation,
-  NormalizedEntry,
-  WorktreeDiff,
-} from 'shared/types.ts';
-import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import type { ExecutionProcess, WorktreeDiff } from 'shared/types.ts';
 import DisplayConversationEntry from '@/components/tasks/TaskDetails/DisplayConversationEntry.tsx';
 import useNormalizedConversation from '@/hooks/useNormalizedConversation';
 
@@ -35,10 +18,11 @@ export function NormalizedConversationViewer({
   diffDeletable,
   onConversationUpdate,
 }: NormalizedConversationViewerProps) {
-  const {loading, error, conversation, displayEntries} = useNormalizedConversation({
-    executionProcess,
-    onConversationUpdate,
-  })
+  const { loading, error, conversation, displayEntries } =
+    useNormalizedConversation({
+      executionProcess,
+      onConversationUpdate,
+    });
 
   if (loading) {
     return (
