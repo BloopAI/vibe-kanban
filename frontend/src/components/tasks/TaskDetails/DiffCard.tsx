@@ -58,7 +58,7 @@ export function DiffCard({
           </div>
           {isBackgroundRefreshing && (
             <div className="flex items-center gap-1">
-              <Loader size={12} className="mr-1" message="Updating..." />
+              <Loader size={12} />
             </div>
           )}
         </div>
