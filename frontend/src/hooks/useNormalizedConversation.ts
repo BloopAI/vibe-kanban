@@ -1,14 +1,16 @@
-import { TaskDetailsContext } from '@/components/context/taskDetailsContext';
-import { executionProcessesApi } from '@/lib/api';
+import {
+  TaskAttemptDataContext,
+  TaskDetailsContext,
+} from '@/components/context/taskDetailsContext';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { applyPatch } from 'fast-json-patch';
 import {
-  useContext,
   useCallback,
-  useState,
-  useRef,
+  useContext,
   useEffect,
   useMemo,
+  useRef,
+  useState,
 } from 'react';
 import {
   ExecutionProcess,
@@ -24,6 +26,7 @@ const useNormalizedConversation = ({
   onConversationUpdate?: () => void;
 }) => {
   const { projectId } = useContext(TaskDetailsContext);
+  const { attemptData } = useContext(TaskAttemptDataContext);
 
   // Development-only logging helper
   const debugLog = useCallback((message: string, ...args: any[]) => {
@@ -290,56 +293,6 @@ const useNormalizedConversation = ({
     manager.onopenCalled = false;
   }, []);
 
-  const fetchNormalizedLogsOnce = useCallback(
-    async (processId: string) => {
-      // Only fetch if not already fetched for this process
-      if (fetchedProcesses.current.has(processId)) {
-        debugLog(`📋 DB: Already fetched ${processId}, skipping`);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setError(null);
-        debugLog(`📋 DB: Fetching logs for ${processId}`);
-
-        const result = await executionProcessesApi.getNormalizedLogs(
-          projectId,
-          processId
-        );
-
-        // Mark as fetched
-        fetchedProcesses.current.add(processId);
-
-        setConversation((prev) => {
-          // Only update if content actually changed - use lightweight comparison
-          if (
-            !prev ||
-            prev.entries.length !== result.entries.length ||
-            prev.prompt !== result.prompt
-          ) {
-            // Notify parent component of conversation update
-            if (onConversationUpdate) {
-              // Use setTimeout to ensure state update happens first
-              setTimeout(onConversationUpdate, 0);
-            }
-            return result;
-          }
-          return prev;
-        });
-      } catch (err) {
-        // Remove from fetched set on error to allow retry
-        fetchedProcesses.current.delete(processId);
-        setError(
-          `Error fetching logs: ${err instanceof Error ? err.message : 'Unknown error'}`
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [projectId, onConversationUpdate, debugLog]
-  );
-
   // Process-based data fetching - fetch once from appropriate source
   useEffect(() => {
     if (!executionProcess?.id || !executionProcess?.status) {
@@ -370,13 +323,35 @@ const useNormalizedConversation = ({
     } else {
       // Completed processes: Single database fetch
       debugLog(`📋 Data: Using database for completed process ${processId}`);
-      fetchNormalizedLogsOnce(processId);
+      const logs = attemptData.allLogs.find(
+        (entry) => entry.id === executionProcess.id
+      )?.normalized_conversation;
+      if (logs) {
+        setConversation((prev) => {
+          // Only update if content actually changed - use lightweight comparison
+          if (
+            !prev ||
+            prev.entries.length !== logs.entries.length ||
+            prev.prompt !== logs.prompt
+          ) {
+            // Notify parent component of conversation update
+            if (onConversationUpdate) {
+              // Use setTimeout to ensure state update happens first
+              setTimeout(onConversationUpdate, 0);
+            }
+            return logs;
+          }
+          return prev;
+        });
+      }
+      setLoading(false);
     }
   }, [
     executionProcess?.id,
     executionProcess?.status,
-    fetchNormalizedLogsOnce,
+    attemptData.allLogs,
     debugLog,
+    onConversationUpdate,
   ]);
 
   // SSE connection management for running processes only

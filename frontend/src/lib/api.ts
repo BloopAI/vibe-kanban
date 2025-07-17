@@ -7,14 +7,14 @@ import {
   CreateTask,
   CreateTaskAndStart,
   CreateTaskAttempt,
-  DeviceStartResponse,
   CreateTaskTemplate,
+  DeviceStartResponse,
   DirectoryEntry,
   type EditorType,
   ExecutionProcess,
   ExecutionProcessSummary,
   GitBranch,
-  NormalizedConversation,
+  ProcessLogsResponse,
   Project,
   ProjectWithBranch,
   Task,
@@ -26,7 +26,6 @@ import {
   UpdateTask,
   UpdateTaskTemplate,
   WorktreeDiff,
-  ProcessLogsResponse,
 } from 'shared/types';
 
 export const makeRequest = async (url: string, options: RequestInit = {}) => {
@@ -495,16 +494,6 @@ export const executionProcessesApi = {
       `/api/projects/${projectId}/execution-processes/${processId}`
     );
     return handleApiResponse<ExecutionProcess>(response);
-  },
-
-  getNormalizedLogs: async (
-    projectId: string,
-    processId: string
-  ): Promise<NormalizedConversation> => {
-    const response = await makeRequest(
-      `/api/projects/${projectId}/execution-processes/${processId}/normalized-logs`
-    );
-    return handleApiResponse<NormalizedConversation>(response);
   },
 };
 

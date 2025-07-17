@@ -17,8 +17,9 @@ use crate::{
     },
     models::{
         config::Config,
-        execution_process::{ExecutionProcess, ExecutionProcessSummary, ExecutionProcessType},
-        executor_session::ExecutorSession,
+        execution_process::{
+            ExecutionProcess, ExecutionProcessStatus, ExecutionProcessSummary, ExecutionProcessType,
+        },
         task::{Task, TaskStatus},
         task_attempt::{
             BranchStatus, CreateFollowUpAttempt, CreatePrParams, CreateTaskAttempt, TaskAttempt,
@@ -50,18 +51,18 @@ pub struct FollowUpResponse {
 #[derive(Debug, Serialize, TS)]
 #[ts(export)]
 pub struct ProcessLogsResponse {
-    pub id: uuid::Uuid,
-    pub process_type: crate::models::execution_process::ExecutionProcessType,
+    pub id: Uuid,
+    pub process_type: ExecutionProcessType,
     pub command: String,
     pub executor_type: Option<String>,
-    pub status: crate::models::execution_process::ExecutionProcessStatus,
+    pub status: ExecutionProcessStatus,
     pub normalized_conversation: NormalizedConversation,
 }
 
 // Helper to normalize logs for a process (extracted from get_execution_process_normalized_logs)
 async fn normalize_process_logs(
-    db_pool: &sqlx::SqlitePool,
-    process: &crate::models::execution_process::ExecutionProcess,
+    db_pool: &SqlitePool,
+    process: &ExecutionProcess,
 ) -> NormalizedConversation {
     use crate::models::{
         execution_process::ExecutionProcessType, executor_session::ExecutorSession,
@@ -179,40 +180,23 @@ async fn normalize_process_logs(
     }
 }
 
-/// New endpoint: Get all normalized logs for all execution processes of a task attempt
+/// Get all normalized logs for all execution processes of a task attempt
 pub async fn get_task_attempt_all_logs(
-    axum::extract::Path((project_id, task_id, attempt_id)): axum::extract::Path<(
-        uuid::Uuid,
-        uuid::Uuid,
-        uuid::Uuid,
-    )>,
-    axum::extract::State(app_state): axum::extract::State<crate::app_state::AppState>,
-) -> Result<
-    axum::response::Json<crate::models::ApiResponse<Vec<ProcessLogsResponse>>>,
-    axum::http::StatusCode,
-> {
+    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    State(app_state): State<AppState>,
+) -> Result<Json<ApiResponse<Vec<ProcessLogsResponse>>>, StatusCode> {
     // Validate attempt belongs to task and project
-    let _ctx = match crate::models::task_attempt::TaskAttempt::load_context(
-        &app_state.db_pool,
-        attempt_id,
-        task_id,
-        project_id,
-    )
-    .await
+    let _ctx = match TaskAttempt::load_context(&app_state.db_pool, attempt_id, task_id, project_id)
+        .await
     {
         Ok(ctx) => ctx,
-        Err(_) => return Err(axum::http::StatusCode::NOT_FOUND),
+        Err(_) => return Err(StatusCode::NOT_FOUND),
     };
     // Fetch all execution processes for this attempt
     let processes =
-        match crate::models::execution_process::ExecutionProcess::find_by_task_attempt_id(
-            &app_state.db_pool,
-            attempt_id,
-        )
-        .await
-        {
+        match ExecutionProcess::find_by_task_attempt_id(&app_state.db_pool, attempt_id).await {
             Ok(list) => list,
-            Err(_) => return Err(axum::http::StatusCode::INTERNAL_SERVER_ERROR),
+            Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
         };
     // For each process, normalize logs
     let mut result = Vec::new();
@@ -227,7 +211,7 @@ pub async fn get_task_attempt_all_logs(
             normalized_conversation,
         });
     }
-    Ok(axum::response::Json(crate::models::ApiResponse {
+    Ok(Json(ApiResponse {
         success: true,
         data: Some(result),
         message: None,
@@ -1176,228 +1160,6 @@ pub async fn get_task_attempt_execution_state(
     }
 }
 
-pub async fn get_execution_process_normalized_logs(
-    Path((project_id, process_id)): Path<(Uuid, Uuid)>,
-    State(app_state): State<AppState>,
-) -> Result<ResponseJson<ApiResponse<NormalizedConversation>>, StatusCode> {
-    // Get the execution process and verify it belongs to the correct project
-    let process = match ExecutionProcess::find_by_id(&app_state.db_pool, process_id).await {
-        Ok(Some(process)) => process,
-        Ok(None) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to fetch execution process {}: {}", process_id, e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
-
-    // Verify the process belongs to a task attempt in the correct project
-    let attempt = match TaskAttempt::find_by_id(&app_state.db_pool, process.task_attempt_id).await {
-        Ok(Some(attempt)) => attempt,
-        Ok(None) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to fetch task attempt: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
-
-    let _task = match Task::find_by_id(&app_state.db_pool, attempt.task_id).await {
-        Ok(Some(task)) if task.project_id == project_id => task,
-        Ok(Some(_)) => return Err(StatusCode::NOT_FOUND), // Wrong project
-        Ok(None) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to fetch task: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
-
-    // Get executor session data for this execution process
-    let executor_session =
-        match ExecutorSession::find_by_execution_process_id(&app_state.db_pool, process_id).await {
-            Ok(session) => session,
-            Err(e) => {
-                tracing::error!(
-                    "Failed to fetch executor session for process {}: {}",
-                    process_id,
-                    e
-                );
-                None
-            }
-        };
-
-    // Check if logs are available
-    let has_stdout =
-        process.stdout.is_some() && !process.stdout.as_ref().unwrap().trim().is_empty();
-    let has_stderr =
-        process.stderr.is_some() && !process.stderr.as_ref().unwrap().trim().is_empty();
-
-    // If no logs available, return empty conversation
-    if !has_stdout && !has_stderr {
-        let empty_conversation = NormalizedConversation {
-            entries: vec![],
-            session_id: None,
-            executor_type: process
-                .executor_type
-                .clone()
-                .unwrap_or("unknown".to_string()),
-            prompt: executor_session.as_ref().and_then(|s| s.prompt.clone()),
-            summary: executor_session.as_ref().and_then(|s| s.summary.clone()),
-        };
-
-        return Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: Some(empty_conversation),
-            message: None,
-        }));
-    }
-
-    // Parse stdout as JSONL using executor normalization
-    let mut stdout_entries = Vec::new();
-    if let Some(stdout) = &process.stdout {
-        if !stdout.trim().is_empty() {
-            // Determine executor type and create appropriate executor for normalization
-            let executor_type = process.executor_type.as_deref().unwrap_or("unknown");
-            let executor_config = if process.process_type == ExecutionProcessType::SetupScript {
-                // For setup scripts, use the setup script executor
-                ExecutorConfig::SetupScript {
-                    script: executor_session
-                        .as_ref()
-                        .and_then(|s| s.prompt.clone())
-                        .unwrap_or_else(|| "setup script".to_string()),
-                }
-            } else {
-                match executor_type.to_string().parse() {
-                    Ok(config) => config,
-                    Err(_) => {
-                        tracing::warn!(
-                            "Unsupported executor type: {}, cannot normalize logs properly",
-                            executor_type
-                        );
-                        return Ok(ResponseJson(ApiResponse {
-                            success: false,
-                            data: None,
-                            message: Some(format!("Unsupported executor type: {}", executor_type)),
-                        }));
-                    }
-                }
-            };
-
-            let executor = executor_config.create_executor();
-
-            // Use the working directory path for normalization
-            // Try to canonicalize if the directory exists, otherwise use the stored path as-is
-            let working_dir_path = match std::fs::canonicalize(&process.working_directory) {
-                Ok(canonical_path) => {
-                    tracing::debug!(
-                        "Using canonical path for normalization: {}",
-                        canonical_path.display()
-                    );
-                    canonical_path.to_string_lossy().to_string()
-                }
-                Err(_) => {
-                    tracing::debug!(
-                            "Working directory {} no longer exists, using stored path for normalization",
-                            process.working_directory
-                        );
-                    process.working_directory.clone()
-                }
-            };
-
-            // Normalize stdout logs with error handling
-            match executor.normalize_logs(stdout, &working_dir_path) {
-                Ok(normalized) => {
-                    stdout_entries = normalized.entries;
-                    tracing::debug!(
-                        "Successfully normalized {} stdout entries for process {}",
-                        stdout_entries.len(),
-                        process_id
-                    );
-                }
-                Err(e) => {
-                    tracing::error!(
-                        "Failed to normalize stdout for process {}: {}",
-                        process_id,
-                        e
-                    );
-                    return Ok(ResponseJson(ApiResponse {
-                        success: false,
-                        data: None,
-                        message: Some(format!("Failed to normalize logs: {}", e)),
-                    }));
-                }
-            }
-        }
-    }
-
-    // Parse stderr chunks separated by boundary markers
-    let mut stderr_entries = Vec::new();
-    if let Some(stderr) = &process.stderr {
-        let trimmed = stderr.trim();
-        if !trimmed.is_empty() {
-            // Split stderr by chunk boundaries and create separate error messages
-            let chunks: Vec<&str> = trimmed.split("---STDERR_CHUNK_BOUNDARY---").collect();
-
-            for chunk in chunks {
-                let chunk_trimmed = chunk.trim();
-                if !chunk_trimmed.is_empty() {
-                    // Filter out any remaining boundary markers from the chunk content
-                    let filtered_content = chunk_trimmed.replace("---STDERR_CHUNK_BOUNDARY---", "");
-                    if !filtered_content.trim().is_empty() {
-                        stderr_entries.push(NormalizedEntry {
-                            timestamp: Some(chrono::Utc::now().to_rfc3339()),
-                            entry_type: NormalizedEntryType::ErrorMessage,
-                            content: filtered_content.trim().to_string(),
-                            metadata: None,
-                        });
-                    }
-                }
-            }
-
-            tracing::debug!(
-                "Processed stderr content into {} error messages for process {}",
-                stderr_entries.len(),
-                process_id
-            );
-        }
-    }
-
-    // Merge stdout and stderr entries chronologically
-    let mut all_entries = Vec::new();
-    all_entries.extend(stdout_entries);
-    all_entries.extend(stderr_entries);
-
-    // Sort by timestamp (entries without timestamps go to the end)
-    all_entries.sort_by(|a, b| match (&a.timestamp, &b.timestamp) {
-        (Some(a_ts), Some(b_ts)) => a_ts.cmp(b_ts),
-        (Some(_), None) => std::cmp::Ordering::Less,
-        (None, Some(_)) => std::cmp::Ordering::Greater,
-        (None, None) => std::cmp::Ordering::Equal,
-    });
-
-    // Create final normalized conversation
-    let executor_type = if process.process_type == ExecutionProcessType::SetupScript {
-        "setup-script".to_string()
-    } else {
-        process
-            .executor_type
-            .clone()
-            .unwrap_or("unknown".to_string())
-    };
-
-    let normalized_conversation = NormalizedConversation {
-        entries: all_entries,
-        session_id: None,
-        executor_type,
-        prompt: executor_session.as_ref().and_then(|s| s.prompt.clone()),
-        summary: executor_session.as_ref().and_then(|s| s.summary.clone()),
-    };
-
-    Ok(ResponseJson(ApiResponse {
-        success: true,
-        data: Some(normalized_conversation),
-        message: None,
-    }))
-}
-
 /// Find plan content with context by searching through multiple processes in the same attempt
 async fn find_plan_content_with_context(
     pool: &SqlitePool,
@@ -1644,12 +1406,8 @@ pub fn task_attempts_router() -> Router<AppState> {
             get(get_execution_process),
         )
         .route(
-            "/projects/:project_id/execution-processes/:process_id/normalized-logs",
-            get(get_execution_process_normalized_logs),
-        )
-        .route(
             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/logs",
-            axum::routing::get(get_task_attempt_all_logs),
+            get(get_task_attempt_all_logs),
         )
         .route(
             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/follow-up",
