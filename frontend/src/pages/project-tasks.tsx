@@ -348,17 +348,18 @@ export function ProjectTasks() {
         });
         setIsPanelOpen(true);
       } else {
-        // Close panel when no task is found in array (after delete)
-        setIsPanelOpen(false);
-        setSelectedTask(null);
-        navigate(`/projects/${projectId}/tasks`, { replace: true });
+        // Task not found in current array - refetch to get latest data
+        fetchTasks(true);
       }
-    } else {
+    } else if (taskId && tasks.length === 0 && !loading) {
+      // If we have a taskId but no tasks loaded, fetch tasks
+      fetchTasks();
+    } else if (!taskId) {
       // Close panel when no taskId in URL
       setIsPanelOpen(false);
       setSelectedTask(null);
     }
-  }, [taskId, tasks]);
+  }, [taskId, tasks, loading, fetchTasks]);
 
   if (loading) {
     return <Loader message="Loading tasks..." size={32} className="py-8" />;
