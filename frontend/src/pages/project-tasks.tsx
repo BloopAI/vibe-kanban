@@ -369,6 +369,7 @@ export function ProjectTasks() {
                 onEditTask={handleEditTask}
                 onDeleteTask={handleDeleteTask}
                 onViewTaskDetails={handleViewTaskDetails}
+                isPanelOpen={isPanelOpen}
               />
             </div>
           </div>

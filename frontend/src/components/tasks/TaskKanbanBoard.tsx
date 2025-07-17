@@ -23,6 +23,7 @@ interface TaskKanbanBoardProps {
   onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
   onViewTaskDetails: (task: Task) => void;
+  isPanelOpen: boolean;
 }
 
 const allTaskStatuses: TaskStatus[] = [
@@ -56,6 +57,7 @@ function TaskKanbanBoard({
   onEditTask,
   onDeleteTask,
   onViewTaskDetails,
+  isPanelOpen,
 }: TaskKanbanBoardProps) {
   const { projectId, taskId } = useParams<{
     projectId: string;
@@ -130,7 +132,15 @@ function TaskKanbanBoard({
   // Keyboard navigation handler
   useKanbanKeyboardNavigation({
     focusedTaskId,
-    setFocusedTaskId: (id) => setFocusedTaskId(id as string | null),
+    setFocusedTaskId: (id) => {
+      setFocusedTaskId(id as string | null);
+      if (isPanelOpen) {
+        const task = filteredTasks.find((t: any) => t.id === id);
+        if (task) {
+          onViewTaskDetails(task);
+        }
+      }
+    },
     focusedStatus,
     setFocusedStatus: (status) => setFocusedStatus(status as TaskStatus | null),
     groupedTasks,
