@@ -2,7 +2,7 @@ use std::path::Path;
 
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
-use tokio::{fs, process::Command};
+use tokio::process::Command;
 use uuid::Uuid;
 
 use crate::{
@@ -14,47 +14,29 @@ use crate::{
     utils::shell::get_shell_command,
 };
 
-/// Create Claude settings file with PostToolUse hook for exit_plan_mode
-async fn create_claude_settings_file(worktree_path: &str) -> Result<(), ExecutorError> {
-    let claude_dir = Path::new(worktree_path).join(".claude");
-    let settings_file = claude_dir.join("settings.local.json");
+fn create_watchkill_script(command: &str) -> String {
+    let claude_plan_stop_indicator =
+        "Claude requested permissions to use exit_plan_mode, but you haven't granted it yet";
+    format!(
+        r#"#!/usr/bin/env bash
+set -euo pipefail
 
-    // Create .claude directory if it doesn't exist
-    fs::create_dir_all(&claude_dir).await.map_err(|e| {
-        tracing::warn!("Failed to create .claude directory: {}", e);
-        ExecutorError::GitError(format!("Failed to create .claude directory: {}", e))
-    })?;
+word="{}"
+command="{}"
 
-    // Create settings content with PreToolUse hook to auto-approve exit_plan_mode
-    let settings_content = r#"{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "exit_plan_mode",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo '{\"decision\": \"approve\", \"reason\": \"Auto-approving exit_plan_mode tool\", \"continue\": false, \"stopReason\": \"Plan presented - waiting for user approval before continuing\"}'"
-          }
-        ]
-      }
-    ]
-  }
-}"#;
+exit_code=0
+while IFS= read -r line; do
+    printf '%s\n' "$line"
+    if [[ $line == *"$word"* ]]; then
+        exit 0
+    fi
+done < <($command <&0 2>&1)
 
-    // Write settings file
-    fs::write(&settings_file, settings_content)
-        .await
-        .map_err(|e| {
-            tracing::warn!("Failed to write Claude settings file: {}", e);
-            ExecutorError::GitError(format!("Failed to write Claude settings file: {}", e))
-        })?;
-
-    tracing::info!(
-        "Created Claude settings file at: {}",
-        settings_file.display()
-    );
-    Ok(())
+exit_code=${{PIPESTATUS[0]}}
+exit "$exit_code"
+"#,
+        claude_plan_stop_indicator, command
+    )
 }
 
 /// An executor that uses Claude CLI to process tasks
@@ -79,9 +61,11 @@ impl ClaudeExecutor {
     }
 
     pub fn new_plan_mode() -> Self {
+        let command = "npx -y @anthropic-ai/claude-code@latest -p --permission-mode=plan --verbose --output-format=stream-json";
+        let script = create_watchkill_script(command);
         Self {
             executor_type: "ClaudePlan".to_string(),
-            command: "npx -y @anthropic-ai/claude-code@latest -p --permission-mode=plan --verbose --output-format=stream-json".to_string()
+            command: script,
         }
     }
 
@@ -114,11 +98,18 @@ impl ClaudeFollowupExecutor {
     }
 
     pub fn new_plan_mode(session_id: String, prompt: String) -> Self {
+        let command = format!(
+            "npx -y @anthropic-ai/claude-code@latest -p --permission-mode=plan --verbose --output-format=stream-json --resume={}",
+            session_id
+        );
+
+        let script = create_watchkill_script(&command);
+
         Self {
             session_id,
             prompt,
             executor_type: "ClaudePlan".to_string(),
-            command_base: "npx -y @anthropic-ai/claude-code@latest -p --permission-mode=plan --verbose --output-format=stream-json".to_string()
+            command_base: script,
         }
     }
 
@@ -150,11 +141,6 @@ impl Executor for ClaudeExecutor {
         let task = Task::find_by_id(pool, task_id)
             .await?
             .ok_or(ExecutorError::TaskNotFound)?;
-
-        // Create Claude settings file with PostToolUse hook for plan mode
-        if self.executor_type == "ClaudePlan" {
-            create_claude_settings_file(worktree_path).await?;
-        }
 
         let prompt = if let Some(task_description) = task.description {
             format!(
@@ -689,11 +675,6 @@ impl Executor for ClaudeFollowupExecutor {
         _task_id: Uuid,
         worktree_path: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
-        // Create Claude settings file with PostToolUse hook for plan mode
-        if self.executor_type == "ClaudePlan" {
-            create_claude_settings_file(worktree_path).await?;
-        }
-
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
         // Pass prompt via stdin instead of command line to avoid shell escaping issues
