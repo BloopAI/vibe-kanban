@@ -2,6 +2,7 @@ use std::{env, sync::OnceLock};
 
 use directories::ProjectDirs;
 
+pub mod path;
 pub mod shell;
 pub mod text;
 pub mod worktree_manager;

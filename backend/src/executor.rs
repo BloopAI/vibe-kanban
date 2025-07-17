@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::executors::{
     AmpExecutor, CCRExecutor, CharmOpencodeExecutor, ClaudeExecutor, EchoExecutor, GeminiExecutor,
-    SetupScriptExecutor,
+    SetupScriptExecutor, SstOpencodeExecutor,
 };
 
 // Constants for database streaming - fast for near-real-time updates
@@ -358,6 +358,7 @@ pub enum ExecutorConfig {
     ClaudeCodeRouter,
     #[serde(alias = "charmopencode")]
     CharmOpencode,
+    SstOpencode,
     // Future executors can be added here
     // Shell { command: String },
     // Docker { image: String, command: String },
@@ -383,6 +384,7 @@ impl FromStr for ExecutorConfig {
             "gemini" => Ok(ExecutorConfig::Gemini),
             "charm-opencode" => Ok(ExecutorConfig::CharmOpencode),
             "claude-code-router" => Ok(ExecutorConfig::ClaudeCodeRouter),
+            "sst-opencode" => Ok(ExecutorConfig::SstOpencode),
             "setup-script" => Ok(ExecutorConfig::SetupScript {
                 script: "setup script".to_string(),
             }),
@@ -401,6 +403,7 @@ impl ExecutorConfig {
             ExecutorConfig::Gemini => Box::new(GeminiExecutor),
             ExecutorConfig::ClaudeCodeRouter => Box::new(CCRExecutor::new()),
             ExecutorConfig::CharmOpencode => Box::new(CharmOpencodeExecutor),
+            ExecutorConfig::SstOpencode => Box::new(SstOpencodeExecutor::new()),
             ExecutorConfig::SetupScript { script } => {
                 Box::new(SetupScriptExecutor::new(script.clone()))
             }
@@ -424,6 +427,9 @@ impl ExecutorConfig {
             ExecutorConfig::Gemini => {
                 dirs::home_dir().map(|home| home.join(".gemini").join("settings.json"))
             }
+            ExecutorConfig::SstOpencode => {
+                xdg::BaseDirectories::with_prefix("opencode").get_config_file("opencode.json")
+            }
             ExecutorConfig::SetupScript { .. } => None,
         }
     }
@@ -433,6 +439,7 @@ impl ExecutorConfig {
         match self {
             ExecutorConfig::Echo => None, // Echo doesn't support MCP
             ExecutorConfig::CharmOpencode => Some(vec!["mcpServers"]),
+            ExecutorConfig::SstOpencode => Some(vec!["mcp"]),
             ExecutorConfig::Claude => Some(vec!["mcpServers"]),
             ExecutorConfig::ClaudePlan => Some(vec!["mcpServers"]),
             ExecutorConfig::Amp => Some(vec!["amp", "mcpServers"]), // Nested path for Amp
@@ -455,6 +462,7 @@ impl ExecutorConfig {
         match self {
             ExecutorConfig::Echo => "Echo (Test Mode)",
             ExecutorConfig::CharmOpencode => "Charm Opencode",
+            ExecutorConfig::SstOpencode => "SST Opencode",
             ExecutorConfig::Claude => "Claude",
             ExecutorConfig::ClaudePlan => "Claude Plan",
             ExecutorConfig::Amp => "Amp",
@@ -473,6 +481,7 @@ impl std::fmt::Display for ExecutorConfig {
             ExecutorConfig::ClaudePlan => "claude-plan",
             ExecutorConfig::Amp => "amp",
             ExecutorConfig::Gemini => "gemini",
+            ExecutorConfig::SstOpencode => "sst-opencode",
             ExecutorConfig::CharmOpencode => "charm-opencode",
             ExecutorConfig::ClaudeCodeRouter => "claude-code-router",
             ExecutorConfig::SetupScript { .. } => "setup-script",

@@ -6,6 +6,7 @@ pub mod dev_server;
 pub mod echo;
 pub mod gemini;
 pub mod setup_script;
+pub mod sst_opencode;
 
 pub use amp::{AmpExecutor, AmpFollowupExecutor};
 pub use ccr::{CCRExecutor, CCRFollowupExecutor};
@@ -15,3 +16,4 @@ pub use dev_server::DevServerExecutor;
 pub use echo::EchoExecutor;
 pub use gemini::{GeminiExecutor, GeminiFollowupExecutor};
 pub use setup_script::SetupScriptExecutor;
+pub use sst_opencode::{SstOpencodeExecutor, SstOpencodeFollowupExecutor};

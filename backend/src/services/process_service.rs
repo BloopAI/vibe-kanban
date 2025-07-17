@@ -623,6 +623,7 @@ impl ProcessService {
             Some("amp") => crate::executor::ExecutorConfig::Amp,
             Some("gemini") => crate::executor::ExecutorConfig::Gemini,
             Some("charm-opencode") => crate::executor::ExecutorConfig::CharmOpencode,
+            Some("sst-opencode") => crate::executor::ExecutorConfig::SstOpencode,
             _ => crate::executor::ExecutorConfig::Echo, // Default for "echo" or None
         }
     }
@@ -744,7 +745,7 @@ impl ProcessService {
             } => {
                 use crate::executors::{
                     AmpFollowupExecutor, CCRFollowupExecutor, CharmOpencodeFollowupExecutor,
-                    ClaudeFollowupExecutor, GeminiFollowupExecutor,
+                    ClaudeFollowupExecutor, GeminiFollowupExecutor, SstOpencodeFollowupExecutor,
                 };
 
                 let executor: Box<dyn crate::executor::Executor> = match config {
@@ -799,6 +800,16 @@ impl ProcessService {
                     crate::executor::ExecutorConfig::ClaudeCodeRouter => {
                         if let Some(sid) = session_id {
                             Box::new(CCRFollowupExecutor::new(sid.clone(), prompt.clone()))
+                        } else {
+                            return Err(TaskAttemptError::TaskNotFound); // No session ID for followup
+                        }
+                    }
+                    crate::executor::ExecutorConfig::SstOpencode => {
+                        if let Some(sid) = session_id {
+                            Box::new(SstOpencodeFollowupExecutor::new(
+                                sid.clone(),
+                                prompt.clone(),
+                            ))
                         } else {
                             return Err(TaskAttemptError::TaskNotFound); // No session ID for followup
                         }

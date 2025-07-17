@@ -50,7 +50,9 @@ export function McpServers() {
       const defaultConfig =
         executorType === 'amp'
           ? '{\n  "amp.mcpServers": {\n  }\n}'
-          : '{\n  "mcpServers": {\n  }\n}';
+          : executorType === 'sst-opencode'
+            ? '{\n  "mcp": {\n  }, "$schema": "https://opencode.ai/config.json"\n}'
+            : '{\n  "mcpServers": {\n  }\n}';
       setMcpServers(defaultConfig);
       setMcpConfigPath('');
 
@@ -67,6 +69,11 @@ export function McpServers() {
         if (executorType === 'amp') {
           // For AMP, use the amp.mcpServers structure
           fullConfig = { 'amp.mcpServers': servers };
+        } else if (executorType === 'sst-opencode') {
+          fullConfig = {
+            mcp: servers,
+            $schema: 'https://opencode.ai/config.json',
+          };
         } else {
           // For other executors, use the standard mcpServers structure
           fullConfig = { mcpServers: servers };
@@ -110,6 +117,10 @@ export function McpServers() {
               'AMP configuration must contain an "amp.mcpServers" object'
             );
           }
+        } else if (selectedMcpExecutor === 'sst-opencode') {
+          if (!config.mcp || typeof config.mcp !== 'object') {
+            setMcpError('Configuration must contain an "mcp" object');
+          }
         } else {
           if (!config.mcpServers || typeof config.mcpServers !== 'object') {
             setMcpError('Configuration must contain an "mcpServers" object');
@@ -129,10 +140,17 @@ export function McpServers() {
       const existingConfig = mcpServers.trim() ? JSON.parse(mcpServers) : {};
 
       // Always use production MCP installation instructions
-      const vibeKanbanConfig = {
-        command: 'npx',
-        args: ['-y', 'vibe-kanban', '--mcp'],
-      };
+      const vibeKanbanConfig =
+        selectedMcpExecutor === 'sst-opencode'
+          ? {
+              type: 'local',
+              command: ['npx', '-y', 'vibe-kanban', '--mcp'],
+              enabled: true,
+            }
+          : {
+              command: 'npx',
+              args: ['-y', 'vibe-kanban', '--mcp'],
+            };
 
       // Add vibe_kanban to the existing configuration
       let updatedConfig;
@@ -141,6 +159,14 @@ export function McpServers() {
           ...existingConfig,
           'amp.mcpServers': {
             ...(existingConfig['amp.mcpServers'] || {}),
+            vibe_kanban: vibeKanbanConfig,
+          },
+        };
+      } else if (selectedMcpExecutor === 'sst-opencode') {
+        updatedConfig = {
+          ...existingConfig,
+          mcp: {
+            ...(existingConfig.mcp || {}),
             vibe_kanban: vibeKanbanConfig,
           },
         };
@@ -189,6 +215,12 @@ export function McpServers() {
             }
             // Extract just the inner servers object for the API - backend will handle nesting
             mcpServersConfig = fullConfig['amp.mcpServers'];
+          } else if (selectedMcpExecutor === 'sst-opencode') {
+            if (!fullConfig.mcp || typeof fullConfig.mcp !== 'object') {
+              throw new Error('Configuration must contain an "mcp" object');
+            }
+            // Extract just the mcp part for the API
+            mcpServersConfig = fullConfig.mcp;
           } else {
             if (
               !fullConfig.mcpServers ||

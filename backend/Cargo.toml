@@ -26,6 +26,7 @@ chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 ts-rs = { version = "9.0", features = ["uuid-impl", "chrono-impl", "no-serde-warnings"] }
 dirs = "5.0"
+xdg = "3.0"
 git2 = "0.18"
 async-trait = "0.1"
 libc = "0.2"

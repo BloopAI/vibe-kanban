@@ -12,7 +12,8 @@ export const EXECUTOR_TYPES: string[] = [
     "amp",
     "gemini",
     "charm-opencode",
-    "claude-code-router"
+    "claude-code-router",
+    "sst-opencode"
 ];
 
 export const EDITOR_TYPES: EditorType[] = [
@@ -31,7 +32,8 @@ export const EXECUTOR_LABELS: Record<string, string> = {
     "amp": "Amp",
     "gemini": "Gemini",
     "charm-opencode": "Charm Opencode",
-    "claude-code-router": "Claude Code Router"
+    "claude-code-router": "Claude Code Router",
+    "sst-opencode": "SST Opencode"
 };
 
 export const EDITOR_LABELS: Record<string, string> = {
