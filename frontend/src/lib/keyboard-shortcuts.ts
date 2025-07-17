@@ -174,7 +174,7 @@ export function useKanbanKeyboardNavigation({
   groupedTasks: Record<string, any[]>;
   filteredTasks: any[];
   allTaskStatuses: string[];
-  onViewTaskDetails: (task: any) => void;
+  onViewTaskDetails?: (task: any) => void;
   preserveIndexOnColumnSwitch?: boolean;
 }) {
   useEffect(() => {
@@ -237,7 +237,7 @@ export function useKanbanKeyboardNavigation({
             break;
           }
         }
-      } else if (e.key === 'Enter' || e.key === ' ') {
+      } else if ((e.key === 'Enter' || e.key === ' ') && onViewTaskDetails) {
         const task = filteredTasks.find((t: any) => t.id === focusedTaskId);
         if (task) {
           onViewTaskDetails(task);
