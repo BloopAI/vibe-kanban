@@ -616,27 +616,27 @@ function CurrentAttempt({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent
-                  className={runningDevServer ? 'max-w-2xl p-4' : ''}
-                  side="top"
-                  align="center"
-                  avoidCollisions={true}
+                className={runningDevServer ? 'max-w-2xl p-4' : ''}
+                side="top"
+                align="center"
+                avoidCollisions={true}
                 >
-                  {!projectHasDevScript ? (
-                    <p>Configure a dev server command in project settings</p>
-                  ) : runningDevServer && devServerDetails ? (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">
-                        Dev Server Logs (Last 10 lines):
-                      </p>
-                      <pre className="text-xs bg-muted p-2 rounded max-h-64 overflow-y-auto whitespace-pre-wrap">
-                        {processedDevServerLogs}
-                      </pre>
-                    </div>
-                  ) : runningDevServer ? (
-                    <p>Stop the running dev server</p>
-                  ) : (
-                    <p>Start the dev server</p>
-                  )}
+                {!projectHasDevScript ? (
+                <p>Add a dev server script in project settings to enable this feature</p>
+                ) : runningDevServer && devServerDetails ? (
+                <div className="space-y-2">
+                <p className="text-sm font-medium">
+                Dev Server Logs (Last 10 lines):
+                </p>
+                <pre className="text-xs bg-muted p-2 rounded max-h-64 overflow-y-auto whitespace-pre-wrap">
+                {processedDevServerLogs}
+                </pre>
+                </div>
+                ) : runningDevServer ? (
+                <p>Stop the running dev server</p>
+                ) : (
+                <p>Start the dev server</p>
+                )}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
