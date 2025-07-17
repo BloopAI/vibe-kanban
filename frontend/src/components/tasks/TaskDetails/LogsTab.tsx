@@ -54,12 +54,15 @@ function LogsTab() {
   const isSetupRunning = executionState.execution_state === 'SetupRunning';
   const isSetupComplete = executionState.execution_state === 'SetupComplete';
   const isSetupFailed = executionState.execution_state === 'SetupFailed';
+  const isSetupStopped = executionState.execution_state === 'SetupStopped';
   const isCodingAgentRunning =
     executionState.execution_state === 'CodingAgentRunning';
   const isCodingAgentComplete =
     executionState.execution_state === 'CodingAgentComplete';
   const isCodingAgentFailed =
     executionState.execution_state === 'CodingAgentFailed';
+  const isCodingAgentStopped =
+    executionState.execution_state === 'CodingAgentStopped';
   const isComplete = executionState.execution_state === 'Complete';
   const hasChanges = executionState.has_changes;
 
@@ -99,6 +102,27 @@ function LogsTab() {
     );
   }
 
+  // When setup was stopped by user, show stopped message
+  if (isSetupStopped) {
+    const setupProcess = executionState.setup_process_id
+      ? attemptData.runningProcessDetails[executionState.setup_process_id]
+      : Object.values(attemptData.runningProcessDetails).find(
+          (process) => process.process_type === 'setupscript'
+        );
+
+    return (
+      <div className="h-full overflow-y-auto">
+        <div className="mb-4">
+          <p className="text-lg font-semibold mb-2">Setup Script Stopped</p>
+        </div>
+
+        {setupProcess && (
+          <NormalizedConversationViewer executionProcess={setupProcess} />
+        )}
+      </div>
+    );
+  }
+
   // When coding agent failed, show error message and conversation
   if (isCodingAgentFailed) {
     const codingAgentProcess = executionState.coding_agent_process_id
@@ -127,12 +151,36 @@ function LogsTab() {
     );
   }
 
+  // When coding agent was stopped by user, show stopped message
+  if (isCodingAgentStopped) {
+    const codingAgentProcess = executionState.coding_agent_process_id
+      ? attemptData.runningProcessDetails[
+          executionState.coding_agent_process_id
+        ]
+      : Object.values(attemptData.runningProcessDetails).find(
+          (process) => process.process_type === 'codingagent'
+        );
+
+    return (
+      <div className="h-full overflow-y-auto">
+        <div className="mb-4">
+          <p className="text-lg font-semibold mb-2">Coding Agent Stopped</p>
+        </div>
+
+        {codingAgentProcess && (
+          <NormalizedConversationViewer executionProcess={codingAgentProcess} />
+        )}
+      </div>
+    );
+  }
+
   // When setup is complete but coding agent hasn't started, show waiting state
   if (
     isSetupComplete &&
     !isCodingAgentRunning &&
     !isCodingAgentComplete &&
     !isCodingAgentFailed &&
+    !isCodingAgentStopped &&
     !hasChanges
   ) {
     return (

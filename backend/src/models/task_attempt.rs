@@ -181,9 +181,11 @@ pub enum ExecutionState {
     SetupRunning,
     SetupComplete,
     SetupFailed,
+    SetupStopped,
     CodingAgentRunning,
     CodingAgentComplete,
     CodingAgentFailed,
+    CodingAgentStopped,
     Complete,
 }
 
@@ -1042,7 +1044,7 @@ impl TaskAttempt {
                                 ExecutionState::CodingAgentFailed
                             }
                             crate::models::execution_process::ExecutionProcessStatus::Killed => {
-                                ExecutionState::CodingAgentFailed
+                                ExecutionState::CodingAgentStopped
                             }
                         }
                     } else {
@@ -1053,7 +1055,7 @@ impl TaskAttempt {
                     ExecutionState::SetupFailed
                 }
                 crate::models::execution_process::ExecutionProcessStatus::Killed => {
-                    ExecutionState::SetupFailed
+                    ExecutionState::SetupStopped
                 }
             }
         } else if let Some(agent) = coding_agent_process {
@@ -1069,7 +1071,7 @@ impl TaskAttempt {
                     ExecutionState::CodingAgentFailed
                 }
                 crate::models::execution_process::ExecutionProcessStatus::Killed => {
-                    ExecutionState::CodingAgentFailed
+                    ExecutionState::CodingAgentStopped
                 }
             }
         } else {
