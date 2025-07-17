@@ -76,8 +76,8 @@ function LogsTab() {
     );
   }
 
-  // When setup failed, show error message and conversation
-  if (isSetupFailed) {
+  // When setup failed or was stopped
+  if (isSetupFailed || isSetupStopped) {
     const setupProcess = executionState.setup_process_id
       ? attemptData.runningProcessDetails[executionState.setup_process_id]
       : Object.values(attemptData.runningProcessDetails).find(
@@ -87,12 +87,16 @@ function LogsTab() {
     return (
       <div className="h-full overflow-y-auto">
         <div className="mb-4">
-          <p className="text-lg font-semibold mb-2 text-destructive">
-            Setup Script Failed
+          <p
+            className={`text-lg font-semibold mb-2 ${isSetupFailed ? 'text-destructive' : ''}`}
+          >
+            {isSetupFailed ? 'Setup Script Failed' : 'Setup Script Stopped'}
           </p>
-          <p className="text-muted-foreground mb-4">
-            The setup script encountered an error. Error details below:
-          </p>
+          {isSetupFailed && (
+            <p className="text-muted-foreground mb-4">
+              The setup script encountered an error. Error details below:
+            </p>
+          )}
         </div>
 
         {setupProcess && (
@@ -102,29 +106,8 @@ function LogsTab() {
     );
   }
 
-  // When setup was stopped by user, show stopped message
-  if (isSetupStopped) {
-    const setupProcess = executionState.setup_process_id
-      ? attemptData.runningProcessDetails[executionState.setup_process_id]
-      : Object.values(attemptData.runningProcessDetails).find(
-          (process) => process.process_type === 'setupscript'
-        );
-
-    return (
-      <div className="h-full overflow-y-auto">
-        <div className="mb-4">
-          <p className="text-lg font-semibold mb-2">Setup Script Stopped</p>
-        </div>
-
-        {setupProcess && (
-          <NormalizedConversationViewer executionProcess={setupProcess} />
-        )}
-      </div>
-    );
-  }
-
-  // When coding agent failed, show error message and conversation
-  if (isCodingAgentFailed) {
+  // When coding agent failed or was stopped
+  if (isCodingAgentFailed || isCodingAgentStopped) {
     const codingAgentProcess = executionState.coding_agent_process_id
       ? attemptData.runningProcessDetails[
           executionState.coding_agent_process_id
@@ -136,35 +119,18 @@ function LogsTab() {
     return (
       <div className="h-full overflow-y-auto">
         <div className="mb-4">
-          <p className="text-lg font-semibold mb-2 text-destructive">
-            Coding Agent Failed
+          <p
+            className={`text-lg font-semibold mb-2 ${isCodingAgentFailed ? 'text-destructive' : ''}`}
+          >
+            {isCodingAgentFailed
+              ? 'Coding Agent Failed'
+              : 'Coding Agent Stopped'}
           </p>
-          <p className="text-muted-foreground mb-4">
-            The coding agent encountered an error. Error details below:
-          </p>
-        </div>
-
-        {codingAgentProcess && (
-          <NormalizedConversationViewer executionProcess={codingAgentProcess} />
-        )}
-      </div>
-    );
-  }
-
-  // When coding agent was stopped by user, show stopped message
-  if (isCodingAgentStopped) {
-    const codingAgentProcess = executionState.coding_agent_process_id
-      ? attemptData.runningProcessDetails[
-          executionState.coding_agent_process_id
-        ]
-      : Object.values(attemptData.runningProcessDetails).find(
-          (process) => process.process_type === 'codingagent'
-        );
-
-    return (
-      <div className="h-full overflow-y-auto">
-        <div className="mb-4">
-          <p className="text-lg font-semibold mb-2">Coding Agent Stopped</p>
+          {isCodingAgentFailed && (
+            <p className="text-muted-foreground mb-4">
+              The coding agent encountered an error. Error details below:
+            </p>
+          )}
         </div>
 
         {codingAgentProcess && (
