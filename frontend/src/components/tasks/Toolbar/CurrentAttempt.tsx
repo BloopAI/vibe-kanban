@@ -623,7 +623,10 @@ function CurrentAttempt({
                 avoidCollisions={true}
               >
                 {!projectHasDevScript ? (
-                  <p>Add a dev server script in project settings to enable this feature</p>
+                  <p>
+                    Add a dev server script in project settings to enable this
+                    feature
+                  </p>
                 ) : runningDevServer && devServerDetails ? (
                   <div className="space-y-2">
                     <p className="text-sm font-medium">
