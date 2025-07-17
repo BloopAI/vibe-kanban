@@ -12,7 +12,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import type { ReactNode, Ref } from 'react';
+import type { ReactNode, Ref, KeyboardEvent } from 'react';
 
 export type { DragEndEvent } from '@dnd-kit/core';
 
@@ -61,6 +61,7 @@ export type KanbanCardProps = Pick<Feature, 'id' | 'name'> & {
   onClick?: () => void;
   tabIndex?: number;
   forwardedRef?: Ref<HTMLDivElement>;
+  onKeyDown?: (e: KeyboardEvent) => void;
 };
 
 export const KanbanCard = ({
@@ -73,6 +74,7 @@ export const KanbanCard = ({
   onClick,
   tabIndex,
   forwardedRef,
+  onKeyDown,
 }: KanbanCardProps) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -108,6 +110,7 @@ export const KanbanCard = ({
       ref={combinedRef}
       tabIndex={tabIndex}
       onClick={onClick}
+      onKeyDown={onKeyDown}
     >
       {children ?? <p className="m-0 font-medium text-sm">{name}</p>}
     </Card>

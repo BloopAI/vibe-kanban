@@ -146,7 +146,7 @@ function TaskKanbanBoard({
     groupedTasks,
     filteredTasks,
     allTaskStatuses,
-    onViewTaskDetails,
+    onViewTaskDetails: () => {},
   });
 
   return (

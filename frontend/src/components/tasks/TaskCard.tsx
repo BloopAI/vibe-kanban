@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { KeyboardEvent, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -48,6 +48,21 @@ export function TaskCard({
     }
   }, [isFocused]);
 
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Backspace') {
+        onDelete(task.id);
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        onViewDetails(task);
+      }
+    },
+    [task, onDelete, onViewDetails]
+  );
+
+  const handleClick = useCallback(() => {
+    onViewDetails(task);
+  }, [task, onViewDetails]);
+
   return (
     <KanbanCard
       key={task.id}
@@ -55,9 +70,10 @@ export function TaskCard({
       name={task.title}
       index={index}
       parent={status}
-      onClick={() => onViewDetails(task)}
+      onClick={handleClick}
       tabIndex={tabIndex}
       forwardedRef={localRef}
+      onKeyDown={handleKeyDown}
     >
       <div className="space-y-2">
         <div className="flex items-start justify-between">
@@ -82,6 +98,7 @@ export function TaskCard({
               onPointerDown={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
             >
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
