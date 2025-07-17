@@ -9,10 +9,10 @@ import {
 } from 'react';
 import { TaskAttemptDataContext } from '@/components/context/taskDetailsContext.ts';
 import { Loader } from '@/components/ui/loader.tsx';
-import MarkdownRenderer from '@/components/ui/markdown-renderer';
-import { Hammer } from 'lucide-react';
-import DisplayConversationEntry from '../DisplayConversationEntry';
 import { Button } from '@/components/ui/button';
+import Prompt from './Prompt';
+import ConversationEntry from './ConversationEntry';
+import { ConversationEntryDisplayType } from '@/lib/types';
 
 function Conversation() {
   const { attemptData } = useContext(TaskAttemptDataContext);
@@ -49,35 +49,37 @@ function Conversation() {
   }, [shouldAutoScrollLogs]);
 
   // Find main and follow-up processes from allLogs
-  const mainCodingAgentLog = attemptData.allLogs.find(
-    (log) =>
-      log.process_type.toLowerCase() === 'codingagent' &&
-      log.command === 'executor'
+  const mainCodingAgentLog = useMemo(
+    () =>
+      attemptData.allLogs.find(
+        (log) =>
+          log.process_type.toLowerCase() === 'codingagent' &&
+          log.command === 'executor'
+      ),
+    [attemptData.allLogs]
   );
-  const followUpLogs = attemptData.allLogs.filter(
-    (log) =>
-      log.process_type.toLowerCase() === 'codingagent' &&
-      log.command === 'followup_executor'
+  const followUpLogs = useMemo(
+    () =>
+      attemptData.allLogs.filter(
+        (log) =>
+          log.process_type.toLowerCase() === 'codingagent' &&
+          log.command === 'followup_executor'
+      ),
+    [attemptData.allLogs]
   );
 
   // Combine all logs in order (main first, then follow-ups)
-  const allProcessLogs = [mainCodingAgentLog, ...followUpLogs].filter(
-    Boolean
-  ) as Array<NonNullable<typeof mainCodingAgentLog>>;
+  const allProcessLogs = useMemo(
+    () =>
+      [mainCodingAgentLog, ...followUpLogs].filter(Boolean) as Array<
+        NonNullable<typeof mainCodingAgentLog>
+      >,
+    [mainCodingAgentLog, followUpLogs]
+  );
 
   // Flatten all entries, keeping process info for each entry
   const allEntries = useMemo(() => {
-    const entries: Array<{
-      entry: any;
-      processId: string;
-      processPrompt?: string;
-      processStatus: string;
-      processIsRunning: boolean;
-      process: any;
-      isFirstInProcess: boolean;
-      processIndex: number;
-      entryIndex: number;
-    }> = [];
+    const entries: Array<ConversationEntryDisplayType> = [];
     allProcessLogs.forEach((log, processIndex) => {
       if (!log) return;
       if (log.status === 'running') return; // Skip static entries for running processes
@@ -108,89 +110,66 @@ function Conversation() {
       return 0;
     });
     return entries;
-  }, [allProcessLogs, attemptData.runningProcessDetails]);
+  }, [allProcessLogs]);
 
   // Identify running processes (main + follow-ups)
-  const runningProcessLogs = allProcessLogs.filter(
-    (log) => log.status === 'running'
+  const runningProcessLogs = useMemo(
+    () => allProcessLogs.filter((log) => log.status === 'running'),
+    [allProcessLogs]
   );
 
   // Paginate: show only the last visibleCount entries
-  const visibleEntries: typeof allEntries = allEntries.slice(-visibleCount);
+  const visibleEntries = useMemo(
+    () => allEntries.slice(-visibleCount),
+    [allEntries, visibleCount]
+  );
 
-  // Find the first entry for each process in the visible window
-  const processFirstEntryMap = new Map<string, number>();
-  visibleEntries.forEach((item, idx) => {
-    if (!processFirstEntryMap.has(item.processId)) {
-      processFirstEntryMap.set(item.processId, idx);
-    }
-  });
+  const renderedVisibleEntries = useMemo(
+    () =>
+      visibleEntries.map((entry, index) => (
+        <ConversationEntry
+          key={entry.entry.timestamp || index}
+          idx={index}
+          item={entry}
+          handleConversationUpdate={handleConversationUpdate}
+          visibleEntriesLength={visibleEntries.length}
+          runningProcessDetails={attemptData.runningProcessDetails}
+        />
+      )),
+    [
+      visibleEntries,
+      handleConversationUpdate,
+      attemptData.runningProcessDetails,
+    ]
+  );
 
-  // Helper to render a process log (hybrid: SSE for running, static for completed)
-  const renderEntry = (item: (typeof allEntries)[number], idx: number) => {
-    // Only show the prompt if this is the very first entry of the process
-    const showPrompt = item.isFirstInProcess && item.processPrompt;
-    // For running processes, render the live viewer below the static entries
-    if (item.processIsRunning && idx === visibleEntries.length - 1) {
-      // Only render the live viewer for the last entry of a running process
-      const runningProcess = attemptData.runningProcessDetails[item.processId];
-      if (runningProcess) {
-        return (
-          <div key={item.entry.timestamp || idx}>
-            {showPrompt && (
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 mt-1">
-                  <Hammer className="h-4 w-4 text-blue-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm whitespace-pre-wrap text-foreground">
-                    <MarkdownRenderer
-                      content={item.processPrompt || ''}
-                      className="whitespace-pre-wrap break-words"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-            <NormalizedConversationViewer
-              executionProcess={runningProcess}
-              onConversationUpdate={handleConversationUpdate}
-              diffDeletable
-            />
-          </div>
-        );
-      }
-      // Fallback: show loading if not found
+  const renderedRunningProcessLogs = useMemo(() => {
+    return runningProcessLogs.map((log, i) => {
+      const runningProcess = attemptData.runningProcessDetails[String(log.id)];
+      if (!runningProcess) return null;
+      // Show prompt only if this is the first entry in the process (i.e., no completed entries for this process)
+      const showPrompt =
+        log.normalized_conversation.prompt &&
+        !allEntries.some((e) => e.processId === String(log.id));
       return (
-        <Loader message="Loading live logs..." size={24} className="py-4" />
-      );
-    } else {
-      return (
-        <div key={item.entry.timestamp || idx}>
+        <div key={String(log.id)} className={i > 0 ? 'mt-8' : ''}>
           {showPrompt && (
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 mt-1">
-                <Hammer className="h-4 w-4 text-blue-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm whitespace-pre-wrap text-foreground">
-                  <MarkdownRenderer
-                    content={item.processPrompt || ''}
-                    className="whitespace-pre-wrap break-words"
-                  />
-                </div>
-              </div>
-            </div>
+            <Prompt prompt={log.normalized_conversation.prompt || ''} />
           )}
-          <DisplayConversationEntry
-            entry={item.entry}
-            index={idx}
+          <NormalizedConversationViewer
+            executionProcess={runningProcess}
+            onConversationUpdate={handleConversationUpdate}
             diffDeletable
           />
         </div>
       );
-    }
-  };
+    });
+  }, [
+    runningProcessLogs,
+    attemptData.runningProcessDetails,
+    handleConversationUpdate,
+    allEntries,
+  ]);
 
   return (
     <div
@@ -212,42 +191,10 @@ function Conversation() {
         </div>
       )}
       {visibleEntries.length > 0 && (
-        <div className="space-y-2">{visibleEntries.map(renderEntry)}</div>
+        <div className="space-y-2">{renderedVisibleEntries}</div>
       )}
       {/* Render live viewers for running processes (after paginated list) */}
-      {runningProcessLogs.map((log, i) => {
-        const runningProcess =
-          attemptData.runningProcessDetails[String(log.id)];
-        if (!runningProcess) return null;
-        // Show prompt only if this is the first entry in the process (i.e., no completed entries for this process)
-        const showPrompt =
-          log.normalized_conversation.prompt &&
-          !allEntries.some((e) => e.processId === String(log.id));
-        return (
-          <div key={String(log.id)} className={i > 0 ? 'mt-8' : ''}>
-            {showPrompt && (
-              <div className="flex items-start gap-3 mb-2">
-                <div className="flex-shrink-0 mt-1">
-                  <Hammer className="h-4 w-4 text-blue-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm whitespace-pre-wrap text-foreground">
-                    <MarkdownRenderer
-                      content={log.normalized_conversation.prompt || ''}
-                      className="whitespace-pre-wrap break-words"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-            <NormalizedConversationViewer
-              executionProcess={runningProcess}
-              onConversationUpdate={handleConversationUpdate}
-              diffDeletable
-            />
-          </div>
-        );
-      })}
+      {renderedRunningProcessLogs}
       {/* If nothing to show at all, show loader */}
       {visibleEntries.length === 0 && runningProcessLogs.length === 0 && (
         <Loader

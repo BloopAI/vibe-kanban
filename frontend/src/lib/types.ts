@@ -25,3 +25,15 @@ export interface ProcessedSection {
   expandedAbove?: boolean;
   expandedBelow?: boolean;
 }
+
+export interface ConversationEntryDisplayType {
+  entry: any;
+  processId: string;
+  processPrompt?: string;
+  processStatus: string;
+  processIsRunning: boolean;
+  process: any;
+  isFirstInProcess: boolean;
+  processIndex: number;
+  entryIndex: number;
+}
