@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Integration {
     pub id: Uuid,
     pub name: String,
@@ -31,7 +31,7 @@ pub struct IntegrationCategory {
     pub updated_at: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct IntegrationEvent {
     pub id: Uuid,
     pub integration_id: Uuid,
@@ -84,10 +84,12 @@ pub struct IntegrationWithCategory {
 }
 
 impl Integration {
+    #[allow(dead_code)]
     pub fn get_config_as_json(&self) -> Option<serde_json::Value> {
         self.config.as_ref().and_then(|c| serde_json::from_str(c).ok())
     }
 
+    #[allow(dead_code)]
     pub fn set_config_from_json(&mut self, config: Option<serde_json::Value>) {
         self.config = config.and_then(|c| serde_json::to_string(&c).ok());
     }
@@ -95,10 +97,15 @@ impl Integration {
 
 // Integration type constants
 pub mod integration_types {
+    #[allow(dead_code)]
     pub const AI_ASSISTANT: &str = "ai_assistant";
+    #[allow(dead_code)]
     pub const VERSION_CONTROL: &str = "version_control";
+    #[allow(dead_code)]
     pub const COMMUNICATION: &str = "communication";
+    #[allow(dead_code)]
     pub const PROJECT_MANAGEMENT: &str = "project_management";
+    #[allow(dead_code)]
     pub const DEVELOPMENT_TOOL: &str = "development_tool";
 }
 
@@ -106,6 +113,7 @@ pub mod integration_types {
 pub mod health_status {
     pub const HEALTHY: &str = "healthy";
     pub const ERROR: &str = "error";
+    #[allow(dead_code)]
     pub const WARNING: &str = "warning";
     pub const UNKNOWN: &str = "unknown";
 }
@@ -118,6 +126,8 @@ pub mod event_types {
     pub const DISABLED: &str = "disabled";
     pub const SYNC: &str = "sync";
     pub const TEST: &str = "test";
+    #[allow(dead_code)]
     pub const ERROR: &str = "error";
+    #[allow(dead_code)]
     pub const HEALTH_CHECK: &str = "health_check";
 }

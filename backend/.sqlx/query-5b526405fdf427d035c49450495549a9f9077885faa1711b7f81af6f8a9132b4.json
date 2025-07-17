@@ -1,15 +1,15 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM integration_categories ORDER BY sort_order ASC",
+  "query": "SELECT id as \"id!\", display_name as \"display_name!\", description, icon, sort_order as \"sort_order!: i32\", created_at as \"created_at!\", updated_at as \"updated_at!\" FROM integration_categories ORDER BY sort_order ASC",
   "describe": {
     "columns": [
       {
-        "name": "id",
+        "name": "id!",
         "ordinal": 0,
         "type_info": "Text"
       },
       {
-        "name": "display_name",
+        "name": "display_name!",
         "ordinal": 1,
         "type_info": "Text"
       },
@@ -24,17 +24,17 @@
         "type_info": "Text"
       },
       {
-        "name": "sort_order",
+        "name": "sort_order!: i32",
         "ordinal": 4,
         "type_info": "Integer"
       },
       {
-        "name": "created_at",
+        "name": "created_at!",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "updated_at",
+        "name": "updated_at!",
         "ordinal": 6,
         "type_info": "Text"
       }
@@ -52,5 +52,5 @@
       false
     ]
   },
-  "hash": "d90c43046fb1f93eb4b615626ad3e36f729df9613b44343323db951e7978a5bb"
+  "hash": "5b526405fdf427d035c49450495549a9f9077885faa1711b7f81af6f8a9132b4"
 }

@@ -1,7 +1,7 @@
 use crate::models::{
     Integration, IntegrationCategory, IntegrationEvent, IntegrationWithCategory,
     CreateIntegrationRequest, UpdateIntegrationRequest, IntegrationTestResult,
-    integration_types, health_status, event_types
+    health_status, event_types
 };
 use anyhow::Result;
 use sqlx::SqlitePool;
@@ -21,7 +21,7 @@ impl IntegrationService {
     pub async fn get_categories(&self) -> Result<Vec<IntegrationCategory>> {
         let categories = sqlx::query_as!(
             IntegrationCategory,
-            "SELECT * FROM integration_categories ORDER BY sort_order ASC"
+            r#"SELECT id as "id!", display_name as "display_name!", description, icon, sort_order as "sort_order!: i32", created_at as "created_at!", updated_at as "updated_at!" FROM integration_categories ORDER BY sort_order ASC"#
         )
         .fetch_all(&self.pool)
         .await?;
@@ -34,13 +34,13 @@ impl IntegrationService {
         let integrations = sqlx::query!(
             r#"
             SELECT 
-                i.id, i.name, i.type as integration_type, i.provider, i.config, 
-                i.enabled, i.health_status, i.last_sync_at, i.last_health_check_at,
-                i.error_message, i.created_at, i.updated_at,
-                c.id as category_id, c.display_name as category_display_name,
+                i.id as "id!: Uuid", i.name as "name!", i.type as "integration_type!", i.provider as "provider!", i.config, 
+                i.enabled as "enabled!", i.health_status as "health_status!", i.last_sync_at, i.last_health_check_at,
+                i.error_message, i.created_at as "created_at!", i.updated_at as "updated_at!",
+                c.id as "category_id!", c.display_name as "category_display_name!",
                 c.description as category_description, c.icon as category_icon,
-                c.sort_order as category_sort_order, c.created_at as category_created_at,
-                c.updated_at as category_updated_at
+                c.sort_order as "category_sort_order!: i32", c.created_at as "category_created_at!",
+                c.updated_at as "category_updated_at!"
             FROM integrations i
             JOIN integration_categories c ON i.category_id = c.id
             ORDER BY c.sort_order ASC, i.name ASC
@@ -52,7 +52,7 @@ impl IntegrationService {
         let mut result = Vec::new();
         for row in integrations {
             let integration = IntegrationWithCategory {
-                id: Uuid::from_slice(&row.id)?,
+                id: row.id,
                 name: row.name,
                 integration_type: row.integration_type,
                 provider: row.provider,
@@ -65,7 +65,7 @@ impl IntegrationService {
                     created_at: row.category_created_at,
                     updated_at: row.category_updated_at,
                 },
-                config: row.config.and_then(|c| serde_json::from_str(&c).ok()),
+                config: row.config.as_ref().and_then(|c| serde_json::from_str(c).ok()),
                 enabled: row.enabled,
                 health_status: row.health_status,
                 last_sync_at: row.last_sync_at,
@@ -84,25 +84,25 @@ impl IntegrationService {
         let row = sqlx::query!(
             r#"
             SELECT 
-                i.id, i.name, i.type as integration_type, i.provider, i.config, 
-                i.enabled, i.health_status, i.last_sync_at, i.last_health_check_at,
-                i.error_message, i.created_at, i.updated_at,
-                c.id as category_id, c.display_name as category_display_name,
+                i.id as "id!: Uuid", i.name as "name!", i.type as "integration_type!", i.provider as "provider!", i.config, 
+                i.enabled as "enabled!", i.health_status as "health_status!", i.last_sync_at, i.last_health_check_at,
+                i.error_message, i.created_at as "created_at!", i.updated_at as "updated_at!",
+                c.id as "category_id!", c.display_name as "category_display_name!",
                 c.description as category_description, c.icon as category_icon,
-                c.sort_order as category_sort_order, c.created_at as category_created_at,
-                c.updated_at as category_updated_at
+                c.sort_order as "category_sort_order!: i32", c.created_at as "category_created_at!",
+                c.updated_at as "category_updated_at!"
             FROM integrations i
             JOIN integration_categories c ON i.category_id = c.id
             WHERE i.id = ?
             "#,
-            id.as_bytes()
+            id
         )
         .fetch_optional(&self.pool)
         .await?;
 
         if let Some(row) = row {
             let integration = IntegrationWithCategory {
-                id: Uuid::from_slice(&row.id)?,
+                id: row.id,
                 name: row.name,
                 integration_type: row.integration_type,
                 provider: row.provider,
@@ -115,7 +115,7 @@ impl IntegrationService {
                     created_at: row.category_created_at,
                     updated_at: row.category_updated_at,
                 },
-                config: row.config.and_then(|c| serde_json::from_str(&c).ok()),
+                config: row.config.as_ref().and_then(|c| serde_json::from_str(c).ok()),
                 enabled: row.enabled,
                 health_status: row.health_status,
                 last_sync_at: row.last_sync_at,
@@ -142,7 +142,7 @@ impl IntegrationService {
                 health_status, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'subsec'), datetime('now', 'subsec'))
             "#,
-            id.as_bytes(),
+            id,
             request.name,
             request.integration_type,
             request.provider,
@@ -160,8 +160,8 @@ impl IntegrationService {
         // Get the created integration
         let integration = sqlx::query_as!(
             Integration,
-            "SELECT * FROM integrations WHERE id = ?",
-            id.as_bytes()
+            r#"SELECT id as "id!: Uuid", name as "name!", type as "integration_type!", provider as "provider!", category_id as "category_id!", config, enabled as "enabled!", health_status as "health_status!", last_sync_at, last_health_check_at, error_message, created_at as "created_at!", updated_at as "updated_at!" FROM integrations WHERE id = ?"#,
+            id
         )
         .fetch_one(&self.pool)
         .await?;
@@ -185,7 +185,7 @@ impl IntegrationService {
             request.name,
             config_json,
             request.enabled,
-            id.as_bytes()
+            id
         )
         .execute(&self.pool)
         .await?;
@@ -202,8 +202,8 @@ impl IntegrationService {
 
             let integration = sqlx::query_as!(
                 Integration,
-                "SELECT * FROM integrations WHERE id = ?",
-                id.as_bytes()
+                r#"SELECT id as "id!: Uuid", name as "name!", type as "integration_type!", provider as "provider!", category_id as "category_id!", config, enabled as "enabled!", health_status as "health_status!", last_sync_at, last_health_check_at, error_message, created_at as "created_at!", updated_at as "updated_at!" FROM integrations WHERE id = ?"#,
+                id
             )
             .fetch_one(&self.pool)
             .await?;
@@ -217,7 +217,7 @@ impl IntegrationService {
     pub async fn delete_integration(&self, id: Uuid) -> Result<bool> {
         let result = sqlx::query!(
             "DELETE FROM integrations WHERE id = ?",
-            id.as_bytes()
+            id
         )
         .execute(&self.pool)
         .await?;
@@ -240,6 +240,12 @@ impl IntegrationService {
                     health_status::ERROR
                 };
 
+                let error_message = if test_result.success { 
+                    None 
+                } else { 
+                    Some(test_result.message.clone()) 
+                };
+
                 sqlx::query!(
                     r#"
                     UPDATE integrations 
@@ -249,8 +255,8 @@ impl IntegrationService {
                     WHERE id = ?
                     "#,
                     health_status,
-                    if test_result.success { None } else { Some(test_result.message.clone()) },
-                    id.as_bytes()
+                    error_message,
+                    id
                 )
                 .execute(&self.pool)
                 .await?;
@@ -286,7 +292,7 @@ impl IntegrationService {
                     SET last_sync_at = datetime('now', 'subsec')
                     WHERE id = ?
                     "#,
-                    id.as_bytes()
+                    id
                 )
                 .execute(&self.pool)
                 .await?;
@@ -310,8 +316,8 @@ impl IntegrationService {
             INSERT INTO integration_events (id, integration_id, event_type, event_data, created_at)
             VALUES (?, ?, ?, ?, datetime('now', 'subsec'))
             "#,
-            event_id.as_bytes(),
-            integration_id.as_bytes(),
+            event_id,
+            integration_id,
             event_type,
             event_data_json
         )
@@ -327,12 +333,12 @@ impl IntegrationService {
         let events = sqlx::query_as!(
             IntegrationEvent,
             r#"
-            SELECT * FROM integration_events 
+            SELECT id as "id!: Uuid", integration_id as "integration_id!: Uuid", event_type, event_data, created_at FROM integration_events 
             WHERE integration_id = ? 
             ORDER BY created_at DESC 
             LIMIT ?
             "#,
-            integration_id.as_bytes(),
+            integration_id,
             limit
         )
         .fetch_all(&self.pool)

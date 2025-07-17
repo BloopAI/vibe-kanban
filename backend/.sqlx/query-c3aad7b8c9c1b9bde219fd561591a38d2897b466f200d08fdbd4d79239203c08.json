@@ -1,30 +1,30 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM integrations WHERE id = ?",
+  "query": "SELECT id as \"id!: Uuid\", name as \"name!\", type as \"integration_type!\", provider as \"provider!\", category_id as \"category_id!\", config, enabled as \"enabled!\", health_status as \"health_status!\", last_sync_at, last_health_check_at, error_message, created_at as \"created_at!\", updated_at as \"updated_at!\" FROM integrations WHERE id = ?",
   "describe": {
     "columns": [
       {
-        "name": "id",
+        "name": "id!: Uuid",
         "ordinal": 0,
         "type_info": "Blob"
       },
       {
-        "name": "name",
+        "name": "name!",
         "ordinal": 1,
         "type_info": "Text"
       },
       {
-        "name": "type",
+        "name": "integration_type!",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "provider",
+        "name": "provider!",
         "ordinal": 3,
         "type_info": "Text"
       },
       {
-        "name": "category_id",
+        "name": "category_id!",
         "ordinal": 4,
         "type_info": "Text"
       },
@@ -34,12 +34,12 @@
         "type_info": "Text"
       },
       {
-        "name": "enabled",
+        "name": "enabled!",
         "ordinal": 6,
         "type_info": "Bool"
       },
       {
-        "name": "health_status",
+        "name": "health_status!",
         "ordinal": 7,
         "type_info": "Text"
       },
@@ -59,12 +59,12 @@
         "type_info": "Text"
       },
       {
-        "name": "created_at",
+        "name": "created_at!",
         "ordinal": 11,
         "type_info": "Text"
       },
       {
-        "name": "updated_at",
+        "name": "updated_at!",
         "ordinal": 12,
         "type_info": "Text"
       }
@@ -88,5 +88,5 @@
       false
     ]
   },
-  "hash": "b2243288bb1feee2229a6542df0a0bd4d8e501de6e5add604d3084908aae911a"
+  "hash": "c3aad7b8c9c1b9bde219fd561591a38d2897b466f200d08fdbd4d79239203c08"
 }

@@ -26,7 +26,7 @@ pub fn integrations_router() -> Router<AppState> {
 async fn list_integrations(
     State(state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<Vec<crate::models::IntegrationWithCategory>>>, StatusCode> {
-    let service = IntegrationService::new(state.pool.clone());
+    let service = IntegrationService::new(state.db_pool.clone());
     
     match service.list_integrations().await {
         Ok(integrations) => Ok(ResponseJson(ApiResponse {
@@ -45,7 +45,7 @@ async fn get_integration(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<crate::models::IntegrationWithCategory>>, StatusCode> {
-    let service = IntegrationService::new(state.pool.clone());
+    let service = IntegrationService::new(state.db_pool.clone());
     
     match service.get_integration(id).await {
         Ok(Some(integration)) => Ok(ResponseJson(ApiResponse {
@@ -65,7 +65,7 @@ async fn create_integration(
     State(state): State<AppState>,
     Json(request): Json<CreateIntegrationRequest>,
 ) -> Result<ResponseJson<ApiResponse<crate::models::Integration>>, StatusCode> {
-    let service = IntegrationService::new(state.pool.clone());
+    let service = IntegrationService::new(state.db_pool.clone());
     
     match service.create_integration(request).await {
         Ok(integration) => Ok(ResponseJson(ApiResponse {
@@ -85,7 +85,7 @@ async fn update_integration(
     Path(id): Path<Uuid>,
     Json(request): Json<UpdateIntegrationRequest>,
 ) -> Result<ResponseJson<ApiResponse<crate::models::Integration>>, StatusCode> {
-    let service = IntegrationService::new(state.pool.clone());
+    let service = IntegrationService::new(state.db_pool.clone());
     
     match service.update_integration(id, request).await {
         Ok(Some(integration)) => Ok(ResponseJson(ApiResponse {
@@ -105,7 +105,7 @@ async fn delete_integration(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-    let service = IntegrationService::new(state.pool.clone());
+    let service = IntegrationService::new(state.db_pool.clone());
     
     match service.delete_integration(id).await {
         Ok(true) => Ok(ResponseJson(ApiResponse {
@@ -125,7 +125,7 @@ async fn test_integration(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<crate::models::IntegrationTestResult>>, StatusCode> {
-    let service = IntegrationService::new(state.pool.clone());
+    let service = IntegrationService::new(state.db_pool.clone());
     
     match service.test_integration(id).await {
         Ok(test_result) => Ok(ResponseJson(ApiResponse {
@@ -144,7 +144,7 @@ async fn sync_integration(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-    let service = IntegrationService::new(state.pool.clone());
+    let service = IntegrationService::new(state.db_pool.clone());
     
     match service.sync_integration(id).await {
         Ok(true) => Ok(ResponseJson(ApiResponse {
@@ -164,7 +164,7 @@ async fn get_integration_events(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<Vec<crate::models::IntegrationEvent>>>, StatusCode> {
-    let service = IntegrationService::new(state.pool.clone());
+    let service = IntegrationService::new(state.db_pool.clone());
     
     match service.get_integration_events(id, Some(50)).await {
         Ok(events) => Ok(ResponseJson(ApiResponse {
@@ -182,7 +182,7 @@ async fn get_integration_events(
 async fn get_categories(
     State(state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<Vec<crate::models::IntegrationCategory>>>, StatusCode> {
-    let service = IntegrationService::new(state.pool.clone());
+    let service = IntegrationService::new(state.db_pool.clone());
     
     match service.get_categories().await {
         Ok(categories) => Ok(ResponseJson(ApiResponse {

@@ -1,15 +1,15 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT * FROM integration_events \n            WHERE integration_id = ? \n            ORDER BY created_at DESC \n            LIMIT ?\n            ",
+  "query": "\n            SELECT id as \"id!: Uuid\", integration_id as \"integration_id!: Uuid\", event_type, event_data, created_at FROM integration_events \n            WHERE integration_id = ? \n            ORDER BY created_at DESC \n            LIMIT ?\n            ",
   "describe": {
     "columns": [
       {
-        "name": "id",
+        "name": "id!: Uuid",
         "ordinal": 0,
         "type_info": "Blob"
       },
       {
-        "name": "integration_id",
+        "name": "integration_id!: Uuid",
         "ordinal": 1,
         "type_info": "Blob"
       },
@@ -40,5 +40,5 @@
       false
     ]
   },
-  "hash": "153af13c7b102094b6c8315a988b3b5b0c75c85edf1ec3b1f836d8977e24b23b"
+  "hash": "d03acd356220e83ea8f1f9cdb5a9142ff5f48425c6f63746c3dc9b81ee4b19a6"
 }

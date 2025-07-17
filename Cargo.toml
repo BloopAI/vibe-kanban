@@ -2,6 +2,17 @@
 resolver = "2"
 members = ["backend", "src-tauri"]
 
+[profile.dev]
+debug = true
+opt-level = 0
+
+[profile.release]
+debug = false
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+
 [workspace.dependencies]
 tokio = { version = "1.0", features = ["full"] }
 axum = { version = "0.7", features = ["macros"] }

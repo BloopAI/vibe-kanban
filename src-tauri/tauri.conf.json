@@ -6,7 +6,7 @@
   "build": {
     "beforeBuildCommand": "npm run frontend:build",
     "beforeDevCommand": "",
-    "devUrl": "http://localhost:3000",
+    "devUrl": "http://localhost:3001",
     "frontendDist": "../frontend/dist"
   },
   "app": {
@@ -19,7 +19,13 @@
         "resizable": true,
         "fullscreen": false,
         "minWidth": 800,
-        "minHeight": 600
+        "minHeight": 600,
+        "center": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "transparent": false,
+        "shadow": true,
+        "decorations": true
       }
     ],
     "security": {
@@ -52,9 +58,6 @@
   "plugins": {
     "shell": {
       "open": true
-    },
-    "notification": {
-      "default": "all"
     }
   }
 }

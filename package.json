@@ -24,7 +24,7 @@
     "dev:clear-ports": "node scripts/setup-dev-environment.js clear",
     "tauri:dev": "npx tauri dev",
     "tauri:build": "npx tauri build",
-    "desktop:dev": "npm run tauri:dev",
+    "desktop:dev": "node scripts/run-desktop-dev.js",
     "desktop:build": "npm run tauri:build",
     "desktop:build:release": "npm run frontend:build && npm run tauri:build",
     "desktop:test": "npm run frontend:build && cd src-tauri && cargo test"

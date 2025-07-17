@@ -1,25 +1,25 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT \n                i.id, i.name, i.type as integration_type, i.provider, i.config, \n                i.enabled, i.health_status, i.last_sync_at, i.last_health_check_at,\n                i.error_message, i.created_at, i.updated_at,\n                c.id as category_id, c.display_name as category_display_name,\n                c.description as category_description, c.icon as category_icon,\n                c.sort_order as category_sort_order, c.created_at as category_created_at,\n                c.updated_at as category_updated_at\n            FROM integrations i\n            JOIN integration_categories c ON i.category_id = c.id\n            ORDER BY c.sort_order ASC, i.name ASC\n            ",
+  "query": "\n            SELECT \n                i.id as \"id!: Uuid\", i.name as \"name!\", i.type as \"integration_type!\", i.provider as \"provider!\", i.config, \n                i.enabled as \"enabled!\", i.health_status as \"health_status!\", i.last_sync_at, i.last_health_check_at,\n                i.error_message, i.created_at as \"created_at!\", i.updated_at as \"updated_at!\",\n                c.id as \"category_id!\", c.display_name as \"category_display_name!\",\n                c.description as category_description, c.icon as category_icon,\n                c.sort_order as \"category_sort_order!: i32\", c.created_at as \"category_created_at!\",\n                c.updated_at as \"category_updated_at!\"\n            FROM integrations i\n            JOIN integration_categories c ON i.category_id = c.id\n            WHERE i.id = ?\n            ",
   "describe": {
     "columns": [
       {
-        "name": "id",
+        "name": "id!: Uuid",
         "ordinal": 0,
         "type_info": "Blob"
       },
       {
-        "name": "name",
+        "name": "name!",
         "ordinal": 1,
         "type_info": "Text"
       },
       {
-        "name": "integration_type",
+        "name": "integration_type!",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "provider",
+        "name": "provider!",
         "ordinal": 3,
         "type_info": "Text"
       },
@@ -29,12 +29,12 @@
         "type_info": "Text"
       },
       {
-        "name": "enabled",
+        "name": "enabled!",
         "ordinal": 5,
         "type_info": "Bool"
       },
       {
-        "name": "health_status",
+        "name": "health_status!",
         "ordinal": 6,
         "type_info": "Text"
       },
@@ -54,22 +54,22 @@
         "type_info": "Text"
       },
       {
-        "name": "created_at",
+        "name": "created_at!",
         "ordinal": 10,
         "type_info": "Text"
       },
       {
-        "name": "updated_at",
+        "name": "updated_at!",
         "ordinal": 11,
         "type_info": "Text"
       },
       {
-        "name": "category_id",
+        "name": "category_id!",
         "ordinal": 12,
         "type_info": "Text"
       },
       {
-        "name": "category_display_name",
+        "name": "category_display_name!",
         "ordinal": 13,
         "type_info": "Text"
       },
@@ -84,23 +84,23 @@
         "type_info": "Text"
       },
       {
-        "name": "category_sort_order",
+        "name": "category_sort_order!: i32",
         "ordinal": 16,
         "type_info": "Integer"
       },
       {
-        "name": "category_created_at",
+        "name": "category_created_at!",
         "ordinal": 17,
         "type_info": "Text"
       },
       {
-        "name": "category_updated_at",
+        "name": "category_updated_at!",
         "ordinal": 18,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       true,
@@ -124,5 +124,5 @@
       false
     ]
   },
-  "hash": "f51018a3569baa8651fe45a5afe29c23853a620963ee4646e3971659c59c89e8"
+  "hash": "45f6fb83715cb455d74c02067c98e879648b4044e9c9dcd4fbd670457fba71f8"
 }

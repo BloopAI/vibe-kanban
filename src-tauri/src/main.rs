@@ -1,15 +1,14 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::Arc;
-use tauri::{async_runtime, Manager, Window};
+use tauri::{async_runtime, Manager, Window, menu::{Menu, MenuItem, PredefinedMenuItem}};
+use tauri::tray::TrayIconEvent;
 use tauri_plugin_notification::NotificationExt;
-use tokio::sync::RwLock;
 
 #[tauri::command]
 async fn start_backend_server() -> Result<String, String> {
     let port = start_embedded_backend().await.map_err(|e| e.to_string())?;
-    Ok(format!("Backend started on port {}", port))
+    Ok(format!("Backend started on port {port}"))
 }
 
 async fn start_embedded_backend() -> Result<u16, anyhow::Error> {
@@ -22,7 +21,7 @@ async fn start_embedded_backend() -> Result<u16, anyhow::Error> {
                 let _ = tx.send(port);
             }
             Err(e) => {
-                eprintln!("Failed to start backend server: {}", e);
+                eprintln!("Failed to start backend server: {e}");
                 let _ = tx.send(0);
             }
         }
@@ -37,9 +36,6 @@ async fn start_embedded_backend() -> Result<u16, anyhow::Error> {
 }
 
 async fn run_backend_server() -> Result<u16, anyhow::Error> {
-    // Import the backend modules
-    use vibe_kanban::*;
-    
     // This is simplified - in practice you'd want to extract the server startup
     // logic from backend/src/main.rs into a library function
     
@@ -47,7 +43,7 @@ async fn run_backend_server() -> Result<u16, anyhow::Error> {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
     let port = listener.local_addr()?.port();
     
-    println!("Backend server starting on port {}", port);
+    println!("Backend server starting on port {port}");
     
     // Here you would start your actual backend server
     // For now we'll just keep the listener alive
@@ -92,6 +88,19 @@ async fn restore_from_tray(window: Window) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+async fn send_notification(window: Window, title: &str, body: &str) -> Result<(), String> {
+    window
+        .app_handle()
+        .notification()
+        .builder()
+        .title(title)
+        .body(body)
+        .show()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -101,15 +110,14 @@ fn main() {
             get_backend_url,
             show_notification,
             minimize_to_tray,
-            restore_from_tray
+            restore_from_tray,
+            send_notification
         ])
         .setup(|app| {
-            let app_handle = app.handle().clone();
-            
             // Start backend server on app startup
             async_runtime::spawn(async move {
                 if let Err(e) = start_embedded_backend().await {
-                    eprintln!("Failed to start embedded backend: {}", e);
+                    eprintln!("Failed to start embedded backend: {e}");
                 }
             });
             
@@ -119,15 +127,61 @@ fn main() {
                 window.open_devtools();
             }
             
-            // Set up system tray
+            // Set up system tray with menu
             let window = app.get_webview_window("main").unwrap();
             let window_clone = window.clone();
             
+            // Create tray menu
+            let show_item = MenuItem::new(app, "Show Vibe Kanban", true, None::<&str>).unwrap();
+            let hide_item = MenuItem::new(app, "Hide Window", true, None::<&str>).unwrap();
+            let separator = PredefinedMenuItem::separator(app).unwrap();
+            let new_project_item = MenuItem::new(app, "New Project", true, None::<&str>).unwrap();
+            let new_task_item = MenuItem::new(app, "New Task", true, None::<&str>).unwrap();
+            let quit_item = PredefinedMenuItem::quit(app, Some("Quit")).unwrap();
+            
+            let tray_menu = Menu::with_items(app, &[
+                &show_item,
+                &hide_item,
+                &separator,
+                &new_project_item,
+                &new_task_item,
+                &separator,
+                &quit_item,
+            ]).unwrap();
+            
+            // Set tray menu
+            app.tray_by_id("main").unwrap().set_menu(Some(tray_menu)).unwrap();
+            
             // Handle tray icon clicks
-            app.tray_by_id("main").unwrap().on_tray_icon_event(move |tray, event| {
-                if let tauri::TrayIconEvent::Click { .. } = event {
+            app.tray_by_id("main").unwrap().on_tray_icon_event(move |_tray, event| {
+                if let TrayIconEvent::Click { .. } = event {
                     let _ = window_clone.show();
                     let _ = window_clone.set_focus();
+                }
+            });
+            
+            // Handle tray menu events
+            app.on_menu_event(move |app, event| {
+                let window = app.get_webview_window("main").unwrap();
+                match event.id.as_ref() {
+                    "Show Vibe Kanban" => {
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    }
+                    "Hide Window" => {
+                        let _ = window.hide();
+                    }
+                    "New Project" => {
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                        let _ = window.eval("window.location.href = '/projects?new=true'");
+                    }
+                    "New Task" => {
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                        let _ = window.eval("window.location.href = '/projects?new_task=true'");
+                    }
+                    _ => {}
                 }
             });
             
