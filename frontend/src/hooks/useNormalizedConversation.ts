@@ -50,6 +50,7 @@ const useNormalizedConversation = ({
     processId: string;
     processStatus: string;
     patchFailureCount: number;
+    onopenCalled: boolean;
   }>({
     abortController: null,
     isActive: false,
@@ -59,6 +60,7 @@ const useNormalizedConversation = ({
     processId: executionProcess?.id || '',
     processStatus: executionProcess?.status || '',
     patchFailureCount: 0,
+    onopenCalled: false,
   });
 
   // SSE Connection Manager with Production-Ready Resilience using fetch-event-source
@@ -80,6 +82,19 @@ const useNormalizedConversation = ({
       fetchEventSource(url, {
         signal: abortController.signal,
         onopen: async (response) => {
+            const manager = sseManagerRef.current;
+            if (manager.onopenCalled) {
+                // This is a "phantom" reconnect, so abort and re-create
+                debugLog('⚠️ SSE: onopen called again for same connection, forcing reconnect');
+                abortController.abort();
+                manager.abortController = null;
+                manager.isActive = false;
+                manager.onopenCalled = false;
+                // Re-establish with latest cursor
+                scheduleReconnect(processId, projectId);
+                return;
+            }
+            manager.onopenCalled = true;
           if (response.ok) {
             debugLog(`✅ SSE: Connected to ${processId}`);
             manager.isActive = true;
@@ -270,6 +285,7 @@ const useNormalizedConversation = ({
       clearTimeout(manager.reconnectTimeout);
       manager.reconnectTimeout = null;
     }
+    manager.onopenCalled = false;
   }, []);
 
   const fetchNormalizedLogsOnce = useCallback(
