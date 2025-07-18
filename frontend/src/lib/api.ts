@@ -487,11 +487,10 @@ export const attemptsApi = {
 // Execution Process APIs
 export const executionProcessesApi = {
   getDetails: async (
-    projectId: string,
     processId: string
   ): Promise<ExecutionProcess> => {
     const response = await makeRequest(
-      `/api/projects/${projectId}/execution-processes/${processId}`
+      `/api/execution-processes/${processId}`
     );
     return handleApiResponse<ExecutionProcess>(response);
   },

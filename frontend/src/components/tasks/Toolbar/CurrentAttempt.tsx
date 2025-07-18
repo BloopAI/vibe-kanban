@@ -171,7 +171,6 @@ function CurrentAttempt({
 
     try {
       const result = await executionProcessesApi.getDetails(
-        projectId,
         runningDevServer.id
       );
       setDevServerDetails(result);
