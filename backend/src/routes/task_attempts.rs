@@ -360,19 +360,12 @@ pub async fn merge_task_attempt(
 }
 
 pub async fn create_github_pr(
-    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    Extension(project): Extension<Project>,
+    Extension(task): Extension<Task>,
+    Extension(task_attempt): Extension<TaskAttempt>,
     State(app_state): State<AppState>,
     Json(request): Json<CreateGitHubPRRequest>,
 ) -> Result<ResponseJson<ApiResponse<String>>, StatusCode> {
-    // Verify task attempt exists and belongs to the correct task
-    match TaskAttempt::exists_for_task(&app_state.db_pool, attempt_id, task_id, project_id).await {
-        Ok(false) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to check task attempt existence: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-        Ok(true) => {}
-    }
 
     // Load the user's GitHub configuration
     let config = match Config::load(&crate::utils::config_path()) {
@@ -397,14 +390,7 @@ pub async fn create_github_pr(
     };
 
     // Get the task attempt to access the stored base branch
-    let attempt = match TaskAttempt::find_by_id(&app_state.db_pool, attempt_id).await {
-        Ok(Some(attempt)) => attempt,
-        Ok(None) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to fetch task attempt {}: {}", attempt_id, e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
+    let attempt = &task_attempt;
 
     let base_branch = request.base_branch.unwrap_or_else(|| {
         // Use the stored base branch from the task attempt as the default
@@ -422,9 +408,9 @@ pub async fn create_github_pr(
     match TaskAttempt::create_github_pr(
         &app_state.db_pool,
         CreatePrParams {
-            attempt_id,
-            task_id,
-            project_id,
+            attempt_id: task_attempt.id,
+            task_id: task.id,
+            project_id: project.id,
             github_token: &config.github.pat.unwrap_or(github_token),
             title: &request.title,
             body: request.body.as_deref(),
@@ -438,9 +424,9 @@ pub async fn create_github_pr(
                 .track_analytics_event(
                     "github_pr_created",
                     Some(serde_json::json!({
-                        "task_id": task_id.to_string(),
-                        "project_id": project_id.to_string(),
-                        "attempt_id": attempt_id.to_string(),
+                        "task_id": task.id.to_string(),
+                        "project_id": project.id.to_string(),
+                        "attempt_id": task_attempt.id.to_string(),
                     })),
                 )
                 .await;
@@ -454,7 +440,7 @@ pub async fn create_github_pr(
         Err(e) => {
             tracing::error!(
                 "Failed to create GitHub PR for attempt {}: {}",
-                attempt_id,
+                task_attempt.id,
                 e
             );
             let message = match &e {
