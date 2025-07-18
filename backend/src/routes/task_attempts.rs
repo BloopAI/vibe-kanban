@@ -1,6 +1,7 @@
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
+    middleware::from_fn_with_state,
     response::Json as ResponseJson,
     routing::get,
     Extension, Json, Router,
@@ -15,6 +16,7 @@ use crate::{
     executor::{
         ActionType, ExecutorConfig, NormalizedConversation, NormalizedEntry, NormalizedEntryType,
     },
+    middleware::{load_project_middleware, load_task_middleware, load_task_attempt_middleware},
     models::{
         config::Config,
         execution_process::{
@@ -1153,38 +1155,21 @@ pub async fn approve_plan(
 }
 
 pub async fn get_task_attempt_details(
-    Path(attempt_id): Path<Uuid>,
-    State(app_state): State<AppState>,
+    Extension(task_attempt): Extension<TaskAttempt>,
 ) -> Result<ResponseJson<ApiResponse<TaskAttempt>>, StatusCode> {
-    match TaskAttempt::find_by_id(&app_state.db_pool, attempt_id).await {
-        Ok(Some(attempt)) => Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: Some(attempt),
-            message: None,
-        })),
-        Ok(None) => Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to get task attempt {}: {}", attempt_id, e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
+    Ok(ResponseJson(ApiResponse {
+        success: true,
+        data: Some(task_attempt),
+        message: None,
+    }))
 }
 
 pub async fn get_task_attempt_children(
-    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    Extension(task_attempt): Extension<TaskAttempt>,
+    Extension(project): Extension<Project>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<Vec<Task>>>, StatusCode> {
-    // Verify task exists in the specified project
-    match Task::find_by_id_and_project_id(&app_state.db_pool, task_id, project_id).await {
-        Ok(Some(_)) => {} // Task exists, proceed
-        Ok(None) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to check task existence: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    match Task::find_related_tasks_by_attempt_id(&app_state.db_pool, attempt_id, project_id).await {
+    match Task::find_related_tasks_by_attempt_id(&app_state.db_pool, task_attempt.id, project.id).await {
         Ok(related_tasks) => Ok(ResponseJson(ApiResponse {
             success: true,
             data: Some(related_tasks),
@@ -1193,7 +1178,7 @@ pub async fn get_task_attempt_children(
         Err(e) => {
             tracing::error!(
                 "Failed to fetch children for task attempt {}: {}",
-                attempt_id,
+                task_attempt.id,
                 e
             );
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -1201,7 +1186,7 @@ pub async fn get_task_attempt_children(
     }
 }
 
-pub fn task_attempts_router() -> Router<AppState> {
+pub fn task_attempts_router(state: AppState) -> Router<AppState> {
     use axum::routing::post;
 
     Router::new()
@@ -1279,8 +1264,12 @@ pub fn task_attempts_router() -> Router<AppState> {
             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/children",
             get(get_task_attempt_children),
         )
+        .route_layer(from_fn_with_state(state.clone(), load_project_middleware))
+        .route_layer(from_fn_with_state(state.clone(), load_task_middleware))
+        .route_layer(from_fn_with_state(state.clone(), load_task_attempt_middleware))
         .route(
             "/attempts/:attempt_id/details",
             get(get_task_attempt_details),
         )
+        .route_layer(from_fn_with_state(state.clone(), load_task_attempt_middleware))
 }

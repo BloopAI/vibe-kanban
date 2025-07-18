@@ -215,7 +215,7 @@ fn main() -> anyhow::Result<()> {
 
             // Task attempt routes with task attempt middleware
             let task_attempt_routes = Router::new()
-                .merge(task_attempts::task_attempts_router())
+                .merge(task_attempts::task_attempts_router(app_state.clone()))
                 .layer(from_fn_with_state(app_state.clone(), load_task_attempt_middleware));
 
             // All routes (no auth required)
