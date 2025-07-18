@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useConfig } from '@/components/config-provider';
 import { attemptsApi, projectsApi } from '@/lib/api';
 import type { GitBranch, TaskAttempt } from 'shared/types';
-import { EXECUTOR_TYPES, EXECUTOR_LABELS } from 'shared/types';
+import { EXECUTOR_LABELS, EXECUTOR_TYPES } from 'shared/types';
 import {
   TaskAttemptDataContext,
   TaskAttemptLoadingContext,
@@ -67,10 +67,10 @@ function TaskDetailsToolbar() {
     setBranches(result);
     // Set current branch as default
     const currentBranch = result.find((b) => b.is_current);
-    if (currentBranch && !selectedBranch) {
-      setSelectedBranch(currentBranch.name);
+    if (currentBranch) {
+      setSelectedBranch((prev) => (!prev ? currentBranch.name : prev));
     }
-  }, [projectId, selectedBranch]);
+  }, [projectId]);
 
   useEffect(() => {
     fetchProjectBranches();
