@@ -2,8 +2,7 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::get,
-    Extension, Json, Router,
+    Extension, Json,
 };
 use uuid::Uuid;
 
@@ -147,18 +146,4 @@ pub async fn delete_template(
     }
 }
 
-pub fn templates_router() -> Router<AppState> {
-    Router::new()
-        .route("/templates", get(list_templates).post(create_template))
-        .route("/templates/global", get(list_global_templates))
-        .route(
-            "/templates/:template_id",
-            get(get_template)
-                .put(update_template)
-                .delete(delete_template),
-        )
-        .route(
-            "/projects/:project_id/templates",
-            get(list_project_templates),
-        )
-}
+

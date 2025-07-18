@@ -16,7 +16,7 @@ use crate::{
     executor::{
         ActionType, ExecutorConfig, NormalizedConversation, NormalizedEntry, NormalizedEntryType,
     },
-    middleware::{load_project_middleware, load_task_attempt_middleware, load_task_middleware},
+    middleware::load_task_attempt_middleware,
     models::{
         config::Config,
         execution_process::{
@@ -1167,14 +1167,14 @@ pub async fn get_task_attempt_children(
     }
 }
 
-pub fn task_attempts_list_router(state: AppState) -> Router<AppState> {
+pub fn task_attempts_list_router(_state: AppState) -> Router<AppState> {
     Router::new().route(
         "/projects/:project_id/tasks/:task_id/attempts",
         get(get_task_attempts).post(create_task_attempt),
     )
 }
 
-pub fn task_attempts_with_id_router(state: AppState) -> Router<AppState> {
+pub fn task_attempts_with_id_router(_state: AppState) -> Router<AppState> {
     use axum::routing::post;
 
     Router::new()
@@ -1248,6 +1248,6 @@ pub fn task_attempts_with_id_router(state: AppState) -> Router<AppState> {
                     "/attempts/:attempt_id/details",
                     get(get_task_attempt_details),
                 )
-                .route_layer(from_fn_with_state(state.clone(), load_task_attempt_middleware))
+                .route_layer(from_fn_with_state(_state.clone(), load_task_attempt_middleware))
         )
 }

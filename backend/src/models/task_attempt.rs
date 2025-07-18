@@ -502,24 +502,7 @@ impl TaskAttempt {
         .await?)
     }
 
-    pub async fn exists_for_task(
-        pool: &SqlitePool,
-        attempt_id: Uuid,
-        task_id: Uuid,
-        project_id: Uuid,
-    ) -> Result<bool, sqlx::Error> {
-        let result = sqlx::query!(
-            "SELECT ta.id as \"id!: Uuid\" FROM task_attempts ta 
-             JOIN tasks t ON ta.task_id = t.id 
-             WHERE ta.id = $1 AND t.id = $2 AND t.project_id = $3",
-            attempt_id,
-            task_id,
-            project_id
-        )
-        .fetch_optional(pool)
-        .await?;
-        Ok(result.is_some())
-    }
+
 
     /// Perform the actual merge operation using GitService
     fn perform_merge_operation(
