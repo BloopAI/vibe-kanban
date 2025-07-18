@@ -132,7 +132,10 @@ async fn get_mcp_servers(
             });
             ResponseJson(ApiResponse::success(response_data))
         }
-        Err(e) => ResponseJson(ApiResponse::error(&format!("Failed to read MCP servers: {}", e))),
+        Err(e) => ResponseJson(ApiResponse::error(&format!(
+            "Failed to read MCP servers: {}",
+            e
+        ))),
     }
 }
 
@@ -163,7 +166,10 @@ async fn update_mcp_servers(
 
     match update_mcp_servers_in_config(&config_path, &executor_config, new_servers).await {
         Ok(message) => ResponseJson(ApiResponse::success(message)),
-        Err(e) => ResponseJson(ApiResponse::error(&format!("Failed to update MCP servers: {}", e))),
+        Err(e) => ResponseJson(ApiResponse::error(&format!(
+            "Failed to update MCP servers: {}",
+            e
+        ))),
     }
 }
 

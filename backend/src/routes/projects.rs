@@ -41,7 +41,9 @@ pub async fn get_project(
 pub async fn get_project_with_branch(
     Extension(project): Extension<Project>,
 ) -> Result<ResponseJson<ApiResponse<ProjectWithBranch>>, StatusCode> {
-    Ok(ResponseJson(ApiResponse::success(project.with_branch_info())))
+    Ok(ResponseJson(ApiResponse::success(
+        project.with_branch_info(),
+    )))
 }
 
 pub async fn get_project_branches(
@@ -62,12 +64,16 @@ pub async fn create_project_branch(
 ) -> Result<ResponseJson<ApiResponse<GitBranch>>, StatusCode> {
     // Validate branch name
     if payload.name.trim().is_empty() {
-        return Ok(ResponseJson(ApiResponse::error("Branch name cannot be empty")));
+        return Ok(ResponseJson(ApiResponse::error(
+            "Branch name cannot be empty",
+        )));
     }
 
     // Check if branch name contains invalid characters
     if payload.name.contains(' ') {
-        return Ok(ResponseJson(ApiResponse::error("Branch name cannot contain spaces")));
+        return Ok(ResponseJson(ApiResponse::error(
+            "Branch name cannot contain spaces",
+        )));
     }
 
     match project.create_branch(&payload.name, payload.base_branch.as_deref()) {
@@ -79,7 +85,10 @@ pub async fn create_project_branch(
                 project.id,
                 e
             );
-            Ok(ResponseJson(ApiResponse::error(&format!("Failed to create branch: {}", e))))
+            Ok(ResponseJson(ApiResponse::error(&format!(
+                "Failed to create branch: {}",
+                e
+            ))))
         }
     }
 }
@@ -95,7 +104,9 @@ pub async fn create_project(
     // Check if git repo path is already used by another project
     match Project::find_by_git_repo_path(&app_state.db_pool, &payload.git_repo_path).await {
         Ok(Some(_)) => {
-            return Ok(ResponseJson(ApiResponse::error("A project with this git repository path already exists")));
+            return Ok(ResponseJson(ApiResponse::error(
+                "A project with this git repository path already exists",
+            )));
         }
         Ok(None) => {
             // Path is available, continue
@@ -112,15 +123,21 @@ pub async fn create_project(
     if payload.use_existing_repo {
         // For existing repos, validate that the path exists and is a git repository
         if !path.exists() {
-            return Ok(ResponseJson(ApiResponse::error("The specified path does not exist")));
+            return Ok(ResponseJson(ApiResponse::error(
+                "The specified path does not exist",
+            )));
         }
 
         if !path.is_dir() {
-            return Ok(ResponseJson(ApiResponse::error("The specified path is not a directory")));
+            return Ok(ResponseJson(ApiResponse::error(
+                "The specified path is not a directory",
+            )));
         }
 
         if !path.join(".git").exists() {
-            return Ok(ResponseJson(ApiResponse::error("The specified directory is not a git repository")));
+            return Ok(ResponseJson(ApiResponse::error(
+                "The specified directory is not a git repository",
+            )));
         }
     } else {
         // For new repos, create directory and initialize git
@@ -129,7 +146,10 @@ pub async fn create_project(
         if !path.exists() {
             if let Err(e) = std::fs::create_dir_all(path) {
                 tracing::error!("Failed to create directory: {}", e);
-                return Ok(ResponseJson(ApiResponse::error(&format!("Failed to create directory: {}", e))));
+                return Ok(ResponseJson(ApiResponse::error(&format!(
+                    "Failed to create directory: {}",
+                    e
+                ))));
             }
         }
 
@@ -144,12 +164,18 @@ pub async fn create_project(
                     if !output.status.success() {
                         let error_msg = String::from_utf8_lossy(&output.stderr);
                         tracing::error!("Git init failed: {}", error_msg);
-                        return Ok(ResponseJson(ApiResponse::error(&format!("Git init failed: {}", error_msg))));
+                        return Ok(ResponseJson(ApiResponse::error(&format!(
+                            "Git init failed: {}",
+                            error_msg
+                        ))));
                     }
                 }
                 Err(e) => {
                     tracing::error!("Failed to run git init: {}", e);
-                    return Ok(ResponseJson(ApiResponse::error(&format!("Failed to run git init: {}", e))));
+                    return Ok(ResponseJson(ApiResponse::error(&format!(
+                        "Failed to run git init: {}",
+                        e
+                    ))));
                 }
             }
         }
@@ -195,7 +221,9 @@ pub async fn update_project(
             .await
             {
                 Ok(Some(_)) => {
-                    return Ok(ResponseJson(ApiResponse::error("A project with this git repository path already exists")));
+                    return Ok(ResponseJson(ApiResponse::error(
+                        "A project with this git repository path already exists",
+                    )));
                 }
                 Ok(None) => {
                     // Path is available, continue
@@ -333,7 +361,9 @@ pub async fn search_project_files(
     let query = match params.get("q") {
         Some(q) if !q.trim().is_empty() => q.trim(),
         _ => {
-            return Ok(ResponseJson(ApiResponse::error("Query parameter 'q' is required and cannot be empty")));
+            return Ok(ResponseJson(ApiResponse::error(
+                "Query parameter 'q' is required and cannot be empty",
+            )));
         }
     };
 

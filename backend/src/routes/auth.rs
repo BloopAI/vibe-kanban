@@ -49,13 +49,17 @@ async fn device_start() -> ResponseJson<ApiResponse<DeviceStartResponse>> {
     let res = match res {
         Ok(r) => r,
         Err(e) => {
-            return ResponseJson(ApiResponse::error(&format!("Failed to contact GitHub: {e}")));
+            return ResponseJson(ApiResponse::error(&format!(
+                "Failed to contact GitHub: {e}"
+            )));
         }
     };
     let json: serde_json::Value = match res.json().await {
         Ok(j) => j,
         Err(e) => {
-            return ResponseJson(ApiResponse::error(&format!("Failed to parse GitHub response: {e}")));
+            return ResponseJson(ApiResponse::error(&format!(
+                "Failed to parse GitHub response: {e}"
+            )));
         }
     };
     if let (
@@ -105,13 +109,17 @@ async fn device_poll(
     let res = match res {
         Ok(r) => r,
         Err(e) => {
-            return ResponseJson(ApiResponse::error(&format!("Failed to contact GitHub: {e}")));
+            return ResponseJson(ApiResponse::error(&format!(
+                "Failed to contact GitHub: {e}"
+            )));
         }
     };
     let json: serde_json::Value = match res.json().await {
         Ok(j) => j,
         Err(e) => {
-            return ResponseJson(ApiResponse::error(&format!("Failed to parse GitHub response: {e}")));
+            return ResponseJson(ApiResponse::error(&format!(
+                "Failed to parse GitHub response: {e}"
+            )));
         }
     };
     if let Some(error) = json.get("error").and_then(|v| v.as_str()) {
@@ -131,11 +139,15 @@ async fn device_poll(
             Ok(res) => match res.json().await {
                 Ok(json) => json,
                 Err(e) => {
-                    return ResponseJson(ApiResponse::error(&format!("Failed to parse GitHub user response: {e}")));
+                    return ResponseJson(ApiResponse::error(&format!(
+                        "Failed to parse GitHub user response: {e}"
+                    )));
                 }
             },
             Err(e) => {
-                return ResponseJson(ApiResponse::error(&format!("Failed to fetch user info: {e}")));
+                return ResponseJson(ApiResponse::error(&format!(
+                    "Failed to fetch user info: {e}"
+                )));
             }
         };
         let username = user_json
@@ -153,11 +165,15 @@ async fn device_poll(
             Ok(res) => match res.json().await {
                 Ok(json) => json,
                 Err(e) => {
-                    return ResponseJson(ApiResponse::error(&format!("Failed to parse GitHub emails response: {e}")));
+                    return ResponseJson(ApiResponse::error(&format!(
+                        "Failed to parse GitHub emails response: {e}"
+                    )));
                 }
             },
             Err(e) => {
-                return ResponseJson(ApiResponse::error(&format!("Failed to fetch user emails: {e}")));
+                return ResponseJson(ApiResponse::error(&format!(
+                    "Failed to fetch user emails: {e}"
+                )));
             }
         };
         let primary_email = emails_json

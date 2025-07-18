@@ -107,7 +107,10 @@ pub async fn list_directory(
         }
         Err(e) => {
             tracing::error!("Failed to read directory: {}", e);
-            Ok(ResponseJson(ApiResponse::error(&format!("Failed to read directory: {}", e))))
+            Ok(ResponseJson(ApiResponse::error(&format!(
+                "Failed to read directory: {}",
+                e
+            ))))
         }
     }
 }
@@ -134,7 +137,10 @@ pub async fn create_git_repo(
     if !path.exists() {
         if let Err(e) = fs::create_dir_all(path) {
             tracing::error!("Failed to create directory: {}", e);
-            return Ok(ResponseJson(ApiResponse::error(&format!("Failed to create directory: {}", e))));
+            return Ok(ResponseJson(ApiResponse::error(&format!(
+                "Failed to create directory: {}",
+                e
+            ))));
         }
     }
 
@@ -155,12 +161,18 @@ pub async fn create_git_repo(
             } else {
                 let error_msg = String::from_utf8_lossy(&output.stderr);
                 tracing::error!("Git init failed: {}", error_msg);
-                Ok(ResponseJson(ApiResponse::error(&format!("Git init failed: {}", error_msg))))
+                Ok(ResponseJson(ApiResponse::error(&format!(
+                    "Git init failed: {}",
+                    error_msg
+                ))))
             }
         }
         Err(e) => {
             tracing::error!("Failed to run git init: {}", e);
-            Ok(ResponseJson(ApiResponse::error(&format!("Failed to run git init: {}", e))))
+            Ok(ResponseJson(ApiResponse::error(&format!(
+                "Failed to run git init: {}",
+                e
+            ))))
         }
     }
 }

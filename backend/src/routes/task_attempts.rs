@@ -341,7 +341,10 @@ pub async fn merge_task_attempt(
         }
         Err(e) => {
             tracing::error!("Failed to merge task attempt {}: {}", task_attempt.id, e);
-            Ok(ResponseJson(ApiResponse::error(&format!("Failed to merge: {}", e))))
+            Ok(ResponseJson(ApiResponse::error(&format!(
+                "Failed to merge: {}",
+                e
+            ))))
         }
     }
 }
@@ -366,7 +369,7 @@ pub async fn create_github_pr(
         Some(token) => token,
         None => {
             return Ok(ResponseJson(ApiResponse::error(
-                "GitHub authentication not configured. Please sign in with GitHub."
+                "GitHub authentication not configured. Please sign in with GitHub.",
             )));
         }
     };
@@ -445,7 +448,9 @@ pub async fn create_github_pr(
                 }
                 _ => Some(format!("Failed to create PR: {}", e)),
             };
-            Ok(ResponseJson(ApiResponse::error(message.as_deref().unwrap_or("Unknown error"))))
+            Ok(ResponseJson(ApiResponse::error(
+                message.as_deref().unwrap_or("Unknown error"),
+            )))
         }
     }
 }
