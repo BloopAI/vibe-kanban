@@ -284,7 +284,7 @@ pub async fn delete_task(
     }
 }
 
-pub fn tasks_router() -> Router<AppState> {
+pub fn tasks_project_router() -> Router<AppState> {
     use axum::routing::post;
 
     Router::new()
@@ -296,6 +296,10 @@ pub fn tasks_router() -> Router<AppState> {
             "/projects/:project_id/tasks/create-and-start",
             post(create_task_and_start),
         )
+}
+
+pub fn tasks_with_id_router() -> Router<AppState> {
+    Router::new()
         .route(
             "/projects/:project_id/tasks/:task_id",
             get(get_task).put(update_task).delete(delete_task),
