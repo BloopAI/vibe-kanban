@@ -11,7 +11,6 @@ import {
   TaskAttemptLoadingContext,
   TaskAttemptStoppingContext,
   TaskDetailsContext,
-  TaskExecutionStateContext,
   TaskSelectedAttemptContext,
 } from '@/components/context/taskDetailsContext.ts';
 import CreatePRDialog from '@/components/tasks/Toolbar/CreatePRDialog.tsx';
@@ -31,10 +30,9 @@ function TaskDetailsToolbar() {
   );
 
   const { isStopping } = useContext(TaskAttemptStoppingContext);
-  const { fetchAttemptData, setAttemptData, isAttemptRunning } = useContext(
+  const { setAttemptData, isAttemptRunning } = useContext(
     TaskAttemptDataContext
   );
-  const { fetchExecutionState } = useContext(TaskExecutionStateContext);
 
   const [taskAttempts, setTaskAttempts] = useState<TaskAttempt[]>([]);
   const location = useLocation();
@@ -163,11 +161,6 @@ function TaskDetailsToolbar() {
             return prev;
           return selectedAttemptToUse;
         });
-        fetchAttemptData(selectedAttemptToUse.id, selectedAttemptToUse.task_id);
-        fetchExecutionState(
-          selectedAttemptToUse.id,
-          selectedAttemptToUse.task_id
-        );
       } else {
         setSelectedAttempt(null);
         setAttemptData({
@@ -181,7 +174,7 @@ function TaskDetailsToolbar() {
     } finally {
       setLoading(false);
     }
-  }, [task, projectId, fetchAttemptData, fetchExecutionState, location.search]);
+  }, [task, projectId, location.search]);
 
   useEffect(() => {
     fetchTaskAttempts();
