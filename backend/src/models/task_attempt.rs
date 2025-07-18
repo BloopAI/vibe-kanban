@@ -502,8 +502,6 @@ impl TaskAttempt {
         .await?)
     }
 
-
-
     /// Perform the actual merge operation using GitService
     fn perform_merge_operation(
         worktree_path: &str,

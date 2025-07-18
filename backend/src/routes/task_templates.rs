@@ -145,5 +145,3 @@ pub async fn delete_template(
         )),
     }
 }
-
-

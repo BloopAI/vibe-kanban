@@ -158,10 +158,6 @@ pub async fn load_execution_process_simple_middleware(
     Ok(next.run(request).await)
 }
 
-
-
-
-
 /// Middleware that loads and injects TaskTemplate based on the template_id path parameter
 pub async fn load_task_template_middleware(
     State(app_state): State<AppState>,
