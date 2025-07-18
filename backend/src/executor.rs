@@ -358,6 +358,7 @@ pub enum ExecutorConfig {
     ClaudeCodeRouter,
     #[serde(alias = "charmopencode")]
     CharmOpencode,
+    #[serde(alias = "opencode")]
     SstOpencode,
     // Future executors can be added here
     // Shell { command: String },
