@@ -281,9 +281,26 @@ impl Config {
                     Ok(config)
                 }
                 Err(_) => {
-                    // If full deserialization fails, merge with defaults
-                    let config = Self::load_with_defaults(&content, config_path)?;
-                    Ok(config)
+                    // If full deserialization fails, try to merge with defaults
+                    match Self::load_with_defaults(&content, config_path) {
+                        Ok(config) => Ok(config),
+                        Err(_) => {
+                            // Even partial loading failed - backup the corrupted file
+                            if let Err(e) = Self::backup_corrupted_config(config_path) {
+                                tracing::error!("Failed to backup corrupted config: {}", e);
+                            }
+
+                            // Remove corrupted file and create a default config
+                            if let Err(e) = std::fs::remove_file(config_path) {
+                                tracing::error!("Failed to remove corrupted config file: {}", e);
+                            }
+
+                            // Create and save default config
+                            let config = Config::default();
+                            config.save(config_path)?;
+                            Ok(config)
+                        }
+                    }
                 }
             }
         } else {
@@ -332,6 +349,21 @@ impl Config {
             }
             (_, overlay) => overlay, // Use overlay value for non-objects
         }
+    }
+
+    /// Create a backup of the corrupted config file
+    fn backup_corrupted_config(config_path: &PathBuf) -> anyhow::Result<()> {
+        let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+        let backup_filename = format!("config_backup_{}.json", timestamp);
+
+        let backup_path = config_path
+            .parent()
+            .unwrap_or_else(|| std::path::Path::new("."))
+            .join(backup_filename);
+
+        std::fs::copy(config_path, &backup_path)?;
+        tracing::info!("Corrupted config backed up to: {}", backup_path.display());
+        Ok(())
     }
 
     pub fn save(&self, config_path: &PathBuf) -> anyhow::Result<()> {
