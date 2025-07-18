@@ -538,11 +538,15 @@ async fn search_files_in_repo(
     Ok(results)
 }
 
-pub fn projects_router() -> Router<AppState> {
+pub fn projects_base_router() -> Router<AppState> {
+    Router::new()
+        .route("/projects", get(get_projects).post(create_project))
+}
+
+pub fn projects_with_id_router() -> Router<AppState> {
     use axum::routing::post;
 
     Router::new()
-        .route("/projects", get(get_projects).post(create_project))
         .route(
             "/projects/:id",
             get(get_project).put(update_project).delete(delete_project),
