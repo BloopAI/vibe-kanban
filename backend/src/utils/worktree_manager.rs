@@ -5,7 +5,7 @@ use std::{
 };
 
 use git2::{Error as GitError, Repository, WorktreeAddOptions};
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 // Global synchronization for worktree creation to prevent race conditions
 lazy_static::lazy_static! {
@@ -284,6 +284,15 @@ impl WorktreeManager {
                         "Successfully created worktree {} at {}",
                         branch_name, path_str
                     );
+
+                    // Fix commondir for Windows/WSL compatibility
+                    if let Err(e) = Self::fix_worktree_commondir_for_windows_wsl(
+                        Path::new(&git_repo_path),
+                        &worktree_name,
+                    ) {
+                        warn!("Failed to fix worktree commondir for Windows/WSL: {}", e);
+                    }
+
                     Ok(())
                 }
                 Err(e) if e.code() == git2::ErrorCode::Exists => {
@@ -317,6 +326,15 @@ impl WorktreeManager {
                                 "Successfully created worktree {} at {} after metadata cleanup",
                                 branch_name, path_str
                             );
+
+                            // Fix commondir for Windows/WSL compatibility
+                            if let Err(e) = Self::fix_worktree_commondir_for_windows_wsl(
+                                Path::new(&git_repo_path),
+                                &worktree_name,
+                            ) {
+                                warn!("Failed to fix worktree commondir for Windows/WSL: {}", e);
+                            }
+
                             Ok(())
                         }
                         Err(retry_error) => {
@@ -474,5 +492,82 @@ impl WorktreeManager {
         })
         .await
         .map_err(|e| GitError::from_str(&format!("Task join error: {}", e)))?
+    }
+
+    /// Rewrite worktree's commondir file to use relative paths for WSL compatibility
+    ///
+    /// This fixes Git repository corruption in WSL environments where git2/libgit2 creates
+    /// worktrees with absolute WSL paths (/mnt/c/...) that Windows Git cannot understand.
+    /// Git CLI creates relative paths (../../..) which work across both environments.
+    ///
+    /// References:
+    /// - Git 2.48+ native support: https://git-scm.com/docs/git-config/2.48.0#Documentation/git-config.txt-worktreeuseRelativePaths
+    /// - WSL worktree absolute path issue: https://github.com/git-ecosystem/git-credential-manager/issues/1789
+    pub fn fix_worktree_commondir_for_windows_wsl(
+        git_repo_path: &Path,
+        worktree_name: &str,
+    ) -> Result<(), std::io::Error> {
+        let commondir_path = git_repo_path
+            .join(".git")
+            .join("worktrees")
+            .join(worktree_name)
+            .join("commondir");
+
+        if !commondir_path.exists() {
+            debug!(
+                "commondir file does not exist: {}",
+                commondir_path.display()
+            );
+            return Ok(());
+        }
+
+        // Read current commondir content
+        let current_content = std::fs::read_to_string(&commondir_path)?.trim().to_string();
+
+        debug!("Current commondir content: {}", current_content);
+
+        // Skip if already relative
+        if !Path::new(&current_content).is_absolute() {
+            debug!("commondir already contains relative path, skipping");
+            return Ok(());
+        }
+
+        // Calculate relative path from worktree metadata dir to repo .git dir
+        let metadata_dir = commondir_path.parent().unwrap();
+        let target_git_dir = Path::new(&current_content);
+
+        if let Some(relative_path) = pathdiff::diff_paths(target_git_dir, metadata_dir) {
+            let relative_path_str = relative_path.to_string_lossy();
+
+            // Safety check: ensure the relative path resolves to the same absolute path
+            let resolved_path = metadata_dir.join(&relative_path);
+            if let (Ok(resolved_canonical), Ok(target_canonical)) =
+                (resolved_path.canonicalize(), target_git_dir.canonicalize())
+            {
+                if resolved_canonical == target_canonical {
+                    // Write the relative path
+                    std::fs::write(&commondir_path, format!("{}\n", relative_path_str))?;
+                    info!(
+                        "Rewrote commondir to relative path: {} -> {}",
+                        current_content, relative_path_str
+                    );
+                } else {
+                    warn!(
+                        "Safety check failed: relative path {} does not resolve to same target",
+                        relative_path_str
+                    );
+                }
+            } else {
+                warn!("Failed to canonicalize paths for safety check");
+            }
+        } else {
+            warn!(
+                "Failed to calculate relative path from {} to {}",
+                metadata_dir.display(),
+                target_git_dir.display()
+            );
+        }
+
+        Ok(())
     }
 }

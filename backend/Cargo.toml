@@ -34,6 +34,7 @@ rust-embed = "8.2"
 mime_guess = "2.0"
 directories = "6.0.0"
 open = "5.3.2"
+pathdiff = "0.2.1"
 ignore = "0.4"
 command-group = { version = "5.0", features = ["with-tokio"] }
 nix = { version = "0.29", features = ["signal", "process"] }

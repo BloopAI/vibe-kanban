@@ -137,6 +137,17 @@ impl GitService {
         // Create the worktree at the specified path
         repo.worktree(branch_name, worktree_path, Some(&worktree_opts))?;
 
+        // Fix commondir for Windows/WSL compatibility
+        let worktree_name = worktree_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or(branch_name);
+        if let Err(e) =
+            WorktreeManager::fix_worktree_commondir_for_windows_wsl(&self.repo_path, worktree_name)
+        {
+            tracing::warn!("Failed to fix worktree commondir for Windows/WSL: {}", e);
+        }
+
         info!(
             "Created worktree '{}' at path: {}",
             branch_name,
