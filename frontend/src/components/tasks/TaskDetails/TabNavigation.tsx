@@ -8,10 +8,9 @@ import {
 type Props = {
   activeTab: 'logs' | 'diffs' | 'related';
   setActiveTab: (tab: 'logs' | 'diffs' | 'related') => void;
-  setUserSelectedTab: (tab: boolean) => void;
 };
 
-function TabNavigation({ activeTab, setActiveTab, setUserSelectedTab }: Props) {
+function TabNavigation({ activeTab, setActiveTab }: Props) {
   const { diff } = useContext(TaskDiffContext);
   const { totalRelatedCount } = useContext(TaskRelatedTasksContext);
   return (
@@ -19,9 +18,7 @@ function TabNavigation({ activeTab, setActiveTab, setUserSelectedTab }: Props) {
       <div className="flex px-4">
         <button
           onClick={() => {
-            console.log('Logs tab clicked - setting activeTab to logs');
             setActiveTab('logs');
-            setUserSelectedTab(true);
           }}
           className={`flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'logs'
@@ -34,9 +31,7 @@ function TabNavigation({ activeTab, setActiveTab, setUserSelectedTab }: Props) {
         </button>
         <button
           onClick={() => {
-            console.log('Diffs tab clicked - setting activeTab to diffs');
             setActiveTab('diffs');
-            setUserSelectedTab(true);
           }}
           className={`flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'diffs'
@@ -54,11 +49,7 @@ function TabNavigation({ activeTab, setActiveTab, setUserSelectedTab }: Props) {
         </button>
         <button
           onClick={() => {
-            console.log(
-              'Related Tasks tab clicked - setting activeTab to related'
-            );
             setActiveTab('related');
-            setUserSelectedTab(true);
           }}
           className={`flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'related'

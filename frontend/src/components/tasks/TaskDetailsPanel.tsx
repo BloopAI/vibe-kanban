@@ -40,13 +40,11 @@ export function TaskDetailsPanel({
   const [activeTab, setActiveTab] = useState<'logs' | 'diffs' | 'related'>(
     'logs'
   );
-  const [userSelectedTab, setUserSelectedTab] = useState<boolean>(false);
 
   // Reset to logs tab when task changes
   useEffect(() => {
     if (task?.id) {
       setActiveTab('logs');
-      setUserSelectedTab(true); // Treat this as a user selection to prevent auto-switching
     }
   }, [task?.id]);
 
@@ -74,9 +72,6 @@ export function TaskDetailsPanel({
           task={task}
           projectId={projectId}
           setShowEditorDialog={setShowEditorDialog}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          userSelectedTab={userSelectedTab}
           projectHasDevScript={projectHasDevScript}
         >
           {/* Backdrop - only on smaller screens (overlay mode) */}
@@ -96,7 +91,6 @@ export function TaskDetailsPanel({
               <TabNavigation
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
-                setUserSelectedTab={setUserSelectedTab}
               />
 
               {/* Tab Content */}

@@ -38,19 +38,13 @@ const TaskDetailsProvider: FC<{
   task: TaskWithAttemptStatus;
   projectId: string;
   children: ReactNode;
-  activeTab: 'logs' | 'diffs' | 'related';
-  setActiveTab: Dispatch<SetStateAction<'logs' | 'diffs' | 'related'>>;
   setShowEditorDialog: Dispatch<SetStateAction<boolean>>;
-  userSelectedTab: boolean;
   projectHasDevScript?: boolean;
 }> = ({
   task,
   projectId,
   children,
-  activeTab,
-  setActiveTab,
   setShowEditorDialog,
-  userSelectedTab,
   projectHasDevScript,
 }) => {
   const [loading, setLoading] = useState(false);
@@ -84,7 +78,6 @@ const TaskDetailsProvider: FC<{
     allLogs: [], // new field for all logs
   });
 
-  const diffLoadingRef = useRef(false);
   const relatedTasksLoadingRef = useRef(false);
 
   const fetchRelatedTasks = useCallback(async () => {
@@ -127,12 +120,6 @@ const TaskDetailsProvider: FC<{
         return;
       }
 
-      // Prevent multiple concurrent requests
-      if (diffLoadingRef.current) {
-        return;
-      }
-
-      diffLoadingRef.current = true;
       if (isBackgroundRefresh) {
         setIsBackgroundRefreshing(true);
       } else {
@@ -154,7 +141,6 @@ const TaskDetailsProvider: FC<{
         console.error('Failed to load diff:', err);
         setDiffError('Failed to load diff');
       } finally {
-        diffLoadingRef.current = false;
         if (isBackgroundRefresh) {
           setIsBackgroundRefreshing(false);
         } else {
@@ -164,10 +150,6 @@ const TaskDetailsProvider: FC<{
     },
     [projectId, selectedAttempt?.id, selectedAttempt?.task_id]
   );
-
-  useEffect(() => {
-    fetchDiff();
-  }, [fetchDiff]);
 
   useEffect(() => {
     if (selectedAttempt && task) {
@@ -318,7 +300,7 @@ const TaskDetailsProvider: FC<{
         fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
         fetchExecutionState(selectedAttempt.id, selectedAttempt.task_id);
       }
-    }, 2000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [
@@ -355,32 +337,12 @@ const TaskDetailsProvider: FC<{
   useEffect(() => {
     if (!executionState?.execution_state || !selectedAttempt) return;
 
-    const isCodingAgentComplete =
-      executionState.execution_state === 'CodingAgentComplete';
-    const isCodingAgentFailed =
-      executionState.execution_state === 'CodingAgentFailed';
-    const isComplete = executionState.execution_state === 'Complete';
-    const hasChanges = executionState.has_changes;
-
-    // Fetch diff when coding agent completes, fails, or task is complete and has changes
-    if (
-      (isCodingAgentComplete || isCodingAgentFailed || isComplete) &&
-      hasChanges
-    ) {
-      fetchDiff();
-      // Auto-switch to diffs tab when changes are detected, but only if user hasn't manually selected a tab
-      if (activeTab === 'logs' && !userSelectedTab) {
-        setActiveTab('diffs');
-      }
-    }
+    fetchDiff();
   }, [
     executionState?.execution_state,
     executionState?.has_changes,
     selectedAttempt,
     fetchDiff,
-    activeTab,
-    userSelectedTab,
-    setActiveTab,
   ]);
 
   const value = useMemo(
