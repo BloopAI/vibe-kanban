@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use git2::{
-    BranchType, Cred, DiffOptions, Error as GitError, FetchOptions, RebaseOptions, RemoteCallbacks,
-    Repository, WorktreeAddOptions,
+    build::CheckoutBuilder, BranchType, Cred, DiffOptions, Error as GitError, FetchOptions,
+    RebaseOptions, RemoteCallbacks, Repository, WorktreeAddOptions,
 };
 use regex;
 use tracing::{debug, info};
@@ -216,6 +216,22 @@ impl GitService {
             commit_message,
             base_branch_name,
         )?;
+
+        // Fix: Update main repo's HEAD if it's pointing to the base branch
+        let main_repo = self.open_repo()?;
+        let refname = format!("refs/heads/{}", base_branch_name);
+
+        if let Ok(main_head) = main_repo.head() {
+            if let Some(branch_name) = main_head.shorthand() {
+                if branch_name == base_branch_name {
+                    // Only update main repo's HEAD if it's currently on the base branch
+                    main_repo.set_head(&refname)?;
+                    let mut co = CheckoutBuilder::new();
+                    co.force();
+                    main_repo.checkout_head(Some(&mut co))?;
+                }
+            }
+        }
 
         info!("Created squash merge commit: {}", squash_commit_id);
         Ok(squash_commit_id.to_string())
