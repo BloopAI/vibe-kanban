@@ -8,6 +8,8 @@ import useNormalizedConversation from '@/hooks/useNormalizedConversation';
 interface NormalizedConversationViewerProps {
   executionProcess: ExecutionProcess;
   onConversationUpdate?: () => void;
+  onDisplayEntriesChange?: (num: number) => void;
+  visibleEntriesNum?: number;
   diff?: WorktreeDiff | null;
   isBackgroundRefreshing?: boolean;
   diffDeletable?: boolean;
@@ -17,11 +19,15 @@ export function NormalizedConversationViewer({
   executionProcess,
   diffDeletable,
   onConversationUpdate,
+  visibleEntriesNum,
+  onDisplayEntriesChange,
 }: NormalizedConversationViewerProps) {
   const { loading, error, conversation, displayEntries } =
     useNormalizedConversation({
       executionProcess,
       onConversationUpdate,
+      onDisplayEntriesChange,
+      visibleEntriesNum,
     });
 
   if (loading) {

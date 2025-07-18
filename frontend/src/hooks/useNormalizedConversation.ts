@@ -21,9 +21,13 @@ import {
 const useNormalizedConversation = ({
   executionProcess,
   onConversationUpdate,
+  onDisplayEntriesChange,
+  visibleEntriesNum,
 }: {
   executionProcess?: ExecutionProcess;
   onConversationUpdate?: () => void;
+  onDisplayEntriesChange?: (num: number) => void;
+  visibleEntriesNum?: number;
 }) => {
   const { projectId } = useContext(TaskDetailsContext);
   const { attemptData } = useContext(TaskAttemptDataContext);
@@ -413,10 +417,17 @@ const useNormalizedConversation = ({
     if (!conversation?.entries) return [];
 
     // Filter out any null entries that may have been created by duplicate patch application
-    return conversation.entries.filter((entry): entry is NormalizedEntry =>
-      Boolean(entry && (entry as NormalizedEntry).entry_type)
+    const displayEntries = conversation.entries.filter(
+      (entry): entry is NormalizedEntry =>
+        Boolean(entry && (entry as NormalizedEntry).entry_type)
     );
-  }, [conversation?.entries]);
+    onDisplayEntriesChange?.(displayEntries.length);
+    if (visibleEntriesNum && displayEntries.length > visibleEntriesNum) {
+      return displayEntries.slice(-visibleEntriesNum);
+    }
+
+    return displayEntries;
+  }, [conversation?.entries, onDisplayEntriesChange, visibleEntriesNum]);
 
   return {
     displayEntries,

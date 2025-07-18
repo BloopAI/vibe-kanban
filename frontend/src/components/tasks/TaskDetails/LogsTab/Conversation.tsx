@@ -19,6 +19,8 @@ function Conversation() {
   const [shouldAutoScrollLogs, setShouldAutoScrollLogs] = useState(true);
   const [conversationUpdateTrigger, setConversationUpdateTrigger] = useState(0);
   const [visibleCount, setVisibleCount] = useState(100);
+  const [visibleRunningEntriesCount, setVisibleRunningEntriesCount] =
+    useState(0);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -120,8 +122,8 @@ function Conversation() {
 
   // Paginate: show only the last visibleCount entries
   const visibleEntries = useMemo(
-    () => allEntries.slice(-visibleCount),
-    [allEntries, visibleCount]
+    () => allEntries.slice(-(visibleCount - visibleRunningEntriesCount)),
+    [allEntries, visibleCount, visibleRunningEntriesCount]
   );
 
   const renderedVisibleEntries = useMemo(
@@ -160,6 +162,8 @@ function Conversation() {
             executionProcess={runningProcess}
             onConversationUpdate={handleConversationUpdate}
             diffDeletable
+            visibleEntriesNum={visibleCount}
+            onDisplayEntriesChange={setVisibleRunningEntriesCount}
           />
         </div>
       );
@@ -169,6 +173,7 @@ function Conversation() {
     attemptData.runningProcessDetails,
     handleConversationUpdate,
     allEntries,
+    visibleCount,
   ]);
 
   // Check if we should show the status banner - only if the most recent process failed/stopped
@@ -192,14 +197,12 @@ function Conversation() {
       onScroll={handleLogsScroll}
       className="h-full overflow-y-auto"
     >
-      {visibleCount < allEntries.length && (
+      {visibleCount - visibleRunningEntriesCount < allEntries.length && (
         <div className="flex justify-center mb-4">
           <Button
             variant="outline"
             className="w-full"
-            onClick={() =>
-              setVisibleCount((c) => Math.min(c + 100, allEntries.length))
-            }
+            onClick={() => setVisibleCount((c) => c + 100)}
           >
             Load previous logs
           </Button>
