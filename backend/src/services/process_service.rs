@@ -208,7 +208,10 @@ impl ProcessService {
             app_state,
             attempt_id,
             task_id,
-            crate::executor::ExecutorType::CodingAgent(executor_config),
+            crate::executor::ExecutorType::CodingAgent {
+                config: executor_config,
+                follow_up: None,
+            },
             "Starting executor".to_string(),
             ExecutionProcessType::CodingAgent,
             &task_attempt.worktree_path,
@@ -434,10 +437,12 @@ impl ProcessService {
                 "SESSION_FOLLOWUP: Attempting follow-up execution with session ID: {} (attempt: {}, worktree: {})",
                 session_id, attempt_id, worktree_path
             );
-            crate::executor::ExecutorType::FollowUpCodingAgent {
+            crate::executor::ExecutorType::CodingAgent {
                 config: executor_config.clone(),
-                session_id: executor_session.session_id.clone(),
-                prompt: prompt.to_string(),
+                follow_up: Some(crate::executor::FollowUpInfo {
+                    session_id: session_id.clone(),
+                    prompt: prompt.to_string(),
+                }),
             }
         } else {
             // No session ID available, start new session
@@ -445,7 +450,10 @@ impl ProcessService {
                 "SESSION_FOLLOWUP: No session ID available for follow-up execution on attempt {}, starting new session (worktree: {})",
                 attempt_id, worktree_path
             );
-            crate::executor::ExecutorType::CodingAgent(executor_config.clone())
+            crate::executor::ExecutorType::CodingAgent {
+                config: executor_config.clone(),
+                follow_up: None,
+            }
         };
 
         // Try to start the follow-up execution
@@ -472,7 +480,10 @@ impl ProcessService {
             );
 
             // Create a new session instead of trying to resume
-            let new_session_executor = crate::executor::ExecutorType::CodingAgent(executor_config);
+            let new_session_executor = crate::executor::ExecutorType::CodingAgent {
+                config: executor_config,
+                follow_up: None,
+            };
 
             Self::start_process_execution(
                 pool,
@@ -522,9 +533,10 @@ impl ProcessService {
         if matches!(process_type, ExecutionProcessType::CodingAgent) {
             // Extract follow-up prompt if this is a follow-up execution
             let followup_prompt = match &executor_type {
-                crate::executor::ExecutorType::FollowUpCodingAgent { prompt, .. } => {
-                    Some(prompt.clone())
-                }
+                crate::executor::ExecutorType::CodingAgent {
+                    follow_up: Some(ref info),
+                    ..
+                } => Some(info.prompt.clone()),
                 _ => None,
             };
             Self::create_executor_session_record(
@@ -649,14 +661,14 @@ impl ProcessService {
                 Some(serde_json::to_string(&[shell_arg, "dev_server"]).unwrap()),
                 None, // Dev servers don't have an executor type
             ),
-            crate::executor::ExecutorType::CodingAgent(config) => {
-                ("executor".to_string(), None, Some(format!("{}", config)))
+            crate::executor::ExecutorType::CodingAgent { config, follow_up } => {
+                let command = if follow_up.is_some() {
+                    "followup_executor".to_string()
+                } else {
+                    "executor".to_string()
+                };
+                (command, None, Some(format!("{}", config)))
             }
-            crate::executor::ExecutorType::FollowUpCodingAgent { config, .. } => (
-                "followup_executor".to_string(),
-                None,
-                Some(format!("{}", config)),
-            ),
         };
 
         let create_process = CreateExecutionProcess {
@@ -732,97 +744,26 @@ impl ProcessService {
                     .execute_streaming(pool, task_id, attempt_id, process_id, worktree_path)
                     .await
             }
-            crate::executor::ExecutorType::CodingAgent(config) => {
+            crate::executor::ExecutorType::CodingAgent { config, follow_up } => {
                 let executor = config.create_executor();
-                executor
-                    .execute_streaming(pool, task_id, attempt_id, process_id, worktree_path)
-                    .await
-            }
-            crate::executor::ExecutorType::FollowUpCodingAgent {
-                config,
-                session_id,
-                prompt,
-            } => {
-                use crate::executors::{
-                    AmpFollowupExecutor, CCRFollowupExecutor, CharmOpencodeFollowupExecutor,
-                    ClaudeFollowupExecutor, GeminiFollowupExecutor, SstOpencodeFollowupExecutor,
-                };
 
-                let executor: Box<dyn crate::executor::Executor> = match config {
-                    crate::executor::ExecutorConfig::Claude => {
-                        if let Some(sid) = session_id {
-                            Box::new(ClaudeFollowupExecutor::new(sid.clone(), prompt.clone()))
-                        } else {
-                            return Err(TaskAttemptError::TaskNotFound); // No session ID for followup
-                        }
-                    }
-                    crate::executor::ExecutorConfig::ClaudePlan => {
-                        if let Some(sid) = session_id {
-                            Box::new(ClaudeFollowupExecutor::new_plan_mode(
-                                sid.clone(),
-                                prompt.clone(),
-                            ))
-                        } else {
-                            return Err(TaskAttemptError::TaskNotFound); // No session ID for followup
-                        }
-                    }
-                    crate::executor::ExecutorConfig::Amp => {
-                        if let Some(tid) = session_id {
-                            Box::new(AmpFollowupExecutor {
-                                thread_id: tid.clone(),
-                                prompt: prompt.clone(),
-                            })
-                        } else {
-                            return Err(TaskAttemptError::TaskNotFound); // No thread ID for followup
-                        }
-                    }
-                    crate::executor::ExecutorConfig::Gemini => {
-                        // For Gemini, we don't use real session IDs, we pass the context directly
-                        Box::new(GeminiFollowupExecutor {
+                if let Some(ref follow_up_info) = follow_up {
+                    executor
+                        .execute_followup_streaming(
+                            pool,
+                            task_id,
                             attempt_id,
-                            prompt: prompt.clone(),
-                        })
-                    }
-                    crate::executor::ExecutorConfig::Echo => {
-                        // Echo doesn't support followup, use regular echo
-                        config.create_executor()
-                    }
-                    crate::executor::ExecutorConfig::CharmOpencode => {
-                        if let Some(sid) = session_id {
-                            Box::new(CharmOpencodeFollowupExecutor {
-                                session_id: sid.clone(),
-                                prompt: prompt.clone(),
-                            })
-                        } else {
-                            return Err(TaskAttemptError::TaskNotFound); // No session ID for followup
-                        }
-                    }
-                    crate::executor::ExecutorConfig::ClaudeCodeRouter => {
-                        if let Some(sid) = session_id {
-                            Box::new(CCRFollowupExecutor::new(sid.clone(), prompt.clone()))
-                        } else {
-                            return Err(TaskAttemptError::TaskNotFound); // No session ID for followup
-                        }
-                    }
-                    crate::executor::ExecutorConfig::SstOpencode => {
-                        if let Some(sid) = session_id {
-                            Box::new(SstOpencodeFollowupExecutor::new(
-                                sid.clone(),
-                                prompt.clone(),
-                            ))
-                        } else {
-                            return Err(TaskAttemptError::TaskNotFound); // No session ID for followup
-                        }
-                    }
-                    crate::executor::ExecutorConfig::SetupScript { .. } => {
-                        // Setup scripts don't support followup, use regular setup script
-                        config.create_executor()
-                    }
-                };
-
-                executor
-                    .execute_streaming(pool, task_id, attempt_id, process_id, worktree_path)
-                    .await
+                            process_id,
+                            &follow_up_info.session_id,
+                            &follow_up_info.prompt,
+                            worktree_path,
+                        )
+                        .await
+                } else {
+                    executor
+                        .execute_streaming(pool, task_id, attempt_id, process_id, worktree_path)
+                        .await
+                }
             }
         };
 

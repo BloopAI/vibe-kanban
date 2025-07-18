@@ -236,24 +236,6 @@ impl SstOpencodeExecutor {
 }
 
 /// An executor that resumes an SST Opencode session
-pub struct SstOpencodeFollowupExecutor {
-    pub session_id: String,
-    pub prompt: String,
-    executor_type: String,
-    command_base: String,
-}
-
-impl SstOpencodeFollowupExecutor {
-    /// Create a new SstOpencodeFollowupExecutor with default settings
-    pub fn new(session_id: String, prompt: String) -> Self {
-        Self {
-            session_id,
-            prompt,
-            executor_type: "SST Opencode".to_string(),
-            command_base: "npx -y opencode-ai@latest run --print-logs".to_string(),
-        }
-    }
-}
 
 #[async_trait]
 impl Executor for SstOpencodeExecutor {
@@ -398,84 +380,21 @@ Task title: {}"#,
             summary: None,
         })
     }
-}
 
-#[async_trait]
-impl Executor for SstOpencodeFollowupExecutor {
-    async fn spawn(
-        &self,
-        _pool: &sqlx::SqlitePool,
-        _task_id: Uuid,
-        worktree_path: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
-        // Use shell command for cross-platform compatibility
-        let (shell_cmd, shell_arg) = get_shell_command();
-        let opencode_command = format!("{} --session {}", self.command_base, self.session_id);
-
-        let mut command = Command::new(shell_cmd);
-        command
-            .kill_on_drop(true)
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::null()) // Ignore stdout for OpenCode
-            .stderr(std::process::Stdio::piped())
-            .current_dir(worktree_path)
-            .arg(shell_arg)
-            .arg(&opencode_command)
-            .env("NODE_NO_WARNINGS", "1");
-
-        let mut child = command
-            .group_spawn() // Create new process group so we can kill entire tree
-            .map_err(|e| {
-                crate::executor::SpawnContext::from_command(&command, &self.executor_type)
-                    .with_context(format!(
-                        "{} CLI followup execution for session {}",
-                        self.executor_type, self.session_id
-                    ))
-                    .spawn_error(e)
-            })?;
-
-        // Write prompt to stdin safely
-        if let Some(mut stdin) = child.inner().stdin.take() {
-            use tokio::io::AsyncWriteExt;
-            tracing::debug!(
-                "Writing prompt to {} stdin for session {}: {:?}",
-                self.executor_type,
-                self.session_id,
-                self.prompt
-            );
-            stdin.write_all(self.prompt.as_bytes()).await.map_err(|e| {
-                let context =
-                    crate::executor::SpawnContext::from_command(&command, &self.executor_type)
-                        .with_context(format!(
-                            "Failed to write prompt to {} CLI stdin for session {}",
-                            self.executor_type, self.session_id
-                        ));
-                ExecutorError::spawn_failed(e, context)
-            })?;
-            stdin.shutdown().await.map_err(|e| {
-                let context =
-                    crate::executor::SpawnContext::from_command(&command, &self.executor_type)
-                        .with_context(format!(
-                            "Failed to close {} CLI stdin for session {}",
-                            self.executor_type, self.session_id
-                        ));
-                ExecutorError::spawn_failed(e, context)
-            })?;
-        }
-
-        Ok(child)
-    }
-
-    /// Execute with OpenCode filtering for stderr
-    async fn execute_streaming(
+    /// Execute follow-up with OpenCode filtering for stderr
+    async fn execute_followup_streaming(
         &self,
         pool: &sqlx::SqlitePool,
         task_id: Uuid,
         attempt_id: Uuid,
         execution_process_id: Uuid,
+        session_id: &str,
+        prompt: &str,
         worktree_path: &str,
     ) -> Result<command_group::AsyncGroupChild, ExecutorError> {
-        let mut child = self.spawn(pool, task_id, worktree_path).await?;
+        let mut child = self
+            .spawn_followup(pool, task_id, session_id, prompt, worktree_path)
+            .await?;
 
         // Take stderr pipe for OpenCode filtering
         let stderr = child
@@ -498,14 +417,71 @@ impl Executor for SstOpencodeFollowupExecutor {
         Ok(child)
     }
 
-    fn normalize_logs(
+    async fn spawn_followup(
         &self,
-        logs: &str,
+        _pool: &sqlx::SqlitePool,
+        _task_id: Uuid,
+        session_id: &str,
+        prompt: &str,
         worktree_path: &str,
-    ) -> Result<NormalizedConversation, String> {
-        // Reuse the same logic as the main SstOpencodeExecutor
-        let main_executor = SstOpencodeExecutor::new();
-        main_executor.normalize_logs(logs, worktree_path)
+    ) -> Result<AsyncGroupChild, ExecutorError> {
+        use std::process::Stdio;
+
+        use tokio::io::AsyncWriteExt;
+
+        // Use shell command for cross-platform compatibility
+        let (shell_cmd, shell_arg) = get_shell_command();
+        let opencode_command = format!("{} --resume={}", self.command, session_id);
+
+        let mut command = Command::new(shell_cmd);
+        command
+            .kill_on_drop(true)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null()) // Ignore stdout for OpenCode
+            .stderr(Stdio::piped())
+            .current_dir(worktree_path)
+            .arg(shell_arg)
+            .arg(&opencode_command)
+            .env("NODE_NO_WARNINGS", "1");
+
+        let mut child = command.group_spawn().map_err(|e| {
+            crate::executor::SpawnContext::from_command(&command, &self.executor_type)
+                .with_context(format!(
+                    "{} CLI followup execution for session {}",
+                    self.executor_type, session_id
+                ))
+                .spawn_error(e)
+        })?;
+
+        // Write prompt to stdin safely
+        if let Some(mut stdin) = child.inner().stdin.take() {
+            tracing::debug!(
+                "Writing prompt to {} stdin for session {}: {:?}",
+                self.executor_type,
+                session_id,
+                prompt
+            );
+            stdin.write_all(prompt.as_bytes()).await.map_err(|e| {
+                let context =
+                    crate::executor::SpawnContext::from_command(&command, &self.executor_type)
+                        .with_context(format!(
+                            "Failed to write prompt to {} CLI stdin for session {}",
+                            self.executor_type, session_id
+                        ));
+                ExecutorError::spawn_failed(e, context)
+            })?;
+            stdin.shutdown().await.map_err(|e| {
+                let context =
+                    crate::executor::SpawnContext::from_command(&command, &self.executor_type)
+                        .with_context(format!(
+                            "Failed to close {} CLI stdin for session {}",
+                            self.executor_type, session_id
+                        ));
+                ExecutorError::spawn_failed(e, context)
+            })?;
+        }
+
+        Ok(child)
     }
 }
 

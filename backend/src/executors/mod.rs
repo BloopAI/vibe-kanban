@@ -8,12 +8,12 @@ pub mod gemini;
 pub mod setup_script;
 pub mod sst_opencode;
 
-pub use amp::{AmpExecutor, AmpFollowupExecutor};
-pub use ccr::{CCRExecutor, CCRFollowupExecutor};
-pub use charm_opencode::{CharmOpencodeExecutor, CharmOpencodeFollowupExecutor};
-pub use claude::{ClaudeExecutor, ClaudeFollowupExecutor};
+pub use amp::AmpExecutor;
+pub use ccr::CCRExecutor;
+pub use charm_opencode::CharmOpencodeExecutor;
+pub use claude::ClaudeExecutor;
 pub use dev_server::DevServerExecutor;
 pub use echo::EchoExecutor;
-pub use gemini::{GeminiExecutor, GeminiFollowupExecutor};
+pub use gemini::GeminiExecutor;
 pub use setup_script::SetupScriptExecutor;
-pub use sst_opencode::{SstOpencodeExecutor, SstOpencodeFollowupExecutor};
+pub use sst_opencode::SstOpencodeExecutor;

@@ -78,57 +78,6 @@ impl ClaudeExecutor {
     }
 }
 
-/// An executor that resumes a Claude session
-pub struct ClaudeFollowupExecutor {
-    pub session_id: String,
-    pub prompt: String,
-    executor_type: String,
-    command_base: String,
-}
-
-impl ClaudeFollowupExecutor {
-    /// Create a new ClaudeFollowupExecutor with default settings
-    pub fn new(session_id: String, prompt: String) -> Self {
-        Self {
-            session_id,
-            prompt,
-            executor_type: "Claude".to_string(),
-            command_base: "npx -y @anthropic-ai/claude-code@latest -p --dangerously-skip-permissions --verbose --output-format=stream-json".to_string(),
-        }
-    }
-
-    pub fn new_plan_mode(session_id: String, prompt: String) -> Self {
-        let command = format!(
-            "npx -y @anthropic-ai/claude-code@latest -p --permission-mode=plan --verbose --output-format=stream-json --resume={}",
-            session_id
-        );
-
-        let script = create_watchkill_script(&command);
-
-        Self {
-            session_id,
-            prompt,
-            executor_type: "ClaudePlan".to_string(),
-            command_base: script,
-        }
-    }
-
-    /// Create a new ClaudeFollowupExecutor with custom settings
-    pub fn with_command(
-        session_id: String,
-        prompt: String,
-        executor_type: String,
-        command_base: String,
-    ) -> Self {
-        Self {
-            session_id,
-            prompt,
-            executor_type,
-            command_base,
-        }
-    }
-}
-
 #[async_trait]
 impl Executor for ClaudeExecutor {
     async fn spawn(
@@ -207,6 +156,80 @@ Task title: {}"#,
                     crate::executor::SpawnContext::from_command(&command, &self.executor_type)
                         .with_task(task_id, Some(task.title.clone()))
                         .with_context(format!("Failed to close {} CLI stdin", self.executor_type));
+                ExecutorError::spawn_failed(e, context)
+            })?;
+        }
+
+        Ok(child)
+    }
+
+    async fn spawn_followup(
+        &self,
+        _pool: &sqlx::SqlitePool,
+        _task_id: Uuid,
+        session_id: &str,
+        prompt: &str,
+        worktree_path: &str,
+    ) -> Result<AsyncGroupChild, ExecutorError> {
+        // Use shell command for cross-platform compatibility
+        let (shell_cmd, shell_arg) = get_shell_command();
+
+        // Determine the command based on whether this is plan mode or not
+        let claude_command = if self.executor_type == "ClaudePlan" {
+            let command = format!(
+                "npx -y @anthropic-ai/claude-code@latest -p --permission-mode=plan --verbose --output-format=stream-json --resume={}",
+                session_id
+            );
+            create_watchkill_script(&command)
+        } else {
+            format!("{} --resume={}", self.command, session_id)
+        };
+
+        let mut command = Command::new(shell_cmd);
+        command
+            .kill_on_drop(true)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .current_dir(worktree_path)
+            .arg(shell_arg)
+            .arg(&claude_command)
+            .env("NODE_NO_WARNINGS", "1");
+
+        let mut child = command.group_spawn().map_err(|e| {
+            crate::executor::SpawnContext::from_command(&command, &self.executor_type)
+                .with_context(format!(
+                    "{} CLI followup execution for session {}",
+                    self.executor_type, session_id
+                ))
+                .spawn_error(e)
+        })?;
+
+        // Write prompt to stdin safely
+        if let Some(mut stdin) = child.inner().stdin.take() {
+            use tokio::io::AsyncWriteExt;
+            tracing::debug!(
+                "Writing prompt to {} stdin for session {}: {:?}",
+                self.executor_type,
+                session_id,
+                prompt
+            );
+            stdin.write_all(prompt.as_bytes()).await.map_err(|e| {
+                let context =
+                    crate::executor::SpawnContext::from_command(&command, &self.executor_type)
+                        .with_context(format!(
+                            "Failed to write prompt to {} CLI stdin for session {}",
+                            self.executor_type, session_id
+                        ));
+                ExecutorError::spawn_failed(e, context)
+            })?;
+            stdin.shutdown().await.map_err(|e| {
+                let context =
+                    crate::executor::SpawnContext::from_command(&command, &self.executor_type)
+                        .with_context(format!(
+                            "Failed to close {} CLI stdin for session {}",
+                            self.executor_type, session_id
+                        ));
                 ExecutorError::spawn_failed(e, context)
             })?;
         }
@@ -664,83 +687,6 @@ impl ClaudeExecutor {
                 description: format!("Tool: {}", tool_name),
             },
         }
-    }
-}
-
-#[async_trait]
-impl Executor for ClaudeFollowupExecutor {
-    async fn spawn(
-        &self,
-        _pool: &sqlx::SqlitePool,
-        _task_id: Uuid,
-        worktree_path: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
-        // Use shell command for cross-platform compatibility
-        let (shell_cmd, shell_arg) = get_shell_command();
-        // Pass prompt via stdin instead of command line to avoid shell escaping issues
-        let claude_command = format!("{} --resume={}", self.command_base, self.session_id);
-
-        let mut command = Command::new(shell_cmd);
-        command
-            .kill_on_drop(true)
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .current_dir(worktree_path)
-            .arg(shell_arg)
-            .arg(&claude_command);
-
-        let mut child = command
-            .group_spawn() // Create new process group so we can kill entire tree
-            .map_err(|e| {
-                crate::executor::SpawnContext::from_command(&command, &self.executor_type)
-                    .with_context(format!(
-                        "{} CLI followup execution for session {}",
-                        self.executor_type, self.session_id
-                    ))
-                    .spawn_error(e)
-            })?;
-
-        // Write prompt to stdin safely
-        if let Some(mut stdin) = child.inner().stdin.take() {
-            use tokio::io::AsyncWriteExt;
-            tracing::debug!(
-                "Writing prompt to {} stdin for session {}: {:?}",
-                self.executor_type,
-                self.session_id,
-                self.prompt
-            );
-            stdin.write_all(self.prompt.as_bytes()).await.map_err(|e| {
-                let context =
-                    crate::executor::SpawnContext::from_command(&command, &self.executor_type)
-                        .with_context(format!(
-                            "Failed to write prompt to {} CLI stdin for session {}",
-                            self.executor_type, self.session_id
-                        ));
-                ExecutorError::spawn_failed(e, context)
-            })?;
-            stdin.shutdown().await.map_err(|e| {
-                let context =
-                    crate::executor::SpawnContext::from_command(&command, &self.executor_type)
-                        .with_context(format!(
-                            "Failed to close {} CLI stdin for session {}",
-                            self.executor_type, self.session_id
-                        ));
-                ExecutorError::spawn_failed(e, context)
-            })?;
-        }
-
-        Ok(child)
-    }
-
-    fn normalize_logs(
-        &self,
-        logs: &str,
-        worktree_path: &str,
-    ) -> Result<NormalizedConversation, String> {
-        // Reuse the same logic as the main ClaudeExecutor
-        let main_executor = ClaudeExecutor::new();
-        main_executor.normalize_logs(logs, worktree_path)
     }
 }
 

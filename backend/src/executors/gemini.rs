@@ -30,12 +30,6 @@ use crate::{
 /// An executor that uses Gemini CLI to process tasks
 pub struct GeminiExecutor;
 
-/// An executor that continues a Gemini task with context from previous execution
-pub struct GeminiFollowupExecutor {
-    pub attempt_id: Uuid,
-    pub prompt: String,
-}
-
 #[async_trait]
 impl Executor for GeminiExecutor {
     async fn spawn(
@@ -125,6 +119,59 @@ Task title: {}"#,
 
         tracing::info!(
             "Gemini process spawned successfully for attempt {}, PID: {:?}",
+            attempt_id,
+            child.inner().id()
+        );
+
+        Self::setup_streaming(pool, &mut child, attempt_id, execution_process_id);
+
+        Ok(child)
+    }
+
+    async fn spawn_followup(
+        &self,
+        pool: &sqlx::SqlitePool,
+        task_id: Uuid,
+        session_id: &str,
+        prompt: &str,
+        worktree_path: &str,
+    ) -> Result<AsyncGroupChild, ExecutorError> {
+        // For Gemini, session_id is the attempt_id
+        let attempt_id = Uuid::parse_str(session_id)
+            .map_err(|_| ExecutorError::InvalidSessionId(session_id.to_string()))?;
+
+        let task = self.load_task(pool, task_id).await?;
+        let resume_context = self.collect_resume_context(pool, &task, attempt_id).await?;
+        let comprehensive_prompt = self.build_comprehensive_prompt(&task, &resume_context, prompt);
+        self.spawn_process(worktree_path, &comprehensive_prompt, attempt_id)
+            .await
+    }
+
+    async fn execute_followup_streaming(
+        &self,
+        pool: &sqlx::SqlitePool,
+        task_id: Uuid,
+        attempt_id: Uuid,
+        execution_process_id: Uuid,
+        session_id: &str,
+        prompt: &str,
+        worktree_path: &str,
+    ) -> Result<AsyncGroupChild, ExecutorError> {
+        tracing::info!(
+            "Starting Gemini follow-up execution for attempt {} (session {})",
+            attempt_id,
+            session_id
+        );
+
+        // For Gemini, session_id is the attempt_id - update it in the database
+        Self::update_session_id(pool, execution_process_id, session_id).await;
+
+        let mut child = self
+            .spawn_followup(pool, task_id, session_id, prompt, worktree_path)
+            .await?;
+
+        tracing::info!(
+            "Gemini follow-up process spawned successfully for attempt {}, PID: {:?}",
             attempt_id,
             child.inner().id()
         );
@@ -396,9 +443,7 @@ impl GeminiExecutor {
             );
         }
     }
-}
 
-impl GeminiFollowupExecutor {
     async fn load_task(
         &self,
         pool: &sqlx::SqlitePool,
@@ -413,10 +458,11 @@ impl GeminiFollowupExecutor {
         &self,
         pool: &sqlx::SqlitePool,
         task: &Task,
+        attempt_id: Uuid,
     ) -> Result<crate::models::task_attempt::AttemptResumeContext, ExecutorError> {
         crate::models::task_attempt::TaskAttempt::get_attempt_resume_context(
             pool,
-            self.attempt_id,
+            attempt_id,
             task.id,
             task.project_id,
         )
@@ -428,31 +474,25 @@ impl GeminiFollowupExecutor {
         &self,
         task: &Task,
         resume_context: &crate::models::task_attempt::AttemptResumeContext,
+        prompt: &str,
     ) -> String {
         format!(
             r#"RESUME CONTEXT FOR CONTINUING TASK
-
 === TASK INFORMATION ===
 Project ID: {}
 Task ID: {}
 Task Title: {}
 Task Description: {}
-
 === EXECUTION HISTORY ===
 The following is the execution history from this task attempt:
-
 {}
-
 === CURRENT CHANGES ===
 The following git diff shows changes made from the base branch to the current state:
-
 ```diff
 {}
 ```
-
 === CURRENT REQUEST ===
 {}
-
 === INSTRUCTIONS ===
 You are continuing work on the above task. The execution history shows what has been done previously, and the git diff shows the current state of all changes. Please continue from where the previous execution left off, taking into account all the context provided above.
 "#,
@@ -472,7 +512,7 @@ You are continuing work on the above task. The execution history shows what has 
             } else {
                 &resume_context.cumulative_diffs
             },
-            self.prompt
+            prompt
         )
     }
 
@@ -480,10 +520,11 @@ You are continuing work on the above task. The execution history shows what has 
         &self,
         worktree_path: &str,
         comprehensive_prompt: &str,
+        attempt_id: Uuid,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         tracing::info!(
             "Spawning Gemini followup execution for attempt {} with resume context ({} chars)",
-            self.attempt_id,
+            attempt_id,
             comprehensive_prompt.len()
         );
 
@@ -493,12 +534,12 @@ You are continuing work on the above task. The execution history shows what has 
             crate::executor::SpawnContext::from_command(&command, "Gemini")
                 .with_context(format!(
                     "Gemini CLI followup execution with context for attempt {}",
-                    self.attempt_id
+                    attempt_id
                 ))
                 .spawn_error(e)
         })?;
 
-        self.send_prompt_to_stdin(&mut child, &command, comprehensive_prompt)
+        self.send_prompt_to_stdin(&mut child, &command, comprehensive_prompt, attempt_id)
             .await?;
         Ok(child)
     }
@@ -508,11 +549,12 @@ You are continuing work on the above task. The execution history shows what has 
         child: &mut AsyncGroupChild,
         command: &Command,
         comprehensive_prompt: &str,
+        attempt_id: Uuid,
     ) -> Result<(), ExecutorError> {
         if let Some(mut stdin) = child.inner().stdin.take() {
             tracing::debug!(
                 "Sending resume context to Gemini for attempt {}: {} characters",
-                self.attempt_id,
+                attempt_id,
                 comprehensive_prompt.len()
             );
 
@@ -523,7 +565,7 @@ You are continuing work on the above task. The execution history shows what has 
                     let context = crate::executor::SpawnContext::from_command(command, "Gemini")
                         .with_context(format!(
                             "Failed to write resume prompt to Gemini CLI stdin for attempt {}",
-                            self.attempt_id
+                            attempt_id
                         ));
                     ExecutorError::spawn_failed(e, context)
                 })?;
@@ -532,79 +574,20 @@ You are continuing work on the above task. The execution history shows what has 
                 let context = crate::executor::SpawnContext::from_command(command, "Gemini")
                     .with_context(format!(
                         "Failed to close Gemini CLI stdin for attempt {}",
-                        self.attempt_id
+                        attempt_id
                     ));
                 ExecutorError::spawn_failed(e, context)
             })?;
 
             tracing::info!(
                 "Successfully sent resume context to Gemini for attempt {}",
-                self.attempt_id
+                attempt_id
             );
         }
 
         Ok(())
     }
-}
 
-#[async_trait]
-impl Executor for GeminiFollowupExecutor {
-    async fn spawn(
-        &self,
-        pool: &sqlx::SqlitePool,
-        task_id: Uuid,
-        worktree_path: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
-        let task = self.load_task(pool, task_id).await?;
-        let resume_context = self.collect_resume_context(pool, &task).await?;
-        let comprehensive_prompt = self.build_comprehensive_prompt(&task, &resume_context);
-        self.spawn_process(worktree_path, &comprehensive_prompt)
-            .await
-    }
-
-    async fn execute_streaming(
-        &self,
-        pool: &sqlx::SqlitePool,
-        task_id: Uuid,
-        attempt_id: Uuid,
-        execution_process_id: Uuid,
-        worktree_path: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
-        tracing::info!(
-            "Starting Gemini followup execution for task {} attempt {} with resume context",
-            task_id,
-            attempt_id
-        );
-
-        // Update ExecutorSession with the session_id immediately
-        GeminiExecutor::update_session_id(pool, execution_process_id, &self.attempt_id.to_string())
-            .await;
-
-        let mut child = self.spawn(pool, task_id, worktree_path).await?;
-
-        tracing::info!(
-            "Gemini followup process spawned successfully for attempt {}, PID: {:?}",
-            attempt_id,
-            child.inner().id()
-        );
-
-        GeminiExecutor::setup_streaming(pool, &mut child, attempt_id, execution_process_id);
-
-        Ok(child)
-    }
-
-    fn normalize_logs(
-        &self,
-        logs: &str,
-        worktree_path: &str,
-    ) -> Result<NormalizedConversation, String> {
-        // Reuse the same logic as the main GeminiExecutor
-        let main_executor = GeminiExecutor;
-        main_executor.normalize_logs(logs, worktree_path)
-    }
-}
-
-impl GeminiExecutor {
     /// Format Gemini CLI output by inserting line breaks where periods are directly
     /// followed by capital letters (common Gemini CLI formatting issue).
     /// Handles both intra-chunk and cross-chunk period-to-capital transitions.

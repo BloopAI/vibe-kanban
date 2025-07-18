@@ -106,6 +106,19 @@ impl SpawnContext {
         self.additional_context = Some(context.into());
         self
     }
+
+    /// Create SpawnContext from Command, then use builder methods for additional context
+    pub fn from_command(
+        command: &tokio::process::Command,
+        executor_type: impl Into<String>,
+    ) -> Self {
+        Self::from(command).with_executor_type(executor_type)
+    }
+
+    /// Finalize the context and create an ExecutorError
+    pub fn spawn_error(self, error: std::io::Error) -> ExecutorError {
+        ExecutorError::spawn_failed(error, self)
+    }
 }
 
 /// Extract SpawnContext from a tokio::process::Command
@@ -147,6 +160,8 @@ pub enum ExecutorError {
     DatabaseError(sqlx::Error),
     ContextCollectionFailed(String),
     GitError(String),
+    InvalidSessionId(String),
+    FollowUpNotSupported,
 }
 
 impl std::fmt::Display for ExecutorError {
@@ -185,6 +200,10 @@ impl std::fmt::Display for ExecutorError {
                 write!(f, "Context collection failed: {}", msg)
             }
             ExecutorError::GitError(msg) => write!(f, "Git operation error: {}", msg),
+            ExecutorError::InvalidSessionId(msg) => write!(f, "Invalid session_id: {}", msg),
+            ExecutorError::FollowUpNotSupported => {
+                write!(f, "This executor does not support follow-up sessions")
+            }
         }
     }
 }
@@ -235,23 +254,7 @@ impl ExecutorError {
     }
 }
 
-/// Helper to create SpawnContext from Command with builder pattern
-impl SpawnContext {
-    /// Create SpawnContext from Command, then use builder methods for additional context
-    pub fn from_command(
-        command: &tokio::process::Command,
-        executor_type: impl Into<String>,
-    ) -> Self {
-        Self::from(command).with_executor_type(executor_type)
-    }
-
-    /// Finalize the context and create an ExecutorError
-    pub fn spawn_error(self, error: std::io::Error) -> ExecutorError {
-        ExecutorError::spawn_failed(error, self)
-    }
-}
-
-/// Trait for defining CLI commands that can be executed for task attempts
+/// Trait for coding agents that can execute tasks, normalize logs, and support follow-up sessions
 #[async_trait]
 pub trait Executor: Send + Sync {
     /// Spawn the command for a given task attempt
@@ -261,6 +264,22 @@ pub trait Executor: Send + Sync {
         task_id: Uuid,
         worktree_path: &str,
     ) -> Result<command_group::AsyncGroupChild, ExecutorError>;
+
+    /// Spawn a follow-up session for executors that support it
+    ///
+    /// This method is used to continue an existing session with a new prompt.
+    /// Not all executors support follow-up sessions, so the default implementation
+    /// returns an error.
+    async fn spawn_followup(
+        &self,
+        _pool: &sqlx::SqlitePool,
+        _task_id: Uuid,
+        _session_id: &str,
+        _prompt: &str,
+        _worktree_path: &str,
+    ) -> Result<command_group::AsyncGroupChild, ExecutorError> {
+        Err(ExecutorError::FollowUpNotSupported)
+    }
 
     /// Normalize executor logs into a standard format
     fn normalize_logs(
@@ -278,22 +297,14 @@ pub trait Executor: Send + Sync {
         })
     }
 
-    // Note: Fast-path streaming is now handled by the Gemini WAL system.
-    // The Gemini executor uses its own push_patch() method to emit patches,
-    // which are automatically served via SSE endpoints with resumable streaming.
-
-    /// Execute the command and stream output to database in real-time
-    async fn execute_streaming(
+    #[allow(clippy::result_large_err)]
+    fn setup_streaming(
         &self,
+        child: &mut command_group::AsyncGroupChild,
         pool: &sqlx::SqlitePool,
-        task_id: Uuid,
         attempt_id: Uuid,
         execution_process_id: Uuid,
-        worktree_path: &str,
-    ) -> Result<command_group::AsyncGroupChild, ExecutorError> {
-        let mut child = self.spawn(pool, task_id, worktree_path).await?;
-
-        // Take stdout and stderr pipes for streaming
+    ) -> Result<(), ExecutorError> {
         let stdout = child
             .inner()
             .stdout
@@ -305,7 +316,6 @@ pub trait Executor: Send + Sync {
             .take()
             .expect("Failed to take stderr from child process");
 
-        // Start streaming tasks
         let pool_clone1 = pool.clone();
         let pool_clone2 = pool.clone();
 
@@ -324,6 +334,39 @@ pub trait Executor: Send + Sync {
             false,
         ));
 
+        Ok(())
+    }
+
+    /// Execute the command and stream output to database in real-time
+    async fn execute_streaming(
+        &self,
+        pool: &sqlx::SqlitePool,
+        task_id: Uuid,
+        attempt_id: Uuid,
+        execution_process_id: Uuid,
+        worktree_path: &str,
+    ) -> Result<command_group::AsyncGroupChild, ExecutorError> {
+        let mut child = self.spawn(pool, task_id, worktree_path).await?;
+        Self::setup_streaming(self, &mut child, pool, attempt_id, execution_process_id)?;
+        Ok(child)
+    }
+
+    /// Execute a follow-up command and stream output to database in real-time
+    #[allow(clippy::too_many_arguments)]
+    async fn execute_followup_streaming(
+        &self,
+        pool: &sqlx::SqlitePool,
+        task_id: Uuid,
+        attempt_id: Uuid,
+        execution_process_id: Uuid,
+        session_id: &str,
+        prompt: &str,
+        worktree_path: &str,
+    ) -> Result<command_group::AsyncGroupChild, ExecutorError> {
+        let mut child = self
+            .spawn_followup(pool, task_id, session_id, prompt, worktree_path)
+            .await?;
+        Self::setup_streaming(self, &mut child, pool, attempt_id, execution_process_id)?;
         Ok(child)
     }
 }
@@ -333,12 +376,17 @@ pub trait Executor: Send + Sync {
 pub enum ExecutorType {
     SetupScript(String),
     DevServer(String),
-    CodingAgent(ExecutorConfig),
-    FollowUpCodingAgent {
+    CodingAgent {
         config: ExecutorConfig,
-        session_id: Option<String>,
-        prompt: String,
+        follow_up: Option<FollowUpInfo>,
     },
+}
+
+/// Information needed to continue a previous session
+#[derive(Debug, Clone)]
+pub struct FollowUpInfo {
+    pub session_id: String,
+    pub prompt: String,
 }
 
 /// Configuration for different executor types
@@ -358,10 +406,8 @@ pub enum ExecutorConfig {
     ClaudeCodeRouter,
     #[serde(alias = "charmopencode")]
     CharmOpencode,
+    #[serde(alias = "opencode")]
     SstOpencode,
-    // Future executors can be added here
-    // Shell { command: String },
-    // Docker { image: String, command: String },
 }
 
 // Constants for frontend
@@ -550,7 +596,6 @@ async fn stream_stdout_to_db(
                         session_id_parsed = true;
                     }
                 }
-
                 accumulated_output.push_str(&line);
                 update_counter += 1;
 
