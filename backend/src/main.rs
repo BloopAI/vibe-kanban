@@ -213,13 +213,16 @@ fn main() -> anyhow::Result<()> {
                     "/projects/:project_id/templates",
                     get(task_templates::list_project_templates),
                 )
-                .route(
-                    "/templates/:template_id",
-                    get(task_templates::get_template)
-                        .put(task_templates::update_template)
-                        .delete(task_templates::delete_template),
-                )
-                .route_layer(from_fn_with_state(app_state.clone(), load_task_template_middleware));
+                .merge(
+                    Router::new()
+                        .route(
+                            "/templates/:template_id",
+                            get(task_templates::get_template)
+                                .put(task_templates::update_template)
+                                .delete(task_templates::delete_template),
+                        )
+                        .route_layer(from_fn_with_state(app_state.clone(), load_task_template_middleware))
+                );
 
             // Project routes with project middleware
             let project_routes = Router::new()
@@ -234,10 +237,12 @@ fn main() -> anyhow::Result<()> {
                 .merge(tasks::tasks_with_id_router()
                     .layer(from_fn_with_state(app_state.clone(), load_task_middleware)));
 
-            // Task attempt routes with task attempt middleware
+            // Task attempt routes with appropriate middleware
             let task_attempt_routes = Router::new()
-                .merge(task_attempts::task_attempts_router(app_state.clone()))
-                .layer(from_fn_with_state(app_state.clone(), load_task_attempt_middleware));
+                .merge(task_attempts::task_attempts_list_router(app_state.clone())
+                    .layer(from_fn_with_state(app_state.clone(), load_task_middleware)))
+                .merge(task_attempts::task_attempts_with_id_router(app_state.clone())
+                    .layer(from_fn_with_state(app_state.clone(), load_task_attempt_middleware)));
 
             // All routes (no auth required)
             let app_routes = Router::new()

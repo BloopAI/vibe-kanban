@@ -1147,16 +1147,18 @@ pub async fn get_task_attempt_children(
     }
 }
 
-pub fn task_attempts_router(state: AppState) -> Router<AppState> {
-    use axum::routing::post;
-
+pub fn task_attempts_list_router(state: AppState) -> Router<AppState> {
     Router::new()
         .route(
             "/projects/:project_id/tasks/:task_id/attempts",
             get(get_task_attempts).post(create_task_attempt),
         )
+}
 
+pub fn task_attempts_with_id_router(state: AppState) -> Router<AppState> {
+    use axum::routing::post;
 
+    Router::new()
         .route(
             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/diff",
             get(get_task_attempt_diff),
@@ -1198,10 +1200,6 @@ pub fn task_attempts_router(state: AppState) -> Router<AppState> {
             post(stop_execution_process),
         )
         .route(
-            "/projects/:project_id/execution-processes/:process_id",
-            get(get_execution_process),
-        )
-        .route(
             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/logs",
             get(get_task_attempt_all_logs),
         )
@@ -1225,12 +1223,20 @@ pub fn task_attempts_router(state: AppState) -> Router<AppState> {
             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/children",
             get(get_task_attempt_children),
         )
-        .route_layer(from_fn_with_state(state.clone(), load_project_middleware))
-        .route_layer(from_fn_with_state(state.clone(), load_task_middleware))
-        .route_layer(from_fn_with_state(state.clone(), load_task_attempt_middleware))
-        .route(
-            "/attempts/:attempt_id/details",
-            get(get_task_attempt_details),
+        .merge(
+            Router::new()
+                .route(
+                    "/projects/:project_id/execution-processes/:process_id",
+                    get(get_execution_process),
+                )
+                .route_layer(from_fn_with_state(state.clone(), load_project_middleware))
         )
-        .route_layer(from_fn_with_state(state.clone(), load_task_attempt_middleware))
+        .merge(
+            Router::new()
+                .route(
+                    "/attempts/:attempt_id/details",
+                    get(get_task_attempt_details),
+                )
+                .route_layer(from_fn_with_state(state.clone(), load_task_attempt_middleware))
+        )
 }
