@@ -21,6 +21,7 @@ mod execution_monitor;
 mod executor;
 mod executors;
 mod mcp;
+mod middleware;
 mod models;
 mod routes;
 mod services;
@@ -32,6 +33,7 @@ use models::{ApiResponse, Config};
 use routes::{
     auth, config, filesystem, health, projects, stream, task_attempts, task_templates, tasks,
 };
+use middleware::{load_project_middleware, load_task_middleware, load_task_attempt_middleware};
 use services::PrMonitorService;
 
 async fn echo_handler(
@@ -192,20 +194,39 @@ fn main() -> anyhow::Result<()> {
                 .route("/api/health", get(health::health_check))
                 .route("/api/echo", post(echo_handler));
 
+            // Create routers with different middleware layers
+            let base_routes = Router::new()
+                .merge(stream::stream_router())
+                .merge(task_templates::templates_router())
+                .merge(filesystem::filesystem_router())
+                .merge(config::config_router())
+                .merge(auth::auth_router())
+                .route("/sounds/:filename", get(serve_sound_file));
+
+            // Project routes with project middleware
+            let project_routes = Router::new()
+                .merge(projects::projects_router())
+                .layer(from_fn_with_state(app_state.clone(), load_project_middleware));
+
+            // Task routes with task middleware
+            let task_routes = Router::new()
+                .merge(tasks::tasks_router())
+                .layer(from_fn_with_state(app_state.clone(), load_task_middleware));
+
+            // Task attempt routes with task attempt middleware
+            let task_attempt_routes = Router::new()
+                .merge(task_attempts::task_attempts_router())
+                .layer(from_fn_with_state(app_state.clone(), load_task_attempt_middleware));
+
             // All routes (no auth required)
             let app_routes = Router::new()
                 .nest(
                     "/api",
                     Router::new()
-                        .merge(projects::projects_router())
-                        .merge(tasks::tasks_router())
-                        .merge(task_attempts::task_attempts_router())
-                        .merge(stream::stream_router())
-                        .merge(task_templates::templates_router())
-                        .merge(filesystem::filesystem_router())
-                        .merge(config::config_router())
-                        .merge(auth::auth_router())
-                        .route("/sounds/:filename", get(serve_sound_file))
+                        .merge(base_routes)
+                        .merge(project_routes)
+                        .merge(task_routes)
+                        .merge(task_attempt_routes)
                         .layer(from_fn_with_state(app_state.clone(), auth::sentry_user_context_middleware)),
                 );
 

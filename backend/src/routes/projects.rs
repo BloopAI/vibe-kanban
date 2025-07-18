@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Query, State},
     http::StatusCode,
     response::Json as ResponseJson,
     routing::get,
-    Json, Router,
+    Extension, Json, Router,
 };
 use uuid::Uuid;
 
@@ -37,68 +37,43 @@ pub async fn get_projects(
 }
 
 pub async fn get_project(
-    Path(id): Path<Uuid>,
-    State(app_state): State<AppState>,
+    Extension(project): Extension<Project>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, StatusCode> {
-    match Project::find_by_id(&app_state.db_pool, id).await {
-        Ok(Some(project)) => Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: Some(project),
-            message: None,
-        })),
-        Ok(None) => Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to fetch project: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
+    Ok(ResponseJson(ApiResponse {
+        success: true,
+        data: Some(project),
+        message: None,
+    }))
 }
 
 pub async fn get_project_with_branch(
-    Path(id): Path<Uuid>,
-    State(app_state): State<AppState>,
+    Extension(project): Extension<Project>,
 ) -> Result<ResponseJson<ApiResponse<ProjectWithBranch>>, StatusCode> {
-    match Project::find_by_id(&app_state.db_pool, id).await {
-        Ok(Some(project)) => Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: Some(project.with_branch_info()),
-            message: None,
-        })),
-        Ok(None) => Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to fetch project: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
+    Ok(ResponseJson(ApiResponse {
+        success: true,
+        data: Some(project.with_branch_info()),
+        message: None,
+    }))
 }
 
 pub async fn get_project_branches(
-    Path(id): Path<Uuid>,
-    State(app_state): State<AppState>,
+    Extension(project): Extension<Project>,
 ) -> Result<ResponseJson<ApiResponse<Vec<GitBranch>>>, StatusCode> {
-    match Project::find_by_id(&app_state.db_pool, id).await {
-        Ok(Some(project)) => match project.get_all_branches() {
-            Ok(branches) => Ok(ResponseJson(ApiResponse {
-                success: true,
-                data: Some(branches),
-                message: None,
-            })),
-            Err(e) => {
-                tracing::error!("Failed to get branches for project {}: {}", id, e);
-                Err(StatusCode::INTERNAL_SERVER_ERROR)
-            }
-        },
-        Ok(None) => Err(StatusCode::NOT_FOUND),
+    match project.get_all_branches() {
+        Ok(branches) => Ok(ResponseJson(ApiResponse {
+            success: true,
+            data: Some(branches),
+            message: None,
+        })),
         Err(e) => {
-            tracing::error!("Failed to fetch project: {}", e);
+            tracing::error!("Failed to get branches for project {}: {}", project.id, e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
 }
 
 pub async fn create_project_branch(
-    Path(id): Path<Uuid>,
-    State(app_state): State<AppState>,
+    Extension(project): Extension<Project>,
     Json(payload): Json<CreateBranch>,
 ) -> Result<ResponseJson<ApiResponse<GitBranch>>, StatusCode> {
     // Validate branch name
@@ -119,33 +94,24 @@ pub async fn create_project_branch(
         }));
     }
 
-    match Project::find_by_id(&app_state.db_pool, id).await {
-        Ok(Some(project)) => {
-            match project.create_branch(&payload.name, payload.base_branch.as_deref()) {
-                Ok(branch) => Ok(ResponseJson(ApiResponse {
-                    success: true,
-                    data: Some(branch),
-                    message: Some(format!("Branch '{}' created successfully", payload.name)),
-                })),
-                Err(e) => {
-                    tracing::error!(
-                        "Failed to create branch '{}' for project {}: {}",
-                        payload.name,
-                        id,
-                        e
-                    );
-                    Ok(ResponseJson(ApiResponse {
-                        success: false,
-                        data: None,
-                        message: Some(format!("Failed to create branch: {}", e)),
-                    }))
-                }
-            }
-        }
-        Ok(None) => Err(StatusCode::NOT_FOUND),
+    match project.create_branch(&payload.name, payload.base_branch.as_deref()) {
+        Ok(branch) => Ok(ResponseJson(ApiResponse {
+            success: true,
+            data: Some(branch),
+            message: Some(format!("Branch '{}' created successfully", payload.name)),
+        })),
         Err(e) => {
-            tracing::error!("Failed to fetch project: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            tracing::error!(
+                "Failed to create branch '{}' for project {}: {}",
+                payload.name,
+                project.id,
+                e
+            );
+            Ok(ResponseJson(ApiResponse {
+                success: false,
+                data: None,
+                message: Some(format!("Failed to create branch: {}", e)),
+            }))
         }
     }
 }
@@ -278,19 +244,10 @@ pub async fn create_project(
 }
 
 pub async fn update_project(
-    Path(id): Path<Uuid>,
+    Extension(existing_project): Extension<Project>,
     State(app_state): State<AppState>,
     Json(payload): Json<UpdateProject>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, StatusCode> {
-    // Check if project exists first
-    let existing_project = match Project::find_by_id(&app_state.db_pool, id).await {
-        Ok(Some(project)) => project,
-        Ok(None) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to check project existence: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
 
     // If git_repo_path is being changed, check if the new path is already used by another project
     if let Some(new_git_repo_path) = &payload.git_repo_path {
@@ -298,7 +255,7 @@ pub async fn update_project(
             match Project::find_by_git_repo_path_excluding_id(
                 &app_state.db_pool,
                 new_git_repo_path,
-                id,
+                existing_project.id,
             )
             .await
             {
@@ -337,7 +294,7 @@ pub async fn update_project(
 
     match Project::update(
         &app_state.db_pool,
-        id,
+        existing_project.id,
         name,
         git_repo_path,
         setup_script,
@@ -358,10 +315,10 @@ pub async fn update_project(
 }
 
 pub async fn delete_project(
-    Path(id): Path<Uuid>,
+    Extension(project): Extension<Project>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-    match Project::delete(&app_state.db_pool, id).await {
+    match Project::delete(&app_state.db_pool, project.id).await {
         Ok(rows_affected) => {
             if rows_affected == 0 {
                 Err(StatusCode::NOT_FOUND)
@@ -386,19 +343,10 @@ pub struct OpenEditorRequest {
 }
 
 pub async fn open_project_in_editor(
-    Path(id): Path<Uuid>,
+    Extension(project): Extension<Project>,
     State(app_state): State<AppState>,
     Json(payload): Json<Option<OpenEditorRequest>>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-    // Get the project
-    let project = match Project::find_by_id(&app_state.db_pool, id).await {
-        Ok(Some(project)) => project,
-        Ok(None) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to fetch project {}: {}", id, e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
 
     // Get editor command from config or override
     let editor_command = {
@@ -441,7 +389,7 @@ pub async fn open_project_in_editor(
             tracing::info!(
                 "Opened editor ({}) for project {} at path: {}",
                 editor_command.join(" "),
-                id,
+                project.id,
                 project.git_repo_path
             );
             Ok(ResponseJson(ApiResponse {
@@ -454,7 +402,7 @@ pub async fn open_project_in_editor(
             tracing::error!(
                 "Failed to open editor ({}) for project {}: {}",
                 editor_command.join(" "),
-                id,
+                project.id,
                 e
             );
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -463,9 +411,8 @@ pub async fn open_project_in_editor(
 }
 
 pub async fn search_project_files(
-    Path(id): Path<Uuid>,
+    Extension(project): Extension<Project>,
     Query(params): Query<HashMap<String, String>>,
-    State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<Vec<SearchResult>>>, StatusCode> {
     let query = match params.get("q") {
         Some(q) if !q.trim().is_empty() => q.trim(),
@@ -475,16 +422,6 @@ pub async fn search_project_files(
                 data: None,
                 message: Some("Query parameter 'q' is required and cannot be empty".to_string()),
             }));
-        }
-    };
-
-    // Check if project exists
-    let project = match Project::find_by_id(&app_state.db_pool, id).await {
-        Ok(Some(project)) => project,
-        Ok(None) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to fetch project: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
 

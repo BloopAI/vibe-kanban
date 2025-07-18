@@ -3,7 +3,7 @@ use axum::{
     http::StatusCode,
     response::Json as ResponseJson,
     routing::get,
-    Json, Router,
+    Extension, Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
@@ -20,6 +20,7 @@ use crate::{
         execution_process::{
             ExecutionProcess, ExecutionProcessStatus, ExecutionProcessSummary, ExecutionProcessType,
         },
+        project::Project,
         task::{Task, TaskStatus},
         task_attempt::{
             BranchStatus, CreateFollowUpAttempt, CreatePrParams, CreateTaskAttempt, TaskAttempt,
@@ -182,19 +183,14 @@ async fn normalize_process_logs(
 
 /// Get all normalized logs for all execution processes of a task attempt
 pub async fn get_task_attempt_all_logs(
-    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    Extension(_project): Extension<Project>,
+    Extension(_task): Extension<Task>,
+    Extension(task_attempt): Extension<TaskAttempt>,
     State(app_state): State<AppState>,
 ) -> Result<Json<ApiResponse<Vec<ProcessLogsResponse>>>, StatusCode> {
-    // Validate attempt belongs to task and project
-    let _ctx = match TaskAttempt::load_context(&app_state.db_pool, attempt_id, task_id, project_id)
-        .await
-    {
-        Ok(ctx) => ctx,
-        Err(_) => return Err(StatusCode::NOT_FOUND),
-    };
     // Fetch all execution processes for this attempt
     let processes =
-        match ExecutionProcess::find_by_task_attempt_id(&app_state.db_pool, attempt_id).await {
+        match ExecutionProcess::find_by_task_attempt_id(&app_state.db_pool, task_attempt.id).await {
             Ok(list) => list,
             Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
         };
@@ -219,56 +215,38 @@ pub async fn get_task_attempt_all_logs(
 }
 
 pub async fn get_task_attempts(
-    Path((project_id, task_id)): Path<(Uuid, Uuid)>,
+    Extension(_project): Extension<Project>,
+    Extension(task): Extension<Task>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<Vec<TaskAttempt>>>, StatusCode> {
-    // Verify task exists in project first
-    match Task::exists(&app_state.db_pool, task_id, project_id).await {
-        Ok(false) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to check task existence: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-        Ok(true) => {}
-    }
-
-    match TaskAttempt::find_by_task_id(&app_state.db_pool, task_id).await {
+    match TaskAttempt::find_by_task_id(&app_state.db_pool, task.id).await {
         Ok(attempts) => Ok(ResponseJson(ApiResponse {
             success: true,
             data: Some(attempts),
             message: None,
         })),
         Err(e) => {
-            tracing::error!("Failed to fetch task attempts for task {}: {}", task_id, e);
+            tracing::error!("Failed to fetch task attempts for task {}: {}", task.id, e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
 }
 
 pub async fn create_task_attempt(
-    Path((project_id, task_id)): Path<(Uuid, Uuid)>,
+    Extension(_project): Extension<Project>,
+    Extension(task): Extension<Task>,
     State(app_state): State<AppState>,
     Json(payload): Json<CreateTaskAttempt>,
 ) -> Result<ResponseJson<ApiResponse<TaskAttempt>>, StatusCode> {
-    // Verify task exists in project first
-    match Task::exists(&app_state.db_pool, task_id, project_id).await {
-        Ok(false) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to check task existence: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-        Ok(true) => {}
-    }
-
     let executor_string = payload.executor.as_ref().map(|exec| exec.to_string());
 
-    match TaskAttempt::create(&app_state.db_pool, &payload, task_id).await {
+    match TaskAttempt::create(&app_state.db_pool, &payload, task.id).await {
         Ok(attempt) => {
             app_state
                 .track_analytics_event(
                     "task_attempt_started",
                     Some(serde_json::json!({
-                        "task_id": task_id.to_string(),
+                        "task_id": task.id.to_string(),
                         "executor_type": executor_string.as_deref().unwrap_or("default"),
                         "attempt_id": attempt.id.to_string(),
                     })),
@@ -278,6 +256,8 @@ pub async fn create_task_attempt(
             // Start execution asynchronously (don't block the response)
             let app_state_clone = app_state.clone();
             let attempt_id = attempt.id;
+            let task_id = task.id;
+            let project_id = _project.id;
             tokio::spawn(async move {
                 if let Err(e) = TaskAttempt::start_execution(
                     &app_state_clone.db_pool,
@@ -310,27 +290,19 @@ pub async fn create_task_attempt(
 }
 
 pub async fn get_task_attempt_diff(
-    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    Extension(project): Extension<Project>,
+    Extension(task): Extension<Task>,
+    Extension(task_attempt): Extension<TaskAttempt>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<WorktreeDiff>>, StatusCode> {
-    // Verify task attempt exists and belongs to the correct task
-    match TaskAttempt::exists_for_task(&app_state.db_pool, attempt_id, task_id, project_id).await {
-        Ok(false) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to check task attempt existence: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-        Ok(true) => {}
-    }
-
-    match TaskAttempt::get_diff(&app_state.db_pool, attempt_id, task_id, project_id).await {
+    match TaskAttempt::get_diff(&app_state.db_pool, task_attempt.id, task.id, project.id).await {
         Ok(diff) => Ok(ResponseJson(ApiResponse {
             success: true,
             data: Some(diff),
             message: None,
         })),
         Err(e) => {
-            tracing::error!("Failed to get diff for task attempt {}: {}", attempt_id, e);
+            tracing::error!("Failed to get diff for task attempt {}: {}", task_attempt.id, e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
@@ -338,26 +310,18 @@ pub async fn get_task_attempt_diff(
 
 #[axum::debug_handler]
 pub async fn merge_task_attempt(
-    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    Extension(project): Extension<Project>,
+    Extension(task): Extension<Task>,
+    Extension(task_attempt): Extension<TaskAttempt>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-    // Verify task attempt exists and belongs to the correct task
-    match TaskAttempt::exists_for_task(&app_state.db_pool, attempt_id, task_id, project_id).await {
-        Ok(false) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to check task attempt existence: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-        Ok(true) => {}
-    }
-
-    match TaskAttempt::merge_changes(&app_state.db_pool, attempt_id, task_id, project_id).await {
+    match TaskAttempt::merge_changes(&app_state.db_pool, task_attempt.id, task.id, project.id).await {
         Ok(_) => {
             // Update task status to Done
             if let Err(e) = Task::update_status(
                 &app_state.db_pool,
-                task_id,
-                project_id,
+                task.id,
+                project.id,
                 crate::models::task::TaskStatus::Done,
             )
             .await
@@ -371,9 +335,9 @@ pub async fn merge_task_attempt(
                 .track_analytics_event(
                     "task_attempt_merged",
                     Some(serde_json::json!({
-                        "task_id": task_id.to_string(),
-                        "project_id": project_id.to_string(),
-                        "attempt_id": attempt_id.to_string(),
+                        "task_id": task.id.to_string(),
+                        "project_id": project.id.to_string(),
+                        "attempt_id": task_attempt.id.to_string(),
                     })),
                 )
                 .await;
@@ -385,7 +349,7 @@ pub async fn merge_task_attempt(
             }))
         }
         Err(e) => {
-            tracing::error!("Failed to merge task attempt {}: {}", attempt_id, e);
+            tracing::error!("Failed to merge task attempt {}: {}", task_attempt.id, e);
             Ok(ResponseJson(ApiResponse {
                 success: false,
                 data: None,
