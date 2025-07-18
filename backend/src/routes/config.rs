@@ -32,11 +32,7 @@ pub fn config_router() -> Router<AppState> {
 
 async fn get_config(State(app_state): State<AppState>) -> ResponseJson<ApiResponse<Config>> {
     let config = app_state.get_config().read().await;
-    ResponseJson(ApiResponse {
-        success: true,
-        data: Some(config.clone()),
-        message: Some("Config retrieved successfully".to_string()),
-    })
+    ResponseJson(ApiResponse::success(config.clone()))
 }
 
 async fn update_config(
@@ -55,17 +51,9 @@ async fn update_config(
                 .update_analytics_config(new_config.analytics_enabled.unwrap_or(true))
                 .await;
 
-            ResponseJson(ApiResponse {
-                success: true,
-                data: Some(new_config),
-                message: Some("Config updated successfully".to_string()),
-            })
+            ResponseJson(ApiResponse::success(new_config))
         }
-        Err(e) => ResponseJson(ApiResponse {
-            success: false,
-            data: None,
-            message: Some(format!("Failed to save config: {}", e)),
-        }),
+        Err(e) => ResponseJson(ApiResponse::error(&format!("Failed to save config: {}", e))),
     }
 }
 
@@ -82,11 +70,7 @@ async fn get_config_constants() -> ResponseJson<ApiResponse<ConfigConstants>> {
         sound: SoundConstants::new(),
     };
 
-    ResponseJson(ApiResponse {
-        success: true,
-        data: Some(constants),
-        message: Some("Config constants retrieved successfully".to_string()),
-    })
+    ResponseJson(ApiResponse::success(constants))
 }
 
 #[derive(Debug, Deserialize)]
@@ -128,11 +112,7 @@ async fn get_mcp_servers(
     let executor_config = match resolve_executor_config(query.executor, &saved_config) {
         Ok(config) => config,
         Err(message) => {
-            return ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some(message),
-            });
+            return ResponseJson(ApiResponse::error(&message));
         }
     };
 
@@ -140,11 +120,7 @@ async fn get_mcp_servers(
     let config_path = match executor_config.config_path() {
         Some(path) => path,
         None => {
-            return ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some("Could not determine config file path".to_string()),
-            });
+            return ResponseJson(ApiResponse::error("Could not determine config file path"));
         }
     };
 
@@ -154,17 +130,9 @@ async fn get_mcp_servers(
                 "servers": servers,
                 "config_path": config_path.to_string_lossy().to_string()
             });
-            ResponseJson(ApiResponse {
-                success: true,
-                data: Some(response_data),
-                message: Some("MCP servers retrieved successfully".to_string()),
-            })
+            ResponseJson(ApiResponse::success(response_data))
         }
-        Err(e) => ResponseJson(ApiResponse {
-            success: false,
-            data: None,
-            message: Some(format!("Failed to read MCP servers: {}", e)),
-        }),
+        Err(e) => ResponseJson(ApiResponse::error(&format!("Failed to read MCP servers: {}", e))),
     }
 }
 
@@ -181,11 +149,7 @@ async fn update_mcp_servers(
     let executor_config = match resolve_executor_config(query.executor, &saved_config) {
         Ok(config) => config,
         Err(message) => {
-            return ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some(message),
-            });
+            return ResponseJson(ApiResponse::error(&message));
         }
     };
 
@@ -193,25 +157,13 @@ async fn update_mcp_servers(
     let config_path = match executor_config.config_path() {
         Some(path) => path,
         None => {
-            return ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some("Could not determine config file path".to_string()),
-            });
+            return ResponseJson(ApiResponse::error("Could not determine config file path"));
         }
     };
 
     match update_mcp_servers_in_config(&config_path, &executor_config, new_servers).await {
-        Ok(message) => ResponseJson(ApiResponse {
-            success: true,
-            data: Some(message.clone()),
-            message: Some(message),
-        }),
-        Err(e) => ResponseJson(ApiResponse {
-            success: false,
-            data: None,
-            message: Some(format!("Failed to update MCP servers: {}", e)),
-        }),
+        Ok(message) => ResponseJson(ApiResponse::success(message)),
+        Err(e) => ResponseJson(ApiResponse::error(&format!("Failed to update MCP servers: {}", e))),
     }
 }
 

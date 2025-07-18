@@ -42,11 +42,7 @@ use services::PrMonitorService;
 async fn echo_handler(
     Json(payload): Json<serde_json::Value>,
 ) -> ResponseJson<ApiResponse<serde_json::Value>> {
-    ResponseJson(ApiResponse {
-        success: true,
-        data: Some(payload),
-        message: Some("Echo successful".to_string()),
-    })
+    ResponseJson(ApiResponse::success(payload))
 }
 
 async fn static_handler(uri: axum::extract::Path<String>) -> impl IntoResponse {

@@ -49,21 +49,13 @@ async fn device_start() -> ResponseJson<ApiResponse<DeviceStartResponse>> {
     let res = match res {
         Ok(r) => r,
         Err(e) => {
-            return ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some(format!("Failed to contact GitHub: {e}")),
-            });
+            return ResponseJson(ApiResponse::error(&format!("Failed to contact GitHub: {e}")));
         }
     };
     let json: serde_json::Value = match res.json().await {
         Ok(j) => j,
         Err(e) => {
-            return ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some(format!("Failed to parse GitHub response: {e}")),
-            });
+            return ResponseJson(ApiResponse::error(&format!("Failed to parse GitHub response: {e}")));
         }
     };
     if let (
@@ -79,23 +71,15 @@ async fn device_start() -> ResponseJson<ApiResponse<DeviceStartResponse>> {
         json.get("expires_in").and_then(|v| v.as_u64()),
         json.get("interval").and_then(|v| v.as_u64()),
     ) {
-        ResponseJson(ApiResponse {
-            success: true,
-            data: Some(DeviceStartResponse {
-                device_code: device_code.to_string(),
-                user_code: user_code.to_string(),
-                verification_uri: verification_uri.to_string(),
-                expires_in: expires_in.try_into().unwrap_or(600),
-                interval: interval.try_into().unwrap_or(5),
-            }),
-            message: None,
-        })
+        ResponseJson(ApiResponse::success(DeviceStartResponse {
+            device_code: device_code.to_string(),
+            user_code: user_code.to_string(),
+            verification_uri: verification_uri.to_string(),
+            expires_in: expires_in.try_into().unwrap_or(600),
+            interval: interval.try_into().unwrap_or(5),
+        }))
     } else {
-        ResponseJson(ApiResponse {
-            success: false,
-            data: None,
-            message: Some(format!("GitHub error: {}", json)),
-        })
+        ResponseJson(ApiResponse::error(&format!("GitHub error: {}", json)))
     }
 }
 
@@ -121,30 +105,18 @@ async fn device_poll(
     let res = match res {
         Ok(r) => r,
         Err(e) => {
-            return ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some(format!("Failed to contact GitHub: {e}")),
-            });
+            return ResponseJson(ApiResponse::error(&format!("Failed to contact GitHub: {e}")));
         }
     };
     let json: serde_json::Value = match res.json().await {
         Ok(j) => j,
         Err(e) => {
-            return ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some(format!("Failed to parse GitHub response: {e}")),
-            });
+            return ResponseJson(ApiResponse::error(&format!("Failed to parse GitHub response: {e}")));
         }
     };
     if let Some(error) = json.get("error").and_then(|v| v.as_str()) {
         // Not authorized yet, or other error
-        return ResponseJson(ApiResponse {
-            success: false,
-            data: None,
-            message: Some(error.to_string()),
-        });
+        return ResponseJson(ApiResponse::error(error));
     }
     let access_token = json.get("access_token").and_then(|v| v.as_str());
     if let Some(access_token) = access_token {
@@ -159,19 +131,11 @@ async fn device_poll(
             Ok(res) => match res.json().await {
                 Ok(json) => json,
                 Err(e) => {
-                    return ResponseJson(ApiResponse {
-                        success: false,
-                        data: None,
-                        message: Some(format!("Failed to parse GitHub user response: {e}")),
-                    });
+                    return ResponseJson(ApiResponse::error(&format!("Failed to parse GitHub user response: {e}")));
                 }
             },
             Err(e) => {
-                return ResponseJson(ApiResponse {
-                    success: false,
-                    data: None,
-                    message: Some(format!("Failed to fetch user info: {e}")),
-                });
+                return ResponseJson(ApiResponse::error(&format!("Failed to fetch user info: {e}")));
             }
         };
         let username = user_json
@@ -189,19 +153,11 @@ async fn device_poll(
             Ok(res) => match res.json().await {
                 Ok(json) => json,
                 Err(e) => {
-                    return ResponseJson(ApiResponse {
-                        success: false,
-                        data: None,
-                        message: Some(format!("Failed to parse GitHub emails response: {e}")),
-                    });
+                    return ResponseJson(ApiResponse::error(&format!("Failed to parse GitHub emails response: {e}")));
                 }
             },
             Err(e) => {
-                return ResponseJson(ApiResponse {
-                    success: false,
-                    data: None,
-                    message: Some(format!("Failed to fetch user emails: {e}")),
-                });
+                return ResponseJson(ApiResponse::error(&format!("Failed to fetch user emails: {e}")));
             }
         };
         let primary_email = emails_json
@@ -226,11 +182,7 @@ async fn device_poll(
             config.github_login_acknowledged = true; // Also acknowledge the GitHub login step
             let config_path = crate::utils::config_path();
             if config.save(&config_path).is_err() {
-                return ResponseJson(ApiResponse {
-                    success: false,
-                    data: None,
-                    message: Some("Failed to save config".to_string()),
-                });
+                return ResponseJson(ApiResponse::error("Failed to save config"));
             }
         }
         app_state.update_sentry_scope().await;
@@ -255,17 +207,9 @@ async fn device_poll(
                 .await;
         }
 
-        ResponseJson(ApiResponse {
-            success: true,
-            data: Some("GitHub login successful".to_string()),
-            message: None,
-        })
+        ResponseJson(ApiResponse::success("GitHub login successful".to_string()))
     } else {
-        ResponseJson(ApiResponse {
-            success: false,
-            data: None,
-            message: Some("No access token yet".to_string()),
-        })
+        ResponseJson(ApiResponse::error("No access token yet"))
     }
 }
 
@@ -283,23 +227,11 @@ async fn github_check_token(State(app_state): State<AppState>) -> ResponseJson<A
             .send()
             .await;
         match res {
-            Ok(r) if r.status().is_success() => ResponseJson(ApiResponse {
-                success: true,
-                data: None,
-                message: Some("GitHub token is valid".to_string()),
-            }),
-            _ => ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some("github_token_invalid".to_string()),
-            }),
+            Ok(r) if r.status().is_success() => ResponseJson(ApiResponse::success(())),
+            _ => ResponseJson(ApiResponse::error("github_token_invalid")),
         }
     } else {
-        ResponseJson(ApiResponse {
-            success: false,
-            data: None,
-            message: Some("github_token_invalid".to_string()),
-        })
+        ResponseJson(ApiResponse::error("github_token_invalid"))
     }
 }
 
