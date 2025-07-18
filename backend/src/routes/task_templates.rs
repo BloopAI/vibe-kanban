@@ -3,7 +3,7 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
     routing::get,
-    Json, Router,
+    Extension, Json, Router,
 };
 use uuid::Uuid;
 
@@ -62,23 +62,9 @@ pub async fn list_global_templates(
 }
 
 pub async fn get_template(
-    State(state): State<AppState>,
-    Path(template_id): Path<Uuid>,
+    Extension(template): Extension<TaskTemplate>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ApiResponse<()>>)> {
-    match TaskTemplate::find_by_id(&state.db_pool, template_id).await {
-        Ok(Some(template)) => Ok(Json(ApiResponse::success(template))),
-        Ok(None) => Err((
-            StatusCode::NOT_FOUND,
-            Json(ApiResponse::error("Template not found")),
-        )),
-        Err(e) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ApiResponse::error(&format!(
-                "Failed to fetch template: {}",
-                e
-            ))),
-        )),
-    }
+    Ok(Json(ApiResponse::success(template)))
 }
 
 pub async fn create_template(
@@ -109,11 +95,11 @@ pub async fn create_template(
 }
 
 pub async fn update_template(
+    Extension(template): Extension<TaskTemplate>,
     State(state): State<AppState>,
-    Path(template_id): Path<Uuid>,
     Json(payload): Json<UpdateTaskTemplate>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ApiResponse<()>>)> {
-    match TaskTemplate::update(&state.db_pool, template_id, &payload).await {
+    match TaskTemplate::update(&state.db_pool, template.id, &payload).await {
         Ok(template) => Ok(Json(ApiResponse::success(template))),
         Err(e) => {
             if matches!(e, sqlx::Error::RowNotFound) {
@@ -142,10 +128,10 @@ pub async fn update_template(
 }
 
 pub async fn delete_template(
+    Extension(template): Extension<TaskTemplate>,
     State(state): State<AppState>,
-    Path(template_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ApiResponse<()>>)> {
-    match TaskTemplate::delete(&state.db_pool, template_id).await {
+    match TaskTemplate::delete(&state.db_pool, template.id).await {
         Ok(0) => Err((
             StatusCode::NOT_FOUND,
             Json(ApiResponse::error("Template not found")),
@@ -166,7 +152,7 @@ pub fn templates_router() -> Router<AppState> {
         .route("/templates", get(list_templates).post(create_template))
         .route("/templates/global", get(list_global_templates))
         .route(
-            "/templates/:id",
+            "/templates/:template_id",
             get(get_template)
                 .put(update_template)
                 .delete(delete_template),

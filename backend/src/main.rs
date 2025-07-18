@@ -33,7 +33,10 @@ use models::{ApiResponse, Config};
 use routes::{
     auth, config, filesystem, health, projects, stream, task_attempts, task_templates, tasks,
 };
-use middleware::{load_project_middleware, load_task_middleware, load_task_attempt_middleware};
+use middleware::{
+    load_project_middleware, load_task_middleware, load_task_attempt_middleware,
+    load_task_template_middleware,
+};
 use services::PrMonitorService;
 
 async fn echo_handler(
@@ -197,11 +200,26 @@ fn main() -> anyhow::Result<()> {
             // Create routers with different middleware layers
             let base_routes = Router::new()
                 .merge(stream::stream_router())
-                .merge(task_templates::templates_router())
                 .merge(filesystem::filesystem_router())
                 .merge(config::config_router())
                 .merge(auth::auth_router())
                 .route("/sounds/:filename", get(serve_sound_file));
+
+            // Template routes with task template middleware applied selectively
+            let template_routes = Router::new()
+                .route("/templates", get(task_templates::list_templates).post(task_templates::create_template))
+                .route("/templates/global", get(task_templates::list_global_templates))
+                .route(
+                    "/projects/:project_id/templates",
+                    get(task_templates::list_project_templates),
+                )
+                .route(
+                    "/templates/:template_id",
+                    get(task_templates::get_template)
+                        .put(task_templates::update_template)
+                        .delete(task_templates::delete_template),
+                )
+                .route_layer(from_fn_with_state(app_state.clone(), load_task_template_middleware));
 
             // Project routes with project middleware
             let project_routes = Router::new()
@@ -224,6 +242,7 @@ fn main() -> anyhow::Result<()> {
                     "/api",
                     Router::new()
                         .merge(base_routes)
+                        .merge(template_routes)
                         .merge(project_routes)
                         .merge(task_routes)
                         .merge(task_attempt_routes)

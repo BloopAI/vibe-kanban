@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Query, State},
     http::StatusCode,
     middleware::from_fn_with_state,
     response::Json as ResponseJson,
@@ -16,7 +16,9 @@ use crate::{
     executor::{
         ActionType, ExecutorConfig, NormalizedConversation, NormalizedEntry, NormalizedEntryType,
     },
-    middleware::{load_project_middleware, load_task_middleware, load_task_attempt_middleware},
+    middleware::{
+        load_project_middleware, load_task_middleware, load_task_attempt_middleware,
+    },
     models::{
         config::Config,
         execution_process::{
@@ -640,44 +642,13 @@ pub async fn get_task_attempt_execution_processes(
 }
 
 pub async fn get_execution_process(
-    Extension(project): Extension<Project>,
-    Path(process_id): Path<Uuid>,
-    State(app_state): State<AppState>,
+    Extension(execution_process): Extension<ExecutionProcess>,
 ) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, StatusCode> {
-    match ExecutionProcess::find_by_id(&app_state.db_pool, process_id).await {
-        Ok(Some(process)) => {
-            // Verify the process belongs to a task attempt in the correct project
-            match TaskAttempt::find_by_id(&app_state.db_pool, process.task_attempt_id).await {
-                Ok(Some(attempt)) => {
-                    match Task::find_by_id(&app_state.db_pool, attempt.task_id).await {
-                        Ok(Some(task)) if task.project_id == project.id => {
-                            Ok(ResponseJson(ApiResponse {
-                                success: true,
-                                data: Some(process),
-                                message: None,
-                            }))
-                        }
-                        Ok(Some(_)) => Err(StatusCode::NOT_FOUND), // Wrong project
-                        Ok(None) => Err(StatusCode::NOT_FOUND),
-                        Err(e) => {
-                            tracing::error!("Failed to fetch task: {}", e);
-                            Err(StatusCode::INTERNAL_SERVER_ERROR)
-                        }
-                    }
-                }
-                Ok(None) => Err(StatusCode::NOT_FOUND),
-                Err(e) => {
-                    tracing::error!("Failed to fetch task attempt: {}", e);
-                    Err(StatusCode::INTERNAL_SERVER_ERROR)
-                }
-            }
-        }
-        Ok(None) => Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to fetch execution process {}: {}", process_id, e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
+    Ok(ResponseJson(ApiResponse {
+        success: true,
+        data: Some(execution_process),
+        message: None,
+    }))
 }
 
 #[axum::debug_handler]
@@ -769,26 +740,16 @@ pub async fn stop_all_execution_processes(
 pub async fn stop_execution_process(
     Extension(_project): Extension<Project>,
     Extension(_task): Extension<Task>,
-    Extension(task_attempt): Extension<TaskAttempt>,
-    Path(process_id): Path<Uuid>,
+    Extension(_task_attempt): Extension<TaskAttempt>,
+    Extension(execution_process): Extension<ExecutionProcess>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-    // Verify execution process exists and belongs to the task attempt
-    match ExecutionProcess::find_by_id(&app_state.db_pool, process_id).await {
-        Ok(Some(process)) if process.task_attempt_id == task_attempt.id => process,
-        Ok(Some(_)) => return Err(StatusCode::NOT_FOUND), // Process exists but wrong attempt
-        Ok(None) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to fetch execution process {}: {}", process_id, e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
 
     // Stop the specific execution process
-    let stopped = match app_state.stop_running_execution_by_id(process_id).await {
+    let stopped = match app_state.stop_running_execution_by_id(execution_process.id).await {
         Ok(stopped) => stopped,
         Err(e) => {
-            tracing::error!("Failed to stop execution process {}: {}", process_id, e);
+            tracing::error!("Failed to stop execution process {}: {}", execution_process.id, e);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
@@ -804,7 +765,7 @@ pub async fn stop_execution_process(
     // Update the execution process status in the database
     if let Err(e) = ExecutionProcess::update_completion(
         &app_state.db_pool,
-        process_id,
+        execution_process.id,
         crate::models::execution_process::ExecutionProcessStatus::Killed,
         None,
     )
@@ -821,7 +782,7 @@ pub async fn stop_execution_process(
         data: None,
         message: Some(format!(
             "Execution process {} stopped successfully",
-            process_id
+            execution_process.id
         )),
     }))
 }
