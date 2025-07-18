@@ -248,9 +248,7 @@ const TaskDetailsProvider: FC<{
 
           // Fetch details for running processes
           for (const process of runningProcesses) {
-            const result = await executionProcessesApi.getDetails(
-              process.id
-            );
+            const result = await executionProcessesApi.getDetails(process.id);
 
             if (result !== undefined) {
               runningProcessDetails[process.id] = result;

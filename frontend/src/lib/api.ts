@@ -486,12 +486,8 @@ export const attemptsApi = {
 
 // Execution Process APIs
 export const executionProcessesApi = {
-  getDetails: async (
-    processId: string
-  ): Promise<ExecutionProcess> => {
-    const response = await makeRequest(
-      `/api/execution-processes/${processId}`
-    );
+  getDetails: async (processId: string): Promise<ExecutionProcess> => {
+    const response = await makeRequest(`/api/execution-processes/${processId}`);
     return handleApiResponse<ExecutionProcess>(response);
   },
 };
