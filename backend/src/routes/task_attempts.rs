@@ -1226,14 +1226,6 @@ pub fn task_attempts_with_id_router(state: AppState) -> Router<AppState> {
         .merge(
             Router::new()
                 .route(
-                    "/projects/:project_id/execution-processes/:process_id",
-                    get(get_execution_process),
-                )
-                .route_layer(from_fn_with_state(state.clone(), load_project_middleware))
-        )
-        .merge(
-            Router::new()
-                .route(
                     "/attempts/:attempt_id/details",
                     get(get_task_attempt_details),
                 )

@@ -34,7 +34,7 @@ use routes::{
     auth, config, filesystem, health, projects, stream, task_attempts, task_templates, tasks,
 };
 use middleware::{
-    load_project_middleware, load_task_middleware, load_task_attempt_middleware,
+    load_execution_process_simple_middleware, load_project_middleware, load_task_middleware, load_task_attempt_middleware,
     load_task_template_middleware,
 };
 use services::PrMonitorService;
@@ -203,7 +203,12 @@ fn main() -> anyhow::Result<()> {
                 .merge(filesystem::filesystem_router())
                 .merge(config::config_router())
                 .merge(auth::auth_router())
-                .route("/sounds/:filename", get(serve_sound_file));
+                .route("/sounds/:filename", get(serve_sound_file))
+                .merge(
+                    Router::new()
+                        .route("/execution-processes/:process_id", get(task_attempts::get_execution_process))
+                        .route_layer(from_fn_with_state(app_state.clone(), load_execution_process_simple_middleware))
+                );
 
             // Template routes with task template middleware applied selectively
             let template_routes = Router::new()

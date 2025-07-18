@@ -113,6 +113,34 @@ pub async fn load_task_attempt_middleware(
     Ok(next.run(request).await)
 }
 
+/// Simple middleware that loads and injects ExecutionProcess based on the process_id path parameter
+/// without any additional validation
+pub async fn load_execution_process_simple_middleware(
+    State(app_state): State<AppState>,
+    Path(process_id): Path<Uuid>,
+    mut request: axum::extract::Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    // Load the execution process from the database
+    let execution_process = match ExecutionProcess::find_by_id(&app_state.db_pool, process_id).await {
+        Ok(Some(process)) => process,
+        Ok(None) => {
+            tracing::warn!("ExecutionProcess {} not found", process_id);
+            return Err(StatusCode::NOT_FOUND);
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch execution process {}: {}", process_id, e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    // Inject the execution process into the request
+    request.extensions_mut().insert(execution_process);
+
+    // Continue to the next middleware/handler
+    Ok(next.run(request).await)
+}
+
 /// Middleware that loads and injects ExecutionProcess based on the process_id path parameter
 /// This version validates that the execution process belongs to the correct project
 pub async fn load_execution_process_middleware(
