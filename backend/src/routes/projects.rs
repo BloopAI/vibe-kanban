@@ -248,7 +248,6 @@ pub async fn update_project(
     State(app_state): State<AppState>,
     Json(payload): Json<UpdateProject>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, StatusCode> {
-
     // If git_repo_path is being changed, check if the new path is already used by another project
     if let Some(new_git_repo_path) = &payload.git_repo_path {
         if new_git_repo_path != &existing_project.git_repo_path {
@@ -347,7 +346,6 @@ pub async fn open_project_in_editor(
     State(app_state): State<AppState>,
     Json(payload): Json<Option<OpenEditorRequest>>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-
     // Get editor command from config or override
     let editor_command = {
         let config_guard = app_state.get_config().read().await;
@@ -539,8 +537,7 @@ async fn search_files_in_repo(
 }
 
 pub fn projects_base_router() -> Router<AppState> {
-    Router::new()
-        .route("/projects", get(get_projects).post(create_project))
+    Router::new().route("/projects", get(get_projects).post(create_project))
 }
 
 pub fn projects_with_id_router() -> Router<AppState> {

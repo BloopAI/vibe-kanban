@@ -16,9 +16,7 @@ use crate::{
     executor::{
         ActionType, ExecutorConfig, NormalizedConversation, NormalizedEntry, NormalizedEntryType,
     },
-    middleware::{
-        load_project_middleware, load_task_middleware, load_task_attempt_middleware,
-    },
+    middleware::{load_project_middleware, load_task_attempt_middleware, load_task_middleware},
     models::{
         config::Config,
         execution_process::{
@@ -193,11 +191,15 @@ pub async fn get_task_attempt_all_logs(
     State(app_state): State<AppState>,
 ) -> Result<Json<ApiResponse<Vec<ProcessLogsResponse>>>, StatusCode> {
     // Fetch all execution processes for this attempt
-    let processes =
-        match ExecutionProcess::find_by_task_attempt_id(&app_state.db_pool, task_attempt.id).await {
-            Ok(list) => list,
-            Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
-        };
+    let processes = match ExecutionProcess::find_by_task_attempt_id(
+        &app_state.db_pool,
+        task_attempt.id,
+    )
+    .await
+    {
+        Ok(list) => list,
+        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+    };
     // For each process, normalize logs
     let mut result = Vec::new();
     for process in processes {
@@ -306,7 +308,11 @@ pub async fn get_task_attempt_diff(
             message: None,
         })),
         Err(e) => {
-            tracing::error!("Failed to get diff for task attempt {}: {}", task_attempt.id, e);
+            tracing::error!(
+                "Failed to get diff for task attempt {}: {}",
+                task_attempt.id,
+                e
+            );
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
@@ -319,7 +325,8 @@ pub async fn merge_task_attempt(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-    match TaskAttempt::merge_changes(&app_state.db_pool, task_attempt.id, task.id, project.id).await {
+    match TaskAttempt::merge_changes(&app_state.db_pool, task_attempt.id, task.id, project.id).await
+    {
         Ok(_) => {
             // Update task status to Done
             if let Err(e) = Task::update_status(
@@ -370,7 +377,6 @@ pub async fn create_github_pr(
     State(app_state): State<AppState>,
     Json(request): Json<CreateGitHubPRRequest>,
 ) -> Result<ResponseJson<ApiResponse<String>>, StatusCode> {
-
     // Load the user's GitHub configuration
     let config = match Config::load(&crate::utils::config_path()) {
         Ok(config) => config,
@@ -563,7 +569,8 @@ pub async fn get_task_attempt_branch_status(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<BranchStatus>>, StatusCode> {
-    match TaskAttempt::get_branch_status(&app_state.db_pool, task_attempt.id, task.id, project.id).await
+    match TaskAttempt::get_branch_status(&app_state.db_pool, task_attempt.id, task.id, project.id)
+        .await
     {
         Ok(status) => Ok(ResponseJson(ApiResponse {
             success: true,
@@ -623,7 +630,8 @@ pub async fn get_task_attempt_execution_processes(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<Vec<ExecutionProcessSummary>>>, StatusCode> {
-    match ExecutionProcess::find_summaries_by_task_attempt_id(&app_state.db_pool, task_attempt.id).await
+    match ExecutionProcess::find_summaries_by_task_attempt_id(&app_state.db_pool, task_attempt.id)
+        .await
     {
         Ok(processes) => Ok(ResponseJson(ApiResponse {
             success: true,
@@ -659,18 +667,22 @@ pub async fn stop_all_execution_processes(
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
     // Get all execution processes for the task attempt
-    let processes =
-        match ExecutionProcess::find_by_task_attempt_id(&app_state.db_pool, task_attempt.id).await {
-            Ok(processes) => processes,
-            Err(e) => {
-                tracing::error!(
-                    "Failed to fetch execution processes for attempt {}: {}",
-                    task_attempt.id,
-                    e
-                );
-                return Err(StatusCode::INTERNAL_SERVER_ERROR);
-            }
-        };
+    let processes = match ExecutionProcess::find_by_task_attempt_id(
+        &app_state.db_pool,
+        task_attempt.id,
+    )
+    .await
+    {
+        Ok(processes) => processes,
+        Err(e) => {
+            tracing::error!(
+                "Failed to fetch execution processes for attempt {}: {}",
+                task_attempt.id,
+                e
+            );
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
 
     let mut stopped_count = 0;
     let mut errors = Vec::new();
@@ -744,12 +756,18 @@ pub async fn stop_execution_process(
     Extension(execution_process): Extension<ExecutionProcess>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-
     // Stop the specific execution process
-    let stopped = match app_state.stop_running_execution_by_id(execution_process.id).await {
+    let stopped = match app_state
+        .stop_running_execution_by_id(execution_process.id)
+        .await
+    {
         Ok(stopped) => stopped,
         Err(e) => {
-            tracing::error!("Failed to stop execution process {}: {}", execution_process.id, e);
+            tracing::error!(
+                "Failed to stop execution process {}: {}",
+                execution_process.id,
+                e
+            );
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
@@ -1130,7 +1148,9 @@ pub async fn get_task_attempt_children(
     Extension(project): Extension<Project>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<Vec<Task>>>, StatusCode> {
-    match Task::find_related_tasks_by_attempt_id(&app_state.db_pool, task_attempt.id, project.id).await {
+    match Task::find_related_tasks_by_attempt_id(&app_state.db_pool, task_attempt.id, project.id)
+        .await
+    {
         Ok(related_tasks) => Ok(ResponseJson(ApiResponse {
             success: true,
             data: Some(related_tasks),
@@ -1148,11 +1168,10 @@ pub async fn get_task_attempt_children(
 }
 
 pub fn task_attempts_list_router(state: AppState) -> Router<AppState> {
-    Router::new()
-        .route(
-            "/projects/:project_id/tasks/:task_id/attempts",
-            get(get_task_attempts).post(create_task_attempt),
-        )
+    Router::new().route(
+        "/projects/:project_id/tasks/:task_id/attempts",
+        get(get_task_attempts).post(create_task_attempt),
+    )
 }
 
 pub fn task_attempts_with_id_router(state: AppState) -> Router<AppState> {

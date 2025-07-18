@@ -1,9 +1,6 @@
 use axum::{
-    extract::State,
-    http::StatusCode,
-    response::Json as ResponseJson,
-    routing::get,
-    Extension, Json, Router,
+    extract::State, http::StatusCode, response::Json as ResponseJson, routing::get, Extension,
+    Json, Router,
 };
 use uuid::Uuid;
 
@@ -190,7 +187,6 @@ pub async fn update_task(
     State(app_state): State<AppState>,
     Json(payload): Json<UpdateTask>,
 ) -> Result<ResponseJson<ApiResponse<Task>>, StatusCode> {
-
     // Use existing values if not provided in update
     let title = payload.title.unwrap_or(existing_task.title);
     let description = payload.description.or(existing_task.description);
@@ -227,7 +223,6 @@ pub async fn delete_task(
     Extension(task): Extension<Task>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-
     // Clean up all worktrees for this task before deletion
     if let Err(e) = execution_monitor::cleanup_task_worktrees(&app_state.db_pool, task.id).await {
         tracing::error!("Failed to cleanup worktrees for task {}: {}", task.id, e);
@@ -299,9 +294,8 @@ pub fn tasks_project_router() -> Router<AppState> {
 }
 
 pub fn tasks_with_id_router() -> Router<AppState> {
-    Router::new()
-        .route(
-            "/projects/:project_id/tasks/:task_id",
-            get(get_task).put(update_task).delete(delete_task),
-        )
+    Router::new().route(
+        "/projects/:project_id/tasks/:task_id",
+        get(get_task).put(update_task).delete(delete_task),
+    )
 }

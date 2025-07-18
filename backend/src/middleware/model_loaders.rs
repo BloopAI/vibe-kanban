@@ -9,11 +9,8 @@ use uuid::Uuid;
 use crate::{
     app_state::AppState,
     models::{
-        execution_process::ExecutionProcess,
-        project::Project,
-        task::Task,
-        task_attempt::TaskAttempt,
-        task_template::TaskTemplate,
+        execution_process::ExecutionProcess, project::Project, task::Task,
+        task_attempt::TaskAttempt, task_template::TaskTemplate,
     },
 };
 
@@ -66,14 +63,20 @@ pub async fn load_task_middleware(
     };
 
     // Load the task and validate it belongs to the project
-    let task = match Task::find_by_id_and_project_id(&app_state.db_pool, task_id, project_id).await {
+    let task = match Task::find_by_id_and_project_id(&app_state.db_pool, task_id, project_id).await
+    {
         Ok(Some(task)) => task,
         Ok(None) => {
             tracing::warn!("Task {} not found in project {}", task_id, project_id);
             return Err(StatusCode::NOT_FOUND);
         }
         Err(e) => {
-            tracing::error!("Failed to fetch task {} in project {}: {}", task_id, project_id, e);
+            tracing::error!(
+                "Failed to fetch task {} in project {}: {}",
+                task_id,
+                project_id,
+                e
+            );
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
@@ -95,10 +98,23 @@ pub async fn load_task_attempt_middleware(
     next: Next,
 ) -> Result<Response, StatusCode> {
     // Load the full context in one call using the existing method
-    let context = match TaskAttempt::load_context(&app_state.db_pool, attempt_id, task_id, project_id).await {
+    let context = match TaskAttempt::load_context(
+        &app_state.db_pool,
+        attempt_id,
+        task_id,
+        project_id,
+    )
+    .await
+    {
         Ok(context) => context,
         Err(e) => {
-            tracing::error!("Failed to load context for attempt {} in task {} in project {}: {}", attempt_id, task_id, project_id, e);
+            tracing::error!(
+                "Failed to load context for attempt {} in task {} in project {}: {}",
+                attempt_id,
+                task_id,
+                project_id,
+                e
+            );
             return Err(StatusCode::NOT_FOUND);
         }
     };
@@ -122,7 +138,8 @@ pub async fn load_execution_process_simple_middleware(
     next: Next,
 ) -> Result<Response, StatusCode> {
     // Load the execution process from the database
-    let execution_process = match ExecutionProcess::find_by_id(&app_state.db_pool, process_id).await {
+    let execution_process = match ExecutionProcess::find_by_id(&app_state.db_pool, process_id).await
+    {
         Ok(Some(process)) => process,
         Ok(None) => {
             tracing::warn!("ExecutionProcess {} not found", process_id);
@@ -150,7 +167,8 @@ pub async fn load_execution_process_middleware(
     next: Next,
 ) -> Result<Response, StatusCode> {
     // Load the execution process from the database
-    let execution_process = match ExecutionProcess::find_by_id(&app_state.db_pool, process_id).await {
+    let execution_process = match ExecutionProcess::find_by_id(&app_state.db_pool, process_id).await
+    {
         Ok(Some(process)) => process,
         Ok(None) => {
             tracing::warn!("ExecutionProcess {} not found", process_id);
@@ -173,14 +191,27 @@ pub async fn load_execution_process_middleware(
     };
 
     // Load the task attempt to verify project ownership
-    let task_attempt = match TaskAttempt::find_by_id(&app_state.db_pool, execution_process.task_attempt_id).await {
+    let task_attempt = match TaskAttempt::find_by_id(
+        &app_state.db_pool,
+        execution_process.task_attempt_id,
+    )
+    .await
+    {
         Ok(Some(attempt)) => attempt,
         Ok(None) => {
-            tracing::warn!("TaskAttempt {} not found for execution process {}", execution_process.task_attempt_id, process_id);
+            tracing::warn!(
+                "TaskAttempt {} not found for execution process {}",
+                execution_process.task_attempt_id,
+                process_id
+            );
             return Err(StatusCode::NOT_FOUND);
         }
         Err(e) => {
-            tracing::error!("Failed to fetch task attempt {}: {}", execution_process.task_attempt_id, e);
+            tracing::error!(
+                "Failed to fetch task attempt {}: {}",
+                execution_process.task_attempt_id,
+                e
+            );
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
@@ -189,11 +220,18 @@ pub async fn load_execution_process_middleware(
     let _task = match Task::find_by_id(&app_state.db_pool, task_attempt.task_id).await {
         Ok(Some(task)) if task.project_id == project.id => task,
         Ok(Some(_)) => {
-            tracing::warn!("ExecutionProcess {} belongs to task in different project", process_id);
+            tracing::warn!(
+                "ExecutionProcess {} belongs to task in different project",
+                process_id
+            );
             return Err(StatusCode::NOT_FOUND);
         }
         Ok(None) => {
-            tracing::warn!("Task {} not found for execution process {}", task_attempt.task_id, process_id);
+            tracing::warn!(
+                "Task {} not found for execution process {}",
+                task_attempt.task_id,
+                process_id
+            );
             return Err(StatusCode::NOT_FOUND);
         }
         Err(e) => {
@@ -219,7 +257,8 @@ pub async fn load_execution_process_for_task_attempt_middleware(
     next: Next,
 ) -> Result<Response, StatusCode> {
     // Load the execution process from the database
-    let execution_process = match ExecutionProcess::find_by_id(&app_state.db_pool, process_id).await {
+    let execution_process = match ExecutionProcess::find_by_id(&app_state.db_pool, process_id).await
+    {
         Ok(Some(process)) => process,
         Ok(None) => {
             tracing::warn!("ExecutionProcess {} not found", process_id);
@@ -242,7 +281,11 @@ pub async fn load_execution_process_for_task_attempt_middleware(
 
     // Verify the execution process belongs to the task attempt
     if execution_process.task_attempt_id != task_attempt.id {
-        tracing::warn!("ExecutionProcess {} does not belong to task attempt {}", process_id, task_attempt.id);
+        tracing::warn!(
+            "ExecutionProcess {} does not belong to task attempt {}",
+            process_id,
+            task_attempt.id
+        );
         return Err(StatusCode::NOT_FOUND);
     }
 

@@ -29,13 +29,13 @@ mod utils;
 
 use app_state::AppState;
 use execution_monitor::execution_monitor;
+use middleware::{
+    load_execution_process_simple_middleware, load_project_middleware,
+    load_task_attempt_middleware, load_task_middleware, load_task_template_middleware,
+};
 use models::{ApiResponse, Config};
 use routes::{
     auth, config, filesystem, health, projects, stream, task_attempts, task_templates, tasks,
-};
-use middleware::{
-    load_execution_process_simple_middleware, load_project_middleware, load_task_middleware, load_task_attempt_middleware,
-    load_task_template_middleware,
 };
 use services::PrMonitorService;
 
