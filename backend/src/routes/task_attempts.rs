@@ -482,29 +482,14 @@ pub struct OpenEditorRequest {
 }
 
 pub async fn open_task_attempt_in_editor(
-    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    Extension(_project): Extension<Project>,
+    Extension(_task): Extension<Task>,
+    Extension(task_attempt): Extension<TaskAttempt>,
     State(app_state): State<AppState>,
     Json(payload): Json<Option<OpenEditorRequest>>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-    // Verify task attempt exists and belongs to the correct task
-    match TaskAttempt::exists_for_task(&app_state.db_pool, attempt_id, task_id, project_id).await {
-        Ok(false) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to check task attempt existence: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-        Ok(true) => {}
-    }
-
     // Get the task attempt to access the worktree path
-    let attempt = match TaskAttempt::find_by_id(&app_state.db_pool, attempt_id).await {
-        Ok(Some(attempt)) => attempt,
-        Ok(None) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to fetch task attempt {}: {}", attempt_id, e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
+    let attempt = &task_attempt;
 
     // Get editor command from config or override
     let editor_command = {
@@ -547,7 +532,7 @@ pub async fn open_task_attempt_in_editor(
             tracing::info!(
                 "Opened editor ({}) for task attempt {} at path: {}",
                 editor_command.join(" "),
-                attempt_id,
+                task_attempt.id,
                 attempt.worktree_path
             );
             Ok(ResponseJson(ApiResponse {
@@ -560,7 +545,7 @@ pub async fn open_task_attempt_in_editor(
             tracing::error!(
                 "Failed to open editor ({}) for attempt {}: {}",
                 editor_command.join(" "),
-                attempt_id,
+                task_attempt.id,
                 e
             );
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -569,20 +554,12 @@ pub async fn open_task_attempt_in_editor(
 }
 
 pub async fn get_task_attempt_branch_status(
-    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    Extension(project): Extension<Project>,
+    Extension(task): Extension<Task>,
+    Extension(task_attempt): Extension<TaskAttempt>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<BranchStatus>>, StatusCode> {
-    // Verify task attempt exists and belongs to the correct task
-    match TaskAttempt::exists_for_task(&app_state.db_pool, attempt_id, task_id, project_id).await {
-        Ok(false) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to check task attempt existence: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-        Ok(true) => {}
-    }
-
-    match TaskAttempt::get_branch_status(&app_state.db_pool, attempt_id, task_id, project_id).await
+    match TaskAttempt::get_branch_status(&app_state.db_pool, task_attempt.id, task.id, project.id).await
     {
         Ok(status) => Ok(ResponseJson(ApiResponse {
             success: true,
@@ -592,7 +569,7 @@ pub async fn get_task_attempt_branch_status(
         Err(e) => {
             tracing::error!(
                 "Failed to get branch status for task attempt {}: {}",
-                attempt_id,
+                task_attempt.id,
                 e
             );
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -602,28 +579,20 @@ pub async fn get_task_attempt_branch_status(
 
 #[axum::debug_handler]
 pub async fn rebase_task_attempt(
-    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    Extension(project): Extension<Project>,
+    Extension(task): Extension<Task>,
+    Extension(task_attempt): Extension<TaskAttempt>,
     State(app_state): State<AppState>,
     request_body: Option<Json<RebaseTaskAttemptRequest>>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-    // Verify task attempt exists and belongs to the correct task
-    match TaskAttempt::exists_for_task(&app_state.db_pool, attempt_id, task_id, project_id).await {
-        Ok(false) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to check task attempt existence: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-        Ok(true) => {}
-    }
-
     // Extract new base branch from request body if provided
     let new_base_branch = request_body.and_then(|body| body.new_base_branch.clone());
 
     match TaskAttempt::rebase_attempt(
         &app_state.db_pool,
-        attempt_id,
-        task_id,
-        project_id,
+        task_attempt.id,
+        task.id,
+        project.id,
         new_base_branch,
     )
     .await
@@ -634,7 +603,7 @@ pub async fn rebase_task_attempt(
             message: Some("Branch rebased successfully".to_string()),
         })),
         Err(e) => {
-            tracing::error!("Failed to rebase task attempt {}: {}", attempt_id, e);
+            tracing::error!("Failed to rebase task attempt {}: {}", task_attempt.id, e);
             Ok(ResponseJson(ApiResponse {
                 success: false,
                 data: None,
@@ -645,20 +614,12 @@ pub async fn rebase_task_attempt(
 }
 
 pub async fn get_task_attempt_execution_processes(
-    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    Extension(_project): Extension<Project>,
+    Extension(_task): Extension<Task>,
+    Extension(task_attempt): Extension<TaskAttempt>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<Vec<ExecutionProcessSummary>>>, StatusCode> {
-    // Verify task attempt exists and belongs to the correct task
-    match TaskAttempt::exists_for_task(&app_state.db_pool, attempt_id, task_id, project_id).await {
-        Ok(false) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to check task attempt existence: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-        Ok(true) => {}
-    }
-
-    match ExecutionProcess::find_summaries_by_task_attempt_id(&app_state.db_pool, attempt_id).await
+    match ExecutionProcess::find_summaries_by_task_attempt_id(&app_state.db_pool, task_attempt.id).await
     {
         Ok(processes) => Ok(ResponseJson(ApiResponse {
             success: true,
@@ -668,7 +629,7 @@ pub async fn get_task_attempt_execution_processes(
         Err(e) => {
             tracing::error!(
                 "Failed to fetch execution processes for attempt {}: {}",
-                attempt_id,
+                task_attempt.id,
                 e
             );
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -677,7 +638,8 @@ pub async fn get_task_attempt_execution_processes(
 }
 
 pub async fn get_execution_process(
-    Path((project_id, process_id)): Path<(Uuid, Uuid)>,
+    Extension(project): Extension<Project>,
+    Path(process_id): Path<Uuid>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, StatusCode> {
     match ExecutionProcess::find_by_id(&app_state.db_pool, process_id).await {
@@ -686,7 +648,7 @@ pub async fn get_execution_process(
             match TaskAttempt::find_by_id(&app_state.db_pool, process.task_attempt_id).await {
                 Ok(Some(attempt)) => {
                     match Task::find_by_id(&app_state.db_pool, attempt.task_id).await {
-                        Ok(Some(task)) if task.project_id == project_id => {
+                        Ok(Some(task)) if task.project_id == project.id => {
                             Ok(ResponseJson(ApiResponse {
                                 success: true,
                                 data: Some(process),
@@ -718,27 +680,19 @@ pub async fn get_execution_process(
 
 #[axum::debug_handler]
 pub async fn stop_all_execution_processes(
-    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    Extension(_project): Extension<Project>,
+    Extension(_task): Extension<Task>,
+    Extension(task_attempt): Extension<TaskAttempt>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-    // Verify task attempt exists and belongs to the correct task
-    match TaskAttempt::exists_for_task(&app_state.db_pool, attempt_id, task_id, project_id).await {
-        Ok(false) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to check task attempt existence: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-        Ok(true) => {}
-    }
-
     // Get all execution processes for the task attempt
     let processes =
-        match ExecutionProcess::find_by_task_attempt_id(&app_state.db_pool, attempt_id).await {
+        match ExecutionProcess::find_by_task_attempt_id(&app_state.db_pool, task_attempt.id).await {
             Ok(processes) => processes,
             Err(e) => {
                 tracing::error!(
                     "Failed to fetch execution processes for attempt {}: {}",
-                    attempt_id,
+                    task_attempt.id,
                     e
                 );
                 return Err(StatusCode::INTERNAL_SERVER_ERROR);
@@ -811,22 +765,15 @@ pub async fn stop_all_execution_processes(
 
 #[axum::debug_handler]
 pub async fn stop_execution_process(
-    Path((project_id, task_id, attempt_id, process_id)): Path<(Uuid, Uuid, Uuid, Uuid)>,
+    Extension(_project): Extension<Project>,
+    Extension(_task): Extension<Task>,
+    Extension(task_attempt): Extension<TaskAttempt>,
+    Path(process_id): Path<Uuid>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-    // Verify task attempt exists and belongs to the correct task
-    match TaskAttempt::exists_for_task(&app_state.db_pool, attempt_id, task_id, project_id).await {
-        Ok(false) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to check task attempt existence: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-        Ok(true) => {}
-    }
-
     // Verify execution process exists and belongs to the task attempt
     match ExecutionProcess::find_by_id(&app_state.db_pool, process_id).await {
-        Ok(Some(process)) if process.task_attempt_id == attempt_id => process,
+        Ok(Some(process)) if process.task_attempt_id == task_attempt.id => process,
         Ok(Some(_)) => return Err(StatusCode::NOT_FOUND), // Process exists but wrong attempt
         Ok(None) => return Err(StatusCode::NOT_FOUND),
         Err(e) => {
@@ -884,25 +831,17 @@ pub struct DeleteFileQuery {
 
 #[axum::debug_handler]
 pub async fn delete_task_attempt_file(
-    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    Extension(project): Extension<Project>,
+    Extension(task): Extension<Task>,
+    Extension(task_attempt): Extension<TaskAttempt>,
     Query(query): Query<DeleteFileQuery>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-    // Verify task attempt exists and belongs to the correct task
-    match TaskAttempt::exists_for_task(&app_state.db_pool, attempt_id, task_id, project_id).await {
-        Ok(false) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to check task attempt existence: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-        Ok(true) => {}
-    }
-
     match TaskAttempt::delete_file(
         &app_state.db_pool,
-        attempt_id,
-        task_id,
-        project_id,
+        task_attempt.id,
+        task.id,
+        project.id,
         &query.file_path,
     )
     .await
@@ -916,7 +855,7 @@ pub async fn delete_task_attempt_file(
             tracing::error!(
                 "Failed to delete file '{}' from task attempt {}: {}",
                 query.file_path,
-                attempt_id,
+                task_attempt.id,
                 e
             );
             Ok(ResponseJson(ApiResponse {
@@ -929,34 +868,25 @@ pub async fn delete_task_attempt_file(
 }
 
 pub async fn create_followup_attempt(
-    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    Extension(project): Extension<Project>,
+    Extension(task): Extension<Task>,
+    Extension(task_attempt): Extension<TaskAttempt>,
     State(app_state): State<AppState>,
     Json(payload): Json<CreateFollowUpAttempt>,
 ) -> Result<ResponseJson<ApiResponse<FollowUpResponse>>, StatusCode> {
-    // Verify task attempt exists
-    if !TaskAttempt::exists_for_task(&app_state.db_pool, attempt_id, task_id, project_id)
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to check task attempt existence: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?
-    {
-        return Err(StatusCode::NOT_FOUND);
-    }
-
     // Start follow-up execution synchronously to catch errors
     match TaskAttempt::start_followup_execution(
         &app_state.db_pool,
         &app_state,
-        attempt_id,
-        task_id,
-        project_id,
+        task_attempt.id,
+        task.id,
+        project.id,
         &payload.prompt,
     )
     .await
     {
         Ok(actual_attempt_id) => {
-            let created_new_attempt = actual_attempt_id != attempt_id;
+            let created_new_attempt = actual_attempt_id != task_attempt.id;
             let message = if created_new_attempt {
                 format!(
                     "Follow-up execution started on new attempt {} (original worktree was deleted)",
@@ -979,7 +909,7 @@ pub async fn create_followup_attempt(
         Err(e) => {
             tracing::error!(
                 "Failed to start follow-up execution for task attempt {}: {}",
-                attempt_id,
+                task_attempt.id,
                 e
             );
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -988,29 +918,21 @@ pub async fn create_followup_attempt(
 }
 
 pub async fn start_dev_server(
-    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    Extension(project): Extension<Project>,
+    Extension(task): Extension<Task>,
+    Extension(task_attempt): Extension<TaskAttempt>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-    // Verify task attempt exists and belongs to the correct task
-    match TaskAttempt::exists_for_task(&app_state.db_pool, attempt_id, task_id, project_id).await {
-        Ok(false) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to check task attempt existence: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-        Ok(true) => {}
-    }
-
     // Stop any existing dev servers for this project
     let existing_dev_servers =
-        match ExecutionProcess::find_running_dev_servers_by_project(&app_state.db_pool, project_id)
+        match ExecutionProcess::find_running_dev_servers_by_project(&app_state.db_pool, project.id)
             .await
         {
             Ok(servers) => servers,
             Err(e) => {
                 tracing::error!(
                     "Failed to find running dev servers for project {}: {}",
-                    project_id,
+                    project.id,
                     e
                 );
                 return Err(StatusCode::INTERNAL_SERVER_ERROR);
@@ -1021,7 +943,7 @@ pub async fn start_dev_server(
         tracing::info!(
             "Stopping existing dev server {} for project {}",
             dev_server.id,
-            project_id
+            project.id
         );
 
         // Stop the running process
@@ -1050,9 +972,9 @@ pub async fn start_dev_server(
     match TaskAttempt::start_dev_server(
         &app_state.db_pool,
         &app_state,
-        attempt_id,
-        task_id,
-        project_id,
+        task_attempt.id,
+        task.id,
+        project.id,
     )
     .await
     {
@@ -1064,7 +986,7 @@ pub async fn start_dev_server(
         Err(e) => {
             tracing::error!(
                 "Failed to start dev server for task attempt {}: {}",
-                attempt_id,
+                task_attempt.id,
                 e
             );
             Ok(ResponseJson(ApiResponse {
@@ -1077,21 +999,13 @@ pub async fn start_dev_server(
 }
 
 pub async fn get_task_attempt_execution_state(
-    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    Extension(project): Extension<Project>,
+    Extension(task): Extension<Task>,
+    Extension(task_attempt): Extension<TaskAttempt>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<TaskAttemptState>>, StatusCode> {
-    // Verify task attempt exists and belongs to the correct task
-    match TaskAttempt::exists_for_task(&app_state.db_pool, attempt_id, task_id, project_id).await {
-        Ok(false) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to check task attempt existence: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-        Ok(true) => {}
-    }
-
     // Get the execution state
-    match TaskAttempt::get_execution_state(&app_state.db_pool, attempt_id, task_id, project_id)
+    match TaskAttempt::get_execution_state(&app_state.db_pool, task_attempt.id, task.id, project.id)
         .await
     {
         Ok(state) => Ok(ResponseJson(ApiResponse {
@@ -1102,7 +1016,7 @@ pub async fn get_task_attempt_execution_state(
         Err(e) => {
             tracing::error!(
                 "Failed to get execution state for task attempt {}: {}",
-                attempt_id,
+                task_attempt.id,
                 e
             );
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -1187,37 +1101,23 @@ async fn find_plan_content_with_context(
 }
 
 pub async fn approve_plan(
-    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    Extension(project): Extension<Project>,
+    Extension(task): Extension<Task>,
+    Extension(task_attempt): Extension<TaskAttempt>,
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<FollowUpResponse>>, StatusCode> {
-    // Verify task attempt exists and belongs to the correct task
-    match TaskAttempt::exists_for_task(&app_state.db_pool, attempt_id, task_id, project_id).await {
-        Ok(false) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to check task attempt existence: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-        Ok(true) => {}
-    }
-    let current_task = match Task::find_by_id(&app_state.db_pool, task_id).await {
-        Ok(Some(task)) => task,
-        Ok(None) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            tracing::error!("Failed to fetch current task: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
+    let current_task = &task;
 
     // Find plan content with context across the task hierarchy
-    let plan_content = find_plan_content_with_context(&app_state.db_pool, attempt_id).await?;
+    let plan_content = find_plan_content_with_context(&app_state.db_pool, task_attempt.id).await?;
 
     use crate::models::task::CreateTask;
     let new_task_id = Uuid::new_v4();
     let create_task_data = CreateTask {
-        project_id,
+        project_id: project.id,
         title: format!("Execute Plan: {}", current_task.title),
         description: Some(plan_content),
-        parent_task_attempt: Some(attempt_id),
+        parent_task_attempt: Some(task_attempt.id),
     };
 
     let new_task = match Task::create(&app_state.db_pool, &create_task_data, new_task_id).await {
@@ -1230,14 +1130,14 @@ pub async fn approve_plan(
 
     // Mark original task as completed since it now has children
     if let Err(e) =
-        Task::update_status(&app_state.db_pool, task_id, project_id, TaskStatus::Done).await
+        Task::update_status(&app_state.db_pool, task.id, project.id, TaskStatus::Done).await
     {
         tracing::error!("Failed to update original task status to Done: {}", e);
         return Err(StatusCode::INTERNAL_SERVER_ERROR);
     } else {
         tracing::info!(
             "Original task {} marked as Done after plan approval (has children)",
-            task_id
+            task.id
         );
     }
 
