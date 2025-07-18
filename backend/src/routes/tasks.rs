@@ -20,11 +20,7 @@ pub async fn get_project_tasks(
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<Vec<TaskWithAttemptStatus>>>, StatusCode> {
     match Task::find_by_project_id_with_attempt_status(&app_state.db_pool, project.id).await {
-        Ok(tasks) => Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: Some(tasks),
-            message: None,
-        })),
+        Ok(tasks) => Ok(ResponseJson(ApiResponse::success(tasks))),
         Err(e) => {
             tracing::error!("Failed to fetch tasks for project {}: {}", project.id, e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -35,11 +31,7 @@ pub async fn get_project_tasks(
 pub async fn get_task(
     Extension(task): Extension<Task>,
 ) -> Result<ResponseJson<ApiResponse<Task>>, StatusCode> {
-    Ok(ResponseJson(ApiResponse {
-        success: true,
-        data: Some(task),
-        message: None,
-    }))
+    Ok(ResponseJson(ApiResponse::success(task)))
 }
 
 pub async fn create_task(
@@ -72,11 +64,7 @@ pub async fn create_task(
                 )
                 .await;
 
-            Ok(ResponseJson(ApiResponse {
-                success: true,
-                data: Some(task),
-                message: Some("Task created successfully".to_string()),
-            }))
+            Ok(ResponseJson(ApiResponse::success(task)))
         }
         Err(e) => {
             tracing::error!("Failed to create task: {}", e);
@@ -168,11 +156,7 @@ pub async fn create_task_and_start(
                 }
             });
 
-            Ok(ResponseJson(ApiResponse {
-                success: true,
-                data: Some(task),
-                message: Some("Task created and started successfully".to_string()),
-            }))
+            Ok(ResponseJson(ApiResponse::success(task)))
         }
         Err(e) => {
             tracing::error!("Failed to create task attempt: {}", e);
@@ -206,11 +190,7 @@ pub async fn update_task(
     )
     .await
     {
-        Ok(task) => Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: Some(task),
-            message: Some("Task updated successfully".to_string()),
-        })),
+        Ok(task) => Ok(ResponseJson(ApiResponse::success(task))),
         Err(e) => {
             tracing::error!("Failed to update task: {}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -265,11 +245,7 @@ pub async fn delete_task(
             if rows_affected == 0 {
                 Err(StatusCode::NOT_FOUND)
             } else {
-                Ok(ResponseJson(ApiResponse {
-                    success: true,
-                    data: None,
-                    message: Some("Task deleted successfully".to_string()),
-                }))
+                Ok(ResponseJson(ApiResponse::success(())))
             }
         }
         Err(e) => {

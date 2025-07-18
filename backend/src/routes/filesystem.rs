@@ -56,19 +56,11 @@ pub async fn list_directory(
     let path = Path::new(&path_str);
 
     if !path.exists() {
-        return Ok(ResponseJson(ApiResponse {
-            success: false,
-            data: None,
-            message: Some("Directory does not exist".to_string()),
-        }));
+        return Ok(ResponseJson(ApiResponse::error("Directory does not exist")));
     }
 
     if !path.is_dir() {
-        return Ok(ResponseJson(ApiResponse {
-            success: false,
-            data: None,
-            message: Some("Path is not a directory".to_string()),
-        }));
+        return Ok(ResponseJson(ApiResponse::error("Path is not a directory")));
     }
 
     match fs::read_dir(path) {
@@ -108,22 +100,14 @@ pub async fn list_directory(
                 _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
             });
 
-            Ok(ResponseJson(ApiResponse {
-                success: true,
-                data: Some(DirectoryListResponse {
-                    entries: directory_entries,
-                    current_path: path.to_string_lossy().to_string(),
-                }),
-                message: None,
-            }))
+            Ok(ResponseJson(ApiResponse::success(DirectoryListResponse {
+                entries: directory_entries,
+                current_path: path.to_string_lossy().to_string(),
+            })))
         }
         Err(e) => {
             tracing::error!("Failed to read directory: {}", e);
-            Ok(ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some(format!("Failed to read directory: {}", e)),
-            }))
+            Ok(ResponseJson(ApiResponse::error(&format!("Failed to read directory: {}", e))))
         }
     }
 }
@@ -137,15 +121,7 @@ pub async fn validate_git_path(
     // Check if path exists and is a git repo
     let is_valid_git_repo = path.exists() && path.is_dir() && path.join(".git").exists();
 
-    Ok(ResponseJson(ApiResponse {
-        success: true,
-        data: Some(is_valid_git_repo),
-        message: if is_valid_git_repo {
-            Some("Valid git repository".to_string())
-        } else {
-            Some("Not a valid git repository".to_string())
-        },
-    }))
+    Ok(ResponseJson(ApiResponse::success(is_valid_git_repo)))
 }
 
 pub async fn create_git_repo(
@@ -158,21 +134,13 @@ pub async fn create_git_repo(
     if !path.exists() {
         if let Err(e) = fs::create_dir_all(path) {
             tracing::error!("Failed to create directory: {}", e);
-            return Ok(ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some(format!("Failed to create directory: {}", e)),
-            }));
+            return Ok(ResponseJson(ApiResponse::error(&format!("Failed to create directory: {}", e))));
         }
     }
 
     // Check if it's already a git repo
     if path.join(".git").exists() {
-        return Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: Some(()),
-            message: Some("Directory is already a git repository".to_string()),
-        }));
+        return Ok(ResponseJson(ApiResponse::success(())));
     }
 
     // Initialize git repository
@@ -183,28 +151,16 @@ pub async fn create_git_repo(
     {
         Ok(output) => {
             if output.status.success() {
-                Ok(ResponseJson(ApiResponse {
-                    success: true,
-                    data: Some(()),
-                    message: Some("Git repository initialized successfully".to_string()),
-                }))
+                Ok(ResponseJson(ApiResponse::success(())))
             } else {
                 let error_msg = String::from_utf8_lossy(&output.stderr);
                 tracing::error!("Git init failed: {}", error_msg);
-                Ok(ResponseJson(ApiResponse {
-                    success: false,
-                    data: None,
-                    message: Some(format!("Git init failed: {}", error_msg)),
-                }))
+                Ok(ResponseJson(ApiResponse::error(&format!("Git init failed: {}", error_msg))))
             }
         }
         Err(e) => {
             tracing::error!("Failed to run git init: {}", e);
-            Ok(ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some(format!("Failed to run git init: {}", e)),
-            }))
+            Ok(ResponseJson(ApiResponse::error(&format!("Failed to run git init: {}", e))))
         }
     }
 }

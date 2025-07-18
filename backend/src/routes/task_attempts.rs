@@ -213,11 +213,7 @@ pub async fn get_task_attempt_all_logs(
             normalized_conversation,
         });
     }
-    Ok(Json(ApiResponse {
-        success: true,
-        data: Some(result),
-        message: None,
-    }))
+    Ok(Json(ApiResponse::success(result)))
 }
 
 pub async fn get_task_attempts(
@@ -226,11 +222,7 @@ pub async fn get_task_attempts(
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<Vec<TaskAttempt>>>, StatusCode> {
     match TaskAttempt::find_by_task_id(&app_state.db_pool, task.id).await {
-        Ok(attempts) => Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: Some(attempts),
-            message: None,
-        })),
+        Ok(attempts) => Ok(ResponseJson(ApiResponse::success(attempts))),
         Err(e) => {
             tracing::error!("Failed to fetch task attempts for task {}: {}", task.id, e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -282,11 +274,7 @@ pub async fn create_task_attempt(
                 }
             });
 
-            Ok(ResponseJson(ApiResponse {
-                success: true,
-                data: Some(attempt),
-                message: Some("Task attempt created successfully".to_string()),
-            }))
+            Ok(ResponseJson(ApiResponse::success(attempt)))
         }
         Err(e) => {
             tracing::error!("Failed to create task attempt: {}", e);
@@ -302,11 +290,7 @@ pub async fn get_task_attempt_diff(
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<WorktreeDiff>>, StatusCode> {
     match TaskAttempt::get_diff(&app_state.db_pool, task_attempt.id, task.id, project.id).await {
-        Ok(diff) => Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: Some(diff),
-            message: None,
-        })),
+        Ok(diff) => Ok(ResponseJson(ApiResponse::success(diff))),
         Err(e) => {
             tracing::error!(
                 "Failed to get diff for task attempt {}: {}",
@@ -353,19 +337,11 @@ pub async fn merge_task_attempt(
                 )
                 .await;
 
-            Ok(ResponseJson(ApiResponse {
-                success: true,
-                data: None,
-                message: Some("Changes merged successfully".to_string()),
-            }))
+            Ok(ResponseJson(ApiResponse::success(())))
         }
         Err(e) => {
             tracing::error!("Failed to merge task attempt {}: {}", task_attempt.id, e);
-            Ok(ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some(format!("Failed to merge: {}", e)),
-            }))
+            Ok(ResponseJson(ApiResponse::error(&format!("Failed to merge: {}", e))))
         }
     }
 }
@@ -389,13 +365,9 @@ pub async fn create_github_pr(
     let github_token = match config.github.token {
         Some(token) => token,
         None => {
-            return Ok(ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some(
-                    "GitHub authentication not configured. Please sign in with GitHub.".to_string(),
-                ),
-            }));
+            return Ok(ResponseJson(ApiResponse::error(
+                "GitHub authentication not configured. Please sign in with GitHub."
+            )));
         }
     };
 
@@ -441,11 +413,7 @@ pub async fn create_github_pr(
                 )
                 .await;
 
-            Ok(ResponseJson(ApiResponse {
-                success: true,
-                data: Some(pr_url),
-                message: Some("GitHub PR created successfully".to_string()),
-            }))
+            Ok(ResponseJson(ApiResponse::success(pr_url)))
         }
         Err(e) => {
             tracing::error!(
@@ -477,11 +445,7 @@ pub async fn create_github_pr(
                 }
                 _ => Some(format!("Failed to create PR: {}", e)),
             };
-            Ok(ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message,
-            }))
+            Ok(ResponseJson(ApiResponse::error(message.as_deref().unwrap_or("Unknown error"))))
         }
     }
 }
@@ -545,11 +509,7 @@ pub async fn open_task_attempt_in_editor(
                 task_attempt.id,
                 attempt.worktree_path
             );
-            Ok(ResponseJson(ApiResponse {
-                success: true,
-                data: None,
-                message: Some("Editor opened successfully".to_string()),
-            }))
+            Ok(ResponseJson(ApiResponse::success(())))
         }
         Err(e) => {
             tracing::error!(
@@ -572,11 +532,7 @@ pub async fn get_task_attempt_branch_status(
     match TaskAttempt::get_branch_status(&app_state.db_pool, task_attempt.id, task.id, project.id)
         .await
     {
-        Ok(status) => Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: Some(status),
-            message: None,
-        })),
+        Ok(status) => Ok(ResponseJson(ApiResponse::success(status))),
         Err(e) => {
             tracing::error!(
                 "Failed to get branch status for task attempt {}: {}",
@@ -608,18 +564,10 @@ pub async fn rebase_task_attempt(
     )
     .await
     {
-        Ok(_new_base_commit) => Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: None,
-            message: Some("Branch rebased successfully".to_string()),
-        })),
+        Ok(_new_base_commit) => Ok(ResponseJson(ApiResponse::success(()))),
         Err(e) => {
             tracing::error!("Failed to rebase task attempt {}: {}", task_attempt.id, e);
-            Ok(ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some(e.to_string()),
-            }))
+            Ok(ResponseJson(ApiResponse::error(&e.to_string())))
         }
     }
 }
@@ -633,11 +581,7 @@ pub async fn get_task_attempt_execution_processes(
     match ExecutionProcess::find_summaries_by_task_attempt_id(&app_state.db_pool, task_attempt.id)
         .await
     {
-        Ok(processes) => Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: Some(processes),
-            message: None,
-        })),
+        Ok(processes) => Ok(ResponseJson(ApiResponse::success(processes))),
         Err(e) => {
             tracing::error!(
                 "Failed to fetch execution processes for attempt {}: {}",
@@ -652,11 +596,7 @@ pub async fn get_task_attempt_execution_processes(
 pub async fn get_execution_process(
     Extension(execution_process): Extension<ExecutionProcess>,
 ) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, StatusCode> {
-    Ok(ResponseJson(ApiResponse {
-        success: true,
-        data: Some(execution_process),
-        message: None,
-    }))
+    Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
 
 #[axum::debug_handler]
@@ -719,33 +659,18 @@ pub async fn stop_all_execution_processes(
     }
 
     if !errors.is_empty() {
-        return Ok(ResponseJson(ApiResponse {
-            success: false,
-            data: None,
-            message: Some(format!(
-                "Stopped {} processes, but encountered errors: {}",
-                stopped_count,
-                errors.join(", ")
-            )),
-        }));
+        return Ok(ResponseJson(ApiResponse::error(&format!(
+            "Stopped {} processes, but encountered errors: {}",
+            stopped_count,
+            errors.join(", ")
+        ))));
     }
 
     if stopped_count == 0 {
-        return Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: None,
-            message: Some("No running processes found to stop".to_string()),
-        }));
+        return Ok(ResponseJson(ApiResponse::success(())));
     }
 
-    Ok(ResponseJson(ApiResponse {
-        success: true,
-        data: None,
-        message: Some(format!(
-            "Successfully stopped {} execution processes",
-            stopped_count
-        )),
-    }))
+    Ok(ResponseJson(ApiResponse::success(())))
 }
 
 #[axum::debug_handler]
@@ -773,11 +698,7 @@ pub async fn stop_execution_process(
     };
 
     if !stopped {
-        return Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: None,
-            message: Some("Execution process was not running".to_string()),
-        }));
+        return Ok(ResponseJson(ApiResponse::success(())));
     }
 
     // Update the execution process status in the database
@@ -795,14 +716,7 @@ pub async fn stop_execution_process(
 
     // Process stopped successfully
 
-    Ok(ResponseJson(ApiResponse {
-        success: true,
-        data: None,
-        message: Some(format!(
-            "Execution process {} stopped successfully",
-            execution_process.id
-        )),
-    }))
+    Ok(ResponseJson(ApiResponse::success(())))
 }
 
 #[derive(serde::Deserialize)]
@@ -827,11 +741,7 @@ pub async fn delete_task_attempt_file(
     )
     .await
     {
-        Ok(_commit_id) => Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: None,
-            message: Some(format!("File '{}' deleted successfully", query.file_path)),
-        })),
+        Ok(_commit_id) => Ok(ResponseJson(ApiResponse::success(()))),
         Err(e) => {
             tracing::error!(
                 "Failed to delete file '{}' from task attempt {}: {}",
@@ -839,11 +749,7 @@ pub async fn delete_task_attempt_file(
                 task_attempt.id,
                 e
             );
-            Ok(ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some(e.to_string()),
-            }))
+            Ok(ResponseJson(ApiResponse::error(&e.to_string())))
         }
     }
 }
@@ -877,15 +783,11 @@ pub async fn create_followup_attempt(
                 "Follow-up execution started successfully".to_string()
             };
 
-            Ok(ResponseJson(ApiResponse {
-                success: true,
-                data: Some(FollowUpResponse {
-                    message: message.clone(),
-                    actual_attempt_id,
-                    created_new_attempt,
-                }),
-                message: Some(message),
-            }))
+            Ok(ResponseJson(ApiResponse::success(FollowUpResponse {
+                message: message.clone(),
+                actual_attempt_id,
+                created_new_attempt,
+            })))
         }
         Err(e) => {
             tracing::error!(
@@ -959,22 +861,14 @@ pub async fn start_dev_server(
     )
     .await
     {
-        Ok(_) => Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: None,
-            message: Some("Dev server started successfully".to_string()),
-        })),
+        Ok(_) => Ok(ResponseJson(ApiResponse::success(()))),
         Err(e) => {
             tracing::error!(
                 "Failed to start dev server for task attempt {}: {}",
                 task_attempt.id,
                 e
             );
-            Ok(ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some(e.to_string()),
-            }))
+            Ok(ResponseJson(ApiResponse::error(&e.to_string())))
         }
     }
 }
@@ -989,11 +883,7 @@ pub async fn get_task_attempt_execution_state(
     match TaskAttempt::get_execution_state(&app_state.db_pool, task_attempt.id, task.id, project.id)
         .await
     {
-        Ok(state) => Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: Some(state),
-            message: None,
-        })),
+        Ok(state) => Ok(ResponseJson(ApiResponse::success(state))),
         Err(e) => {
             tracing::error!(
                 "Failed to get execution state for task attempt {}: {}",
@@ -1122,25 +1012,17 @@ pub async fn approve_plan(
         );
     }
 
-    Ok(ResponseJson(ApiResponse {
-        success: true,
-        data: Some(FollowUpResponse {
-            message: format!("Plan approved and new task created: {}", new_task.title),
-            actual_attempt_id: new_task_id, // Return the new task ID
-            created_new_attempt: true,
-        }),
-        message: Some("Plan approved and new task created".to_string()),
-    }))
+    Ok(ResponseJson(ApiResponse::success(FollowUpResponse {
+        message: format!("Plan approved and new task created: {}", new_task.title),
+        actual_attempt_id: new_task_id, // Return the new task ID
+        created_new_attempt: true,
+    })))
 }
 
 pub async fn get_task_attempt_details(
     Extension(task_attempt): Extension<TaskAttempt>,
 ) -> Result<ResponseJson<ApiResponse<TaskAttempt>>, StatusCode> {
-    Ok(ResponseJson(ApiResponse {
-        success: true,
-        data: Some(task_attempt),
-        message: None,
-    }))
+    Ok(ResponseJson(ApiResponse::success(task_attempt)))
 }
 
 pub async fn get_task_attempt_children(
@@ -1151,11 +1033,7 @@ pub async fn get_task_attempt_children(
     match Task::find_related_tasks_by_attempt_id(&app_state.db_pool, task_attempt.id, project.id)
         .await
     {
-        Ok(related_tasks) => Ok(ResponseJson(ApiResponse {
-            success: true,
-            data: Some(related_tasks),
-            message: None,
-        })),
+        Ok(related_tasks) => Ok(ResponseJson(ApiResponse::success(related_tasks))),
         Err(e) => {
             tracing::error!(
                 "Failed to fetch children for task attempt {}: {}",
