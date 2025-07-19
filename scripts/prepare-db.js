@@ -23,14 +23,14 @@ try {
   
   // Run migrations
   console.log('Running migrations...');
-  execSync('cargo sqlx migrate run', {
+  execSync('~/.cargo/bin/cargo sqlx migrate run', {
     stdio: 'inherit',
     env: { ...process.env, DATABASE_URL: databaseUrl }
   });
   
   // Prepare queries
   console.log('Preparing queries...');
-  execSync('cargo sqlx prepare', {
+  execSync('~/.cargo/bin/cargo sqlx prepare', {
     stdio: 'inherit', 
     env: { ...process.env, DATABASE_URL: databaseUrl }
   });
