@@ -14,7 +14,7 @@ use tokio::sync::mpsc;
 use tracing::{error, info};
 use uuid::Uuid;
 
-use crate::{app_state::AppState, models::TaskAttempt};
+use crate::{app_state::AppState, models::task_attempt::TaskAttempt};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -37,7 +37,7 @@ async fn terminal_handler(
     info!("Terminal WebSocket connection requested for attempt: {}", attempt_id);
     
     // Parse UUID
-    let attempt_uuid = match uuid::Uuid::parse_str(&attempt_id) {
+    let attempt_uuid = match Uuid::parse_str(&attempt_id) {
         Ok(id) => id,
         Err(e) => {
             error!("Invalid attempt ID: {}", e);
@@ -78,7 +78,7 @@ async fn handle_socket(socket: WebSocket, worktree_path: String) {
     
     // Start shell process
     let shell = if cfg!(target_os = "windows") {
-        "cmd.exe"
+        "cmd.exe".to_string()
     } else {
         std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string())
     };
