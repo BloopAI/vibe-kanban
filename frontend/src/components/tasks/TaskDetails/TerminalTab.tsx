@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
-import { WebglAddon } from 'xterm-addon-webgl';
 import { TaskWithAttemptStatus, TaskAttempt } from 'shared/types';
 import { attemptsApi } from '@/lib/api';
 import 'xterm/css/xterm.css';
@@ -84,22 +83,17 @@ export default function TerminalTab({ task, projectId }: TerminalTabProps) {
     term.loadAddon(fitAddon);
     term.loadAddon(webLinksAddon);
 
-    // Try to use WebGL for better performance
-    try {
-      const webglAddon = new WebglAddon();
-      webglAddon.onContextLoss(() => {
-        webglAddon.dispose();
-      });
-      term.loadAddon(webglAddon);
-    } catch (e) {
-      console.warn('WebGL addon not supported:', e);
-    }
-
+    // Open terminal
     term.open(terminalRef.current);
-    fitAddon.fit();
-
+    
+    // Store refs
     xtermRef.current = term;
     fitAddonRef.current = fitAddon;
+
+    // Fit terminal after it's opened
+    setTimeout(() => {
+      fitAddon.fit();
+    }, 0);
 
     // Connect to WebSocket
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -139,29 +133,43 @@ export default function TerminalTab({ task, projectId }: TerminalTabProps) {
 
     // Handle resize
     const handleResize = () => {
-      if (fitAddonRef.current) {
-        fitAddonRef.current.fit();
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({
-            type: 'resize',
-            cols: term.cols,
-            rows: term.rows,
-          }));
+      if (fitAddonRef.current && xtermRef.current) {
+        try {
+          fitAddonRef.current.fit();
+          if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({
+              type: 'resize',
+              cols: xtermRef.current.cols,
+              rows: xtermRef.current.rows,
+            }));
+          }
+        } catch (e) {
+          console.error('Error resizing terminal:', e);
         }
       }
     };
 
-    window.addEventListener('resize', handleResize);
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(terminalRef.current);
+
+    // Initial resize
+    handleResize();
 
     // Cleanup
     return () => {
-      window.removeEventListener('resize', handleResize);
-      if (ws) {
-        ws.close();
+      resizeObserver.disconnect();
+      
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
       }
-      if (term) {
-        term.dispose();
+      
+      if (xtermRef.current) {
+        xtermRef.current.dispose();
+        xtermRef.current = null;
       }
+      
+      fitAddonRef.current = null;
     };
   }, [latestAttempt]);
 
@@ -194,7 +202,7 @@ export default function TerminalTab({ task, projectId }: TerminalTabProps) {
           <span className="text-sm text-red-500">{error}</span>
         )}
       </div>
-      <div ref={terminalRef} className="flex-1 p-2 bg-[#0a0a0a]" />
+      <div ref={terminalRef} className="flex-1 p-2 bg-[#0a0a0a] overflow-hidden" />
     </div>
   );
 }
