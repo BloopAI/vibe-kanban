@@ -1,6 +1,7 @@
 import { useContext, useMemo, useState } from 'react';
 import { DiffCard } from './DiffCard';
 import MarkdownRenderer from '@/components/ui/markdown-renderer.tsx';
+import { CollapsibleOutput } from './CollapsibleOutput';
 import {
   AlertCircle,
   Bot,
@@ -233,6 +234,33 @@ const createIncrementalDiff = (
   };
 };
 
+// Helper function to check if this looks like command output
+const isLikelyCommandOutput = (content: string, metadata?: any): boolean => {
+  // Check if this is a result from a command execution
+  if (metadata?.type === 'result' && metadata?.tool_use_id) {
+    return true;
+  }
+  
+  // Check if content has many lines (typical for command output)
+  const lineCount = content.split('\n').length;
+  if (lineCount > 10) {
+    return true;
+  }
+  
+  // Check for common command output patterns
+  const commandOutputPatterns = [
+    /^\s*\d+\s+/, // Line numbers
+    /^[├│└─]/m, // Tree output
+    /^\s*-rw-r--r--/m, // ls -la output
+    /^\[.*\]/m, // Log output with timestamps
+    /^npm\s+(WARN|ERR|info)/m, // npm output
+    /^yarn\s/m, // yarn output
+    /^\+\s+\d+ms/m, // Timing output
+  ];
+  
+  return commandOutputPatterns.some(pattern => pattern.test(content));
+};
+
 // Helper function to determine if content should be rendered as markdown
 const shouldRenderMarkdown = (entryType: NormalizedEntryType) => {
   // Render markdown for assistant messages, plan presentations, and tool outputs that contain backticks
@@ -289,6 +317,10 @@ function DisplayConversationEntry({ entry, index, diffDeletable }: Props) {
     () => isFileModificationToolCall(entry.entry_type),
     [entry.entry_type]
   );
+  
+  // Check if this system message looks like command output
+  const isSystemCommandOutput = entry.entry_type.type === 'system_message' && 
+    isLikelyCommandOutput(entry.content);
 
   // Extract file path from this specific tool call
   const modifiedFilePath = useMemo(
@@ -366,6 +398,14 @@ function DisplayConversationEntry({ entry, index, diffDeletable }: Props) {
                 <MarkdownRenderer
                   content={entry.content}
                   className="whitespace-pre-wrap break-words"
+                />
+              ) : (entry.entry_type.type === 'tool_use' && 
+                  entry.entry_type.action_type.action === 'command_run') ||
+                  isSystemCommandOutput ? (
+                <CollapsibleOutput
+                  content={entry.content}
+                  toolName={entry.entry_type.type === 'tool_use' ? entry.entry_type.tool_name : 'output'}
+                  className="text-foreground"
                 />
               ) : (
                 entry.content

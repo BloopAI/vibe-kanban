@@ -368,11 +368,32 @@ Task title: {}"#,
             };
 
             // If JSON didn't match expected patterns, add it as unrecognized JSON
-            // Skip JSON with type "result" as requested
             if !processed {
                 if let Some(msg_type) = json.get("type").and_then(|t| t.as_str()) {
                     if msg_type == "result" {
-                        // Skip result entries
+                        // Process result entries to show tool outputs
+                        if let Some(result) = json.get("result") {
+                            // Extract the actual result content
+                            let content = if let Some(result_str) = result.as_str() {
+                                result_str.to_string()
+                            } else {
+                                serde_json::to_string_pretty(result).unwrap_or_else(|_| "Unable to format result".to_string())
+                            };
+                            
+                            // Check if this is an error result
+                            let is_error = json.get("is_error").and_then(|e| e.as_bool()).unwrap_or(false);
+                            
+                            entries.push(NormalizedEntry {
+                                timestamp: None,
+                                entry_type: if is_error { 
+                                    NormalizedEntryType::ErrorMessage 
+                                } else { 
+                                    NormalizedEntryType::SystemMessage 
+                                },
+                                content,
+                                metadata: Some(json),
+                            });
+                        }
                         continue;
                     }
                 }
@@ -749,7 +770,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_normalize_logs_ignores_result_type() {
+    fn test_normalize_logs_processes_result_type() {
         let executor = ClaudeExecutor::new();
         let logs = r#"{"type":"system","subtype":"init","cwd":"/private/tmp","session_id":"e988eeea-3712-46a1-82d4-84fbfaa69114","tools":[],"model":"claude-sonnet-4-20250514"}
 {"type":"assistant","message":{"id":"msg_123","type":"message","role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"text","text":"Hello world"}],"stop_reason":null},"session_id":"e988eeea-3712-46a1-82d4-84fbfaa69114"}
@@ -758,14 +779,14 @@ mod tests {
 
         let result = executor.normalize_logs(logs, "/tmp/test-worktree").unwrap();
 
-        // Should have system message, assistant message, and unknown message
-        // but NOT the result message
-        assert_eq!(result.entries.len(), 3);
+        // Should have system message, assistant message, result as system message, and unknown message
+        assert_eq!(result.entries.len(), 4);
 
-        // Check that no entry contains "result"
-        for entry in &result.entries {
-            assert!(!entry.content.contains("result"));
-        }
+        // Check that result is now included as a system message
+        assert!(result
+            .entries
+            .iter()
+            .any(|e| e.content == "Final result"));
 
         // Check that unknown JSON is still processed
         assert!(result
