@@ -287,7 +287,7 @@ impl GitService {
         Ok(())
     }
 
-    /// Perform a squash merge of task branch into base branch
+    /// Perform a squash merge of task branch into base branch, but fail on conflicts
     fn perform_squash_merge(
         &self,
         repo: &Repository,
@@ -297,14 +297,29 @@ impl GitService {
         commit_message: &str,
         base_branch_name: &str,
     ) -> Result<git2::Oid, GitServiceError> {
-        // Create a single commit that squashes all changes from task branch
+        // Attempt an in-memory merge to detect conflicts
+        let mut merge_opts = git2::MergeOptions::new();
+        let mut index = repo.merge_commits(base_commit, task_commit, Some(&mut merge_opts))?;
+
+        // If there are conflicts, return an error
+        if index.has_conflicts() {
+            return Err(GitServiceError::MergeConflicts(
+                "Merge failed due to conflicts. Please resolve conflicts manually.".to_string(),
+            ));
+        }
+
+        // Write the merged tree back to the repository
+        let tree_id = index.write_tree_to(repo)?;
+        let tree = repo.find_tree(tree_id)?;
+
+        // Create a squash commit: use merged tree with base_commit as sole parent
         let squash_commit_id = repo.commit(
-            None,                 // Don't update any reference yet
-            signature,            // Author
-            signature,            // Committer
-            commit_message,       // Custom message
-            &task_commit.tree()?, // Use the tree from task branch (all changes)
-            &[base_commit],       // Single parent: base branch commit
+            None,           // Don't update any reference yet
+            signature,      // Author
+            signature,      // Committer
+            commit_message, // Custom message
+            &tree,          // Merged tree content
+            &[base_commit], // Single parent: base branch commit
         )?;
 
         // Update the base branch reference to point to the new commit
