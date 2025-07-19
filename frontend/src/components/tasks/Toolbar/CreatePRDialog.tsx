@@ -44,7 +44,7 @@ function CreatePrDialog({
   setError,
   branches,
 }: Props) {
-  const { projectId, task } = useContext(TaskDetailsContext);
+  const { projectId, task, projectRepoType } = useContext(TaskDetailsContext);
   const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
   const [prTitle, setPrTitle] = useState('');
   const [prBody, setPrBody] = useState('');
@@ -157,9 +157,11 @@ function CreatePrDialog({
       >
         <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
-            <DialogTitle>Create Pull/Merge Request</DialogTitle>
+            <DialogTitle>{projectRepoType === 'gitlab' ? 'Create Merge Request' : 'Create Pull Request'}</DialogTitle>
             <DialogDescription>
-              Create a pull request (GitHub) or merge request (GitLab) for this task attempt.
+              {projectRepoType === 'gitlab' 
+                ? 'Create a merge request for this task attempt.' 
+                : 'Create a pull request for this task attempt.'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

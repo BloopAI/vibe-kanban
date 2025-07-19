@@ -392,11 +392,11 @@ export function Settings() {
                   id="gitlab-url"
                   type="url"
                   placeholder="https://gitlab.com"
-                  value={config.gitlab.gitlab_url || ''}
+                  value={config.gitlab?.gitlab_url || ''}
                   onChange={(e) =>
                     updateConfig({
                       gitlab: {
-                        ...config.gitlab,
+                        ...(config.gitlab || {}),
                         gitlab_url: e.target.value || null,
                       },
                     })
@@ -413,11 +413,11 @@ export function Settings() {
                   id="gitlab-token"
                   type="password"
                   placeholder="glpat-xxxxxxxxxxxxxxxxxxxx"
-                  value={config.gitlab.pat || ''}
+                  value={config.gitlab?.pat || ''}
                   onChange={(e) =>
                     updateConfig({
                       gitlab: {
-                        ...config.gitlab,
+                        ...(config.gitlab || {}),
                         pat: e.target.value || null,
                       },
                     })
@@ -441,11 +441,11 @@ export function Settings() {
                 <Input
                   id="default-mr-base"
                   placeholder="main"
-                  value={config.gitlab.default_mr_base || ''}
+                  value={config.gitlab?.default_mr_base || ''}
                   onChange={(e) =>
                     updateConfig({
                       gitlab: {
-                        ...config.gitlab,
+                        ...(config.gitlab || {}),
                         default_mr_base: e.target.value || null,
                       },
                     })

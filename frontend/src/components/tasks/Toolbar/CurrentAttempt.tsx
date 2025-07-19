@@ -38,6 +38,7 @@ import {
   makeRequest,
   FollowUpResponse,
   ApiResponse,
+  MergeRequestStatus,
 } from '@/lib/api.ts';
 import {
   Dispatch,
@@ -112,7 +113,7 @@ function CurrentAttempt({
   availableExecutors,
   branches,
 }: Props) {
-  const { task, projectId, handleOpenInEditor, projectHasDevScript } =
+  const { task, projectId, handleOpenInEditor, projectHasDevScript, projectRepoType } =
     useContext(TaskDetailsContext);
   const { config } = useConfig();
   const { setSelectedAttempt } = useContext(TaskSelectedAttemptContext);
@@ -138,6 +139,7 @@ function CurrentAttempt({
   const [selectedRebaseBranch, setSelectedRebaseBranch] = useState<string>('');
   const [showStopConfirmation, setShowStopConfirmation] = useState(false);
   const [isApprovingPlan, setIsApprovingPlan] = useState(false);
+  const [mrStatus, setMrStatus] = useState<MergeRequestStatus | null>(null);
 
   const processedDevServerLogs = useMemo(() => {
     if (!devServerDetails) return 'No output yet...';
@@ -306,12 +308,39 @@ function CurrentAttempt({
     }
   }, [projectId, selectedAttempt?.id, selectedAttempt?.task_id, setError]);
 
+  const fetchMRStatus = useCallback(async () => {
+    if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id || !selectedAttempt?.pr_url || projectRepoType !== 'gitlab') return;
+
+    try {
+      const result = await attemptsApi.getMRStatus(
+        projectId,
+        selectedAttempt.task_id,
+        selectedAttempt.id
+      );
+      setMrStatus(result);
+    } catch (err: any) {
+      console.error('Failed to fetch MR status:', err);
+      // If it's a configuration error (500), don't retry
+      if (err?.status === 500) {
+        setMrStatus(null);
+      }
+      // Don't show error to user, MR status is optional
+    }
+  }, [projectId, selectedAttempt?.id, selectedAttempt?.task_id, selectedAttempt?.pr_url, projectRepoType]);
+
   // Fetch branch status when selected attempt changes
   useEffect(() => {
     if (selectedAttempt) {
       fetchBranchStatus();
     }
   }, [selectedAttempt, fetchBranchStatus]);
+
+  // Fetch MR status when selected attempt changes
+  useEffect(() => {
+    if (selectedAttempt) {
+      fetchMRStatus();
+    }
+  }, [selectedAttempt, fetchMRStatus]);
 
   const performMerge = async () => {
     if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
@@ -387,13 +416,6 @@ function CurrentAttempt({
 
   const handleCreatePRClick = async () => {
     if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
-
-    // If PR already exists, open it
-    if (selectedAttempt.pr_url) {
-      window.open(selectedAttempt.pr_url, '_blank');
-      return;
-    }
-
     setShowCreatePRDialog(true);
   };
 
@@ -728,30 +750,50 @@ function CurrentAttempt({
                 // Normal merge and PR buttons for regular tasks
                 !branchStatus.merged && (
                   <>
-                    <Button
-                      onClick={handleCreatePRClick}
-                      disabled={
-                        creatingPR ||
-                        Boolean(branchStatus.is_behind) ||
-                        isAttemptRunning
-                      }
-                      variant="outline"
-                      size="sm"
-                      className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1"
-                    >
-                      <GitPullRequest className="h-3 w-3" />
-                      {selectedAttempt.pr_url
-                        ? 'Open PR'
-                        : creatingPR
+                    {/* Only show Create MR/PR button if no PR/MR exists */}
+                    {!selectedAttempt.pr_url && (
+                      <Button
+                        onClick={handleCreatePRClick}
+                        disabled={
+                          creatingPR ||
+                          Boolean(branchStatus.is_behind) ||
+                          isAttemptRunning
+                        }
+                        variant="outline"
+                        size="sm"
+                        className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1"
+                      >
+                        <GitPullRequest className="h-3 w-3" />
+                        {creatingPR
                           ? 'Creating...'
-                          : 'Create PR'}
-                    </Button>
+                          : projectRepoType === 'gitlab' ? 'Create MR' : 'Create PR'}
+                      </Button>
+                    )}
+                    {/* Show Open MR/PR button if PR/MR exists */}
+                    {selectedAttempt.pr_url && (
+                      <Button
+                        onClick={() => window.open(selectedAttempt.pr_url || '', '_blank')}
+                        variant="outline"
+                        size="sm"
+                        className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        {projectRepoType === 'gitlab' ? 'Open MR' : 'Open PR'}
+                      </Button>
+                    )}
                     <Button
                       onClick={handleMergeClick}
                       disabled={
                         merging ||
                         Boolean(branchStatus.is_behind) ||
-                        isAttemptRunning
+                        isAttemptRunning ||
+                        // For GitLab, disable if MR exists and cannot be merged
+                        Boolean(projectRepoType === 'gitlab' && selectedAttempt.pr_url && mrStatus && (
+                          mrStatus.state !== 'opened' ||
+                          mrStatus.merge_status === 'cannot_be_merged' ||
+                          mrStatus.has_conflicts ||
+                          (mrStatus.pipeline && mrStatus.pipeline.status !== 'success')
+                        ))
                       }
                       size="sm"
                       className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"
