@@ -1,4 +1,4 @@
-use std::{str::FromStr, time::Duration};
+use std::time::Duration;
 
 use axum::{
     extract::{Path, Query, State},
@@ -151,7 +151,7 @@ pub async fn normalized_logs_stream(
                     }
                 };
 
-                if last_entry_count -1 >= normalized.entries.len() {
+                if last_entry_count > normalized.entries.len() {
                     continue;
                 }
 
