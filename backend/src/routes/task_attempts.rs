@@ -16,7 +16,7 @@ use crate::{
     executor::{
         ActionType, ExecutorConfig, NormalizedConversation, NormalizedEntry, NormalizedEntryType,
     },
-    middleware::load_task_attempt_middleware,
+    middleware::{load_task_attempt_middleware, load_execution_process_simple_middleware},
     models::{
         config::Config,
         execution_process::{
@@ -1097,9 +1097,13 @@ pub fn task_attempts_with_id_router(_state: AppState) -> Router<AppState> {
             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/stop",
             post(stop_all_execution_processes),
         )
-        .route(
-            "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/execution-processes/:process_id/stop",
-            post(stop_execution_process),
+        .merge(
+            Router::new()
+                .route(
+                    "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/execution-processes/:process_id/stop",
+                    post(stop_execution_process),
+                )
+                .route_layer(from_fn_with_state(_state.clone(), load_execution_process_simple_middleware))
         )
         .route(
             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/logs",
