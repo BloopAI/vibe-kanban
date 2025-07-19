@@ -9,7 +9,7 @@ pub mod process_service;
 pub use analytics::{generate_user_id, AnalyticsConfig, AnalyticsService};
 pub use git_service::{GitService, GitServiceError, RepoProvider};
 pub use github_service::{CreatePrRequest, GitHubRepoInfo, GitHubService, GitHubServiceError};
-pub use gitlab_service::{CreateMrRequest, GitLabRepoInfo, GitLabService, GitLabServiceError, MergeRequestInfo};
+pub use gitlab_service::{CreateMrRequest, GitLabRepoInfo, GitLabService, GitLabServiceError};
 pub use notification_service::{NotificationConfig, NotificationService};
 pub use pr_monitor::PrMonitorService;
 pub use process_service::ProcessService;

@@ -224,6 +224,9 @@ impl From<crate::models::task_attempt::TaskAttemptError> for ExecutorError {
             crate::models::task_attempt::TaskAttemptError::GitHubService(e) => {
                 ExecutorError::GitError(format!("GitHub service error: {}", e))
             }
+            crate::models::task_attempt::TaskAttemptError::GitLabService(e) => {
+                ExecutorError::GitError(format!("GitLab service error: {}", e))
+            }
         }
     }
 }

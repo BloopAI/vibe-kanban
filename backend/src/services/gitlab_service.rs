@@ -11,6 +11,7 @@ pub enum GitLabServiceError {
     Auth(String),
     Repository(String),
     MergeRequest(String),
+    #[allow(dead_code)]
     Branch(String),
     TokenInvalid,
     ApiError(String),
@@ -56,13 +57,28 @@ pub struct MergeRequestInfo {
 }
 
 #[derive(Debug, Deserialize)]
-struct GitLabMergeRequest {
-    id: i64,
-    iid: i64,
-    state: String,
-    web_url: String,
-    merged_at: Option<String>,
-    merge_commit_sha: Option<String>,
+pub struct GitLabMergeRequest {
+    #[allow(dead_code)]
+    pub id: i64,
+    pub iid: i64,
+    pub state: String,
+    pub web_url: String,
+    pub merged_at: Option<String>,
+    pub merge_commit_sha: Option<String>,
+    pub title: String,
+    pub description: Option<String>,
+    pub merge_status: Option<String>,
+    pub has_conflicts: Option<bool>,
+    pub head_pipeline: Option<GitLabPipeline>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GitLabPipeline {
+    pub id: i64,
+    pub status: String,
+    pub web_url: String,
+    pub created_at: String,
+    pub finished_at: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -78,6 +94,7 @@ struct CreateMergeRequestPayload {
 struct GitLabErrorResponse {
     message: Option<serde_json::Value>,
     error: Option<String>,
+    #[allow(dead_code)]
     error_description: Option<String>,
 }
 
@@ -272,6 +289,48 @@ impl GitLabService {
         };
 
         Ok(mr_info)
+    }
+
+    /// Get detailed MR information including pipeline status
+    pub async fn get_mr_details(&self, project_id: &str, mr_iid: i64) -> Result<GitLabMergeRequest, GitLabServiceError> {
+        self.with_retry(|| async {
+            let url = format!(
+                "{}/api/v4/projects/{}/merge_requests/{}",
+                self.base_url,
+                urlencoding::encode(project_id),
+                mr_iid
+            );
+
+            let response = self.client
+                .get(&url)
+                .header("PRIVATE-TOKEN", &self.token)
+                .send()
+                .await
+                .map_err(|e| GitLabServiceError::Client(e))?;
+
+            let status = response.status();
+            
+            if !status.is_success() {
+                let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                
+                if status.as_u16() == 401 {
+                    return Err(GitLabServiceError::TokenInvalid);
+                } else if status.as_u16() == 404 {
+                    return Err(GitLabServiceError::MergeRequest(
+                        format!("Merge request !{} not found", mr_iid)
+                    ));
+                }
+                
+                return Err(GitLabServiceError::ApiError(
+                    format!("GitLab API error ({}): {}", status, error_text)
+                ));
+            }
+
+            let mr: GitLabMergeRequest = response.json().await
+                .map_err(|e| GitLabServiceError::Client(e))?;
+
+            Ok(mr)
+        }).await
     }
 
     /// Retry wrapper for GitLab API calls with exponential backoff

@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use git2::{BranchType, Error as GitError, Repository};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool, Type};
-use tracing::info;
+use tracing::{info, error};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -12,7 +12,7 @@ use super::{project::Project, task::Task};
 use crate::services::{
     CreatePrRequest, GitHubRepoInfo, GitHubService, GitHubServiceError, GitService,
     GitServiceError, ProcessService, CreateMrRequest, GitLabRepoInfo, GitLabService, GitLabServiceError,
-    MergeRequestInfo, RepoProvider,
+    RepoProvider,
 };
 
 // Constants for git diff operations
@@ -131,7 +131,7 @@ pub struct CreatePrParams<'a> {
     pub attempt_id: Uuid,
     pub task_id: Uuid,
     pub project_id: Uuid,
-    pub github_token: &'a str,
+    pub github_token: Option<&'a str>,
     pub title: &'a str,
     pub body: Option<&'a str>,
     pub base_branch: Option<&'a str>,
@@ -919,7 +919,10 @@ impl TaskAttempt {
                 .await?;
 
         // Create GitHub service instance
-        let github_service = GitHubService::new(params.github_token)?;
+        let github_token = params.github_token.ok_or_else(|| {
+            TaskAttemptError::ValidationError("GitHub token not provided".to_string())
+        })?;
+        let github_service = GitHubService::new(github_token)?;
 
         // Use GitService to get the remote URL, then create GitHubRepoInfo
         let git_service = GitService::new(&ctx.project.git_repo_path)?;
@@ -933,7 +936,7 @@ impl TaskAttempt {
             &ctx.project.git_repo_path,
             &worktree_path,
             &ctx.task_attempt.branch,
-            params.github_token,
+            github_token,
         )?;
 
         // Create the PR using GitHub service
@@ -1014,8 +1017,8 @@ impl TaskAttempt {
             RepoProvider::GitHub => {
                 // Use GitHub token
                 let github_token = params.github_token
-                    .or(config.github.pat.as_deref())
-                    .or(config.github.token.as_deref())
+                    .or_else(|| config.github.pat.as_deref())
+                    .or_else(|| config.github.token.as_deref())
                     .ok_or_else(|| TaskAttemptError::ValidationError(
                         "GitHub authentication not configured".to_string()
                     ))?;
@@ -1070,20 +1073,30 @@ impl TaskAttempt {
         params: CreatePrParams<'_>,
         gitlab_url: &str,
     ) -> Result<String, TaskAttemptError> {
+        info!("Creating GitLab MR: gitlab_url={}, project_id={}, attempt_id={}", 
+              gitlab_url, params.project_id, params.attempt_id);
+        
         // Load context with full validation
         let ctx =
             TaskAttempt::load_context(pool, params.attempt_id, params.task_id, params.project_id)
                 .await?;
+        
+        info!("Context loaded: project.git_repo_path={}, task_attempt.branch={}", 
+              ctx.project.git_repo_path, ctx.task_attempt.branch);
 
         // Ensure worktree exists (recreate if needed for cold task support)
         let worktree_path =
             Self::ensure_worktree_exists(pool, params.attempt_id, params.project_id, "GitLab MR")
                 .await?;
+        
+        info!("Worktree path: {:?}", worktree_path);
 
         // Create GitLab service instance
         let gitlab_token = params.github_token.ok_or_else(|| {
             TaskAttemptError::ValidationError("GitLab token not provided".to_string())
         })?;
+        
+        info!("GitLab token provided: {}", if gitlab_token.is_empty() { "NO" } else { "YES" });
         let gitlab_service = GitLabService::new(gitlab_url, gitlab_token)?;
 
         // Use GitService to get the GitLab project ID
@@ -1094,12 +1107,14 @@ impl TaskAttempt {
         let repo_info = GitLabRepoInfo { project_id };
 
         // Push the branch to GitLab first
+        info!("Pushing branch '{}' to GitLab", ctx.task_attempt.branch);
         Self::push_branch_to_gitlab(
             &ctx.project.git_repo_path,
             &worktree_path,
             &ctx.task_attempt.branch,
             gitlab_token,
         )?;
+        info!("Branch pushed successfully");
 
         // Create the MR using GitLab service
         let mr_request = CreateMrRequest {
@@ -1132,11 +1147,21 @@ impl TaskAttempt {
         branch_name: &str,
         gitlab_token: &str,
     ) -> Result<(), TaskAttemptError> {
+        info!("push_branch_to_gitlab: git_repo_path={}, worktree_path={}, branch_name={}", 
+              git_repo_path, worktree_path, branch_name);
+        
         // Use GitService to push to GitLab (same as GitHub but with GitLab token)
         let git_service = GitService::new(git_repo_path)?;
-        git_service
+        let result = git_service
             .push_to_github(Path::new(worktree_path), branch_name, gitlab_token)
-            .map_err(TaskAttemptError::from)
+            .map_err(TaskAttemptError::from);
+            
+        match &result {
+            Ok(_) => info!("push_branch_to_gitlab succeeded"),
+            Err(e) => error!("push_branch_to_gitlab failed: {:?}", e),
+        }
+        
+        result
     }
 
     /// Get the current execution state for a task attempt
