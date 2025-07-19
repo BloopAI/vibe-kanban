@@ -655,13 +655,13 @@ pub async fn rebase_task_attempt(
     Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
     State(app_state): State<AppState>,
     request_body: Option<Json<RebaseTaskAttemptRequest>>,
-) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
+) -> Result<ResponseJson<ApiResponse<()>>, (StatusCode, Json<ApiResponse<()>>)> {
     // Verify task attempt exists and belongs to the correct task
     match TaskAttempt::exists_for_task(&app_state.db_pool, attempt_id, task_id, project_id).await {
-        Ok(false) => return Err(StatusCode::NOT_FOUND),
+        Ok(false) => return Err((StatusCode::NOT_FOUND, Json(ApiResponse::error("Task attempt not found")))),
         Err(e) => {
             tracing::error!("Failed to check task attempt existence: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            return Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::error("Failed to check task attempt existence"))));
         }
         Ok(true) => {}
     }
@@ -685,11 +685,7 @@ pub async fn rebase_task_attempt(
         })),
         Err(e) => {
             tracing::error!("Failed to rebase task attempt {}: {}", attempt_id, e);
-            Ok(ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some(e.to_string()),
-            }))
+            Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::error(&e.to_string()))))
         }
     }
 }
