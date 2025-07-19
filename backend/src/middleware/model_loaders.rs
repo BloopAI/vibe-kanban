@@ -158,6 +158,61 @@ pub async fn load_execution_process_simple_middleware(
     Ok(next.run(request).await)
 }
 
+/// Middleware that loads and injects Project, Task, TaskAttempt, and ExecutionProcess
+/// based on the path parameters: project_id, task_id, attempt_id, process_id
+pub async fn load_execution_process_with_context_middleware(
+    State(app_state): State<AppState>,
+    Path((project_id, task_id, attempt_id, process_id)): Path<(Uuid, Uuid, Uuid, Uuid)>,
+    request: axum::extract::Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    // Load the task attempt context first
+    let context = match TaskAttempt::load_context(
+        &app_state.db_pool,
+        attempt_id,
+        task_id,
+        project_id,
+    )
+    .await
+    {
+        Ok(context) => context,
+        Err(e) => {
+            tracing::error!(
+                "Failed to load context for attempt {} in task {} in project {}: {}",
+                attempt_id,
+                task_id,
+                project_id,
+                e
+            );
+            return Err(StatusCode::NOT_FOUND);
+        }
+    };
+
+    // Load the execution process
+    let execution_process = match ExecutionProcess::find_by_id(&app_state.db_pool, process_id).await
+    {
+        Ok(Some(process)) => process,
+        Ok(None) => {
+            tracing::warn!("ExecutionProcess {} not found", process_id);
+            return Err(StatusCode::NOT_FOUND);
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch execution process {}: {}", process_id, e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    // Insert all models as extensions
+    let mut request = request;
+    request.extensions_mut().insert(context.project);
+    request.extensions_mut().insert(context.task);
+    request.extensions_mut().insert(context.task_attempt);
+    request.extensions_mut().insert(execution_process);
+
+    // Continue with the next middleware/handler
+    Ok(next.run(request).await)
+}
+
 /// Middleware that loads and injects TaskTemplate based on the template_id path parameter
 pub async fn load_task_template_middleware(
     State(app_state): State<AppState>,
