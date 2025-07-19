@@ -298,8 +298,8 @@ impl GitService {
         base_branch_name: &str,
     ) -> Result<git2::Oid, GitServiceError> {
         // Attempt an in-memory merge to detect conflicts
-        let mut merge_opts = git2::MergeOptions::new();
-        let mut index = repo.merge_commits(base_commit, task_commit, Some(&mut merge_opts))?;
+        let merge_opts = git2::MergeOptions::new();
+        let mut index = repo.merge_commits(base_commit, task_commit, Some(&merge_opts))?;
 
         // If there are conflicts, return an error
         if index.has_conflicts() {
