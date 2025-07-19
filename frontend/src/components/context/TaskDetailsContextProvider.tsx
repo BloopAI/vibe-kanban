@@ -39,8 +39,8 @@ const TaskDetailsProvider: FC<{
   task: TaskWithAttemptStatus;
   projectId: string;
   children: ReactNode;
-  activeTab: 'logs' | 'diffs' | 'related';
-  setActiveTab: Dispatch<SetStateAction<'logs' | 'diffs' | 'related'>>;
+  activeTab: 'logs' | 'diffs' | 'related' | 'terminal';
+  setActiveTab: Dispatch<SetStateAction<'logs' | 'diffs' | 'related' | 'terminal'>>;
   setShowEditorDialog: Dispatch<SetStateAction<boolean>>;
   userSelectedTab: boolean;
   projectHasDevScript?: boolean;

@@ -5,7 +5,6 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use base64::Engine;
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use ts_rs::TS;
