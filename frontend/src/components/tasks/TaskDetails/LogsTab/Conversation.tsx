@@ -18,7 +18,8 @@ function Conversation() {
   const { attemptData } = useContext(TaskAttemptDataContext);
   const [shouldAutoScrollLogs, setShouldAutoScrollLogs] = useState(true);
   const [conversationUpdateTrigger, setConversationUpdateTrigger] = useState(0);
-  const [visibleCount, setVisibleCount] = useState(100);
+  // Show all logs by default instead of paginating
+  const [visibleCount, setVisibleCount] = useState(Number.MAX_SAFE_INTEGER);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
