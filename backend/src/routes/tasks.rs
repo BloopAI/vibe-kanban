@@ -154,9 +154,17 @@ pub async fn create_task_and_start(
 
     // Create task attempt
     let executor_string = payload.executor.as_ref().map(|exec| exec.to_string());
+    let model_param = payload
+        .executor
+        .as_ref()
+        .and_then(|e| match e {
+            crate::executor::ExecutorConfig::SstOpencode { model } => model.clone(),
+            _ => None,
+        });
     let attempt_payload = CreateTaskAttempt {
         executor: executor_string.clone(),
         base_branch: None, // Not supported in task creation endpoint, only in task attempts
+        model: model_param.clone(),
     };
 
     match TaskAttempt::create(&app_state.db_pool, &attempt_payload, task_id).await {
@@ -193,6 +201,14 @@ pub async fn create_task_and_start(
                     attempt_id,
                     task_id,
                     project_id,
+                    payload
+                        .executor
+                        .as_ref()
+                        .and_then(|e| match e {
+                            crate::executor::ExecutorConfig::SstOpencode { model } =>
+                                model.clone(),
+                            _ => None,
+                        }),
                 )
                 .await
                 {

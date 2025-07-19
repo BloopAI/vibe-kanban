@@ -109,6 +109,7 @@ pub struct TaskAttempt {
 pub struct CreateTaskAttempt {
     pub executor: Option<String>, // Optional executor name (defaults to "echo")
     pub base_branch: Option<String>, // Optional base branch to checkout (defaults to current HEAD)
+    pub model: Option<String>, // Optional model for executors like opencode
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -612,8 +613,17 @@ impl TaskAttempt {
         attempt_id: Uuid,
         task_id: Uuid,
         project_id: Uuid,
+        model: Option<String>,
     ) -> Result<(), TaskAttemptError> {
-        ProcessService::start_execution(pool, app_state, attempt_id, task_id, project_id).await
+        ProcessService::start_execution(
+            pool,
+            app_state,
+            attempt_id,
+            task_id,
+            project_id,
+            model,
+        )
+        .await
     }
 
     /// Start a dev server for this task attempt

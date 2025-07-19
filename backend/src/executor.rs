@@ -359,7 +359,7 @@ pub enum ExecutorConfig {
     #[serde(alias = "charmopencode")]
     CharmOpencode,
     #[serde(alias = "opencode")]
-    SstOpencode,
+    SstOpencode { model: Option<String> },
     // Future executors can be added here
     // Shell { command: String },
     // Docker { image: String, command: String },
@@ -385,7 +385,7 @@ impl FromStr for ExecutorConfig {
             "gemini" => Ok(ExecutorConfig::Gemini),
             "charm-opencode" => Ok(ExecutorConfig::CharmOpencode),
             "claude-code-router" => Ok(ExecutorConfig::ClaudeCodeRouter),
-            "sst-opencode" => Ok(ExecutorConfig::SstOpencode),
+            "sst-opencode" => Ok(ExecutorConfig::SstOpencode { model: None }),
             "setup-script" => Ok(ExecutorConfig::SetupScript {
                 script: "setup script".to_string(),
             }),
@@ -404,7 +404,9 @@ impl ExecutorConfig {
             ExecutorConfig::Gemini => Box::new(GeminiExecutor),
             ExecutorConfig::ClaudeCodeRouter => Box::new(CCRExecutor::new()),
             ExecutorConfig::CharmOpencode => Box::new(CharmOpencodeExecutor),
-            ExecutorConfig::SstOpencode => Box::new(SstOpencodeExecutor::new()),
+            ExecutorConfig::SstOpencode { model } => {
+                Box::new(SstOpencodeExecutor::new(model.clone()))
+            }
             ExecutorConfig::SetupScript { script } => {
                 Box::new(SetupScriptExecutor::new(script.clone()))
             }
@@ -428,7 +430,7 @@ impl ExecutorConfig {
             ExecutorConfig::Gemini => {
                 dirs::home_dir().map(|home| home.join(".gemini").join("settings.json"))
             }
-            ExecutorConfig::SstOpencode => {
+            ExecutorConfig::SstOpencode { .. } => {
                 #[cfg(unix)]
                 {
                     xdg::BaseDirectories::with_prefix("opencode").get_config_file("opencode.json")
@@ -447,7 +449,7 @@ impl ExecutorConfig {
         match self {
             ExecutorConfig::Echo => None, // Echo doesn't support MCP
             ExecutorConfig::CharmOpencode => Some(vec!["mcpServers"]),
-            ExecutorConfig::SstOpencode => Some(vec!["mcp"]),
+            ExecutorConfig::SstOpencode { .. } => Some(vec!["mcp"]),
             ExecutorConfig::Claude => Some(vec!["mcpServers"]),
             ExecutorConfig::ClaudePlan => Some(vec!["mcpServers"]),
             ExecutorConfig::Amp => Some(vec!["amp", "mcpServers"]), // Nested path for Amp
@@ -470,7 +472,7 @@ impl ExecutorConfig {
         match self {
             ExecutorConfig::Echo => "Echo (Test Mode)",
             ExecutorConfig::CharmOpencode => "Charm Opencode",
-            ExecutorConfig::SstOpencode => "SST Opencode",
+            ExecutorConfig::SstOpencode { .. } => "SST Opencode",
             ExecutorConfig::Claude => "Claude",
             ExecutorConfig::ClaudePlan => "Claude Plan",
             ExecutorConfig::Amp => "Amp",
@@ -489,7 +491,7 @@ impl std::fmt::Display for ExecutorConfig {
             ExecutorConfig::ClaudePlan => "claude-plan",
             ExecutorConfig::Amp => "amp",
             ExecutorConfig::Gemini => "gemini",
-            ExecutorConfig::SstOpencode => "sst-opencode",
+            ExecutorConfig::SstOpencode { .. } => "sst-opencode",
             ExecutorConfig::CharmOpencode => "charm-opencode",
             ExecutorConfig::ClaudeCodeRouter => "claude-code-router",
             ExecutorConfig::SetupScript { .. } => "setup-script",

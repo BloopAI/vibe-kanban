@@ -217,20 +217,22 @@ fn format_opencode_content_as_normalized_json(content: &str, worktree_path: &str
 pub struct SstOpencodeExecutor {
     executor_type: String,
     command: String,
+    model: Option<String>,
 }
 
 impl Default for SstOpencodeExecutor {
     fn default() -> Self {
-        Self::new()
+        Self::new(None)
     }
 }
 
 impl SstOpencodeExecutor {
     /// Create a new SstOpencodeExecutor with default settings
-    pub fn new() -> Self {
+    pub fn new(model: Option<String>) -> Self {
         Self {
             executor_type: "SST Opencode".to_string(),
             command: "npx -y opencode-ai@latest run --print-logs".to_string(),
+            model,
         }
     }
 }
@@ -287,7 +289,10 @@ Task title: {}"#,
 
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
-        let opencode_command = &self.command;
+        let mut opencode_command = self.command.clone();
+        if let Some(model) = &self.model {
+            opencode_command.push_str(&format!(" --model {}", model));
+        }
 
         let mut command = Command::new(shell_cmd);
         command
@@ -297,7 +302,7 @@ Task title: {}"#,
             .stderr(std::process::Stdio::piped())
             .current_dir(worktree_path)
             .arg(shell_arg)
-            .arg(opencode_command)
+            .arg(&opencode_command)
             .env("NODE_NO_WARNINGS", "1");
 
         let mut child = command
@@ -504,7 +509,7 @@ impl Executor for SstOpencodeFollowupExecutor {
         worktree_path: &str,
     ) -> Result<NormalizedConversation, String> {
         // Reuse the same logic as the main SstOpencodeExecutor
-        let main_executor = SstOpencodeExecutor::new();
+        let main_executor = SstOpencodeExecutor::new(None);
         main_executor.normalize_logs(logs, worktree_path)
     }
 }
@@ -522,7 +527,7 @@ mod tests {
     // Test the actual format that comes from the database (normalized JSON entries)
     #[test]
     fn test_normalize_logs_with_database_format() {
-        let executor = SstOpencodeExecutor::new();
+        let executor = SstOpencodeExecutor::new(None);
 
         // This is what the database should contain after our streaming function processes it
         let logs = r#"{"timestamp":"2025-07-16T18:04:00Z","entry_type":{"type":"tool_use","tool_name":"Read","action_type":{"action":"file_read","path":"hello.js"}},"content":"`hello.js`","metadata":{"filePath":"/path/to/repo/hello.js"}}
@@ -581,7 +586,7 @@ mod tests {
 
     #[test]
     fn test_normalize_logs_with_session_id() {
-        let executor = SstOpencodeExecutor::new();
+        let executor = SstOpencodeExecutor::new(None);
 
         // Test session ID in JSON metadata - current implementation always returns None for session_id
         let logs = r#"{"timestamp":"2025-07-16T18:04:00Z","entry_type":{"type":"assistant_message"},"content":"Session started","metadata":null,"session_id":"ses_abc123"}
@@ -594,7 +599,7 @@ mod tests {
 
     #[test]
     fn test_normalize_logs_legacy_fallback() {
-        let executor = SstOpencodeExecutor::new();
+        let executor = SstOpencodeExecutor::new(None);
 
         // Current implementation doesn't handle legacy format - it only parses JSON entries
         let logs = r#"INFO session=ses_legacy123 starting
@@ -735,7 +740,7 @@ The file listing shows several items."#;
 
     #[test]
     fn test_normalize_logs_edge_cases() {
-        let executor = SstOpencodeExecutor::new();
+        let executor = SstOpencodeExecutor::new(None);
 
         // Empty content
         let result = executor.normalize_logs("", "/tmp").unwrap();
