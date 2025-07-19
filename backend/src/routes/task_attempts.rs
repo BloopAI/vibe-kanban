@@ -1265,7 +1265,7 @@ pub async fn approve_plan(
     let new_task_id = Uuid::new_v4();
     let create_task_data = CreateTask {
         project_id,
-        title: format!("Execute Plan: {}", current_task.title),
+        title: current_task.title,
         description: Some(plan_content),
         parent_task_attempt: Some(attempt_id),
     };
