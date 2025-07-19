@@ -1,4 +1,4 @@
-import { GitCompare, MessageSquare, Network } from 'lucide-react';
+import { GitCompare, MessageSquare, Network, Terminal } from 'lucide-react';
 import { useContext } from 'react';
 import {
   TaskDiffContext,
@@ -6,8 +6,8 @@ import {
 } from '@/components/context/taskDetailsContext.ts';
 
 type Props = {
-  activeTab: 'logs' | 'diffs' | 'related';
-  setActiveTab: (tab: 'logs' | 'diffs' | 'related') => void;
+  activeTab: 'logs' | 'diffs' | 'related' | 'terminal';
+  setActiveTab: (tab: 'logs' | 'diffs' | 'related' | 'terminal') => void;
   setUserSelectedTab: (tab: boolean) => void;
 };
 
@@ -73,6 +73,21 @@ function TabNavigation({ activeTab, setActiveTab, setUserSelectedTab }: Props) {
               {totalRelatedCount}
             </span>
           )}
+        </button>
+        <button
+          onClick={() => {
+            console.log('Terminal tab clicked - setting activeTab to terminal');
+            setActiveTab('terminal');
+            setUserSelectedTab(true);
+          }}
+          className={`flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'terminal'
+              ? 'border-primary text-primary bg-background'
+              : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+          }`}
+        >
+          <Terminal className="h-4 w-4 mr-2" />
+          Terminal
         </button>
       </div>
     </div>
