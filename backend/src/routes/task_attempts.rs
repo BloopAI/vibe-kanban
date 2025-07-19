@@ -16,7 +16,7 @@ use crate::{
     executor::{
         ActionType, ExecutorConfig, NormalizedConversation, NormalizedEntry, NormalizedEntryType,
     },
-    middleware::{load_task_attempt_middleware, load_execution_process_with_context_middleware},
+    middleware::{load_execution_process_with_context_middleware, load_task_attempt_middleware},
     models::{
         config::Config,
         execution_process::{
