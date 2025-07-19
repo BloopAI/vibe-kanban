@@ -55,6 +55,13 @@ impl From<std::io::Error> for GitServiceError {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum RepoProvider {
+    GitHub,
+    GitLab,
+    Other,
+}
+
 /// Service for managing Git operations in task execution workflows
 pub struct GitService {
     repo_path: PathBuf,
@@ -1071,6 +1078,63 @@ impl GitService {
                 "Not a GitHub repository: {}",
                 url
             )))
+        }
+    }
+
+    /// Extract GitLab project ID from git repo path
+    pub fn get_gitlab_repo_info(&self) -> Result<String, GitServiceError> {
+        let repo = self.open_repo()?;
+        let remote = repo.find_remote("origin").map_err(|_| {
+            GitServiceError::InvalidRepository("No 'origin' remote found".to_string())
+        })?;
+
+        let url = remote.url().ok_or_else(|| {
+            GitServiceError::InvalidRepository("Remote origin has no URL".to_string())
+        })?;
+
+        // Parse GitLab URL (supports both HTTPS and SSH formats)
+        // Matches gitlab.com or self-hosted GitLab instances
+        let gitlab_regex = regex::Regex::new(r"(?:https?://|git@)([^:/]+)[:/](.+?)(?:\.git)?/?$")
+            .map_err(|e| GitServiceError::InvalidRepository(format!("Regex error: {}", e)))?;
+
+        if let Some(captures) = gitlab_regex.captures(url) {
+            let host = captures.get(1).unwrap().as_str();
+            // Check if it's a GitLab host (gitlab.com or contains 'gitlab')
+            if host.contains("gitlab") {
+                let project_path = captures.get(2).unwrap().as_str().to_string();
+                // GitLab uses namespace/project format as project ID
+                Ok(project_path)
+            } else {
+                Err(GitServiceError::InvalidRepository(format!(
+                    "Not a GitLab repository: {}",
+                    url
+                )))
+            }
+        } else {
+            Err(GitServiceError::InvalidRepository(format!(
+                "Invalid repository URL: {}",
+                url
+            )))
+        }
+    }
+
+    /// Determine if the repository is GitHub or GitLab
+    pub fn get_repo_provider(&self) -> Result<RepoProvider, GitServiceError> {
+        let repo = self.open_repo()?;
+        let remote = repo.find_remote("origin").map_err(|_| {
+            GitServiceError::InvalidRepository("No 'origin' remote found".to_string())
+        })?;
+
+        let url = remote.url().ok_or_else(|| {
+            GitServiceError::InvalidRepository("Remote origin has no URL".to_string())
+        })?;
+
+        if url.contains("github.com") {
+            Ok(RepoProvider::GitHub)
+        } else if url.contains("gitlab") {
+            Ok(RepoProvider::GitLab)
+        } else {
+            Ok(RepoProvider::Other)
         }
     }
 

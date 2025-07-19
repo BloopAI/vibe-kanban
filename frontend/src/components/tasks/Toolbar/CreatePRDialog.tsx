@@ -157,9 +157,9 @@ function CreatePrDialog({
       >
         <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
-            <DialogTitle>Create GitHub Pull Request</DialogTitle>
+            <DialogTitle>Create Pull/Merge Request</DialogTitle>
             <DialogDescription>
-              Create a pull request for this task attempt on GitHub.
+              Create a pull request (GitHub) or merge request (GitLab) for this task attempt.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

@@ -419,19 +419,6 @@ pub async fn create_github_pr(
         }
     };
 
-    let github_token = match config.github.token {
-        Some(token) => token,
-        None => {
-            return Ok(ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some(
-                    "GitHub authentication not configured. Please sign in with GitHub.".to_string(),
-                ),
-            }));
-        }
-    };
-
     // Get the task attempt to access the stored base branch
     let attempt = match TaskAttempt::find_by_id(&app_state.db_pool, attempt_id).await {
         Ok(Some(attempt)) => attempt,
@@ -448,31 +435,35 @@ pub async fn create_github_pr(
         if !attempt.base_branch.trim().is_empty() {
             attempt.base_branch.clone()
         } else {
+            // Check if it's GitHub or GitLab to get the right default
             config
                 .github
                 .default_pr_base
+                .or(config.gitlab.default_mr_base)
                 .unwrap_or_else(|| "main".to_string())
         }
     });
 
-    match TaskAttempt::create_github_pr(
+    // Use the generic create_pr method which detects GitHub/GitLab automatically
+    match TaskAttempt::create_pr(
         &app_state.db_pool,
         CreatePrParams {
             attempt_id,
             task_id,
             project_id,
-            github_token: &config.github.pat.unwrap_or(github_token),
             title: &request.title,
             body: request.body.as_deref(),
             base_branch: Some(&base_branch),
+            github_token: None, // Will use config tokens
         },
+        &config,
     )
     .await
     {
         Ok(pr_url) => {
             app_state
                 .track_analytics_event(
-                    "github_pr_created",
+                    "pr_created",
                     Some(serde_json::json!({
                         "task_id": task_id.to_string(),
                         "project_id": project_id.to_string(),
@@ -484,12 +475,12 @@ pub async fn create_github_pr(
             Ok(ResponseJson(ApiResponse {
                 success: true,
                 data: Some(pr_url),
-                message: Some("GitHub PR created successfully".to_string()),
+                message: Some("Pull/Merge request created successfully".to_string()),
             }))
         }
         Err(e) => {
             tracing::error!(
-                "Failed to create GitHub PR for attempt {}: {}",
+                "Failed to create PR/MR for attempt {}: {}",
                 attempt_id,
                 e
             );
@@ -497,6 +488,9 @@ pub async fn create_github_pr(
                 crate::models::task_attempt::TaskAttemptError::GitHubService(
                     crate::services::GitHubServiceError::TokenInvalid,
                 ) => Some("github_token_invalid".to_string()),
+                crate::models::task_attempt::TaskAttemptError::GitLabService(
+                    crate::services::GitLabServiceError::TokenInvalid,
+                ) => Some("gitlab_token_invalid".to_string()),
                 crate::models::task_attempt::TaskAttemptError::GitService(
                     crate::services::git_service::GitServiceError::Git(err),
                 ) if err
