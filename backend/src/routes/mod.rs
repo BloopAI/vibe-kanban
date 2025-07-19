@@ -7,3 +7,4 @@ pub mod stream;
 pub mod task_attempts;
 pub mod task_templates;
 pub mod tasks;
+pub mod opencode;

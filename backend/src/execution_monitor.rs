@@ -77,12 +77,20 @@ async fn handle_setup_delegation(app_state: &AppState, delegation_context: Deleg
             .await
         }
         "coding_agent" => {
+            let model_param = params
+                .additional
+                .as_ref()
+                .and_then(|a| a.get("model"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
             ProcessService::start_coding_agent(
                 &app_state.db_pool,
                 app_state,
                 attempt_id,
                 task_id,
                 project_id,
+                model_param,
             )
             .await
         }
@@ -781,6 +789,7 @@ async fn handle_setup_completion(
                         task_attempt_id,
                         task.id,
                         task.project_id,
+                        None,
                     )
                     .await
                     {

@@ -58,7 +58,20 @@ impl ProcessService {
                         .await
                 }
                 "coding_agent" => {
-                    Self::start_coding_agent(pool, app_state, attempt_id, task_id, project_id).await
+                    let model_param = operation_params
+                        .as_ref()
+                        .and_then(|p| p.get("model"))
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
+                    Self::start_coding_agent(
+                        pool,
+                        app_state,
+                        attempt_id,
+                        task_id,
+                        project_id,
+                        model_param,
+                    )
+                    .await
                 }
                 "followup" => {
                     let prompt = operation_params
@@ -163,6 +176,7 @@ impl ProcessService {
         attempt_id: Uuid,
         task_id: Uuid,
         project_id: Uuid,
+        model: Option<String>,
     ) -> Result<(), TaskAttemptError> {
         use crate::models::task::{Task, TaskStatus};
 
@@ -185,7 +199,15 @@ impl ProcessService {
             )
             .await
         } else {
-            Self::start_coding_agent(pool, app_state, attempt_id, task_id, project_id).await
+            Self::start_coding_agent(
+                pool,
+                app_state,
+                attempt_id,
+                task_id,
+                project_id,
+                model,
+            )
+            .await
         }
     }
 
@@ -196,12 +218,18 @@ impl ProcessService {
         attempt_id: Uuid,
         task_id: Uuid,
         _project_id: Uuid,
+        model: Option<String>,
     ) -> Result<(), TaskAttemptError> {
         let task_attempt = TaskAttempt::find_by_id(pool, attempt_id)
             .await?
             .ok_or(TaskAttemptError::TaskNotFound)?;
 
-        let executor_config = Self::resolve_executor_config(&task_attempt.executor);
+        let mut executor_config = Self::resolve_executor_config(&task_attempt.executor);
+        if let (Some(m), crate::executor::ExecutorConfig::SstOpencode { model: ref mut conf_model }) =
+            (model, &mut executor_config)
+        {
+            *conf_model = Some(m);
+        }
 
         Self::start_process_execution(
             pool,
@@ -623,7 +651,7 @@ impl ProcessService {
             Some("amp") => crate::executor::ExecutorConfig::Amp,
             Some("gemini") => crate::executor::ExecutorConfig::Gemini,
             Some("charm-opencode") => crate::executor::ExecutorConfig::CharmOpencode,
-            Some("sst-opencode") => crate::executor::ExecutorConfig::SstOpencode,
+            Some("sst-opencode") => crate::executor::ExecutorConfig::SstOpencode { model: None },
             _ => crate::executor::ExecutorConfig::Echo, // Default for "echo" or None
         }
     }
@@ -804,7 +832,7 @@ impl ProcessService {
                             return Err(TaskAttemptError::TaskNotFound); // No session ID for followup
                         }
                     }
-                    crate::executor::ExecutorConfig::SstOpencode => {
+                    crate::executor::ExecutorConfig::SstOpencode { .. } => {
                         if let Some(sid) = session_id {
                             Box::new(SstOpencodeFollowupExecutor::new(
                                 sid.clone(),

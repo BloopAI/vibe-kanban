@@ -285,6 +285,7 @@ pub async fn create_task_attempt(
                     attempt_id,
                     task_id,
                     project_id,
+                    payload.model.clone(),
                 )
                 .await
                 {
