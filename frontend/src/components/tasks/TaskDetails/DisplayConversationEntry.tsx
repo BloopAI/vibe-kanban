@@ -235,11 +235,9 @@ const createIncrementalDiff = (
 };
 
 // Helper function to check if this looks like command output
-const isLikelyCommandOutput = (content: string, metadata?: any): boolean => {
-  // Check if this is a result from a command execution
-  if (metadata?.type === 'result' && metadata?.tool_use_id) {
-    return true;
-  }
+const isLikelyCommandOutput = (content: string): boolean => {
+  // Note: metadata is not available in the frontend TypeScript types
+  // We rely on content patterns to detect command output
   
   // Check if content has many lines (typical for command output)
   const lineCount = content.split('\n').length;
