@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO projects (id, name, git_repo_path, repo_type, setup_script, dev_script) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id as \"id!: Uuid\", name, git_repo_path, repo_type as \"repo_type: RepoType\", setup_script, dev_script, created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "git_repo_path",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "repo_type: RepoType",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "setup_script",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "dev_script",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "e95222b8def843256695ce685fe84b51fb9f2ba2c239a93e0b3023f0c727e559"
+}

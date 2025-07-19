@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FolderPicker } from '@/components/ui/folder-picker';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 import { ProjectFormFields } from './project-form-fields';
-import { CreateProject, Project, UpdateProject } from 'shared/types';
+import { CreateProject, Project, UpdateProject, RepoType } from 'shared/types';
 import { projectsApi } from '@/lib/api';
 
 interface ProjectFormProps {
@@ -30,6 +30,7 @@ export function ProjectForm({
 }: ProjectFormProps) {
   const [name, setName] = useState(project?.name || '');
   const [gitRepoPath, setGitRepoPath] = useState(project?.git_repo_path || '');
+  const [repoType, setRepoType] = useState<RepoType>(project?.repo_type || 'github');
   const [setupScript, setSetupScript] = useState(project?.setup_script ?? '');
   const [devScript, setDevScript] = useState(project?.dev_script ?? '');
   const [loading, setLoading] = useState(false);
@@ -46,11 +47,13 @@ export function ProjectForm({
     if (project) {
       setName(project.name || '');
       setGitRepoPath(project.git_repo_path || '');
+      setRepoType(project.repo_type || 'github');
       setSetupScript(project.setup_script ?? '');
       setDevScript(project.dev_script ?? '');
     } else {
       setName('');
       setGitRepoPath('');
+      setRepoType('github');
       setSetupScript('');
       setDevScript('');
     }
@@ -91,6 +94,7 @@ export function ProjectForm({
         const updateData: UpdateProject = {
           name,
           git_repo_path: finalGitRepoPath,
+          repo_type: repoType,
           setup_script: setupScript.trim() || null,
           dev_script: devScript.trim() || null,
         };
@@ -106,6 +110,7 @@ export function ProjectForm({
           name,
           git_repo_path: finalGitRepoPath,
           use_existing_repo: repoMode === 'existing',
+          repo_type: repoType,
           setup_script: setupScript.trim() || null,
           dev_script: devScript.trim() || null,
         };
@@ -121,6 +126,7 @@ export function ProjectForm({
       onSuccess();
       setName('');
       setGitRepoPath('');
+      setRepoType('github');
       setSetupScript('');
       setParentPath('');
       setFolderName('');
@@ -135,11 +141,13 @@ export function ProjectForm({
     if (project) {
       setName(project.name || '');
       setGitRepoPath(project.git_repo_path || '');
+      setRepoType(project.repo_type || 'github');
       setSetupScript(project.setup_script ?? '');
       setDevScript(project.dev_script ?? '');
     } else {
       setName('');
       setGitRepoPath('');
+      setRepoType('github');
       setSetupScript('');
       setDevScript('');
     }
@@ -186,6 +194,8 @@ export function ProjectForm({
                   setFolderName={setFolderName}
                   setName={setName}
                   name={name}
+                  repoType={repoType}
+                  setRepoType={setRepoType}
                   setupScript={setupScript}
                   setSetupScript={setSetupScript}
                   devScript={devScript}
@@ -229,6 +239,8 @@ export function ProjectForm({
               setFolderName={setFolderName}
               setName={setName}
               name={name}
+              repoType={repoType}
+              setRepoType={setRepoType}
               setupScript={setupScript}
               setSetupScript={setSetupScript}
               devScript={devScript}
