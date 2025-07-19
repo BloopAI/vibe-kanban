@@ -87,36 +87,56 @@ export function TaskFollowUpSection() {
 
   const handlePaste = useCallback(
     (e: React.ClipboardEvent) => {
+      console.log('Paste event triggered!');
       const items = e.clipboardData?.items;
-      if (!items) return;
+      if (!items) {
+        console.log('No items in clipboard');
+        return;
+      }
 
+      console.log('Clipboard items:', items.length);
       const imageFiles: File[] = [];
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
+        console.log(`Item ${i}: type=${item.type}, kind=${item.kind}`);
         if (item.type.startsWith('image/')) {
           const file = item.getAsFile();
-          if (file) imageFiles.push(file);
+          if (file) {
+            console.log(`Found image file: ${file.name}`);
+            imageFiles.push(file);
+          }
         }
       }
 
       if (imageFiles.length > 0) {
+        console.log(`Processing ${imageFiles.length} image files`);
         e.preventDefault();
-        const dt = new DataTransfer();
-        imageFiles.forEach(file => dt.items.add(file));
-        handleFiles(dt.files);
+        handleFiles(Array.from(imageFiles));
+      } else {
+        console.log('No image files found in clipboard');
       }
     },
-    []
+    [canSendFollowUp, attachments]
   );
 
-  const handleFiles = async (files: FileList | null) => {
-    if (!files || !canSendFollowUp) return;
+  const handleFiles = async (files: FileList | File[] | null) => {
+    console.log('handleFiles called with:', files);
+    if (!files) {
+      console.log('No files provided');
+      return;
+    }
+    if (!canSendFollowUp) {
+      console.log('Cannot send follow up, returning');
+      return;
+    }
 
     const newImages: ImageFile[] = [];
     const maxSize = 10 * 1024 * 1024; // 10MB
+    const fileArray = files instanceof FileList ? Array.from(files) : files;
 
-    for (let i = 0; i < files.length && attachments.length + newImages.length < 5; i++) {
-      const file = files[i];
+    for (let i = 0; i < fileArray.length && attachments.length + newImages.length < 5; i++) {
+      const file = fileArray[i];
+      console.log(`Processing file ${i}: ${file.name}, type: ${file.type}, size: ${file.size}`);
       
       if (!file.type.startsWith('image/')) {
         console.warn(`File ${file.name} is not an image`);
