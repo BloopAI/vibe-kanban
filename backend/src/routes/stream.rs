@@ -61,13 +61,13 @@ pub async fn normalized_logs_stream(
     let stream = async_stream::stream! {
         // Track previous stdout length and entry count for database polling fallback
         let mut last_len: usize = 0;
-        let mut last_entry_count: usize = query.since_batch_id.unwrap_or(0) as usize;
+        let mut last_entry_count: usize = query.since_batch_id.unwrap_or(1) as usize;
         let mut interval = tokio::time::interval(Duration::from_millis(poll_interval));
         let mut last_seen_batch_id: u64 = query.since_batch_id.unwrap_or(0); // Cursor for WAL streaming
 
-        // Monotonic batch ID for fallback polling (always start at 0)
-        let since = query.since_batch_id.unwrap_or(0);
-        let mut fallback_batch_id: u64 = since;
+        // Monotonic batch ID for fallback polling (always start at 1)
+        let since = query.since_batch_id.unwrap_or(1);
+        let mut fallback_batch_id: u64 = since + 1;
 
         loop {
             interval.tick().await;
@@ -101,7 +101,7 @@ pub async fn normalized_logs_stream(
             } else {
                 // Fallback: Database polling for non-streaming executors
                 // 1. Load the process
-                let proc = match ExecutionProcess::find_by_id(&app_state.db_pool, process_id)
+                    let proc = match ExecutionProcess::find_by_id(&app_state.db_pool, process_id)
                     .await
                     .ok()
                     .flatten()
@@ -151,11 +151,12 @@ pub async fn normalized_logs_stream(
                     }
                 };
 
-                // 5. Compute patches for any new entries
-                if last_entry_count >= normalized.entries.len() {
+                if last_entry_count -1 >= normalized.entries.len() {
                     continue;
                 }
-                let new_entries = [&normalized.entries[last_entry_count..]];
+
+                // 5. Compute patches for any new entries
+                let new_entries = [&normalized.entries[last_entry_count - 1]];
                 if new_entries.is_empty() {
                     continue;
                 }
@@ -170,7 +171,7 @@ pub async fn normalized_logs_stream(
 
                 // 6. Emit the batch
                 let batch_data = BatchData {
-                    batch_id: fallback_batch_id,
+                    batch_id: fallback_batch_id - 1,
                     patches,
                 };
                 let json = serde_json::to_string(&batch_data).unwrap_or_default();
