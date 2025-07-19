@@ -63,6 +63,16 @@ pub struct CreateTaskAndStart {
     pub description: Option<String>,
     pub parent_task_attempt: Option<Uuid>,
     pub executor: Option<crate::executor::ExecutorConfig>,
+    #[serde(default)]
+    pub attachments: Vec<TaskAttachmentUpload>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, TS)]
+#[ts(export)]
+pub struct TaskAttachmentUpload {
+    pub file_name: String,
+    pub file_type: String,
+    pub data: String, // Base64 encoded data
 }
 
 #[derive(Debug, Deserialize, TS)]

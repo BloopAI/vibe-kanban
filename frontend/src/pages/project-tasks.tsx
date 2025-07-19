@@ -191,7 +191,7 @@ export function ProjectTasks() {
   );
 
   const handleCreateAndStartTask = useCallback(
-    async (title: string, description: string, executor?: ExecutorConfig) => {
+    async (title: string, description: string, executor?: ExecutorConfig, attachments?: any[]) => {
       try {
         const payload: CreateTaskAndStart = {
           project_id: projectId!,
@@ -199,6 +199,7 @@ export function ProjectTasks() {
           description: description || null,
           parent_task_attempt: null,
           executor: executor || null,
+          attachments: attachments || [],
         };
         const result = await tasksApi.createAndStart(projectId!, payload);
         await fetchTasks();

@@ -10,7 +10,7 @@ use crate::{
         ActionType, Executor, ExecutorError, NormalizedConversation, NormalizedEntry,
         NormalizedEntryType,
     },
-    models::task::Task,
+    models::{task::Task, task_attachment::TaskAttachment},
     utils::shell::get_shell_command,
 };
 
@@ -141,23 +141,48 @@ impl Executor for ClaudeExecutor {
         let task = Task::find_by_id(pool, task_id)
             .await?
             .ok_or(ExecutorError::TaskNotFound)?;
+            
+        // Get task attachments
+        let attachments = TaskAttachment::find_by_task_id(pool, task_id)
+            .await
+            .unwrap_or_default();
 
-        let prompt = if let Some(task_description) = task.description {
-            format!(
-                r#"project_id: {}
-            
-Task title: {}
-Task description: {}"#,
-                task.project_id, task.title, task_description
-            )
-        } else {
-            format!(
-                r#"project_id: {}
-            
-Task title: {}"#,
-                task.project_id, task.title
-            )
-        };
+        // Save attachments to temporary files and build prompt with image references
+        let mut image_paths = Vec::new();
+        let temp_dir = std::env::temp_dir();
+        
+        for attachment_info in &attachments {
+            if attachment_info.file_type.starts_with("image/") {
+                // Fetch the full attachment with data
+                if let Ok(Some(attachment)) = TaskAttachment::find_by_id(pool, attachment_info.id).await {
+                    let file_path = temp_dir.join(format!("vibe_attachment_{}_{}", attachment.id, attachment.file_name));
+                    if let Err(e) = tokio::fs::write(&file_path, &attachment.file_data).await {
+                        tracing::error!("Failed to write attachment to temp file: {}", e);
+                        continue;
+                    }
+                    image_paths.push(file_path.to_string_lossy().to_string());
+                }
+            }
+        }
+        
+        let mut prompt_parts = vec![format!("project_id: {}", task.project_id)];
+        
+        // Add image references at the beginning if any
+        if !image_paths.is_empty() {
+            prompt_parts.push("\nAttached images:".to_string());
+            for path in &image_paths {
+                prompt_parts.push(format!("- {}", path));
+            }
+            prompt_parts.push("".to_string()); // Empty line after images
+        }
+        
+        prompt_parts.push(format!("Task title: {}", task.title));
+        
+        if let Some(task_description) = task.description {
+            prompt_parts.push(format!("Task description: {}", task_description));
+        }
+        
+        let prompt = prompt_parts.join("\n");
 
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();

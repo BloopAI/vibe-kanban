@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Globe2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ImageUpload, type ImageFile } from '@/components/ui/image-upload';
 import {
   Dialog,
   DialogContent,
@@ -41,7 +42,8 @@ interface TaskFormDialogProps {
   onCreateAndStartTask?: (
     title: string,
     description: string,
-    executor?: ExecutorConfig
+    executor?: ExecutorConfig,
+    attachments?: ImageFile[]
   ) => Promise<void>;
   onUpdateTask?: (
     title: string,
@@ -67,6 +69,7 @@ export function TaskFormDialog({
   const [isSubmittingAndStart, setIsSubmittingAndStart] = useState(false);
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [attachments, setAttachments] = useState<ImageFile[]>([]);
 
   const { config } = useConfig();
   const isEditMode = Boolean(task);
@@ -89,6 +92,7 @@ export function TaskFormDialog({
       setDescription('');
       setStatus('todo');
       setSelectedTemplate('');
+      setAttachments([]);
     }
   }, [task, initialTemplate, isOpen]);
 
@@ -140,6 +144,7 @@ export function TaskFormDialog({
         setTitle('');
         setDescription('');
         setStatus('todo');
+        setAttachments([]);
       }
 
       onOpenChange(false);
@@ -154,13 +159,14 @@ export function TaskFormDialog({
     setIsSubmittingAndStart(true);
     try {
       if (!isEditMode && onCreateAndStartTask) {
-        await onCreateAndStartTask(title, description, config?.executor);
+        await onCreateAndStartTask(title, description, config?.executor, attachments);
       }
 
       // Reset form on successful creation
       setTitle('');
       setDescription('');
       setStatus('todo');
+      setAttachments([]);
 
       onOpenChange(false);
     } finally {
@@ -173,6 +179,7 @@ export function TaskFormDialog({
     isEditMode,
     onCreateAndStartTask,
     onOpenChange,
+    attachments,
   ]);
 
   const handleCancel = useCallback(() => {
@@ -186,6 +193,7 @@ export function TaskFormDialog({
       setDescription('');
       setStatus('todo');
       setSelectedTemplate('');
+      setAttachments([]);
     }
     onOpenChange(false);
   }, [task, onOpenChange]);
@@ -278,6 +286,18 @@ export function TaskFormDialog({
               projectId={projectId}
             />
           </div>
+
+          {!isEditMode && (
+            <div>
+              <Label className="text-sm font-medium">Images</Label>
+              <ImageUpload
+                value={attachments}
+                onChange={setAttachments}
+                disabled={isSubmitting || isSubmittingAndStart}
+                className="mt-1.5"
+              />
+            </div>
+          )}
 
           {!isEditMode && templates.length > 0 && (
             <div className="pt-2">

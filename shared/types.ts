@@ -48,7 +48,13 @@ export type CreateBranch = { name: string, base_branch: string | null, };
 
 export type CreateTask = { project_id: string, title: string, description: string | null, parent_task_attempt: string | null, };
 
-export type CreateTaskAndStart = { project_id: string, title: string, description: string | null, parent_task_attempt: string | null, executor: ExecutorConfig | null, };
+export type CreateTaskAndStart = { project_id: string, title: string, description: string | null, parent_task_attempt: string | null, executor: ExecutorConfig | null, attachments: Array<TaskAttachmentUpload>, };
+
+export type TaskAttachmentUpload = { file_name: string, file_type: string, data: string, };
+
+export type TaskAttachment = { id: string, task_id: string, file_name: string, file_type: string, file_size: number, created_at: Date, };
+
+export type TaskAttachmentInfo = { id: string, task_id: string, file_name: string, file_type: string, file_size: number, created_at: Date, };
 
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
