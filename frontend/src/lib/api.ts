@@ -20,6 +20,7 @@ import {
   Task,
   TaskAttempt,
   TaskAttemptState,
+  TaskAttachmentUpload,
   TaskTemplate,
   TaskWithAttemptStatus,
   UpdateProject,

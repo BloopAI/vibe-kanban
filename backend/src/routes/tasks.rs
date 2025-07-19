@@ -5,6 +5,7 @@ use axum::{
     routing::get,
     Json, Router,
 };
+use base64::Engine;
 use uuid::Uuid;
 
 use crate::{

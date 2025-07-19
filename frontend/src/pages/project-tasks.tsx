@@ -204,12 +204,12 @@ export function ProjectTasks() {
         const result = await tasksApi.createAndStart(projectId!, payload);
         await fetchTasks();
         // Open the newly created task in the details panel
-        handleViewTaskDetails(result);
+        navigate(`/projects/${projectId}/tasks/${result.id}`, { replace: true });
       } catch (err) {
         setError('Failed to create and start task');
       }
     },
-    [projectId, fetchTasks]
+    [projectId, fetchTasks, navigate]
   );
 
   const handleUpdateTask = useCallback(
