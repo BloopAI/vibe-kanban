@@ -25,10 +25,10 @@ export default function TerminalTab({ task, projectId }: TerminalTabProps) {
   useEffect(() => {
     const fetchLatestAttempt = async () => {
       try {
-        const attempts = await attemptsApi.list(projectId, task.id);
+        const attempts = await attemptsApi.getAll(projectId, task.id);
         if (attempts.length > 0) {
           // Get the most recent attempt
-          const latest = attempts.sort((a, b) => 
+          const latest = attempts.sort((a: TaskAttempt, b: TaskAttempt) => 
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )[0];
           setLatestAttempt(latest);
