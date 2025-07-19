@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
-import { WebLinksAddon } from 'xterm-addon-web-links';
 import { TaskWithAttemptStatus, TaskAttempt } from 'shared/types';
 import { attemptsApi } from '@/lib/api';
 import 'xterm/css/xterm.css';
@@ -12,14 +11,14 @@ interface TerminalTabProps {
 }
 
 export default function TerminalTab({ task, projectId }: TerminalTabProps) {
-  const terminalRef = useRef<HTMLDivElement>(null);
-  const terminalInstanceRef = useRef<Terminal | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [latestAttempt, setLatestAttempt] = useState<TaskAttempt | null>(null);
-  const isCleaningUp = useRef(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Fetch the latest attempt
   useEffect(() => {
@@ -27,13 +26,12 @@ export default function TerminalTab({ task, projectId }: TerminalTabProps) {
       try {
         const attempts = await attemptsApi.getAll(projectId, task.id);
         if (attempts.length > 0) {
-          // Get the most recent attempt
           const latest = attempts.sort((a: TaskAttempt, b: TaskAttempt) => 
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )[0];
           setLatestAttempt(latest);
         } else {
-          setError('No task attempts found');
+          setError('No task attempts found. Please create a task attempt first.');
         }
       } catch (err) {
         console.error('Failed to fetch attempts:', err);
@@ -44,208 +42,159 @@ export default function TerminalTab({ task, projectId }: TerminalTabProps) {
     fetchLatestAttempt();
   }, [task.id, projectId]);
 
-  const cleanupTerminal = useCallback(() => {
-    if (isCleaningUp.current) return;
-    isCleaningUp.current = true;
-
-    // Close WebSocket
-    if (wsRef.current) {
-      if (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING) {
-        wsRef.current.close();
-      }
-      wsRef.current = null;
-    }
-
-    // Dispose terminal
-    if (terminalInstanceRef.current) {
-      try {
-        terminalInstanceRef.current.dispose();
-      } catch (e) {
-        console.error('Error disposing terminal:', e);
-      }
-      terminalInstanceRef.current = null;
-    }
-
-    fitAddonRef.current = null;
-    isCleaningUp.current = false;
-  }, []);
-
+  // Initialize terminal
   useEffect(() => {
-    if (!terminalRef.current || !latestAttempt) return;
+    if (!containerRef.current || !latestAttempt || isInitialized) return;
 
-    let mounted = true;
-    let term: Terminal | null = null;
-    let fitAddon: FitAddon | null = null;
-    let ws: WebSocket | null = null;
-    let resizeObserver: ResizeObserver | null = null;
+    const container = containerRef.current;
+    
+    // Ensure container has dimensions before initializing
+    const rect = container.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+      // Retry after a delay
+      const retryTimeout = setTimeout(() => {
+        setIsInitialized(false);
+      }, 100);
+      return () => clearTimeout(retryTimeout);
+    }
 
-    const initTerminal = async () => {
-      if (!mounted || !terminalRef.current) return;
+    // Create terminal instance
+    const term = new Terminal({
+      cursorBlink: true,
+      fontSize: 14,
+      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      theme: {
+        background: '#1e1e1e',
+        foreground: '#d4d4d4',
+      },
+    });
 
+    const fitAddon = new FitAddon();
+    term.loadAddon(fitAddon);
+
+    // Open terminal
+    term.open(container);
+    terminalRef.current = term;
+    fitAddonRef.current = fitAddon;
+    setIsInitialized(true);
+
+    // Initial fit
+    setTimeout(() => {
       try {
-        // Initialize terminal
-        term = new Terminal({
-          theme: {
-            background: '#0a0a0a',
-            foreground: '#e4e4e7',
-            cursor: '#e4e4e7',
-            black: '#18181b',
-            red: '#ef4444',
-            green: '#10b981',
-            yellow: '#f59e0b',
-            blue: '#3b82f6',
-            magenta: '#a855f7',
-            cyan: '#06b6d4',
-            white: '#e4e4e7',
-            brightBlack: '#52525b',
-            brightRed: '#f87171',
-            brightGreen: '#34d399',
-            brightYellow: '#fbbf24',
-            brightBlue: '#60a5fa',
-            brightMagenta: '#c084fc',
-            brightCyan: '#22d3ee',
-            brightWhite: '#fafafa',
-          },
-          cursorBlink: true,
-          fontSize: 14,
-          fontFamily: '"SF Mono", "Monaco", "Inconsolata", "Fira Code", monospace',
-          lineHeight: 1.4,
-          scrollback: 10000,
-        });
+        fitAddon.fit();
+      } catch (e) {
+        console.error('Error fitting terminal:', e);
+      }
+    }, 0);
 
-        // Add addons
-        fitAddon = new FitAddon();
-        const webLinksAddon = new WebLinksAddon();
-        
-        term.loadAddon(fitAddon);
-        term.loadAddon(webLinksAddon);
+    // Setup WebSocket
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    const wsUrl = `${protocol}//${host}/api/terminal/${latestAttempt.id}`;
+    
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
 
-        // Open terminal
-        term.open(terminalRef.current);
-        
-        // Store refs
-        terminalInstanceRef.current = term;
-        fitAddonRef.current = fitAddon;
+    ws.onopen = () => {
+      setIsConnected(true);
+      setError(null);
+      term.writeln('Terminal connected!');
+      term.writeln('');
+      term.focus();
+    };
 
-        // Initial fit after DOM settles
-        requestAnimationFrame(() => {
-          if (mounted && fitAddon && terminalRef.current) {
-            try {
-              fitAddon.fit();
-            } catch (e) {
-              console.error('Initial fit error:', e);
-            }
+    ws.onmessage = (event) => {
+      term.write(event.data);
+    };
+
+    ws.onerror = (event) => {
+      console.error('WebSocket error:', event);
+      setError('Cannot connect to terminal. Please ensure the backend is running.');
+    };
+
+    ws.onclose = () => {
+      setIsConnected(false);
+      if (!error) {
+        term.writeln('\r\n\x1b[33mTerminal disconnected\x1b[0m');
+      }
+    };
+
+    // Handle input
+    term.onData((data) => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'input', data }));
+      }
+    });
+
+    // Handle resize
+    const handleResize = () => {
+      if (fitAddon && terminalRef.current) {
+        try {
+          fitAddon.fit();
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+              type: 'resize',
+              cols: terminalRef.current.cols,
+              rows: terminalRef.current.rows,
+            }));
           }
-        });
-
-        // Connect to WebSocket
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.host;
-        ws = new WebSocket(`${protocol}//${host}/api/terminal/${latestAttempt.id}`);
-        wsRef.current = ws;
-        
-        ws.onopen = () => {
-          if (!mounted) return;
-          setIsConnected(true);
-          setError(null);
-          if (term) {
-            term.writeln('Connected to terminal...');
-            term.writeln('');
-          }
-        };
-
-        ws.onmessage = (event) => {
-          if (!mounted || !term) return;
-          term.write(event.data);
-        };
-
-        ws.onerror = (event) => {
-          console.error('WebSocket error:', event);
-          if (!mounted) return;
-          setError('Failed to connect to terminal');
-          if (term) {
-            term.writeln('\x1b[31mError: Failed to connect to terminal\x1b[0m');
-          }
-        };
-
-        ws.onclose = () => {
-          if (!mounted) return;
-          setIsConnected(false);
-          if (term && !isCleaningUp.current) {
-            term.writeln('\x1b[33m\nTerminal connection closed\x1b[0m');
-          }
-        };
-
-        // Handle terminal input
-        term.onData((data) => {
-          if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'input', data }));
-          }
-        });
-
-        // Handle resize
-        const handleResize = () => {
-          if (!mounted || !fitAddon || !term || !terminalRef.current) return;
-          
-          // Ensure the terminal container has dimensions
-          const rect = terminalRef.current.getBoundingClientRect();
-          if (rect.width === 0 || rect.height === 0) return;
-
-          try {
-            fitAddon.fit();
-            if (ws && ws.readyState === WebSocket.OPEN) {
-              ws.send(JSON.stringify({
-                type: 'resize',
-                cols: term.cols,
-                rows: term.rows,
-              }));
-            }
-          } catch (e) {
-            console.error('Error resizing terminal:', e);
-          }
-        };
-
-        // Use ResizeObserver for better resize handling
-        if (terminalRef.current) {
-          resizeObserver = new ResizeObserver(() => {
-            requestAnimationFrame(handleResize);
-          });
-          resizeObserver.observe(terminalRef.current);
+        } catch (e) {
+          console.error('Resize error:', e);
         }
-
-        // Initial resize after a short delay
-        setTimeout(handleResize, 100);
-      } catch (err) {
-        console.error('Failed to initialize terminal:', err);
-        setError('Failed to initialize terminal');
       }
     };
 
-    // Initialize terminal
-    initTerminal();
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(container);
 
-    // Cleanup on unmount
+    // Cleanup
     return () => {
-      mounted = false;
-      if (resizeObserver) {
-        resizeObserver.disconnect();
+      resizeObserver.disconnect();
+      
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        ws.close();
       }
-      cleanupTerminal();
+
+      if (term) {
+        term.dispose();
+      }
+
+      terminalRef.current = null;
+      fitAddonRef.current = null;
+      wsRef.current = null;
+      setIsInitialized(false);
     };
-  }, [latestAttempt, cleanupTerminal]);
+  }, [latestAttempt, isInitialized, error]);
 
   if (!latestAttempt && !error) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
-        Loading terminal...
+        <div className="text-center">
+          <div className="mb-2">Loading terminal...</div>
+          <div className="text-xs text-muted-foreground">Fetching task attempts...</div>
+        </div>
       </div>
     );
   }
 
-  if (error && !latestAttempt) {
+  if (error && !isConnected) {
     return (
-      <div className="flex items-center justify-center h-full text-red-500">
-        {error}
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">{error}</div>
+          <div className="text-sm text-muted-foreground mb-4">
+            Make sure the backend is running with: <code className="bg-muted px-2 py-1 rounded">pnpm dev</code>
+          </div>
+          <button
+            onClick={() => {
+              setError(null);
+              setIsInitialized(false);
+            }}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+          >
+            Retry Connection
+          </button>
+        </div>
       </div>
     );
   }
@@ -253,25 +202,24 @@ export default function TerminalTab({ task, projectId }: TerminalTabProps) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-          <span className="text-sm text-muted-foreground">
-            {isConnected ? 'Connected' : 'Disconnected'}
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-yellow-500'}`} />
+            <span className="text-sm text-muted-foreground">
+              {isConnected ? 'Connected' : 'Connecting...'}
+            </span>
+          </div>
           {latestAttempt && (
-            <span className="text-xs text-muted-foreground">
-              (Attempt: {latestAttempt.id.slice(0, 8)})
+            <span className="text-xs text-muted-foreground/70">
+              Worktree: {latestAttempt.worktree_path.split('/').slice(-2).join('/')}
             </span>
           )}
         </div>
-        {error && (
-          <span className="text-sm text-red-500">{error}</span>
-        )}
       </div>
       <div 
-        ref={terminalRef} 
-        className="flex-1 bg-[#0a0a0a] overflow-hidden" 
-        style={{ minHeight: '200px' }}
+        ref={containerRef} 
+        className="flex-1 bg-[#1e1e1e]" 
+        style={{ minHeight: '400px' }}
       />
     </div>
   );
