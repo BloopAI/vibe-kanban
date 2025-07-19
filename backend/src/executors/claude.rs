@@ -15,8 +15,7 @@ use crate::{
 };
 
 fn create_watchkill_script(command: &str) -> String {
-    let claude_plan_stop_indicator =
-        "Claude requested permissions to use exit_plan_mode, but you haven't granted it yet";
+    let claude_plan_stop_indicator = "Exit plan mode?";
     format!(
         r#"#!/usr/bin/env bash
 set -euo pipefail
