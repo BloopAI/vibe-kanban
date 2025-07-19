@@ -18,6 +18,7 @@ import type {
   TaskAttemptState,
   TaskWithAttemptStatus,
   WorktreeDiff,
+  RepoType,
 } from 'shared/types.ts';
 import { attemptsApi, executionProcessesApi, tasksApi } from '@/lib/api.ts';
 import {
@@ -43,6 +44,7 @@ const TaskDetailsProvider: FC<{
   setShowEditorDialog: Dispatch<SetStateAction<boolean>>;
   userSelectedTab: boolean;
   projectHasDevScript?: boolean;
+  projectRepoType?: RepoType;
 }> = ({
   task,
   projectId,
@@ -52,6 +54,7 @@ const TaskDetailsProvider: FC<{
   setShowEditorDialog,
   userSelectedTab,
   projectHasDevScript,
+  projectRepoType,
 }) => {
   const [loading, setLoading] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
@@ -389,8 +392,9 @@ const TaskDetailsProvider: FC<{
       projectId,
       handleOpenInEditor,
       projectHasDevScript,
+      projectRepoType,
     }),
-    [task, projectId, handleOpenInEditor, projectHasDevScript]
+    [task, projectId, handleOpenInEditor, projectHasDevScript, projectRepoType]
   );
 
   const taskAttemptLoadingValue = useMemo(

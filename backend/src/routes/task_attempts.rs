@@ -419,19 +419,6 @@ pub async fn create_github_pr(
         }
     };
 
-    let github_token = match config.github.token {
-        Some(token) => token,
-        None => {
-            return Ok(ResponseJson(ApiResponse {
-                success: false,
-                data: None,
-                message: Some(
-                    "GitHub authentication not configured. Please sign in with GitHub.".to_string(),
-                ),
-            }));
-        }
-    };
-
     // Get the task attempt to access the stored base branch
     let attempt = match TaskAttempt::find_by_id(&app_state.db_pool, attempt_id).await {
         Ok(Some(attempt)) => attempt,
@@ -448,31 +435,36 @@ pub async fn create_github_pr(
         if !attempt.base_branch.trim().is_empty() {
             attempt.base_branch.clone()
         } else {
+            // Check if it's GitHub or GitLab to get the right default
             config
                 .github
                 .default_pr_base
+                .clone()
+                .or(config.gitlab.default_mr_base.clone())
                 .unwrap_or_else(|| "main".to_string())
         }
     });
 
-    match TaskAttempt::create_github_pr(
+    // Use the generic create_pr method which detects GitHub/GitLab automatically
+    match TaskAttempt::create_pr(
         &app_state.db_pool,
         CreatePrParams {
             attempt_id,
             task_id,
             project_id,
-            github_token: &config.github.pat.unwrap_or(github_token),
             title: &request.title,
             body: request.body.as_deref(),
             base_branch: Some(&base_branch),
+            github_token: None, // Will use config tokens
         },
+        &config,
     )
     .await
     {
         Ok(pr_url) => {
             app_state
                 .track_analytics_event(
-                    "github_pr_created",
+                    "pr_created",
                     Some(serde_json::json!({
                         "task_id": task_id.to_string(),
                         "project_id": project_id.to_string(),
@@ -484,12 +476,12 @@ pub async fn create_github_pr(
             Ok(ResponseJson(ApiResponse {
                 success: true,
                 data: Some(pr_url),
-                message: Some("GitHub PR created successfully".to_string()),
+                message: Some("Pull/Merge request created successfully".to_string()),
             }))
         }
         Err(e) => {
             tracing::error!(
-                "Failed to create GitHub PR for attempt {}: {}",
+                "Failed to create PR/MR for attempt {}: {}",
                 attempt_id,
                 e
             );
@@ -497,6 +489,9 @@ pub async fn create_github_pr(
                 crate::models::task_attempt::TaskAttemptError::GitHubService(
                     crate::services::GitHubServiceError::TokenInvalid,
                 ) => Some("github_token_invalid".to_string()),
+                crate::models::task_attempt::TaskAttemptError::GitLabService(
+                    crate::services::GitLabServiceError::TokenInvalid,
+                ) => Some("gitlab_token_invalid".to_string()),
                 crate::models::task_attempt::TaskAttemptError::GitService(
                     crate::services::git_service::GitServiceError::Git(err),
                 ) if err
@@ -1382,6 +1377,10 @@ pub fn task_attempts_router() -> Router<AppState> {
             post(open_task_attempt_in_editor),
         )
         .route(
+            "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/mr-status",
+            get(get_mr_status),
+        )
+        .route(
             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/delete-file",
             post(delete_task_attempt_file),
         )
@@ -1433,4 +1432,160 @@ pub fn task_attempts_router() -> Router<AppState> {
             "/attempts/:attempt_id/details",
             get(get_task_attempt_details),
         )
+}
+
+// GitLab MR status structure
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
+pub struct MergeRequestStatus {
+    pub state: String,  // opened, closed, merged
+    pub merge_status: String,  // can_be_merged, cannot_be_merged, checking
+    pub has_conflicts: bool,
+    pub pipeline: Option<PipelineStatus>,
+    pub web_url: String,
+    pub iid: i64,
+    pub title: String,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
+pub struct PipelineStatus {
+    pub id: i64,
+    pub status: String,  // pending, running, success, failed, canceled, skipped
+    pub web_url: String,
+    pub created_at: String,
+    pub finished_at: Option<String>,
+}
+
+pub async fn get_mr_status(
+    Path((project_id, task_id, attempt_id)): Path<(Uuid, Uuid, Uuid)>,
+    State(app_state): State<AppState>,
+) -> Result<ResponseJson<ApiResponse<MergeRequestStatus>>, StatusCode> {
+    // Verify task attempt exists and belongs to the correct task
+    match TaskAttempt::exists_for_task(&app_state.db_pool, attempt_id, task_id, project_id).await {
+        Ok(false) => return Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to check task attempt existence: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+        Ok(true) => {}
+    }
+
+    // Get the task attempt to check if it has a PR
+    let task_attempt = match TaskAttempt::find_by_id(&app_state.db_pool, attempt_id).await {
+        Ok(Some(attempt)) => attempt,
+        Ok(None) => return Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to fetch task attempt: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    // Check if there's a PR/MR
+    if task_attempt.pr_number.is_none() {
+        return Ok(ResponseJson(ApiResponse {
+            success: false,
+            data: None,
+            message: Some("No merge request found for this attempt".to_string()),
+        }));
+    }
+
+    // Get project to determine repo type
+    let project = match crate::models::project::Project::find_by_id(&app_state.db_pool, project_id).await {
+        Ok(Some(p)) => p,
+        Ok(None) => return Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Failed to fetch project: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    // Only support GitLab for now
+    if project.repo_type != crate::models::project::RepoType::GitLab {
+        return Ok(ResponseJson(ApiResponse {
+            success: false,
+            data: None,
+            message: Some("MR status is only available for GitLab projects".to_string()),
+        }));
+    }
+
+    // Get GitLab configuration
+    let config = match Config::load(&crate::utils::config_path()) {
+        Ok(config) => config,
+        Err(e) => {
+            tracing::error!("Failed to load config: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    let gitlab_token = config.gitlab.pat.ok_or_else(|| {
+        tracing::error!("GitLab PAT not configured");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let gitlab_url = config.gitlab.gitlab_url.unwrap_or_else(|| "https://gitlab.com".to_string());
+
+    // Get GitLab project info
+    let git_service = match crate::services::git_service::GitService::new(&project.git_repo_path) {
+        Ok(service) => service,
+        Err(e) => {
+            tracing::error!("Failed to create git service: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    let gitlab_project_id = match git_service.get_gitlab_repo_info() {
+        Ok(id) => id,
+        Err(e) => {
+            tracing::error!("Failed to get GitLab project ID: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    // Create GitLab service
+    let gitlab_service = match crate::services::gitlab_service::GitLabService::new(&gitlab_url, &gitlab_token) {
+        Ok(service) => service,
+        Err(e) => {
+            tracing::error!("Failed to create GitLab service: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    // Get MR details from GitLab
+    match gitlab_service.get_mr_details(&gitlab_project_id, task_attempt.pr_number.unwrap()).await {
+        Ok(mr_info) => {
+            // Convert GitLab response to our structure
+            let mr_status = MergeRequestStatus {
+                state: mr_info.state,
+                merge_status: mr_info.merge_status.unwrap_or_else(|| "unknown".to_string()),
+                has_conflicts: mr_info.has_conflicts.unwrap_or(false),
+                pipeline: mr_info.head_pipeline.map(|p| PipelineStatus {
+                    id: p.id,
+                    status: p.status,
+                    web_url: p.web_url,
+                    created_at: p.created_at,
+                    finished_at: p.finished_at,
+                }),
+                web_url: mr_info.web_url,
+                iid: mr_info.iid,
+                title: mr_info.title,
+                description: mr_info.description,
+            };
+
+            Ok(ResponseJson(ApiResponse {
+                success: true,
+                data: Some(mr_status),
+                message: None,
+            }))
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch MR details from GitLab: {}", e);
+            Ok(ResponseJson(ApiResponse {
+                success: false,
+                data: None,
+                message: Some(format!("Failed to fetch MR details: {}", e)),
+            }))
+        }
+    }
 }

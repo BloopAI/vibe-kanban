@@ -3,6 +3,14 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Folder } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { RepoType } from 'shared/types';
 
 interface ProjectFormFieldsProps {
   isEditing: boolean;
@@ -17,6 +25,8 @@ interface ProjectFormFieldsProps {
   setFolderName: (name: string) => void;
   setName: (name: string) => void;
   name: string;
+  repoType: RepoType;
+  setRepoType: (type: RepoType) => void;
   setupScript: string;
   setSetupScript: (script: string) => void;
   devScript: string;
@@ -37,6 +47,8 @@ export function ProjectFormFields({
   setFolderName,
   setName,
   name,
+  repoType,
+  setRepoType,
   setupScript,
   setSetupScript,
   devScript,
@@ -170,6 +182,25 @@ export function ProjectFormFields({
           placeholder="Enter project name"
           required
         />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="repo-type">Repository Type</Label>
+        <Select
+          value={repoType}
+          onValueChange={(value) => setRepoType(value as RepoType)}
+        >
+          <SelectTrigger id="repo-type">
+            <SelectValue placeholder="Select repository type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="github">GitHub</SelectItem>
+            <SelectItem value="gitlab">GitLab</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-sm text-muted-foreground">
+          Select the type of repository (GitHub or GitLab) for proper PR/MR handling
+        </p>
       </div>
 
       <div className="space-y-2">

@@ -19,6 +19,7 @@ pub struct Config {
     pub push_notifications: bool,
     pub editor: EditorConfig,
     pub github: GitHubConfig,
+    pub gitlab: GitLabConfig,
     pub analytics_enabled: Option<bool>,
 }
 
@@ -167,6 +168,7 @@ impl Default for Config {
             push_notifications: true,
             editor: EditorConfig::default(),
             github: GitHubConfig::default(),
+            gitlab: GitLabConfig::default(),
             analytics_enabled: None,
         }
     }
@@ -189,6 +191,28 @@ impl Default for GitHubConfig {
             username: None,
             primary_email: None,
             default_pr_base: Some("main".to_string()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct GitLabConfig {
+    pub pat: Option<String>,
+    pub username: Option<String>,
+    pub primary_email: Option<String>,
+    pub default_mr_base: Option<String>,
+    pub gitlab_url: Option<String>,
+}
+
+impl Default for GitLabConfig {
+    fn default() -> Self {
+        Self {
+            pat: None,
+            username: None,
+            primary_email: None,
+            default_mr_base: Some("main".to_string()),
+            gitlab_url: Some("https://gitlab.com".to_string()),
         }
     }
 }

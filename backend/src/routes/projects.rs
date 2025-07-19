@@ -328,18 +328,21 @@ pub async fn update_project(
     let UpdateProject {
         name,
         git_repo_path,
+        repo_type,
         setup_script,
         dev_script,
     } = payload;
 
     let name = name.unwrap_or(existing_project.name);
     let git_repo_path = git_repo_path.unwrap_or(existing_project.git_repo_path);
+    let repo_type = repo_type.unwrap_or(existing_project.repo_type);
 
     match Project::update(
         &app_state.db_pool,
         id,
         name,
         git_repo_path,
+        repo_type,
         setup_script,
         dev_script,
     )

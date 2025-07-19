@@ -5,7 +5,7 @@ use git2::{
     RebaseOptions, RemoteCallbacks, Repository, WorktreeAddOptions,
 };
 use regex;
-use tracing::{debug, info};
+use tracing::{debug, info, error};
 
 use crate::{
     models::task_attempt::{DiffChunk, DiffChunkType, FileDiff, WorktreeDiff},
@@ -53,6 +53,13 @@ impl From<std::io::Error> for GitServiceError {
     fn from(err: std::io::Error) -> Self {
         GitServiceError::IoError(err)
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum RepoProvider {
+    GitHub,
+    GitLab,
+    Other,
 }
 
 /// Service for managing Git operations in task execution workflows
@@ -1074,13 +1081,89 @@ impl GitService {
         }
     }
 
-    /// Push the branch to GitHub remote
+    /// Extract GitLab project ID from git repo path
+    pub fn get_gitlab_repo_info(&self) -> Result<String, GitServiceError> {
+        let repo = self.open_repo()?;
+        let remote = repo.find_remote("origin").map_err(|_| {
+            GitServiceError::InvalidRepository("No 'origin' remote found".to_string())
+        })?;
+
+        let url = remote.url().ok_or_else(|| {
+            GitServiceError::InvalidRepository("Remote origin has no URL".to_string())
+        })?;
+
+        info!("Extracting GitLab project info from URL: {}", url);
+        
+        // Handle different Git URL formats
+        let project_path = if url.starts_with("ssh://") {
+            // SSH URL with port: ssh://git@gitlab.example.com:2222/namespace/project.git
+            let ssh_regex = regex::Regex::new(r"ssh://git@[^/]+/(.+?)(?:\.git)?/?$")
+                .map_err(|e| GitServiceError::InvalidRepository(format!("Regex error: {}", e)))?;
+            
+            ssh_regex.captures(url)
+                .and_then(|c| c.get(1))
+                .map(|m| m.as_str().to_string())
+        } else if url.starts_with("https://") || url.starts_with("http://") {
+            // HTTPS URL: https://gitlab.example.com/namespace/project.git
+            let https_regex = regex::Regex::new(r"https?://[^/]+/(.+?)(?:\.git)?/?$")
+                .map_err(|e| GitServiceError::InvalidRepository(format!("Regex error: {}", e)))?;
+            
+            https_regex.captures(url)
+                .and_then(|c| c.get(1))
+                .map(|m| m.as_str().to_string())
+        } else if url.starts_with("git@") {
+            // Standard SSH URL: git@gitlab.example.com:namespace/project.git
+            let git_regex = regex::Regex::new(r"git@[^:]+:(.+?)(?:\.git)?/?$")
+                .map_err(|e| GitServiceError::InvalidRepository(format!("Regex error: {}", e)))?;
+            
+            git_regex.captures(url)
+                .and_then(|c| c.get(1))
+                .map(|m| m.as_str().to_string())
+        } else {
+            None
+        };
+        
+        match project_path {
+            Some(path) => {
+                info!("Extracted GitLab project path: {}", path);
+                Ok(path)
+            }
+            None => Err(GitServiceError::InvalidRepository(format!(
+                "Could not parse GitLab project path from URL: {}",
+                url
+            )))
+        }
+    }
+
+    /// Determine if the repository is GitHub or GitLab
+    pub fn get_repo_provider(&self) -> Result<RepoProvider, GitServiceError> {
+        let repo = self.open_repo()?;
+        let remote = repo.find_remote("origin").map_err(|_| {
+            GitServiceError::InvalidRepository("No 'origin' remote found".to_string())
+        })?;
+
+        let url = remote.url().ok_or_else(|| {
+            GitServiceError::InvalidRepository("Remote origin has no URL".to_string())
+        })?;
+
+        if url.contains("github.com") {
+            Ok(RepoProvider::GitHub)
+        } else if url.contains("gitlab") {
+            Ok(RepoProvider::GitLab)
+        } else {
+            Ok(RepoProvider::Other)
+        }
+    }
+
+    /// Push the branch to remote (GitHub or GitLab)
     pub fn push_to_github(
         &self,
         worktree_path: &Path,
         branch_name: &str,
         github_token: &str,
     ) -> Result<(), GitServiceError> {
+        info!("Starting push_to_github: worktree_path={:?}, branch_name={}", worktree_path, branch_name);
+        
         let repo = Repository::open(worktree_path)?;
 
         // Get the remote
@@ -1088,6 +1171,8 @@ impl GitService {
         let remote_url = remote.url().ok_or_else(|| {
             GitServiceError::InvalidRepository("Remote origin has no URL".to_string())
         })?;
+        
+        info!("Original remote URL: {}", remote_url);
 
         // Convert SSH URL to HTTPS URL if necessary
         let https_url = if remote_url.starts_with("git@github.com:") {
@@ -1096,9 +1181,50 @@ impl GitService {
         } else if remote_url.starts_with("ssh://git@github.com/") {
             // Convert ssh://git@github.com/owner/repo.git to https://github.com/owner/repo.git
             remote_url.replace("ssh://git@github.com/", "https://github.com/")
+        } else if remote_url.starts_with("git@gitlab.com:") {
+            // Convert git@gitlab.com:owner/repo.git to https://gitlab.com/owner/repo.git
+            remote_url.replace("git@gitlab.com:", "https://gitlab.com/")
+        } else if remote_url.starts_with("ssh://git@gitlab.com/") {
+            // Convert ssh://git@gitlab.com/owner/repo.git to https://gitlab.com/owner/repo.git
+            remote_url.replace("ssh://git@gitlab.com/", "https://gitlab.com/")
+        } else if remote_url.starts_with("ssh://git@") && remote_url.contains("gitlab") {
+            // Handle self-hosted GitLab with SSH URL: ssh://git@gitlab.example.com:2222/owner/repo.git
+            // Extract host, port, and path
+            if let Some(url_without_prefix) = remote_url.strip_prefix("ssh://git@") {
+                // Parse host:port/path or host/path
+                if let Some(first_slash) = url_without_prefix.find('/') {
+                    let host_part = &url_without_prefix[..first_slash];
+                    let path_part = &url_without_prefix[first_slash + 1..];
+                    
+                    // Check if host part contains port
+                    if host_part.contains(':') {
+                        // Has port - just use the host without port for HTTPS
+                        let host = host_part.split(':').next().unwrap_or(host_part);
+                        format!("https://{}/{}", host, path_part)
+                    } else {
+                        // No port
+                        format!("https://{}/{}", host_part, path_part)
+                    }
+                } else {
+                    remote_url.to_string()
+                }
+            } else {
+                remote_url.to_string()
+            }
+        } else if remote_url.contains("gitlab") && remote_url.starts_with("git@") {
+            // Handle self-hosted GitLab instances: git@gitlab.example.com:owner/repo.git
+            let parts: Vec<&str> = remote_url.split(':').collect();
+            if parts.len() == 2 {
+                let host = parts[0].strip_prefix("git@").unwrap_or(parts[0]);
+                format!("https://{}/{}", host, parts[1])
+            } else {
+                remote_url.to_string()
+            }
         } else {
             remote_url.to_string()
         };
+        
+        info!("Converted HTTPS URL: {}", https_url);
 
         // Create a temporary remote with HTTPS URL for pushing
         let temp_remote_name = "temp_https_origin";
@@ -1108,14 +1234,28 @@ impl GitService {
 
         // Create temporary HTTPS remote
         let mut temp_remote = repo.remote(temp_remote_name, &https_url)?;
+        info!("Created temporary remote: {}", temp_remote_name);
 
         // Create refspec for pushing the branch
         let refspec = format!("refs/heads/{}:refs/heads/{}", branch_name, branch_name);
 
-        // Set up authentication callback using the GitHub token
+        // Set up authentication callback using the token
         let mut callbacks = git2::RemoteCallbacks::new();
-        callbacks.credentials(|_url, username_from_url, _allowed_types| {
-            git2::Cred::userpass_plaintext(username_from_url.unwrap_or("git"), github_token)
+        let token_for_auth = github_token.to_string();
+        callbacks.credentials(move |url, username_from_url, allowed_types| {
+            info!("Credentials callback: url={}, username_from_url={:?}, allowed_types={:?}", 
+                  url, username_from_url, allowed_types);
+            
+            // For GitLab, use OAuth2 token format or gitlab-ci-token
+            if url.contains("gitlab") {
+                info!("Using GitLab authentication with oauth2 username");
+                // GitLab supports OAuth2 token as username with no password
+                git2::Cred::userpass_plaintext("oauth2", &token_for_auth)
+            } else {
+                info!("Using GitHub authentication with username: {}", username_from_url.unwrap_or("git"));
+                // For GitHub, use the token as password with username from URL or "git"
+                git2::Cred::userpass_plaintext(username_from_url.unwrap_or("git"), &token_for_auth)
+            }
         });
 
         // Configure push options
@@ -1123,16 +1263,23 @@ impl GitService {
         push_options.remote_callbacks(callbacks);
 
         // Push the branch
+        info!("Attempting to push with refspec: {}", refspec);
         let push_result = temp_remote.push(&[&refspec], Some(&mut push_options));
 
         // Clean up the temporary remote
         let _ = repo.remote_delete(temp_remote_name);
 
         // Check push result
-        push_result?;
-
-        info!("Pushed branch {} to GitHub using HTTPS", branch_name);
-        Ok(())
+        match push_result {
+            Ok(_) => {
+                info!("Successfully pushed branch {} to remote", branch_name);
+                Ok(())
+            }
+            Err(e) => {
+                error!("Failed to push branch {}: {:?}", branch_name, e);
+                Err(GitServiceError::Git(e))
+            }
+        }
     }
 
     /// Fetch from remote repository, with SSH authentication callbacks

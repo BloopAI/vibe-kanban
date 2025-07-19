@@ -517,6 +517,7 @@ export function ProjectTasks() {
         <TaskDetailsPanel
           task={selectedTask}
           projectHasDevScript={!!project?.dev_script}
+          projectRepoType={project?.repo_type}
           projectId={projectId!}
           onClose={handleClosePanel}
           onEditTask={handleEditTask}

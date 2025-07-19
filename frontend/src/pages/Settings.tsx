@@ -376,6 +376,91 @@ export function Settings() {
 
           <Card>
             <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                GitLab Integration
+              </CardTitle>
+              <CardDescription>
+                Configure GitLab settings for creating merge requests from task
+                attempts.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="gitlab-url">GitLab Instance URL</Label>
+                <Input
+                  id="gitlab-url"
+                  type="url"
+                  placeholder="https://gitlab.com"
+                  value={config.gitlab?.gitlab_url || ''}
+                  onChange={(e) =>
+                    updateConfig({
+                      gitlab: {
+                        ...(config.gitlab || {}),
+                        gitlab_url: e.target.value || null,
+                      },
+                    })
+                  }
+                />
+                <p className="text-sm text-muted-foreground">
+                  GitLab instance URL. Leave as default for gitlab.com, or enter
+                  your self-hosted GitLab URL.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="gitlab-token">Personal Access Token</Label>
+                <Input
+                  id="gitlab-token"
+                  type="password"
+                  placeholder="glpat-xxxxxxxxxxxxxxxxxxxx"
+                  value={config.gitlab?.pat || ''}
+                  onChange={(e) =>
+                    updateConfig({
+                      gitlab: {
+                        ...(config.gitlab || {}),
+                        pat: e.target.value || null,
+                      },
+                    })
+                  }
+                />
+                <p className="text-sm text-muted-foreground">
+                  GitLab Personal Access Token with 'api' scope. Required for
+                  creating merge requests.{' '}
+                  <a
+                    href="https://gitlab.com/-/profile/personal_access_tokens"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    Create token here
+                  </a>
+                </p>
+              </div>
+              <div className="space-y-2 pt-4">
+                <Label htmlFor="default-mr-base">Default MR Target Branch</Label>
+                <Input
+                  id="default-mr-base"
+                  placeholder="main"
+                  value={config.gitlab?.default_mr_base || ''}
+                  onChange={(e) =>
+                    updateConfig({
+                      gitlab: {
+                        ...(config.gitlab || {}),
+                        default_mr_base: e.target.value || null,
+                      },
+                    })
+                  }
+                />
+                <p className="text-sm text-muted-foreground">
+                  Default target branch for merge requests. Defaults to 'main' if
+                  not specified.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Notifications</CardTitle>
               <CardDescription>
                 Configure how you receive notifications about task completion.

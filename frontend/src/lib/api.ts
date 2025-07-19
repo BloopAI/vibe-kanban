@@ -64,6 +64,24 @@ export interface DirectoryListResponse {
   current_path: string;
 }
 
+// MR/PR status interfaces
+export interface MergeRequestStatus {
+  state: 'opened' | 'closed' | 'merged';
+  merge_status: 'can_be_merged' | 'cannot_be_merged' | 'checking';
+  has_conflicts: boolean;
+  pipeline?: {
+    id: number;
+    status: 'pending' | 'running' | 'success' | 'failed' | 'canceled' | 'skipped';
+    web_url: string;
+    created_at: string;
+    finished_at?: string;
+  };
+  web_url: string;
+  iid: number;
+  title: string;
+  description?: string;
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -425,6 +443,16 @@ export const attemptsApi = {
       }
     );
     return handleApiResponse<string>(response);
+  },
+  getMRStatus: async (
+    projectId: string,
+    taskId: string,
+    attemptId: string
+  ): Promise<MergeRequestStatus> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/mr-status`
+    );
+    return handleApiResponse<MergeRequestStatus>(response);
   },
 
   startDevServer: async (

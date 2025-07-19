@@ -1,9 +1,18 @@
 use chrono::{DateTime, Utc};
 use git2::{BranchType, Repository};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, SqlitePool, Type};
 use ts_rs::TS;
 use uuid::Uuid;
+
+#[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
+#[sqlx(type_name = "repo_type", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
+#[ts(export)]
+pub enum RepoType {
+    GitHub,
+    GitLab,
+}
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
 #[ts(export)]
@@ -11,6 +20,7 @@ pub struct Project {
     pub id: Uuid,
     pub name: String,
     pub git_repo_path: String,
+    pub repo_type: RepoType,
     pub setup_script: Option<String>,
     pub dev_script: Option<String>,
 
@@ -26,6 +36,7 @@ pub struct CreateProject {
     pub name: String,
     pub git_repo_path: String,
     pub use_existing_repo: bool,
+    pub repo_type: Option<RepoType>,
     pub setup_script: Option<String>,
     pub dev_script: Option<String>,
 }
@@ -35,6 +46,7 @@ pub struct CreateProject {
 pub struct UpdateProject {
     pub name: Option<String>,
     pub git_repo_path: Option<String>,
+    pub repo_type: Option<RepoType>,
     pub setup_script: Option<String>,
     pub dev_script: Option<String>,
 }
@@ -45,6 +57,7 @@ pub struct ProjectWithBranch {
     pub id: Uuid,
     pub name: String,
     pub git_repo_path: String,
+    pub repo_type: RepoType,
     pub setup_script: Option<String>,
     pub dev_script: Option<String>,
     pub current_branch: Option<String>,
@@ -92,7 +105,7 @@ impl Project {
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Project,
-            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects ORDER BY created_at DESC"#
+            r#"SELECT id as "id!: Uuid", name, git_repo_path, repo_type as "repo_type: RepoType", setup_script, dev_script, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects ORDER BY created_at DESC"#
         )
         .fetch_all(pool)
         .await
@@ -101,7 +114,7 @@ impl Project {
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Project,
-            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects WHERE id = $1"#,
+            r#"SELECT id as "id!: Uuid", name, git_repo_path, repo_type as "repo_type: RepoType", setup_script, dev_script, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects WHERE id = $1"#,
             id
         )
         .fetch_optional(pool)
@@ -114,7 +127,7 @@ impl Project {
     ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Project,
-            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects WHERE git_repo_path = $1"#,
+            r#"SELECT id as "id!: Uuid", name, git_repo_path, repo_type as "repo_type: RepoType", setup_script, dev_script, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects WHERE git_repo_path = $1"#,
             git_repo_path
         )
         .fetch_optional(pool)
@@ -128,7 +141,7 @@ impl Project {
     ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Project,
-            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects WHERE git_repo_path = $1 AND id != $2"#,
+            r#"SELECT id as "id!: Uuid", name, git_repo_path, repo_type as "repo_type: RepoType", setup_script, dev_script, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects WHERE git_repo_path = $1 AND id != $2"#,
             git_repo_path,
             exclude_id
         )
@@ -141,12 +154,25 @@ impl Project {
         data: &CreateProject,
         project_id: Uuid,
     ) -> Result<Self, sqlx::Error> {
+        // Determine repo type if not provided
+        let repo_type = if let Some(rt) = &data.repo_type {
+            rt.clone()
+        } else {
+            // Auto-detect based on git repo path or remote URL
+            if data.git_repo_path.contains("gitlab") {
+                RepoType::GitLab
+            } else {
+                RepoType::GitHub
+            }
+        };
+        
         sqlx::query_as!(
             Project,
-            r#"INSERT INTO projects (id, name, git_repo_path, setup_script, dev_script) VALUES ($1, $2, $3, $4, $5) RETURNING id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO projects (id, name, git_repo_path, repo_type, setup_script, dev_script) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id as "id!: Uuid", name, git_repo_path, repo_type as "repo_type: RepoType", setup_script, dev_script, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             project_id,
             data.name,
             data.git_repo_path,
+            repo_type,
             data.setup_script,
             data.dev_script
         )
@@ -159,15 +185,17 @@ impl Project {
         id: Uuid,
         name: String,
         git_repo_path: String,
+        repo_type: RepoType,
         setup_script: Option<String>,
         dev_script: Option<String>,
     ) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
             Project,
-            r#"UPDATE projects SET name = $2, git_repo_path = $3, setup_script = $4, dev_script = $5 WHERE id = $1 RETURNING id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"UPDATE projects SET name = $2, git_repo_path = $3, repo_type = $4, setup_script = $5, dev_script = $6 WHERE id = $1 RETURNING id as "id!: Uuid", name, git_repo_path, repo_type as "repo_type: RepoType", setup_script, dev_script, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             name,
             git_repo_path,
+            repo_type,
             setup_script,
             dev_script
         )
@@ -215,6 +243,7 @@ impl Project {
             id: self.id,
             name: self.name,
             git_repo_path: self.git_repo_path,
+            repo_type: self.repo_type,
             setup_script: self.setup_script,
             dev_script: self.dev_script,
             current_branch,
