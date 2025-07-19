@@ -13,6 +13,7 @@ use crate::{
     models::{
         project::Project,
         task::{CreateTask, CreateTaskAndStart, Task, TaskWithAttemptStatus, UpdateTask},
+        task_attachment::TaskAttachment,
         task_attempt::{CreateTaskAttempt, TaskAttempt},
         ApiResponse,
     },
@@ -151,6 +152,29 @@ pub async fn create_task_and_start(
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
+    
+    // Handle attachments if provided
+    for attachment in &payload.attachments {
+        // Decode base64 data
+        let file_data = match base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &attachment.data) {
+            Ok(data) => data,
+            Err(e) => {
+                tracing::error!("Failed to decode attachment data: {}", e);
+                continue; // Skip this attachment but continue with task creation
+            }
+        };
+        
+        if let Err(e) = TaskAttachment::create(
+            &app_state.db_pool,
+            task_id,
+            attachment.file_name.clone(),
+            attachment.file_type.clone(),
+            file_data,
+        ).await {
+            tracing::error!("Failed to create attachment: {}", e);
+            // Continue with task creation even if attachment fails
+        }
+    }
 
     // Create task attempt
     let executor_string = payload.executor.as_ref().map(|exec| exec.to_string());

@@ -5,6 +5,7 @@ use axum::{
     routing::get,
     Json, Router,
 };
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use ts_rs::TS;
@@ -988,6 +989,38 @@ pub async fn create_followup_attempt(
     {
         return Err(StatusCode::NOT_FOUND);
     }
+    
+    // Save attachments to temporary files
+    let mut attachment_paths = Vec::new();
+    for attachment in &payload.attachments {
+        // Decode base64 data
+        let file_data = match base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &attachment.data) {
+            Ok(data) => data,
+            Err(e) => {
+                tracing::error!("Failed to decode attachment data: {}", e);
+                continue;
+            }
+        };
+        
+        // Save to temp file
+        let temp_dir = std::env::temp_dir();
+        let file_path = temp_dir.join(format!("vibe_followup_{}_{}", Uuid::new_v4(), attachment.file_name));
+        if let Err(e) = tokio::fs::write(&file_path, &file_data).await {
+            tracing::error!("Failed to write attachment to temp file: {}", e);
+            continue;
+        }
+        attachment_paths.push(file_path.to_string_lossy().to_string());
+    }
+    
+    // Build prompt with image references
+    let mut prompt_with_images = payload.prompt.clone();
+    if !attachment_paths.is_empty() {
+        let image_refs = attachment_paths.iter()
+            .map(|path| format!("- {}", path))
+            .collect::<Vec<_>>()
+            .join("\n");
+        prompt_with_images = format!("Attached images:\n{}\n\n{}", image_refs, payload.prompt);
+    }
 
     // Start follow-up execution synchronously to catch errors
     match TaskAttempt::start_followup_execution(
@@ -996,7 +1029,7 @@ pub async fn create_followup_attempt(
         attempt_id,
         task_id,
         project_id,
-        &payload.prompt,
+        &prompt_with_images,
     )
     .await
     {
