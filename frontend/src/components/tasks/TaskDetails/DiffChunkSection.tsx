@@ -1,20 +1,29 @@
 import { Button } from '@/components/ui/button.tsx';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 import type { DiffChunkType } from 'shared/types.ts';
-import { Dispatch, SetStateAction } from 'react';
+import { Dispatch, SetStateAction, useState, useRef, useEffect } from 'react';
 import { ProcessedSection } from '@/lib/types.ts';
+import { useDiffComments } from '@/contexts/DiffCommentsContext';
+import { cn } from '@/lib/utils';
 
 type Props = {
   section: ProcessedSection;
   sectionIndex: number;
   setExpandedSections: Dispatch<SetStateAction<Set<string>>>;
+  filePath: string;
 };
 
 function DiffChunkSection({
   section,
   sectionIndex,
   setExpandedSections,
+  filePath,
 }: Props) {
+  const { setSelectedLines, setIsCommentInputOpen, comments } = useDiffComments();
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectionStart, setSelectionStart] = useState<number | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
+  const sectionRef = useRef<HTMLDivElement>(null);
   const toggleExpandSection = (expandKey: string) => {
     setExpandedSections((prev) => {
       const newSet = new Set(prev);
@@ -39,6 +48,54 @@ function DiffChunkSection({
       default:
         return `${baseClass} text-muted-foreground`;
     }
+  };
+
+  const handleLineMouseDown = (lineNumber: number) => {
+    setIsSelecting(true);
+    setSelectionStart(lineNumber);
+    setSelectionEnd(lineNumber);
+  };
+
+  const handleLineMouseEnter = (lineNumber: number) => {
+    if (isSelecting) {
+      setSelectionEnd(lineNumber);
+    }
+  };
+
+  const handleLineMouseUp = () => {
+    if (isSelecting && selectionStart !== null && selectionEnd !== null) {
+      const start = Math.min(selectionStart, selectionEnd);
+      const end = Math.max(selectionStart, selectionEnd);
+      setSelectedLines({ file: filePath, start, end });
+      setIsCommentInputOpen(true);
+    }
+    setIsSelecting(false);
+    setSelectionStart(null);
+    setSelectionEnd(null);
+  };
+
+  useEffect(() => {
+    const handleMouseUp = () => {
+      setIsSelecting(false);
+    };
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => window.removeEventListener('mouseup', handleMouseUp);
+  }, []);
+
+  const isLineSelected = (lineNumber: number) => {
+    if (!selectionStart || !selectionEnd || !lineNumber) return false;
+    const start = Math.min(selectionStart, selectionEnd);
+    const end = Math.max(selectionStart, selectionEnd);
+    return lineNumber >= start && lineNumber <= end;
+  };
+
+  const getLineComments = (lineNumber: number) => {
+    return comments.filter(
+      (c) =>
+        c.file_path === filePath &&
+        lineNumber >= c.selection_start_line &&
+        lineNumber <= c.selection_end_line
+    );
   };
 
   const getLineNumberClassName = (chunkType: DiffChunkType) => {
@@ -106,11 +163,23 @@ function DiffChunkSection({
           </Button>
         </div>
       )}
-      {section.lines.map((line, lineIndex) => (
+      {section.lines.map((line, lineIndex) => {
+        const lineComments = getLineComments(line.newLineNumber || line.oldLineNumber || 0);
+        const hasComments = lineComments.length > 0;
+        const isSelected = isLineSelected(line.newLineNumber || line.oldLineNumber || 0);
+        
+        return (
         <div
           key={`${sectionIndex}-${lineIndex}`}
-          className={getChunkClassName(line.chunkType)}
+          className={cn(
+            getChunkClassName(line.chunkType),
+            isSelected && 'bg-blue-100 dark:bg-blue-900/30',
+            'relative group'
+          )}
           style={{ minWidth: 'max-content' }}
+          onMouseDown={() => handleLineMouseDown(line.newLineNumber || line.oldLineNumber || 0)}
+          onMouseEnter={() => handleLineMouseEnter(line.newLineNumber || line.oldLineNumber || 0)}
+          onMouseUp={handleLineMouseUp}
         >
           <div className={getLineNumberClassName(line.chunkType)}>
             <span className="inline-block w-4 text-right text-xs">
@@ -124,10 +193,16 @@ function DiffChunkSection({
             <span className="inline-block w-3 text-xs">
               {getChunkPrefix(line.chunkType)}
             </span>
-            <span className="text-xs">{line.content}</span>
+            <span className="text-xs select-text">{line.content}</span>
           </div>
+          {hasComments && (
+            <div className="absolute right-2 top-1/2 -translate-y-1/2">
+              <MessageSquare className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+            </div>
+          )}
         </div>
-      ))}
+      );
+      })}
     </div>
   );
 }

@@ -136,6 +136,11 @@ fn generate_types_content() -> String {
         vibe_kanban::executor::NormalizedEntry::decl(),
         vibe_kanban::executor::NormalizedEntryType::decl(),
         vibe_kanban::executor::ActionType::decl(),
+        vibe_kanban::models::diff_comment::DiffComment::decl(),
+        vibe_kanban::models::diff_comment::CommentStatus::decl(),
+        vibe_kanban::models::diff_comment::CreateDiffCommentRequest::decl(),
+        vibe_kanban::models::diff_comment::UpdateDiffCommentRequest::decl(),
+        vibe_kanban::models::diff_comment::SubmitDraftCommentsRequest::decl(),
     ];
 
     let body = decls

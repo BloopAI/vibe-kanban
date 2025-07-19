@@ -1,5 +1,6 @@
 pub mod api_response;
 pub mod config;
+pub mod diff_comment;
 pub mod execution_process;
 pub mod executor_session;
 pub mod project;

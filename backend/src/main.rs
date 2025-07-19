@@ -30,8 +30,7 @@ use app_state::AppState;
 use execution_monitor::execution_monitor;
 use models::{ApiResponse, Config};
 use routes::{
-    auth, config, filesystem, health, projects, stream, task_attempts, task_templates, tasks,
-    terminal,
+    auth, config, diff_comments, filesystem, health, projects, stream, task_attempts, task_templates, tasks,
 };
 use services::PrMonitorService;
 
@@ -207,6 +206,7 @@ fn main() -> anyhow::Result<()> {
                         .merge(config::config_router())
                         .merge(auth::auth_router())
                         .merge(terminal::terminal_router())
+                        .merge(diff_comments::diff_comments_router())
                         .route("/sounds/:filename", get(serve_sound_file))
                         .layer(from_fn_with_state(app_state.clone(), auth::sentry_user_context_middleware)),
                 );

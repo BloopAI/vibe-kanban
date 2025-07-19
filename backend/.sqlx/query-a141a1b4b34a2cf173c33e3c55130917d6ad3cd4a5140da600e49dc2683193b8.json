@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO diff_comments (\n                id, project_id, task_id, attempt_id, file_path,\n                old_line_number, new_line_number, selection_start_line, selection_end_line,\n                comment_text, status, created_at, updated_at\n            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 13
+    },
+    "nullable": []
+  },
+  "hash": "a141a1b4b34a2cf173c33e3c55130917d6ad3cd4a5140da600e49dc2683193b8"
+}

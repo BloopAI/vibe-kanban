@@ -128,6 +128,46 @@ export type NormalizedEntryType = { "type": "user_message" } | { "type": "assist
 
 export type ActionType = { "action": "file_read", path: string, } | { "action": "file_write", path: string, } | { "action": "command_run", command: string, } | { "action": "search", query: string, } | { "action": "web_fetch", url: string, } | { "action": "task_create", description: string, } | { "action": "plan_presentation", plan: string, } | { "action": "other", description: string, };
 
+export interface DiffComment {
+    id: string;
+    project_id: string;
+    task_id: string;
+    attempt_id: string;
+    file_path: string;
+    old_line_number: number | null;
+    new_line_number: number | null;
+    selection_start_line: number;
+    selection_end_line: number;
+    comment_text: string;
+    status: string;
+    created_at: string;
+    updated_at: string;
+    submitted_at: string | null;
+}
+
+export type CommentStatus = "draft" | "submitted";
+
+export interface CreateDiffCommentRequest {
+    project_id: string;
+    task_id: string;
+    attempt_id: string;
+    file_path: string;
+    old_line_number: number | null;
+    new_line_number: number | null;
+    selection_start_line: number;
+    selection_end_line: number;
+    comment_text: string;
+}
+
+export interface UpdateDiffCommentRequest {
+    comment_text?: string | null;
+    status?: CommentStatus | null;
+}
+
+export interface SubmitDraftCommentsRequest {
+    comment_ids: Array<string>;
+}
+
 // Generated constants
 export const EXECUTOR_TYPES: string[] = [
     "echo",

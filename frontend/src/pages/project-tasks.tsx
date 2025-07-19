@@ -32,6 +32,7 @@ import {
 
 import TaskKanbanBoard from '@/components/tasks/TaskKanbanBoard';
 import { TaskDetailsPanel } from '@/components/tasks/TaskDetailsPanel';
+import { DiffCommentsProvider } from '@/contexts/DiffCommentsContext';
 import type {
   CreateTaskAndStart,
   ExecutorConfig,
@@ -515,16 +516,18 @@ export function ProjectTasks() {
 
       {/* Right Column - Task Details Panel */}
       {isPanelOpen && (
-        <TaskDetailsPanel
-          task={selectedTask}
-          projectHasDevScript={!!project?.dev_script}
-          projectRepoType={project?.repo_type}
-          projectId={projectId!}
-          onClose={handleClosePanel}
+        <DiffCommentsProvider>
+          <TaskDetailsPanel
+            task={selectedTask}
+            projectHasDevScript={!!project?.dev_script}
+            projectRepoType={project?.repo_type}
+            projectId={projectId!}
+            onClose={handleClosePanel}
           onEditTask={handleEditTask}
           onDeleteTask={handleDeleteTask}
           isDialogOpen={isTaskDialogOpen || isProjectSettingsOpen}
-        />
+          />
+        </DiffCommentsProvider>
       )}
 
       {/* Dialogs - rendered at main container level to avoid stacking issues */}
