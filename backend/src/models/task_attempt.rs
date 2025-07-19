@@ -141,6 +141,8 @@ pub struct CreatePrParams<'a> {
 #[ts(export)]
 pub struct CreateFollowUpAttempt {
     pub prompt: String,
+    #[serde(default)]
+    pub attachments: Vec<crate::models::task::TaskAttachmentUpload>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
