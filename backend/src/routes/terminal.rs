@@ -46,7 +46,7 @@ async fn terminal_handler(
     };
     
     // Get task attempt to find worktree path
-    let task_attempt = match TaskAttempt::get_by_id(&state.db_pool, attempt_uuid).await {
+    let task_attempt = match TaskAttempt::find_by_id(&state.db_pool, attempt_uuid).await {
         Ok(Some(attempt)) => attempt,
         Ok(None) => {
             error!("Task attempt not found: {}", attempt_id);
