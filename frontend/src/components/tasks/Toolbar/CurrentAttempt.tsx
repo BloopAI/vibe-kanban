@@ -346,7 +346,7 @@ function CurrentAttempt({
       // Refresh branch status after rebase
       fetchBranchStatus();
     } catch (err) {
-      setError('Failed to rebase branch');
+      setError(err instanceof Error ? err.message : 'Failed to rebase branch');
     } finally {
       setRebasing(false);
     }
@@ -367,7 +367,7 @@ function CurrentAttempt({
       fetchBranchStatus();
       setShowRebaseDialog(false);
     } catch (err) {
-      setError('Failed to rebase branch');
+      setError(err instanceof Error ? err.message : 'Failed to rebase branch');
     } finally {
       setRebasing(false);
     }
