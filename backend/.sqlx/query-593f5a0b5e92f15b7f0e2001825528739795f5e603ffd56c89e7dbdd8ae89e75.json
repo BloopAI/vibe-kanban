@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\", name, git_repo_path, setup_script, dev_script, created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\" FROM projects ORDER BY created_at DESC",
+  "query": "UPDATE projects SET name = $2, git_repo_path = $3, repo_type = $4, setup_script = $5, dev_script = $6 WHERE id = $1 RETURNING id as \"id!: Uuid\", name, git_repo_path, repo_type as \"repo_type: RepoType\", setup_script, dev_script, created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -19,31 +19,37 @@
         "type_info": "Text"
       },
       {
-        "name": "setup_script",
+        "name": "repo_type: RepoType",
         "ordinal": 3,
         "type_info": "Text"
       },
       {
-        "name": "dev_script",
+        "name": "setup_script",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "dev_script",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 7,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 6
     },
     "nullable": [
       true,
+      false,
       false,
       false,
       true,
@@ -52,5 +58,5 @@
       false
     ]
   },
-  "hash": "08f2cb03665a16640d6690f29920521bae3479e3d2602e724d2c93e6fc85d8ee"
+  "hash": "593f5a0b5e92f15b7f0e2001825528739795f5e603ffd56c89e7dbdd8ae89e75"
 }

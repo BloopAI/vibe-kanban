@@ -6,6 +6,7 @@ import type {
   TaskAttemptState,
   TaskWithAttemptStatus,
   WorktreeDiff,
+  RepoType,
 } from 'shared/types.ts';
 import { AttemptData } from '@/lib/types.ts';
 
@@ -14,6 +15,7 @@ export interface TaskDetailsContextValue {
   projectId: string;
   handleOpenInEditor: (editorType?: EditorType) => Promise<void>;
   projectHasDevScript?: boolean;
+  projectRepoType?: RepoType;
 }
 
 export const TaskDetailsContext = createContext<TaskDetailsContextValue>(

@@ -6,7 +6,7 @@ import {
   getBackdropClasses,
   getTaskPanelClasses,
 } from '@/lib/responsive-config';
-import type { TaskWithAttemptStatus } from 'shared/types';
+import type { TaskWithAttemptStatus, RepoType } from 'shared/types';
 import DiffTab from '@/components/tasks/TaskDetails/DiffTab.tsx';
 import LogsTab from '@/components/tasks/TaskDetails/LogsTab.tsx';
 import RelatedTasksTab from '@/components/tasks/TaskDetails/RelatedTasksTab.tsx';
@@ -14,10 +14,12 @@ import DeleteFileConfirmationDialog from '@/components/tasks/DeleteFileConfirmat
 import TabNavigation from '@/components/tasks/TaskDetails/TabNavigation.tsx';
 import CollapsibleToolbar from '@/components/tasks/TaskDetails/CollapsibleToolbar.tsx';
 import TaskDetailsProvider from '../context/TaskDetailsContextProvider.tsx';
+import { MergeRequestInfo } from '@/components/tasks/Toolbar/MergeRequestInfo.tsx';
 
 interface TaskDetailsPanelProps {
   task: TaskWithAttemptStatus | null;
   projectHasDevScript?: boolean;
+  projectRepoType?: RepoType;
   projectId: string;
   onClose: () => void;
   onEditTask?: (task: TaskWithAttemptStatus) => void;
@@ -28,6 +30,7 @@ interface TaskDetailsPanelProps {
 export function TaskDetailsPanel({
   task,
   projectHasDevScript,
+  projectRepoType,
   projectId,
   onClose,
   onEditTask,
@@ -78,6 +81,7 @@ export function TaskDetailsPanel({
           setActiveTab={setActiveTab}
           userSelectedTab={userSelectedTab}
           projectHasDevScript={projectHasDevScript}
+          projectRepoType={projectRepoType}
         >
           {/* Backdrop - only on smaller screens (overlay mode) */}
           <div className={getBackdropClasses()} onClick={onClose} />
@@ -92,6 +96,11 @@ export function TaskDetailsPanel({
               />
 
               <CollapsibleToolbar />
+
+              {/* GitLab MR Info Section */}
+              <div className="px-6">
+                <MergeRequestInfo />
+              </div>
 
               <TabNavigation
                 activeTab={activeTab}
