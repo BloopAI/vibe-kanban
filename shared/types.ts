@@ -12,6 +12,8 @@ export type EditorConfig = { editor_type: EditorType, custom_command: string | n
 
 export type GitHubConfig = { pat: string | null, token: string | null, username: string | null, primary_email: string | null, default_pr_base: string | null, };
 
+export type GitLabConfig = { pat: string | null, username: string | null, primary_email: string | null, default_mr_base: string | null, gitlab_url: string | null, };
+
 export type EditorType = "vscode" | "cursor" | "windsurf" | "intellij" | "zed" | "custom";
 
 export type EditorConstants = { editor_types: Array<EditorType>, editor_labels: Array<string>, };
@@ -25,6 +27,8 @@ export type ConfigConstants = { editor: EditorConstants, sound: SoundConstants, 
 export type ExecutorConfig = { "type": "echo" } | { "type": "claude" } | { "type": "claude-plan" } | { "type": "amp" } | { "type": "gemini" } | { "type": "setup-script", script: string, } | { "type": "claude-code-router" } | { "type": "charm-opencode" } | { "type": "sst-opencode" };
 
 export type ExecutorConstants = { executor_types: Array<ExecutorConfig>, executor_labels: Array<string>, };
+
+export type RepoType = "github" | "gitlab";
 
 export type CreateProject = { name: string, git_repo_path: string, use_existing_repo: boolean, repo_type: RepoType | null, setup_script: string | null, dev_script: string | null, };
 
