@@ -18,6 +18,7 @@ interface FileSearchTextareaProps {
   projectId?: string;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   maxRows?: number;
+  onPaste?: (e: React.ClipboardEvent) => void;
 }
 
 export function FileSearchTextarea({
@@ -30,6 +31,7 @@ export function FileSearchTextarea({
   projectId,
   onKeyDown,
   maxRows = 10,
+  onPaste,
 }: FileSearchTextareaProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FileSearchResult[]>([]);
@@ -96,6 +98,12 @@ export function FileSearchTextarea({
     setShowDropdown(false);
     setSearchQuery('');
     setAtSymbolPosition(-1);
+  };
+
+  // Handle paste events
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    // Call the passed onPaste handler if provided
+    onPaste?.(e);
   };
 
   // Handle keyboard navigation
@@ -237,6 +245,7 @@ export function FileSearchTextarea({
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
         placeholder={placeholder}
         rows={rows}
         disabled={disabled}

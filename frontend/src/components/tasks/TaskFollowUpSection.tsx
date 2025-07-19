@@ -201,7 +201,7 @@ export function TaskFollowUpSection() {
           )}
 
           <div className="flex gap-2 items-start">
-            <div className="flex-1 relative" onPaste={handlePaste}>
+            <div className="flex-1 relative">
               <FileSearchTextarea
                 placeholder="Continue working on this task... Type @ to search files. Paste images with Ctrl+V."
                 value={followUpMessage}
@@ -221,6 +221,7 @@ export function TaskFollowUpSection() {
                     }
                   }
                 }}
+                onPaste={handlePaste}
                 className="flex-1 min-h-[40px] resize-none pr-10"
                 disabled={!canSendFollowUp}
                 projectId={projectId}
