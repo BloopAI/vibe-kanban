@@ -431,7 +431,7 @@ Task title: {}"#,
 
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
-        let opencode_command = format!("{} --resume={}", self.command, session_id);
+        let opencode_command = format!("{} --session {}", self.command, session_id);
 
         let mut command = Command::new(shell_cmd);
         command
