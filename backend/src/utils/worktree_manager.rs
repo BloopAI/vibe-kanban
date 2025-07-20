@@ -507,6 +507,11 @@ impl WorktreeManager {
         git_repo_path: &Path,
         worktree_name: &str,
     ) -> Result<(), std::io::Error> {
+        if !cfg!(target_os = "linux") || !crate::utils::is_wsl2() {
+            debug!("Skipping commondir fix for non-WSL2 environment");
+            return Ok(());
+        }
+
         let commondir_path = git_repo_path
             .join(".git")
             .join("worktrees")
