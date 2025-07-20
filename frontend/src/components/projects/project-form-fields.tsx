@@ -21,6 +21,8 @@ interface ProjectFormFieldsProps {
   setSetupScript: (script: string) => void;
   devScript: string;
   setDevScript: (script: string) => void;
+  cleanupScript: string;
+  setCleanupScript: (script: string) => void;
   error: string;
 }
 
@@ -41,6 +43,8 @@ export function ProjectFormFields({
   setSetupScript,
   devScript,
   setDevScript,
+  cleanupScript,
+  setCleanupScript,
   error,
 }: ProjectFormFieldsProps) {
   return (
@@ -203,6 +207,23 @@ export function ProjectFormFields({
           This script can be run from task attempts to start a development
           server. Use it to quickly start your project's dev server for testing
           changes.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="cleanup-script">Cleanup Script (Optional)</Label>
+        <textarea
+          id="cleanup-script"
+          value={cleanupScript}
+          onChange={(e) => setCleanupScript(e.target.value)}
+          placeholder="#!/bin/bash&#10;# Add cleanup commands here...&#10;# This runs after coding agent execution"
+          rows={4}
+          className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md resize-vertical focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        <p className="text-sm text-muted-foreground">
+          This script will run after coding agent execution is complete. Use it
+          for cleanup tasks like stopping processes, clearing caches, or other
+          post-execution cleanup.
         </p>
       </div>
 

@@ -10,6 +10,7 @@ use crate::services::{generate_user_id, AnalyticsConfig, AnalyticsService};
 #[derive(Debug)]
 pub enum ExecutionType {
     SetupScript,
+    CleanupScript,
     CodingAgent,
     DevServer,
 }

@@ -39,6 +39,7 @@ pub enum ExecutionProcessStatus {
 #[ts(export)]
 pub enum ExecutionProcessType {
     SetupScript,
+    CleanupScript,
     CodingAgent,
     DevServer,
 }
@@ -47,6 +48,7 @@ impl From<ExecutionType> for ExecutionProcessType {
     fn from(exec_type: ExecutionType) -> Self {
         match exec_type {
             ExecutionType::SetupScript => ExecutionProcessType::SetupScript,
+            ExecutionType::CleanupScript => ExecutionProcessType::CleanupScript,
             ExecutionType::CodingAgent => ExecutionProcessType::CodingAgent,
             ExecutionType::DevServer => ExecutionProcessType::DevServer,
         }
@@ -57,6 +59,7 @@ impl From<ExecutionProcessType> for ExecutionType {
     fn from(exec_type: ExecutionProcessType) -> Self {
         match exec_type {
             ExecutionProcessType::SetupScript => ExecutionType::SetupScript,
+            ExecutionProcessType::CleanupScript => ExecutionType::CleanupScript,
             ExecutionProcessType::CodingAgent => ExecutionType::CodingAgent,
             ExecutionProcessType::DevServer => ExecutionType::DevServer,
         }

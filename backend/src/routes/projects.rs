@@ -244,6 +244,7 @@ pub async fn update_project(
         git_repo_path,
         setup_script,
         dev_script,
+        cleanup_script,
     } = payload;
 
     let name = name.unwrap_or(existing_project.name);
@@ -256,6 +257,7 @@ pub async fn update_project(
         git_repo_path,
         setup_script,
         dev_script,
+        cleanup_script,
     )
     .await
     {

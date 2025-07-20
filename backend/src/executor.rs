@@ -375,6 +375,7 @@ pub trait Executor: Send + Sync {
 #[derive(Debug, Clone)]
 pub enum ExecutorType {
     SetupScript(String),
+    CleanupScript(String),
     DevServer(String),
     CodingAgent {
         config: ExecutorConfig,

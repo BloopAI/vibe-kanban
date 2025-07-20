@@ -18,6 +18,47 @@ use crate::{
 pub struct ProcessService;
 
 impl ProcessService {
+    /// Run cleanup script if project has one configured
+    pub async fn run_cleanup_script_if_configured(
+        pool: &SqlitePool,
+        app_state: &crate::app_state::AppState,
+        attempt_id: Uuid,
+        task_id: Uuid,
+        project_id: Uuid,
+    ) -> Result<(), TaskAttemptError> {
+        // Get project to check if cleanup script exists
+        let project = Project::find_by_id(pool, project_id)
+            .await?
+            .ok_or(TaskAttemptError::ProjectNotFound)?;
+
+        if Self::should_run_cleanup_script(&project) {
+            // Get worktree path
+            let task_attempt = TaskAttempt::find_by_id(pool, attempt_id)
+                .await?
+                .ok_or(TaskAttemptError::ValidationError("Task attempt not found".to_string()))?;
+
+            tracing::info!(
+                "Running cleanup script for project {} in attempt {}",
+                project_id,
+                attempt_id
+            );
+
+            Self::start_cleanup_script(
+                pool,
+                app_state,
+                attempt_id,
+                task_id,
+                &project,
+                &task_attempt.worktree_path,
+            )
+            .await?;
+        } else {
+            tracing::debug!("No cleanup script configured for project {}", project_id);
+        }
+
+        Ok(())
+    }
+
     /// Automatically run setup if needed, then continue with the specified operation
     pub async fn auto_setup_and_execute(
         pool: &SqlitePool,
@@ -602,6 +643,14 @@ impl ProcessService {
             .unwrap_or(false)
     }
 
+    fn should_run_cleanup_script(project: &Project) -> bool {
+        project
+            .cleanup_script
+            .as_ref()
+            .map(|script| !script.trim().is_empty())
+            .unwrap_or(false)
+    }
+
     /// Start the setup script execution
     async fn start_setup_script(
         pool: &SqlitePool,
@@ -621,6 +670,30 @@ impl ProcessService {
             crate::executor::ExecutorType::SetupScript(setup_script.clone()),
             "Starting setup script".to_string(),
             ExecutionProcessType::SetupScript,
+            worktree_path,
+        )
+        .await
+    }
+
+    /// Start the cleanup script execution
+    async fn start_cleanup_script(
+        pool: &SqlitePool,
+        app_state: &crate::app_state::AppState,
+        attempt_id: Uuid,
+        task_id: Uuid,
+        project: &Project,
+        worktree_path: &str,
+    ) -> Result<(), TaskAttemptError> {
+        let cleanup_script = project.cleanup_script.as_ref().unwrap();
+
+        Self::start_process_execution(
+            pool,
+            app_state,
+            attempt_id,
+            task_id,
+            crate::executor::ExecutorType::CleanupScript(cleanup_script.clone()),
+            "Starting cleanup script".to_string(),
+            ExecutionProcessType::CleanupScript,
             worktree_path,
         )
         .await
@@ -655,6 +728,11 @@ impl ProcessService {
                 shell_cmd.to_string(),
                 Some(serde_json::to_string(&[shell_arg, "setup-script"]).unwrap()),
                 Some("setup-script".to_string()),
+            ),
+            crate::executor::ExecutorType::CleanupScript(_) => (
+                shell_cmd.to_string(),
+                Some(serde_json::to_string(&[shell_arg, "cleanup-script"]).unwrap()),
+                Some("cleanup-script".to_string()),
             ),
             crate::executor::ExecutorType::DevServer(_) => (
                 shell_cmd.to_string(),
@@ -725,11 +803,19 @@ impl ProcessService {
         process_id: Uuid,
         worktree_path: &str,
     ) -> Result<command_group::AsyncGroupChild, TaskAttemptError> {
-        use crate::executors::{DevServerExecutor, SetupScriptExecutor};
+        use crate::executors::{CleanupScriptExecutor, DevServerExecutor, SetupScriptExecutor};
 
         let result = match executor_type {
             crate::executor::ExecutorType::SetupScript(script) => {
                 let executor = SetupScriptExecutor {
+                    script: script.clone(),
+                };
+                executor
+                    .execute_streaming(pool, task_id, attempt_id, process_id, worktree_path)
+                    .await
+            }
+            crate::executor::ExecutorType::CleanupScript(script) => {
+                let executor = CleanupScriptExecutor {
                     script: script.clone(),
                 };
                 executor
@@ -780,6 +866,7 @@ impl ProcessService {
     ) {
         let execution_type = match process_type {
             ExecutionProcessType::SetupScript => crate::app_state::ExecutionType::SetupScript,
+            ExecutionProcessType::CleanupScript => crate::app_state::ExecutionType::CleanupScript,
             ExecutionProcessType::CodingAgent => crate::app_state::ExecutionType::CodingAgent,
             ExecutionProcessType::DevServer => crate::app_state::ExecutionType::DevServer,
         };

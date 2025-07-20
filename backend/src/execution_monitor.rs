@@ -577,6 +577,17 @@ pub async fn execution_monitor(app_state: AppState) {
                                 )
                                 .await;
                             }
+                            ExecutionProcessType::CleanupScript => {
+                                handle_cleanup_completion(
+                                    &app_state,
+                                    task_attempt_id,
+                                    execution_process_id,
+                                    execution_process,
+                                    success,
+                                    exit_code,
+                                )
+                                .await;
+                            }
                             ExecutionProcessType::CodingAgent => {
                                 handle_coding_agent_completion(
                                     &app_state,
@@ -951,6 +962,25 @@ async fn handle_coding_agent_completion(
             task_attempt_id
         );
 
+        // Run cleanup script if configured
+        if let Ok(Some(task)) = Task::find_by_id(&app_state.db_pool, task_attempt.task_id).await {
+            if let Err(e) = crate::services::process_service::ProcessService::run_cleanup_script_if_configured(
+                &app_state.db_pool,
+                app_state,
+                task_attempt_id,
+                task_attempt.task_id,
+                task.project_id,
+            )
+            .await
+            {
+                tracing::error!(
+                    "Failed to run cleanup script for attempt {}: {}",
+                    task_attempt_id,
+                    e
+                );
+            }
+        }
+
         // Get task to access task_id and project_id for status update
         if let Ok(Some(task)) = Task::find_by_id(&app_state.db_pool, task_attempt.task_id).await {
             app_state
@@ -985,6 +1015,49 @@ async fn handle_coding_agent_completion(
         tracing::error!(
             "Failed to find task attempt {} for coding agent completion",
             task_attempt_id
+        );
+    }
+}
+
+/// Handle cleanup script completion
+async fn handle_cleanup_completion(
+    app_state: &AppState,
+    task_attempt_id: Uuid,
+    execution_process_id: Uuid,
+    _execution_process: ExecutionProcess,
+    success: bool,
+    exit_code: Option<i64>,
+) {
+    let exit_text = if let Some(code) = exit_code {
+        format!(" with exit code {}", code)
+    } else {
+        String::new()
+    };
+
+    tracing::info!(
+        "Cleanup script for task attempt {} completed{}",
+        task_attempt_id,
+        exit_text
+    );
+
+    // Update execution process status
+    let process_status = if success {
+        ExecutionProcessStatus::Completed
+    } else {
+        ExecutionProcessStatus::Failed
+    };
+
+    if let Err(e) = ExecutionProcess::update_completion(
+        &app_state.db_pool,
+        execution_process_id,
+        process_status,
+        exit_code,
+    )
+    .await
+    {
+        tracing::error!(
+            "Failed to update cleanup script execution process status: {}",
+            e
         );
     }
 }
