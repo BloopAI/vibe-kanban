@@ -1061,6 +1061,39 @@ async fn handle_cleanup_completion(
             e
         );
     }
+
+    // Auto-commit changes after successful cleanup script execution
+    if success {
+        if let Ok(Some(task_attempt)) =
+            TaskAttempt::find_by_id(&app_state.db_pool, task_attempt_id).await
+        {
+            let commit_message = "Cleanup script";
+
+            if let Err(e) = commit_execution_changes(
+                &task_attempt.worktree_path,
+                task_attempt_id,
+                Some(&commit_message),
+            )
+            .await
+            {
+                tracing::error!(
+                    "Failed to commit changes after cleanup script for attempt {}: {}",
+                    task_attempt_id,
+                    e
+                );
+            } else {
+                tracing::info!(
+                    "Successfully committed changes after cleanup script for attempt {}",
+                    task_attempt_id
+                );
+            }
+        } else {
+            tracing::error!(
+                "Failed to retrieve task attempt {} for cleanup commit",
+                task_attempt_id
+            );
+        }
+    }
 }
 
 /// Handle dev server completion (future functionality)
