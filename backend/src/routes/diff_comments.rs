@@ -6,7 +6,6 @@ use axum::{
     Json, Router,
 };
 use serde_json::json;
-
 use crate::{
     app_state::AppState,
     models::{
@@ -16,6 +15,7 @@ use crate::{
         },
         ApiResponse,
     },
+    services::process_service::ProcessService,
 };
 
 pub fn diff_comments_router() -> Router<AppState> {
@@ -143,26 +143,99 @@ pub async fn submit_draft_comments(
     State(state): State<AppState>,
     Json(request): Json<SubmitDraftCommentsRequest>,
 ) -> Result<ResponseJson<ApiResponse<serde_json::Value>>, StatusCode> {
-    match DiffComment::submit_draft_comments(&state.db_pool, request.comment_ids.clone()).await {
-        Ok(comments) => {
-            match DiffComment::get_combined_prompt(&state.db_pool, request.comment_ids).await {
-                Ok(prompt) => Ok(ResponseJson(ApiResponse {
-                    success: true,
-                    data: Some(json!({
-                        "comments": comments,
-                        "prompt": prompt
-                    })),
-                    message: None,
-                })),
-                Err(e) => {
-                    tracing::error!("Failed to get combined prompt: {}", e);
-                    Err(StatusCode::INTERNAL_SERVER_ERROR)
-                }
-            }
-        }
+    // First submit the comments
+    let comments = match DiffComment::submit_draft_comments(&state.db_pool, request.comment_ids.clone()).await {
+        Ok(comments) => comments,
         Err(e) => {
             tracing::error!("Failed to submit draft comments: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    // Use the formatted prompt from frontend if provided, otherwise generate it
+    let prompt = if let Some(formatted_prompt) = request.formatted_prompt {
+        tracing::info!("Using formatted prompt from frontend: {}", formatted_prompt);
+        formatted_prompt
+    } else {
+        match DiffComment::get_combined_prompt(&state.db_pool, request.comment_ids).await {
+            Ok(prompt) => {
+                tracing::info!("Generated prompt for diff comments: {}", prompt);
+                prompt
+            },
+            Err(e) => {
+                tracing::error!("Failed to get combined prompt: {}", e);
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        }
+    };
+
+    // If no comments were submitted, return early
+    if comments.is_empty() {
+        return Ok(ResponseJson(ApiResponse {
+            success: true,
+            data: Some(json!({
+                "comments": comments,
+                "prompt": prompt,
+                "execution_started": false
+            })),
+            message: None,
+        }));
+    }
+
+    // Check if we should auto-execute
+    let auto_execute = request.auto_execute.unwrap_or(false);
+    let mut execution_started = false;
+    let mut execution_message = None;
+
+    if auto_execute && !comments.is_empty() {
+        // Get task and attempt info from the first comment
+        let first_comment = &comments[0];
+        let task_id = first_comment.task_id;
+        let attempt_id = first_comment.attempt_id;
+        let project_id = first_comment.project_id;
+
+        // Try to start a follow-up execution
+        tracing::info!("Starting follow-up execution with prompt: {}", prompt);
+        match ProcessService::start_followup_execution(
+            &state.db_pool,
+            &state,
+            attempt_id,
+            task_id,
+            project_id,
+            &prompt,
+        ).await {
+            Ok(actual_attempt_id) => {
+                execution_started = true;
+                execution_message = Some(format!(
+                    "Follow-up execution started successfully on attempt {}",
+                    actual_attempt_id
+                ));
+                tracing::info!(
+                    "Started follow-up execution for diff comments on attempt {}",
+                    actual_attempt_id
+                );
+            }
+            Err(e) => {
+                tracing::error!(
+                    "Failed to start follow-up execution for diff comments: {}",
+                    e
+                );
+                execution_message = Some(format!(
+                    "Failed to start follow-up execution: {}",
+                    e
+                ));
+            }
         }
     }
+
+    Ok(ResponseJson(ApiResponse {
+        success: true,
+        data: Some(json!({
+            "comments": comments,
+            "prompt": prompt,
+            "execution_started": execution_started,
+            "execution_message": execution_message
+        })),
+        message: None,
+    }))
 }

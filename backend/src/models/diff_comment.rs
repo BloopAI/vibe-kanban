@@ -1,14 +1,15 @@
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 use ts_rs::TS;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, TS)]
 #[ts(export)]
 pub struct DiffComment {
     pub id: String,
-    pub project_id: String,
-    pub task_id: String,
-    pub attempt_id: String,
+    pub project_id: Uuid,
+    pub task_id: Uuid,
+    pub attempt_id: Uuid,
     pub file_path: String,
     pub old_line_number: Option<i32>,
     pub new_line_number: Option<i32>,
@@ -53,9 +54,9 @@ impl From<CommentStatus> for String {
 #[derive(Debug, Deserialize, TS)]
 #[ts(export)]
 pub struct CreateDiffCommentRequest {
-    pub project_id: String,
-    pub task_id: String,
-    pub attempt_id: String,
+    pub project_id: Uuid,
+    pub task_id: Uuid,
+    pub attempt_id: Uuid,
     pub file_path: String,
     pub old_line_number: Option<i32>,
     pub new_line_number: Option<i32>,
@@ -75,6 +76,8 @@ pub struct UpdateDiffCommentRequest {
 #[ts(export)]
 pub struct SubmitDraftCommentsRequest {
     pub comment_ids: Vec<String>,
+    pub auto_execute: Option<bool>,
+    pub formatted_prompt: Option<String>,
 }
 
 impl DiffComment {
@@ -130,20 +133,20 @@ impl DiffComment {
             DiffComment,
             r#"
             SELECT 
-                id,
-                project_id,
-                task_id,
-                attempt_id,
-                file_path,
-                old_line_number as "old_line_number: i32",
-                new_line_number as "new_line_number: i32",
-                selection_start_line as "selection_start_line: i32",
-                selection_end_line as "selection_end_line: i32",
-                comment_text,
-                status,
-                created_at as "created_at!: String",
-                updated_at as "updated_at!: String",
-                submitted_at as "submitted_at: Option<String>"
+                id as "id!: String",
+                project_id as "project_id!: Uuid",
+                task_id as "task_id!: Uuid",
+                attempt_id as "attempt_id!: Uuid",
+                file_path as "file_path!: String",
+                CAST(old_line_number AS INTEGER) as "old_line_number: i32",
+                CAST(new_line_number AS INTEGER) as "new_line_number: i32",
+                CAST(selection_start_line AS INTEGER) as "selection_start_line!: i32",
+                CAST(selection_end_line AS INTEGER) as "selection_end_line!: i32",
+                comment_text as "comment_text!: String",
+                status as "status!: String",
+                datetime(created_at) as "created_at!: String",
+                datetime(updated_at) as "updated_at!: String",
+                datetime(submitted_at) as "submitted_at: String"
             FROM diff_comments WHERE id = ?1
             "#,
             id
@@ -158,30 +161,33 @@ impl DiffComment {
         task_id: &str,
         attempt_id: &str,
     ) -> anyhow::Result<Vec<DiffComment>> {
+        let task_uuid = Uuid::parse_str(task_id)?;
+        let attempt_uuid = Uuid::parse_str(attempt_id)?;
+        
         sqlx::query_as!(
             DiffComment,
             r#"
             SELECT 
-                id,
-                project_id,
-                task_id,
-                attempt_id,
-                file_path,
-                old_line_number as "old_line_number: i32",
-                new_line_number as "new_line_number: i32",
-                selection_start_line as "selection_start_line: i32",
-                selection_end_line as "selection_end_line: i32",
-                comment_text,
-                status,
-                created_at as "created_at!: String",
-                updated_at as "updated_at!: String",
-                submitted_at as "submitted_at: Option<String>"
+                id as "id!: String",
+                project_id as "project_id!: Uuid",
+                task_id as "task_id!: Uuid",
+                attempt_id as "attempt_id!: Uuid",
+                file_path as "file_path!: String",
+                CAST(old_line_number AS INTEGER) as "old_line_number: i32",
+                CAST(new_line_number AS INTEGER) as "new_line_number: i32",
+                CAST(selection_start_line AS INTEGER) as "selection_start_line!: i32",
+                CAST(selection_end_line AS INTEGER) as "selection_end_line!: i32",
+                comment_text as "comment_text!: String",
+                status as "status!: String",
+                datetime(created_at) as "created_at!: String",
+                datetime(updated_at) as "updated_at!: String",
+                datetime(submitted_at) as "submitted_at: String"
             FROM diff_comments 
             WHERE task_id = ?1 AND attempt_id = ?2
             ORDER BY file_path, selection_start_line
             "#,
-            task_id,
-            attempt_id
+            task_uuid,
+            attempt_uuid
         )
         .fetch_all(pool)
         .await
@@ -193,30 +199,33 @@ impl DiffComment {
         task_id: &str,
         attempt_id: &str,
     ) -> anyhow::Result<Vec<DiffComment>> {
+        let task_uuid = Uuid::parse_str(task_id)?;
+        let attempt_uuid = Uuid::parse_str(attempt_id)?;
+        
         sqlx::query_as!(
             DiffComment,
             r#"
             SELECT 
-                id,
-                project_id,
-                task_id,
-                attempt_id,
-                file_path,
-                old_line_number as "old_line_number: i32",
-                new_line_number as "new_line_number: i32",
-                selection_start_line as "selection_start_line: i32",
-                selection_end_line as "selection_end_line: i32",
-                comment_text,
-                status,
-                created_at as "created_at!: String",
-                updated_at as "updated_at!: String",
-                submitted_at as "submitted_at: Option<String>"
+                id as "id!: String",
+                project_id as "project_id!: Uuid",
+                task_id as "task_id!: Uuid",
+                attempt_id as "attempt_id!: Uuid",
+                file_path as "file_path!: String",
+                CAST(old_line_number AS INTEGER) as "old_line_number: i32",
+                CAST(new_line_number AS INTEGER) as "new_line_number: i32",
+                CAST(selection_start_line AS INTEGER) as "selection_start_line!: i32",
+                CAST(selection_end_line AS INTEGER) as "selection_end_line!: i32",
+                comment_text as "comment_text!: String",
+                status as "status!: String",
+                datetime(created_at) as "created_at!: String",
+                datetime(updated_at) as "updated_at!: String",
+                datetime(submitted_at) as "submitted_at: String"
             FROM diff_comments 
             WHERE task_id = ?1 AND attempt_id = ?2 AND status = 'draft'
             ORDER BY created_at
             "#,
-            task_id,
-            attempt_id
+            task_uuid,
+            attempt_uuid
         )
         .fetch_all(pool)
         .await
@@ -298,19 +307,36 @@ impl DiffComment {
         pool: &SqlitePool,
         comment_ids: Vec<String>,
     ) -> anyhow::Result<String> {
-        let mut prompt = String::from("Please review the following code comments and provide suggestions:\n\n");
+        let mut prompt = String::from("Please review the following code comments and suggestions:\n\n");
+        let mut comments = Vec::new();
         
+        // Fetch all comments
         for id in comment_ids {
             if let Some(comment) = Self::get_by_id(pool, &id).await? {
+                comments.push(comment);
+            }
+        }
+        
+        // Group by file
+        let mut grouped_by_file: std::collections::HashMap<String, Vec<DiffComment>> = std::collections::HashMap::new();
+        for comment in comments {
+            grouped_by_file.entry(comment.file_path.clone()).or_insert_with(Vec::new).push(comment);
+        }
+        
+        // Format like the frontend
+        for (file_path, file_comments) in grouped_by_file {
+            prompt.push_str(&format!("\n### {}\n\n", file_path));
+            for comment in file_comments {
                 prompt.push_str(&format!(
-                    "File: {}\nLines: {}-{}\nComment: {}\n\n",
-                    comment.file_path,
+                    "**Lines {}-{}:**\n{}\n\n",
                     comment.selection_start_line,
                     comment.selection_end_line,
                     comment.comment_text
                 ));
             }
         }
+        
+        prompt.push_str("\nPlease analyze these comments and provide improved code that addresses all the feedback.");
         
         Ok(prompt)
     }

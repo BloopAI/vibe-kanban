@@ -750,10 +750,11 @@ impl Executor for ClaudeFollowupExecutor {
         // Write prompt to stdin safely
         if let Some(mut stdin) = child.inner().stdin.take() {
             use tokio::io::AsyncWriteExt;
-            tracing::debug!(
-                "Writing prompt to {} stdin for session {}: {:?}",
+            tracing::info!(
+                "Writing prompt to {} stdin for session {} (length: {} chars): {:?}",
                 self.executor_type,
                 self.session_id,
+                self.prompt.len(),
                 self.prompt
             );
             stdin.write_all(self.prompt.as_bytes()).await.map_err(|e| {

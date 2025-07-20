@@ -16,7 +16,7 @@ interface CommentsPanelProps {
 }
 
 export const CommentsPanel: React.FC<CommentsPanelProps> = ({ taskId, attemptId }) => {
-  const { comments, draftComments, loadComments, submitDraftComments, isLoading, error } = useDiffComments();
+  const { comments, draftComments, loadComments, submitDraftComments, isLoading } = useDiffComments();
   const [selectedDrafts, setSelectedDrafts] = useState<Set<string>>(new Set());
   const [showPromptPreview, setShowPromptPreview] = useState(false);
   const [promptPreview, setPromptPreview] = useState('');
@@ -56,10 +56,18 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({ taskId, attemptId 
   const handleConfirmSubmit = async () => {
     setIsSubmitting(true);
     try {
-      const result = await submitDraftComments(Array.from(selectedDrafts));
+      // Submit with auto-execute enabled and the formatted prompt
+      const result = await submitDraftComments(Array.from(selectedDrafts), true, promptPreview);
       if (result) {
         setSelectedDrafts(new Set());
         setShowPromptPreview(false);
+        
+        // Show notification about execution status
+        if (result.execution_started) {
+          console.log('Follow-up execution started:', result.execution_message);
+        } else if (result.execution_message) {
+          console.error('Failed to start execution:', result.execution_message);
+        }
       }
     } finally {
       setIsSubmitting(false);
@@ -216,7 +224,7 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({ taskId, attemptId 
           <DialogHeader>
             <DialogTitle>Review Comments Prompt</DialogTitle>
             <DialogDescription>
-              This is the prompt that will be sent to the LLM with your selected comments.
+              This prompt will be automatically sent to the current LLM executor when you click "Confirm & Submit".
             </DialogDescription>
           </DialogHeader>
           <div className="overflow-y-auto max-h-[50vh] my-4">

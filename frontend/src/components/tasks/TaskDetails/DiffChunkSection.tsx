@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button.tsx';
 import { ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 import type { DiffChunkType } from 'shared/types.ts';
-import { Dispatch, SetStateAction, useState, useRef, useEffect } from 'react';
+import { Dispatch, SetStateAction, useState, useEffect } from 'react';
 import { ProcessedSection } from '@/lib/types.ts';
 import { useDiffComments } from '@/contexts/DiffCommentsContext';
 import { cn } from '@/lib/utils';
@@ -23,7 +23,6 @@ function DiffChunkSection({
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
-  const sectionRef = useRef<HTMLDivElement>(null);
   const toggleExpandSection = (expandKey: string) => {
     setExpandedSections((prev) => {
       const newSet = new Set(prev);
@@ -50,14 +49,16 @@ function DiffChunkSection({
     }
   };
 
-  const handleLineMouseDown = (lineNumber: number) => {
+  const handleLineMouseDown = (lineNumber: number, e: React.MouseEvent) => {
+    if (!lineNumber) return;
+    e.preventDefault(); // Prevent text selection
     setIsSelecting(true);
     setSelectionStart(lineNumber);
     setSelectionEnd(lineNumber);
   };
 
   const handleLineMouseEnter = (lineNumber: number) => {
-    if (isSelecting) {
+    if (isSelecting && lineNumber) {
       setSelectionEnd(lineNumber);
     }
   };
@@ -75,12 +76,14 @@ function DiffChunkSection({
   };
 
   useEffect(() => {
-    const handleMouseUp = () => {
-      setIsSelecting(false);
+    const handleGlobalMouseUp = () => {
+      if (isSelecting) {
+        handleLineMouseUp();
+      }
     };
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => window.removeEventListener('mouseup', handleMouseUp);
-  }, []);
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, [isSelecting, selectionStart, selectionEnd]);
 
   const isLineSelected = (lineNumber: number) => {
     if (!selectionStart || !selectionEnd || !lineNumber) return false;
@@ -100,7 +103,7 @@ function DiffChunkSection({
 
   const getLineNumberClassName = (chunkType: DiffChunkType) => {
     const baseClass =
-      'flex-shrink-0 w-12 px-1.5 text-xs border-r select-none min-h-[1.25rem] flex items-center';
+      'flex-shrink-0 w-12 px-1.5 text-xs border-r select-none min-h-[1.25rem] flex items-center cursor-pointer';
 
     switch (chunkType) {
       case 'Insert':
@@ -174,10 +177,11 @@ function DiffChunkSection({
           className={cn(
             getChunkClassName(line.chunkType),
             isSelected && 'bg-blue-100 dark:bg-blue-900/30',
-            'relative group'
+            'relative group cursor-pointer',
+            isSelecting && 'select-none'
           )}
           style={{ minWidth: 'max-content' }}
-          onMouseDown={() => handleLineMouseDown(line.newLineNumber || line.oldLineNumber || 0)}
+          onMouseDown={(e) => handleLineMouseDown(line.newLineNumber || line.oldLineNumber || 0, e)}
           onMouseEnter={() => handleLineMouseEnter(line.newLineNumber || line.oldLineNumber || 0)}
           onMouseUp={handleLineMouseUp}
         >

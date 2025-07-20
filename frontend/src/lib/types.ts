@@ -1,8 +1,13 @@
-import {
+import type {
   DiffChunkType,
   ExecutionProcess,
   ExecutionProcessSummary,
   ProcessLogsResponse,
+  DiffComment,
+  CreateDiffCommentRequest,
+  UpdateDiffCommentRequest,
+  SubmitDraftCommentsRequest,
+  CommentStatus,
 } from 'shared/types.ts';
 
 export type AttemptData = {
@@ -37,3 +42,12 @@ export interface ConversationEntryDisplayType {
   processIndex: number;
   entryIndex: number;
 }
+
+// Re-export imported types
+export type {
+  DiffComment,
+  CreateDiffCommentRequest,
+  UpdateDiffCommentRequest,
+  SubmitDraftCommentsRequest,
+  CommentStatus,
+};

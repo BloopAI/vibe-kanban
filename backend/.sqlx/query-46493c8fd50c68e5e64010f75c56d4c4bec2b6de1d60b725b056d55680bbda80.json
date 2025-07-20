@@ -1,0 +1,98 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT \n                id as \"id!: String\",\n                project_id as \"project_id!: Uuid\",\n                task_id as \"task_id!: Uuid\",\n                attempt_id as \"attempt_id!: Uuid\",\n                file_path as \"file_path!: String\",\n                CAST(old_line_number AS INTEGER) as \"old_line_number: i32\",\n                CAST(new_line_number AS INTEGER) as \"new_line_number: i32\",\n                CAST(selection_start_line AS INTEGER) as \"selection_start_line!: i32\",\n                CAST(selection_end_line AS INTEGER) as \"selection_end_line!: i32\",\n                comment_text as \"comment_text!: String\",\n                status as \"status!: String\",\n                datetime(created_at) as \"created_at!: String\",\n                datetime(updated_at) as \"updated_at!: String\",\n                datetime(submitted_at) as \"submitted_at: String\"\n            FROM diff_comments WHERE id = ?1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: String",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "project_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "task_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "attempt_id!: Uuid",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "file_path!: String",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "old_line_number: i32",
+        "ordinal": 5,
+        "type_info": "Null"
+      },
+      {
+        "name": "new_line_number: i32",
+        "ordinal": 6,
+        "type_info": "Null"
+      },
+      {
+        "name": "selection_start_line!: i32",
+        "ordinal": 7,
+        "type_info": "Null"
+      },
+      {
+        "name": "selection_end_line!: i32",
+        "ordinal": 8,
+        "type_info": "Null"
+      },
+      {
+        "name": "comment_text!: String",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "status!: String",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: String",
+        "ordinal": 11,
+        "type_info": "Null"
+      },
+      {
+        "name": "updated_at!: String",
+        "ordinal": 12,
+        "type_info": "Null"
+      },
+      {
+        "name": "submitted_at: String",
+        "ordinal": 13,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      null,
+      null,
+      null,
+      null,
+      false,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "46493c8fd50c68e5e64010f75c56d4c4bec2b6de1d60b725b056d55680bbda80"
+}

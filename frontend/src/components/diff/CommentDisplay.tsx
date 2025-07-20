@@ -20,6 +20,7 @@ export const CommentDisplay: React.FC<CommentDisplayProps> = ({ comment }) => {
   const handleSaveEdit = async () => {
     const request: UpdateDiffCommentRequest = {
       comment_text: editText,
+      status: null,
     };
     await updateComment(comment.id, request);
     setIsEditing(false);

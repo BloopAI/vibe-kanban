@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { 
   DiffComment, 
   CreateDiffCommentRequest, 
@@ -17,7 +17,7 @@ interface DiffCommentsContextType {
   createComment: (request: CreateDiffCommentRequest) => Promise<DiffComment | null>;
   updateComment: (id: string, request: UpdateDiffCommentRequest) => Promise<DiffComment | null>;
   deleteComment: (id: string) => Promise<boolean>;
-  submitDraftComments: (commentIds: string[]) => Promise<{ comments: DiffComment[]; prompt: string } | null>;
+  submitDraftComments: (commentIds: string[], autoExecute?: boolean, formattedPrompt?: string) => Promise<{ comments: DiffComment[]; prompt: string; execution_started?: boolean; execution_message?: string } | null>;
   
   // UI state
   selectedLines: { file: string; start: number; end: number } | null;
@@ -121,9 +121,13 @@ export const DiffCommentsProvider: React.FC<DiffCommentsProviderProps> = ({ chil
     return false;
   }, []);
 
-  const submitDraftComments = useCallback(async (commentIds: string[]): Promise<{ comments: DiffComment[]; prompt: string } | null> => {
+  const submitDraftComments = useCallback(async (commentIds: string[], autoExecute: boolean = false, formattedPrompt?: string): Promise<{ comments: DiffComment[]; prompt: string; execution_started?: boolean; execution_message?: string } | null> => {
     try {
-      const request: SubmitDraftCommentsRequest = { comment_ids: commentIds };
+      const request: SubmitDraftCommentsRequest = { 
+        comment_ids: commentIds,
+        auto_execute: autoExecute,
+        formatted_prompt: formattedPrompt || null
+      };
       const response = await fetch('/api/diff-comments/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -131,13 +135,13 @@ export const DiffCommentsProvider: React.FC<DiffCommentsProviderProps> = ({ chil
       });
       const jsonResponse = await response.json();
       if (jsonResponse.success && jsonResponse.data) {
-        const { comments: submittedComments, prompt } = jsonResponse.data;
+        const { comments: submittedComments, prompt, execution_started, execution_message } = jsonResponse.data;
         // Update local state with submitted comments
         setComments(prev => prev.map(c => {
           const submitted = submittedComments.find((sc: DiffComment) => sc.id === c.id);
           return submitted || c;
         }));
-        return { comments: submittedComments, prompt };
+        return { comments: submittedComments, prompt, execution_started, execution_message };
       }
     } catch (err) {
       console.error('Failed to submit comments', err);
