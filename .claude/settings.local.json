@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo build:*)",
+      "Bash(pnpm backend:build:*)",
+      "Bash(npm run build:*)",
+      "Bash(pnpm generate-types:*)"
+    ],
+    "deny": []
+  }
+}

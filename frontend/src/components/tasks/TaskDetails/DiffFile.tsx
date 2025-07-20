@@ -284,6 +284,7 @@ function DiffFile({
                 section={section}
                 sectionIndex={sectionIndex}
                 setExpandedSections={setExpandedSections}
+                filePath={file.path}
               />
             ))}
           </div>

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            UPDATE diff_comments \n            SET comment_text = ?2, status = ?3, updated_at = datetime('now'), \n                submitted_at = CASE WHEN ?4 THEN datetime('now') ELSE submitted_at END\n            WHERE id = ?1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "ff492ca554adb0301f0602bc717c6dc1557057ba6545b6487692f8bdb3f52835"
+}

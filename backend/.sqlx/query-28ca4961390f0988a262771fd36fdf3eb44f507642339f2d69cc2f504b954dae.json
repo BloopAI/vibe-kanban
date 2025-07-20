@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                UPDATE diff_comments \n                SET status = 'submitted', submitted_at = datetime('now'), updated_at = datetime('now')\n                WHERE id = ?1 AND status = 'draft'\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "28ca4961390f0988a262771fd36fdf3eb44f507642339f2d69cc2f504b954dae"
+}

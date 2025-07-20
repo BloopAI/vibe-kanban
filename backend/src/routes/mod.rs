@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod config;
+pub mod diff_comments;
 pub mod filesystem;
 pub mod health;
 pub mod projects;

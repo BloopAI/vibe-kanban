@@ -50,17 +50,13 @@ export type CreateTask = { project_id: string, title: string, description: strin
 
 export type CreateTaskAndStart = { project_id: string, title: string, description: string | null, parent_task_attempt: string | null, executor: ExecutorConfig | null, attachments: Array<TaskAttachmentUpload>, };
 
-export type TaskAttachmentUpload = { file_name: string, file_type: string, data: string, };
-
-export type TaskAttachment = { id: string, task_id: string, file_name: string, file_type: string, file_size: number, created_at: Date, };
-
-export type TaskAttachmentInfo = { id: string, task_id: string, file_name: string, file_type: string, file_size: number, created_at: Date, };
-
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
 export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, created_at: string, updated_at: string, };
 
 export type TaskWithAttemptStatus = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, created_at: string, updated_at: string, has_in_progress_attempt: boolean, has_merged_attempt: boolean, last_attempt_failed: boolean, latest_attempt_executor: string | null, };
+
+export type TaskAttachmentUpload = { file_name: string, file_type: string, data: string, };
 
 export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_task_attempt: string | null, };
 
@@ -127,6 +123,20 @@ export type NormalizedEntry = { timestamp: string | null, entry_type: Normalized
 export type NormalizedEntryType = { "type": "user_message" } | { "type": "assistant_message" } | { "type": "tool_use", tool_name: string, action_type: ActionType, } | { "type": "system_message" } | { "type": "error_message" } | { "type": "thinking" };
 
 export type ActionType = { "action": "file_read", path: string, } | { "action": "file_write", path: string, } | { "action": "command_run", command: string, } | { "action": "search", query: string, } | { "action": "web_fetch", url: string, } | { "action": "task_create", description: string, } | { "action": "plan_presentation", plan: string, } | { "action": "other", description: string, };
+
+export type DiffComment = { id: string, project_id: string, task_id: string, attempt_id: string, file_path: string, old_line_number: number | null, new_line_number: number | null, selection_start_line: number, selection_end_line: number, comment_text: string, status: string, created_at: string, updated_at: string, submitted_at: string | null, };
+
+export type CommentStatus = "draft" | "submitted";
+
+export type CreateDiffCommentRequest = { project_id: string, task_id: string, attempt_id: string, file_path: string, old_line_number: number | null, new_line_number: number | null, selection_start_line: number, selection_end_line: number, comment_text: string, };
+
+export type UpdateDiffCommentRequest = { comment_text: string | null, status: CommentStatus | null, };
+
+export type SubmitDraftCommentsRequest = { comment_ids: Array<string>, auto_execute: boolean | null, formatted_prompt: string | null, };
+
+export type TaskAttachment = { id: string, task_id: string, file_name: string, file_type: string, file_size: bigint, created_at: string, };
+
+export type TaskAttachmentInfo = { id: string, task_id: string, file_name: string, file_type: string, file_size: bigint, created_at: string, };
 
 // Generated constants
 export const EXECUTOR_TYPES: string[] = [
