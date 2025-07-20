@@ -98,7 +98,7 @@ export type ExecutionProcessSummary = { id: string, task_attempt_id: string, pro
 
 export type ExecutionProcessStatus = "running" | "completed" | "failed" | "killed";
 
-export type ExecutionProcessType = "setupscript" | "codingagent" | "devserver";
+export type ExecutionProcessType = "setupscript" | "cleanupscript" | "codingagent" | "devserver";
 
 export type CreateExecutionProcess = { task_attempt_id: string, process_type: ExecutionProcessType, executor_type: string | null, command: string, args: string | null, working_directory: string, };
 

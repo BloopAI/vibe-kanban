@@ -283,7 +283,8 @@ const TaskDetailsProvider: FC<{
     return attemptData.processes.some(
       (process: ExecutionProcessSummary) =>
         (process.process_type === 'codingagent' ||
-          process.process_type === 'setupscript') &&
+          process.process_type === 'setupscript' ||
+          process.process_type === 'cleanupscript') &&
         process.status === 'running'
     );
   }, [selectedAttempt, attemptData.processes, isStopping]);
