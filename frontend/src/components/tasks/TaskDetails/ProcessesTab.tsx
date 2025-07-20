@@ -251,9 +251,9 @@ function ProcessesTab() {
                   <div>
                     <h3 className="font-medium text-sm mb-2">Stdout</h3>
                     <div className="bg-black text-green-400 p-3 rounded-md font-mono text-sm h-64 overflow-auto">
-                    <pre className="whitespace-pre-wrap">
-                    {selectedProcess.stdout}
-                    </pre>
+                      <pre className="whitespace-pre-wrap">
+                        {selectedProcess.stdout}
+                      </pre>
                     </div>
                   </div>
                 )}
@@ -262,9 +262,9 @@ function ProcessesTab() {
                   <div>
                     <h3 className="font-medium text-sm mb-2">Stderr</h3>
                     <div className="bg-black text-red-400 p-3 rounded-md font-mono text-sm h-64 overflow-auto">
-                    <pre className="whitespace-pre-wrap">
-                    {selectedProcess.stderr}
-                    </pre>
+                      <pre className="whitespace-pre-wrap">
+                        {selectedProcess.stderr}
+                      </pre>
                     </div>
                   </div>
                 )}
