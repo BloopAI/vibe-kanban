@@ -171,8 +171,8 @@ function ProcessesTab() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col">
-          <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
             <h2 className="text-lg font-semibold">Process Details</h2>
             <button
               onClick={() => setSelectedProcessId(null)}
@@ -182,7 +182,7 @@ function ProcessesTab() {
               Back to list
             </button>
           </div>
-          <div className="flex-1 overflow-auto p-4 pb-20">
+          <div className="flex-1 overflow-y-auto p-4 pb-20">
             {selectedProcess ? (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
