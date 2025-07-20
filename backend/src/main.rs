@@ -30,7 +30,7 @@ use app_state::AppState;
 use execution_monitor::execution_monitor;
 use models::{ApiResponse, Config};
 use routes::{
-    auth, config, diff_comments, filesystem, health, projects, stream, task_attempts, task_templates, tasks,
+    auth, config, diff_comments, filesystem, health, projects, stream, task_attempts, task_templates, tasks, terminal,
 };
 use services::PrMonitorService;
 
