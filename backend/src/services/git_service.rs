@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use git2::{
     build::CheckoutBuilder, BranchType, CherrypickOptions, Cred, DiffOptions, Error as GitError,
-    FetchOptions, RebaseOptions, RemoteCallbacks, Repository, WorktreeAddOptions,
+    FetchOptions, RemoteCallbacks, Repository, WorktreeAddOptions,
 };
 use regex;
 use tracing::{debug, info};
@@ -334,7 +334,7 @@ impl GitService {
         &self,
         worktree_path: &Path,
         new_base_branch: Option<&str>,
-        old_base_branch: Option<&str>,
+        old_base_branch: &str,
     ) -> Result<String, GitServiceError> {
         let worktree_repo = Repository::open(worktree_path)?;
         let main_repo = self.open_repo()?;
@@ -412,82 +412,43 @@ impl GitService {
 
         let signature = worktree_repo.signature()?;
 
-        // Perform smart rebase if old_base_branch is provided
-        if let Some(old_base_branch_name) = old_base_branch {
-            // Find the old base branch
-            let old_base_branch = if old_base_branch_name.starts_with("origin/") {
-                // Remote branch - get local tracking branch name
-                let remote_branch_name = old_base_branch_name.strip_prefix("origin/").unwrap();
-                main_repo
-                    .find_branch(remote_branch_name, BranchType::Local)
-                    .map_err(|_| GitServiceError::BranchNotFound(remote_branch_name.to_string()))?
-            } else {
-                // Local branch
-                main_repo
-                    .find_branch(old_base_branch_name, BranchType::Local)
-                    .map_err(|_| {
-                        GitServiceError::BranchNotFound(old_base_branch_name.to_string())
-                    })?
-            };
-
-            let old_base_commit_id = old_base_branch.get().peel_to_commit()?.id();
-
-            // Find commits unique to the task branch
-            let unique_commits = Self::find_unique_commits(
-                &worktree_repo,
-                task_branch_commit_id,
-                old_base_commit_id,
-                new_base_commit_id,
-            )?;
-
-            if !unique_commits.is_empty() {
-                // Reset HEAD to the new base branch
-                let new_base_commit = worktree_repo.find_commit(new_base_commit_id)?;
-                worktree_repo.reset(new_base_commit.as_object(), git2::ResetType::Hard, None)?;
-
-                // Cherry-pick the unique commits
-                Self::cherry_pick_commits(&worktree_repo, &unique_commits, &signature)?;
-            } else {
-                // No unique commits to rebase, just reset to new base
-                let new_base_commit = worktree_repo.find_commit(new_base_commit_id)?;
-                worktree_repo.reset(new_base_commit.as_object(), git2::ResetType::Hard, None)?;
-            }
+        // Find the old base branch
+        let old_base_branch_ref = if old_base_branch.starts_with("origin/") {
+            // Remote branch - get local tracking branch name
+            let remote_branch_name = old_base_branch.strip_prefix("origin/").unwrap();
+            main_repo
+                .find_branch(remote_branch_name, BranchType::Local)
+                .map_err(|_| GitServiceError::BranchNotFound(remote_branch_name.to_string()))?
         } else {
-            // Fall back to standard rebase for backward compatibility
-            let mut rebase_opts = RebaseOptions::new();
+            // Local branch
+            main_repo
+                .find_branch(old_base_branch, BranchType::Local)
+                .map_err(|_| {
+                    GitServiceError::BranchNotFound(old_base_branch.to_string())
+                })?
+        };
 
-            // Start the rebase
-            let head_annotated = worktree_repo.reference_to_annotated_commit(&head)?;
-            let base_annotated = worktree_repo.find_annotated_commit(new_base_commit_id)?;
+        let old_base_commit_id = old_base_branch_ref.get().peel_to_commit()?.id();
 
-            let mut rebase = worktree_repo.rebase(
-                Some(&head_annotated),
-                Some(&base_annotated),
-                None, // onto (use upstream if None)
-                Some(&mut rebase_opts),
-            )?;
+        // Find commits unique to the task branch
+        let unique_commits = Self::find_unique_commits(
+            &worktree_repo,
+            task_branch_commit_id,
+            old_base_commit_id,
+            new_base_commit_id,
+        )?;
 
-            // Process each rebase operation
-            while let Some(operation) = rebase.next() {
-                let _operation = operation?;
+        if !unique_commits.is_empty() {
+            // Reset HEAD to the new base branch
+            let new_base_commit = worktree_repo.find_commit(new_base_commit_id)?;
+            worktree_repo.reset(new_base_commit.as_object(), git2::ResetType::Hard, None)?;
 
-                // Check for conflicts
-                let index = worktree_repo.index()?;
-                if index.has_conflicts() {
-                    // For now, abort the rebase on conflicts
-                    rebase.abort()?;
-                    return Err(GitServiceError::MergeConflicts(
-                        "Rebase failed due to conflicts. Please resolve conflicts manually."
-                            .to_string(),
-                    ));
-                }
-
-                // Commit the rebased operation
-                rebase.commit(None, &signature, None)?;
-            }
-
-            // Finish the rebase
-            rebase.finish(None)?;
+            // Cherry-pick the unique commits
+            Self::cherry_pick_commits(&worktree_repo, &unique_commits, &signature)?;
+        } else {
+            // No unique commits to rebase, just reset to new base
+            let new_base_commit = worktree_repo.find_commit(new_base_commit_id)?;
+            worktree_repo.reset(new_base_commit.as_object(), git2::ResetType::Hard, None)?;
         }
 
         // Get the final commit ID after rebase

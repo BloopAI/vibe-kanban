@@ -540,7 +540,7 @@ impl TaskAttempt {
         worktree_path: &str,
         main_repo_path: &str,
         new_base_branch: Option<String>,
-        old_base_branch: Option<String>,
+        old_base_branch: String,
     ) -> Result<String, TaskAttemptError> {
         let git_service = GitService::new(main_repo_path)?;
         let worktree_path = Path::new(worktree_path);
@@ -549,7 +549,7 @@ impl TaskAttempt {
             .rebase_branch(
                 worktree_path,
                 new_base_branch.as_deref(),
-                old_base_branch.as_deref(),
+                &old_base_branch,
             )
             .map_err(TaskAttemptError::from)
     }
@@ -817,14 +817,6 @@ impl TaskAttempt {
         // Load context with full validation
         let ctx = TaskAttempt::load_context(pool, attempt_id, task_id, project_id).await?;
 
-        // Determine if we're rebasing to a different branch
-        let old_base_branch = if new_base_branch.is_some() {
-            // If rebasing to a different branch, pass the current base branch as old base
-            Some(ctx.task_attempt.base_branch.clone())
-        } else {
-            None
-        };
-
         // Use the stored base branch if no new base branch is provided
         let effective_base_branch =
             new_base_branch.or_else(|| Some(ctx.task_attempt.base_branch.clone()));
@@ -837,7 +829,7 @@ impl TaskAttempt {
             &worktree_path,
             &ctx.project.git_repo_path,
             effective_base_branch.clone(),
-            old_base_branch,
+            ctx.task_attempt.base_branch.clone(),
         )?;
 
         // Update the database with the new base branch if it was changed
