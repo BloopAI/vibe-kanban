@@ -964,14 +964,15 @@ async fn handle_coding_agent_completion(
 
         // Run cleanup script if configured
         if let Ok(Some(task)) = Task::find_by_id(&app_state.db_pool, task_attempt.task_id).await {
-            if let Err(e) = crate::services::process_service::ProcessService::run_cleanup_script_if_configured(
-                &app_state.db_pool,
-                app_state,
-                task_attempt_id,
-                task_attempt.task_id,
-                task.project_id,
-            )
-            .await
+            if let Err(e) =
+                crate::services::process_service::ProcessService::run_cleanup_script_if_configured(
+                    &app_state.db_pool,
+                    app_state,
+                    task_attempt_id,
+                    task_attempt.task_id,
+                    task.project_id,
+                )
+                .await
             {
                 tracing::error!(
                     "Failed to run cleanup script for attempt {}: {}",

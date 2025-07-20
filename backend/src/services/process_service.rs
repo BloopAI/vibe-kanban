@@ -33,9 +33,9 @@ impl ProcessService {
 
         if Self::should_run_cleanup_script(&project) {
             // Get worktree path
-            let task_attempt = TaskAttempt::find_by_id(pool, attempt_id)
-                .await?
-                .ok_or(TaskAttemptError::ValidationError("Task attempt not found".to_string()))?;
+            let task_attempt = TaskAttempt::find_by_id(pool, attempt_id).await?.ok_or(
+                TaskAttemptError::ValidationError("Task attempt not found".to_string()),
+            )?;
 
             tracing::info!(
                 "Running cleanup script for project {} in attempt {}",
