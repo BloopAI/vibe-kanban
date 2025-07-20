@@ -2,16 +2,7 @@
 
 ## Commands
 
-- `pnpm dev` - Start full development environment (backend + frontend)
-- `pnpm build` - Build both frontend and backend for production
-- `pnpm frontend:dev` - Start frontend only (Vite dev server on :3000)
-- `pnpm backend:dev` - Start backend only with hot reload (cargo-watch on :3001)
-- `pnpm backend:run` - Run backend without hot reload
-- `cd frontend && npm run lint` - Run ESLint on frontend
-- `cargo check --manifest-path backend/Cargo.toml` - Check backend
-- `cargo test --manifest-path backend/Cargo.toml` - Run backend tests
-- `cd frontend && npm test` - Run frontend tests (if configured)
-- `npm run prepare-db` - Solves compile issues related to SQLX macros
+Check package.json for available scripts
 
 ## Architecture
 
@@ -41,7 +32,7 @@ When working on any task that involves changes to the backend and the frontend, 
 
 # Testing your work
 
-Try to build the Typescript project after any frontend changes `npm run build`
+`npm run check` - runs cargo and tsc checks
 
 # Backend data models
 
