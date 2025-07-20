@@ -32,7 +32,9 @@ export function ProjectForm({
   const [gitRepoPath, setGitRepoPath] = useState(project?.git_repo_path || '');
   const [setupScript, setSetupScript] = useState(project?.setup_script ?? '');
   const [devScript, setDevScript] = useState(project?.dev_script ?? '');
-  const [cleanupScript, setCleanupScript] = useState(project?.cleanup_script ?? '');
+  const [cleanupScript, setCleanupScript] = useState(
+    project?.cleanup_script ?? ''
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showFolderPicker, setShowFolderPicker] = useState(false);

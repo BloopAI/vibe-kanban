@@ -1,14 +1,25 @@
 import { useContext, useState } from 'react';
-import { Play, Square, AlertCircle, CheckCircle, Clock, Cog, ArrowLeft } from 'lucide-react';
 import {
-  TaskAttemptDataContext,
-} from '@/components/context/taskDetailsContext.ts';
+  Play,
+  Square,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  Cog,
+  ArrowLeft,
+} from 'lucide-react';
+import { TaskAttemptDataContext } from '@/components/context/taskDetailsContext.ts';
 import { executionProcessesApi } from '@/lib/api.ts';
-import type { ExecutionProcessStatus, ExecutionProcessSummary } from 'shared/types.ts';
+import type {
+  ExecutionProcessStatus,
+  ExecutionProcessSummary,
+} from 'shared/types.ts';
 
 function ProcessesTab() {
   const { attemptData, setAttemptData } = useContext(TaskAttemptDataContext);
-  const [selectedProcessId, setSelectedProcessId] = useState<string | null>(null);
+  const [selectedProcessId, setSelectedProcessId] = useState<string | null>(
+    null
+  );
   const [loadingProcessId, setLoadingProcessId] = useState<string | null>(null);
 
   const getStatusIcon = (status: ExecutionProcessStatus) => {
@@ -50,7 +61,7 @@ function ProcessesTab() {
     try {
       setLoadingProcessId(processId);
       const result = await executionProcessesApi.getDetails(processId);
-      
+
       if (result !== undefined) {
         setAttemptData((prev) => ({
           ...prev,
@@ -69,15 +80,15 @@ function ProcessesTab() {
 
   const handleProcessClick = async (process: ExecutionProcessSummary) => {
     setSelectedProcessId(process.id);
-    
+
     // If we don't have details for this process, fetch them
     if (!attemptData.runningProcessDetails[process.id]) {
       await fetchProcessDetails(process.id);
     }
   };
 
-  const selectedProcess = selectedProcessId 
-    ? attemptData.runningProcessDetails[selectedProcessId] 
+  const selectedProcess = selectedProcessId
+    ? attemptData.runningProcessDetails[selectedProcessId]
     : null;
 
   if (!attemptData.processes || attemptData.processes.length === 0) {
@@ -100,7 +111,9 @@ function ProcessesTab() {
               <div
                 key={process.id}
                 className={`border rounded-lg p-4 hover:bg-muted/30 cursor-pointer transition-colors ${
-                  loadingProcessId === process.id ? 'opacity-50 cursor-wait' : ''
+                  loadingProcessId === process.id
+                    ? 'opacity-50 cursor-wait'
+                    : ''
                 }`}
                 onClick={() => handleProcessClick(process)}
               >
@@ -109,10 +122,11 @@ function ProcessesTab() {
                     {getStatusIcon(process.status)}
                     <div>
                       <h3 className="font-medium text-sm">
-                        {process.process_type} 
+                        {process.process_type}
                         {process.executor_type && (
                           <span className="text-muted-foreground">
-                            {' '}({process.executor_type})
+                            {' '}
+                            ({process.executor_type})
                           </span>
                         )}
                       </h3>
@@ -175,25 +189,43 @@ function ProcessesTab() {
                   <div>
                     <h3 className="font-medium text-sm mb-2">Process Info</h3>
                     <div className="space-y-1 text-sm">
-                      <p><span className="font-medium">Type:</span> {selectedProcess.process_type}</p>
-                      <p><span className="font-medium">Status:</span> {selectedProcess.status}</p>
+                      <p>
+                        <span className="font-medium">Type:</span>{' '}
+                        {selectedProcess.process_type}
+                      </p>
+                      <p>
+                        <span className="font-medium">Status:</span>{' '}
+                        {selectedProcess.status}
+                      </p>
                       {selectedProcess.executor_type && (
-                        <p><span className="font-medium">Executor:</span> {selectedProcess.executor_type}</p>
+                        <p>
+                          <span className="font-medium">Executor:</span>{' '}
+                          {selectedProcess.executor_type}
+                        </p>
                       )}
-                      <p><span className="font-medium">Exit Code:</span> {selectedProcess.exit_code?.toString() ?? 'N/A'}</p>
+                      <p>
+                        <span className="font-medium">Exit Code:</span>{' '}
+                        {selectedProcess.exit_code?.toString() ?? 'N/A'}
+                      </p>
                     </div>
                   </div>
                   <div>
                     <h3 className="font-medium text-sm mb-2">Timing</h3>
                     <div className="space-y-1 text-sm">
-                      <p><span className="font-medium">Started:</span> {formatDate(selectedProcess.started_at)}</p>
+                      <p>
+                        <span className="font-medium">Started:</span>{' '}
+                        {formatDate(selectedProcess.started_at)}
+                      </p>
                       {selectedProcess.completed_at && (
-                        <p><span className="font-medium">Completed:</span> {formatDate(selectedProcess.completed_at)}</p>
+                        <p>
+                          <span className="font-medium">Completed:</span>{' '}
+                          {formatDate(selectedProcess.completed_at)}
+                        </p>
                       )}
                     </div>
                   </div>
                 </div>
-                
+
                 <div>
                   <h3 className="font-medium text-sm mb-2">Command</h3>
                   <div className="bg-muted/50 p-3 rounded-md font-mono text-sm">
@@ -207,7 +239,9 @@ function ProcessesTab() {
                 </div>
 
                 <div>
-                  <h3 className="font-medium text-sm mb-2">Working Directory</h3>
+                  <h3 className="font-medium text-sm mb-2">
+                    Working Directory
+                  </h3>
                   <div className="bg-muted/50 p-3 rounded-md font-mono text-sm">
                     {selectedProcess.working_directory}
                   </div>
@@ -217,7 +251,9 @@ function ProcessesTab() {
                   <div>
                     <h3 className="font-medium text-sm mb-2">Stdout</h3>
                     <div className="bg-black text-green-400 p-3 rounded-md font-mono text-sm max-h-64 overflow-auto">
-                      <pre className="whitespace-pre-wrap">{selectedProcess.stdout}</pre>
+                      <pre className="whitespace-pre-wrap">
+                        {selectedProcess.stdout}
+                      </pre>
                     </div>
                   </div>
                 )}
@@ -226,7 +262,9 @@ function ProcessesTab() {
                   <div>
                     <h3 className="font-medium text-sm mb-2">Stderr</h3>
                     <div className="bg-black text-red-400 p-3 rounded-md font-mono text-sm max-h-64 overflow-auto">
-                      <pre className="whitespace-pre-wrap">{selectedProcess.stderr}</pre>
+                      <pre className="whitespace-pre-wrap">
+                        {selectedProcess.stderr}
+                      </pre>
                     </div>
                   </div>
                 )}

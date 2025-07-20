@@ -38,9 +38,9 @@ export function TaskDetailsPanel({
   const [showEditorDialog, setShowEditorDialog] = useState(false);
 
   // Tab and collapsible state
-  const [activeTab, setActiveTab] = useState<'logs' | 'diffs' | 'related' | 'processes'>(
-    'logs'
-  );
+  const [activeTab, setActiveTab] = useState<
+    'logs' | 'diffs' | 'related' | 'processes'
+  >('logs');
 
   // Reset to logs tab when task changes
   useEffect(() => {
