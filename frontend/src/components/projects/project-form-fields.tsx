@@ -222,8 +222,8 @@ export function ProjectFormFields({
         />
         <p className="text-sm text-muted-foreground">
           This script will run after coding agent execution is complete. Use it
-          for cleanup tasks like stopping processes, clearing caches, or other
-          post-execution cleanup.
+          for quality assurance tasks like running linters, formatters, tests,
+          or other validation steps.
         </p>
       </div>
 
