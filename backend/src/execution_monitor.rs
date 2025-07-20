@@ -1064,9 +1064,11 @@ async fn handle_cleanup_completion(
 
     // Auto-commit changes after successful cleanup script execution
     if success {
-        if let Ok(Some(task_attempt)) = TaskAttempt::find_by_id(&app_state.db_pool, task_attempt_id).await {
+        if let Ok(Some(task_attempt)) =
+            TaskAttempt::find_by_id(&app_state.db_pool, task_attempt_id).await
+        {
             let commit_message = format!("Task attempt {} - Post-cleanup changes", task_attempt_id);
-            
+
             if let Err(e) = commit_execution_changes(
                 &task_attempt.worktree_path,
                 task_attempt_id,
