@@ -87,19 +87,19 @@ pub async fn normalized_logs_stream(
                             // Send all entries after since_batch_id immediately
                             let start_entry = since_batch as usize;
                             let catch_up_entries = normalized.entries.get(start_entry..).unwrap_or(&[]);
-                            
+
                             for (i, entry) in catch_up_entries.iter().enumerate() {
                                 let batch_data = BatchData {
                                     batch_id: since_batch + 1 + i as u64,
                                     patches: vec![serde_json::json!({
                                         "op": "add",
-                                        "path": "/entries/-", 
+                                        "path": "/entries/-",
                                         "value": entry
                                     })],
                                 };
                                 yield Ok(Event::default().event("patch").data(serde_json::to_string(&batch_data).unwrap_or_default()));
                             }
-                            
+
                                 // Update cursors to current state
                                 last_entry_count = normalized.entries.len();
                                 fallback_batch_id = since_batch + 1 + catch_up_entries.len() as u64;
