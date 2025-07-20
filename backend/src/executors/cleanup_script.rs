@@ -14,12 +14,6 @@ pub struct CleanupScriptExecutor {
     pub script: String,
 }
 
-impl CleanupScriptExecutor {
-    pub fn new(script: String) -> Self {
-        Self { script }
-    }
-}
-
 #[async_trait]
 impl Executor for CleanupScriptExecutor {
     async fn spawn(
