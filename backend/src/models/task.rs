@@ -97,7 +97,7 @@ impl Task {
         ON ep.task_attempt_id = ta.id
      WHERE ta.task_id       = t.id
        AND ep.status        = 'running'
-       AND ep.process_type IN ('setupscript','codingagent')
+       AND ep.process_type IN ('setupscript','cleanupscript','codingagent')
      LIMIT 1
   ) THEN 1 ELSE 0 END            AS "has_in_progress_attempt!: i64",
 
@@ -115,7 +115,7 @@ impl Task {
       JOIN execution_processes ep
         ON ep.task_attempt_id = ta.id
      WHERE ta.task_id       = t.id
-       AND ep.process_type IN ('setupscript','codingagent')
+     AND ep.process_type IN ('setupscript','cleanupscript','codingagent')
      ORDER BY ep.created_at DESC
      LIMIT 1
   ) IN ('failed','killed') THEN 1 ELSE 0 END
