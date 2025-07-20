@@ -5,7 +5,7 @@ import { Loader } from '@/components/ui/loader';
 import { CommentInput } from '@/components/diff/CommentInput';
 import { CommentsPanel } from '@/components/diff/CommentsPanel';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, X } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 
 function DiffTab() {
   const { diff, diffLoading, diffError } = useContext(TaskDiffContext);
