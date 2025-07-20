@@ -105,7 +105,7 @@ function ProcessesTab() {
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {!selectedProcessId ? (
-        <div className="flex-1 overflow-auto px-4">
+        <div className="flex-1 overflow-auto px-4 pb-20">
           <div className="space-y-3">
             {attemptData.processes.map((process) => (
               <div
@@ -171,8 +171,8 @@ function ProcessesTab() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col">
-          <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
             <h2 className="text-lg font-semibold">Process Details</h2>
             <button
               onClick={() => setSelectedProcessId(null)}
@@ -182,7 +182,7 @@ function ProcessesTab() {
               Back to list
             </button>
           </div>
-          <div className="flex-1 overflow-auto p-4">
+          <div className="flex-1 overflow-y-auto p-4 pb-20">
             {selectedProcess ? (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -250,10 +250,10 @@ function ProcessesTab() {
                 {selectedProcess.stdout && (
                   <div>
                     <h3 className="font-medium text-sm mb-2">Stdout</h3>
-                    <div className="bg-black text-green-400 p-3 rounded-md font-mono text-sm max-h-64 overflow-auto">
-                      <pre className="whitespace-pre-wrap">
-                        {selectedProcess.stdout}
-                      </pre>
+                    <div className="bg-black text-green-400 p-3 rounded-md font-mono text-sm h-64 overflow-auto">
+                    <pre className="whitespace-pre-wrap">
+                    {selectedProcess.stdout}
+                    </pre>
                     </div>
                   </div>
                 )}
@@ -261,10 +261,10 @@ function ProcessesTab() {
                 {selectedProcess.stderr && (
                   <div>
                     <h3 className="font-medium text-sm mb-2">Stderr</h3>
-                    <div className="bg-black text-red-400 p-3 rounded-md font-mono text-sm max-h-64 overflow-auto">
-                      <pre className="whitespace-pre-wrap">
-                        {selectedProcess.stderr}
-                      </pre>
+                    <div className="bg-black text-red-400 p-3 rounded-md font-mono text-sm h-64 overflow-auto">
+                    <pre className="whitespace-pre-wrap">
+                    {selectedProcess.stderr}
+                    </pre>
                     </div>
                   </div>
                 )}
