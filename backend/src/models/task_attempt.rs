@@ -546,11 +546,7 @@ impl TaskAttempt {
         let worktree_path = Path::new(worktree_path);
 
         git_service
-            .rebase_branch(
-                worktree_path,
-                new_base_branch.as_deref(),
-                &old_base_branch,
-            )
+            .rebase_branch(worktree_path, new_base_branch.as_deref(), &old_base_branch)
             .map_err(TaskAttemptError::from)
     }
 

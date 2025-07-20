@@ -423,9 +423,7 @@ impl GitService {
             // Local branch
             main_repo
                 .find_branch(old_base_branch, BranchType::Local)
-                .map_err(|_| {
-                    GitServiceError::BranchNotFound(old_base_branch.to_string())
-                })?
+                .map_err(|_| GitServiceError::BranchNotFound(old_base_branch.to_string()))?
         };
 
         let old_base_commit_id = old_base_branch_ref.get().peel_to_commit()?.id();
