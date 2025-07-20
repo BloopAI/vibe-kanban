@@ -10,6 +10,7 @@ import type { TaskWithAttemptStatus } from 'shared/types';
 import DiffTab from '@/components/tasks/TaskDetails/DiffTab.tsx';
 import LogsTab from '@/components/tasks/TaskDetails/LogsTab.tsx';
 import RelatedTasksTab from '@/components/tasks/TaskDetails/RelatedTasksTab.tsx';
+import ProcessesTab from '@/components/tasks/TaskDetails/ProcessesTab.tsx';
 import DeleteFileConfirmationDialog from '@/components/tasks/DeleteFileConfirmationDialog.tsx';
 import TabNavigation from '@/components/tasks/TaskDetails/TabNavigation.tsx';
 import CollapsibleToolbar from '@/components/tasks/TaskDetails/CollapsibleToolbar.tsx';
@@ -37,7 +38,7 @@ export function TaskDetailsPanel({
   const [showEditorDialog, setShowEditorDialog] = useState(false);
 
   // Tab and collapsible state
-  const [activeTab, setActiveTab] = useState<'logs' | 'diffs' | 'related'>(
+  const [activeTab, setActiveTab] = useState<'logs' | 'diffs' | 'related' | 'processes'>(
     'logs'
   );
 
@@ -101,6 +102,8 @@ export function TaskDetailsPanel({
                   <DiffTab />
                 ) : activeTab === 'related' ? (
                   <RelatedTasksTab />
+                ) : activeTab === 'processes' ? (
+                  <ProcessesTab />
                 ) : (
                   <LogsTab />
                 )}
