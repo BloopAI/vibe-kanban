@@ -24,11 +24,7 @@ RUN cargo build --release --manifest-path backend/Cargo.toml
 
 COPY frontend/ ./frontend/
 COPY shared/ ./shared/
-RUN pnpm run frontend:build
-
-# Copy scripts for build
-COPY scripts/ ./scripts/
-RUN pnpm run backend:build
+RUN cd frontend && pnpm run frontend:build
 
 # Expose port
 ENV BACKEND_PORT=8000
