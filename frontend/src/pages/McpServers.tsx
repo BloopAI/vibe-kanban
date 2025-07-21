@@ -18,7 +18,11 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
-import { EXECUTOR_TYPES, EXECUTOR_LABELS } from 'shared/types';
+import {
+  EXECUTOR_TYPES,
+  EXECUTOR_LABELS,
+  MCP_SUPPORTED_EXECUTORS,
+} from 'shared/types';
 import { useConfig } from '@/components/config-provider';
 import { mcpServersApi } from '../lib/api';
 
@@ -35,7 +39,12 @@ export function McpServers() {
   // Initialize selected MCP executor when config loads
   useEffect(() => {
     if (config?.executor?.type && !selectedMcpExecutor) {
-      setSelectedMcpExecutor(config.executor.type);
+      // If current executor supports MCP, use it; otherwise use first available MCP executor
+      if (MCP_SUPPORTED_EXECUTORS.includes(config.executor.type)) {
+        setSelectedMcpExecutor(config.executor.type);
+      } else {
+        setSelectedMcpExecutor(MCP_SUPPORTED_EXECUTORS[0] || 'claude');
+      }
     }
   }, [config?.executor?.type, selectedMcpExecutor]);
 
@@ -314,7 +323,9 @@ export function McpServers() {
                   <SelectValue placeholder="Select executor" />
                 </SelectTrigger>
                 <SelectContent>
-                  {EXECUTOR_TYPES.map((type) => (
+                  {EXECUTOR_TYPES.filter((type) =>
+                    MCP_SUPPORTED_EXECUTORS.includes(type)
+                  ).map((type) => (
                     <SelectItem key={type} value={type}>
                       {EXECUTOR_LABELS[type]}
                     </SelectItem>
