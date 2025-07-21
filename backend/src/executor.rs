@@ -1001,7 +1001,7 @@ mod tests {
             .normalize_logs(claude_logs, "/tmp/test-worktree")
             .unwrap();
 
-        assert_eq!(result.executor_type, "Claude");
+        assert_eq!(result.executor_type, "Claude Code");
         assert_eq!(
             result.session_id,
             Some("499dcce4-04aa-4a3e-9e0c-ea0228fa87c9".to_string())

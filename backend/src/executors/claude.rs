@@ -54,7 +54,7 @@ impl ClaudeExecutor {
     /// Create a new ClaudeExecutor with default settings
     pub fn new() -> Self {
         Self {
-            executor_type: "Claude".to_string(),
+            executor_type: "Claude Code".to_string(),
             command: "npx -y @anthropic-ai/claude-code@latest -p --dangerously-skip-permissions --verbose --output-format=stream-json".to_string(),
         }
     }

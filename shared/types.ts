@@ -141,8 +141,8 @@ export const EDITOR_TYPES: EditorType[] = [
 
 export const EXECUTOR_LABELS: Record<string, string> = {
     "echo": "Echo (Test Mode)",
-    "claude": "Claude",
-    "claude-plan": "Claude Plan",
+    "claude": "Claude Code",
+    "claude-plan": "Claude Code Plan",
     "amp": "Amp",
     "gemini": "Gemini",
     "charm-opencode": "Charm Opencode",
