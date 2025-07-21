@@ -1,5 +1,4 @@
 import {
-  Copy,
   ExternalLink,
   GitBranch as GitBranchIcon,
   GitPullRequest,
@@ -139,7 +138,6 @@ function CurrentAttempt({
   const [selectedRebaseBranch, setSelectedRebaseBranch] = useState<string>('');
   const [showStopConfirmation, setShowStopConfirmation] = useState(false);
   const [isApprovingPlan, setIsApprovingPlan] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   const processedDevServerLogs = useMemo(() => {
     if (!devServerDetails) return 'No output yet...';
@@ -461,8 +459,6 @@ function CurrentAttempt({
   const handleCopyWorktreePath = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(selectedAttempt.worktree_path);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy worktree path:', err);
     }
@@ -581,24 +577,6 @@ function CurrentAttempt({
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
             Worktree Path
           </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCopyWorktreePath}
-                  className="h-6 px-2 text-xs hover:bg-muted gap-1"
-                >
-                  <Copy className="h-3 w-3" />
-                  {copied ? 'Copied!' : 'Copy'}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Copy worktree path</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
           <Button
             variant="ghost"
             size="sm"
