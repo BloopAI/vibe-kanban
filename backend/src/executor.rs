@@ -7,8 +7,8 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use crate::executors::{
-    AmpExecutor, CCRExecutor, CharmOpencodeExecutor, ClaudeExecutor, EchoExecutor, GeminiExecutor,
-    SetupScriptExecutor, SstOpencodeExecutor,
+    AiderExecutor, AmpExecutor, CCRExecutor, CharmOpencodeExecutor, ClaudeExecutor, EchoExecutor,
+    GeminiExecutor, SetupScriptExecutor, SstOpencodeExecutor,
 };
 
 // Constants for database streaming - fast for near-real-time updates
@@ -409,6 +409,7 @@ pub enum ExecutorConfig {
     CharmOpencode,
     #[serde(alias = "opencode")]
     SstOpencode,
+    Aider,
 }
 
 // Constants for frontend
@@ -432,6 +433,7 @@ impl FromStr for ExecutorConfig {
             "charm-opencode" => Ok(ExecutorConfig::CharmOpencode),
             "claude-code-router" => Ok(ExecutorConfig::ClaudeCodeRouter),
             "sst-opencode" => Ok(ExecutorConfig::SstOpencode),
+            "aider" => Ok(ExecutorConfig::Aider),
             "setup-script" => Ok(ExecutorConfig::SetupScript {
                 script: "setup script".to_string(),
             }),
@@ -451,6 +453,7 @@ impl ExecutorConfig {
             ExecutorConfig::ClaudeCodeRouter => Box::new(CCRExecutor::new()),
             ExecutorConfig::CharmOpencode => Box::new(CharmOpencodeExecutor),
             ExecutorConfig::SstOpencode => Box::new(SstOpencodeExecutor::new()),
+            ExecutorConfig::Aider => Box::new(AiderExecutor::new()),
             ExecutorConfig::SetupScript { script } => {
                 Box::new(SetupScriptExecutor::new(script.clone()))
             }
@@ -484,6 +487,7 @@ impl ExecutorConfig {
                     dirs::config_dir().map(|config| config.join("opencode").join("opencode.json"))
                 }
             }
+            ExecutorConfig::Aider => None,
             ExecutorConfig::SetupScript { .. } => None,
         }
     }
@@ -499,6 +503,7 @@ impl ExecutorConfig {
             ExecutorConfig::Amp => Some(vec!["amp", "mcpServers"]), // Nested path for Amp
             ExecutorConfig::Gemini => Some(vec!["mcpServers"]),
             ExecutorConfig::ClaudeCodeRouter => Some(vec!["mcpServers"]),
+            ExecutorConfig::Aider => None, // Aider doesn't support MCP. https://github.com/Aider-AI/aider/issues/3314
             ExecutorConfig::SetupScript { .. } => None, // Setup scripts don't support MCP
         }
     }
@@ -507,7 +512,7 @@ impl ExecutorConfig {
     pub fn supports_mcp(&self) -> bool {
         !matches!(
             self,
-            ExecutorConfig::Echo | ExecutorConfig::SetupScript { .. }
+            ExecutorConfig::Echo | ExecutorConfig::Aider | ExecutorConfig::SetupScript { .. }
         )
     }
 
@@ -522,6 +527,7 @@ impl ExecutorConfig {
             ExecutorConfig::Amp => "Amp",
             ExecutorConfig::Gemini => "Gemini",
             ExecutorConfig::ClaudeCodeRouter => "Claude Code Router",
+            ExecutorConfig::Aider => "Aider",
             ExecutorConfig::SetupScript { .. } => "Setup Script",
         }
     }
@@ -538,6 +544,7 @@ impl std::fmt::Display for ExecutorConfig {
             ExecutorConfig::SstOpencode => "sst-opencode",
             ExecutorConfig::CharmOpencode => "charm-opencode",
             ExecutorConfig::ClaudeCodeRouter => "claude-code-router",
+            ExecutorConfig::Aider => "aider",
             ExecutorConfig::SetupScript { .. } => "setup-script",
         };
         write!(f, "{}", s)
@@ -858,7 +865,7 @@ fn parse_session_id_from_line(line: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::executors::{AmpExecutor, ClaudeExecutor};
+    use crate::executors::{AiderExecutor, AmpExecutor, ClaudeExecutor};
 
     #[test]
     fn test_parse_claude_session_id() {
@@ -1039,5 +1046,31 @@ mod tests {
         let task_tool_use = task_tool_use.unwrap();
         // Should be the task description, not "Tool: Task with input: ..."
         assert_eq!(task_tool_use.content, "Find vibe-kanban projects");
+    }
+
+    #[test]
+    fn test_aider_executor_config_integration() {
+        // Test that Aider executor can be created from ExecutorConfig
+        let aider_config = ExecutorConfig::Aider;
+        let _executor = aider_config.create_executor();
+
+        // Test that it has the correct display name
+        assert_eq!(aider_config.display_name(), "Aider");
+        assert_eq!(aider_config.to_string(), "aider");
+
+        // Test that it doesn't support MCP
+        assert!(!aider_config.supports_mcp());
+        assert_eq!(aider_config.mcp_attribute_path(), None);
+
+        // Test that it has the correct config path
+        let config_path = aider_config.config_path();
+        assert!(config_path.is_none());
+
+        // Test that we can cast it to an AiderExecutor
+        // This mainly tests that the Box<dyn Executor> was created correctly
+        let aider_executor = AiderExecutor::new();
+        let result = aider_executor.normalize_logs("", "/tmp");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().executor_type, "aider");
     }
 }

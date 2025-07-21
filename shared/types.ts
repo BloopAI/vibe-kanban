@@ -22,7 +22,7 @@ export type SoundConstants = { sound_files: Array<SoundFile>, sound_labels: Arra
 
 export type ConfigConstants = { editor: EditorConstants, sound: SoundConstants, };
 
-export type ExecutorConfig = { "type": "echo" } | { "type": "claude" } | { "type": "claude-plan" } | { "type": "amp" } | { "type": "gemini" } | { "type": "setup-script", script: string, } | { "type": "claude-code-router" } | { "type": "charm-opencode" } | { "type": "sst-opencode" };
+export type ExecutorConfig = { "type": "echo" } | { "type": "claude" } | { "type": "claude-plan" } | { "type": "amp" } | { "type": "gemini" } | { "type": "setup-script", script: string, } | { "type": "claude-code-router" } | { "type": "charm-opencode" } | { "type": "sst-opencode" } | { "type": "aider" };
 
 export type ExecutorConstants = { executor_types: Array<ExecutorConfig>, executor_labels: Array<string>, };
 
@@ -127,7 +127,8 @@ export const EXECUTOR_TYPES: string[] = [
     "gemini",
     "charm-opencode",
     "claude-code-router",
-    "sst-opencode"
+    "sst-opencode",
+    "aider"
 ];
 
 export const EDITOR_TYPES: EditorType[] = [
@@ -147,7 +148,8 @@ export const EXECUTOR_LABELS: Record<string, string> = {
     "gemini": "Gemini",
     "charm-opencode": "Charm Opencode",
     "claude-code-router": "Claude Code Router",
-    "sst-opencode": "SST Opencode"
+    "sst-opencode": "SST Opencode",
+    "aider": "Aider"
 };
 
 export const EDITOR_LABELS: Record<string, string> = {
