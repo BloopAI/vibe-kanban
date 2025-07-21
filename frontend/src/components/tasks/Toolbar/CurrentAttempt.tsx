@@ -1,4 +1,5 @@
 import {
+  Copy,
   ExternalLink,
   GitBranch as GitBranchIcon,
   GitPullRequest,
@@ -138,6 +139,7 @@ function CurrentAttempt({
   const [selectedRebaseBranch, setSelectedRebaseBranch] = useState<string>('');
   const [showStopConfirmation, setShowStopConfirmation] = useState(false);
   const [isApprovingPlan, setIsApprovingPlan] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const processedDevServerLogs = useMemo(() => {
     if (!devServerDetails) return 'No output yet...';
@@ -456,6 +458,16 @@ function CurrentAttempt({
     return getEditorDisplayName(config.editor.editor_type);
   }, [config?.editor?.editor_type]);
 
+  const handleCopyWorktreePath = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(selectedAttempt.worktree_path);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy worktree path:', err);
+    }
+  }, [selectedAttempt.worktree_path]);
+
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-4 gap-3 items-start">
@@ -569,6 +581,24 @@ function CurrentAttempt({
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
             Worktree Path
           </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCopyWorktreePath}
+                  className="h-6 px-2 text-xs hover:bg-muted gap-1"
+                >
+                  <Copy className="h-3 w-3" />
+                  {copied ? 'Copied!' : 'Copy'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Copy worktree path</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <Button
             variant="ghost"
             size="sm"
@@ -579,7 +609,11 @@ function CurrentAttempt({
             Open in {editorDisplayName}
           </Button>
         </div>
-        <div className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded break-all">
+        <div 
+          className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded break-all cursor-pointer hover:bg-muted/80 transition-colors"
+          onClick={handleCopyWorktreePath}
+          title="Click to copy worktree path"
+        >
           {selectedAttempt.worktree_path}
         </div>
       </div>
