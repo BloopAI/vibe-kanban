@@ -295,7 +295,7 @@ pub trait Executor: Send + Sync {
     }
 
     #[allow(clippy::result_large_err)]
-    fn setup_streaming(
+    async fn setup_streaming(
         &self,
         child: &mut command_runner::CommandProcess,
         pool: &sqlx::SqlitePool,
@@ -304,6 +304,7 @@ pub trait Executor: Send + Sync {
     ) -> Result<(), ExecutorError> {
         let streams = child
             .stream()
+            .await
             .expect("Failed to get stdio from child process");
         let stdout = streams
             .stdout
@@ -343,7 +344,7 @@ pub trait Executor: Send + Sync {
         worktree_path: &str,
     ) -> Result<command_runner::CommandProcess, ExecutorError> {
         let mut child = self.spawn(pool, task_id, worktree_path).await?;
-        Self::setup_streaming(self, &mut child, pool, attempt_id, execution_process_id)?;
+        Self::setup_streaming(self, &mut child, pool, attempt_id, execution_process_id).await?;
         Ok(child)
     }
 
@@ -362,7 +363,7 @@ pub trait Executor: Send + Sync {
         let mut child = self
             .spawn_followup(pool, task_id, session_id, prompt, worktree_path)
             .await?;
-        Self::setup_streaming(self, &mut child, pool, attempt_id, execution_process_id)?;
+        Self::setup_streaming(self, &mut child, pool, attempt_id, execution_process_id).await?;
         Ok(child)
     }
 }
