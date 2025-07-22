@@ -1,11 +1,11 @@
 use std::path::Path;
 
 use async_trait::async_trait;
-use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
+    command_runner::CommandProcess,
     executor::{
         ActionType, Executor, ExecutorError, NormalizedConversation, NormalizedEntry,
         NormalizedEntryType,
@@ -193,15 +193,11 @@ impl Executor for AmpExecutor {
         pool: &sqlx::SqlitePool,
         task_id: Uuid,
         worktree_path: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    ) -> Result<CommandProcess, ExecutorError> {
         // Get the task to fetch its description
         let task = Task::find_by_id(pool, task_id)
             .await?
             .ok_or(ExecutorError::TaskNotFound)?;
-
-        use std::process::Stdio;
-
-        use tokio::{io::AsyncWriteExt, process::Command};
 
         let prompt = if let Some(task_description) = task.description {
             format!(
@@ -225,32 +221,22 @@ Task title: {}"#,
         // --format=jsonl is deprecated in latest versions of Amp CLI
         let amp_command = "npx @sourcegraph/amp@0.0.1752148945-gd8844f --format=jsonl";
 
-        let mut command = Command::new(shell_cmd);
+        let mut command = crate::command_runner::CommandRunner::new_local();
         command
-            .kill_on_drop(true)
-            .stdin(Stdio::piped()) // <-- open a pipe
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .current_dir(worktree_path)
+            .command(shell_cmd)
             .arg(shell_arg)
-            .arg(amp_command);
+            .arg(amp_command)
+            .stdin(&prompt)
+            .working_dir(worktree_path);
 
-        let mut child = command
-            .group_spawn() // Create new process group so we can kill entire tree
-            .map_err(|e| {
-                crate::executor::SpawnContext::from_command(&command, "Amp")
-                    .with_task(task_id, Some(task.title.clone()))
-                    .with_context("Amp CLI execution for new task")
-                    .spawn_error(e)
-            })?;
+        let proc = command.start().await.map_err(|e| {
+            crate::executor::SpawnContext::from_command(&command, "Amp")
+                .with_task(task_id, Some(task.title.clone()))
+                .with_context("Amp CLI execution for new task")
+                .spawn_error(e)
+        })?;
 
-        // feed the prompt in, then close the pipe so `amp` sees EOF
-        if let Some(mut stdin) = child.inner().stdin.take() {
-            stdin.write_all(prompt.as_bytes()).await.unwrap();
-            stdin.shutdown().await.unwrap(); // or `drop(stdin);`
-        }
-
-        Ok(child)
+        Ok(proc)
     }
 
     async fn spawn_followup(
@@ -260,11 +246,7 @@ Task title: {}"#,
         session_id: &str,
         prompt: &str,
         worktree_path: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
-        use std::process::Stdio;
-
-        use tokio::{io::AsyncWriteExt, process::Command};
-
+    ) -> Result<CommandProcess, ExecutorError> {
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
         let amp_command = format!(
@@ -272,17 +254,15 @@ Task title: {}"#,
             session_id
         );
 
-        let mut command = Command::new(shell_cmd);
+        let mut command = crate::command_runner::CommandRunner::new_local();
         command
-            .kill_on_drop(true)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .current_dir(worktree_path)
+            .command(shell_cmd)
             .arg(shell_arg)
-            .arg(&amp_command);
+            .arg(&amp_command)
+            .stdin(prompt)
+            .working_dir(worktree_path);
 
-        let mut child = command.group_spawn().map_err(|e| {
+        let proc = command.start().await.map_err(|e| {
             crate::executor::SpawnContext::from_command(&command, "Amp")
                 .with_context(format!(
                     "Amp CLI followup execution for thread {}",
@@ -291,27 +271,7 @@ Task title: {}"#,
                 .spawn_error(e)
         })?;
 
-        // Feed the prompt in, then close the pipe so amp sees EOF
-        if let Some(mut stdin) = child.inner().stdin.take() {
-            stdin.write_all(prompt.as_bytes()).await.map_err(|e| {
-                crate::executor::SpawnContext::from_command(&command, "Amp")
-                    .with_context(format!(
-                        "Failed to write prompt to Amp CLI stdin for thread {}",
-                        session_id
-                    ))
-                    .spawn_error(e)
-            })?;
-            stdin.shutdown().await.map_err(|e| {
-                crate::executor::SpawnContext::from_command(&command, "Amp")
-                    .with_context(format!(
-                        "Failed to close Amp CLI stdin for thread {}",
-                        session_id
-                    ))
-                    .spawn_error(e)
-            })?;
-        }
-
-        Ok(child)
+        Ok(proc)
     }
 
     fn normalize_logs(

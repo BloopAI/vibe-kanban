@@ -1,11 +1,10 @@
 use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 
-#[cfg(unix)]
-use nix::{sys::signal::Signal, unistd::Pid};
 use tokio::sync::{Mutex, RwLock as TokioRwLock};
 use uuid::Uuid;
 
 use crate::{
+    command_runner,
     models::Environment,
     services::{generate_user_id, AnalyticsConfig, AnalyticsService},
 };
@@ -22,7 +21,7 @@ pub enum ExecutionType {
 pub struct RunningExecution {
     pub task_attempt_id: Uuid,
     pub _execution_type: ExecutionType,
-    pub child: command_group::AsyncGroupChild,
+    pub child: command_runner::CommandProcess,
 }
 
 #[derive(Debug, Clone)]
@@ -91,7 +90,7 @@ impl AppState {
         let mut completed_executions = Vec::new();
 
         for (execution_id, running_exec) in executions.iter_mut() {
-            match running_exec.child.try_wait() {
+            match running_exec.child.try_wait().await {
                 Ok(Some(status)) => {
                     let success = status.success();
                     let exit_code = status.code().map(|c| c as i64);
@@ -140,24 +139,11 @@ impl AppState {
             return Ok(false);
         };
 
-        // hit the whole process group, not just the leader
-        #[cfg(unix)]
-        {
-            use nix::{sys::signal::killpg, unistd::getpgid};
-
-            let pgid = getpgid(Some(Pid::from_raw(exec.child.id().unwrap() as i32)))?;
-            for sig in [Signal::SIGINT, Signal::SIGTERM, Signal::SIGKILL] {
-                killpg(pgid, sig)?;
-                tokio::time::sleep(Duration::from_secs(2)).await;
-                if exec.child.try_wait()?.is_some() {
-                    break; // gone!
-                }
-            }
-        }
-
-        // final fallback – command_group already targets the group
-        exec.child.kill().await.ok();
-        exec.child.wait().await.ok(); // reap
+        // Kill the process using CommandRunner's kill method
+        exec.child
+            .kill()
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
         // only NOW remove it
         executions.remove(&execution_id);

@@ -1,8 +1,8 @@
 use async_trait::async_trait;
-use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use uuid::Uuid;
 
 use crate::{
+    command_runner::CommandProcess,
     executor::{Executor, ExecutorError},
     models::task::Task,
     utils::shell::get_shell_command,
@@ -18,15 +18,11 @@ impl Executor for CharmOpencodeExecutor {
         pool: &sqlx::SqlitePool,
         task_id: Uuid,
         worktree_path: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    ) -> Result<CommandProcess, ExecutorError> {
         // Get the task to fetch its description
         let task = Task::find_by_id(pool, task_id)
             .await?
             .ok_or(ExecutorError::TaskNotFound)?;
-
-        use std::process::Stdio;
-
-        use tokio::process::Command;
 
         let prompt = if let Some(task_description) = task.description {
             format!(
@@ -52,25 +48,21 @@ Task title: {}"#,
             prompt.replace('"', "\\\"")
         );
 
-        let mut command = Command::new(shell_cmd);
+        let mut command = crate::command_runner::CommandRunner::new_local();
         command
-            .kill_on_drop(true)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .current_dir(worktree_path)
+            .command(shell_cmd)
             .arg(shell_arg)
-            .arg(opencode_command);
+            .arg(&opencode_command)
+            .working_dir(worktree_path);
 
-        let child = command
-            .group_spawn() // Create new process group so we can kill entire tree
-            .map_err(|e| {
-                crate::executor::SpawnContext::from_command(&command, "CharmOpenCode")
-                    .with_task(task_id, Some(task.title.clone()))
-                    .with_context("CharmOpenCode CLI execution for new task")
-                    .spawn_error(e)
-            })?;
+        let proc = command.start().await.map_err(|e| {
+            crate::executor::SpawnContext::from_command(&command, "CharmOpenCode")
+                .with_task(task_id, Some(task.title.clone()))
+                .with_context("CharmOpenCode CLI execution for new task")
+                .spawn_error(e)
+        })?;
 
-        Ok(child)
+        Ok(proc)
     }
 
     async fn spawn_followup(
@@ -80,11 +72,7 @@ Task title: {}"#,
         _session_id: &str,
         prompt: &str,
         worktree_path: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
-        use std::process::Stdio;
-
-        use tokio::process::Command;
-
+    ) -> Result<CommandProcess, ExecutorError> {
         // CharmOpencode doesn't support session-based followup, so we ignore session_id
         // and just run with the new prompt
         let (shell_cmd, shell_arg) = get_shell_command();
@@ -93,21 +81,19 @@ Task title: {}"#,
             prompt.replace('"', "\\\"")
         );
 
-        let mut command = Command::new(shell_cmd);
+        let mut command = crate::command_runner::CommandRunner::new_local();
         command
-            .kill_on_drop(true)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .current_dir(worktree_path)
+            .command(shell_cmd)
             .arg(shell_arg)
-            .arg(&opencode_command);
+            .arg(&opencode_command)
+            .working_dir(worktree_path);
 
-        let child = command.group_spawn().map_err(|e| {
+        let proc = command.start().await.map_err(|e| {
             crate::executor::SpawnContext::from_command(&command, "CharmOpenCode")
                 .with_context("CharmOpenCode CLI followup execution")
                 .spawn_error(e)
         })?;
 
-        Ok(child)
+        Ok(proc)
     }
 }

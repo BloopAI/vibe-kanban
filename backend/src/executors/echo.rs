@@ -1,10 +1,9 @@
 use async_trait::async_trait;
-use command_group::{AsyncCommandGroup, AsyncGroupChild};
-use tokio::process::Command;
 use uuid::Uuid;
 
 use crate::{
-    executor::{Executor, ExecutorError},
+    command_runner::{CommandProcess, CommandRunner},
+    executor::{Executor, ExecutorError, SpawnContext},
     models::task::Task,
     utils::shell::get_shell_command,
 };
@@ -19,7 +18,7 @@ impl Executor for EchoExecutor {
         pool: &sqlx::SqlitePool,
         task_id: Uuid,
         _worktree_path: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    ) -> Result<CommandProcess, ExecutorError> {
         // Get the task to fetch its description
         let task = Task::find_by_id(pool, task_id)
             .await?
@@ -57,22 +56,18 @@ echo "Task completed: {}""#,
             )
         };
 
-        let mut command = Command::new(shell_cmd);
-        command
-            .kill_on_drop(true)
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
+        let mut command_runner = CommandRunner::new_local();
+        command_runner
+            .command(shell_cmd)
             .arg(shell_arg)
             .arg(&script);
 
-        let child = command
-            .group_spawn() // Create new process group so we can kill entire tree
-            .map_err(|e| {
-                crate::executor::SpawnContext::from_command(&command, "Echo")
-                    .with_task(task_id, Some(task.title.clone()))
-                    .with_context("Shell script execution for echo demo")
-                    .spawn_error(e)
-            })?;
+        let child = command_runner.start().await.map_err(|e| {
+            SpawnContext::from_command(&command_runner, "Echo")
+                .with_task(task_id, Some(task.title.clone()))
+                .with_context("Shell script execution for echo demo")
+                .spawn_error(e)
+        })?;
 
         Ok(child)
     }

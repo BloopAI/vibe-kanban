@@ -17,6 +17,7 @@ use tracing_subscriber::{filter::LevelFilter, prelude::*};
 use vibe_kanban::{sentry_layer, Assets, ScriptAssets, SoundAssets};
 
 mod app_state;
+mod command_runner;
 mod execution_monitor;
 mod executor;
 mod executors;

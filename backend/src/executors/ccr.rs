@@ -1,8 +1,8 @@
 use async_trait::async_trait;
-use command_group::AsyncGroupChild;
 use uuid::Uuid;
 
 use crate::{
+    command_runner::CommandProcess,
     executor::{Executor, ExecutorError, NormalizedConversation},
     executors::ClaudeExecutor,
 };
@@ -33,7 +33,7 @@ impl Executor for CCRExecutor {
         pool: &sqlx::SqlitePool,
         task_id: Uuid,
         worktree_path: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    ) -> Result<CommandProcess, ExecutorError> {
         self.0.spawn(pool, task_id, worktree_path).await
     }
 
@@ -44,7 +44,7 @@ impl Executor for CCRExecutor {
         session_id: &str,
         prompt: &str,
         worktree_path: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    ) -> Result<CommandProcess, ExecutorError> {
         self.0
             .spawn_followup(pool, task_id, session_id, prompt, worktree_path)
             .await

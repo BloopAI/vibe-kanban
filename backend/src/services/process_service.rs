@@ -3,6 +3,7 @@ use tracing::{debug, info};
 use uuid::Uuid;
 
 use crate::{
+    command_runner,
     executor::Executor,
     models::{
         execution_process::{CreateExecutionProcess, ExecutionProcess, ExecutionProcessType},
@@ -803,7 +804,7 @@ impl ProcessService {
         attempt_id: Uuid,
         process_id: Uuid,
         worktree_path: &str,
-    ) -> Result<command_group::AsyncGroupChild, TaskAttemptError> {
+    ) -> Result<command_runner::CommandProcess, TaskAttemptError> {
         use crate::executors::{CleanupScriptExecutor, DevServerExecutor, SetupScriptExecutor};
 
         let result = match executor_type {
@@ -863,7 +864,7 @@ impl ProcessService {
         process_id: Uuid,
         attempt_id: Uuid,
         process_type: &ExecutionProcessType,
-        child: command_group::AsyncGroupChild,
+        child: command_runner::CommandProcess,
     ) {
         let execution_type = match process_type {
             ExecutionProcessType::SetupScript => crate::app_state::ExecutionType::SetupScript,
@@ -925,7 +926,7 @@ impl ProcessService {
         attempt_id: Uuid,
         process_id: Uuid,
         worktree_path: &str,
-    ) -> Result<command_group::AsyncGroupChild, TaskAttemptError> {
+    ) -> Result<command_runner::CommandProcess, TaskAttemptError> {
         use crate::executors::SetupScriptExecutor;
 
         let executor = SetupScriptExecutor {

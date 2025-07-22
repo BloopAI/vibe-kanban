@@ -5,10 +5,9 @@
 mod config;
 mod streaming;
 
-use std::{process::Stdio, time::Instant};
+use std::time::Instant;
 
 use async_trait::async_trait;
-use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use config::{
     max_chunk_size, max_display_size, max_latency_ms, max_message_size, GeminiStreamConfig,
 };
@@ -16,10 +15,10 @@ use config::{
 use serde_json::Value;
 pub use streaming::GeminiPatchBatch;
 use streaming::GeminiStreaming;
-use tokio::{io::AsyncWriteExt, process::Command};
 use uuid::Uuid;
 
 use crate::{
+    command_runner::{CommandProcess, CommandRunner},
     executor::{
         Executor, ExecutorError, NormalizedConversation, NormalizedEntry, NormalizedEntryType,
     },
@@ -37,7 +36,7 @@ impl Executor for GeminiExecutor {
         pool: &sqlx::SqlitePool,
         task_id: Uuid,
         worktree_path: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    ) -> Result<CommandProcess, ExecutorError> {
         // Get the task to fetch its description
         let task = Task::find_by_id(pool, task_id)
             .await?
@@ -61,42 +60,18 @@ Task title: {}"#,
         };
 
         let mut command = Self::create_gemini_command(worktree_path);
+        command.stdin(&prompt);
 
-        let mut child = command
-            .group_spawn() // Create new process group so we can kill entire tree
-            .map_err(|e| {
-                crate::executor::SpawnContext::from_command(&command, "Gemini")
-                    .with_task(task_id, Some(task.title.clone()))
-                    .with_context("Gemini CLI execution for new task")
-                    .spawn_error(e)
-            })?;
+        let proc = command.start().await.map_err(|e| {
+            crate::executor::SpawnContext::from_command(&command, "Gemini")
+                .with_task(task_id, Some(task.title.clone()))
+                .with_context("Gemini CLI execution for new task")
+                .spawn_error(e)
+        })?;
 
-        // Write prompt to stdin
-        if let Some(mut stdin) = child.inner().stdin.take() {
-            tracing::debug!(
-                "Writing prompt to Gemini stdin for task {}: {:?}",
-                task_id,
-                prompt
-            );
-            stdin.write_all(prompt.as_bytes()).await.map_err(|e| {
-                let context = crate::executor::SpawnContext::from_command(&command, "Gemini")
-                    .with_task(task_id, Some(task.title.clone()))
-                    .with_context("Failed to write prompt to Gemini CLI stdin");
-                ExecutorError::spawn_failed(e, context)
-            })?;
-            stdin.shutdown().await.map_err(|e| {
-                let context = crate::executor::SpawnContext::from_command(&command, "Gemini")
-                    .with_task(task_id, Some(task.title.clone()))
-                    .with_context("Failed to close Gemini CLI stdin");
-                ExecutorError::spawn_failed(e, context)
-            })?;
-            tracing::info!(
-                "Successfully sent prompt to Gemini stdin for task {}",
-                task_id
-            );
-        }
+        tracing::info!("Successfully started Gemini process for task {}", task_id);
 
-        Ok(child)
+        Ok(proc)
     }
 
     async fn execute_streaming(
@@ -106,7 +81,7 @@ Task title: {}"#,
         attempt_id: Uuid,
         execution_process_id: Uuid,
         worktree_path: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    ) -> Result<CommandProcess, ExecutorError> {
         tracing::info!(
             "Starting Gemini execution for task {} attempt {}",
             task_id,
@@ -115,17 +90,16 @@ Task title: {}"#,
 
         Self::update_session_id(pool, execution_process_id, &attempt_id.to_string()).await;
 
-        let mut child = self.spawn(pool, task_id, worktree_path).await?;
+        let mut proc = self.spawn(pool, task_id, worktree_path).await?;
 
         tracing::info!(
-            "Gemini process spawned successfully for attempt {}, PID: {:?}",
-            attempt_id,
-            child.inner().id()
+            "Gemini process spawned successfully for attempt {}",
+            attempt_id
         );
 
-        Self::setup_streaming(pool, &mut child, attempt_id, execution_process_id);
+        Self::setup_streaming(pool, &mut proc, attempt_id, execution_process_id);
 
-        Ok(child)
+        Ok(proc)
     }
 
     async fn spawn_followup(
@@ -135,7 +109,7 @@ Task title: {}"#,
         session_id: &str,
         prompt: &str,
         worktree_path: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    ) -> Result<CommandProcess, ExecutorError> {
         // For Gemini, session_id is the attempt_id
         let attempt_id = Uuid::parse_str(session_id)
             .map_err(|_| ExecutorError::InvalidSessionId(session_id.to_string()))?;
@@ -156,7 +130,7 @@ Task title: {}"#,
         session_id: &str,
         prompt: &str,
         worktree_path: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    ) -> Result<CommandProcess, ExecutorError> {
         tracing::info!(
             "Starting Gemini follow-up execution for attempt {} (session {})",
             attempt_id,
@@ -166,19 +140,18 @@ Task title: {}"#,
         // For Gemini, session_id is the attempt_id - update it in the database
         Self::update_session_id(pool, execution_process_id, session_id).await;
 
-        let mut child = self
+        let mut proc = self
             .spawn_followup(pool, task_id, session_id, prompt, worktree_path)
             .await?;
 
         tracing::info!(
-            "Gemini follow-up process spawned successfully for attempt {}, PID: {:?}",
-            attempt_id,
-            child.inner().id()
+            "Gemini follow-up process spawned successfully for attempt {}",
+            attempt_id
         );
 
-        Self::setup_streaming(pool, &mut child, attempt_id, execution_process_id);
+        Self::setup_streaming(pool, &mut proc, attempt_id, execution_process_id);
 
-        Ok(child)
+        Ok(proc)
     }
 
     fn normalize_logs(
@@ -261,19 +234,16 @@ Task title: {}"#,
 
 impl GeminiExecutor {
     /// Create a standardized Gemini CLI command
-    fn create_gemini_command(worktree_path: &str) -> Command {
+    fn create_gemini_command(worktree_path: &str) -> CommandRunner {
         let (shell_cmd, shell_arg) = get_shell_command();
         let gemini_command = "npx @google/gemini-cli@latest --yolo";
 
-        let mut command = Command::new(shell_cmd);
+        let mut command = CommandRunner::new_local();
         command
-            .kill_on_drop(true)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .current_dir(worktree_path)
+            .command(shell_cmd)
             .arg(shell_arg)
             .arg(gemini_command)
+            .working_dir(worktree_path)
             .env("NODE_NO_WARNINGS", "1");
         command
     }
@@ -308,21 +278,22 @@ impl GeminiExecutor {
     /// Setup streaming for both stdout and stderr
     fn setup_streaming(
         pool: &sqlx::SqlitePool,
-        child: &mut AsyncGroupChild,
+        proc: &mut CommandProcess,
         attempt_id: Uuid,
         execution_process_id: Uuid,
     ) {
-        // Take stdout and stderr pipes for streaming
-        let stdout = child
-            .inner()
+        // Get stdout and stderr streams from CommandProcess
+        let mut stream = proc
+            .stream()
+            .expect("Failed to get streams from command process");
+        let stdout = stream
             .stdout
             .take()
-            .expect("Failed to take stdout from child process");
-        let stderr = child
-            .inner()
+            .expect("Failed to get stdout from command stream");
+        let stderr = stream
             .stderr
             .take()
-            .expect("Failed to take stderr from child process");
+            .expect("Failed to get stderr from command stream");
 
         // Start streaming tasks with Gemini-specific line-based message updates
         let pool_clone1 = pool.clone();
@@ -521,7 +492,7 @@ You are continuing work on the above task. The execution history shows what has 
         worktree_path: &str,
         comprehensive_prompt: &str,
         attempt_id: Uuid,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    ) -> Result<CommandProcess, ExecutorError> {
         tracing::info!(
             "Spawning Gemini followup execution for attempt {} with resume context ({} chars)",
             attempt_id,
@@ -529,8 +500,9 @@ You are continuing work on the above task. The execution history shows what has 
         );
 
         let mut command = GeminiExecutor::create_gemini_command(worktree_path);
+        command.stdin(comprehensive_prompt);
 
-        let mut child = command.group_spawn().map_err(|e| {
+        let proc = command.start().await.map_err(|e| {
             crate::executor::SpawnContext::from_command(&command, "Gemini")
                 .with_context(format!(
                     "Gemini CLI followup execution with context for attempt {}",
@@ -539,53 +511,12 @@ You are continuing work on the above task. The execution history shows what has 
                 .spawn_error(e)
         })?;
 
-        self.send_prompt_to_stdin(&mut child, &command, comprehensive_prompt, attempt_id)
-            .await?;
-        Ok(child)
-    }
+        tracing::info!(
+            "Successfully started Gemini followup process for attempt {}",
+            attempt_id
+        );
 
-    async fn send_prompt_to_stdin(
-        &self,
-        child: &mut AsyncGroupChild,
-        command: &Command,
-        comprehensive_prompt: &str,
-        attempt_id: Uuid,
-    ) -> Result<(), ExecutorError> {
-        if let Some(mut stdin) = child.inner().stdin.take() {
-            tracing::debug!(
-                "Sending resume context to Gemini for attempt {}: {} characters",
-                attempt_id,
-                comprehensive_prompt.len()
-            );
-
-            stdin
-                .write_all(comprehensive_prompt.as_bytes())
-                .await
-                .map_err(|e| {
-                    let context = crate::executor::SpawnContext::from_command(command, "Gemini")
-                        .with_context(format!(
-                            "Failed to write resume prompt to Gemini CLI stdin for attempt {}",
-                            attempt_id
-                        ));
-                    ExecutorError::spawn_failed(e, context)
-                })?;
-
-            stdin.shutdown().await.map_err(|e| {
-                let context = crate::executor::SpawnContext::from_command(command, "Gemini")
-                    .with_context(format!(
-                        "Failed to close Gemini CLI stdin for attempt {}",
-                        attempt_id
-                    ));
-                ExecutorError::spawn_failed(e, context)
-            })?;
-
-            tracing::info!(
-                "Successfully sent resume context to Gemini for attempt {}",
-                attempt_id
-            );
-        }
-
-        Ok(())
+        Ok(proc)
     }
 
     /// Format Gemini CLI output by inserting line breaks where periods are directly

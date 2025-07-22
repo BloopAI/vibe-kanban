@@ -1,11 +1,10 @@
 use std::path::Path;
 
 use async_trait::async_trait;
-use command_group::{AsyncCommandGroup, AsyncGroupChild};
-use tokio::process::Command;
 use uuid::Uuid;
 
 use crate::{
+    command_runner::CommandProcess,
     executor::{
         ActionType, Executor, ExecutorError, NormalizedConversation, NormalizedEntry,
         NormalizedEntryType,
@@ -84,7 +83,7 @@ impl Executor for ClaudeExecutor {
         pool: &sqlx::SqlitePool,
         task_id: Uuid,
         worktree_path: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    ) -> Result<CommandProcess, ExecutorError> {
         // Get the task to fetch its description
         let task = Task::find_by_id(pool, task_id)
             .await?
@@ -112,54 +111,23 @@ Task title: {}"#,
         // Pass prompt via stdin instead of command line to avoid shell escaping issues
         let claude_command = &self.command;
 
-        let mut command = Command::new(shell_cmd);
+        use crate::command_runner::CommandRunner;
+        let mut command = CommandRunner::new_local();
         command
-            .kill_on_drop(true)
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .current_dir(worktree_path)
+            .command(shell_cmd)
             .arg(shell_arg)
             .arg(claude_command)
+            .stdin(&prompt)
+            .working_dir(worktree_path)
             .env("NODE_NO_WARNINGS", "1");
 
-        let mut child = command
-            .group_spawn() // Create new process group so we can kill entire tree
-            .map_err(|e| {
-                crate::executor::SpawnContext::from_command(&command, &self.executor_type)
-                    .with_task(task_id, Some(task.title.clone()))
-                    .with_context(format!("{} CLI execution for new task", self.executor_type))
-                    .spawn_error(e)
-            })?;
-
-        // Write prompt to stdin safely
-        if let Some(mut stdin) = child.inner().stdin.take() {
-            use tokio::io::AsyncWriteExt;
-            tracing::debug!(
-                "Writing prompt to Claude stdin for task {}: {:?}",
-                task_id,
-                prompt
-            );
-            stdin.write_all(prompt.as_bytes()).await.map_err(|e| {
-                let context =
-                    crate::executor::SpawnContext::from_command(&command, &self.executor_type)
-                        .with_task(task_id, Some(task.title.clone()))
-                        .with_context(format!(
-                            "Failed to write prompt to {} CLI stdin",
-                            self.executor_type
-                        ));
-                ExecutorError::spawn_failed(e, context)
-            })?;
-            stdin.shutdown().await.map_err(|e| {
-                let context =
-                    crate::executor::SpawnContext::from_command(&command, &self.executor_type)
-                        .with_task(task_id, Some(task.title.clone()))
-                        .with_context(format!("Failed to close {} CLI stdin", self.executor_type));
-                ExecutorError::spawn_failed(e, context)
-            })?;
-        }
-
-        Ok(child)
+        let proc = command.start().await.map_err(|e| {
+            crate::executor::SpawnContext::from_command(&command, &self.executor_type)
+                .with_task(task_id, Some(task.title.clone()))
+                .with_context(format!("{} CLI execution for new task", self.executor_type))
+                .spawn_error(e)
+        })?;
+        Ok(proc)
     }
 
     async fn spawn_followup(
@@ -169,7 +137,7 @@ Task title: {}"#,
         session_id: &str,
         prompt: &str,
         worktree_path: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    ) -> Result<CommandProcess, ExecutorError> {
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
 
@@ -184,18 +152,17 @@ Task title: {}"#,
             format!("{} --resume={}", self.command, session_id)
         };
 
-        let mut command = Command::new(shell_cmd);
+        use crate::command_runner::CommandRunner;
+        let mut command = CommandRunner::new_local();
         command
-            .kill_on_drop(true)
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .current_dir(worktree_path)
+            .command(shell_cmd)
             .arg(shell_arg)
             .arg(&claude_command)
+            .stdin(prompt)
+            .working_dir(worktree_path)
             .env("NODE_NO_WARNINGS", "1");
 
-        let mut child = command.group_spawn().map_err(|e| {
+        let proc = command.start().await.map_err(|e| {
             crate::executor::SpawnContext::from_command(&command, &self.executor_type)
                 .with_context(format!(
                     "{} CLI followup execution for session {}",
@@ -204,36 +171,7 @@ Task title: {}"#,
                 .spawn_error(e)
         })?;
 
-        // Write prompt to stdin safely
-        if let Some(mut stdin) = child.inner().stdin.take() {
-            use tokio::io::AsyncWriteExt;
-            tracing::debug!(
-                "Writing prompt to {} stdin for session {}: {:?}",
-                self.executor_type,
-                session_id,
-                prompt
-            );
-            stdin.write_all(prompt.as_bytes()).await.map_err(|e| {
-                let context =
-                    crate::executor::SpawnContext::from_command(&command, &self.executor_type)
-                        .with_context(format!(
-                            "Failed to write prompt to {} CLI stdin for session {}",
-                            self.executor_type, session_id
-                        ));
-                ExecutorError::spawn_failed(e, context)
-            })?;
-            stdin.shutdown().await.map_err(|e| {
-                let context =
-                    crate::executor::SpawnContext::from_command(&command, &self.executor_type)
-                        .with_context(format!(
-                            "Failed to close {} CLI stdin for session {}",
-                            self.executor_type, session_id
-                        ));
-                ExecutorError::spawn_failed(e, context)
-            })?;
-        }
-
-        Ok(child)
+        Ok(proc)
     }
 
     fn normalize_logs(
