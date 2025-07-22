@@ -9,4 +9,4 @@ pub mod task_attempt;
 pub mod task_template;
 
 pub use api_response::ApiResponse;
-pub use config::Config;
+pub use config::{Config, Environment};

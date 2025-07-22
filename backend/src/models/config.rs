@@ -5,6 +5,41 @@ use ts_rs::TS;
 
 use crate::executor::ExecutorConfig;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export)]
+#[serde(rename_all = "lowercase")]
+pub enum Environment {
+    Local,
+    Cloud,
+}
+
+impl Environment {
+    pub fn from_str(env: &str) -> Option<Self> {
+        match env.to_lowercase().as_str() {
+            "local" => Some(Environment::Local),
+            "cloud" => Some(Environment::Cloud),
+            _ => None,
+        }
+    }
+
+    pub fn is_cloud(&self) -> bool {
+        matches!(self, Environment::Cloud)
+    }
+
+    pub fn is_local(&self) -> bool {
+        matches!(self, Environment::Local)
+    }
+}
+
+impl std::fmt::Display for Environment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Environment::Local => write!(f, "local"),
+            Environment::Cloud => write!(f, "cloud"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct EnvironmentInfo {
@@ -30,6 +65,7 @@ pub struct Config {
     pub github: GitHubConfig,
     pub analytics_enabled: Option<bool>,
     pub environment: EnvironmentInfo,
+    pub workspace_dir: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -186,6 +222,7 @@ impl Default for Config {
                 architecture: info.architecture().unwrap_or("unknown").to_string(),
                 bitness: info.bitness().to_string(),
             },
+            workspace_dir: None,
         }
     }
 }

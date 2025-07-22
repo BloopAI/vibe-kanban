@@ -16,7 +16,7 @@ use crate::{
     executor::ExecutorConfig,
     models::{
         config::{Config, EditorConstants, SoundConstants},
-        ApiResponse,
+        ApiResponse, Environment,
     },
     utils,
 };
@@ -70,12 +70,16 @@ async fn update_config(
 pub struct ConfigConstants {
     pub editor: EditorConstants,
     pub sound: SoundConstants,
+    pub mode: Environment,
 }
 
-async fn get_config_constants() -> ResponseJson<ApiResponse<ConfigConstants>> {
+async fn get_config_constants(
+    State(app_state): State<AppState>,
+) -> ResponseJson<ApiResponse<ConfigConstants>> {
     let constants = ConfigConstants {
         editor: EditorConstants::new(),
         sound: SoundConstants::new(),
+        mode: app_state.mode,
     };
 
     ResponseJson(ApiResponse::success(constants))

@@ -1,9 +1,10 @@
 use std::time::Duration;
 
+use backon::{ExponentialBuilder, Retryable};
 use octocrab::{Octocrab, OctocrabBuilder};
 use serde::{Deserialize, Serialize};
-use tokio::time::sleep;
-use tracing::{info, warn};
+use tracing::info;
+use ts_rs::TS;
 
 #[derive(Debug)]
 pub enum GitHubServiceError {
@@ -75,27 +76,23 @@ pub struct PullRequestInfo {
     pub merge_commit_sha: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct RepositoryInfo {
+    pub id: i64,
+    pub name: String,
+    pub full_name: String,
+    pub owner: String,
+    pub description: Option<String>,
+    pub clone_url: String,
+    pub ssh_url: String,
+    pub default_branch: String,
+    pub private: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct GitHubService {
     client: Octocrab,
-    retry_config: RetryConfig,
-}
-
-#[derive(Debug, Clone)]
-pub struct RetryConfig {
-    pub max_retries: u32,
-    pub base_delay: Duration,
-    pub max_delay: Duration,
-}
-
-impl Default for RetryConfig {
-    fn default() -> Self {
-        Self {
-            max_retries: 3,
-            base_delay: Duration::from_secs(1),
-            max_delay: Duration::from_secs(30),
-        }
-    }
 }
 
 impl GitHubService {
@@ -108,10 +105,7 @@ impl GitHubService {
                 GitHubServiceError::Auth(format!("Failed to create GitHub client: {}", e))
             })?;
 
-        Ok(Self {
-            client,
-            retry_config: RetryConfig::default(),
-        })
+        Ok(Self { client })
     }
 
     /// Create a pull request on GitHub
@@ -120,7 +114,22 @@ impl GitHubService {
         repo_info: &GitHubRepoInfo,
         request: &CreatePrRequest,
     ) -> Result<PullRequestInfo, GitHubServiceError> {
-        self.with_retry(|| async { self.create_pr_internal(repo_info, request).await })
+        (|| async { self.create_pr_internal(repo_info, request).await })
+            .retry(
+                &ExponentialBuilder::default()
+                    .with_min_delay(Duration::from_secs(1))
+                    .with_max_delay(Duration::from_secs(30))
+                    .with_max_times(3)
+                    .with_jitter(),
+            )
+            .when(|e| !matches!(e, GitHubServiceError::TokenInvalid))
+            .notify(|err: &GitHubServiceError, dur: Duration| {
+                tracing::warn!(
+                    "GitHub API call failed, retrying after {:.2}s: {}",
+                    dur.as_secs_f64(),
+                    err
+                );
+            })
             .await
     }
 
@@ -225,7 +234,22 @@ impl GitHubService {
         repo_info: &GitHubRepoInfo,
         pr_number: i64,
     ) -> Result<PullRequestInfo, GitHubServiceError> {
-        self.with_retry(|| async { self.update_pr_status_internal(repo_info, pr_number).await })
+        (|| async { self.update_pr_status_internal(repo_info, pr_number).await })
+            .retry(
+                &ExponentialBuilder::default()
+                    .with_min_delay(Duration::from_secs(1))
+                    .with_max_delay(Duration::from_secs(30))
+                    .with_max_times(3)
+                    .with_jitter(),
+            )
+            .when(|e| !matches!(e, GitHubServiceError::TokenInvalid))
+            .notify(|err: &GitHubServiceError, dur: Duration| {
+                tracing::warn!(
+                    "GitHub API call failed, retrying after {:.2}s: {}",
+                    dur.as_secs_f64(),
+                    err
+                );
+            })
             .await
     }
 
@@ -268,40 +292,73 @@ impl GitHubService {
         Ok(pr_info)
     }
 
-    /// Retry wrapper for GitHub API calls with exponential backoff
-    async fn with_retry<F, Fut, T>(&self, operation: F) -> Result<T, GitHubServiceError>
-    where
-        F: Fn() -> Fut,
-        Fut: std::future::Future<Output = Result<T, GitHubServiceError>>,
-    {
-        let mut last_error = None;
+    /// List repositories for the authenticated user with pagination
+    pub async fn list_repositories(
+        &self,
+        page: u8,
+    ) -> Result<Vec<RepositoryInfo>, GitHubServiceError> {
+        (|| async { self.list_repositories_internal(page).await })
+            .retry(
+                &ExponentialBuilder::default()
+                    .with_min_delay(Duration::from_secs(1))
+                    .with_max_delay(Duration::from_secs(30))
+                    .with_max_times(3)
+                    .with_jitter(),
+            )
+            .when(|e| !matches!(e, GitHubServiceError::TokenInvalid))
+            .notify(|err: &GitHubServiceError, dur: Duration| {
+                tracing::warn!(
+                    "GitHub API call failed, retrying after {:.2}s: {}",
+                    dur.as_secs_f64(),
+                    err
+                );
+            })
+            .await
+    }
 
-        for attempt in 0..=self.retry_config.max_retries {
-            match operation().await {
-                Ok(result) => return Ok(result),
-                Err(e) => {
-                    last_error = Some(e);
+    async fn list_repositories_internal(
+        &self,
+        page: u8,
+    ) -> Result<Vec<RepositoryInfo>, GitHubServiceError> {
+        let repos_page = self
+            .client
+            .current()
+            .list_repos_for_authenticated_user()
+            .type_("all")
+            .sort("updated")
+            .direction("desc")
+            .per_page(50)
+            .page(page)
+            .send()
+            .await
+            .map_err(|e| {
+                GitHubServiceError::Repository(format!("Failed to list repositories: {}", e))
+            })?;
 
-                    if attempt < self.retry_config.max_retries {
-                        let delay = std::cmp::min(
-                            self.retry_config.base_delay * 2_u32.pow(attempt),
-                            self.retry_config.max_delay,
-                        );
+        let repositories: Vec<RepositoryInfo> = repos_page
+            .items
+            .into_iter()
+            .map(|repo| RepositoryInfo {
+                id: repo.id.0 as i64,
+                name: repo.name,
+                full_name: repo.full_name.unwrap_or_default(),
+                owner: repo.owner.map(|o| o.login).unwrap_or_default(),
+                description: repo.description,
+                clone_url: repo
+                    .clone_url
+                    .map(|url| url.to_string())
+                    .unwrap_or_default(),
+                ssh_url: repo.ssh_url.unwrap_or_default(),
+                default_branch: repo.default_branch.unwrap_or_else(|| "main".to_string()),
+                private: repo.private.unwrap_or(false),
+            })
+            .collect();
 
-                        warn!(
-                            "GitHub API call failed (attempt {}/{}), retrying in {:?}: {}",
-                            attempt + 1,
-                            self.retry_config.max_retries + 1,
-                            delay,
-                            last_error.as_ref().unwrap()
-                        );
-
-                        sleep(delay).await;
-                    }
-                }
-            }
-        }
-
-        Err(last_error.unwrap())
+        tracing::info!(
+            "Retrieved {} repositories from GitHub (page {})",
+            repositories.len(),
+            page
+        );
+        Ok(repositories)
     }
 }
