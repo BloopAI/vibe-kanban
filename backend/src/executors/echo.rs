@@ -56,7 +56,7 @@ echo "Task completed: {}""#,
             )
         };
 
-        let mut command_runner = CommandRunner::new_local();
+        let mut command_runner = CommandRunner::new();
         command_runner
             .command(shell_cmd)
             .arg(shell_arg)

@@ -238,7 +238,7 @@ impl GeminiExecutor {
         let (shell_cmd, shell_arg) = get_shell_command();
         let gemini_command = "npx @google/gemini-cli@latest --yolo";
 
-        let mut command = CommandRunner::new_local();
+        let mut command = CommandRunner::new();
         command
             .command(shell_cmd)
             .arg(shell_arg)

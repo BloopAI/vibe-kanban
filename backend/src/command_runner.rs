@@ -202,7 +202,22 @@ impl CommandStream {
     }
 }
 
+impl Default for CommandRunner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CommandRunner {
+    pub fn new() -> Self {
+        // Check cloud environment variable
+        if std::env::var("CLOUD_EXECUTION").is_ok() {
+            Self::new_remote()
+        } else {
+            Self::new_local()
+        }
+    }
+
     pub fn new_local() -> Self {
         Self {
             runner_type: CommandRunnerType::Local,

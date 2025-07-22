@@ -48,7 +48,7 @@ Task title: {}"#,
             prompt.replace('"', "\\\"")
         );
 
-        let mut command = crate::command_runner::CommandRunner::new_local();
+        let mut command = crate::command_runner::CommandRunner::new();
         command
             .command(shell_cmd)
             .arg(shell_arg)
@@ -81,7 +81,7 @@ Task title: {}"#,
             prompt.replace('"', "\\\"")
         );
 
-        let mut command = crate::command_runner::CommandRunner::new_local();
+        let mut command = crate::command_runner::CommandRunner::new();
         command
             .command(shell_cmd)
             .arg(shell_arg)

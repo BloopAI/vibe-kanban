@@ -268,7 +268,7 @@ Task title: {}"#,
         let (shell_cmd, shell_arg) = get_shell_command();
         let opencode_command = &self.command;
 
-        let mut command = CommandRunner::new_local();
+        let mut command = CommandRunner::new();
         command
             .command(shell_cmd)
             .arg(shell_arg)
@@ -399,7 +399,7 @@ Task title: {}"#,
         let (shell_cmd, shell_arg) = get_shell_command();
         let opencode_command = format!("{} --session {}", self.command, session_id);
 
-        let mut command = CommandRunner::new_local();
+        let mut command = CommandRunner::new();
         command
             .command(shell_cmd)
             .arg(shell_arg)

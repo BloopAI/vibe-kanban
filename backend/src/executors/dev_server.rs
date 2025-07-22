@@ -31,7 +31,7 @@ impl Executor for DevServerExecutor {
             .ok_or(ExecutorError::TaskNotFound)?; // Reuse TaskNotFound for simplicity
 
         let (shell_cmd, shell_arg) = get_shell_command();
-        let mut runner = CommandRunner::new_local();
+        let mut runner = CommandRunner::new();
         runner
             .command(shell_cmd)
             .arg(shell_arg)

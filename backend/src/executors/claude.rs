@@ -112,7 +112,7 @@ Task title: {}"#,
         let claude_command = &self.command;
 
         use crate::command_runner::CommandRunner;
-        let mut command = CommandRunner::new_local();
+        let mut command = CommandRunner::new();
         command
             .command(shell_cmd)
             .arg(shell_arg)
@@ -153,7 +153,7 @@ Task title: {}"#,
         };
 
         use crate::command_runner::CommandRunner;
-        let mut command = CommandRunner::new_local();
+        let mut command = CommandRunner::new();
         command
             .command(shell_cmd)
             .arg(shell_arg)
