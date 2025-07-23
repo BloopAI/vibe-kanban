@@ -8,14 +8,17 @@ import {
   useState,
 } from 'react';
 import { TaskAttemptDataContext } from '@/components/context/taskDetailsContext.ts';
+import { useTaskPlan } from '@/components/context/TaskPlanContext.ts';
 import { Loader } from '@/components/ui/loader.tsx';
 import { Button } from '@/components/ui/button';
+import { AlertTriangle } from 'lucide-react';
 import Prompt from './Prompt';
 import ConversationEntry from './ConversationEntry';
 import { ConversationEntryDisplayType } from '@/lib/types';
 
 function Conversation() {
-  const { attemptData } = useContext(TaskAttemptDataContext);
+  const { attemptData, isAttemptRunning } = useContext(TaskAttemptDataContext);
+  const { isPlanningMode, latestProcessHasNoPlan } = useTaskPlan();
   const [shouldAutoScrollLogs, setShouldAutoScrollLogs] = useState(true);
   const [conversationUpdateTrigger, setConversationUpdateTrigger] = useState(0);
   const [visibleCount, setVisibleCount] = useState(100);
@@ -246,6 +249,23 @@ function Conversation() {
             {mostRecentProcess.status === 'failed'
               ? 'The coding agent encountered an error.'
               : 'The coding agent was stopped.'}
+          </p>
+        </div>
+      )}
+
+      {/* Warning banner for planning mode without plan */}
+      {isPlanningMode && latestProcessHasNoPlan && !isAttemptRunning && (
+        <div className="mt-4 p-4 rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/20">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+            <p className="text-lg font-semibold text-orange-800 dark:text-orange-300">
+              No Plan Generated
+            </p>
+          </div>
+          <p className="text-orange-700 dark:text-orange-400">
+            The last execution attempt did not produce a plan. Task creation is
+            disabled until a plan is available. Try providing more specific
+            instructions or check the conversation for any errors.
           </p>
         </div>
       )}

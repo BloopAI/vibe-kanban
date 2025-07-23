@@ -7,6 +7,15 @@ use crate::executor::ExecutorConfig;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
+pub struct EnvironmentInfo {
+    pub os_type: String,
+    pub os_version: String,
+    pub architecture: String,
+    pub bitness: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct Config {
     pub theme: ThemeMode,
     pub executor: ExecutorConfig,
@@ -20,6 +29,7 @@ pub struct Config {
     pub editor: EditorConfig,
     pub github: GitHubConfig,
     pub analytics_enabled: Option<bool>,
+    pub environment: EnvironmentInfo,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -155,6 +165,8 @@ impl Default for SoundConstants {
 
 impl Default for Config {
     fn default() -> Self {
+        let info = os_info::get();
+
         Self {
             theme: ThemeMode::System,
             executor: ExecutorConfig::Claude,
@@ -168,6 +180,12 @@ impl Default for Config {
             editor: EditorConfig::default(),
             github: GitHubConfig::default(),
             analytics_enabled: None,
+            environment: EnvironmentInfo {
+                os_type: info.os_type().to_string(),
+                os_version: info.version().to_string(),
+                architecture: info.architecture().unwrap_or("unknown").to_string(),
+                bitness: info.bitness().to_string(),
+            },
         }
     }
 }

@@ -1,6 +1,6 @@
 import { Dispatch, SetStateAction, useCallback, useContext } from 'react';
 import { Button } from '@/components/ui/button.tsx';
-import { ArrowDown, Play, Settings2, X } from 'lucide-react';
+import { ArrowDown, Play, Settings2, X, AlertTriangle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +13,7 @@ import {
   TaskAttemptDataContext,
   TaskDetailsContext,
 } from '@/components/context/taskDetailsContext.ts';
+import { useTaskPlan } from '@/components/context/TaskPlanContext.ts';
 import { useConfig } from '@/components/config-provider.tsx';
 import BranchSelector from '@/components/tasks/BranchSelector.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
@@ -58,6 +59,7 @@ function CreateAttempt({
 }: Props) {
   const { task, projectId } = useContext(TaskDetailsContext);
   const { isAttemptRunning } = useContext(TaskAttemptDataContext);
+  const { isPlanningMode, canCreateTask } = useTaskPlan();
   const { config } = useConfig();
 
   const [showCreateAttemptConfirmation, setShowCreateAttemptConfirmation] =
@@ -155,6 +157,22 @@ function CreateAttempt({
           </label>
         </div>
 
+        {/* Plan warning when in planning mode without plan */}
+        {isPlanningMode && !canCreateTask && (
+          <div className="p-3 rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/20">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+              <p className="text-sm font-semibold text-orange-800 dark:text-orange-300">
+                Plan Required
+              </p>
+            </div>
+            <p className="text-xs text-orange-700 dark:text-orange-400">
+              Cannot start attempt - no plan was generated in the last
+              execution. Please generate a plan first.
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-3 gap-3 items-end">
           {/* Step 1: Choose Base Branch */}
           <div className="space-y-1">
@@ -217,11 +235,29 @@ function CreateAttempt({
           <div className="space-y-1">
             <Button
               onClick={handleCreateAttempt}
-              disabled={!createAttemptExecutor || isAttemptRunning}
+              disabled={
+                !createAttemptExecutor ||
+                isAttemptRunning ||
+                (isPlanningMode && !canCreateTask)
+              }
               size="sm"
-              className="w-full text-xs gap-2"
+              className={`w-full text-xs gap-2 ${
+                isPlanningMode && !canCreateTask
+                  ? 'opacity-60 cursor-not-allowed bg-red-600 hover:bg-red-600'
+                  : ''
+              }`}
+              title={
+                isPlanningMode && !canCreateTask
+                  ? 'Plan required before starting attempt'
+                  : undefined
+              }
             >
-              <Play className="h-3 w-3 mr-1.5" />
+              {isPlanningMode && !canCreateTask && (
+                <AlertTriangle className="h-3 w-3 mr-1.5" />
+              )}
+              {!(isPlanningMode && !canCreateTask) && (
+                <Play className="h-3 w-3 mr-1.5" />
+              )}
               Start
             </Button>
           </div>

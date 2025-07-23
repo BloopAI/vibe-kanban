@@ -700,7 +700,7 @@ impl ClaudeExecutor {
                     }
                 }
             }
-            "exit_plan_mode" => {
+            "exit_plan_mode" | "exitplanmode" | "exit-plan-mode" => {
                 if let Some(plan) = input.get("plan").and_then(|p| p.as_str()) {
                     ActionType::PlanPresentation {
                         plan: plan.to_string(),

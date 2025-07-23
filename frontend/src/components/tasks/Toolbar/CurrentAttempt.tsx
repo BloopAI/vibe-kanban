@@ -63,6 +63,7 @@ import {
   TaskRelatedTasksContext,
   TaskSelectedAttemptContext,
 } from '@/components/context/taskDetailsContext.ts';
+import { useTaskPlan } from '@/components/context/TaskPlanContext.ts';
 import { useConfig } from '@/components/config-provider.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
 import { useNavigate } from 'react-router-dom';
@@ -126,6 +127,7 @@ function CurrentAttempt({
   const { executionState, fetchExecutionState } = useContext(
     TaskExecutionStateContext
   );
+  const { isPlanningMode, canCreateTask } = useTaskPlan();
 
   const [isStartingDevServer, setIsStartingDevServer] = useState(false);
   const [merging, setMerging] = useState(false);
@@ -741,7 +743,8 @@ function CurrentAttempt({
                   disabled={
                     isAttemptRunning ||
                     executionState?.execution_state === 'CodingAgentFailed' ||
-                    executionState?.execution_state === 'SetupFailed'
+                    executionState?.execution_state === 'SetupFailed' ||
+                    (isPlanningMode && !canCreateTask)
                   }
                   size="sm"
                   className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"

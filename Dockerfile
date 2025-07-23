@@ -17,24 +17,18 @@ COPY npx-cli/package*.json ./npx-cli/
 RUN npm install -g pnpm
 RUN pnpm install
 
+COPY frontend/ ./frontend/
+COPY shared/ ./shared/
+RUN cd frontend && npm run build
+
 # Copy Rust dependencies for cargo cache
 COPY backend/ ./backend/
 COPY Cargo.toml ./
 RUN cargo build --release --manifest-path backend/Cargo.toml
 
-COPY frontend/ ./frontend/
-COPY shared/ ./shared/
-RUN pnpm run frontend:build
-
-# Copy scripts for build
-COPY scripts/ ./scripts/
-RUN pnpm run backend:build
-
 # Expose port
-ENV BACKEND_PORT=8000
-ENV FRONTEND_PORT=3000
 ENV HOST=0.0.0.0
-EXPOSE 8000
+ENV PORT=3000
 EXPOSE 3000
 
 # Run the application

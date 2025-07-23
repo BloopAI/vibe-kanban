@@ -31,8 +31,16 @@ pub fn config_router() -> Router<AppState> {
 }
 
 async fn get_config(State(app_state): State<AppState>) -> ResponseJson<ApiResponse<Config>> {
-    let config = app_state.get_config().read().await;
-    ResponseJson(ApiResponse::success(config.clone()))
+    let mut config = app_state.get_config().read().await.clone();
+
+    // Update environment info dynamically
+    let info = os_info::get();
+    config.environment.os_type = info.os_type().to_string();
+    config.environment.os_version = info.version().to_string();
+    config.environment.architecture = info.architecture().unwrap_or("unknown").to_string();
+    config.environment.bitness = info.bitness().to_string();
+
+    ResponseJson(ApiResponse::success(config))
 }
 
 async fn update_config(
