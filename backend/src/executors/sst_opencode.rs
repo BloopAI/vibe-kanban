@@ -301,7 +301,6 @@ Task title: {}"#,
         // Get stderr stream from CommandProcess for OpenCode filtering
         let mut stream = proc
             .stream()
-            .await
             .expect("Failed to get streams from command process");
         let stderr = stream
             .stderr
@@ -368,7 +367,6 @@ Task title: {}"#,
         // Get stderr stream from CommandProcess for OpenCode filtering
         let mut stream = proc
             .stream()
-            .await
             .expect("Failed to get streams from command process");
         let stderr = stream
             .stderr

@@ -1,13 +1,13 @@
 mod response {
-    use serde::{Deserialize, Serialize};
+    use serde::Serialize;
     use ts_rs::TS;
 
-    #[derive(Debug, Serialize, Deserialize, TS)]
+    #[derive(Debug, Serialize, TS)]
     #[ts(export)]
     pub struct ApiResponse<T> {
-        pub success: bool,
-        pub data: Option<T>,
-        pub message: Option<String>,
+        success: bool,
+        data: Option<T>,
+        message: Option<String>,
     }
 
     impl<T> ApiResponse<T> {
@@ -31,5 +31,5 @@ mod response {
     }
 }
 
-// Re-export the type with public fields
+// Re-export the type, but its fields remain private
 pub use response::ApiResponse;

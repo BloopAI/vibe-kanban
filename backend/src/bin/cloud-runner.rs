@@ -12,10 +12,7 @@ use serde::Serialize;
 use tokio::sync::Mutex;
 use tracing_subscriber::prelude::*;
 use uuid::Uuid;
-use vibe_kanban::{
-    command_runner::{CommandProcess, CommandRunner, CreateCommandRequest, ProcessStatusResponse},
-    models::ApiResponse,
-};
+use vibe_kanban::command_runner::{CommandProcess, CommandRunner, CreateCommandRequest};
 
 // Structure to hold process and its streams
 #[derive(Debug)]
@@ -32,10 +29,46 @@ struct AppState {
     processes: Arc<Mutex<HashMap<String, ProcessEntry>>>,
 }
 
+// Response type for API responses
+#[derive(Debug, Serialize)]
+struct ApiResponse<T> {
+    success: bool,
+    data: Option<T>,
+    error: Option<String>,
+}
+
+impl<T> ApiResponse<T> {
+    fn success(data: T) -> Self {
+        Self {
+            success: true,
+            data: Some(data),
+            error: None,
+        }
+    }
+
+    #[allow(dead_code)]
+    fn error(message: String) -> Self {
+        Self {
+            success: false,
+            data: None,
+            error: Some(message),
+        }
+    }
+}
+
 // Response type for command creation
 #[derive(Debug, Serialize)]
 struct CreateCommandResponse {
     process_id: String,
+}
+
+// Response type for process status
+#[derive(Debug, Serialize)]
+struct ProcessStatusResponse {
+    process_id: String,
+    running: bool,
+    exit_code: Option<i32>,
+    success: Option<bool>,
 }
 
 #[tokio::main]
@@ -111,7 +144,7 @@ async fn create_command(
     let completed = Arc::new(Mutex::new(false));
 
     // Get the streams from the process
-    let mut streams = match process.stream().await {
+    let mut streams = match process.stream() {
         Ok(streams) => streams,
         Err(e) => {
             tracing::error!("Failed to get process streams: {}", e);

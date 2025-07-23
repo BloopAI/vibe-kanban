@@ -146,7 +146,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Give the server a moment to capture output from fast commands like echo
     tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
-    match process6a.stream().await {
+    match process6a.stream() {
         Ok(mut stream) => {
             println!("✅ Got streams from process");
 
@@ -190,7 +190,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Give the server a moment to capture output from fast commands
     tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
-    match process6b.stream().await {
+    match process6b.stream() {
         Ok(mut stream) => {
             if let Some(stderr) = &mut stream.stderr {
                 use tokio::io::AsyncReadExt;
@@ -232,7 +232,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Give the server a moment to capture output from the command
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
-    match process6c.stream().await {
+    match process6c.stream() {
         Ok(mut stream) => {
             if let Some(stdout) = &mut stream.stdout {
                 use tokio::io::AsyncReadExt;

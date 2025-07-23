@@ -97,7 +97,7 @@ Task title: {}"#,
             attempt_id
         );
 
-        Self::setup_streaming(pool, &mut proc, attempt_id, execution_process_id).await;
+        Self::setup_streaming(pool, &mut proc, attempt_id, execution_process_id);
 
         Ok(proc)
     }
@@ -149,7 +149,7 @@ Task title: {}"#,
             attempt_id
         );
 
-        Self::setup_streaming(pool, &mut proc, attempt_id, execution_process_id).await;
+        Self::setup_streaming(pool, &mut proc, attempt_id, execution_process_id);
 
         Ok(proc)
     }
@@ -276,7 +276,7 @@ impl GeminiExecutor {
     }
 
     /// Setup streaming for both stdout and stderr
-    async fn setup_streaming(
+    fn setup_streaming(
         pool: &sqlx::SqlitePool,
         proc: &mut CommandProcess,
         attempt_id: Uuid,
@@ -285,7 +285,6 @@ impl GeminiExecutor {
         // Get stdout and stderr streams from CommandProcess
         let mut stream = proc
             .stream()
-            .await
             .expect("Failed to get streams from command process");
         let stdout = stream
             .stdout

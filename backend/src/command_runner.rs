@@ -23,14 +23,6 @@ pub struct CreateCommandRequest {
     pub stdin: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ProcessStatusResponse {
-    pub process_id: String,
-    pub running: bool,
-    pub exit_code: Option<i32>,
-    pub success: Option<bool>,
-}
-
 #[derive(Debug, Clone)]
 pub enum CommandRunnerType {
     Local,
@@ -45,6 +37,10 @@ pub struct CommandRunner {
     working_dir: Option<String>,
     env_vars: Vec<(String, String)>,
     stdin: Option<String>,
+    #[allow(dead_code)]
+    taskid: Option<String>,
+    #[allow(dead_code)]
+    executor_type: String,
 }
 
 #[derive(Debug)]
@@ -53,13 +49,16 @@ pub enum ProcessHandle {
     Remote {
         process_id: String,
         cloud_server_url: String,
-        http_client: reqwest::Client,
     },
 }
 
 #[derive(Debug)]
 pub struct CommandProcess {
-    handle: ProcessHandle,
+    handle: Option<ProcessHandle>,
+    #[allow(dead_code)]
+    runner_type: CommandRunnerType,
+    #[allow(dead_code)]
+    command_runner: CommandRunner,
 }
 
 #[derive(Debug)]
@@ -74,6 +73,7 @@ pub enum CommandError {
     KillFailed {
         error: std::io::Error,
     },
+    ProcessNotStarted,
     NoCommandSet,
     IoError {
         error: std::io::Error,
@@ -95,6 +95,9 @@ impl std::fmt::Display for CommandError {
             }
             CommandError::KillFailed { error } => {
                 write!(f, "Failed to kill command: {}", error)
+            }
+            CommandError::ProcessNotStarted => {
+                write!(f, "Process has not been started yet")
             }
             CommandError::NoCommandSet => {
                 write!(f, "No command has been set")
@@ -140,6 +143,7 @@ impl CommandExitStatus {
     }
 
     /// Create a CommandExitStatus for remote processes
+    #[allow(dead_code)]
     pub fn from_remote(
         code: Option<i32>,
         success: bool,
@@ -166,6 +170,24 @@ impl CommandExitStatus {
         self.code
     }
 
+    /// Returns the signal that terminated the process (Unix only)
+    #[cfg(unix)]
+    #[allow(dead_code)]
+    pub fn signal(&self) -> Option<i32> {
+        self.signal
+    }
+
+    /// Returns the remote process ID, if this was a remote execution
+    #[allow(dead_code)]
+    pub fn remote_process_id(&self) -> Option<&str> {
+        self.remote_process_id.as_deref()
+    }
+
+    /// Returns the remote session ID, if this was a remote execution
+    #[allow(dead_code)]
+    pub fn remote_session_id(&self) -> Option<&str> {
+        self.remote_session_id.as_deref()
+    }
 }
 
 pub struct CommandStream {
@@ -186,11 +208,21 @@ impl CommandStream {
     }
 
     /// Create a CommandStream from generic AsyncRead streams
+    #[allow(dead_code)]
     pub fn from_streams(
         stdout: Option<Box<dyn AsyncRead + Unpin + Send>>,
         stderr: Option<Box<dyn AsyncRead + Unpin + Send>>,
     ) -> Self {
         Self { stdout, stderr }
+    }
+
+    /// Create empty CommandStream (no streams available)
+    #[allow(dead_code)]
+    pub fn empty() -> Self {
+        Self {
+            stdout: None,
+            stderr: None,
+        }
     }
 }
 
@@ -206,7 +238,8 @@ pub struct HTTPStream {
 impl Unpin for HTTPStream {}
 
 impl HTTPStream {
-    pub async fn new(client: &reqwest::Client, url: String) -> Result<Self, CommandError> {
+    pub async fn new(url: String) -> Result<Self, CommandError> {
+        let client = reqwest::Client::new();
         let response = client
             .get(&url)
             .send()
@@ -322,9 +355,12 @@ impl CommandRunner {
             working_dir: None,
             env_vars: Vec::new(),
             stdin: None,
+            taskid: None,
+            executor_type: "Local".to_string(),
         }
     }
 
+    #[allow(dead_code)]
     pub fn new_remote() -> Self {
         Self {
             runner_type: CommandRunnerType::Remote,
@@ -333,6 +369,8 @@ impl CommandRunner {
             working_dir: None,
             env_vars: Vec::new(),
             stdin: None,
+            taskid: None,
+            executor_type: "Remote".to_string(),
         }
     }
 
@@ -450,7 +488,9 @@ impl CommandRunner {
                 }
 
                 Ok(CommandProcess {
-                    handle: ProcessHandle::Local(child),
+                    handle: Some(ProcessHandle::Local(child)),
+                    runner_type: self.runner_type.clone(),
+                    command_runner: self.clone(),
                 })
             }
             CommandRunnerType::Remote => {
@@ -485,64 +525,15 @@ impl CommandRunner {
                         })?;
 
                 Ok(CommandProcess {
-                    handle: ProcessHandle::Remote {
+                    handle: Some(ProcessHandle::Remote {
                         process_id: process_id.to_string(),
                         cloud_server_url,
-                        http_client: reqwest::Client::new(),
-                    },
+                    }),
+                    runner_type: self.runner_type.clone(),
+                    command_runner: self.clone(),
                 })
             }
         }
-    }
-}
-
-/// Make HTTP request to get remote process status
-/// Returns (running, exit_code, success)
-async fn get_remote_status(
-    client: &reqwest::Client,
-    cloud_server_url: &str,
-    process_id: &str,
-) -> Result<(bool, Option<i32>, bool), CommandError> {
-    let response = client
-        .get(format!(
-            "{}/commands/{}/status",
-            cloud_server_url, process_id
-        ))
-        .send()
-        .await
-        .map_err(|e| CommandError::StatusCheckFailed {
-            error: std::io::Error::other(e),
-        })?;
-
-    // Handle HTTP errors
-    if !response.status().is_success() {
-        if response.status() == reqwest::StatusCode::NOT_FOUND {
-            return Err(CommandError::StatusCheckFailed {
-                error: std::io::Error::new(std::io::ErrorKind::NotFound, "Process not found"),
-            });
-        } else {
-            return Err(CommandError::StatusCheckFailed {
-                error: std::io::Error::other("Status check failed"),
-            });
-        }
-    }
-
-    // Parse JSON response using strongly-typed ApiResponse
-    use crate::models::ApiResponse;
-    let result: ApiResponse<ProcessStatusResponse> =
-        response
-            .json()
-            .await
-            .map_err(|e| CommandError::StatusCheckFailed {
-                error: std::io::Error::other(e),
-            })?;
-
-    if let Some(data) = result.data {
-        Ok((data.running, data.exit_code, data.success.unwrap_or(false)))
-    } else {
-        Err(CommandError::StatusCheckFailed {
-            error: std::io::Error::other("Missing data in response"),
-        })
     }
 }
 
@@ -550,7 +541,7 @@ impl CommandProcess {
     #[allow(dead_code)]
     pub async fn status(&mut self) -> Result<Option<CommandExitStatus>, CommandError> {
         match &mut self.handle {
-            ProcessHandle::Local(child) => match child
+            Some(ProcessHandle::Local(child)) => match child
                 .inner()
                 .try_wait()
                 .map_err(|e| CommandError::StatusCheckFailed { error: e })?
@@ -558,18 +549,62 @@ impl CommandProcess {
                 Some(status) => Ok(Some(CommandExitStatus::from_local(status))),
                 None => Ok(None),
             },
-            ProcessHandle::Remote {
+            Some(ProcessHandle::Remote {
                 process_id,
                 cloud_server_url,
-                http_client,
-            } => {
-                let (running, exit_code, success) =
-                    get_remote_status(http_client, cloud_server_url, process_id).await?;
+            }) => {
+                // Make HTTP request to get status from cloud server
+                let client = reqwest::Client::new();
+                let response = client
+                    .get(format!(
+                        "{}/commands/{}/status",
+                        cloud_server_url, process_id
+                    ))
+                    .send()
+                    .await
+                    .map_err(|e| CommandError::StatusCheckFailed {
+                        error: std::io::Error::other(e),
+                    })?;
+
+                if !response.status().is_success() {
+                    if response.status() == reqwest::StatusCode::NOT_FOUND {
+                        return Err(CommandError::StatusCheckFailed {
+                            error: std::io::Error::new(
+                                std::io::ErrorKind::NotFound,
+                                "Process not found",
+                            ),
+                        });
+                    } else {
+                        return Err(CommandError::StatusCheckFailed {
+                            error: std::io::Error::other("Status check failed"),
+                        });
+                    }
+                }
+
+                let result: serde_json::Value =
+                    response
+                        .json()
+                        .await
+                        .map_err(|e| CommandError::StatusCheckFailed {
+                            error: std::io::Error::other(e),
+                        })?;
+
+                let data =
+                    result["data"]
+                        .as_object()
+                        .ok_or_else(|| CommandError::StatusCheckFailed {
+                            error: std::io::Error::other("Invalid response format"),
+                        })?;
+
+                let running = data["running"].as_bool().unwrap_or(false);
 
                 if running {
                     Ok(None) // Still running
                 } else {
                     // Process completed, extract exit status
+                    let exit_code = data["exit_code"].as_i64().map(|c| c as i32);
+                    let success = data["success"].as_bool().unwrap_or(false);
+
                     Ok(Some(CommandExitStatus::from_remote(
                         exit_code,
                         success,
@@ -578,11 +613,17 @@ impl CommandProcess {
                     )))
                 }
             }
+            None => Err(CommandError::ProcessNotStarted),
         }
     }
+    #[allow(dead_code)]
+    pub fn as_runner(&self) -> &CommandRunner {
+        &self.command_runner
+    }
+
     pub async fn try_wait(&mut self) -> Result<Option<CommandExitStatus>, CommandError> {
         match &mut self.handle {
-            ProcessHandle::Local(child) => match child
+            Some(ProcessHandle::Local(child)) => match child
                 .inner()
                 .try_wait()
                 .map_err(|e| CommandError::StatusCheckFailed { error: e })?
@@ -590,19 +631,62 @@ impl CommandProcess {
                 Some(status) => Ok(Some(CommandExitStatus::from_local(status))),
                 None => Ok(None),
             },
-            ProcessHandle::Remote {
+            Some(ProcessHandle::Remote {
                 process_id,
                 cloud_server_url,
-                http_client,
-            } => {
+            }) => {
                 // try_wait has same behavior as status for remote processes
-                let (running, exit_code, success) =
-                    get_remote_status(http_client, cloud_server_url, process_id).await?;
+                let client = reqwest::Client::new();
+                let response = client
+                    .get(format!(
+                        "{}/commands/{}/status",
+                        cloud_server_url, process_id
+                    ))
+                    .send()
+                    .await
+                    .map_err(|e| CommandError::StatusCheckFailed {
+                        error: std::io::Error::other(e),
+                    })?;
+
+                if !response.status().is_success() {
+                    if response.status() == reqwest::StatusCode::NOT_FOUND {
+                        return Err(CommandError::StatusCheckFailed {
+                            error: std::io::Error::new(
+                                std::io::ErrorKind::NotFound,
+                                "Process not found",
+                            ),
+                        });
+                    } else {
+                        return Err(CommandError::StatusCheckFailed {
+                            error: std::io::Error::other("Status check failed"),
+                        });
+                    }
+                }
+
+                let result: serde_json::Value =
+                    response
+                        .json()
+                        .await
+                        .map_err(|e| CommandError::StatusCheckFailed {
+                            error: std::io::Error::other(e),
+                        })?;
+
+                let data =
+                    result["data"]
+                        .as_object()
+                        .ok_or_else(|| CommandError::StatusCheckFailed {
+                            error: std::io::Error::other("Invalid response format"),
+                        })?;
+
+                let running = data["running"].as_bool().unwrap_or(false);
 
                 if running {
                     Ok(None) // Still running
                 } else {
                     // Process completed, extract exit status
+                    let exit_code = data["exit_code"].as_i64().map(|c| c as i32);
+                    let success = data["success"].as_bool().unwrap_or(false);
+
                     Ok(Some(CommandExitStatus::from_remote(
                         exit_code,
                         success,
@@ -611,12 +695,13 @@ impl CommandProcess {
                     )))
                 }
             }
+            None => Err(CommandError::ProcessNotStarted),
         }
     }
 
     pub async fn kill(&mut self) -> Result<(), CommandError> {
         match &mut self.handle {
-            ProcessHandle::Local(child) => {
+            Some(ProcessHandle::Local(child)) => {
                 // hit the whole process group, not just the leader
                 #[cfg(unix)]
                 {
@@ -659,14 +744,16 @@ impl CommandProcess {
                     .await
                     .map_err(|e| CommandError::KillFailed { error: e })?; // reap
 
+                // Clear the handle after successful kill
+                self.handle = None;
                 Ok(())
             }
-            ProcessHandle::Remote {
+            Some(ProcessHandle::Remote {
                 process_id,
                 cloud_server_url,
-                http_client,
-            } => {
-                let response = http_client
+            }) => {
+                let client = reqwest::Client::new();
+                let response = client
                     .delete(format!("{}/commands/{}", cloud_server_url, process_id))
                     .send()
                     .await
@@ -677,6 +764,7 @@ impl CommandProcess {
                 if !response.status().is_success() {
                     if response.status() == reqwest::StatusCode::NOT_FOUND {
                         // Process not found, might have already finished - treat as success
+                        self.handle = None;
                         return Ok(());
                     }
 
@@ -697,72 +785,130 @@ impl CommandProcess {
                     }
                 }
 
+                // Clear the handle after successful kill
+                self.handle = None;
                 Ok(())
             }
+            None => Err(CommandError::ProcessNotStarted),
         }
     }
 
-    pub async fn stream(&mut self) -> Result<CommandStream, CommandError> {
+    pub fn stream(&mut self) -> Result<CommandStream, CommandError> {
         match &mut self.handle {
-            ProcessHandle::Local(child) => Ok(CommandStream::from_local(
+            Some(ProcessHandle::Local(child)) => Ok(CommandStream::from_local(
                 child.inner().stdout.take(),
                 child.inner().stderr.take(),
             )),
-            ProcessHandle::Remote {
+            Some(ProcessHandle::Remote {
                 process_id,
                 cloud_server_url,
-                http_client,
-            } => {
-                // Create HTTP streams for stdout and stderr using proper async approach
+            }) => {
+                // Create HTTP streams for stdout and stderr using a blocking approach
                 let stdout_url = format!("{}/commands/{}/stdout", cloud_server_url, process_id);
                 let stderr_url = format!("{}/commands/{}/stderr", cloud_server_url, process_id);
 
-                // Properly async HTTP stream creation
-                let stdout = HTTPStream::new(http_client, stdout_url).await;
-                let stderr = HTTPStream::new(http_client, stderr_url).await;
+                // Use tokio spawn_blocking to avoid the nested runtime issue
+                let stdout = std::thread::spawn({
+                    let url = stdout_url;
+                    move || {
+                        let rt = tokio::runtime::Runtime::new().unwrap();
+                        rt.block_on(HTTPStream::new(url))
+                    }
+                })
+                .join()
+                .map_err(|_| CommandError::IoError {
+                    error: std::io::Error::other("Failed to create stdout stream"),
+                })?;
 
-                let stdout_stream: Option<Box<dyn AsyncRead + Unpin + Send>> = match stdout {
-                    Ok(s) => Some(Box::new(s) as Box<dyn AsyncRead + Unpin + Send>),
-                    Err(e) => {
-                        tracing::warn!("Failed to create stdout stream: {}", e);
-                        None
+                let stderr = std::thread::spawn({
+                    let url = stderr_url;
+                    move || {
+                        let rt = tokio::runtime::Runtime::new().unwrap();
+                        rt.block_on(HTTPStream::new(url))
                     }
-                };
-                let stderr_stream: Option<Box<dyn AsyncRead + Unpin + Send>> = match stderr {
-                    Ok(s) => Some(Box::new(s) as Box<dyn AsyncRead + Unpin + Send>),
-                    Err(e) => {
-                        tracing::warn!("Failed to create stderr stream: {}", e);
-                        None
-                    }
-                };
+                })
+                .join()
+                .map_err(|_| CommandError::IoError {
+                    error: std::io::Error::other("Failed to create stderr stream"),
+                })?;
+
+                let stdout_stream: Option<Box<dyn AsyncRead + Unpin + Send>> = stdout
+                    .ok()
+                    .map(|s| Box::new(s) as Box<dyn AsyncRead + Unpin + Send>);
+                let stderr_stream: Option<Box<dyn AsyncRead + Unpin + Send>> = stderr
+                    .ok()
+                    .map(|s| Box::new(s) as Box<dyn AsyncRead + Unpin + Send>);
 
                 Ok(CommandStream::from_streams(stdout_stream, stderr_stream))
             }
+            None => Err(CommandError::ProcessNotStarted),
         }
     }
 
     #[allow(dead_code)]
     pub async fn wait(&mut self) -> Result<CommandExitStatus, CommandError> {
         match &mut self.handle {
-            ProcessHandle::Local(child) => {
+            Some(ProcessHandle::Local(child)) => {
                 let status = child
                     .wait()
                     .await
                     .map_err(|e| CommandError::KillFailed { error: e })?;
                 Ok(CommandExitStatus::from_local(status))
             }
-            ProcessHandle::Remote {
+            Some(ProcessHandle::Remote {
                 process_id,
                 cloud_server_url,
-                http_client,
-            } => {
+            }) => {
                 // Poll the status endpoint until process completes
                 loop {
-                    let (running, exit_code, success) =
-                        get_remote_status(http_client, cloud_server_url, process_id).await?;
+                    let client = reqwest::Client::new();
+                    let response = client
+                        .get(format!(
+                            "{}/commands/{}/status",
+                            cloud_server_url, process_id
+                        ))
+                        .send()
+                        .await
+                        .map_err(|e| CommandError::StatusCheckFailed {
+                            error: std::io::Error::other(e),
+                        })?;
+
+                    if !response.status().is_success() {
+                        if response.status() == reqwest::StatusCode::NOT_FOUND {
+                            return Err(CommandError::StatusCheckFailed {
+                                error: std::io::Error::new(
+                                    std::io::ErrorKind::NotFound,
+                                    "Process not found",
+                                ),
+                            });
+                        } else {
+                            return Err(CommandError::StatusCheckFailed {
+                                error: std::io::Error::other("Status check failed"),
+                            });
+                        }
+                    }
+
+                    let result: serde_json::Value =
+                        response
+                            .json()
+                            .await
+                            .map_err(|e| CommandError::StatusCheckFailed {
+                                error: std::io::Error::other(e),
+                            })?;
+
+                    let data = result["data"].as_object().ok_or_else(|| {
+                        CommandError::StatusCheckFailed {
+                            error: std::io::Error::other("Invalid response format"),
+                        }
+                    })?;
+
+                    let running = data["running"].as_bool().unwrap_or(false);
 
                     if !running {
                         // Process completed, extract exit status and return
+                        let exit_code = data["exit_code"].as_i64().map(|c| c as i32);
+                        let success = data["success"].as_bool().unwrap_or(false);
+
                         return Ok(CommandExitStatus::from_remote(
                             exit_code,
                             success,
@@ -775,7 +921,13 @@ impl CommandProcess {
                     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
                 }
             }
+            None => Err(CommandError::ProcessNotStarted),
         }
+    }
+
+    #[allow(dead_code)]
+    pub fn runner_type(&self) -> &CommandRunnerType {
+        &self.runner_type
     }
 }
 
@@ -841,7 +993,7 @@ mod tests {
             .await
             .expect("CommandRunner should start echo command");
 
-        let mut stream = process.stream().await.expect("Should get stream");
+        let mut stream = process.stream().expect("Should get stream");
         let mut stdout_data = Vec::new();
         if let Some(stdout) = &mut stream.stdout {
             stdout
@@ -884,7 +1036,7 @@ mod tests {
             .await
             .expect("CommandRunner should start cat command");
 
-        let mut stream = process.stream().await.expect("Should get stream");
+        let mut stream = process.stream().expect("Should get stream");
         let mut stdout_data = Vec::new();
         if let Some(stdout) = &mut stream.stdout {
             stdout
@@ -928,7 +1080,7 @@ mod tests {
             .await
             .expect("CommandRunner should start pwd command");
 
-        let mut stream = process.stream().await.expect("Should get stream");
+        let mut stream = process.stream().expect("Should get stream");
         let mut stdout_data = Vec::new();
         if let Some(stdout) = &mut stream.stdout {
             stdout
@@ -973,7 +1125,7 @@ mod tests {
             .await
             .expect("CommandRunner should start printenv command");
 
-        let mut stream = process.stream().await.expect("Should get stream");
+        let mut stream = process.stream().expect("Should get stream");
         let mut stdout_data = Vec::new();
         if let Some(stdout) = &mut stream.stdout {
             stdout
