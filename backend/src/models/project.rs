@@ -42,6 +42,17 @@ pub struct UpdateProject {
     pub cleanup_script: Option<String>,
 }
 
+#[derive(Debug, Deserialize, TS)]
+#[ts(export)]
+pub struct CreateProjectFromGitHub {
+    pub repository_id: i64,
+    pub name: String,
+    pub clone_url: String,
+    pub setup_script: Option<String>,
+    pub dev_script: Option<String>,
+    pub cleanup_script: Option<String>,
+}
+
 #[derive(Debug, Serialize, TS)]
 #[ts(export)]
 pub struct ProjectWithBranch {

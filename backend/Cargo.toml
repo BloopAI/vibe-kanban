@@ -55,6 +55,7 @@ lazy_static = "1.4"
 futures-util = "0.3"
 async-stream = "0.3"
 json-patch = "2.0"
+backon = "1.5.1"
 
 [dev-dependencies]
 tempfile = "3.8"

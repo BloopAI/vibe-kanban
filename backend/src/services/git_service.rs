@@ -1279,6 +1279,58 @@ impl GitService {
 
         Ok(())
     }
+
+    /// Clone a repository to the specified directory
+    pub fn clone_repository(
+        clone_url: &str,
+        target_path: &Path,
+        token: Option<&str>,
+    ) -> Result<Repository, GitServiceError> {
+        if let Some(parent) = target_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        // Set up callbacks for authentication if token is provided
+        let mut callbacks = RemoteCallbacks::new();
+        if let Some(token) = token {
+            callbacks.credentials(|_url, username_from_url, _allowed_types| {
+                Cred::userpass_plaintext(username_from_url.unwrap_or("git"), token)
+            });
+        } else {
+            // Fallback to SSH agent and key file authentication
+            callbacks.credentials(|_url, username_from_url, _| {
+                // Try SSH agent first
+                if let Some(username) = username_from_url {
+                    if let Ok(cred) = Cred::ssh_key_from_agent(username) {
+                        return Ok(cred);
+                    }
+                }
+                // Fallback to key file (~/.ssh/id_rsa)
+                let home = dirs::home_dir()
+                    .ok_or_else(|| git2::Error::from_str("Could not find home directory"))?;
+                let key_path = home.join(".ssh").join("id_rsa");
+                Cred::ssh_key(username_from_url.unwrap_or("git"), None, &key_path, None)
+            });
+        }
+
+        // Set up fetch options with our callbacks
+        let mut fetch_opts = FetchOptions::new();
+        fetch_opts.remote_callbacks(callbacks);
+
+        // Create a repository builder with fetch options
+        let mut builder = git2::build::RepoBuilder::new();
+        builder.fetch_options(fetch_opts);
+
+        let repo = builder.clone(clone_url, target_path)?;
+
+        tracing::info!(
+            "Successfully cloned repository from {} to {}",
+            clone_url,
+            target_path.display()
+        );
+
+        Ok(repo)
+    }
 }
 
 #[cfg(test)]

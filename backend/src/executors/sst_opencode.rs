@@ -501,7 +501,7 @@ mod tests {
         let executor = SstOpencodeExecutor::new();
 
         // This is what the database should contain after our streaming function processes it
-        let logs = r#"{"timestamp":"2025-07-16T18:04:00Z","entry_type":{"type":"tool_use","tool_name":"Read","action_type":{"action":"file_read","path":"hello.js"}},"content":"`hello.js`","metadata":{"filePath":"/path/to/repo/hello.js"}}
+        let logs = r#"{"timestamp":"2025-07-16T18:04:00Z","entry_type":{"type":"tool_use","tool_name":"read","action_type":{"action":"file_read","path":"hello.js"}},"content":"`hello.js`","metadata":{"filePath":"/path/to/repo/hello.js"}}
 {"timestamp":"2025-07-16T18:04:01Z","entry_type":{"type":"assistant_message"},"content":"I'll read the hello.js file to see its current contents.","metadata":null}
 {"timestamp":"2025-07-16T18:04:02Z","entry_type":{"type":"tool_use","tool_name":"bash","action_type":{"action":"command_run","command":"ls -la"}},"content":"`ls -la`","metadata":{"command":"ls -la"}}
 {"timestamp":"2025-07-16T18:04:03Z","entry_type":{"type":"assistant_message"},"content":"The file exists and contains a hello world function.","metadata":null}"#;
@@ -520,7 +520,7 @@ mod tests {
             action_type,
         } = &result.entries[0].entry_type
         {
-            assert_eq!(tool_name, "Read");
+            assert_eq!(tool_name, "read");
             assert!(matches!(action_type, ActionType::FileRead { .. }));
         }
         assert_eq!(result.entries[0].content, "`hello.js`");
@@ -620,10 +620,10 @@ The file listing shows several items."#;
             "All timestamps should be unique"
         );
 
-        // Parse the first line (should be Read tool use)
+        // Parse the first line (should be read tool use - normalized to lowercase)
         let first_json: serde_json::Value = serde_json::from_str(lines[0]).unwrap();
         assert_eq!(first_json["entry_type"]["type"], "tool_use");
-        assert_eq!(first_json["entry_type"]["tool_name"], "Read");
+        assert_eq!(first_json["entry_type"]["tool_name"], "read");
         assert_eq!(first_json["content"], "`hello.js`");
 
         // Parse the second line (should be assistant message)

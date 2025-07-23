@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Globe2 } from 'lucide-react';
+import { Globe2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -48,6 +48,12 @@ interface TaskFormDialogProps {
     description: string,
     status: TaskStatus
   ) => Promise<void>;
+  // Plan context for disabling task creation when no plan exists
+  planContext?: {
+    isPlanningMode: boolean;
+    canCreateTask: boolean;
+    latestProcessHasNoPlan: boolean;
+  };
 }
 
 export function TaskFormDialog({
@@ -59,6 +65,7 @@ export function TaskFormDialog({
   onCreateTask,
   onCreateAndStartTask,
   onUpdateTask,
+  planContext,
 }: TaskFormDialogProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -70,6 +77,12 @@ export function TaskFormDialog({
 
   const { config } = useConfig();
   const isEditMode = Boolean(task);
+
+  // Check if task creation should be disabled based on plan context
+  const isPlanningModeWithoutPlan =
+    planContext?.isPlanningMode && !planContext?.canCreateTask;
+  const showPlanWarning =
+    planContext?.isPlanningMode && planContext?.latestProcessHasNoPlan;
 
   useEffect(() => {
     if (task) {
@@ -248,6 +261,23 @@ export function TaskFormDialog({
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {/* Plan warning when in planning mode without plan */}
+          {showPlanWarning && (
+            <div className="p-4 rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/20">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                <p className="text-sm font-semibold text-orange-800 dark:text-orange-300">
+                  Plan Required
+                </p>
+              </div>
+              <p className="text-sm text-orange-700 dark:text-orange-400">
+                No plan was generated in the last execution attempt. Task
+                creation is disabled until a plan is available. Please generate
+                a plan first.
+              </p>
+            </div>
+          )}
+
           <div>
             <Label htmlFor="task-title" className="text-sm font-medium">
               Title
@@ -372,19 +402,46 @@ export function TaskFormDialog({
                   variant="secondary"
                   onClick={handleSubmit}
                   disabled={
-                    isSubmitting || isSubmittingAndStart || !title.trim()
+                    isSubmitting ||
+                    isSubmittingAndStart ||
+                    !title.trim() ||
+                    isPlanningModeWithoutPlan
+                  }
+                  className={
+                    isPlanningModeWithoutPlan
+                      ? 'opacity-60 cursor-not-allowed'
+                      : ''
+                  }
+                  title={
+                    isPlanningModeWithoutPlan
+                      ? 'Plan required before creating task'
+                      : undefined
                   }
                 >
+                  {isPlanningModeWithoutPlan && (
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                  )}
                   {isSubmitting ? 'Creating...' : 'Create Task'}
                 </Button>
                 {onCreateAndStartTask && (
                   <Button
                     onClick={handleCreateAndStart}
                     disabled={
-                      isSubmitting || isSubmittingAndStart || !title.trim()
+                      isSubmitting ||
+                      isSubmittingAndStart ||
+                      !title.trim() ||
+                      isPlanningModeWithoutPlan
                     }
-                    className="font-medium"
+                    className={`font-medium ${isPlanningModeWithoutPlan ? 'opacity-60 cursor-not-allowed bg-red-600 hover:bg-red-600' : ''}`}
+                    title={
+                      isPlanningModeWithoutPlan
+                        ? 'Plan required before creating and starting task'
+                        : undefined
+                    }
                   >
+                    {isPlanningModeWithoutPlan && (
+                      <AlertTriangle className="h-4 w-4 mr-2" />
+                    )}
                     {isSubmittingAndStart
                       ? 'Creating & Starting...'
                       : 'Create & Start'}

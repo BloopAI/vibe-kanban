@@ -32,6 +32,8 @@ import {
   TaskRelatedTasksContext,
   TaskSelectedAttemptContext,
 } from './taskDetailsContext.ts';
+import { TaskPlanContext } from './TaskPlanContext.ts';
+import { is_planning_executor_type } from '@/lib/utils.ts';
 import type { AttemptData } from '@/lib/types.ts';
 
 const TaskDetailsProvider: FC<{
@@ -436,6 +438,56 @@ const TaskDetailsProvider: FC<{
     ]
   );
 
+  // Plan context value
+  const planValue = useMemo(() => {
+    const isPlanningMode =
+      attemptData.processes?.some(
+        (process) =>
+          process.executor_type &&
+          is_planning_executor_type(process.executor_type)
+      ) ?? false;
+
+    const planCount =
+      attemptData.allLogs?.reduce((count, processLog) => {
+        const planEntries =
+          processLog.normalized_conversation?.entries.filter(
+            (entry) =>
+              entry.entry_type.type === 'tool_use' &&
+              entry.entry_type.action_type.action === 'plan_presentation'
+          ) ?? [];
+        return count + planEntries.length;
+      }, 0) ?? 0;
+
+    const hasPlans = planCount > 0;
+
+    const latestProcessHasNoPlan = (() => {
+      if (!attemptData.allLogs || attemptData.allLogs.length === 0)
+        return false;
+      const latestProcessLog =
+        attemptData.allLogs[attemptData.allLogs.length - 1];
+      if (!latestProcessLog.normalized_conversation?.entries) return true;
+
+      return !latestProcessLog.normalized_conversation.entries.some(
+        (entry) =>
+          entry.entry_type.type === 'tool_use' &&
+          entry.entry_type.action_type.action === 'plan_presentation'
+      );
+    })();
+
+    // Can create task if not in planning mode, or if in planning mode and has plans
+    const canCreateTask =
+      !isPlanningMode ||
+      (isPlanningMode && hasPlans && !latestProcessHasNoPlan);
+
+    return {
+      isPlanningMode,
+      hasPlans,
+      planCount,
+      latestProcessHasNoPlan,
+      canCreateTask,
+    };
+  }, [attemptData.processes, attemptData.allLogs]);
+
   return (
     <TaskDetailsContext.Provider value={value}>
       <TaskAttemptLoadingContext.Provider value={taskAttemptLoadingValue}>
@@ -453,7 +505,9 @@ const TaskDetailsProvider: FC<{
                       <TaskRelatedTasksContext.Provider
                         value={relatedTasksValue}
                       >
-                        {children}
+                        <TaskPlanContext.Provider value={planValue}>
+                          {children}
+                        </TaskPlanContext.Provider>
                       </TaskRelatedTasksContext.Provider>
                     </TaskBackgroundRefreshContext.Provider>
                   </TaskExecutionStateContext.Provider>

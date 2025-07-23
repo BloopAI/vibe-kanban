@@ -16,7 +16,7 @@ use crate::{
     executor::ExecutorConfig,
     models::{
         config::{Config, EditorConstants, SoundConstants},
-        ApiResponse,
+        ApiResponse, Environment,
     },
     utils,
 };
@@ -31,8 +31,16 @@ pub fn config_router() -> Router<AppState> {
 }
 
 async fn get_config(State(app_state): State<AppState>) -> ResponseJson<ApiResponse<Config>> {
-    let config = app_state.get_config().read().await;
-    ResponseJson(ApiResponse::success(config.clone()))
+    let mut config = app_state.get_config().read().await.clone();
+
+    // Update environment info dynamically
+    let info = os_info::get();
+    config.environment.os_type = info.os_type().to_string();
+    config.environment.os_version = info.version().to_string();
+    config.environment.architecture = info.architecture().unwrap_or("unknown").to_string();
+    config.environment.bitness = info.bitness().to_string();
+
+    ResponseJson(ApiResponse::success(config))
 }
 
 async fn update_config(
@@ -62,12 +70,16 @@ async fn update_config(
 pub struct ConfigConstants {
     pub editor: EditorConstants,
     pub sound: SoundConstants,
+    pub mode: Environment,
 }
 
-async fn get_config_constants() -> ResponseJson<ApiResponse<ConfigConstants>> {
+async fn get_config_constants(
+    State(app_state): State<AppState>,
+) -> ResponseJson<ApiResponse<ConfigConstants>> {
     let constants = ConfigConstants {
         editor: EditorConstants::new(),
         sound: SoundConstants::new(),
+        mode: app_state.mode,
     };
 
     ResponseJson(ApiResponse::success(constants))

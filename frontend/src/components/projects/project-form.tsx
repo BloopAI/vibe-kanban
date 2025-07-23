@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -12,8 +14,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FolderPicker } from '@/components/ui/folder-picker';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 import { ProjectFormFields } from './project-form-fields';
-import { CreateProject, Project, UpdateProject } from 'shared/types';
-import { projectsApi } from '@/lib/api';
+import { GitHubRepositoryPicker } from './github-repository-picker';
+import {
+  CreateProject,
+  CreateProjectFromGitHub,
+  Project,
+  UpdateProject,
+  Environment,
+} from 'shared/types';
+import { projectsApi, configApi, githubApi, RepositoryInfo } from '@/lib/api';
 
 interface ProjectFormProps {
   open: boolean;
@@ -42,7 +51,33 @@ export function ProjectForm({
   const [parentPath, setParentPath] = useState('');
   const [folderName, setFolderName] = useState('');
 
+  // Environment and GitHub repository state
+  const [environment, setEnvironment] = useState<Environment>('local');
+  const [selectedRepository, setSelectedRepository] =
+    useState<RepositoryInfo | null>(null);
+  const [modeLoading, setModeLoading] = useState(true);
+
   const isEditing = !!project;
+
+  // Load cloud mode configuration
+  useEffect(() => {
+    const loadMode = async () => {
+      try {
+        const constants = await configApi.getConstants();
+        setEnvironment(constants.mode);
+      } catch (err) {
+        console.error('Failed to load config constants:', err);
+      } finally {
+        setModeLoading(false);
+      }
+    };
+
+    if (!isEditing) {
+      loadMode();
+    } else {
+      setModeLoading(false);
+    }
+  }, [isEditing]);
 
   // Update form fields when project prop changes
   useEffect(() => {
@@ -58,6 +93,7 @@ export function ProjectForm({
       setSetupScript('');
       setDevScript('');
       setCleanupScript('');
+      setSelectedRepository(null);
     }
   }, [project]);
 
@@ -85,14 +121,13 @@ export function ProjectForm({
     setLoading(true);
 
     try {
-      let finalGitRepoPath = gitRepoPath;
-
-      // For new repo mode, construct the full path
-      if (!isEditing && repoMode === 'new') {
-        finalGitRepoPath = `${parentPath}/${folderName}`.replace(/\/+/g, '/');
-      }
-
       if (isEditing) {
+        // Editing existing project (local mode only)
+        let finalGitRepoPath = gitRepoPath;
+        if (repoMode === 'new') {
+          finalGitRepoPath = `${parentPath}/${folderName}`.replace(/\/+/g, '/');
+        }
+
         const updateData: UpdateProject = {
           name,
           git_repo_path: finalGitRepoPath,
@@ -101,37 +136,59 @@ export function ProjectForm({
           cleanup_script: cleanupScript.trim() || null,
         };
 
-        try {
-          await projectsApi.update(project.id, updateData);
-        } catch (error) {
-          setError('Failed to update project');
-          return;
-        }
+        await projectsApi.update(project.id, updateData);
       } else {
-        const createData: CreateProject = {
-          name,
-          git_repo_path: finalGitRepoPath,
-          use_existing_repo: repoMode === 'existing',
-          setup_script: setupScript.trim() || null,
-          dev_script: devScript.trim() || null,
-          cleanup_script: cleanupScript.trim() || null,
-        };
+        // Creating new project
+        if (environment === 'cloud') {
+          // Cloud mode: Create project from GitHub repository
+          if (!selectedRepository) {
+            setError('Please select a GitHub repository');
+            return;
+          }
 
-        try {
+          const githubData: CreateProjectFromGitHub = {
+            repository_id: BigInt(selectedRepository.id),
+            name,
+            clone_url: selectedRepository.clone_url,
+            setup_script: setupScript.trim() || null,
+            dev_script: devScript.trim() || null,
+            cleanup_script: cleanupScript.trim() || null,
+          };
+
+          await githubApi.createProjectFromRepository(githubData);
+        } else {
+          // Local mode: Create local project
+          let finalGitRepoPath = gitRepoPath;
+          if (repoMode === 'new') {
+            finalGitRepoPath = `${parentPath}/${folderName}`.replace(
+              /\/+/g,
+              '/'
+            );
+          }
+
+          const createData: CreateProject = {
+            name,
+            git_repo_path: finalGitRepoPath,
+            use_existing_repo: repoMode === 'existing',
+            setup_script: setupScript.trim() || null,
+            dev_script: devScript.trim() || null,
+            cleanup_script: cleanupScript.trim() || null,
+          };
+
           await projectsApi.create(createData);
-        } catch (error) {
-          setError('Failed to create project');
-          return;
         }
       }
 
       onSuccess();
+      // Reset form
       setName('');
       setGitRepoPath('');
       setSetupScript('');
+      setDevScript('');
       setCleanupScript('');
       setParentPath('');
       setFolderName('');
+      setSelectedRepository(null);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'An error occurred');
     } finally {
@@ -226,27 +283,89 @@ export function ProjectForm({
           </Tabs>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <ProjectFormFields
-              isEditing={isEditing}
-              repoMode={repoMode}
-              setRepoMode={setRepoMode}
-              gitRepoPath={gitRepoPath}
-              handleGitRepoPathChange={handleGitRepoPathChange}
-              setShowFolderPicker={setShowFolderPicker}
-              parentPath={parentPath}
-              setParentPath={setParentPath}
-              folderName={folderName}
-              setFolderName={setFolderName}
-              setName={setName}
-              name={name}
-              setupScript={setupScript}
-              setSetupScript={setSetupScript}
-              devScript={devScript}
-              setDevScript={setDevScript}
-              cleanupScript={cleanupScript}
-              setCleanupScript={setCleanupScript}
-              error={error}
-            />
+            {modeLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span className="ml-2">Loading...</span>
+              </div>
+            ) : environment === 'cloud' ? (
+              // Cloud mode: Show only GitHub repositories
+              <>
+                <GitHubRepositoryPicker
+                  selectedRepository={selectedRepository}
+                  onRepositorySelect={setSelectedRepository}
+                  onNameChange={setName}
+                  name={name}
+                  error={error}
+                />
+
+                {/* Show script fields for GitHub source */}
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="space-y-2">
+                    <Label htmlFor="setup-script">
+                      Setup Script (optional)
+                    </Label>
+                    <textarea
+                      id="setup-script"
+                      placeholder="e.g., npm install"
+                      value={setupScript}
+                      onChange={(e) => setSetupScript(e.target.value)}
+                      className="w-full p-2 border rounded-md resize-none"
+                      rows={2}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dev-script">
+                      Dev Server Script (optional)
+                    </Label>
+                    <textarea
+                      id="dev-script"
+                      placeholder="e.g., npm run dev"
+                      value={devScript}
+                      onChange={(e) => setDevScript(e.target.value)}
+                      className="w-full p-2 border rounded-md resize-none"
+                      rows={2}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cleanup-script">
+                      Cleanup Script (optional)
+                    </Label>
+                    <textarea
+                      id="cleanup-script"
+                      placeholder="e.g., docker-compose down"
+                      value={cleanupScript}
+                      onChange={(e) => setCleanupScript(e.target.value)}
+                      className="w-full p-2 border rounded-md resize-none"
+                      rows={2}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              // Local mode: Show existing form
+              <ProjectFormFields
+                isEditing={isEditing}
+                repoMode={repoMode}
+                setRepoMode={setRepoMode}
+                gitRepoPath={gitRepoPath}
+                handleGitRepoPathChange={handleGitRepoPathChange}
+                setShowFolderPicker={setShowFolderPicker}
+                parentPath={parentPath}
+                setParentPath={setParentPath}
+                folderName={folderName}
+                setFolderName={setFolderName}
+                setName={setName}
+                name={name}
+                setupScript={setupScript}
+                setSetupScript={setSetupScript}
+                devScript={devScript}
+                setDevScript={setDevScript}
+                cleanupScript={cleanupScript}
+                setCleanupScript={setCleanupScript}
+                error={error}
+              />
+            )}
             <DialogFooter>
               <Button
                 type="button"
@@ -261,9 +380,11 @@ export function ProjectForm({
                 disabled={
                   loading ||
                   !name.trim() ||
-                  (repoMode === 'existing'
-                    ? !gitRepoPath.trim()
-                    : !parentPath.trim() || !folderName.trim())
+                  (environment === 'cloud'
+                    ? !selectedRepository
+                    : repoMode === 'existing'
+                      ? !gitRepoPath.trim()
+                      : !parentPath.trim() || !folderName.trim())
                 }
               >
                 {loading ? 'Creating...' : 'Create Project'}

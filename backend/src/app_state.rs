@@ -1,11 +1,14 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 
 #[cfg(unix)]
 use nix::{sys::signal::Signal, unistd::Pid};
 use tokio::sync::{Mutex, RwLock as TokioRwLock};
 use uuid::Uuid;
 
-use crate::services::{generate_user_id, AnalyticsConfig, AnalyticsService};
+use crate::{
+    models::Environment,
+    services::{generate_user_id, AnalyticsConfig, AnalyticsService},
+};
 
 #[derive(Debug)]
 pub enum ExecutionType {
@@ -29,12 +32,14 @@ pub struct AppState {
     config: Arc<tokio::sync::RwLock<crate::models::config::Config>>,
     pub analytics: Arc<TokioRwLock<AnalyticsService>>,
     user_id: String,
+    pub mode: Environment,
 }
 
 impl AppState {
     pub async fn new(
         db_pool: sqlx::SqlitePool,
         config: Arc<tokio::sync::RwLock<crate::models::config::Config>>,
+        mode: Environment,
     ) -> Self {
         // Initialize analytics with user preferences
         let user_enabled = {
@@ -51,6 +56,7 @@ impl AppState {
             config,
             analytics,
             user_id: generate_user_id(),
+            mode,
         }
     }
 
@@ -214,5 +220,35 @@ impl AppState {
         sentry::configure_scope(|scope| {
             scope.set_user(Some(sentry_user));
         });
+    }
+
+    /// Get the workspace directory path, creating it if it doesn't exist in cloud mode
+    pub async fn get_workspace_path(
+        &self,
+    ) -> Result<PathBuf, Box<dyn std::error::Error + Send + Sync>> {
+        if !self.mode.is_cloud() {
+            return Err("Workspace directory only available in cloud mode".into());
+        }
+
+        let workspace_path = {
+            let config = self.config.read().await;
+            match &config.workspace_dir {
+                Some(dir) => PathBuf::from(dir),
+                None => {
+                    // Use default workspace directory
+                    let home_dir = dirs::home_dir().ok_or("Could not find home directory")?;
+                    home_dir.join(".vibe-kanban").join("projects")
+                }
+            }
+        };
+
+        // Create the workspace directory if it doesn't exist
+        if !workspace_path.exists() {
+            std::fs::create_dir_all(&workspace_path)
+                .map_err(|e| format!("Failed to create workspace directory: {}", e))?;
+            tracing::info!("Created workspace directory: {}", workspace_path.display());
+        }
+
+        Ok(workspace_path)
     }
 }

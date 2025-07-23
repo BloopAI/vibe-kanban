@@ -8,7 +8,8 @@ pub fn normalize_tool_name(tool_name: &str) -> String {
         "Todo" => "todowrite".to_string(), // Generic TODO tool → todowrite
         "TodoWrite" => "todowrite".to_string(),
         "TodoRead" => "todoread".to_string(),
-        _ => tool_name.to_string(),
+        "ExitPlanMode" => "exitplanmode".to_string(), // Normalize ExitPlanMode to lowercase
+        _ => tool_name.to_lowercase(), // Convert all tool names to lowercase for consistency
     }
 }
 
@@ -52,6 +53,19 @@ pub fn determine_action_type(tool_name: &str, input: &Value, worktree_path: &str
         "todowrite" | "todoread" => {
             json!({"action": "other", "description": "TODO list management"})
         }
+        "exitplanmode" => {
+            // Extract the plan from the input
+            let plan_content = if let Some(plan) = input.get("plan").and_then(|p| p.as_str()) {
+                plan.to_string()
+            } else {
+                // Fallback - use the full input as plan if no specific plan field
+                serde_json::to_string_pretty(input).unwrap_or_default()
+            };
+            json!({
+                "action": "plan_presentation",
+                "plan": plan_content
+            })
+        }
         _ => json!({"action": "other", "description": format!("Tool: {}", tool_name)}),
     }
 }
@@ -81,6 +95,19 @@ pub fn generate_tool_content(tool_name: &str, input: &Value, worktree_path: &str
             }
         }
         "todowrite" | "todoread" => generate_todo_content(input),
+        "exitplanmode" => {
+            // Show the plan content or a summary
+            if let Some(plan) = input.get("plan").and_then(|p| p.as_str()) {
+                // Truncate long plans for display
+                if plan.len() > 100 {
+                    format!("{}...", &plan[..97])
+                } else {
+                    plan.to_string()
+                }
+            } else {
+                "Plan presentation".to_string()
+            }
+        }
         _ => format!("`{}`", tool_name),
     }
 }
@@ -130,10 +157,10 @@ mod tests {
         assert_eq!(normalize_tool_name("TodoWrite"), "todowrite");
         assert_eq!(normalize_tool_name("TodoRead"), "todoread");
 
-        // Test other tools remain unchanged
-        assert_eq!(normalize_tool_name("Read"), "Read");
-        assert_eq!(normalize_tool_name("Write"), "Write");
+        // Test other tools are converted to lowercase
+        assert_eq!(normalize_tool_name("Read"), "read");
+        assert_eq!(normalize_tool_name("Write"), "write");
         assert_eq!(normalize_tool_name("bash"), "bash");
-        assert_eq!(normalize_tool_name("SomeOtherTool"), "SomeOtherTool");
+        assert_eq!(normalize_tool_name("SomeOtherTool"), "someothertool");
     }
 }
