@@ -1,5 +1,6 @@
 import { createContext, Dispatch, SetStateAction } from 'react';
 import type {
+  Attachment,
   EditorType,
   Task,
   TaskAttempt,
@@ -14,6 +15,7 @@ export interface TaskDetailsContextValue {
   projectId: string;
   handleOpenInEditor: (editorType?: EditorType) => Promise<void>;
   projectHasDevScript?: boolean;
+  attachments: Attachment[];
 }
 
 export const TaskDetailsContext = createContext<TaskDetailsContextValue>(

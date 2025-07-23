@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react';
 import type {
+  Attachment,
   EditorType,
   ExecutionProcess,
   ExecutionProcessSummary,
@@ -19,7 +20,7 @@ import type {
   TaskWithAttemptStatus,
   WorktreeDiff,
 } from 'shared/types.ts';
-import { attemptsApi, executionProcessesApi, tasksApi } from '@/lib/api.ts';
+import { attachmentsApi, attemptsApi, executionProcessesApi, tasksApi } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,
   TaskAttemptLoadingContext,
@@ -77,6 +78,8 @@ const TaskDetailsProvider: FC<{
     runningProcessDetails: {},
     allLogs: [], // new field for all logs
   });
+
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   const relatedTasksLoadingRef = useRef(false);
 
@@ -342,14 +345,24 @@ const TaskDetailsProvider: FC<{
     fetchDiff,
   ]);
 
+  // Fetch attachments when task changes
+  useEffect(() => {
+    if (task?.id && projectId) {
+      attachmentsApi.getByTaskId(projectId, task.id)
+        .then(setAttachments)
+        .catch(console.error);
+    }
+  }, [task?.id, projectId]);
+
   const value = useMemo(
     () => ({
       task,
       projectId,
       handleOpenInEditor,
       projectHasDevScript,
+      attachments,
     }),
-    [task, projectId, handleOpenInEditor, projectHasDevScript]
+    [task, projectId, handleOpenInEditor, projectHasDevScript, attachments]
   );
 
   const taskAttemptLoadingValue = useMemo(

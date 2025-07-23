@@ -53,6 +53,15 @@ pub fn config_path() -> std::path::PathBuf {
     asset_dir().join("config.json")
 }
 
+pub fn uploads_dir() -> std::path::PathBuf {
+    // Get the backend directory (CARGO_MANIFEST_DIR points to backend/)
+    // Go up one level to the project root, then into uploads
+    std::path::PathBuf::from(PROJECT_ROOT)
+        .parent()
+        .expect("Failed to get project root")
+        .join("uploads")
+}
+
 pub fn cache_dir() -> std::path::PathBuf {
     let proj = if cfg!(debug_assertions) {
         ProjectDirs::from("ai", "bloop-dev", env!("CARGO_PKG_NAME"))

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Globe2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ImageUpload, PendingFile } from '@/components/ui/image-upload';
 import {
   Dialog,
   DialogContent,
@@ -18,8 +19,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useConfig } from '@/components/config-provider';
-import { templatesApi } from '@/lib/api';
-import type { TaskStatus, ExecutorConfig, TaskTemplate } from 'shared/types';
+import { templatesApi, attachmentsApi } from '@/lib/api';
+import type { TaskStatus, ExecutorConfig, TaskTemplate, Attachment } from 'shared/types';
 
 interface Task {
   id: string;
@@ -37,12 +38,12 @@ interface TaskFormDialogProps {
   task?: Task | null; // Optional for create mode
   projectId?: string; // For file search functionality
   initialTemplate?: TaskTemplate | null; // For pre-filling from template
-  onCreateTask?: (title: string, description: string) => Promise<void>;
+  onCreateTask?: (title: string, description: string) => Promise<string>; // Return task ID
   onCreateAndStartTask?: (
     title: string,
     description: string,
     executor?: ExecutorConfig
-  ) => Promise<void>;
+  ) => Promise<string>; // Return task ID
   onUpdateTask?: (
     title: string,
     description: string,
@@ -67,6 +68,8 @@ export function TaskFormDialog({
   const [isSubmittingAndStart, setIsSubmittingAndStart] = useState(false);
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
 
   const { config } = useConfig();
   const isEditMode = Boolean(task);
@@ -77,6 +80,13 @@ export function TaskFormDialog({
       setTitle(task.title);
       setDescription(task.description || '');
       setStatus(task.status);
+      
+      // Load attachments for the task
+      if (projectId || task.project_id) {
+        attachmentsApi.getByTaskId(projectId || task.project_id, task.id)
+          .then(setAttachments)
+          .catch(console.error);
+      }
     } else if (initialTemplate) {
       // Create mode with template - pre-fill from template
       setTitle(initialTemplate.title);
@@ -132,7 +142,13 @@ export function TaskFormDialog({
       if (isEditMode && onUpdateTask) {
         await onUpdateTask(title, description, status);
       } else if (!isEditMode && onCreateTask) {
-        await onCreateTask(title, description);
+        const taskId = await onCreateTask(title, description);
+        
+        // Upload any pending attachments
+        if (pendingFiles.length > 0 && taskId) {
+          const files = pendingFiles.map(pf => pf.file);
+          await attachmentsApi.upload(taskId, files);
+        }
       }
 
       // Reset form on successful creation
@@ -140,6 +156,10 @@ export function TaskFormDialog({
         setTitle('');
         setDescription('');
         setStatus('todo');
+        // Clean up blob URLs
+        pendingFiles.forEach(pf => URL.revokeObjectURL(pf.blobUrl));
+        setPendingFiles([]);
+        setAttachments([]);
       }
 
       onOpenChange(false);
@@ -154,13 +174,23 @@ export function TaskFormDialog({
     setIsSubmittingAndStart(true);
     try {
       if (!isEditMode && onCreateAndStartTask) {
-        await onCreateAndStartTask(title, description, config?.executor);
+        const taskId = await onCreateAndStartTask(title, description, config?.executor);
+        
+        // Upload any pending attachments
+        if (pendingFiles.length > 0 && taskId) {
+          const files = pendingFiles.map(pf => pf.file);
+          await attachmentsApi.upload(taskId, files);
+        }
       }
 
       // Reset form on successful creation
       setTitle('');
       setDescription('');
       setStatus('todo');
+      // Clean up blob URLs
+      pendingFiles.forEach(pf => URL.revokeObjectURL(pf.blobUrl));
+      setPendingFiles([]);
+      setAttachments([]);
 
       onOpenChange(false);
     } finally {
@@ -186,6 +216,10 @@ export function TaskFormDialog({
       setDescription('');
       setStatus('todo');
       setSelectedTemplate('');
+      // Clean up blob URLs
+      pendingFiles.forEach(pf => URL.revokeObjectURL(pf.blobUrl));
+      setPendingFiles([]);
+      setAttachments([]);
     }
     onOpenChange(false);
   }, [task, onOpenChange]);
@@ -276,7 +310,55 @@ export function TaskFormDialog({
               className="mt-1.5"
               disabled={isSubmitting || isSubmittingAndStart}
               projectId={projectId}
+              onPasteImages={async (files) => {
+                const newPendingFiles: PendingFile[] = files.map((file, index) => ({
+                  file,
+                  blobUrl: URL.createObjectURL(file),
+                  id: `pending-${Date.now()}-${index}`,
+                }));
+                setPendingFiles([...pendingFiles, ...newPendingFiles]);
+              }}
             />
+          </div>
+
+          <div>
+            <Label className="text-sm font-medium">
+              Images (optional)
+            </Label>
+            <div className="mt-1.5">
+              <ImageUpload
+                onUpload={async (files) => {
+                  if (isEditMode && task) {
+                    // In edit mode, upload immediately
+                    const uploaded = await attachmentsApi.upload(task.id, files);
+                    setAttachments([...attachments, ...uploaded]);
+                  } else {
+                    // In create mode, store files to upload after task creation
+                    const newPendingFiles: PendingFile[] = files.map((file, index) => ({
+                      file,
+                      blobUrl: URL.createObjectURL(file),
+                      id: `pending-${Date.now()}-${pendingFiles.length + index}`,
+                    }));
+                    setPendingFiles([...pendingFiles, ...newPendingFiles]);
+                  }
+                }}
+                attachments={attachments}
+                pendingFiles={pendingFiles}
+                onRemove={async (attachmentId) => {
+                  if (isEditMode && !attachmentId.startsWith('pending-')) {
+                    await attachmentsApi.delete(attachmentId);
+                    setAttachments(attachments.filter(a => a.id !== attachmentId));
+                  } else {
+                    // Remove from pending files and clean up blob URL
+                    const pendingFile = pendingFiles.find(pf => pf.id === attachmentId);
+                    if (pendingFile) {
+                      URL.revokeObjectURL(pendingFile.blobUrl);
+                      setPendingFiles(pendingFiles.filter(pf => pf.id !== attachmentId));
+                    }
+                  }
+                }}
+              />
+            </div>
           </div>
 
           {!isEditMode && templates.length > 0 && (

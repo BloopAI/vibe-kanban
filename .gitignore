@@ -82,3 +82,6 @@ backend/db.sqlite
 dev_assets
 /frontend/.env.sentry-build-plugin
 .ssh
+
+# Uploaded files
+uploads/

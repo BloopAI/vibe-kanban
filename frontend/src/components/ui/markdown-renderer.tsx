@@ -1,12 +1,33 @@
 import ReactMarkdown, { Components } from 'react-markdown';
 import { memo, useMemo } from 'react';
+import { Attachment } from 'shared/types';
 
 interface MarkdownRendererProps {
   content: string;
   className?: string;
+  attachments?: Attachment[];
 }
 
-function MarkdownRenderer({ content, className = '' }: MarkdownRendererProps) {
+function MarkdownRenderer({ content, className = '', attachments = [] }: MarkdownRendererProps) {
+  // Process content to replace attachment references with actual URLs
+  const processedContent = useMemo(() => {
+    let processed = content;
+    
+    // Replace attachment references like ![alt](attachment:filename) with actual URLs
+    attachments.forEach((attachment) => {
+      const pattern = new RegExp(
+        `!\\[([^\\]]*)\\]\\(attachment:${attachment.original_filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`,
+        'g'
+      );
+      processed = processed.replace(
+        pattern,
+        `![$1](/api/attachments/${attachment.id})`
+      );
+    });
+    
+    return processed;
+  }, [content, attachments]);
+
   const components: Components = useMemo(
     () => ({
       code: ({ children, ...props }) => (
@@ -62,12 +83,21 @@ function MarkdownRenderer({ content, className = '' }: MarkdownRendererProps) {
           {children}
         </li>
       ),
+      img: ({ src, alt, ...props }) => (
+        <img
+          {...props}
+          src={src}
+          alt={alt}
+          className="max-w-full h-auto rounded-lg my-2"
+          loading="lazy"
+        />
+      ),
     }),
     []
   );
   return (
     <div className={className}>
-      <ReactMarkdown components={components}>{content}</ReactMarkdown>
+      <ReactMarkdown components={components}>{processedContent}</ReactMarkdown>
     </div>
   );
 }

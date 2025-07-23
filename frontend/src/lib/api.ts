@@ -1,5 +1,6 @@
 // Import all necessary types from shared types
 import {
+  Attachment,
   BranchStatus,
   Config,
   CreateFollowUpAttempt,
@@ -626,5 +627,38 @@ export const mcpServersApi = {
         response
       );
     }
+  },
+};
+
+// Attachments API
+export const attachmentsApi = {
+  upload: async (taskId: string, files: File[]): Promise<Attachment[]> => {
+    const formData = new FormData();
+    files.forEach((file) => {
+      formData.append('files', file);
+    });
+
+    const response = await fetch(`/api/attachments/upload/${taskId}`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    return handleApiResponse<Attachment[]>(response);
+  },
+
+  getByTaskId: async (projectId: string, taskId: string): Promise<Attachment[]> => {
+    const response = await makeRequest(`/api/projects/${projectId}/tasks/${taskId}/attachments`);
+    return handleApiResponse<Attachment[]>(response);
+  },
+
+  delete: async (attachmentId: string): Promise<void> => {
+    const response = await makeRequest(`/api/attachments/${attachmentId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  getDownloadUrl: (attachmentId: string): string => {
+    return `/api/attachments/${attachmentId}`;
   },
 };

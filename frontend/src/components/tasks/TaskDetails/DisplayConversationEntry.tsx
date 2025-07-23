@@ -22,7 +22,7 @@ import {
   type NormalizedEntryType,
   type WorktreeDiff,
 } from 'shared/types.ts';
-import { TaskDiffContext } from '@/components/context/taskDetailsContext.ts';
+import { TaskDetailsContext, TaskDiffContext } from '@/components/context/taskDetailsContext.ts';
 
 type Props = {
   entry: NormalizedEntry;
@@ -268,6 +268,7 @@ const shouldRenderMarkdown = (entryType: NormalizedEntryType) => {
 
 function DisplayConversationEntry({ entry, index, diffDeletable }: Props) {
   const { diff } = useContext(TaskDiffContext);
+  const { attachments } = useContext(TaskDetailsContext);
   const [expandedErrors, setExpandedErrors] = useState<Set<number>>(new Set());
 
   const toggleErrorExpansion = (index: number) => {
@@ -333,6 +334,7 @@ function DisplayConversationEntry({ entry, index, diffDeletable }: Props) {
                     <MarkdownRenderer
                       content={entry.content}
                       className="whitespace-pre-wrap break-words"
+                      attachments={attachments}
                     />
                   ) : (
                     entry.content
@@ -366,6 +368,7 @@ function DisplayConversationEntry({ entry, index, diffDeletable }: Props) {
                 <MarkdownRenderer
                   content={entry.content}
                   className="whitespace-pre-wrap break-words"
+                  attachments={attachments}
                 />
               ) : (
                 entry.content

@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/tooltip';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import MarkdownRenderer from '@/components/ui/markdown-renderer';
+import { TaskAttachments } from './TaskAttachments';
 
 interface TaskDetailsHeaderProps {
   onClose: () => void;
@@ -47,7 +49,7 @@ function TaskDetailsHeader({
   onEditTask,
   onDeleteTask,
 }: TaskDetailsHeaderProps) {
-  const { task } = useContext(TaskDetailsContext);
+  const { task, attachments } = useContext(TaskDetailsContext);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   return (
@@ -122,15 +124,18 @@ function TaskDetailsHeader({
           <div className="p-2 bg-muted/20 rounded border-l-2 border-muted max-h-48 overflow-y-auto">
             {task.description ? (
               <div>
-                <p
-                  className={`text-xs whitespace-pre-wrap text-muted-foreground ${
+                <div
+                  className={`text-xs text-muted-foreground ${
                     !isDescriptionExpanded && task.description.length > 150
                       ? 'line-clamp-3'
                       : ''
                   }`}
                 >
-                  {task.description}
-                </p>
+                  <MarkdownRenderer 
+                    content={task.description} 
+                    attachments={attachments}
+                  />
+                </div>
                 {task.description.length > 150 && (
                   <Button
                     variant="ghost"
@@ -161,6 +166,13 @@ function TaskDetailsHeader({
             )}
           </div>
         </div>
+        
+        {/* Attachments */}
+        {attachments.length > 0 && (
+          <div className="mt-3">
+            <TaskAttachments attachments={attachments} />
+          </div>
+        )}
       </div>
     </div>
   );

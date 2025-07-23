@@ -778,7 +778,32 @@ impl ProcessService {
             let task = Task::find_by_id(pool, task_id)
                 .await?
                 .ok_or(TaskAttemptError::TaskNotFound)?;
-            format!("{}\n\n{}", task.title, task.description.unwrap_or_default())
+            
+            // Fetch attachments for this task
+            let attachments = crate::models::attachment::Attachment::find_by_task_id(pool, task_id)
+                .await
+                .map_err(TaskAttemptError::Database)?;
+            
+            let mut prompt = format!("{}\n\n{}", task.title, task.description.unwrap_or_default());
+            
+            // Add attachment information if any exist
+            if !attachments.is_empty() {
+                prompt.push_str("\n\nAttachments:");
+                for attachment in attachments {
+                    prompt.push_str(&format!(
+                        "\n- {} ({})",
+                        attachment.original_filename,
+                        attachment.content_type
+                    ));
+                    // Include the file path that the AI can access
+                    prompt.push_str(&format!(
+                        "\n  File location: uploads/{}",
+                        attachment.filename
+                    ));
+                }
+            }
+            
+            prompt
         };
 
         let session_id = Uuid::new_v4();

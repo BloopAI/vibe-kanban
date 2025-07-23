@@ -28,7 +28,12 @@ impl Executor for CharmOpencodeExecutor {
 
         use tokio::process::Command;
 
-        let prompt = if let Some(task_description) = task.description {
+        // Fetch attachments for this task
+        let attachments = crate::models::attachment::Attachment::find_by_task_id(pool, task_id)
+            .await
+            .map_err(|e| ExecutorError::DatabaseError(e))?;
+
+        let mut prompt = if let Some(task_description) = task.description {
             format!(
                 r#"project_id: {}
             
@@ -44,6 +49,30 @@ Task title: {}"#,
                 task.project_id, task.title
             )
         };
+
+        // Add attachment information if any exist
+        if !attachments.is_empty() {
+            prompt.push_str("\n\nThe following files have been attached to this task. Please read and analyze them:");
+            for attachment in attachments {
+                // Include the absolute file path that CharmOpenCode can access
+                let file_path = crate::utils::uploads_dir().join(&attachment.filename);
+                
+                prompt.push_str(&format!(
+                    "\n\n- Attachment: {} ({})",
+                    attachment.original_filename,
+                    attachment.content_type
+                ));
+                prompt.push_str(&format!(
+                    "\n  File location: {}",
+                    file_path.display()
+                ));
+                prompt.push_str(&format!(
+                    "\n  Action required: Please read and analyze this {} file and incorporate its content into your response.",
+                    if attachment.content_type.starts_with("image/") { "image" } else { "file" }
+                ));
+            }
+            prompt.push_str("\n\nAfter reading the attached files, proceed with the task requirements.");
+        }
 
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
