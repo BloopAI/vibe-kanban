@@ -13,7 +13,7 @@ use tokio::sync::Mutex;
 use tokio_util::io::ReaderStream;
 use tracing_subscriber::prelude::*;
 use uuid::Uuid;
-use vibe_kanban::command_runner::{CommandProcess, CommandRunner, CreateCommandRequest};
+use vibe_kanban::command_runner::{CommandProcess, CommandRunner, CommandRunnerArgs};
 
 // Structure to hold process and its streams
 struct ProcessEntry {
@@ -130,12 +130,12 @@ async fn health_check() -> Json<ApiResponse<String>> {
 // Create and start a new command
 async fn create_command(
     State(state): State<AppState>,
-    Json(request): Json<CreateCommandRequest>,
+    Json(request): Json<CommandRunnerArgs>,
 ) -> Result<Json<ApiResponse<CreateCommandResponse>>, StatusCode> {
     tracing::info!("Creating command: {} {:?}", request.command, request.args);
 
     // Create a local command runner from the request
-    let runner = CommandRunner::from_request(request);
+    let runner = CommandRunner::from_args(request);
 
     // Start the process
     let mut process = match runner.start().await {

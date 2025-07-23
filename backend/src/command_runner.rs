@@ -16,12 +16,8 @@ pub trait CommandExecutor: Send + Sync {
     /// Start a process and return a handle to it
     async fn start(
         &self,
-        request: &CreateCommandRequest,
+        request: &CommandRunnerArgs,
     ) -> Result<Box<dyn ProcessHandle>, CommandError>;
-
-    /// Get the executor type for debugging/logging
-    #[allow(dead_code)]
-    fn executor_type(&self) -> &'static str;
 }
 
 // Trait for managing running processes
@@ -49,7 +45,7 @@ pub trait ProcessHandle: Send + Sync {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CreateCommandRequest {
+pub struct CommandRunnerArgs {
     pub command: String,
     pub args: Vec<String>,
     pub working_dir: Option<String>,
@@ -64,6 +60,11 @@ pub struct CommandRunner {
     working_dir: Option<String>,
     env_vars: Vec<(String, String)>,
     stdin: Option<String>,
+}
+impl Default for CommandRunner {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 pub struct CommandProcess {
@@ -144,7 +145,6 @@ pub struct CommandExitStatus {
 }
 
 impl CommandExitStatus {
-
     /// Returns true if the process exited successfully
     pub fn success(&self) -> bool {
         self.success
@@ -161,51 +161,27 @@ pub struct CommandStream {
     pub stderr: Option<Box<dyn AsyncRead + Unpin + Send>>,
 }
 
-impl CommandStream {
-    /// Create a CommandStream from generic AsyncRead streams
-    pub fn from_streams(
-        stdout: Option<Box<dyn AsyncRead + Unpin + Send>>,
-        stderr: Option<Box<dyn AsyncRead + Unpin + Send>>,
-    ) -> Self {
-        Self { stdout, stderr }
-    }
-}
-
-impl Default for CommandRunner {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl CommandRunner {
     pub fn new() -> Self {
         let env = std::env::var("ENVIRONMENT").unwrap_or_else(|_| "local".to_string());
         let mode = env.parse().unwrap_or(Environment::Local);
         match mode {
-            Environment::Cloud => Self::new_remote(),
-            Environment::Local => Self::new_local(),
-        }
-    }
-
-    fn new_local() -> Self {
-        Self {
-            executor: Box::new(LocalCommandExecutor::new()),
-            command: None,
-            args: Vec::new(),
-            working_dir: None,
-            env_vars: Vec::new(),
-            stdin: None,
-        }
-    }
-
-    fn new_remote() -> Self {
-        Self {
-            executor: Box::new(RemoteCommandExecutor::new()),
-            command: None,
-            args: Vec::new(),
-            working_dir: None,
-            env_vars: Vec::new(),
-            stdin: None,
+            Environment::Cloud => CommandRunner {
+                executor: Box::new(RemoteCommandExecutor::new()),
+                command: None,
+                args: Vec::new(),
+                working_dir: None,
+                env_vars: Vec::new(),
+                stdin: None,
+            },
+            Environment::Local => CommandRunner {
+                executor: Box::new(LocalCommandExecutor::new()),
+                command: None,
+                args: Vec::new(),
+                working_dir: None,
+                env_vars: Vec::new(),
+                stdin: None,
+            },
         }
     }
 
@@ -247,8 +223,8 @@ impl CommandRunner {
     }
 
     /// Convert the current CommandRunner state to a CreateCommandRequest
-    pub fn to_request(&self) -> Option<CreateCommandRequest> {
-        Some(CreateCommandRequest {
+    pub fn to_args(&self) -> Option<CommandRunnerArgs> {
+        Some(CommandRunnerArgs {
             command: self.command.clone()?,
             args: self.args.clone(),
             working_dir: self.working_dir.clone(),
@@ -259,7 +235,7 @@ impl CommandRunner {
 
     /// Create a CommandRunner from a CreateCommandRequest, respecting the environment
     #[allow(dead_code)]
-    pub fn from_request(request: CreateCommandRequest) -> Self {
+    pub fn from_args(request: CommandRunnerArgs) -> Self {
         let mut runner = Self::new();
         runner.command(&request.command);
 
@@ -283,7 +259,7 @@ impl CommandRunner {
     }
 
     pub async fn start(&self) -> Result<CommandProcess, CommandError> {
-        let request = self.to_request().ok_or(CommandError::NoCommandSet)?;
+        let request = self.to_args().ok_or(CommandError::NoCommandSet)?;
         let handle = self.executor.start(&request).await?;
 
         Ok(CommandProcess { handle })

@@ -10,7 +10,7 @@ use nix::{
 use tokio::process::Command;
 
 use crate::command_runner::{
-    CommandError, CommandExecutor, CommandExitStatus, CommandStream, CreateCommandRequest,
+    CommandError, CommandExecutor, CommandExitStatus, CommandRunnerArgs, CommandStream,
     ProcessHandle,
 };
 
@@ -32,7 +32,7 @@ impl LocalCommandExecutor {
 impl CommandExecutor for LocalCommandExecutor {
     async fn start(
         &self,
-        request: &CreateCommandRequest,
+        request: &CommandRunnerArgs,
     ) -> Result<Box<dyn ProcessHandle>, CommandError> {
         let mut cmd = Command::new(&request.command);
 
@@ -65,10 +65,6 @@ impl CommandExecutor for LocalCommandExecutor {
         }
 
         Ok(Box::new(LocalProcessHandle::new(child)))
-    }
-
-    fn executor_type(&self) -> &'static str {
-        "local"
     }
 }
 

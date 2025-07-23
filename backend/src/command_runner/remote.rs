@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use tokio::io::AsyncRead;
 
 use crate::command_runner::{
-    CommandError, CommandExecutor, CommandExitStatus, CommandStream, CreateCommandRequest,
+    CommandError, CommandExecutor, CommandExitStatus, CommandRunnerArgs, CommandStream,
     ProcessHandle,
 };
 
@@ -33,7 +33,7 @@ impl RemoteCommandExecutor {
 impl CommandExecutor for RemoteCommandExecutor {
     async fn start(
         &self,
-        request: &CreateCommandRequest,
+        request: &CommandRunnerArgs,
     ) -> Result<Box<dyn ProcessHandle>, CommandError> {
         let client = reqwest::Client::new();
         let response = client
@@ -64,10 +64,6 @@ impl CommandExecutor for RemoteCommandExecutor {
             process_id.to_string(),
             self.cloud_server_url.clone(),
         )))
-    }
-
-    fn executor_type(&self) -> &'static str {
-        "remote"
     }
 }
 
@@ -292,7 +288,10 @@ impl ProcessHandle for RemoteProcessHandle {
             .ok()
             .map(|s| Box::new(s) as Box<dyn AsyncRead + Unpin + Send>);
 
-        Ok(CommandStream::from_streams(stdout_stream, stderr_stream))
+        Ok(CommandStream {
+            stdout: stdout_stream,
+            stderr: stderr_stream,
+        })
     }
 
     fn process_id(&self) -> String {
