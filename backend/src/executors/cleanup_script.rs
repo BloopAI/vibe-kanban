@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use uuid::Uuid;
 
 use crate::{
+    command_runner,
     command_runner::CommandProcess,
     executor::{Executor, ExecutorError},
     models::{project::Project, task::Task},
@@ -31,7 +32,7 @@ impl Executor for CleanupScriptExecutor {
             .ok_or(ExecutorError::TaskNotFound)?; // Reuse TaskNotFound for simplicity
 
         let (shell_cmd, shell_arg) = get_shell_command();
-        let mut command = crate::command_runner::CommandRunner::new();
+        let mut command = command_runner::CommandRunner::new();
         command
             .command(shell_cmd)
             .arg(shell_arg)

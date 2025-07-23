@@ -5,7 +5,9 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
+    command_runner,
     command_runner::CommandProcess,
+    executor,
     executor::{
         ActionType, Executor, ExecutorError, NormalizedConversation, NormalizedEntry,
         NormalizedEntryType,
@@ -221,7 +223,7 @@ Task title: {}"#,
         // --format=jsonl is deprecated in latest versions of Amp CLI
         let amp_command = "npx @sourcegraph/amp@0.0.1752148945-gd8844f --format=jsonl";
 
-        let mut command = crate::command_runner::CommandRunner::new();
+        let mut command = command_runner::CommandRunner::new();
         command
             .command(shell_cmd)
             .arg(shell_arg)
@@ -230,7 +232,7 @@ Task title: {}"#,
             .working_dir(worktree_path);
 
         let proc = command.start().await.map_err(|e| {
-            crate::executor::SpawnContext::from_command(&command, "Amp")
+            executor::SpawnContext::from_command(&command, "Amp")
                 .with_task(task_id, Some(task.title.clone()))
                 .with_context("Amp CLI execution for new task")
                 .spawn_error(e)
@@ -254,7 +256,7 @@ Task title: {}"#,
             session_id
         );
 
-        let mut command = crate::command_runner::CommandRunner::new();
+        let mut command = command_runner::CommandRunner::new();
         command
             .command(shell_cmd)
             .arg(shell_arg)
