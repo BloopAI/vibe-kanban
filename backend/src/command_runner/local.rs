@@ -16,6 +16,12 @@ use crate::command_runner::{
 
 pub struct LocalCommandExecutor;
 
+impl Default for LocalCommandExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LocalCommandExecutor {
     pub fn new() -> Self {
         Self

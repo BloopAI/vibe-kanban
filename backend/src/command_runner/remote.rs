@@ -15,6 +15,12 @@ pub struct RemoteCommandExecutor {
     cloud_server_url: String,
 }
 
+impl Default for RemoteCommandExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RemoteCommandExecutor {
     pub fn new() -> Self {
         let cloud_server_url = std::env::var("CLOUD_SERVER_URL")

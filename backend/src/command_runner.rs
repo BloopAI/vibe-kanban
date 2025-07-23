@@ -20,6 +20,7 @@ pub trait CommandExecutor: Send + Sync {
     ) -> Result<Box<dyn ProcessHandle>, CommandError>;
 
     /// Get the executor type for debugging/logging
+    #[allow(dead_code)]
     fn executor_type(&self) -> &'static str;
 }
 
@@ -159,7 +160,6 @@ impl CommandExitStatus {
     }
 
     /// Create a CommandExitStatus for remote processes
-    #[allow(dead_code)]
     pub fn from_remote(
         code: Option<i32>,
         success: bool,
@@ -185,25 +185,6 @@ impl CommandExitStatus {
     pub fn code(&self) -> Option<i32> {
         self.code
     }
-
-    /// Returns the signal that terminated the process (Unix only)
-    #[cfg(unix)]
-    #[allow(dead_code)]
-    pub fn signal(&self) -> Option<i32> {
-        self.signal
-    }
-
-    /// Returns the remote process ID, if this was a remote execution
-    #[allow(dead_code)]
-    pub fn remote_process_id(&self) -> Option<&str> {
-        self.remote_process_id.as_deref()
-    }
-
-    /// Returns the remote session ID, if this was a remote execution
-    #[allow(dead_code)]
-    pub fn remote_session_id(&self) -> Option<&str> {
-        self.remote_session_id.as_deref()
-    }
 }
 
 pub struct CommandStream {
@@ -224,21 +205,11 @@ impl CommandStream {
     }
 
     /// Create a CommandStream from generic AsyncRead streams
-    #[allow(dead_code)]
     pub fn from_streams(
         stdout: Option<Box<dyn AsyncRead + Unpin + Send>>,
         stderr: Option<Box<dyn AsyncRead + Unpin + Send>>,
     ) -> Self {
         Self { stdout, stderr }
-    }
-
-    /// Create empty CommandStream (no streams available)
-    #[allow(dead_code)]
-    pub fn empty() -> Self {
-        Self {
-            stdout: None,
-            stderr: None,
-        }
     }
 }
 

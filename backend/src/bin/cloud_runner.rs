@@ -8,7 +8,6 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
-use futures_util::StreamExt;
 use serde::Serialize;
 use tokio::sync::Mutex;
 use tokio_util::io::ReaderStream;
@@ -333,8 +332,7 @@ async fn get_process_stdout(
             drop(processes); // Release the lock early
 
             // Convert the AsyncRead (stdout) directly into an HTTP stream
-            let stream =
-                ReaderStream::new(stdout).map(|result| result.map(axum::body::Bytes::from));
+            let stream = ReaderStream::new(stdout);
 
             let response = Response::builder()
                 .header("content-type", "application/octet-stream")
@@ -377,8 +375,7 @@ async fn get_process_stderr(
             drop(processes); // Release the lock early
 
             // Convert the AsyncRead (stderr) directly into an HTTP stream
-            let stream =
-                ReaderStream::new(stderr).map(|result| result.map(axum::body::Bytes::from));
+            let stream = ReaderStream::new(stderr);
 
             let response = Response::builder()
                 .header("content-type", "application/octet-stream")
