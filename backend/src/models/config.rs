@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -13,15 +13,19 @@ pub enum Environment {
     Cloud,
 }
 
-impl Environment {
-    pub fn from_str(env: &str) -> Option<Self> {
-        match env.to_lowercase().as_str() {
-            "local" => Some(Environment::Local),
-            "cloud" => Some(Environment::Cloud),
-            _ => None,
+impl FromStr for Environment {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "local" => Ok(Environment::Local),
+            "cloud" => Ok(Environment::Cloud),
+            _ => Err(format!("Invalid environment: {}", s)),
         }
     }
+}
 
+impl Environment {
     pub fn is_cloud(&self) -> bool {
         matches!(self, Environment::Cloud)
     }

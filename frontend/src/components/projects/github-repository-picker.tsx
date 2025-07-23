@@ -39,63 +39,66 @@ export function GitHubRepositoryPicker({
   const [loadingMore, setLoadingMore] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const loadRepositories = useCallback(async (pageNum: number = 1, isLoadingMore: boolean = false) => {
-    if (isLoadingMore) {
-      setLoadingMore(true);
-    } else {
-      setLoading(true);
-    }
-    setLoadError('');
-    
-    try {
-      // Check cache first
-      if (isCacheValid(pageNum)) {
-        const cachedRepos = repositoryCache.get(pageNum);
-        if (cachedRepos) {
-          if (pageNum === 1) {
-            setRepositories(cachedRepos);
-          } else {
-            setRepositories(prev => [...prev, ...cachedRepos]);
+  const loadRepositories = useCallback(
+    async (pageNum: number = 1, isLoadingMore: boolean = false) => {
+      if (isLoadingMore) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+      setLoadError('');
+
+      try {
+        // Check cache first
+        if (isCacheValid(pageNum)) {
+          const cachedRepos = repositoryCache.get(pageNum);
+          if (cachedRepos) {
+            if (pageNum === 1) {
+              setRepositories(cachedRepos);
+            } else {
+              setRepositories((prev) => [...prev, ...cachedRepos]);
+            }
+            setPage(pageNum);
+            return;
           }
-          setPage(pageNum);
-          return;
+        }
+
+        const repos = await githubApi.listRepositories(pageNum);
+
+        // Cache the results
+        repositoryCache.set(pageNum, repos);
+        cacheTimestamps.set(pageNum, Date.now());
+
+        if (pageNum === 1) {
+          setRepositories(repos);
+        } else {
+          setRepositories((prev) => [...prev, ...repos]);
+        }
+        setPage(pageNum);
+
+        // If we got fewer than expected results, we've reached the end
+        if (repos.length < 30) {
+          // GitHub typically returns 30 repos per page
+          setHasMorePages(false);
+        }
+      } catch (err) {
+        setLoadError(
+          err instanceof Error ? err.message : 'Failed to load repositories'
+        );
+      } finally {
+        if (isLoadingMore) {
+          setLoadingMore(false);
+        } else {
+          setLoading(false);
         }
       }
-
-      const repos = await githubApi.listRepositories(pageNum);
-      
-      // Cache the results
-      repositoryCache.set(pageNum, repos);
-      cacheTimestamps.set(pageNum, Date.now());
-      
-      if (pageNum === 1) {
-        setRepositories(repos);
-      } else {
-        setRepositories(prev => [...prev, ...repos]);
-      }
-      setPage(pageNum);
-      
-      // If we got fewer than expected results, we've reached the end
-      if (repos.length < 30) { // GitHub typically returns 30 repos per page
-        setHasMorePages(false);
-      }
-    } catch (err) {
-      setLoadError(
-        err instanceof Error ? err.message : 'Failed to load repositories'
-      );
-    } finally {
-      if (isLoadingMore) {
-        setLoadingMore(false);
-      } else {
-        setLoading(false);
-      }
-    }
-  }, []);
+    },
+    []
+  );
 
   useEffect(() => {
     loadRepositories(1);
   }, [loadRepositories]);
-
 
   const handleRepositorySelect = (repository: RepositoryInfo) => {
     onRepositorySelect(repository);
@@ -115,14 +118,17 @@ export function GitHubRepositoryPicker({
   }, [loading, loadingMore, hasMorePages, page, loadRepositories]);
 
   // Infinite scroll handler
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    const isNearBottom = scrollHeight - scrollTop <= clientHeight + 100; // 100px threshold
-    
-    if (isNearBottom && !loading && !loadingMore && hasMorePages) {
-      loadMoreRepositories();
-    }
-  }, [loading, loadingMore, hasMorePages, loadMoreRepositories]);
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+      const isNearBottom = scrollHeight - scrollTop <= clientHeight + 100; // 100px threshold
+
+      if (isNearBottom && !loading && !loadingMore && hasMorePages) {
+        loadMoreRepositories();
+      }
+    },
+    [loading, loadingMore, hasMorePages, loadMoreRepositories]
+  );
 
   if (loadError) {
     return (
@@ -151,7 +157,7 @@ export function GitHubRepositoryPicker({
             <span className="ml-2">Loading repositories...</span>
           </div>
         ) : (
-          <div 
+          <div
             ref={scrollContainerRef}
             className="max-h-64 overflow-y-auto border rounded-md p-4 space-y-3"
             onScroll={handleScroll}
@@ -160,7 +166,9 @@ export function GitHubRepositoryPicker({
               <div
                 key={repository.id}
                 className={`p-3 border rounded-lg cursor-pointer hover:bg-accent ${
-                  selectedRepository?.id === repository.id ? 'bg-accent border-primary' : ''
+                  selectedRepository?.id === repository.id
+                    ? 'bg-accent border-primary'
+                    : ''
                 }`}
                 onClick={() => handleRepositorySelect(repository)}
               >
@@ -196,7 +204,9 @@ export function GitHubRepositoryPicker({
             {loadingMore && (
               <div className="flex items-center justify-center py-4">
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                <span className="text-sm text-muted-foreground">Loading more repositories...</span>
+                <span className="text-sm text-muted-foreground">
+                  Loading more repositories...
+                </span>
               </div>
             )}
 

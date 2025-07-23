@@ -572,10 +572,12 @@ export const githubApi = {
     const response = await makeRequest(`/api/github/repositories?page=${page}`);
     return handleApiResponse<RepositoryInfo[]>(response);
   },
-  createProjectFromRepository: async (data: CreateProjectFromGitHub): Promise<Project> => {
+  createProjectFromRepository: async (
+    data: CreateProjectFromGitHub
+  ): Promise<Project> => {
     const response = await makeRequest('/api/projects/from-github', {
       method: 'POST',
-      body: JSON.stringify(data, (_key, value) => 
+      body: JSON.stringify(data, (_key, value) =>
         typeof value === 'bigint' ? Number(value) : value
       ),
     });

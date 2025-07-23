@@ -205,4 +205,3 @@ pub fn github_router() -> Router<AppState> {
         .route("/github/repositories", get(list_repositories))
         .route("/projects/from-github", post(create_project_from_github))
 }
-

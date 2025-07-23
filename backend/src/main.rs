@@ -170,7 +170,7 @@ fn main() -> anyhow::Result<()> {
 
             let env = std::env::var("ENVIRONMENT")
                 .unwrap_or_else(|_| "local".to_string());
-            let mode = Environment::from_str(&env).unwrap_or(Environment::Local);
+            let mode = env.parse().unwrap_or(Environment::Local);
             tracing::info!("Running in {mode} mode" );
 
             // Create app state
