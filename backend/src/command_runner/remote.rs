@@ -25,7 +25,10 @@ impl RemoteCommandExecutor {
 
 #[async_trait]
 impl CommandExecutor for RemoteCommandExecutor {
-    async fn start(&self, request: &CreateCommandRequest) -> Result<Box<dyn ProcessHandle>, CommandError> {
+    async fn start(
+        &self,
+        request: &CreateCommandRequest,
+    ) -> Result<Box<dyn ProcessHandle>, CommandError> {
         let client = reqwest::Client::new();
         let response = client
             .post(format!("{}/commands", self.cloud_server_url))
@@ -36,18 +39,20 @@ impl CommandExecutor for RemoteCommandExecutor {
                 error: std::io::Error::other(e),
             })?;
 
-        let result: serde_json::Value = response.json().await.map_err(|e| CommandError::IoError {
-            error: std::io::Error::other(e),
-        })?;
-
-        let process_id = result["data"]["process_id"]
-            .as_str()
-            .ok_or_else(|| CommandError::IoError {
-                error: std::io::Error::other(format!(
-                    "Missing process_id in response: {}",
-                    result
-                )),
+        let result: serde_json::Value =
+            response.json().await.map_err(|e| CommandError::IoError {
+                error: std::io::Error::other(e),
             })?;
+
+        let process_id =
+            result["data"]["process_id"]
+                .as_str()
+                .ok_or_else(|| CommandError::IoError {
+                    error: std::io::Error::other(format!(
+                        "Missing process_id in response: {}",
+                        result
+                    )),
+                })?;
 
         Ok(Box::new(RemoteProcessHandle::new(
             process_id.to_string(),
@@ -93,10 +98,7 @@ impl ProcessHandle for RemoteProcessHandle {
         if !response.status().is_success() {
             if response.status() == reqwest::StatusCode::NOT_FOUND {
                 return Err(CommandError::StatusCheckFailed {
-                    error: std::io::Error::new(
-                        std::io::ErrorKind::NotFound,
-                        "Process not found",
-                    ),
+                    error: std::io::Error::new(std::io::ErrorKind::NotFound, "Process not found"),
                 });
             } else {
                 return Err(CommandError::StatusCheckFailed {
@@ -105,17 +107,19 @@ impl ProcessHandle for RemoteProcessHandle {
             }
         }
 
-        let result: serde_json::Value = response.json().await.map_err(|e| {
-            CommandError::StatusCheckFailed {
-                error: std::io::Error::other(e),
-            }
-        })?;
+        let result: serde_json::Value =
+            response
+                .json()
+                .await
+                .map_err(|e| CommandError::StatusCheckFailed {
+                    error: std::io::Error::other(e),
+                })?;
 
-        let data = result["data"].as_object().ok_or_else(|| {
-            CommandError::StatusCheckFailed {
+        let data = result["data"]
+            .as_object()
+            .ok_or_else(|| CommandError::StatusCheckFailed {
                 error: std::io::Error::other("Invalid response format"),
-            }
-        })?;
+            })?;
 
         let running = data["running"].as_bool().unwrap_or(false);
 
@@ -165,17 +169,20 @@ impl ProcessHandle for RemoteProcessHandle {
                 }
             }
 
-            let result: serde_json::Value = response.json().await.map_err(|e| {
-                CommandError::StatusCheckFailed {
-                    error: std::io::Error::other(e),
-                }
-            })?;
+            let result: serde_json::Value =
+                response
+                    .json()
+                    .await
+                    .map_err(|e| CommandError::StatusCheckFailed {
+                        error: std::io::Error::other(e),
+                    })?;
 
-            let data = result["data"].as_object().ok_or_else(|| {
-                CommandError::StatusCheckFailed {
-                    error: std::io::Error::other("Invalid response format"),
-                }
-            })?;
+            let data =
+                result["data"]
+                    .as_object()
+                    .ok_or_else(|| CommandError::StatusCheckFailed {
+                        error: std::io::Error::other("Invalid response format"),
+                    })?;
 
             let running = data["running"].as_bool().unwrap_or(false);
 
@@ -238,8 +245,14 @@ impl ProcessHandle for RemoteProcessHandle {
 
     async fn stream(&mut self) -> Result<CommandStream, CommandError> {
         // Create HTTP streams for stdout and stderr using a blocking approach
-        let stdout_url = format!("{}/commands/{}/stdout", self.cloud_server_url, self.process_id);
-        let stderr_url = format!("{}/commands/{}/stderr", self.cloud_server_url, self.process_id);
+        let stdout_url = format!(
+            "{}/commands/{}/stdout",
+            self.cloud_server_url, self.process_id
+        );
+        let stderr_url = format!(
+            "{}/commands/{}/stderr",
+            self.cloud_server_url, self.process_id
+        );
 
         // Use tokio spawn_blocking to avoid the nested runtime issue
         let stdout = std::thread::spawn({

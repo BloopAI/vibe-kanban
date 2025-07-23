@@ -8,10 +8,10 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
+use futures_util::StreamExt;
 use serde::Serialize;
 use tokio::sync::Mutex;
 use tokio_util::io::ReaderStream;
-use futures_util::StreamExt;
 use tracing_subscriber::prelude::*;
 use uuid::Uuid;
 use vibe_kanban::command_runner::{CommandProcess, CommandRunner, CreateCommandRequest};
@@ -108,7 +108,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/commands/:process_id/status", get(get_process_status))
         .route("/commands/:process_id/stdout", get(get_process_stdout))
         .route("/commands/:process_id/stderr", get(get_process_stderr))
-        .route("/commands/:process_id/stream", get(get_process_stdout)) // Alias for stdout
         .with_state(app_state);
 
     // Get port from environment or default to 8000
@@ -321,7 +320,10 @@ async fn get_process_stdout(
     State(state): State<AppState>,
     Path(process_id): Path<String>,
 ) -> Result<Response, StatusCode> {
-    tracing::info!("Starting direct stdout stream for process_id: {}", process_id);
+    tracing::info!(
+        "Starting direct stdout stream for process_id: {}",
+        process_id
+    );
 
     let mut processes = state.processes.lock().await;
 
@@ -331,8 +333,8 @@ async fn get_process_stdout(
             drop(processes); // Release the lock early
 
             // Convert the AsyncRead (stdout) directly into an HTTP stream
-            let stream = ReaderStream::new(stdout)
-                .map(|result| result.map(axum::body::Bytes::from));
+            let stream =
+                ReaderStream::new(stdout).map(|result| result.map(axum::body::Bytes::from));
 
             let response = Response::builder()
                 .header("content-type", "application/octet-stream")
@@ -345,7 +347,10 @@ async fn get_process_stdout(
 
             Ok(response)
         } else {
-            tracing::error!("Stdout already taken or unavailable for process {}", process_id);
+            tracing::error!(
+                "Stdout already taken or unavailable for process {}",
+                process_id
+            );
             Err(StatusCode::GONE)
         }
     } else {
@@ -359,7 +364,10 @@ async fn get_process_stderr(
     State(state): State<AppState>,
     Path(process_id): Path<String>,
 ) -> Result<Response, StatusCode> {
-    tracing::info!("Starting direct stderr stream for process_id: {}", process_id);
+    tracing::info!(
+        "Starting direct stderr stream for process_id: {}",
+        process_id
+    );
 
     let mut processes = state.processes.lock().await;
 
@@ -369,8 +377,8 @@ async fn get_process_stderr(
             drop(processes); // Release the lock early
 
             // Convert the AsyncRead (stderr) directly into an HTTP stream
-            let stream = ReaderStream::new(stderr)
-                .map(|result| result.map(axum::body::Bytes::from));
+            let stream =
+                ReaderStream::new(stderr).map(|result| result.map(axum::body::Bytes::from));
 
             let response = Response::builder()
                 .header("content-type", "application/octet-stream")
@@ -383,7 +391,10 @@ async fn get_process_stderr(
 
             Ok(response)
         } else {
-            tracing::error!("Stderr already taken or unavailable for process {}", process_id);
+            tracing::error!(
+                "Stderr already taken or unavailable for process {}",
+                process_id
+            );
             Err(StatusCode::GONE)
         }
     } else {
