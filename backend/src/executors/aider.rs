@@ -1,13 +1,10 @@
 use async_trait::async_trait;
-use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use serde_json::Value;
-use tokio::{
-    io::{AsyncBufReadExt, BufReader},
-    process::Command,
-};
+use tokio::io::{AsyncBufReadExt, BufReader};
 use uuid::Uuid;
 
 use crate::{
+    command_runner::CommandProcess,
     executor::{
         ActionType, Executor, ExecutorError, NormalizedConversation, NormalizedEntry,
         NormalizedEntryType,
@@ -478,7 +475,7 @@ impl Executor for AiderExecutor {
         pool: &sqlx::SqlitePool,
         task_id: Uuid,
         worktree_path: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    ) -> Result<CommandProcess, ExecutorError> {
         // Get the task to fetch its description
         let task = Task::find_by_id(pool, task_id)
             .await?
@@ -526,40 +523,34 @@ impl Executor for AiderExecutor {
             message_file.to_string_lossy()
         );
 
-        let mut command = Command::new(shell_cmd);
-        command
-            .kill_on_drop(true)
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .current_dir(worktree_path)
-            .env("COLUMNS", "1000") // Prevent line wrapping in aider output
-            .arg(shell_arg)
-            .arg(&aider_command);
-
-        tracing::debug!("Spawning Aider command: {}", &aider_command);
-
         // Write message file after command is prepared for better error context
         tokio::fs::write(&message_file, prompt.as_bytes())
             .await
             .map_err(|e| {
-                let context =
-                    crate::executor::SpawnContext::from_command(&command, &self.executor_type)
-                        .with_task(task_id, Some(task.title.clone()))
-                        .with_context(format!(
-                            "Failed to write message file {}",
-                            message_file.display()
-                        ));
-                ExecutorError::spawn_failed(e, context)
+                ExecutorError::ContextCollectionFailed(format!(
+                    "Failed to write message file {}: {}",
+                    message_file.display(),
+                    e
+                ))
             })?;
 
-        let child = command
-            .group_spawn() // Create new process group so we can kill entire tree
-            .map_err(|e| {
-                crate::executor::SpawnContext::from_command(&command, &self.executor_type)
-                    .with_task(task_id, Some(task.title.clone()))
-                    .with_context(format!("{} CLI execution for new task", self.executor_type))
-                    .spawn_error(e)
-            })?;
+        tracing::debug!("Spawning Aider command: {}", &aider_command);
+
+        use crate::command_runner::CommandRunner;
+        let mut command = CommandRunner::new();
+        command
+            .command(shell_cmd)
+            .arg(shell_arg)
+            .arg(&aider_command)
+            .working_dir(worktree_path)
+            .env("COLUMNS", "1000"); // Prevent line wrapping in aider output
+
+        let child = command.start().await.map_err(|e| {
+            crate::executor::SpawnContext::from_command(&command, &self.executor_type)
+                .with_task(task_id, Some(task.title.clone()))
+                .with_context(format!("{} CLI execution for new task", self.executor_type))
+                .spawn_error(e)
+        })?;
 
         tracing::debug!(
             "Started Aider with message file {} for task {}: {:?}",
@@ -579,7 +570,7 @@ impl Executor for AiderExecutor {
         attempt_id: Uuid,
         execution_process_id: Uuid,
         worktree_path: &str,
-    ) -> Result<command_group::AsyncGroupChild, ExecutorError> {
+    ) -> Result<CommandProcess, ExecutorError> {
         // Generate our own session ID and store it in the database immediately
         let session_id = format!("aider_task_{}", task_id);
         if let Err(e) =
@@ -601,16 +592,14 @@ impl Executor for AiderExecutor {
         let mut child = self.spawn(pool, task_id, worktree_path).await?;
 
         // Take stdout and stderr pipes for Aider filtering
-        let stdout = child
-            .inner()
+        let streams = child
+            .stream()
+            .expect("Failed to get stdio from child process");
+        let stdout = streams
             .stdout
-            .take()
             .expect("Failed to take stdout from child process");
-
-        let stderr = child
-            .inner()
+        let stderr = streams
             .stderr
-            .take()
             .expect("Failed to take stderr from child process");
 
         // Start Aider filtering task
@@ -666,7 +655,7 @@ impl Executor for AiderExecutor {
         session_id: &str,
         prompt: &str,
         worktree_path: &str,
-    ) -> Result<command_group::AsyncGroupChild, ExecutorError> {
+    ) -> Result<CommandProcess, ExecutorError> {
         // Update session ID for this execution process to ensure continuity
         if let Err(e) =
             ExecutorSession::update_session_id(pool, execution_process_id, session_id).await
@@ -689,16 +678,14 @@ impl Executor for AiderExecutor {
             .await?;
 
         // Take stdout and stderr pipes for Aider filtering
-        let stdout = child
-            .inner()
+        let streams = child
+            .stream()
+            .expect("Failed to get stdio from child process");
+        let stdout = streams
             .stdout
-            .take()
             .expect("Failed to take stdout from child process");
-
-        let stderr = child
-            .inner()
+        let stderr = streams
             .stderr
-            .take()
             .expect("Failed to take stderr from child process");
 
         // Start Aider filtering task
@@ -723,7 +710,7 @@ impl Executor for AiderExecutor {
         session_id: &str,
         prompt: &str,
         worktree_path: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    ) -> Result<CommandProcess, ExecutorError> {
         let base_dir = TaskAttempt::get_worktree_base_dir();
 
         // Create session directory if it doesn't exist
@@ -759,32 +746,29 @@ impl Executor for AiderExecutor {
             message_file.to_string_lossy()
         );
 
-        let mut command = Command::new(shell_cmd);
-        command
-            .kill_on_drop(true)
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .current_dir(worktree_path)
-            .env("COLUMNS", "1000") // Prevent line wrapping in aider output
-            .arg(shell_arg)
-            .arg(&aider_command);
-
-        tracing::debug!("Spawning Aider command: {}", &aider_command);
-
         // Write message file after command is prepared for better error context
         tokio::fs::write(&message_file, prompt.as_bytes())
             .await
             .map_err(|e| {
-                let context =
-                    crate::executor::SpawnContext::from_command(&command, &self.executor_type)
-                        .with_context(format!(
-                            "Failed to write followup message file {}",
-                            message_file.display()
-                        ));
-                ExecutorError::spawn_failed(e, context)
+                ExecutorError::ContextCollectionFailed(format!(
+                    "Failed to write followup message file {}: {}",
+                    message_file.display(),
+                    e
+                ))
             })?;
 
-        let child = command.group_spawn().map_err(|e| {
+        tracing::debug!("Spawning Aider command: {}", &aider_command);
+
+        use crate::command_runner::CommandRunner;
+        let mut command = CommandRunner::new();
+        command
+            .command(shell_cmd)
+            .arg(shell_arg)
+            .arg(&aider_command)
+            .working_dir(worktree_path)
+            .env("COLUMNS", "1000"); // Prevent line wrapping in aider output
+
+        let child = command.start().await.map_err(|e| {
             crate::executor::SpawnContext::from_command(&command, &self.executor_type)
                 .with_context(format!(
                     "{} CLI followup execution for session {}",
