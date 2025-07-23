@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use sqlx::SqlitePool;
 use tracing::{debug, info};
 use uuid::Uuid;
@@ -702,16 +704,17 @@ impl ProcessService {
 
     /// Resolve executor configuration from string name
     fn resolve_executor_config(executor_name: &Option<String>) -> crate::executor::ExecutorConfig {
-        match executor_name.as_ref().map(|s| s.as_str()) {
-            Some("claude") => crate::executor::ExecutorConfig::Claude,
-            Some("claude-plan") => crate::executor::ExecutorConfig::ClaudePlan,
-            Some("claude-code-router") => crate::executor::ExecutorConfig::ClaudeCodeRouter,
-            Some("amp") => crate::executor::ExecutorConfig::Amp,
-            Some("gemini") => crate::executor::ExecutorConfig::Gemini,
-            Some("charm-opencode") => crate::executor::ExecutorConfig::CharmOpencode,
-            Some("sst-opencode") => crate::executor::ExecutorConfig::SstOpencode,
-            Some("aider") => crate::executor::ExecutorConfig::Aider,
-            _ => crate::executor::ExecutorConfig::Echo, // Default for "echo" or None
+        if let Some(name) = executor_name {
+            crate::executor::ExecutorConfig::from_str(name).unwrap_or_else(|_| {
+                tracing::warn!(
+                    "Unknown executor type '{}', defaulting to EchoExecutor",
+                    name
+                );
+                crate::executor::ExecutorConfig::Echo
+            })
+        } else {
+            tracing::warn!("No executor type specified, defaulting to EchoExecutor");
+            crate::executor::ExecutorConfig::Echo
         }
     }
 
