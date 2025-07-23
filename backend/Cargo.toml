@@ -11,17 +11,15 @@ path = "src/lib.rs"
 
 [[bin]]
 name = "cloud-runner"
-path = "src/bin/cloud-runner.rs"
-
-[[bin]]
-name = "test-remote"
-path = "src/bin/test_remote.rs"
+path = "src/bin/cloud_runner.rs"
 
 [lints.clippy]
 uninlined-format-args = "allow"
 
 [dependencies]
 tokio = { workspace = true }
+tokio-util = { version = "0.7", features = ["io"] }
+bytes = "1.0"
 axum = { workspace = true }
 tower-http = { workspace = true }
 serde = { workspace = true }

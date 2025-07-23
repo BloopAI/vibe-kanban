@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use uuid::Uuid;
 
 use crate::{
-    command_runner::CommandProcess,
+    command_runner::{CommandProcess, CommandRunner},
     executor::{
         ActionType, Executor, ExecutorError, NormalizedConversation, NormalizedEntry,
         NormalizedEntryType,
@@ -111,7 +111,6 @@ Task title: {}"#,
         // Pass prompt via stdin instead of command line to avoid shell escaping issues
         let claude_command = &self.command;
 
-        use crate::command_runner::CommandRunner;
         let mut command = CommandRunner::new();
         command
             .command(shell_cmd)
@@ -152,7 +151,6 @@ Task title: {}"#,
             format!("{} --resume={}", self.command, session_id)
         };
 
-        use crate::command_runner::CommandRunner;
         let mut command = CommandRunner::new();
         command
             .command(shell_cmd)

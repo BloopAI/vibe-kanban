@@ -4,7 +4,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use uuid::Uuid;
 
 use crate::{
-    command_runner::CommandProcess,
+    command_runner::{CommandProcess, CommandRunner},
     executor::{
         ActionType, Executor, ExecutorError, NormalizedConversation, NormalizedEntry,
         NormalizedEntryType,
@@ -536,7 +536,6 @@ impl Executor for AiderExecutor {
 
         tracing::debug!("Spawning Aider command: {}", &aider_command);
 
-        use crate::command_runner::CommandRunner;
         let mut command = CommandRunner::new();
         command
             .command(shell_cmd)
@@ -761,7 +760,6 @@ impl Executor for AiderExecutor {
 
         tracing::debug!("Spawning Aider command: {}", &aider_command);
 
-        use crate::command_runner::CommandRunner;
         let mut command = CommandRunner::new();
         command
             .command(shell_cmd)

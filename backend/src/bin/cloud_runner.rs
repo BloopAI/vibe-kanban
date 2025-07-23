@@ -10,17 +10,30 @@ use axum::{
 };
 use serde::Serialize;
 use tokio::sync::Mutex;
+use tokio_util::io::ReaderStream;
+use futures_util::StreamExt;
 use tracing_subscriber::prelude::*;
 use uuid::Uuid;
 use vibe_kanban::command_runner::{CommandProcess, CommandRunner, CreateCommandRequest};
 
 // Structure to hold process and its streams
-#[derive(Debug)]
 struct ProcessEntry {
     process: CommandProcess,
-    stdout_buffer: Arc<Mutex<Vec<u8>>>,
-    stderr_buffer: Arc<Mutex<Vec<u8>>>,
+    // Store the actual stdout/stderr streams for direct streaming
+    stdout_stream: Option<Box<dyn tokio::io::AsyncRead + Unpin + Send>>,
+    stderr_stream: Option<Box<dyn tokio::io::AsyncRead + Unpin + Send>>,
     completed: Arc<Mutex<bool>>,
+}
+
+impl std::fmt::Debug for ProcessEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProcessEntry")
+            .field("process", &self.process)
+            .field("stdout_stream", &self.stdout_stream.is_some())
+            .field("stderr_stream", &self.stderr_stream.is_some())
+            .field("completed", &self.completed)
+            .finish()
+    }
 }
 
 // Application state to manage running processes
@@ -138,12 +151,10 @@ async fn create_command(
     // Generate unique process ID
     let process_id = Uuid::new_v4().to_string();
 
-    // Create buffers for stdout and stderr, and completion flag
-    let stdout_buffer = Arc::new(Mutex::new(Vec::new()));
-    let stderr_buffer = Arc::new(Mutex::new(Vec::new()));
+    // Create completion flag
     let completed = Arc::new(Mutex::new(false));
 
-    // Get the streams from the process
+    // Get the streams from the process - we'll store them directly
     let mut streams = match process.stream().await {
         Ok(streams) => streams,
         Err(e) => {
@@ -152,68 +163,9 @@ async fn create_command(
         }
     };
 
-    // Spawn background tasks to read from stdout and stderr
-    let stdout_buffer_clone = stdout_buffer.clone();
-    let stderr_buffer_clone = stderr_buffer.clone();
-    let process_id_clone = process_id.clone();
-
-    if let Some(stdout) = streams.stdout.take() {
-        let process_id = process_id_clone.clone();
-        tokio::spawn(async move {
-            use tokio::io::AsyncReadExt;
-            let mut stdout = stdout;
-            let mut buffer = [0u8; 8192];
-
-            loop {
-                match stdout.read(&mut buffer).await {
-                    Ok(0) => break, // EOF
-                    Ok(n) => {
-                        let mut buf = stdout_buffer_clone.lock().await;
-                        buf.extend_from_slice(&buffer[..n]);
-                        tracing::debug!(
-                            "Read {} bytes to stdout buffer for process {}",
-                            n,
-                            process_id
-                        );
-                    }
-                    Err(e) => {
-                        tracing::error!("Error reading stdout for process {}: {}", process_id, e);
-                        break;
-                    }
-                }
-            }
-            tracing::debug!("Stdout reading completed for process {}", process_id);
-        });
-    }
-
-    if let Some(stderr) = streams.stderr.take() {
-        let process_id = process_id_clone.clone();
-        tokio::spawn(async move {
-            use tokio::io::AsyncReadExt;
-            let mut stderr = stderr;
-            let mut buffer = [0u8; 8192];
-
-            loop {
-                match stderr.read(&mut buffer).await {
-                    Ok(0) => break, // EOF
-                    Ok(n) => {
-                        let mut buf = stderr_buffer_clone.lock().await;
-                        buf.extend_from_slice(&buffer[..n]);
-                        tracing::debug!(
-                            "Read {} bytes to stderr buffer for process {}",
-                            n,
-                            process_id
-                        );
-                    }
-                    Err(e) => {
-                        tracing::error!("Error reading stderr for process {}: {}", process_id, e);
-                        break;
-                    }
-                }
-            }
-            tracing::debug!("Stderr reading completed for process {}", process_id);
-        });
-    }
+    // Extract the streams for direct use
+    let stdout_stream = streams.stdout.take();
+    let stderr_stream = streams.stderr.take();
 
     // Spawn a task to monitor process completion
     {
@@ -235,8 +187,8 @@ async fn create_command(
     // Create process entry
     let entry = ProcessEntry {
         process,
-        stdout_buffer,
-        stderr_buffer,
+        stdout_stream,
+        stderr_stream,
         completed: completed.clone(),
     };
 
@@ -364,120 +316,76 @@ async fn get_process_status(
     }
 }
 
-// Get stdout stream for a running command (true streaming)
+// Get stdout stream for a running command (direct streaming, no buffering)
 async fn get_process_stdout(
     State(state): State<AppState>,
     Path(process_id): Path<String>,
 ) -> Result<Response, StatusCode> {
-    tracing::info!("Starting stdout stream for process_id: {}", process_id);
+    tracing::info!("Starting direct stdout stream for process_id: {}", process_id);
 
-    let processes = state.processes.lock().await;
+    let mut processes = state.processes.lock().await;
 
-    if let Some(entry) = processes.get(&process_id) {
-        let stdout_buffer = entry.stdout_buffer.clone();
-        let completed = entry.completed.clone();
-        drop(processes); // Release the lock early
+    if let Some(entry) = processes.get_mut(&process_id) {
+        // Take ownership of stdout directly for streaming
+        if let Some(stdout) = entry.stdout_stream.take() {
+            drop(processes); // Release the lock early
 
-        // Create a stream that yields data as it becomes available
-        let stream = async_stream::stream! {
-            let mut position = 0;
+            // Convert the AsyncRead (stdout) directly into an HTTP stream
+            let stream = ReaderStream::new(stdout)
+                .map(|result| result.map(axum::body::Bytes::from));
 
-            loop {
-                let (current_data, is_completed) = {
-                    let buffer = stdout_buffer.lock().await;
-                    let completed_flag = *completed.lock().await;
+            let response = Response::builder()
+                .header("content-type", "application/octet-stream")
+                .header("cache-control", "no-cache")
+                .body(Body::from_stream(stream))
+                .map_err(|e| {
+                    tracing::error!("Failed to build response stream: {}", e);
+                    StatusCode::INTERNAL_SERVER_ERROR
+                })?;
 
-                    if buffer.len() > position {
-                        // New data available
-                        let new_data = buffer[position..].to_vec();
-                        position = buffer.len();
-                        (Some(new_data), completed_flag)
-                    } else {
-                        // No new data
-                        (None, completed_flag)
-                    }
-                };
-
-                if let Some(data) = current_data {
-                    yield Ok::<axum::body::Bytes, std::io::Error>(axum::body::Bytes::from(data));
-                }
-
-                if is_completed {
-                    break; // Process finished, no more data will come
-                }
-
-                // Wait a bit before checking again
-                tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-            }
-        };
-
-        let response = Response::builder()
-            .header("content-type", "application/octet-stream")
-            .header("cache-control", "no-cache")
-            .body(Body::from_stream(stream))
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-        Ok(response)
+            Ok(response)
+        } else {
+            tracing::error!("Stdout already taken or unavailable for process {}", process_id);
+            Err(StatusCode::GONE)
+        }
     } else {
         tracing::warn!("Process not found for stdout: {}", process_id);
         Err(StatusCode::NOT_FOUND)
     }
 }
 
-// Get stderr stream for a running command (true streaming)
+// Get stderr stream for a running command (direct streaming, no buffering)
 async fn get_process_stderr(
     State(state): State<AppState>,
     Path(process_id): Path<String>,
 ) -> Result<Response, StatusCode> {
-    tracing::info!("Starting stderr stream for process_id: {}", process_id);
+    tracing::info!("Starting direct stderr stream for process_id: {}", process_id);
 
-    let processes = state.processes.lock().await;
+    let mut processes = state.processes.lock().await;
 
-    if let Some(entry) = processes.get(&process_id) {
-        let stderr_buffer = entry.stderr_buffer.clone();
-        let completed = entry.completed.clone();
-        drop(processes); // Release the lock early
+    if let Some(entry) = processes.get_mut(&process_id) {
+        // Take ownership of stderr directly for streaming
+        if let Some(stderr) = entry.stderr_stream.take() {
+            drop(processes); // Release the lock early
 
-        // Create a stream that yields data as it becomes available
-        let stream = async_stream::stream! {
-            let mut position = 0;
+            // Convert the AsyncRead (stderr) directly into an HTTP stream
+            let stream = ReaderStream::new(stderr)
+                .map(|result| result.map(axum::body::Bytes::from));
 
-            loop {
-                let (current_data, is_completed) = {
-                    let buffer = stderr_buffer.lock().await;
-                    let completed_flag = *completed.lock().await;
+            let response = Response::builder()
+                .header("content-type", "application/octet-stream")
+                .header("cache-control", "no-cache")
+                .body(Body::from_stream(stream))
+                .map_err(|e| {
+                    tracing::error!("Failed to build response stream: {}", e);
+                    StatusCode::INTERNAL_SERVER_ERROR
+                })?;
 
-                    if buffer.len() > position {
-                        // New data available
-                        let new_data = buffer[position..].to_vec();
-                        position = buffer.len();
-                        (Some(new_data), completed_flag)
-                    } else {
-                        // No new data
-                        (None, completed_flag)
-                    }
-                };
-
-                if let Some(data) = current_data {
-                    yield Ok::<axum::body::Bytes, std::io::Error>(axum::body::Bytes::from(data));
-                }
-
-                if is_completed {
-                    break; // Process finished, no more data will come
-                }
-
-                // Wait a bit before checking again
-                tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-            }
-        };
-
-        let response = Response::builder()
-            .header("content-type", "application/octet-stream")
-            .header("cache-control", "no-cache")
-            .body(Body::from_stream(stream))
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-        Ok(response)
+            Ok(response)
+        } else {
+            tracing::error!("Stderr already taken or unavailable for process {}", process_id);
+            Err(StatusCode::GONE)
+        }
     } else {
         tracing::warn!("Process not found for stderr: {}", process_id);
         Err(StatusCode::NOT_FOUND)

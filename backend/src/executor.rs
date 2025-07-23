@@ -7,7 +7,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use crate::{
-    command_runner::{self},
+    command_runner::{CommandError, CommandProcess, CommandRunner},
     executors::{
         AiderExecutor, AmpExecutor, CCRExecutor, CharmOpencodeExecutor, ClaudeExecutor,
         EchoExecutor, GeminiExecutor, SetupScriptExecutor, SstOpencodeExecutor,
@@ -110,24 +110,20 @@ impl SpawnContext {
         self
     }
     /// Create SpawnContext from Command, then use builder methods for additional context
-    pub fn from_command(
-        // command: &tokio::process::Command,
-        command: &command_runner::CommandRunner,
-        executor_type: impl Into<String>,
-    ) -> Self {
+    pub fn from_command(command: &CommandRunner, executor_type: impl Into<String>) -> Self {
         Self::from(command).with_executor_type(executor_type)
     }
 
     /// Finalize the context and create an ExecutorError
-    pub fn spawn_error(self, error: command_runner::CommandError) -> ExecutorError {
+    pub fn spawn_error(self, error: CommandError) -> ExecutorError {
         ExecutorError::spawn_failed(error, self)
     }
 }
 
 /// Extract SpawnContext from a tokio::process::Command
 /// This automatically captures all available information from the Command object
-impl From<&command_runner::CommandRunner> for SpawnContext {
-    fn from(command: &command_runner::CommandRunner) -> Self {
+impl From<&CommandRunner> for SpawnContext {
+    fn from(command: &CommandRunner) -> Self {
         let program = command.get_program().to_string();
         let args = command.get_args().to_vec();
 
@@ -151,7 +147,7 @@ impl From<&command_runner::CommandRunner> for SpawnContext {
 #[derive(Debug)]
 pub enum ExecutorError {
     SpawnFailed {
-        error: command_runner::CommandError,
+        error: CommandError,
         context: SpawnContext,
     },
     TaskNotFound,
@@ -247,7 +243,7 @@ impl From<crate::models::task_attempt::TaskAttemptError> for ExecutorError {
 
 impl ExecutorError {
     /// Create a new SpawnFailed error with context
-    pub fn spawn_failed(error: command_runner::CommandError, context: SpawnContext) -> Self {
+    pub fn spawn_failed(error: CommandError, context: SpawnContext) -> Self {
         ExecutorError::SpawnFailed { error, context }
     }
 }
@@ -261,7 +257,7 @@ pub trait Executor: Send + Sync {
         pool: &sqlx::SqlitePool,
         task_id: Uuid,
         worktree_path: &str,
-    ) -> Result<command_runner::CommandProcess, ExecutorError>;
+    ) -> Result<CommandProcess, ExecutorError>;
 
     /// Spawn a follow-up session for executors that support it
     ///
@@ -275,7 +271,7 @@ pub trait Executor: Send + Sync {
         _session_id: &str,
         _prompt: &str,
         _worktree_path: &str,
-    ) -> Result<command_runner::CommandProcess, ExecutorError> {
+    ) -> Result<CommandProcess, ExecutorError> {
         Err(ExecutorError::FollowUpNotSupported)
     }
     /// Normalize executor logs into a standard format
@@ -297,7 +293,7 @@ pub trait Executor: Send + Sync {
     #[allow(clippy::result_large_err)]
     async fn setup_streaming(
         &self,
-        child: &mut command_runner::CommandProcess,
+        child: &mut CommandProcess,
         pool: &sqlx::SqlitePool,
         attempt_id: Uuid,
         execution_process_id: Uuid,
@@ -342,7 +338,7 @@ pub trait Executor: Send + Sync {
         attempt_id: Uuid,
         execution_process_id: Uuid,
         worktree_path: &str,
-    ) -> Result<command_runner::CommandProcess, ExecutorError> {
+    ) -> Result<CommandProcess, ExecutorError> {
         let mut child = self.spawn(pool, task_id, worktree_path).await?;
         Self::setup_streaming(self, &mut child, pool, attempt_id, execution_process_id).await?;
         Ok(child)
@@ -359,7 +355,7 @@ pub trait Executor: Send + Sync {
         session_id: &str,
         prompt: &str,
         worktree_path: &str,
-    ) -> Result<command_runner::CommandProcess, ExecutorError> {
+    ) -> Result<CommandProcess, ExecutorError> {
         let mut child = self
             .spawn_followup(pool, task_id, session_id, prompt, worktree_path)
             .await?;

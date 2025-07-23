@@ -2,8 +2,7 @@ use async_trait::async_trait;
 use uuid::Uuid;
 
 use crate::{
-    command_runner,
-    command_runner::CommandProcess,
+    command_runner::{CommandProcess, CommandRunner},
     executor::{Executor, ExecutorError},
     models::task::Task,
     utils::shell::get_shell_command,
@@ -49,7 +48,7 @@ Task title: {}"#,
             prompt.replace('"', "\\\"")
         );
 
-        let mut command = command_runner::CommandRunner::new();
+        let mut command = CommandRunner::new();
         command
             .command(shell_cmd)
             .arg(shell_arg)
@@ -82,7 +81,7 @@ Task title: {}"#,
             prompt.replace('"', "\\\"")
         );
 
-        let mut command = command_runner::CommandRunner::new();
+        let mut command = CommandRunner::new();
         command
             .command(shell_cmd)
             .arg(shell_arg)
