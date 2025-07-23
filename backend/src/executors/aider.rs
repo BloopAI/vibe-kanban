@@ -594,6 +594,7 @@ impl Executor for AiderExecutor {
         // Take stdout and stderr pipes for Aider filtering
         let streams = child
             .stream()
+            .await
             .expect("Failed to get stdio from child process");
         let stdout = streams
             .stdout
@@ -680,6 +681,7 @@ impl Executor for AiderExecutor {
         // Take stdout and stderr pipes for Aider filtering
         let streams = child
             .stream()
+            .await
             .expect("Failed to get stdio from child process");
         let stdout = streams
             .stdout

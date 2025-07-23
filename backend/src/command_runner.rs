@@ -36,7 +36,7 @@ pub trait ProcessHandle: Send + Sync {
     async fn kill(&mut self) -> Result<(), CommandError>;
 
     /// Get streams for stdout and stderr
-    fn stream(&mut self) -> Result<CommandStream, CommandError>;
+    async fn stream(&mut self) -> Result<CommandStream, CommandError>;
 
     /// Get process identifier (for debugging/logging)
     fn process_id(&self) -> String;
@@ -375,8 +375,8 @@ impl CommandProcess {
         self.handle.kill().await
     }
 
-    pub fn stream(&mut self) -> Result<CommandStream, CommandError> {
-        self.handle.stream()
+    pub async fn stream(&mut self) -> Result<CommandStream, CommandError> {
+        self.handle.stream().await
     }
 
     #[allow(dead_code)]
@@ -447,7 +447,7 @@ mod tests {
             .await
             .expect("CommandRunner should start echo command");
 
-        let mut stream = process.stream().expect("Should get stream");
+        let mut stream = process.stream().await.expect("Should get stream");
         let mut stdout_data = Vec::new();
         if let Some(stdout) = &mut stream.stdout {
             stdout
@@ -490,7 +490,7 @@ mod tests {
             .await
             .expect("CommandRunner should start cat command");
 
-        let mut stream = process.stream().expect("Should get stream");
+        let mut stream = process.stream().await.expect("Should get stream");
         let mut stdout_data = Vec::new();
         if let Some(stdout) = &mut stream.stdout {
             stdout
@@ -534,7 +534,7 @@ mod tests {
             .await
             .expect("CommandRunner should start pwd command");
 
-        let mut stream = process.stream().expect("Should get stream");
+        let mut stream = process.stream().await.expect("Should get stream");
         let mut stdout_data = Vec::new();
         if let Some(stdout) = &mut stream.stdout {
             stdout
@@ -579,7 +579,7 @@ mod tests {
             .await
             .expect("CommandRunner should start printenv command");
 
-        let mut stream = process.stream().expect("Should get stream");
+        let mut stream = process.stream().await.expect("Should get stream");
         let mut stdout_data = Vec::new();
         if let Some(stdout) = &mut stream.stdout {
             stdout

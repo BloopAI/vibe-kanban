@@ -168,7 +168,7 @@ impl ProcessHandle for LocalProcessHandle {
         }
     }
 
-    fn stream(&mut self) -> Result<CommandStream, CommandError> {
+    async fn stream(&mut self) -> Result<CommandStream, CommandError> {
         match &mut self.child {
             Some(child) => {
                 let stdout = child.inner().stdout.take();

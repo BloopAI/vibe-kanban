@@ -236,7 +236,7 @@ impl ProcessHandle for RemoteProcessHandle {
         Ok(())
     }
 
-    fn stream(&mut self) -> Result<CommandStream, CommandError> {
+    async fn stream(&mut self) -> Result<CommandStream, CommandError> {
         // Create HTTP streams for stdout and stderr using a blocking approach
         let stdout_url = format!("{}/commands/{}/stdout", self.cloud_server_url, self.process_id);
         let stderr_url = format!("{}/commands/{}/stderr", self.cloud_server_url, self.process_id);

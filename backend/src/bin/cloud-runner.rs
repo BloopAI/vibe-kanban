@@ -144,7 +144,7 @@ async fn create_command(
     let completed = Arc::new(Mutex::new(false));
 
     // Get the streams from the process
-    let mut streams = match process.stream() {
+    let mut streams = match process.stream().await {
         Ok(streams) => streams,
         Err(e) => {
             tracing::error!("Failed to get process streams: {}", e);
