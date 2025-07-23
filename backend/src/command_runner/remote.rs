@@ -202,7 +202,7 @@ impl ProcessHandle for RemoteProcessHandle {
             }
 
             // Wait a bit before polling again
-            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+            tokio::time::sleep(tokio::time::Duration::from_millis(20)).await;
         }
     }
 
@@ -246,7 +246,7 @@ impl ProcessHandle for RemoteProcessHandle {
     }
 
     async fn stream(&mut self) -> Result<CommandStream, CommandError> {
-        // Create HTTP streams for stdout and stderr using a blocking approach
+        // Create HTTP streams for stdout and stderr concurrently
         let stdout_url = format!(
             "{}/commands/{}/stdout",
             self.cloud_server_url, self.process_id
@@ -256,37 +256,14 @@ impl ProcessHandle for RemoteProcessHandle {
             self.cloud_server_url, self.process_id
         );
 
-        // Use tokio spawn_blocking to avoid the nested runtime issue
-        let stdout = std::thread::spawn({
-            let url = stdout_url;
-            move || {
-                let rt = tokio::runtime::Runtime::new().unwrap();
-                rt.block_on(HTTPStream::new(url))
-            }
-        })
-        .join()
-        .map_err(|_| CommandError::IoError {
-            error: std::io::Error::other("Failed to create stdout stream"),
-        })?;
+        // Create both streams concurrently using tokio::try_join!
+        let (stdout_result, stderr_result) =
+            tokio::try_join!(HTTPStream::new(stdout_url), HTTPStream::new(stderr_url))?;
 
-        let stderr = std::thread::spawn({
-            let url = stderr_url;
-            move || {
-                let rt = tokio::runtime::Runtime::new().unwrap();
-                rt.block_on(HTTPStream::new(url))
-            }
-        })
-        .join()
-        .map_err(|_| CommandError::IoError {
-            error: std::io::Error::other("Failed to create stderr stream"),
-        })?;
-
-        let stdout_stream: Option<Box<dyn AsyncRead + Unpin + Send>> = stdout
-            .ok()
-            .map(|s| Box::new(s) as Box<dyn AsyncRead + Unpin + Send>);
-        let stderr_stream: Option<Box<dyn AsyncRead + Unpin + Send>> = stderr
-            .ok()
-            .map(|s| Box::new(s) as Box<dyn AsyncRead + Unpin + Send>);
+        let stdout_stream: Option<Box<dyn AsyncRead + Unpin + Send>> =
+            Some(Box::new(stdout_result) as Box<dyn AsyncRead + Unpin + Send>);
+        let stderr_stream: Option<Box<dyn AsyncRead + Unpin + Send>> =
+            Some(Box::new(stderr_result) as Box<dyn AsyncRead + Unpin + Send>);
 
         Ok(CommandStream {
             stdout: stdout_stream,
