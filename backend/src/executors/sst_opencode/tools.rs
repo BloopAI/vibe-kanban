@@ -157,10 +157,10 @@ mod tests {
         assert_eq!(normalize_tool_name("TodoWrite"), "todowrite");
         assert_eq!(normalize_tool_name("TodoRead"), "todoread");
 
-        // Test other tools remain unchanged
-        assert_eq!(normalize_tool_name("Read"), "Read");
-        assert_eq!(normalize_tool_name("Write"), "Write");
+        // Test other tools are converted to lowercase
+        assert_eq!(normalize_tool_name("Read"), "read");
+        assert_eq!(normalize_tool_name("Write"), "write");
         assert_eq!(normalize_tool_name("bash"), "bash");
-        assert_eq!(normalize_tool_name("SomeOtherTool"), "SomeOtherTool");
+        assert_eq!(normalize_tool_name("SomeOtherTool"), "someothertool");
     }
 }
