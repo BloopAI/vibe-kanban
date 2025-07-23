@@ -404,3 +404,23 @@ impl AsyncRead for HTTPStream {
         }
     }
 }
+
+// Remote-specific implementations for shared types
+impl CommandExitStatus {
+    /// Create a CommandExitStatus for remote processes
+    pub fn from_remote(
+        code: Option<i32>,
+        success: bool,
+        remote_process_id: Option<String>,
+        remote_session_id: Option<String>,
+    ) -> Self {
+        Self {
+            code,
+            success,
+            #[cfg(unix)]
+            signal: None,
+            remote_process_id,
+            remote_session_id,
+        }
+    }
+}
