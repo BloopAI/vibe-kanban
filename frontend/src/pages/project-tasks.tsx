@@ -497,7 +497,7 @@ export function ProjectTasks() {
           </div>
         ) : (
           <div className="px-8 overflow-x-scroll my-4">
-            <div className="min-w-[900px] max-w-[2000px] relative py-1">
+              <div className="min-w-[1800px] max-w-[2000px] relative py-1">
               <TaskKanbanBoard
                 tasks={tasks}
                 searchQuery={searchQuery}
