@@ -14,6 +14,8 @@ use nix::{
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncRead, process::Command};
 
+use crate::models::Environment;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateCommandRequest {
     pub command: String,
@@ -37,10 +39,6 @@ pub struct CommandRunner {
     working_dir: Option<String>,
     env_vars: Vec<(String, String)>,
     stdin: Option<String>,
-    #[allow(dead_code)]
-    taskid: Option<String>,
-    #[allow(dead_code)]
-    executor_type: String,
 }
 
 #[derive(Debug)]
@@ -55,10 +53,6 @@ pub enum ProcessHandle {
 #[derive(Debug)]
 pub struct CommandProcess {
     handle: Option<ProcessHandle>,
-    #[allow(dead_code)]
-    runner_type: CommandRunnerType,
-    #[allow(dead_code)]
-    command_runner: CommandRunner,
 }
 
 #[derive(Debug)]
@@ -339,11 +333,11 @@ impl Default for CommandRunner {
 
 impl CommandRunner {
     pub fn new() -> Self {
-        // Check cloud environment variable
-        if std::env::var("CLOUD_EXECUTION").is_ok() {
-            Self::new_remote()
-        } else {
-            Self::new_local()
+        let env = std::env::var("ENVIRONMENT").unwrap_or_else(|_| "local".to_string());
+        let mode = env.parse().unwrap_or(Environment::Local);
+        match mode {
+            Environment::Cloud => Self::new_remote(),
+            Environment::Local => Self::new_local(),
         }
     }
 
@@ -355,12 +349,9 @@ impl CommandRunner {
             working_dir: None,
             env_vars: Vec::new(),
             stdin: None,
-            taskid: None,
-            executor_type: "Local".to_string(),
         }
     }
 
-    #[allow(dead_code)]
     pub fn new_remote() -> Self {
         Self {
             runner_type: CommandRunnerType::Remote,
@@ -369,8 +360,6 @@ impl CommandRunner {
             working_dir: None,
             env_vars: Vec::new(),
             stdin: None,
-            taskid: None,
-            executor_type: "Remote".to_string(),
         }
     }
 
@@ -389,12 +378,6 @@ impl CommandRunner {
 
     pub fn get_current_dir(&self) -> Option<&str> {
         self.working_dir.as_deref()
-    }
-
-    #[allow(dead_code)]
-    pub fn args(&mut self, args: &[&str]) -> &mut Self {
-        self.args = args.iter().map(|s| s.to_string()).collect();
-        self
     }
 
     pub fn arg(&mut self, arg: &str) -> &mut Self {
@@ -489,8 +472,6 @@ impl CommandRunner {
 
                 Ok(CommandProcess {
                     handle: Some(ProcessHandle::Local(child)),
-                    runner_type: self.runner_type.clone(),
-                    command_runner: self.clone(),
                 })
             }
             CommandRunnerType::Remote => {
@@ -523,14 +504,11 @@ impl CommandRunner {
                                 result
                             )),
                         })?;
-
                 Ok(CommandProcess {
                     handle: Some(ProcessHandle::Remote {
                         process_id: process_id.to_string(),
                         cloud_server_url,
                     }),
-                    runner_type: self.runner_type.clone(),
-                    command_runner: self.clone(),
                 })
             }
         }
@@ -615,10 +593,6 @@ impl CommandProcess {
             }
             None => Err(CommandError::ProcessNotStarted),
         }
-    }
-    #[allow(dead_code)]
-    pub fn as_runner(&self) -> &CommandRunner {
-        &self.command_runner
     }
 
     pub async fn try_wait(&mut self) -> Result<Option<CommandExitStatus>, CommandError> {
@@ -923,11 +897,6 @@ impl CommandProcess {
             }
             None => Err(CommandError::ProcessNotStarted),
         }
-    }
-
-    #[allow(dead_code)]
-    pub fn runner_type(&self) -> &CommandRunnerType {
-        &self.runner_type
     }
 }
 
