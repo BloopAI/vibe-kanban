@@ -1,4 +1,4 @@
-import { KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { projectsApi } from '@/lib/api';
@@ -18,6 +18,7 @@ interface FileSearchTextareaProps {
   projectId?: string;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   maxRows?: number;
+  onPasteImages?: (files: File[]) => void;
 }
 
 export function FileSearchTextarea({
@@ -30,6 +31,7 @@ export function FileSearchTextarea({
   projectId,
   onKeyDown,
   maxRows = 10,
+  onPasteImages,
 }: FileSearchTextareaProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FileSearchResult[]>([]);
@@ -97,6 +99,29 @@ export function FileSearchTextarea({
     setSearchQuery('');
     setAtSymbolPosition(-1);
   };
+
+  // Handle paste events for images
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      if (!onPasteImages) return;
+
+      const items = Array.from(e.clipboardData.items);
+      const imageFiles: File[] = [];
+
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
+        }
+      }
+
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        onPasteImages(imageFiles);
+      }
+    },
+    [onPasteImages]
+  );
 
   // Handle keyboard navigation
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -237,6 +262,7 @@ export function FileSearchTextarea({
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
         placeholder={placeholder}
         rows={rows}
         disabled={disabled}

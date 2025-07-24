@@ -8,6 +8,9 @@ function CollapsibleToolbar() {
 
   return (
     <div className="border-b">
+      <div className="px-4 pb-2">
+        <div className="border-t" />
+      </div>
       <div className="px-4 pb-2 flex items-center justify-between">
         <h3 className="text-sm font-medium text-muted-foreground">
           Task Details

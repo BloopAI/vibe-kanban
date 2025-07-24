@@ -270,8 +270,26 @@ pub fn tasks_project_router() -> Router<AppState> {
 }
 
 pub fn tasks_with_id_router() -> Router<AppState> {
-    Router::new().route(
-        "/projects/:project_id/tasks/:task_id",
-        get(get_task).put(update_task).delete(delete_task),
-    )
+    Router::new()
+        .route(
+            "/projects/:project_id/tasks/:task_id",
+            get(get_task).put(update_task).delete(delete_task),
+        )
+        .route(
+            "/projects/:project_id/tasks/:task_id/attachments",
+            get(get_task_attachments),
+        )
+}
+
+async fn get_task_attachments(
+    Extension(task): Extension<Task>,
+    State(app_state): State<AppState>,
+) -> Result<ResponseJson<ApiResponse<Vec<crate::models::attachment::Attachment>>>, StatusCode> {
+    match crate::models::attachment::Attachment::find_by_task_id(&app_state.db_pool, task.id).await {
+        Ok(attachments) => Ok(ResponseJson(ApiResponse::success(attachments))),
+        Err(e) => {
+            tracing::error!("Failed to fetch attachments for task {}: {}", task.id, e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
 }

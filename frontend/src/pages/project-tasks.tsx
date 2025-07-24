@@ -175,7 +175,7 @@ export function ProjectTasks() {
   );
 
   const handleCreateTask = useCallback(
-    async (title: string, description: string) => {
+    async (title: string, description: string): Promise<string> => {
       try {
         const createdTask = await tasksApi.create(projectId!, {
           project_id: projectId!,
@@ -188,15 +188,17 @@ export function ProjectTasks() {
         navigate(`/projects/${projectId}/tasks/${createdTask.id}`, {
           replace: true,
         });
+        return createdTask.id;
       } catch (err) {
         setError('Failed to create task');
+        throw err;
       }
     },
     [projectId, fetchTasks, navigate]
   );
 
   const handleCreateAndStartTask = useCallback(
-    async (title: string, description: string, executor?: ExecutorConfig) => {
+    async (title: string, description: string, executor?: ExecutorConfig): Promise<string> => {
       try {
         const payload: CreateTaskAndStart = {
           project_id: projectId!,
@@ -209,8 +211,10 @@ export function ProjectTasks() {
         await fetchTasks();
         // Open the newly created task in the details panel
         handleViewTaskDetails(result);
+        return result.id;
       } catch (err) {
         setError('Failed to create and start task');
+        throw err;
       }
     },
     [projectId, fetchTasks]
