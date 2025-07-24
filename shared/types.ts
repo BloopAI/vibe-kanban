@@ -169,6 +169,15 @@ export const EDITOR_LABELS: Record<string, string> = {
     "custom": "Custom"
 };
 
+export const MCP_SUPPORTED_EXECUTORS: string[] = [
+    "claude",
+    "amp",
+    "gemini",
+    "sst-opencode",
+    "charm-opencode",
+    "claude-code-router"
+];
+
 export const SOUND_FILES: SoundFile[] = [
     "abstract-sound1",
     "abstract-sound2",

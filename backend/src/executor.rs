@@ -499,7 +499,7 @@ impl ExecutorConfig {
             ExecutorConfig::CharmOpencode => Some(vec!["mcpServers"]),
             ExecutorConfig::SstOpencode => Some(vec!["mcp"]),
             ExecutorConfig::Claude => Some(vec!["mcpServers"]),
-            ExecutorConfig::ClaudePlan => Some(vec!["mcpServers"]),
+            ExecutorConfig::ClaudePlan => None, // Claude Plan shares Claude config
             ExecutorConfig::Amp => Some(vec!["amp", "mcpServers"]), // Nested path for Amp
             ExecutorConfig::Gemini => Some(vec!["mcpServers"]),
             ExecutorConfig::ClaudeCodeRouter => Some(vec!["mcpServers"]),
