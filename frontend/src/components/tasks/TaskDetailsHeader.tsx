@@ -131,8 +131,8 @@ function TaskDetailsHeader({
                       : ''
                   }`}
                 >
-                  <MarkdownRenderer 
-                    content={task.description} 
+                  <MarkdownRenderer
+                    content={task.description}
                     attachments={attachments}
                   />
                 </div>
@@ -166,7 +166,7 @@ function TaskDetailsHeader({
             )}
           </div>
         </div>
-        
+
         {/* Attachments */}
         {attachments.length > 0 && (
           <div className="mt-3">
