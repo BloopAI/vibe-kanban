@@ -2,7 +2,9 @@ use async_trait::async_trait;
 use uuid::Uuid;
 
 use crate::{
-    command_runner::{CommandProcess, CommandRunner},
+    app_state::AppState,
+    command_runner::CommandProcess,
+    deployment::Deployment,
     executor::{Executor, ExecutorError},
     models::task::Task,
     utils::shell::get_shell_command,
@@ -15,12 +17,12 @@ pub struct CharmOpencodeExecutor;
 impl Executor for CharmOpencodeExecutor {
     async fn spawn(
         &self,
-        pool: &sqlx::SqlitePool,
+        app_state: &AppState,
         task_id: Uuid,
         worktree_path: &str,
     ) -> Result<CommandProcess, ExecutorError> {
         // Get the task to fetch its description
-        let task = Task::find_by_id(pool, task_id)
+        let task = Task::find_by_id(&app_state.db_pool, task_id)
             .await?
             .ok_or(ExecutorError::TaskNotFound)?;
 
@@ -48,7 +50,7 @@ Task title: {}"#,
             prompt.replace('"', "\\\"")
         );
 
-        let mut command = CommandRunner::new();
+        let mut command = app_state.deployment.command_runner();
         command
             .command(shell_cmd)
             .arg(shell_arg)
@@ -67,7 +69,7 @@ Task title: {}"#,
 
     async fn spawn_followup(
         &self,
-        _pool: &sqlx::SqlitePool,
+        app_state: &AppState,
         _task_id: Uuid,
         _session_id: &str,
         prompt: &str,
@@ -81,7 +83,7 @@ Task title: {}"#,
             prompt.replace('"', "\\\"")
         );
 
-        let mut command = CommandRunner::new();
+        let mut command = app_state.deployment.command_runner();
         command
             .command(shell_cmd)
             .arg(shell_arg)

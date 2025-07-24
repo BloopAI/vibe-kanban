@@ -4,6 +4,9 @@ use std::{
 };
 
 use async_trait::async_trait;
+use base64::Engine;
+use futures_util::Stream;
+use reqwest_eventsource::{Event, EventSource};
 use tokio::io::AsyncRead;
 
 use crate::command_runner::{
@@ -70,6 +73,7 @@ impl CommandExecutor for RemoteCommandExecutor {
 pub struct RemoteProcessHandle {
     process_id: String,
     cloud_server_url: String,
+    client: reqwest::Client,
 }
 
 impl RemoteProcessHandle {
@@ -77,16 +81,14 @@ impl RemoteProcessHandle {
         Self {
             process_id,
             cloud_server_url,
+            client: reqwest::Client::new(),
         }
     }
-}
 
-#[async_trait]
-impl ProcessHandle for RemoteProcessHandle {
-    async fn try_wait(&mut self) -> Result<Option<CommandExitStatus>, CommandError> {
-        // Make HTTP request to get status from cloud server
-        let client = reqwest::Client::new();
-        let response = client
+    // Helper method to get process status from the remote server
+    async fn get_status(&self) -> Result<ProcessStatus, CommandError> {
+        let response = self
+            .client
             .get(format!(
                 "{}/commands/{}/status",
                 self.cloud_server_url, self.process_id
@@ -124,17 +126,36 @@ impl ProcessHandle for RemoteProcessHandle {
             })?;
 
         let running = data["running"].as_bool().unwrap_or(false);
+        let exit_code = data["exit_code"].as_i64().map(|c| c as i32);
+        let success = data["success"].as_bool().unwrap_or(false);
 
-        if running {
+        Ok(ProcessStatus {
+            running,
+            exit_code,
+            success,
+        })
+    }
+}
+
+// Helper struct for process status
+struct ProcessStatus {
+    running: bool,
+    exit_code: Option<i32>,
+    success: bool,
+}
+
+#[async_trait]
+impl ProcessHandle for RemoteProcessHandle {
+    async fn try_wait(&mut self) -> Result<Option<CommandExitStatus>, CommandError> {
+        let status = self.get_status().await?;
+
+        if status.running {
             Ok(None) // Still running
         } else {
             // Process completed, extract exit status
-            let exit_code = data["exit_code"].as_i64().map(|c| c as i32);
-            let success = data["success"].as_bool().unwrap_or(false);
-
             Ok(Some(CommandExitStatus::from_remote(
-                exit_code,
-                success,
+                status.exit_code,
+                status.success,
                 Some(self.process_id.clone()),
                 None,
             )))
@@ -144,58 +165,13 @@ impl ProcessHandle for RemoteProcessHandle {
     async fn wait(&mut self) -> Result<CommandExitStatus, CommandError> {
         // Poll the status endpoint until process completes
         loop {
-            let client = reqwest::Client::new();
-            let response = client
-                .get(format!(
-                    "{}/commands/{}/status",
-                    self.cloud_server_url, self.process_id
-                ))
-                .send()
-                .await
-                .map_err(|e| CommandError::StatusCheckFailed {
-                    error: std::io::Error::other(e),
-                })?;
+            let status = self.get_status().await?;
 
-            if !response.status().is_success() {
-                if response.status() == reqwest::StatusCode::NOT_FOUND {
-                    return Err(CommandError::StatusCheckFailed {
-                        error: std::io::Error::new(
-                            std::io::ErrorKind::NotFound,
-                            "Process not found",
-                        ),
-                    });
-                } else {
-                    return Err(CommandError::StatusCheckFailed {
-                        error: std::io::Error::other("Status check failed"),
-                    });
-                }
-            }
-
-            let result: serde_json::Value =
-                response
-                    .json()
-                    .await
-                    .map_err(|e| CommandError::StatusCheckFailed {
-                        error: std::io::Error::other(e),
-                    })?;
-
-            let data =
-                result["data"]
-                    .as_object()
-                    .ok_or_else(|| CommandError::StatusCheckFailed {
-                        error: std::io::Error::other("Invalid response format"),
-                    })?;
-
-            let running = data["running"].as_bool().unwrap_or(false);
-
-            if !running {
+            if !status.running {
                 // Process completed, extract exit status and return
-                let exit_code = data["exit_code"].as_i64().map(|c| c as i32);
-                let success = data["success"].as_bool().unwrap_or(false);
-
                 return Ok(CommandExitStatus::from_remote(
-                    exit_code,
-                    success,
+                    status.exit_code,
+                    status.success,
                     Some(self.process_id.clone()),
                     None,
                 ));
@@ -207,8 +183,8 @@ impl ProcessHandle for RemoteProcessHandle {
     }
 
     async fn kill(&mut self) -> Result<(), CommandError> {
-        let client = reqwest::Client::new();
-        let response = client
+        let response = self
+            .client
             .delete(format!(
                 "{}/commands/{}",
                 self.cloud_server_url, self.process_id
@@ -258,7 +234,7 @@ impl ProcessHandle for RemoteProcessHandle {
 
         // Create both streams concurrently using tokio::try_join!
         let (stdout_result, stderr_result) =
-            tokio::try_join!(HTTPStream::new(stdout_url), HTTPStream::new(stderr_url))?;
+            tokio::try_join!(SSEAsyncRead::new(stdout_url), SSEAsyncRead::new(stderr_url))?;
 
         let stdout_stream: Option<Box<dyn AsyncRead + Unpin + Send>> =
             Some(Box::new(stdout_result) as Box<dyn AsyncRead + Unpin + Send>);
@@ -276,57 +252,35 @@ impl ProcessHandle for RemoteProcessHandle {
     }
 }
 
-/// HTTP-based AsyncRead wrapper for true streaming
-pub struct HTTPStream {
-    stream: Pin<Box<dyn futures_util::Stream<Item = Result<Vec<u8>, reqwest::Error>> + Send>>,
-    current_chunk: Vec<u8>,
-    chunk_position: usize,
+/// SSE-based AsyncRead wrapper that parses Server-Sent Events
+pub struct SSEAsyncRead {
+    event_source: EventSource,
+    current_buffer: Vec<u8>,
+    buffer_position: usize,
     finished: bool,
 }
 
-// HTTPStream needs to be Unpin to work with the AsyncRead trait bounds
-impl Unpin for HTTPStream {}
+// SSEAsyncRead needs to be Unpin to work with the AsyncRead trait bounds
+impl Unpin for SSEAsyncRead {}
 
-impl HTTPStream {
+impl SSEAsyncRead {
     pub async fn new(url: String) -> Result<Self, CommandError> {
         let client = reqwest::Client::new();
-        let response = client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| CommandError::IoError {
+        let event_source =
+            EventSource::new(client.get(&url)).map_err(|e| CommandError::IoError {
                 error: std::io::Error::other(e),
             })?;
 
-        if !response.status().is_success() {
-            return Err(CommandError::IoError {
-                error: std::io::Error::other(format!(
-                    "HTTP request failed with status: {}",
-                    response.status()
-                )),
-            });
-        }
-
-        // Use chunk() method to create a stream
         Ok(Self {
-            stream: Box::pin(futures_util::stream::unfold(
-                response,
-                |mut resp| async move {
-                    match resp.chunk().await {
-                        Ok(Some(chunk)) => Some((Ok(chunk.to_vec()), resp)),
-                        Ok(None) => None,
-                        Err(e) => Some((Err(e), resp)),
-                    }
-                },
-            )),
-            current_chunk: Vec::new(),
-            chunk_position: 0,
+            event_source,
+            current_buffer: Vec::new(),
+            buffer_position: 0,
             finished: false,
         })
     }
 }
 
-impl AsyncRead for HTTPStream {
+impl AsyncRead for SSEAsyncRead {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -336,47 +290,106 @@ impl AsyncRead for HTTPStream {
             return Poll::Ready(Ok(()));
         }
 
-        // First, try to read from current chunk if available
-        if self.chunk_position < self.current_chunk.len() {
-            let remaining_in_chunk = self.current_chunk.len() - self.chunk_position;
-            let to_read = std::cmp::min(remaining_in_chunk, buf.remaining());
+        loop {
+            // First, try to read from current buffer if available
+            if self.buffer_position < self.current_buffer.len() {
+                let remaining_in_buffer = self.current_buffer.len() - self.buffer_position;
+                let to_read = std::cmp::min(remaining_in_buffer, buf.remaining());
 
-            let chunk_data =
-                &self.current_chunk[self.chunk_position..self.chunk_position + to_read];
-            buf.put_slice(chunk_data);
-            self.chunk_position += to_read;
+                let buffer_data =
+                    &self.current_buffer[self.buffer_position..self.buffer_position + to_read];
+                buf.put_slice(buffer_data);
+                self.buffer_position += to_read;
 
-            return Poll::Ready(Ok(()));
-        }
+                return Poll::Ready(Ok(()));
+            }
 
-        // Current chunk is exhausted, try to get the next chunk
-        match self.stream.as_mut().poll_next(cx) {
-            Poll::Ready(Some(Ok(chunk))) => {
-                if chunk.is_empty() {
-                    // Empty chunk, mark as finished
-                    self.finished = true;
-                    Poll::Ready(Ok(()))
-                } else {
-                    // New chunk available
-                    self.current_chunk = chunk;
-                    self.chunk_position = 0;
+            // Current buffer is exhausted, try to get the next SSE event
+            match Pin::new(&mut self.event_source).poll_next(cx) {
+                Poll::Ready(Some(Ok(event))) => {
+                    match event {
+                        Event::Open => {
+                            // Connection opened, continue polling for next event
+                            continue;
+                        }
+                        Event::Message(message) => {
+                            // Handle different message types based on event type
+                            match message.event.as_str() {
+                                "message" | "" => {
+                                    // Standard data message, decode base64 data
+                                    match base64::engine::general_purpose::STANDARD
+                                        .decode(&message.data)
+                                    {
+                                        Ok(decoded_data) => {
+                                            if decoded_data.is_empty() {
+                                                // Empty data, continue polling for next event
+                                                continue;
+                                            } else {
+                                                // New data available
+                                                self.current_buffer = decoded_data;
+                                                self.buffer_position = 0;
 
-                    // Read from the new chunk
-                    let to_read = std::cmp::min(self.current_chunk.len(), buf.remaining());
-                    let chunk_data = &self.current_chunk[..to_read];
-                    buf.put_slice(chunk_data);
-                    self.chunk_position = to_read;
+                                                // Read from the new buffer
+                                                let to_read = std::cmp::min(
+                                                    self.current_buffer.len(),
+                                                    buf.remaining(),
+                                                );
+                                                let buffer_data = &self.current_buffer[..to_read];
+                                                buf.put_slice(buffer_data);
+                                                self.buffer_position = to_read;
 
-                    Poll::Ready(Ok(()))
+                                                return Poll::Ready(Ok(()));
+                                            }
+                                        }
+                                        Err(e) => {
+                                            tracing::error!("Failed to decode base64 data: {}", e);
+                                            return Poll::Ready(Err(std::io::Error::other(
+                                                format!("Failed to decode base64 data: {}", e),
+                                            )));
+                                        }
+                                    }
+                                }
+                                "error" => {
+                                    // Server sent an error event
+                                    return Poll::Ready(Err(std::io::Error::other(format!(
+                                        "Server error: {}",
+                                        message.data
+                                    ))));
+                                }
+                                "close" => {
+                                    // Server is closing the connection
+                                    self.finished = true;
+                                    return Poll::Ready(Ok(()));
+                                }
+                                _ => {
+                                    // Unknown event type, continue
+                                    continue;
+                                }
+                            }
+                        }
+                    }
                 }
+                Poll::Ready(Some(Err(e))) => {
+                    // Check if this is a normal stream end vs actual error
+                    let error_msg = e.to_string();
+                    if error_msg.contains("Stream ended") {
+                        self.finished = true;
+                        return Poll::Ready(Ok(()));
+                    } else {
+                        tracing::warn!("SSE stream error: {}", e);
+                        return Poll::Ready(Err(std::io::Error::other(format!(
+                            "SSE connection error: {}",
+                            e
+                        ))));
+                    }
+                }
+                Poll::Ready(None) => {
+                    // Stream ended
+                    self.finished = true;
+                    return Poll::Ready(Ok(()));
+                }
+                Poll::Pending => return Poll::Pending,
             }
-            Poll::Ready(Some(Err(e))) => Poll::Ready(Err(std::io::Error::other(e))),
-            Poll::Ready(None) => {
-                // Stream ended
-                self.finished = true;
-                Poll::Ready(Ok(()))
-            }
-            Poll::Pending => Poll::Pending,
         }
     }
 }

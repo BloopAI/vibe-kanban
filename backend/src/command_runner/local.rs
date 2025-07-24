@@ -269,11 +269,10 @@ mod tests {
     #[tokio::test]
     async fn test_command_execution_comparison() {
         // Ensure we're using local execution for this test
-        std::env::set_var("ENVIRONMENT", "local");
         let test_message = "hello world";
 
         // Test with CommandRunner
-        let mut runner = CommandRunner::new();
+        let mut runner = CommandRunner::new_local();
         let mut process = runner
             .command("echo")
             .arg(test_message)
@@ -314,11 +313,10 @@ mod tests {
     #[tokio::test]
     async fn test_stdin_handling() {
         // Ensure we're using local execution for this test
-        std::env::set_var("ENVIRONMENT", "local");
         let test_input = "test input data\n";
 
         // Test with CommandRunner (using cat to echo stdin)
-        let mut runner = CommandRunner::new();
+        let mut runner = CommandRunner::new_local();
         let mut process = runner
             .command("cat")
             .stdin(test_input)
@@ -362,8 +360,7 @@ mod tests {
         let test_dir = "/tmp";
 
         // Test with CommandRunner
-        std::env::set_var("ENVIRONMENT", "local");
-        let mut runner = CommandRunner::new();
+        let mut runner = CommandRunner::new_local();
         let mut process = runner
             .command("pwd")
             .working_dir(test_dir)
@@ -407,8 +404,7 @@ mod tests {
         let test_value = "test_value_123";
 
         // Test with CommandRunner
-        std::env::set_var("ENVIRONMENT", "local");
-        let mut runner = CommandRunner::new();
+        let mut runner = CommandRunner::new_local();
         let mut process = runner
             .command("printenv")
             .arg(test_var)
@@ -454,8 +450,7 @@ mod tests {
         // We'll use a sleep command that can be easily killed
 
         // Test with CommandRunner
-        std::env::set_var("ENVIRONMENT", "local");
-        let mut runner = CommandRunner::new();
+        let mut runner = CommandRunner::new_local();
         let mut process = runner
             .command("sleep")
             .arg("10") // Sleep for 10 seconds
@@ -515,8 +510,7 @@ mod tests {
         // Test killing processes with both implementations
 
         // Test CommandRunner kill
-        std::env::set_var("ENVIRONMENT", "local");
-        let mut runner = CommandRunner::new();
+        let mut runner = CommandRunner::new_local();
         let mut process = runner
             .command("sleep")
             .arg("60") // Long sleep
@@ -573,8 +567,7 @@ mod tests {
         // Test status monitoring with a quick command
 
         // Test with CommandRunner
-        std::env::set_var("ENVIRONMENT", "local");
-        let mut runner = CommandRunner::new();
+        let mut runner = CommandRunner::new_local();
         let mut process = runner
             .command("echo")
             .arg("quick test")
@@ -635,8 +628,7 @@ mod tests {
         // Test waiting for process completion with specific exit codes
 
         // Test successful command (exit code 0)
-        std::env::set_var("ENVIRONMENT", "local");
-        let mut runner = CommandRunner::new();
+        let mut runner = CommandRunner::new_local();
         let mut process = runner
             .command("true") // Command that exits with 0
             .start()
@@ -651,7 +643,7 @@ mod tests {
         assert_eq!(exit_status.code(), Some(0), "true should exit with code 0");
 
         // Test failing command (exit code 1)
-        let mut runner2 = CommandRunner::new();
+        let mut runner2 = CommandRunner::new_local();
         let mut process2 = runner2
             .command("false") // Command that exits with 1
             .start()

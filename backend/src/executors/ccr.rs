@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use uuid::Uuid;
 
 use crate::{
+    app_state::AppState,
     command_runner::CommandProcess,
     executor::{Executor, ExecutorError, NormalizedConversation},
     executors::ClaudeExecutor,
@@ -30,23 +31,23 @@ impl CCRExecutor {
 impl Executor for CCRExecutor {
     async fn spawn(
         &self,
-        pool: &sqlx::SqlitePool,
+        app_state: &AppState,
         task_id: Uuid,
         worktree_path: &str,
     ) -> Result<CommandProcess, ExecutorError> {
-        self.0.spawn(pool, task_id, worktree_path).await
+        self.0.spawn(app_state, task_id, worktree_path).await
     }
 
     async fn spawn_followup(
         &self,
-        pool: &sqlx::SqlitePool,
+        app_state: &AppState,
         task_id: Uuid,
         session_id: &str,
         prompt: &str,
         worktree_path: &str,
     ) -> Result<CommandProcess, ExecutorError> {
         self.0
-            .spawn_followup(pool, task_id, session_id, prompt, worktree_path)
+            .spawn_followup(app_state, task_id, session_id, prompt, worktree_path)
             .await
     }
 

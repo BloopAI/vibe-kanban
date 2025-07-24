@@ -2,7 +2,9 @@ use async_trait::async_trait;
 use uuid::Uuid;
 
 use crate::{
-    command_runner::{CommandProcess, CommandRunner},
+    app_state::AppState,
+    command_runner::CommandProcess,
+    deployment::Deployment,
     executor::{Executor, ExecutorError, SpawnContext},
     models::task::Task,
     utils::shell::get_shell_command,
@@ -15,12 +17,12 @@ pub struct EchoExecutor;
 impl Executor for EchoExecutor {
     async fn spawn(
         &self,
-        pool: &sqlx::SqlitePool,
+        app_state: &AppState,
         task_id: Uuid,
         _worktree_path: &str,
     ) -> Result<CommandProcess, ExecutorError> {
         // Get the task to fetch its description
-        let task = Task::find_by_id(pool, task_id)
+        let task = Task::find_by_id(&app_state.db_pool, task_id)
             .await?
             .ok_or(ExecutorError::TaskNotFound)?;
 
@@ -56,7 +58,7 @@ echo "Task completed: {}""#,
             )
         };
 
-        let mut command_runner = CommandRunner::new();
+        let mut command_runner = app_state.deployment.command_runner();
         command_runner
             .command(shell_cmd)
             .arg(shell_arg)

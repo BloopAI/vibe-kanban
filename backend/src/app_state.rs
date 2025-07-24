@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::{
     command_runner,
-    models::Environment,
+    deployment::Deployment,
     services::{generate_user_id, AnalyticsConfig, AnalyticsService},
 };
 
@@ -24,21 +24,25 @@ pub struct RunningExecution {
     pub child: command_runner::CommandProcess,
 }
 
-#[derive(Debug, Clone)]
+#[cfg(feature = "cloud")]
+type DeploymentImpl = crate::deployment::cloud::CloudDeployment;
+#[cfg(not(feature = "cloud"))]
+type DeploymentImpl = crate::deployment::local::LocalDeployment;
+
+#[derive(Clone)]
 pub struct AppState {
     running_executions: Arc<Mutex<HashMap<Uuid, RunningExecution>>>,
     pub db_pool: sqlx::SqlitePool,
     config: Arc<tokio::sync::RwLock<crate::models::config::Config>>,
     pub analytics: Arc<TokioRwLock<AnalyticsService>>,
     user_id: String,
-    pub mode: Environment,
+    pub deployment: DeploymentImpl,
 }
 
 impl AppState {
     pub async fn new(
         db_pool: sqlx::SqlitePool,
         config: Arc<tokio::sync::RwLock<crate::models::config::Config>>,
-        mode: Environment,
     ) -> Self {
         // Initialize analytics with user preferences
         let user_enabled = {
@@ -55,7 +59,7 @@ impl AppState {
             config,
             analytics,
             user_id: generate_user_id(),
-            mode,
+            deployment: DeploymentImpl::new(),
         }
     }
 
@@ -212,10 +216,6 @@ impl AppState {
     pub async fn get_workspace_path(
         &self,
     ) -> Result<PathBuf, Box<dyn std::error::Error + Send + Sync>> {
-        if !self.mode.is_cloud() {
-            return Err("Workspace directory only available in cloud mode".into());
-        }
-
         let workspace_path = {
             let config = self.config.read().await;
             match &config.workspace_dir {

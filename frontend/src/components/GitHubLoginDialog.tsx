@@ -53,7 +53,7 @@ export function GitHubLoginDialog({
 
   // Poll for completion
   useEffect(() => {
-    let timer: number;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     if (polling && deviceState) {
       const poll = async () => {
         try {

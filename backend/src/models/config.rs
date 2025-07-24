@@ -5,45 +5,6 @@ use ts_rs::TS;
 
 use crate::executor::ExecutorConfig;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
-#[ts(export)]
-#[serde(rename_all = "lowercase")]
-pub enum Environment {
-    Local,
-    Cloud,
-}
-
-impl FromStr for Environment {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "local" => Ok(Environment::Local),
-            "cloud" => Ok(Environment::Cloud),
-            _ => Err(format!("Invalid environment: {}", s)),
-        }
-    }
-}
-
-impl Environment {
-    pub fn is_cloud(&self) -> bool {
-        matches!(self, Environment::Cloud)
-    }
-
-    pub fn is_local(&self) -> bool {
-        matches!(self, Environment::Local)
-    }
-}
-
-impl std::fmt::Display for Environment {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Environment::Local => write!(f, "local"),
-            Environment::Cloud => write!(f, "cloud"),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct EnvironmentInfo {

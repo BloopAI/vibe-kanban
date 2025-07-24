@@ -5,6 +5,7 @@ use tracing::{debug, info};
 use uuid::Uuid;
 
 use crate::{
+    app_state::AppState,
     command_runner,
     executor::Executor,
     models::{
@@ -47,7 +48,6 @@ impl ProcessService {
             );
 
             Self::start_cleanup_script(
-                pool,
                 app_state,
                 attempt_id,
                 task_id,
@@ -174,7 +174,7 @@ impl ProcessService {
         // Execute the setup script
         let child = Self::execute_setup_script_process(
             setup_script,
-            pool,
+            app_state,
             task_id,
             attempt_id,
             process_id,
@@ -220,7 +220,6 @@ impl ProcessService {
         // Determine execution sequence based on project configuration
         if Self::should_run_setup_script(&project) {
             Self::start_setup_script(
-                pool,
                 app_state,
                 attempt_id,
                 task_id,
@@ -248,7 +247,6 @@ impl ProcessService {
         let executor_config = Self::resolve_executor_config(&task_attempt.executor);
 
         Self::start_process_execution(
-            pool,
             app_state,
             attempt_id,
             task_id,
@@ -318,7 +316,6 @@ impl ProcessService {
         }
 
         let result = Self::start_process_execution(
-            pool,
             app_state,
             attempt_id,
             task_id,
@@ -502,7 +499,6 @@ impl ProcessService {
 
         // Try to start the follow-up execution
         let execution_result = Self::start_process_execution(
-            pool,
             app_state,
             attempt_id,
             task_id,
@@ -530,7 +526,6 @@ impl ProcessService {
             };
 
             Self::start_process_execution(
-                pool,
                 app_state,
                 attempt_id,
                 task_id,
@@ -551,8 +546,7 @@ impl ProcessService {
     /// Unified function to start any type of process execution
     #[allow(clippy::too_many_arguments)]
     pub async fn start_process_execution(
-        pool: &SqlitePool,
-        app_state: &crate::app_state::AppState,
+        app_state: &AppState,
         attempt_id: Uuid,
         task_id: Uuid,
         executor_type: crate::executor::ExecutorType,
@@ -564,7 +558,7 @@ impl ProcessService {
 
         // Create execution process record
         let _execution_process = Self::create_execution_process_record(
-            pool,
+            &app_state.db_pool,
             attempt_id,
             process_id,
             &executor_type,
@@ -584,7 +578,7 @@ impl ProcessService {
                 _ => None,
             };
             Self::create_executor_session_record(
-                pool,
+                &app_state.db_pool,
                 attempt_id,
                 task_id,
                 process_id,
@@ -600,7 +594,7 @@ impl ProcessService {
         // Execute the process
         let child = Self::execute_process(
             &executor_type,
-            pool,
+            app_state,
             task_id,
             attempt_id,
             process_id,
@@ -656,7 +650,6 @@ impl ProcessService {
 
     /// Start the setup script execution
     async fn start_setup_script(
-        pool: &SqlitePool,
         app_state: &crate::app_state::AppState,
         attempt_id: Uuid,
         task_id: Uuid,
@@ -666,7 +659,6 @@ impl ProcessService {
         let setup_script = project.setup_script.as_ref().unwrap();
 
         Self::start_process_execution(
-            pool,
             app_state,
             attempt_id,
             task_id,
@@ -680,7 +672,6 @@ impl ProcessService {
 
     /// Start the cleanup script execution
     async fn start_cleanup_script(
-        pool: &SqlitePool,
         app_state: &crate::app_state::AppState,
         attempt_id: Uuid,
         task_id: Uuid,
@@ -690,7 +681,6 @@ impl ProcessService {
         let cleanup_script = project.cleanup_script.as_ref().unwrap();
 
         Self::start_process_execution(
-            pool,
             app_state,
             attempt_id,
             task_id,
@@ -802,7 +792,7 @@ impl ProcessService {
     /// Execute the process based on type
     async fn execute_process(
         executor_type: &crate::executor::ExecutorType,
-        pool: &SqlitePool,
+        app_state: &AppState,
         task_id: Uuid,
         attempt_id: Uuid,
         process_id: Uuid,
@@ -816,7 +806,7 @@ impl ProcessService {
                     script: script.clone(),
                 };
                 executor
-                    .execute_streaming(pool, task_id, attempt_id, process_id, worktree_path)
+                    .execute_streaming(app_state, task_id, attempt_id, process_id, worktree_path)
                     .await
             }
             crate::executor::ExecutorType::CleanupScript(script) => {
@@ -824,7 +814,7 @@ impl ProcessService {
                     script: script.clone(),
                 };
                 executor
-                    .execute_streaming(pool, task_id, attempt_id, process_id, worktree_path)
+                    .execute_streaming(app_state, task_id, attempt_id, process_id, worktree_path)
                     .await
             }
             crate::executor::ExecutorType::DevServer(script) => {
@@ -832,7 +822,7 @@ impl ProcessService {
                     script: script.clone(),
                 };
                 executor
-                    .execute_streaming(pool, task_id, attempt_id, process_id, worktree_path)
+                    .execute_streaming(app_state, task_id, attempt_id, process_id, worktree_path)
                     .await
             }
             crate::executor::ExecutorType::CodingAgent { config, follow_up } => {
@@ -841,7 +831,7 @@ impl ProcessService {
                 if let Some(ref follow_up_info) = follow_up {
                     executor
                         .execute_followup_streaming(
-                            pool,
+                            app_state,
                             task_id,
                             attempt_id,
                             process_id,
@@ -852,7 +842,13 @@ impl ProcessService {
                         .await
                 } else {
                     executor
-                        .execute_streaming(pool, task_id, attempt_id, process_id, worktree_path)
+                        .execute_streaming(
+                            app_state,
+                            task_id,
+                            attempt_id,
+                            process_id,
+                            worktree_path,
+                        )
                         .await
                 }
             }
@@ -924,7 +920,7 @@ impl ProcessService {
     /// Execute setup script process specifically
     async fn execute_setup_script_process(
         setup_script: &str,
-        pool: &SqlitePool,
+        app_state: &AppState,
         task_id: Uuid,
         attempt_id: Uuid,
         process_id: Uuid,
@@ -937,7 +933,7 @@ impl ProcessService {
         };
 
         executor
-            .execute_streaming(pool, task_id, attempt_id, process_id, worktree_path)
+            .execute_streaming(app_state, task_id, attempt_id, process_id, worktree_path)
             .await
             .map_err(|e| TaskAttemptError::Git(git2::Error::from_str(&e.to_string())))
     }

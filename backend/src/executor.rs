@@ -7,6 +7,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use crate::{
+    app_state::AppState,
     command_runner::{CommandError, CommandProcess, CommandRunner},
     executors::{
         AiderExecutor, AmpExecutor, CCRExecutor, CharmOpencodeExecutor, ClaudeExecutor,
@@ -254,7 +255,7 @@ pub trait Executor: Send + Sync {
     /// Spawn the command for a given task attempt
     async fn spawn(
         &self,
-        pool: &sqlx::SqlitePool,
+        app_state: &AppState,
         task_id: Uuid,
         worktree_path: &str,
     ) -> Result<CommandProcess, ExecutorError>;
@@ -266,7 +267,7 @@ pub trait Executor: Send + Sync {
     /// returns an error.
     async fn spawn_followup(
         &self,
-        _pool: &sqlx::SqlitePool,
+        _app_state: &AppState,
         _task_id: Uuid,
         _session_id: &str,
         _prompt: &str,
@@ -294,7 +295,7 @@ pub trait Executor: Send + Sync {
     async fn setup_streaming(
         &self,
         child: &mut CommandProcess,
-        pool: &sqlx::SqlitePool,
+        app_state: &AppState,
         attempt_id: Uuid,
         execution_process_id: Uuid,
     ) -> Result<(), ExecutorError> {
@@ -309,8 +310,8 @@ pub trait Executor: Send + Sync {
             .stderr
             .expect("Failed to take stderr from child process");
 
-        let pool_clone1 = pool.clone();
-        let pool_clone2 = pool.clone();
+        let pool_clone1 = app_state.db_pool.clone();
+        let pool_clone2 = app_state.db_pool.clone();
 
         tokio::spawn(stream_output_to_db(
             stdout,
@@ -333,14 +334,21 @@ pub trait Executor: Send + Sync {
     /// Execute the command and stream output to database in real-time
     async fn execute_streaming(
         &self,
-        pool: &sqlx::SqlitePool,
+        app_state: &AppState,
         task_id: Uuid,
         attempt_id: Uuid,
         execution_process_id: Uuid,
         worktree_path: &str,
     ) -> Result<CommandProcess, ExecutorError> {
-        let mut child = self.spawn(pool, task_id, worktree_path).await?;
-        Self::setup_streaming(self, &mut child, pool, attempt_id, execution_process_id).await?;
+        let mut child = self.spawn(app_state, task_id, worktree_path).await?;
+        Self::setup_streaming(
+            self,
+            &mut child,
+            app_state,
+            attempt_id,
+            execution_process_id,
+        )
+        .await?;
         Ok(child)
     }
 
@@ -348,7 +356,7 @@ pub trait Executor: Send + Sync {
     #[allow(clippy::too_many_arguments)]
     async fn execute_followup_streaming(
         &self,
-        pool: &sqlx::SqlitePool,
+        app_state: &AppState,
         task_id: Uuid,
         attempt_id: Uuid,
         execution_process_id: Uuid,
@@ -357,9 +365,16 @@ pub trait Executor: Send + Sync {
         worktree_path: &str,
     ) -> Result<CommandProcess, ExecutorError> {
         let mut child = self
-            .spawn_followup(pool, task_id, session_id, prompt, worktree_path)
+            .spawn_followup(app_state, task_id, session_id, prompt, worktree_path)
             .await?;
-        Self::setup_streaming(self, &mut child, pool, attempt_id, execution_process_id).await?;
+        Self::setup_streaming(
+            self,
+            &mut child,
+            app_state,
+            attempt_id,
+            execution_process_id,
+        )
+        .await?;
         Ok(child)
     }
 }
