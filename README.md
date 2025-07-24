@@ -56,6 +56,13 @@ We would prefer that ideas and changes are raised with the core team via GitHub 
 - [Node.js](https://nodejs.org/) (>=18)
 - [pnpm](https://pnpm.io/) (>=8)
 
+Additional development tools:
+```bash
+cargo install cargo-watch
+cargo install sqlx-cli
+```
+
+Install dependencies:
 ```bash
 pnpm i
 ```
