@@ -3,8 +3,10 @@ import {
   Attachment,
   BranchStatus,
   Config,
+  ConfigConstants,
   CreateFollowUpAttempt,
   CreateProject,
+  CreateProjectFromGitHub,
   CreateTask,
   CreateTaskAndStart,
   CreateTaskAttempt,
@@ -63,6 +65,19 @@ export interface FileSearchResult {
 export interface DirectoryListResponse {
   entries: DirectoryEntry[];
   current_path: string;
+}
+
+// GitHub Repository Info (manually defined since not exported from Rust yet)
+export interface RepositoryInfo {
+  id: number;
+  name: string;
+  full_name: string;
+  owner: string;
+  description: string | null;
+  clone_url: string;
+  ssh_url: string;
+  default_branch: string;
+  private: boolean;
 }
 
 export class ApiError extends Error {
@@ -515,6 +530,10 @@ export const configApi = {
     });
     return handleApiResponse<Config>(response);
   },
+  getConstants: async (): Promise<ConfigConstants> => {
+    const response = await makeRequest('/api/config/constants');
+    return handleApiResponse<ConfigConstants>(response);
+  },
 };
 
 // GitHub Device Auth APIs
@@ -545,6 +564,25 @@ export const githubAuthApi = {
       headers: { 'Content-Type': 'application/json' },
     });
     return handleApiResponse<string>(response);
+  },
+};
+
+// GitHub APIs (only available in cloud mode)
+export const githubApi = {
+  listRepositories: async (page: number = 1): Promise<RepositoryInfo[]> => {
+    const response = await makeRequest(`/api/github/repositories?page=${page}`);
+    return handleApiResponse<RepositoryInfo[]>(response);
+  },
+  createProjectFromRepository: async (
+    data: CreateProjectFromGitHub
+  ): Promise<Project> => {
+    const response = await makeRequest('/api/projects/from-github', {
+      method: 'POST',
+      body: JSON.stringify(data, (_key, value) =>
+        typeof value === 'bigint' ? Number(value) : value
+      ),
+    });
+    return handleApiResponse<Project>(response);
   },
 };
 

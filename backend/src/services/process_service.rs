@@ -709,6 +709,7 @@ impl ProcessService {
             Some("gemini") => crate::executor::ExecutorConfig::Gemini,
             Some("charm-opencode") => crate::executor::ExecutorConfig::CharmOpencode,
             Some("sst-opencode") => crate::executor::ExecutorConfig::SstOpencode,
+            Some("aider") => crate::executor::ExecutorConfig::Aider,
             _ => crate::executor::ExecutorConfig::Echo, // Default for "echo" or None
         }
     }

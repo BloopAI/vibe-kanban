@@ -6,9 +6,11 @@ export type ApiResponse<T> = { success: boolean, data: T | null, message: string
 
 export type Attachment = { id: string, task_id: string, filename: string, original_filename: string, content_type: string, size: bigint, created_at: string, };
 
-export type Config = { theme: ThemeMode, executor: ExecutorConfig, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, github_login_acknowledged: boolean, telemetry_acknowledged: boolean, sound_alerts: boolean, sound_file: SoundFile, push_notifications: boolean, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean | null, environment: EnvironmentInfo, };
+export type Config = { theme: ThemeMode, executor: ExecutorConfig, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, github_login_acknowledged: boolean, telemetry_acknowledged: boolean, sound_alerts: boolean, sound_file: SoundFile, push_notifications: boolean, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean | null, environment: EnvironmentInfo, workspace_dir: string | null, };
 
 export type EnvironmentInfo = { os_type: string, os_version: string, architecture: string, bitness: string, };
+
+export type Environment = "local" | "cloud";
 
 export type ThemeMode = "light" | "dark" | "system" | "purple" | "green" | "blue" | "orange" | "red";
 
@@ -24,13 +26,15 @@ export type SoundFile = "abstract-sound1" | "abstract-sound2" | "abstract-sound3
 
 export type SoundConstants = { sound_files: Array<SoundFile>, sound_labels: Array<string>, };
 
-export type ConfigConstants = { editor: EditorConstants, sound: SoundConstants, };
+export type ConfigConstants = { editor: EditorConstants, sound: SoundConstants, mode: Environment, };
 
-export type ExecutorConfig = { "type": "echo" } | { "type": "claude" } | { "type": "claude-plan" } | { "type": "amp" } | { "type": "gemini" } | { "type": "setup-script", script: string, } | { "type": "claude-code-router" } | { "type": "charm-opencode" } | { "type": "sst-opencode" };
+export type ExecutorConfig = { "type": "echo" } | { "type": "claude" } | { "type": "claude-plan" } | { "type": "amp" } | { "type": "gemini" } | { "type": "setup-script", script: string, } | { "type": "claude-code-router" } | { "type": "charm-opencode" } | { "type": "sst-opencode" } | { "type": "aider" };
 
 export type ExecutorConstants = { executor_types: Array<ExecutorConfig>, executor_labels: Array<string>, };
 
 export type CreateProject = { name: string, git_repo_path: string, use_existing_repo: boolean, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, };
+
+export type CreateProjectFromGitHub = { repository_id: bigint, name: string, clone_url: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, };
 
 export type Project = { id: string, name: string, git_repo_path: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, created_at: Date, updated_at: Date, };
 
@@ -79,6 +83,8 @@ export type DirectoryEntry = { name: string, path: string, is_directory: boolean
 export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_path: string, };
 
 export type DeviceStartResponse = { device_code: string, user_code: string, verification_uri: string, expires_in: number, interval: number, };
+
+export type RepositoryInfo = { id: bigint, name: string, full_name: string, owner: string, description: string | null, clone_url: string, ssh_url: string, default_branch: string, private: boolean, };
 
 export type ProcessLogsResponse = { id: string, process_type: ExecutionProcessType, command: string, executor_type: string | null, status: ExecutionProcessStatus, normalized_conversation: NormalizedConversation, };
 
@@ -131,7 +137,8 @@ export const EXECUTOR_TYPES: string[] = [
     "gemini",
     "charm-opencode",
     "claude-code-router",
-    "sst-opencode"
+    "sst-opencode",
+    "aider"
 ];
 
 export const EDITOR_TYPES: EditorType[] = [
@@ -151,7 +158,8 @@ export const EXECUTOR_LABELS: Record<string, string> = {
     "gemini": "Gemini",
     "charm-opencode": "Charm Opencode",
     "claude-code-router": "Claude Code Router",
-    "sst-opencode": "SST Opencode"
+    "sst-opencode": "SST Opencode",
+    "aider": "Aider"
 };
 
 export const EDITOR_LABELS: Record<string, string> = {
@@ -162,6 +170,15 @@ export const EDITOR_LABELS: Record<string, string> = {
     "zed": "Zed",
     "custom": "Custom"
 };
+
+export const MCP_SUPPORTED_EXECUTORS: string[] = [
+    "claude",
+    "amp",
+    "gemini",
+    "sst-opencode",
+    "charm-opencode",
+    "claude-code-router"
+];
 
 export const SOUND_FILES: SoundFile[] = [
     "abstract-sound1",

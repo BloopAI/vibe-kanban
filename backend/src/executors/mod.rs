@@ -1,3 +1,4 @@
+pub mod aider;
 pub mod amp;
 pub mod ccr;
 pub mod charm_opencode;
@@ -9,6 +10,7 @@ pub mod gemini;
 pub mod setup_script;
 pub mod sst_opencode;
 
+pub use aider::AiderExecutor;
 pub use amp::AmpExecutor;
 pub use ccr::CCRExecutor;
 pub use charm_opencode::CharmOpencodeExecutor;
