@@ -83,7 +83,7 @@ export function GitHubLoginDialog({
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [polling, deviceState]);
+  }, [polling, deviceState, onOpenChange]);
 
   // Automatically copy code to clipboard when deviceState is set
   useEffect(() => {
