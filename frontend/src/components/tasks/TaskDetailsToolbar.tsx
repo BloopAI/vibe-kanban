@@ -111,7 +111,7 @@ function TaskDetailsToolbar() {
         setCreateAttemptExecutor(latestAttempt.executor);
       }
     }
-  }, [taskAttempts, branches, availableExecutors]);
+  }, [taskAttempts, branches]);
 
   const fetchTaskAttempts = useCallback(async () => {
     if (!task) return;
@@ -174,7 +174,14 @@ function TaskDetailsToolbar() {
     } finally {
       setLoading(false);
     }
-  }, [task, projectId, location.search]);
+  }, [
+    task,
+    projectId,
+    location.search,
+    setAttemptData,
+    setLoading,
+    setSelectedAttempt,
+  ]);
 
   useEffect(() => {
     fetchTaskAttempts();

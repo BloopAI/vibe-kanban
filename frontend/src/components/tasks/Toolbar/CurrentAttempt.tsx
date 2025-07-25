@@ -181,7 +181,7 @@ function CurrentAttempt({
     } catch (err) {
       console.error('Failed to fetch dev server details:', err);
     }
-  }, [runningDevServer, task, selectedAttempt, projectId]);
+  }, [runningDevServer, task, selectedAttempt]);
 
   useEffect(() => {
     if (!isHoveringDevServer || !runningDevServer) {

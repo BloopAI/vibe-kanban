@@ -137,7 +137,7 @@ export function TaskFormDialog({
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!title.trim()) return;
 
     setIsSubmitting(true);
@@ -159,7 +159,7 @@ export function TaskFormDialog({
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [title, description, status, isEditMode, onUpdateTask, onCreateTask, onOpenChange]);
 
   const handleCreateAndStart = useCallback(async () => {
     if (!title.trim()) return;
@@ -250,6 +250,7 @@ export function TaskFormDialog({
     isSubmittingAndStart,
     handleCreateAndStart,
     handleCancel,
+    handleSubmit,
   ]);
 
   return (
