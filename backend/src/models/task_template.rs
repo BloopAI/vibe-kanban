@@ -124,7 +124,7 @@ impl TaskTemplate {
         sqlx::query_as!(
             TaskTemplate,
             r#"UPDATE task_templates 
-               SET title = $2, description = $3, template_name = $4, updated_at = datetime('now', 'subsec')
+               SET title = $2, description = $3, template_name = $4
                WHERE id = $1 
                RETURNING id as "id!: Uuid", project_id as "project_id?: Uuid", title, description, template_name, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,

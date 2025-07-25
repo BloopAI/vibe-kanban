@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE execution_processes SET stdout = COALESCE(stdout, '') || $1 WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "1e13c4f6e55fbab56876505aa148effbab4a6f4f0936b36c5f5755a25c6cf1d9"
+}

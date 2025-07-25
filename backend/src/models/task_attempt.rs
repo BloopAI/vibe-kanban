@@ -273,7 +273,7 @@ impl TaskAttempt {
         attempt_id: Uuid,
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "UPDATE task_attempts SET worktree_deleted = TRUE, updated_at = datetime('now') WHERE id = ?",
+            "UPDATE task_attempts SET worktree_deleted = TRUE WHERE id = ?",
             attempt_id
         )
         .execute(pool)
@@ -577,7 +577,7 @@ impl TaskAttempt {
 
         // Update the task attempt with the merge commit
         sqlx::query!(
-            "UPDATE task_attempts SET merge_commit = $1, updated_at = datetime('now') WHERE id = $2",
+            "UPDATE task_attempts SET merge_commit = $1 WHERE id = $2",
             merge_commit_id,
             attempt_id
         )
@@ -652,7 +652,7 @@ impl TaskAttempt {
 
         // Update database with new path, reset worktree_deleted flag, and clear setup completion
         sqlx::query!(
-            "UPDATE task_attempts SET worktree_path = $1, worktree_deleted = FALSE, setup_completed_at = NULL, updated_at = datetime('now') WHERE id = $2",
+            "UPDATE task_attempts SET worktree_path = $1, worktree_deleted = FALSE, setup_completed_at = NULL WHERE id = $2",
             new_worktree_path,
             attempt_id
         )
@@ -839,7 +839,7 @@ impl TaskAttempt {
                 };
 
                 sqlx::query!(
-                    "UPDATE task_attempts SET base_branch = $1, updated_at = datetime('now') WHERE id = $2",
+                    "UPDATE task_attempts SET base_branch = $1 WHERE id = $2",
                     db_branch_name,
                     attempt_id
                 )
@@ -921,7 +921,7 @@ impl TaskAttempt {
 
         // Update the task attempt with PR information
         sqlx::query!(
-            "UPDATE task_attempts SET pr_url = $1, pr_number = $2, pr_status = $3, updated_at = datetime('now') WHERE id = $4",
+            "UPDATE task_attempts SET pr_url = $1, pr_number = $2, pr_status = $3 WHERE id = $4",
             pr_info.url,
             pr_info.number,
             pr_info.status,
@@ -956,7 +956,7 @@ impl TaskAttempt {
         merge_commit_sha: Option<&str>,
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "UPDATE task_attempts SET pr_status = $1, pr_merged_at = $2, merge_commit = $3, updated_at = datetime('now') WHERE id = $4",
+            "UPDATE task_attempts SET pr_status = $1, pr_merged_at = $2, merge_commit = $3 WHERE id = $4",
             status,
             merged_at,
             merge_commit_sha,
@@ -1094,7 +1094,7 @@ impl TaskAttempt {
         attempt_id: Uuid,
     ) -> Result<(), TaskAttemptError> {
         sqlx::query!(
-            "UPDATE task_attempts SET setup_completed_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
+            "UPDATE task_attempts SET setup_completed_at = datetime('now') WHERE id = ?",
             attempt_id
         )
         .execute(pool)

@@ -242,7 +242,7 @@ ORDER BY t.created_at DESC"#,
     ) -> Result<(), sqlx::Error> {
         let status_value = status as TaskStatus;
         sqlx::query!(
-            "UPDATE tasks SET status = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND project_id = $2",
+            "UPDATE tasks SET status = $3 WHERE id = $1 AND project_id = $2",
             id,
             project_id,
             status_value

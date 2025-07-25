@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE task_attempts SET worktree_deleted = TRUE WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "0c2bd135a5725897f63b3253a9bcf2cf5636cbdf79b4deb266fa6183ec46d0fe"
+}
