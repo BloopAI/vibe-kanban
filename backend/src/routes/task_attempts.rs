@@ -151,6 +151,7 @@ async fn normalize_process_logs(
                             entry_type: NormalizedEntryType::ErrorMessage,
                             content: filtered_content.trim().to_string(),
                             metadata: None,
+                            tool_arguments: None,
                         });
                     }
                 }

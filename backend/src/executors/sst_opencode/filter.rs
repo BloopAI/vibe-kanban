@@ -4,7 +4,8 @@ use regex::Regex;
 lazy_static! {
     static ref OPENCODE_LOG_REGEX: Regex = Regex::new(r"^(INFO|DEBUG|WARN|ERROR)\s+.*").unwrap();
     static ref SESSION_ID_REGEX: Regex = Regex::new(r".*\b(id|session|sessionID)=([^ ]+)").unwrap();
-    static ref TOOL_USAGE_REGEX: Regex = Regex::new(r"^\|\s*([a-zA-Z]+)\s*(.*)").unwrap();
+    static ref TOOL_USAGE_REGEX: Regex =
+        Regex::new(r"^\|\s*([a-zA-Z][a-zA-Z0-9_-]*)\s*(.*)").unwrap();
     static ref NPM_WARN_REGEX: Regex = Regex::new(r"^npm warn .*").unwrap();
 }
 

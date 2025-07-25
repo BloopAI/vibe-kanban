@@ -159,6 +159,7 @@ impl AmpContentItem {
                     entry_type,
                     content: text.clone(),
                     metadata: Some(serde_json::to_value(self).unwrap_or(Value::Null)),
+                    tool_arguments: None,
                 })
             }
             AmpContentItem::Thinking { thinking } => Some(NormalizedEntry {
@@ -166,6 +167,7 @@ impl AmpContentItem {
                 entry_type: NormalizedEntryType::Thinking,
                 content: thinking.clone(),
                 metadata: Some(serde_json::to_value(self).unwrap_or(Value::Null)),
+                tool_arguments: None,
             }),
             AmpContentItem::ToolUse { name, input, .. } => {
                 let action_type = executor.extract_action_type(name, input, worktree_path);
@@ -180,6 +182,7 @@ impl AmpContentItem {
                     },
                     content,
                     metadata: Some(serde_json::to_value(self).unwrap_or(Value::Null)),
+                    tool_arguments: Some(input.clone()),
                 })
             }
             AmpContentItem::ToolResult { .. } => None,
@@ -299,6 +302,7 @@ Task title: {}"#,
                         entry_type: NormalizedEntryType::SystemMessage,
                         content: format!("Raw output: {}", trimmed),
                         metadata: None,
+                        tool_arguments: None,
                     });
                     continue;
                 }
