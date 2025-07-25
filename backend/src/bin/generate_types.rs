@@ -55,7 +55,8 @@ export const MCP_SUPPORTED_EXECUTORS: string[] = [
     "gemini",
     "sst-opencode",
     "charm-opencode",
-    "claude-code-router"
+    "claude-code-router",
+    "codex"
 ];
 
 export const SOUND_FILES: SoundFile[] = [

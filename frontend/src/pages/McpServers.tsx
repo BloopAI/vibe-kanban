@@ -25,6 +25,7 @@ import {
 } from 'shared/types';
 import { useConfig } from '@/components/config-provider';
 import { mcpServersApi } from '../lib/api';
+import { getMcpStrategy } from '../lib/mcp-strategies';
 
 export function McpServers() {
   const { config } = useConfig();
@@ -55,13 +56,9 @@ export function McpServers() {
       setMcpLoading(true);
       setMcpError(null);
 
-      // Set default empty config based on executor type
-      const defaultConfig =
-        executorType === 'amp'
-          ? '{\n  "amp.mcpServers": {\n  }\n}'
-          : executorType === 'sst-opencode'
-            ? '{\n  "mcp": {\n  }, "$schema": "https://opencode.ai/config.json"\n}'
-            : '{\n  "mcpServers": {\n  }\n}';
+      // Set default empty config based on executor type using strategy
+      const strategy = getMcpStrategy(executorType);
+      const defaultConfig = strategy.getDefaultConfig();
       setMcpServers(defaultConfig);
       setMcpConfigPath('');
 
@@ -73,20 +70,8 @@ export function McpServers() {
         const servers = data.servers || {};
         const configPath = data.config_path || '';
 
-        // Create the full configuration structure based on executor type
-        let fullConfig;
-        if (executorType === 'amp') {
-          // For AMP, use the amp.mcpServers structure
-          fullConfig = { 'amp.mcpServers': servers };
-        } else if (executorType === 'sst-opencode') {
-          fullConfig = {
-            mcp: servers,
-            $schema: 'https://opencode.ai/config.json',
-          };
-        } else {
-          // For other executors, use the standard mcpServers structure
-          fullConfig = { mcpServers: servers };
-        }
+        // Create the full configuration structure using strategy
+        const fullConfig = strategy.createFullConfig(servers);
 
         const configJson = JSON.stringify(fullConfig, null, 2);
         setMcpServers(configJson);
@@ -116,27 +101,15 @@ export function McpServers() {
     if (value.trim()) {
       try {
         const config = JSON.parse(value);
-        // Validate that the config has the expected structure based on executor type
-        if (selectedMcpExecutor === 'amp') {
-          if (
-            !config['amp.mcpServers'] ||
-            typeof config['amp.mcpServers'] !== 'object'
-          ) {
-            setMcpError(
-              'AMP configuration must contain an "amp.mcpServers" object'
-            );
-          }
-        } else if (selectedMcpExecutor === 'sst-opencode') {
-          if (!config.mcp || typeof config.mcp !== 'object') {
-            setMcpError('Configuration must contain an "mcp" object');
-          }
-        } else {
-          if (!config.mcpServers || typeof config.mcpServers !== 'object') {
-            setMcpError('Configuration must contain an "mcpServers" object');
-          }
-        }
+        // Validate that the config has the expected structure using strategy
+        const strategy = getMcpStrategy(selectedMcpExecutor);
+        strategy.validateFullConfig(config);
       } catch (err) {
-        setMcpError('Invalid JSON format');
+        if (err instanceof SyntaxError) {
+          setMcpError('Invalid JSON format');
+        } else {
+          setMcpError(err instanceof Error ? err.message : 'Validation error');
+        }
       }
     }
   };
@@ -148,46 +121,15 @@ export function McpServers() {
       // Parse existing configuration
       const existingConfig = mcpServers.trim() ? JSON.parse(mcpServers) : {};
 
-      // Always use production MCP installation instructions
-      const vibeKanbanConfig =
-        selectedMcpExecutor === 'sst-opencode'
-          ? {
-              type: 'local',
-              command: ['npx', '-y', 'vibe-kanban', '--mcp'],
-              enabled: true,
-            }
-          : {
-              command: 'npx',
-              args: ['-y', 'vibe-kanban', '--mcp'],
-            };
+      // Use strategy to create vibe-kanban configuration
+      const strategy = getMcpStrategy(selectedMcpExecutor);
+      const vibeKanbanConfig = strategy.createVibeKanbanConfig();
 
-      // Add vibe_kanban to the existing configuration
-      let updatedConfig;
-      if (selectedMcpExecutor === 'amp') {
-        updatedConfig = {
-          ...existingConfig,
-          'amp.mcpServers': {
-            ...(existingConfig['amp.mcpServers'] || {}),
-            vibe_kanban: vibeKanbanConfig,
-          },
-        };
-      } else if (selectedMcpExecutor === 'sst-opencode') {
-        updatedConfig = {
-          ...existingConfig,
-          mcp: {
-            ...(existingConfig.mcp || {}),
-            vibe_kanban: vibeKanbanConfig,
-          },
-        };
-      } else {
-        updatedConfig = {
-          ...existingConfig,
-          mcpServers: {
-            ...(existingConfig.mcpServers || {}),
-            vibe_kanban: vibeKanbanConfig,
-          },
-        };
-      }
+      // Add vibe_kanban to the existing configuration using strategy
+      const updatedConfig = strategy.addVibeKanbanToConfig(
+        existingConfig,
+        vibeKanbanConfig
+      );
 
       // Update the textarea with the new configuration
       const configJson = JSON.stringify(updatedConfig, null, 2);
@@ -211,37 +153,12 @@ export function McpServers() {
         try {
           const fullConfig = JSON.parse(mcpServers);
 
-          // Validate that the config has the expected structure based on executor type
-          let mcpServersConfig;
-          if (selectedMcpExecutor === 'amp') {
-            if (
-              !fullConfig['amp.mcpServers'] ||
-              typeof fullConfig['amp.mcpServers'] !== 'object'
-            ) {
-              throw new Error(
-                'AMP configuration must contain an "amp.mcpServers" object'
-              );
-            }
-            // Extract just the inner servers object for the API - backend will handle nesting
-            mcpServersConfig = fullConfig['amp.mcpServers'];
-          } else if (selectedMcpExecutor === 'sst-opencode') {
-            if (!fullConfig.mcp || typeof fullConfig.mcp !== 'object') {
-              throw new Error('Configuration must contain an "mcp" object');
-            }
-            // Extract just the mcp part for the API
-            mcpServersConfig = fullConfig.mcp;
-          } else {
-            if (
-              !fullConfig.mcpServers ||
-              typeof fullConfig.mcpServers !== 'object'
-            ) {
-              throw new Error(
-                'Configuration must contain an "mcpServers" object'
-              );
-            }
-            // Extract just the mcpServers part for the API
-            mcpServersConfig = fullConfig.mcpServers;
-          }
+          // Use strategy to validate and extract servers config
+          const strategy = getMcpStrategy(selectedMcpExecutor);
+          strategy.validateFullConfig(fullConfig);
+
+          // Extract just the servers object for the API - backend will handle nesting
+          const mcpServersConfig = strategy.extractServersForApi(fullConfig);
 
           await mcpServersApi.save(selectedMcpExecutor, mcpServersConfig);
 

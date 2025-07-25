@@ -503,7 +503,7 @@ impl ExecutorConfig {
             ExecutorConfig::Gemini => Some(vec!["mcpServers"]),
             ExecutorConfig::ClaudeCodeRouter => Some(vec!["mcpServers"]),
             ExecutorConfig::Aider => None, // Aider doesn't support MCP. https://github.com/Aider-AI/aider/issues/3314
-            ExecutorConfig::Codex => None, // Codex uses TOML config, frontend doesn't handle TOML yet
+            ExecutorConfig::Codex => Some(vec!["mcp_servers"]), // Codex uses mcp_servers in TOML
             ExecutorConfig::SetupScript { .. } => None, // Setup scripts don't support MCP
         }
     }
@@ -512,10 +512,7 @@ impl ExecutorConfig {
     pub fn supports_mcp(&self) -> bool {
         !matches!(
             self,
-            ExecutorConfig::Echo
-                | ExecutorConfig::Aider
-                | ExecutorConfig::SetupScript { .. }
-                | ExecutorConfig::Codex
+            ExecutorConfig::Echo | ExecutorConfig::Aider | ExecutorConfig::SetupScript { .. }
         )
     }
 

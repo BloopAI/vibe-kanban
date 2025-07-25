@@ -195,11 +195,8 @@ async fn update_mcp_servers_in_config(
         fs::create_dir_all(parent).await?;
     }
 
-    // Read existing config file or create empty object if it doesn't exist
-    let file_content = fs::read_to_string(file_path)
-        .await
-        .unwrap_or_else(|_| "{}".to_string());
-    let mut config: Value = serde_json::from_str(&file_content)?;
+    // Read existing config file using format-specific helper
+    let mut config = read_config_file(file_path, executor_config).await?;
 
     // Get the attribute path for MCP servers
     let mcp_path = executor_config.mcp_attribute_path().unwrap();
@@ -210,9 +207,8 @@ async fn update_mcp_servers_in_config(
     // Set the MCP servers using the correct attribute path
     set_mcp_servers_in_config_path(&mut config, &mcp_path, &new_servers)?;
 
-    // Write the updated config back to file
-    let updated_content = serde_json::to_string_pretty(&config)?;
-    fs::write(file_path, updated_content).await?;
+    // Write the updated config back to file using format-specific helper
+    write_config_file(file_path, executor_config, &config).await?;
 
     let new_count = new_servers.len();
     let message = match (old_servers, new_count) {
@@ -232,11 +228,8 @@ async fn read_mcp_servers_from_config(
     file_path: &std::path::Path,
     executor_config: &ExecutorConfig,
 ) -> Result<HashMap<String, Value>, Box<dyn std::error::Error + Send + Sync>> {
-    // Read the config file, return empty if it doesn't exist
-    let file_content = fs::read_to_string(file_path)
-        .await
-        .unwrap_or_else(|_| "{}".to_string());
-    let config: Value = serde_json::from_str(&file_content)?;
+    // Read the config file using format-specific helper
+    let config = read_config_file(file_path, executor_config).await?;
 
     // Get the attribute path for MCP servers
     let mcp_path = executor_config.mcp_attribute_path().unwrap();
@@ -331,5 +324,51 @@ fn set_mcp_servers_in_config_path(
         .unwrap()
         .insert(final_attr.to_string(), serde_json::to_value(servers)?);
 
+    Ok(())
+}
+
+/// Helper functions for handling different config file formats (JSON vs TOML)
+fn is_toml_config(executor_config: &ExecutorConfig) -> bool {
+    matches!(executor_config, ExecutorConfig::Codex)
+}
+
+async fn read_config_file(
+    file_path: &std::path::Path,
+    executor_config: &ExecutorConfig,
+) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+    let file_content = fs::read_to_string(file_path).await.unwrap_or_else(|_| {
+        if is_toml_config(executor_config) {
+            "".to_string() // Empty TOML
+        } else {
+            "{}".to_string() // Empty JSON
+        }
+    });
+
+    if is_toml_config(executor_config) {
+        // Parse TOML and convert to JSON Value for uniform handling
+        let toml_value: toml::Value = toml::from_str(&file_content)?;
+        let json_string = serde_json::to_string(&toml_value)?;
+        Ok(serde_json::from_str(&json_string)?)
+    } else {
+        // Parse JSON directly
+        Ok(serde_json::from_str(&file_content)?)
+    }
+}
+
+async fn write_config_file(
+    file_path: &std::path::Path,
+    executor_config: &ExecutorConfig,
+    config: &Value,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    if is_toml_config(executor_config) {
+        // Convert JSON Value back to TOML format
+        let toml_value: toml::Value = serde_json::from_str(&serde_json::to_string(config)?)?;
+        let toml_content = toml::to_string_pretty(&toml_value)?;
+        fs::write(file_path, toml_content).await?;
+    } else {
+        // Write as JSON
+        let json_content = serde_json::to_string_pretty(config)?;
+        fs::write(file_path, json_content).await?;
+    }
     Ok(())
 }

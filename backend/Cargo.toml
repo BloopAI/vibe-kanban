@@ -48,6 +48,7 @@ openssl-sys = { workspace = true }
 rmcp = { version = "0.2.1", features = ["server", "transport-io"] }
 schemars = "0.8"
 regex = "1.11.1"
+toml = "0.8"
 notify-rust = "4.11"
 octocrab = "0.44"
 os_info = "3.12.0"
