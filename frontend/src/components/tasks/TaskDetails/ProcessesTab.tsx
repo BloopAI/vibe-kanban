@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect } from 'react';
+import { useContext, useState } from 'react';
 import {
   Play,
   Square,
@@ -10,14 +10,18 @@ import {
 } from 'lucide-react';
 import { TaskAttemptDataContext } from '@/components/context/taskDetailsContext.ts';
 import { executionProcessesApi } from '@/lib/api.ts';
-import { ProfileVariantBadge } from '@/components/common/ProfileVariantBadge.tsx';
-import ProcessLogsViewer from './ProcessLogsViewer';
-import type { ExecutionProcessStatus, ExecutionProcess } from 'shared/types';
-import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
+import type {
+  ExecutionProcessStatus,
+  ExecutionProcessSummary,
+} from 'shared/types.ts';
+import { useTranslation } from '@/lib/i18n';
 
 function ProcessesTab() {
+  const { t } = useTranslation();
   const { attemptData, setAttemptData } = useContext(TaskAttemptDataContext);
-  const { selectedProcessId, setSelectedProcessId } = useProcessSelection();
+  const [selectedProcessId, setSelectedProcessId] = useState<string | null>(
+    null
+  );
   const [loadingProcessId, setLoadingProcessId] = useState<string | null>(null);
 
   const getStatusIcon = (status: ExecutionProcessStatus) => {
@@ -76,17 +80,7 @@ function ProcessesTab() {
     }
   };
 
-  // Automatically fetch process details when selectedProcessId changes
-  useEffect(() => {
-    if (
-      selectedProcessId &&
-      !attemptData.runningProcessDetails[selectedProcessId]
-    ) {
-      fetchProcessDetails(selectedProcessId);
-    }
-  }, [selectedProcessId, attemptData.runningProcessDetails]);
-
-  const handleProcessClick = async (process: ExecutionProcess) => {
+  const handleProcessClick = async (process: ExecutionProcessSummary) => {
     setSelectedProcessId(process.id);
 
     // If we don't have details for this process, fetch them
@@ -104,7 +98,7 @@ function ProcessesTab() {
       <div className="flex-1 flex items-center justify-center text-muted-foreground">
         <div className="text-center">
           <Cog className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p>No execution processes found for this attempt.</p>
+          <p>{t('taskDetails.processes.noProcesses')}</p>
         </div>
       </div>
     );
@@ -113,7 +107,7 @@ function ProcessesTab() {
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {!selectedProcessId ? (
-        <div className="flex-1 overflow-auto px-4 pb-20 pt-4">
+        <div className="flex-1 overflow-auto px-4 pb-20">
           <div className="space-y-3">
             {attemptData.processes.map((process) => (
               <div
@@ -130,27 +124,22 @@ function ProcessesTab() {
                     {getStatusIcon(process.status)}
                     <div>
                       <h3 className="font-medium text-sm">
-                        {process.run_reason}
+                        {process.process_type}
+                        {process.executor_type && (
+                          <span className="text-muted-foreground">
+                            {' '}
+                            ({process.executor_type})
+                          </span>
+                        )}
                       </h3>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Process ID: {process.id}
+                        {process.command}
                       </p>
-                      {
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Profile:{' '}
-                          {process.executor_action.typ.type ===
-                            'CodingAgentInitialRequest' ||
-                          process.executor_action.typ.type ===
-                            'CodingAgentFollowUpRequest' ? (
-                            <ProfileVariantBadge
-                              profileVariant={
-                                process.executor_action.typ
-                                  .profile_variant_label
-                              }
-                            />
-                          ) : null}
+                      {process.args && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {t('taskDetails.processes.args')}: {process.args}
                         </p>
-                      }
+                      )}
                     </div>
                   </div>
                   <div className="text-right">
@@ -163,19 +152,21 @@ function ProcessesTab() {
                     </span>
                     {process.exit_code !== null && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        Exit: {process.exit_code.toString()}
+                        {t('taskDetails.processes.exit')}: {process.exit_code.toString()}
                       </p>
                     )}
                   </div>
                 </div>
                 <div className="mt-3 text-xs text-muted-foreground">
                   <div className="flex justify-between">
-                    <span>Started: {formatDate(process.started_at)}</span>
+                    <span>{t('taskDetails.processes.started')}: {formatDate(process.started_at)}</span>
                     {process.completed_at && (
-                      <span>Completed: {formatDate(process.completed_at)}</span>
+                      <span>{t('taskDetails.processes.completed')}: {formatDate(process.completed_at)}</span>
                     )}
                   </div>
-                  <div className="mt-1">Process ID: {process.id}</div>
+                  <div className="mt-1">
+                    {t('taskDetails.processes.workingDirectory')}: {process.working_directory}
+                  </div>
                 </div>
               </div>
             ))}
@@ -183,26 +174,110 @@ function ProcessesTab() {
         </div>
       ) : (
         <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex items-center justify-between px-4 py-2 border-b flex-shrink-0">
-            <h2 className="text-lg font-semibold">Process Details</h2>
+          <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
+            <h2 className="text-lg font-semibold">{t('taskDetails.processes.processDetails')}</h2>
             <button
               onClick={() => setSelectedProcessId(null)}
               className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md border border-border transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to list
+              {t('taskDetails.processes.backToList')}
             </button>
           </div>
-          <div className="flex-1">
+          <div className="flex-1 overflow-y-auto p-4 pb-20">
             {selectedProcess ? (
-              <ProcessLogsViewer processId={selectedProcess.id} />
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="font-medium text-sm mb-2">{t('taskDetails.processes.processInfo')}</h3>
+                    <div className="space-y-1 text-sm">
+                      <p>
+                        <span className="font-medium">{t('taskDetails.processes.type')}:</span>{' '}
+                        {selectedProcess.process_type}
+                      </p>
+                      <p>
+                        <span className="font-medium">{t('taskDetails.processes.status')}:</span>{' '}
+                        {selectedProcess.status}
+                      </p>
+                      {selectedProcess.executor_type && (
+                        <p>
+                          <span className="font-medium">{t('taskDetails.processes.executor')}:</span>{' '}
+                          {selectedProcess.executor_type}
+                        </p>
+                      )}
+                      <p>
+                        <span className="font-medium">{t('taskDetails.processes.exitCode')}:</span>{' '}
+                        {selectedProcess.exit_code?.toString() ?? 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-sm mb-2">{t('taskDetails.processes.timing')}</h3>
+                    <div className="space-y-1 text-sm">
+                      <p>
+                        <span className="font-medium">{t('taskDetails.processes.started')}:</span>{' '}
+                        {formatDate(selectedProcess.started_at)}
+                      </p>
+                      {selectedProcess.completed_at && (
+                        <p>
+                          <span className="font-medium">{t('taskDetails.processes.completed')}:</span>{' '}
+                          {formatDate(selectedProcess.completed_at)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-medium text-sm mb-2">{t('taskDetails.processes.command')}</h3>
+                  <div className="bg-muted/50 p-3 rounded-md font-mono text-sm">
+                    {selectedProcess.command}
+                    {selectedProcess.args && (
+                      <div className="mt-1 text-muted-foreground">
+                        {t('taskDetails.processes.args')}: {selectedProcess.args}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-medium text-sm mb-2">
+                    {t('taskDetails.processes.workingDirectory')}
+                  </h3>
+                  <div className="bg-muted/50 p-3 rounded-md font-mono text-sm">
+                    {selectedProcess.working_directory}
+                  </div>
+                </div>
+
+                {selectedProcess.stdout && (
+                  <div>
+                    <h3 className="font-medium text-sm mb-2">{t('taskDetails.processes.stdout')}</h3>
+                    <div className="bg-black text-green-400 p-3 rounded-md font-mono text-sm h-64 overflow-auto">
+                      <pre className="whitespace-pre-wrap">
+                        {selectedProcess.stdout}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+
+                {selectedProcess.stderr && (
+                  <div>
+                    <h3 className="font-medium text-sm mb-2">{t('taskDetails.processes.stderr')}</h3>
+                    <div className="bg-black text-red-400 p-3 rounded-md font-mono text-sm h-64 overflow-auto">
+                      <pre className="whitespace-pre-wrap">
+                        {selectedProcess.stderr}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : loadingProcessId === selectedProcessId ? (
               <div className="text-center text-muted-foreground">
-                <p>Loading process details...</p>
+                <p>{t('taskDetails.processes.loadingDetails')}</p>
               </div>
             ) : (
               <div className="text-center text-muted-foreground">
-                <p>Failed to load process details. Please try again.</p>
+                <p>{t('taskDetails.processes.failedToLoad')}</p>
               </div>
             )}
           </div>

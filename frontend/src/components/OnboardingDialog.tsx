@@ -15,53 +15,46 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Sparkles, Code, ChevronDown } from 'lucide-react';
-import { EditorType, ProfileVariantLabel } from 'shared/types';
-import { useUserSystem } from '@/components/config-provider';
-
-import { toPrettyCase } from '@/utils/string';
+import { Sparkles, Code } from 'lucide-react';
+import type { EditorType, ExecutorConfig } from 'shared/types';
+import {
+  EXECUTOR_TYPES,
+  EDITOR_TYPES,
+  EXECUTOR_LABELS,
+  EDITOR_LABELS,
+} from 'shared/types';
+import { useTranslation } from '@/lib/i18n';
 
 interface OnboardingDialogProps {
   open: boolean;
   onComplete: (config: {
-    profile: ProfileVariantLabel;
+    executor: ExecutorConfig;
     editor: { editor_type: EditorType; custom_command: string | null };
   }) => void;
 }
 
 export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
-  const [profile, setProfile] = useState<ProfileVariantLabel>({
-    profile: 'claude-code',
-    variant: null,
-  });
-  const [editorType, setEditorType] = useState<EditorType>(EditorType.VS_CODE);
+  const { t } = useTranslation();
+  const [executor, setExecutor] = useState<ExecutorConfig>({ type: 'claude' });
+  const [editorType, setEditorType] = useState<EditorType>('vscode');
   const [customCommand, setCustomCommand] = useState<string>('');
-
-  const { profiles } = useUserSystem();
 
   const handleComplete = () => {
     onComplete({
-      profile,
+      executor,
       editor: {
         editor_type: editorType,
-        custom_command:
-          editorType === EditorType.CUSTOM ? customCommand || null : null,
+        custom_command: editorType === 'custom' ? customCommand || null : null,
       },
     });
   };
 
   const isValid =
-    editorType !== EditorType.CUSTOM ||
-    (editorType === EditorType.CUSTOM && customCommand.trim() !== '');
+    editorType !== 'custom' ||
+    (editorType === 'custom' && customCommand.trim() !== '');
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
@@ -69,11 +62,10 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
         <DialogHeader>
           <div className="flex items-center gap-3">
             <Sparkles className="h-6 w-6 text-primary" />
-            <DialogTitle>Welcome to Vibe Kanban</DialogTitle>
+            <DialogTitle>{t('onboarding.title')}</DialogTitle>
           </div>
           <DialogDescription className="text-left pt-2">
-            Let's set up your coding preferences. You can always change these
-            later in Settings.
+            {t('onboarding.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -82,101 +74,35 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />
-                Choose Your Coding Agent
+{t('onboarding.codingAgent.title')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="profile">Default Profile</Label>
-                <div className="flex gap-2">
-                  <Select
-                    value={profile.profile}
-                    onValueChange={(value) =>
-                      setProfile({ profile: value, variant: null })
-                    }
-                  >
-                    <SelectTrigger id="profile" className="flex-1">
-                      <SelectValue placeholder="Select your preferred coding agent" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {profiles?.map((profile) => (
-                        <SelectItem key={profile.label} value={profile.label}>
-                          {profile.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  {/* Show variant selector if selected profile has variants */}
-                  {(() => {
-                    const selectedProfile = profiles?.find(
-                      (p) => p.label === profile.profile
-                    );
-                    const hasVariants =
-                      selectedProfile?.variants &&
-                      selectedProfile.variants.length > 0;
-
-                    if (hasVariants) {
-                      return (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className="w-24 px-2 flex items-center justify-between"
-                            >
-                              <span className="text-xs truncate flex-1 text-left">
-                                {profile.variant || 'Default'}
-                              </span>
-                              <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                setProfile({ ...profile, variant: null })
-                              }
-                              className={!profile.variant ? 'bg-accent' : ''}
-                            >
-                              Default
-                            </DropdownMenuItem>
-                            {selectedProfile.variants.map((variant) => (
-                              <DropdownMenuItem
-                                key={variant.label}
-                                onClick={() =>
-                                  setProfile({
-                                    ...profile,
-                                    variant: variant.label,
-                                  })
-                                }
-                                className={
-                                  profile.variant === variant.label
-                                    ? 'bg-accent'
-                                    : ''
-                                }
-                              >
-                                {variant.label}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      );
-                    } else if (selectedProfile) {
-                      // Show disabled button when profile exists but has no variants
-                      return (
-                        <Button
-                          variant="outline"
-                          className="w-24 px-2 flex items-center justify-between"
-                          disabled
-                        >
-                          <span className="text-xs truncate flex-1 text-left">
-                            Default
-                          </span>
-                        </Button>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
+                <Label htmlFor="executor">{t('onboarding.codingAgent.label')}</Label>
+                <Select
+                  value={executor.type}
+                  onValueChange={(value) => setExecutor({ type: value as any })}
+                >
+                  <SelectTrigger id="executor">
+                    <SelectValue placeholder={t('onboarding.codingAgent.placeholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EXECUTOR_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {EXECUTOR_LABELS[type]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  {executor.type === 'claude' && t('onboarding.codingAgent.descriptions.claude')}
+                  {executor.type === 'amp' && t('onboarding.codingAgent.descriptions.amp')}
+                  {executor.type === 'gemini' && t('onboarding.codingAgent.descriptions.gemini')}
+                  {executor.type === 'charm-opencode' && t('onboarding.codingAgent.descriptions.charmOpencode')}
+                  {executor.type === 'claude-code-router' && t('onboarding.codingAgent.descriptions.claudeCodeRouter')}
+                  {executor.type === 'echo' && t('onboarding.codingAgent.descriptions.echo')}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -185,45 +111,43 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Code className="h-4 w-4" />
-                Choose Your Code Editor
+{t('onboarding.codeEditor.title')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="editor">Preferred Editor</Label>
+                <Label htmlFor="editor">{t('onboarding.codeEditor.label')}</Label>
                 <Select
                   value={editorType}
                   onValueChange={(value: EditorType) => setEditorType(value)}
                 >
                   <SelectTrigger id="editor">
-                    <SelectValue placeholder="Select your preferred editor" />
+                    <SelectValue placeholder={t('onboarding.codeEditor.placeholder')} />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.values(EditorType).map((type) => (
+                    {EDITOR_TYPES.map((type) => (
                       <SelectItem key={type} value={type}>
-                        {toPrettyCase(type)}
+                        {EDITOR_LABELS[type]}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-muted-foreground">
-                  This editor will be used to open task attempts and project
-                  files.
+                  {t('onboarding.codeEditor.description')}
                 </p>
               </div>
 
-              {editorType === EditorType.CUSTOM && (
+              {editorType === 'custom' && (
                 <div className="space-y-2">
-                  <Label htmlFor="custom-command">Custom Command</Label>
+                  <Label htmlFor="custom-command">{t('onboarding.codeEditor.customCommand')}</Label>
                   <Input
                     id="custom-command"
-                    placeholder="e.g., code, subl, vim"
+                    placeholder={t('onboarding.codeEditor.customPlaceholder')}
                     value={customCommand}
                     onChange={(e) => setCustomCommand(e.target.value)}
                   />
                   <p className="text-sm text-muted-foreground">
-                    Enter the command to run your custom editor. Use spaces for
-                    arguments (e.g., "code --wait").
+                    {t('onboarding.codeEditor.customDescription')}
                   </p>
                 </div>
               )}
@@ -237,7 +161,7 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
             disabled={!isValid}
             className="w-full"
           >
-            Continue
+{t('onboarding.continueButton')}
           </Button>
         </DialogFooter>
       </DialogContent>

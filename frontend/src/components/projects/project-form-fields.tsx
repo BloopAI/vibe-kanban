@@ -3,12 +3,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Folder } from 'lucide-react';
+import { useSystemInfo } from '@/hooks/use-system-info';
 import {
   createScriptPlaceholderStrategy,
   ScriptPlaceholderContext,
 } from '@/utils/script-placeholders';
-import { useUserSystem } from '@/components/config-provider';
-import { CopyFilesField } from './copy-files-field';
+import { useTranslation } from '@/lib/i18n';
 
 interface ProjectFormFieldsProps {
   isEditing: boolean;
@@ -29,10 +29,7 @@ interface ProjectFormFieldsProps {
   setDevScript: (script: string) => void;
   cleanupScript: string;
   setCleanupScript: (script: string) => void;
-  copyFiles: string;
-  setCopyFiles: (files: string) => void;
   error: string;
-  projectId?: string;
 }
 
 export function ProjectFormFields({
@@ -54,17 +51,15 @@ export function ProjectFormFields({
   setDevScript,
   cleanupScript,
   setCleanupScript,
-  copyFiles,
-  setCopyFiles,
   error,
-  projectId,
 }: ProjectFormFieldsProps) {
-  const { system } = useUserSystem();
+  const { t } = useTranslation();
+  const { systemInfo } = useSystemInfo();
 
   // Create strategy-based placeholders
-  const placeholders = system.environment
+  const placeholders = systemInfo
     ? new ScriptPlaceholderContext(
-        createScriptPlaceholderStrategy(system.environment.os_type)
+        createScriptPlaceholderStrategy(systemInfo.os_type)
       ).getPlaceholders()
     : {
         setup: '#!/bin/bash\nnpm install\n# Add any setup commands here...',
@@ -77,7 +72,7 @@ export function ProjectFormFields({
     <>
       {!isEditing && (
         <div className="space-y-3">
-          <Label>Repository Type</Label>
+          <Label>{t('projectCreation.repositoryType')}</Label>
           <div className="flex space-x-4">
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
@@ -90,7 +85,7 @@ export function ProjectFormFields({
                 }
                 className="text-primary"
               />
-              <span className="text-sm">Use existing repository</span>
+              <span className="text-sm">{t('projectCreation.useExistingRepo')}</span>
             </label>
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
@@ -103,7 +98,7 @@ export function ProjectFormFields({
                 }
                 className="text-primary"
               />
-              <span className="text-sm">Create new repository</span>
+              <span className="text-sm">{t('projectCreation.createNewRepo')}</span>
             </label>
           </div>
         </div>
@@ -111,14 +106,14 @@ export function ProjectFormFields({
 
       {repoMode === 'existing' || isEditing ? (
         <div className="space-y-2">
-          <Label htmlFor="git-repo-path">Git Repository Path</Label>
+          <Label htmlFor="git-repo-path">{t('projectCreation.gitRepoPath')}</Label>
           <div className="flex space-x-2">
             <Input
               id="git-repo-path"
               type="text"
               value={gitRepoPath}
               onChange={(e) => handleGitRepoPathChange(e.target.value)}
-              placeholder="/path/to/your/existing/repo"
+              placeholder={t('projectCreation.gitRepoPathPlaceholder')}
               required
               className="flex-1"
             />
@@ -132,21 +127,21 @@ export function ProjectFormFields({
           </div>
           {!isEditing && (
             <p className="text-sm text-muted-foreground">
-              Select a folder that already contains a git repository
+              {t('projectCreation.selectFolderDescription')}
             </p>
           )}
         </div>
       ) : (
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="parent-path">Parent Directory</Label>
+            <Label htmlFor="parent-path">{t('projectCreation.parentDirectory')}</Label>
             <div className="flex space-x-2">
               <Input
                 id="parent-path"
                 type="text"
                 value={parentPath}
                 onChange={(e) => setParentPath(e.target.value)}
-                placeholder="/path/to/parent/directory"
+                placeholder={t('projectCreation.parentDirectoryPlaceholder')}
                 required
                 className="flex-1"
               />
@@ -159,12 +154,12 @@ export function ProjectFormFields({
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">
-              Choose where to create the new repository
+              {t('projectCreation.chooseParentDescription')}
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="folder-name">Repository Folder Name</Label>
+            <Label htmlFor="folder-name">{t('projectCreation.repositoryFolderName')}</Label>
             <Input
               id="folder-name"
               type="text"
@@ -179,31 +174,31 @@ export function ProjectFormFields({
                   );
                 }
               }}
-              placeholder="my-awesome-project"
+              placeholder={t('projectCreation.folderNamePlaceholder')}
               required
               className="flex-1"
             />
             <p className="text-sm text-muted-foreground">
-              The project name will be auto-populated from this folder name
+              {t('projectCreation.folderNameDescription')}
             </p>
           </div>
         </div>
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="name">Project Name</Label>
+        <Label htmlFor="name">{t('projectCreation.projectName')}</Label>
         <Input
           id="name"
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Enter project name"
+          placeholder={t('projectCreation.projectNamePlaceholder')}
           required
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="setup-script">Setup Script (Optional)</Label>
+        <Label htmlFor="setup-script">{t('projectCreation.setupScript')}</Label>
         <textarea
           id="setup-script"
           value={setupScript}
@@ -213,14 +208,12 @@ export function ProjectFormFields({
           className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md resize-vertical focus:outline-none focus:ring-2 focus:ring-ring"
         />
         <p className="text-sm text-muted-foreground">
-          This script will run after creating the worktree and before the
-          executor starts. Use it for setup tasks like installing dependencies
-          or preparing the environment.
+          {t('projectCreation.setupScriptDescription')}
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="dev-script">Dev Server Script (Optional)</Label>
+        <Label htmlFor="dev-script">{t('projectCreation.devServerScript')}</Label>
         <textarea
           id="dev-script"
           value={devScript}
@@ -230,14 +223,12 @@ export function ProjectFormFields({
           className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md resize-vertical focus:outline-none focus:ring-2 focus:ring-ring"
         />
         <p className="text-sm text-muted-foreground">
-          This script can be run from task attempts to start a development
-          server. Use it to quickly start your project's dev server for testing
-          changes.
+          {t('projectCreation.devServerScriptDescription')}
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="cleanup-script">Cleanup Script (Optional)</Label>
+        <Label htmlFor="cleanup-script">{t('projectCreation.cleanupScript')}</Label>
         <textarea
           id="cleanup-script"
           value={cleanupScript}
@@ -247,26 +238,7 @@ export function ProjectFormFields({
           className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md resize-vertical focus:outline-none focus:ring-2 focus:ring-ring"
         />
         <p className="text-sm text-muted-foreground">
-          This script runs after coding agent execution{' '}
-          <strong>only if changes were made</strong>. Use it for quality
-          assurance tasks like running linters, formatters, tests, or other
-          validation steps. If no changes are made, this script is skipped.
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="copy-files">Copy Files (Optional)</Label>
-        <CopyFilesField
-          value={copyFiles}
-          onChange={setCopyFiles}
-          projectId={projectId}
-        />
-        <p className="text-sm text-muted-foreground">
-          Comma-separated list of files to copy from the original project
-          directory to the worktree. These files will be copied after the
-          worktree is created but before the setup script runs. Useful for
-          environment-specific files like .env, configuration files, and local
-          settings. Make sure these are gitignored or they could get committed!
+          {t('projectCreation.cleanupScriptDescription')}
         </p>
       </div>
 

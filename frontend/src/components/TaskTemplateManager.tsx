@@ -17,6 +17,7 @@ import type {
   CreateTaskTemplate,
   UpdateTaskTemplate,
 } from 'shared/types';
+import { useTranslation } from '@/lib/i18n';
 
 interface TaskTemplateManagerProps {
   projectId?: string;
@@ -27,6 +28,7 @@ export function TaskTemplateManager({
   projectId,
   isGlobal = false,
 }: TaskTemplateManagerProps) {
+  const { t } = useTranslation();
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -102,7 +104,7 @@ export function TaskTemplateManager({
 
   const handleSave = useCallback(async () => {
     if (!formData.template_name.trim() || !formData.title.trim()) {
-      setError('Template name and title are required');
+      setError(t('templateManager.errors.nameAndTitleRequired'));
       return;
     }
 
@@ -129,7 +131,7 @@ export function TaskTemplateManager({
       await fetchTemplates();
       handleCloseDialog();
     } catch (err: any) {
-      setError(err.message || 'Failed to save template');
+      setError(err.message || t('templateManager.errors.failedToSave'));
     } finally {
       setSaving(false);
     }
@@ -164,7 +166,7 @@ export function TaskTemplateManager({
     async (template: TaskTemplate) => {
       if (
         !confirm(
-          `Are you sure you want to delete the template "${template.template_name}"?`
+          t('templateManager.confirmDelete', { templateName: template.template_name })
         )
       ) {
         return;
@@ -192,17 +194,17 @@ export function TaskTemplateManager({
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">
-          {isGlobal ? 'Global Task Templates' : 'Project Task Templates'}
+          {isGlobal ? t('templateManager.globalTemplates') : t('templateManager.projectTemplates')}
         </h3>
         <Button onClick={() => handleOpenDialog()} size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          Add Template
+          {t('templateManager.addTemplate')}
         </Button>
       </div>
 
       {templates.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
-          No templates yet. Create your first template to get started.
+          {t('templateManager.noTemplates')}
         </div>
       ) : (
         <div className="border rounded-lg overflow-hidden">
@@ -211,14 +213,14 @@ export function TaskTemplateManager({
               <thead className="border-b bg-muted/50 sticky top-0">
                 <tr>
                   <th className="text-left p-2 text-sm font-medium">
-                    Template Name
+                    {t('templateManager.table.templateName')}
                   </th>
-                  <th className="text-left p-2 text-sm font-medium">Title</th>
+                  <th className="text-left p-2 text-sm font-medium">{t('templateManager.table.title')}</th>
                   <th className="text-left p-2 text-sm font-medium">
-                    Description
+                    {t('templateManager.table.description')}
                   </th>
                   <th className="text-right p-2 text-sm font-medium">
-                    Actions
+                    {t('templateManager.table.actions')}
                   </th>
                 </tr>
               </thead>
@@ -249,7 +251,7 @@ export function TaskTemplateManager({
                           size="icon"
                           className="h-7 w-7"
                           onClick={() => handleOpenDialog(template)}
-                          title="Edit template"
+                          title={t('templateManager.editTemplate')}
                         >
                           <Edit2 className="h-3 w-3" />
                         </Button>
@@ -258,7 +260,7 @@ export function TaskTemplateManager({
                           size="icon"
                           className="h-7 w-7"
                           onClick={() => handleDelete(template)}
-                          title="Delete template"
+                          title={t('templateManager.deleteTemplate')}
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
@@ -276,41 +278,41 @@ export function TaskTemplateManager({
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>
-              {editingTemplate ? 'Edit Template' : 'Create Template'}
+              {editingTemplate ? t('templateManager.editTemplate') : t('templateManager.createTemplate')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label htmlFor="template-name">Template Name</Label>
+              <Label htmlFor="template-name">{t('templateManager.form.templateName')}</Label>
               <Input
                 id="template-name"
                 value={formData.template_name}
                 onChange={(e) =>
                   setFormData({ ...formData, template_name: e.target.value })
                 }
-                placeholder="e.g., Bug Fix, Feature Request"
+                placeholder={t('templateManager.form.templateNamePlaceholder')}
               />
             </div>
             <div>
-              <Label htmlFor="template-title">Default Title</Label>
+              <Label htmlFor="template-title">{t('templateManager.form.defaultTitle')}</Label>
               <Input
                 id="template-title"
                 value={formData.title}
                 onChange={(e) =>
                   setFormData({ ...formData, title: e.target.value })
                 }
-                placeholder="e.g., Fix bug in..."
+                placeholder={t('templateManager.form.defaultTitlePlaceholder')}
               />
             </div>
             <div>
-              <Label htmlFor="template-description">Default Description</Label>
+              <Label htmlFor="template-description">{t('templateManager.form.defaultDescription')}</Label>
               <Textarea
                 id="template-description"
                 value={formData.description}
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
-                placeholder="Enter a default description for tasks created with this template"
+                placeholder={t('templateManager.form.defaultDescriptionPlaceholder')}
                 rows={4}
               />
             </div>
@@ -322,11 +324,11 @@ export function TaskTemplateManager({
               onClick={handleCloseDialog}
               disabled={saving}
             >
-              Cancel
+{t('common.cancel')}
             </Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {editingTemplate ? 'Update' : 'Create'}
+{editingTemplate ? t('common.update') : t('common.create')}
             </Button>
           </DialogFooter>
         </DialogContent>

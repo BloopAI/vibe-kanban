@@ -16,65 +16,83 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { JSONEditor } from '@/components/ui/json-editor';
+import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
-import { ProfileConfig, McpConfig } from 'shared/types';
-import { useUserSystem } from '@/components/config-provider';
+import {
+  EXECUTOR_TYPES,
+  EXECUTOR_LABELS,
+  MCP_SUPPORTED_EXECUTORS,
+} from 'shared/types';
+import { useConfig } from '@/components/config-provider';
 import { mcpServersApi } from '../lib/api';
-import { McpConfigStrategyGeneral } from '../lib/mcp-strategies';
+import { useTranslation } from '@/lib/i18n';
 
 export function McpServers() {
-  const { config, profiles } = useUserSystem();
+  const { t } = useTranslation();
+  const { config } = useConfig();
   const [mcpServers, setMcpServers] = useState('{}');
-  const [mcpConfig, setMcpConfig] = useState<McpConfig | null>(null);
   const [mcpError, setMcpError] = useState<string | null>(null);
   const [mcpLoading, setMcpLoading] = useState(true);
-  const [selectedProfile, setSelectedProfile] = useState<ProfileConfig | null>(
-    null
-  );
+  const [selectedMcpExecutor, setSelectedMcpExecutor] = useState<string>('');
   const [mcpApplying, setMcpApplying] = useState(false);
   const [mcpConfigPath, setMcpConfigPath] = useState<string>('');
   const [success, setSuccess] = useState(false);
 
-  // Initialize selected profile when config loads
+  // Initialize selected MCP executor when config loads
   useEffect(() => {
-    if (config?.profile && profiles && !selectedProfile) {
-      // Find the current profile
-      const currentProfile = profiles.find(
-        (p) => p.label === config.profile.profile
-      );
-      if (currentProfile) {
-        setSelectedProfile(currentProfile);
-      } else if (profiles.length > 0) {
-        // Default to first profile if current profile not found
-        setSelectedProfile(profiles[0]);
+    if (config?.executor?.type && !selectedMcpExecutor) {
+      // If current executor supports MCP, use it; otherwise use first available MCP executor
+      if (MCP_SUPPORTED_EXECUTORS.includes(config.executor.type)) {
+        setSelectedMcpExecutor(config.executor.type);
+      } else {
+        setSelectedMcpExecutor(MCP_SUPPORTED_EXECUTORS[0] || 'claude');
       }
     }
-  }, [config?.profile, profiles, selectedProfile]);
+  }, [config?.executor?.type, selectedMcpExecutor]);
 
-  // Load existing MCP configuration when selected profile changes
+  // Load existing MCP configuration when selected executor changes
   useEffect(() => {
-    const loadMcpServersForProfile = async (profile: ProfileConfig) => {
+    const loadMcpServersForExecutor = async (executorType: string) => {
       // Reset state when loading
       setMcpLoading(true);
       setMcpError(null);
-      // Set default empty config based on agent type using strategy
+
+      // Set default empty config based on executor type
+      const defaultConfig =
+        executorType === 'amp'
+          ? '{\n  "amp.mcpServers": {\n  }\n}'
+          : executorType === 'sst-opencode'
+            ? '{\n  "mcp": {\n  }, "$schema": "https://opencode.ai/config.json"\n}'
+            : '{\n  "mcpServers": {\n  }\n}';
+      setMcpServers(defaultConfig);
       setMcpConfigPath('');
 
       try {
-        // Load MCP servers for the selected profile/agent
-        const result = await mcpServersApi.load({
-          profile: profile.label,
-        });
-        // Store the McpConfig from backend
-        setMcpConfig(result.mcp_config);
-        // Create the full configuration structure using the schema
-        const fullConfig = McpConfigStrategyGeneral.createFullConfig(
-          result.mcp_config
-        );
+        // Load MCP servers for the selected executor
+        const result = await mcpServersApi.load(executorType);
+        // Handle new response format with servers and config_path
+        const data = result || {};
+        const servers = data.servers || {};
+        const configPath = data.config_path || '';
+
+        // Create the full configuration structure based on executor type
+        let fullConfig;
+        if (executorType === 'amp') {
+          // For AMP, use the amp.mcpServers structure
+          fullConfig = { 'amp.mcpServers': servers };
+        } else if (executorType === 'sst-opencode') {
+          fullConfig = {
+            mcp: servers,
+            $schema: 'https://opencode.ai/config.json',
+          };
+        } else {
+          // For other executors, use the standard mcpServers structure
+          fullConfig = { mcpServers: servers };
+        }
+
         const configJson = JSON.stringify(fullConfig, null, 2);
         setMcpServers(configJson);
-        setMcpConfigPath(result.config_path);
+        setMcpConfigPath(configPath);
       } catch (err: any) {
         if (err?.message && err.message.includes('does not support MCP')) {
           setMcpError(err.message);
@@ -86,57 +104,105 @@ export function McpServers() {
       }
     };
 
-    // Load MCP servers for the selected profile
-    if (selectedProfile) {
-      loadMcpServersForProfile(selectedProfile);
+    // Load MCP servers for the selected MCP executor
+    if (selectedMcpExecutor) {
+      loadMcpServersForExecutor(selectedMcpExecutor);
     }
-  }, [selectedProfile]);
+  }, [selectedMcpExecutor]);
 
   const handleMcpServersChange = (value: string) => {
     setMcpServers(value);
     setMcpError(null);
 
     // Validate JSON on change
-    if (value.trim() && mcpConfig) {
+    if (value.trim()) {
       try {
-        const parsedConfig = JSON.parse(value);
-        // Validate using the schema path from backend
-        McpConfigStrategyGeneral.validateFullConfig(mcpConfig, parsedConfig);
-      } catch (err) {
-        if (err instanceof SyntaxError) {
-          setMcpError('Invalid JSON format');
+        const config = JSON.parse(value);
+        // Validate that the config has the expected structure based on executor type
+        if (selectedMcpExecutor === 'amp') {
+          if (
+            !config['amp.mcpServers'] ||
+            typeof config['amp.mcpServers'] !== 'object'
+          ) {
+            setMcpError(
+              t('mcpServers.errors.ampConfiguration')
+            );
+          }
+        } else if (selectedMcpExecutor === 'sst-opencode') {
+          if (!config.mcp || typeof config.mcp !== 'object') {
+            setMcpError(t('mcpServers.errors.mcpConfiguration'));
+          }
         } else {
-          setMcpError(err instanceof Error ? err.message : 'Validation error');
+          if (!config.mcpServers || typeof config.mcpServers !== 'object') {
+            setMcpError(t('mcpServers.errors.mcpServersConfiguration'));
+          }
         }
+      } catch (err) {
+        setMcpError(t('mcpServers.errors.invalidJson'));
       }
     }
   };
 
   const handleConfigureVibeKanban = async () => {
-    if (!selectedProfile || !mcpConfig) return;
+    if (!selectedMcpExecutor) return;
 
     try {
       // Parse existing configuration
       const existingConfig = mcpServers.trim() ? JSON.parse(mcpServers) : {};
 
-      // Add vibe_kanban to the existing configuration using the schema
-      const updatedConfig = McpConfigStrategyGeneral.addVibeKanbanToConfig(
-        mcpConfig,
-        existingConfig
-      );
+      // Always use production MCP installation instructions
+      const vibeKanbanConfig =
+        selectedMcpExecutor === 'sst-opencode'
+          ? {
+              type: 'local',
+              command: ['npx', '-y', 'vibe-kanban', '--mcp'],
+              enabled: true,
+            }
+          : {
+              command: 'npx',
+              args: ['-y', 'vibe-kanban', '--mcp'],
+            };
+
+      // Add vibe_kanban to the existing configuration
+      let updatedConfig;
+      if (selectedMcpExecutor === 'amp') {
+        updatedConfig = {
+          ...existingConfig,
+          'amp.mcpServers': {
+            ...(existingConfig['amp.mcpServers'] || {}),
+            vibe_kanban: vibeKanbanConfig,
+          },
+        };
+      } else if (selectedMcpExecutor === 'sst-opencode') {
+        updatedConfig = {
+          ...existingConfig,
+          mcp: {
+            ...(existingConfig.mcp || {}),
+            vibe_kanban: vibeKanbanConfig,
+          },
+        };
+      } else {
+        updatedConfig = {
+          ...existingConfig,
+          mcpServers: {
+            ...(existingConfig.mcpServers || {}),
+            vibe_kanban: vibeKanbanConfig,
+          },
+        };
+      }
 
       // Update the textarea with the new configuration
       const configJson = JSON.stringify(updatedConfig, null, 2);
       setMcpServers(configJson);
       setMcpError(null);
     } catch (err) {
-      setMcpError('Failed to configure vibe-kanban MCP server');
+      setMcpError(t('mcpServers.errors.failedToConfigure'));
       console.error('Error configuring vibe-kanban:', err);
     }
   };
 
   const handleApplyMcpServers = async () => {
-    if (!selectedProfile || !mcpConfig) return;
+    if (!selectedMcpExecutor) return;
 
     setMcpApplying(true);
     setMcpError(null);
@@ -146,37 +212,58 @@ export function McpServers() {
       if (mcpServers.trim()) {
         try {
           const fullConfig = JSON.parse(mcpServers);
-          McpConfigStrategyGeneral.validateFullConfig(mcpConfig, fullConfig);
-          const mcpServersConfig =
-            McpConfigStrategyGeneral.extractServersForApi(
-              mcpConfig,
-              fullConfig
-            );
 
-          await mcpServersApi.save(
-            {
-              profile: selectedProfile.label,
-            },
-            { servers: mcpServersConfig }
-          );
+          // Validate that the config has the expected structure based on executor type
+          let mcpServersConfig;
+          if (selectedMcpExecutor === 'amp') {
+            if (
+              !fullConfig['amp.mcpServers'] ||
+              typeof fullConfig['amp.mcpServers'] !== 'object'
+            ) {
+              throw new Error(
+                t('mcpServers.errors.ampConfiguration')
+              );
+            }
+            // Extract just the inner servers object for the API - backend will handle nesting
+            mcpServersConfig = fullConfig['amp.mcpServers'];
+          } else if (selectedMcpExecutor === 'sst-opencode') {
+            if (!fullConfig.mcp || typeof fullConfig.mcp !== 'object') {
+              throw new Error(t('mcpServers.errors.mcpConfiguration'));
+            }
+            // Extract just the mcp part for the API
+            mcpServersConfig = fullConfig.mcp;
+          } else {
+            if (
+              !fullConfig.mcpServers ||
+              typeof fullConfig.mcpServers !== 'object'
+            ) {
+              throw new Error(
+                t('mcpServers.errors.mcpServersConfiguration')
+              );
+            }
+            // Extract just the mcpServers part for the API
+            mcpServersConfig = fullConfig.mcpServers;
+          }
+
+          await mcpServersApi.save(selectedMcpExecutor, mcpServersConfig);
 
           // Show success feedback
           setSuccess(true);
           setTimeout(() => setSuccess(false), 3000);
         } catch (mcpErr) {
           if (mcpErr instanceof SyntaxError) {
-            setMcpError('Invalid JSON format');
+            setMcpError(t('mcpServers.errors.invalidJson'));
           } else {
             setMcpError(
               mcpErr instanceof Error
                 ? mcpErr.message
-                : 'Failed to save MCP servers'
+                : t('mcpServers.errors.failedToSave')
             );
           }
         }
       }
     } catch (err) {
-      setMcpError('Failed to apply MCP server configuration');
+      setMcpError(t('mcpServers.errors.failedToApply'));
       console.error('Error applying MCP servers:', err);
     } finally {
       setMcpApplying(false);
@@ -187,7 +274,7 @@ export function McpServers() {
     return (
       <div className="container mx-auto px-4 py-8">
         <Alert variant="destructive">
-          <AlertDescription>Failed to load configuration.</AlertDescription>
+          <AlertDescription>{t('mcpServers.errors.failedToLoadConfiguration')}</AlertDescription>
         </Alert>
       </div>
     );
@@ -197,16 +284,16 @@ export function McpServers() {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">MCP Servers</h1>
+          <h1 className="text-3xl font-bold">{t('mcpServers.title')}</h1>
           <p className="text-muted-foreground">
-            Configure MCP servers to extend coding agent capabilities.
+            {t('mcpServers.subtitle')}
           </p>
         </div>
 
         {mcpError && (
           <Alert variant="destructive">
             <AlertDescription>
-              MCP Configuration Error: {mcpError}
+              {t('mcpServers.errors.configurationError', { error: mcpError })}
             </AlertDescription>
           </Alert>
         )}
@@ -214,42 +301,40 @@ export function McpServers() {
         {success && (
           <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
             <AlertDescription className="font-medium">
-              ✓ MCP configuration saved successfully!
+              {t('mcpServers.successMessage')}
             </AlertDescription>
           </Alert>
         )}
 
         <Card>
           <CardHeader>
-            <CardTitle>Configuration</CardTitle>
+            <CardTitle>{t('mcpServers.configuration.title')}</CardTitle>
             <CardDescription>
-              Configure MCP servers for different coding agents to extend their
-              capabilities with custom tools and resources.
+              {t('mcpServers.configuration.description')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="mcp-executor">Profile</Label>
+              <Label htmlFor="mcp-executor">{t('mcpServers.executor.label')}</Label>
               <Select
-                value={selectedProfile?.label || ''}
-                onValueChange={(value: string) => {
-                  const profile = profiles?.find((p) => p.label === value);
-                  if (profile) setSelectedProfile(profile);
-                }}
+                value={selectedMcpExecutor}
+                onValueChange={(value: string) => setSelectedMcpExecutor(value)}
               >
                 <SelectTrigger id="mcp-executor">
-                  <SelectValue placeholder="Select executor" />
+                  <SelectValue placeholder={t('mcpServers.executor.placeholder')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {profiles?.map((profile) => (
-                    <SelectItem key={profile.label} value={profile.label}>
-                      {profile.label}
+                  {EXECUTOR_TYPES.filter((type) =>
+                    MCP_SUPPORTED_EXECUTORS.includes(type)
+                  ).map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {EXECUTOR_LABELS[type]}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">
-                Choose which profile to configure MCP servers for.
+                {t('mcpServers.executor.description')}
               </p>
             </div>
 
@@ -258,14 +343,12 @@ export function McpServers() {
                 <div className="flex">
                   <div className="ml-3">
                     <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                      MCP Not Supported
+                      {t('mcpServers.notSupported.title')}
                     </h3>
                     <div className="mt-2 text-sm text-amber-700 dark:text-amber-300">
                       <p>{mcpError}</p>
                       <p className="mt-1">
-                        To use MCP servers, please select a different profile
-                        that supports MCP (Claude, Amp, Gemini, Codex, or
-                        Opencode) above.
+                        {t('mcpServers.notSupported.description')}
                       </p>
                     </div>
                   </div>
@@ -273,18 +356,18 @@ export function McpServers() {
               </div>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="mcp-servers">MCP Server Configuration</Label>
-                <JSONEditor
+                <Label htmlFor="mcp-servers">{t('mcpServers.configuration.label')}</Label>
+                <Textarea
                   id="mcp-servers"
                   placeholder={
                     mcpLoading
-                      ? 'Loading current configuration...'
-                      : '{\n  "server-name": {\n    "type": "stdio",\n    "command": "your-command",\n    "args": ["arg1", "arg2"]\n  }\n}'
+                      ? t('mcpServers.configuration.loadingPlaceholder')
+                      : t('mcpServers.configuration.placeholder')
                   }
-                  value={mcpLoading ? 'Loading...' : mcpServers}
-                  onChange={handleMcpServersChange}
+                  value={mcpLoading ? t('mcpServers.configuration.loading') : mcpServers}
+                  onChange={(e) => handleMcpServersChange(e.target.value)}
                   disabled={mcpLoading}
-                  minHeight={300}
+                  className="font-mono text-sm min-h-[300px]"
                 />
                 {mcpError && !mcpError.includes('does not support MCP') && (
                   <p className="text-sm text-red-600 dark:text-red-400">
@@ -293,10 +376,10 @@ export function McpServers() {
                 )}
                 <div className="text-sm text-muted-foreground">
                   {mcpLoading ? (
-                    'Loading current MCP server configuration...'
+                    t('mcpServers.configuration.loadingText')
                   ) : (
                     <span>
-                      Changes will be saved to:
+                      {t('mcpServers.configuration.saveLocation')}
                       {mcpConfigPath && (
                         <span className="ml-2 font-mono text-xs">
                           {mcpConfigPath}
@@ -309,13 +392,13 @@ export function McpServers() {
                 <div className="pt-4">
                   <Button
                     onClick={handleConfigureVibeKanban}
-                    disabled={mcpApplying || mcpLoading || !selectedProfile}
+                    disabled={mcpApplying || mcpLoading || !selectedMcpExecutor}
                     className="w-64"
                   >
-                    Add Vibe-Kanban MCP
+                    {t('mcpServers.addVibeKanban.button')}
                   </Button>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Automatically adds the Vibe-Kanban MCP server.
+                    {t('mcpServers.addVibeKanban.description')}
                   </p>
                 </div>
               </div>
@@ -333,7 +416,7 @@ export function McpServers() {
             >
               {mcpApplying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {success && <span className="mr-2">✓</span>}
-              {success ? 'Settings Saved!' : 'Save Settings'}
+              {success ? t('mcpServers.saveButton.saved') : t('mcpServers.saveButton.save')}
             </Button>
           </div>
         </div>

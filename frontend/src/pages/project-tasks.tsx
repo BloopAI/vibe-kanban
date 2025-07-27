@@ -10,6 +10,8 @@ import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
 import { ProjectForm } from '@/components/projects/project-form';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
+import { useTaskPlan } from '@/components/context/TaskPlanContext';
+import { useTranslation } from '@/lib/i18n';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,12 +35,13 @@ import {
 import TaskKanbanBoard from '@/components/tasks/TaskKanbanBoard';
 import { TaskDetailsPanel } from '@/components/tasks/TaskDetailsPanel';
 import type {
+  CreateTaskAndStart,
+  ExecutorConfig,
+  ProjectWithBranch,
   TaskStatus,
   TaskWithAttemptStatus,
-  Project,
   TaskTemplate,
 } from 'shared/types';
-import type { CreateTask } from 'shared/types';
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 
 type Task = TaskWithAttemptStatus;
@@ -49,8 +52,9 @@ export function ProjectTasks() {
     taskId?: string;
   }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [project, setProject] = useState<Project | null>(null);
+  const [project, setProject] = useState<ProjectWithBranch | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
@@ -68,6 +72,10 @@ export function ProjectTasks() {
   // Panel state
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+  // Plan context for task creation
+  const { isPlanningMode, canCreateTask, latestProcessHasNoPlan } =
+    useTaskPlan();
 
   // Define task creation handler
   const handleCreateNewTask = useCallback(() => {
@@ -90,18 +98,18 @@ export function ProjectTasks() {
       await projectsApi.openEditor(projectId);
     } catch (error) {
       console.error('Failed to open project in IDE:', error);
-      setError('Failed to open project in IDE');
+      setError(t('tasks.failedOpenIDE'));
     }
   }, [projectId]);
 
   const fetchProject = useCallback(async () => {
     try {
-      const result = await projectsApi.getById(projectId!);
+      const result = await projectsApi.getWithBranch(projectId!);
       setProject(result);
     } catch (err) {
-      setError('Failed to load project');
+      setError(t('tasks.failedLoadProject'));
     }
-  }, [projectId]);
+  }, [projectId, navigate]);
 
   const fetchTemplates = useCallback(async () => {
     if (!projectId) return;
@@ -158,7 +166,7 @@ export function ProjectTasks() {
           return newTasks;
         });
       } catch (err) {
-        setError('Failed to load tasks');
+        setError(t('tasks.failedLoadTasks'));
       } finally {
         if (!skipLoading) {
           setLoading(false);
@@ -169,14 +177,13 @@ export function ProjectTasks() {
   );
 
   const handleCreateTask = useCallback(
-    async (title: string, description: string, imageIds?: string[]) => {
+    async (title: string, description: string) => {
       try {
-        const createdTask = await tasksApi.create({
+        const createdTask = await tasksApi.create(projectId!, {
           project_id: projectId!,
           title,
           description: description || null,
           parent_task_attempt: null,
-          image_ids: imageIds || null,
         });
         await fetchTasks();
         // Open the newly created task in the details panel
@@ -184,71 +191,65 @@ export function ProjectTasks() {
           replace: true,
         });
       } catch (err) {
-        setError('Failed to create task');
+        setError(t('tasks.failedCreateTask'));
       }
     },
     [projectId, fetchTasks, navigate]
   );
 
   const handleCreateAndStartTask = useCallback(
-    async (title: string, description: string, imageIds?: string[]) => {
+    async (title: string, description: string, executor?: ExecutorConfig) => {
       try {
-        const payload: CreateTask = {
+        const payload: CreateTaskAndStart = {
           project_id: projectId!,
           title,
           description: description || null,
           parent_task_attempt: null,
-          image_ids: imageIds || null,
+          executor: executor || null,
         };
-        const result = await tasksApi.createAndStart(payload);
+        const result = await tasksApi.createAndStart(projectId!, payload);
         await fetchTasks();
         // Open the newly created task in the details panel
         handleViewTaskDetails(result);
       } catch (err) {
-        setError('Failed to create and start task');
+        setError(t('tasks.failedCreateAndStartTask'));
       }
     },
     [projectId, fetchTasks]
   );
 
   const handleUpdateTask = useCallback(
-    async (
-      title: string,
-      description: string,
-      status: TaskStatus,
-      imageIds?: string[]
-    ) => {
+    async (title: string, description: string, status: TaskStatus) => {
       if (!editingTask) return;
 
       try {
-        await tasksApi.update(editingTask.id, {
+        await tasksApi.update(projectId!, editingTask.id, {
           title,
           description: description || null,
           status,
           parent_task_attempt: null,
-          image_ids: imageIds || null,
         });
         await fetchTasks();
         setEditingTask(null);
       } catch (err) {
-        setError('Failed to update task');
+        setError(t('tasks.failedUpdateTask'));
       }
     },
-    [editingTask, fetchTasks]
+    [projectId, editingTask, fetchTasks]
   );
 
   const handleDeleteTask = useCallback(
     async (taskId: string) => {
-      if (!confirm('Are you sure you want to delete this task?')) return;
+      if (!confirm(t('tasks.actions.confirmDelete'))) return;
 
       try {
-        await tasksApi.delete(taskId);
+        await tasksApi.delete(projectId!, taskId);
         await fetchTasks();
       } catch (error) {
-        setError('Failed to delete task');
+        setError(t('tasks.failedDeleteTask'));
       }
     },
-    [fetchTasks]
+    [projectId, fetchTasks]
   );
 
   const handleEditTask = useCallback((task: Task) => {
@@ -257,14 +258,11 @@ export function ProjectTasks() {
   }, []);
 
   const handleViewTaskDetails = useCallback(
-    (task: Task, attemptIdToShow?: string) => {
+    (task: Task) => {
       // setSelectedTask(task);
       // setIsPanelOpen(true);
-      // Update URL to include task ID and optionally attempt ID
-      const targetUrl = attemptIdToShow
-        ? `/projects/${projectId}/tasks/${task.id}/attempts/${attemptIdToShow}`
-        : `/projects/${projectId}/tasks/${task.id}`;
-      navigate(targetUrl, { replace: true });
+      // Update URL to include task ID
+      navigate(`/projects/${projectId}/tasks/${task.id}`, { replace: true });
     },
     [projectId, navigate]
   );
@@ -300,12 +298,11 @@ export function ProjectTasks() {
       );
 
       try {
-        await tasksApi.update(taskId, {
+        await tasksApi.update(projectId!, taskId, {
           title: task.title,
           description: task.description,
           status: newStatus,
           parent_task_attempt: task.parent_task_attempt,
-          image_ids: null,
         });
       } catch (err) {
         // Revert the optimistic update if the API call failed
@@ -314,16 +311,16 @@ export function ProjectTasks() {
             t.id === taskId ? { ...t, status: previousStatus } : t
           )
         );
-        setError('Failed to update task status');
+        setError(t('tasks.failedUpdateStatus'));
       }
     },
-    [tasks]
+    [projectId, tasks]
   );
 
   // Setup keyboard shortcuts
   useKeyboardShortcuts({
     navigate,
-    currentPath: window.location.pathname,
+    currentPath: `/projects/${projectId}/tasks`,
     hasOpenDialog:
       isTaskDialogOpen || isTemplateManagerOpen || isProjectSettingsOpen,
     closeDialog: () => setIsTaskDialogOpen(false),
@@ -372,7 +369,7 @@ export function ProjectTasks() {
   }, [taskId, tasks, loading, fetchTasks]);
 
   if (loading) {
-    return <Loader message="Loading tasks..." size={32} className="py-8" />;
+    return <Loader message={t('tasks.loading')} size={32} className="py-8" />;
   }
 
   if (error) {
@@ -388,12 +385,17 @@ export function ProjectTasks() {
         <div className="px-8 my-12 flex flex-row">
           <div className="w-full flex items-center gap-3">
             <h1 className="text-2xl font-bold">{project?.name || 'Project'}</h1>
+            {project?.current_branch && (
+              <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                {project.current_branch}
+              </span>
+            )}
             <Button
               variant="ghost"
               size="sm"
               onClick={handleOpenInIDE}
               className="h-8 w-8 p-0"
-              title="Open in IDE"
+              title={t('tasks.openInIDE')}
             >
               <FolderOpen className="h-4 w-4" />
             </Button>
@@ -402,7 +404,7 @@ export function ProjectTasks() {
               size="sm"
               onClick={() => setIsProjectSettingsOpen(true)}
               className="h-8 w-8 p-0"
-              title="Project Settings"
+              title={t('tasks.projectSettings')}
             >
               <Settings className="h-4 w-4" />
             </Button>
@@ -410,14 +412,14 @@ export function ProjectTasks() {
           <div className="flex items-center gap-3">
             <Input
               type="text"
-              placeholder="Search tasks..."
+              placeholder={t('tasks.searchTasks')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-64"
             />
             <Button onClick={handleCreateNewTask}>
               <Plus className="h-4 w-4 mr-2" />
-              Add Task
+              {t('tasks.addTask')}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -428,7 +430,7 @@ export function ProjectTasks() {
               <DropdownMenuContent align="end" className="w-[250px]">
                 <DropdownMenuItem onClick={handleOpenTemplateManager}>
                   <Plus className="h-3 w-3 mr-2" />
-                  Manage Templates
+                  {t('tasks.manageTemplates')}
                 </DropdownMenuItem>
                 {templates.length > 0 && <DropdownMenuSeparator />}
 
@@ -436,7 +438,7 @@ export function ProjectTasks() {
                 {templates.filter((t) => t.project_id !== null).length > 0 && (
                   <>
                     <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-                      Project Templates
+                      {t('tasks.projectTemplates')}
                     </div>
                     {templates
                       .filter((t) => t.project_id !== null)
@@ -463,7 +465,7 @@ export function ProjectTasks() {
                 {templates.filter((t) => t.project_id === null).length > 0 && (
                   <>
                     <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-                      Global Templates
+                      {t('tasks.globalTemplates')}
                     </div>
                     {templates
                       .filter((t) => t.project_id === null)
@@ -491,11 +493,11 @@ export function ProjectTasks() {
             <Card>
               <CardContent className="text-center py-8">
                 <p className="text-muted-foreground">
-                  No tasks found for this project.
+                  {t('tasks.noTasksFound')}
                 </p>
                 <Button className="mt-4" onClick={handleCreateNewTask}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Create First Task
+                  {t('tasks.createFirstTask')}
                 </Button>
               </CardContent>
             </Card>
@@ -545,6 +547,11 @@ export function ProjectTasks() {
         onCreateAndStartTask={handleCreateAndStartTask}
         onUpdateTask={handleUpdateTask}
         initialTemplate={selectedTemplate}
+        planContext={{
+          isPlanningMode,
+          canCreateTask,
+          latestProcessHasNoPlan,
+        }}
       />
 
       <ProjectForm
@@ -561,13 +568,13 @@ export function ProjectTasks() {
       >
         <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Manage Templates</DialogTitle>
+            <DialogTitle>{t('tasks.manageTemplates')}</DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <TaskTemplateManager projectId={projectId} />
           </div>
           <DialogFooter>
-            <Button onClick={handleCloseTemplateManager}>Done</Button>
+            <Button onClick={handleCloseTemplateManager}>{t('tasks.done')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

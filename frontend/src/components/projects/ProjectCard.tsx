@@ -24,6 +24,7 @@ import { useNavigate } from 'react-router-dom';
 import { projectsApi } from '@/lib/api.ts';
 import { Project } from 'shared/types';
 import { useEffect, useRef } from 'react';
+import { useTranslation } from '@/lib/i18n';
 
 type Props = {
   project: Project;
@@ -43,6 +44,7 @@ function ProjectCard({
   setShowForm,
 }: Props) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,10 +54,10 @@ function ProjectCard({
     }
   }, [isFocused]);
 
-  const handleDelete = async (id: string, name: string) => {
+  const handleDelete = async (id: string, _name: string) => {
     if (
       !confirm(
-        `Are you sure you want to delete "${name}"? This action cannot be undone.`
+        t('projects.card.confirmDelete')
       )
     )
       return;
@@ -94,7 +96,7 @@ function ProjectCard({
         <div className="flex items-start justify-between">
           <CardTitle className="text-lg">{project.name}</CardTitle>
           <div className="flex items-center gap-2">
-            <Badge variant="secondary">Active</Badge>
+            <Badge variant="secondary">{t('projects.card.active')}</Badge>
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -109,7 +111,7 @@ function ProjectCard({
                   }}
                 >
                   <ExternalLink className="mr-2 h-4 w-4" />
-                  View Project
+                  {t('projects.card.viewTasks')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
@@ -118,7 +120,7 @@ function ProjectCard({
                   }}
                 >
                   <FolderOpen className="mr-2 h-4 w-4" />
-                  Open in IDE
+                  {t('projects.card.openInIDE')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
@@ -127,7 +129,7 @@ function ProjectCard({
                   }}
                 >
                   <Edit className="mr-2 h-4 w-4" />
-                  Edit
+                  {t('projects.card.edit')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
@@ -137,7 +139,7 @@ function ProjectCard({
                   className="text-destructive"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
+                  {t('projects.card.delete')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -145,7 +147,7 @@ function ProjectCard({
         </div>
         <CardDescription className="flex items-center">
           <Calendar className="mr-1 h-3 w-3" />
-          Created {new Date(project.created_at).toLocaleDateString()}
+          {t('projects.card.created')} {new Date(project.created_at).toLocaleDateString()}
         </CardDescription>
       </CardHeader>
     </Card>

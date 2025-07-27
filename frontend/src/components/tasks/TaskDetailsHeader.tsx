@@ -10,21 +10,14 @@ import {
 } from '@/components/ui/tooltip';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import { useTranslation } from '@/lib/i18n';
 
 interface TaskDetailsHeaderProps {
   onClose: () => void;
   onEditTask?: (task: TaskWithAttemptStatus) => void;
   onDeleteTask?: (taskId: string) => void;
-  hideCloseButton?: boolean;
 }
 
-const statusLabels: Record<TaskStatus, string> = {
-  todo: 'To Do',
-  inprogress: 'In Progress',
-  inreview: 'In Review',
-  done: 'Done',
-  cancelled: 'Cancelled',
-};
 
 const getTaskStatusDotColor = (status: TaskStatus): string => {
   switch (status) {
@@ -47,10 +40,18 @@ function TaskDetailsHeader({
   onClose,
   onEditTask,
   onDeleteTask,
-  hideCloseButton = false,
 }: TaskDetailsHeaderProps) {
   const { task } = useContext(TaskDetailsContext);
+  const { t } = useTranslation();
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  
+  const statusLabels: Record<TaskStatus, string> = {
+    todo: t('tasks.status.todo'),
+    inprogress: t('tasks.status.inprogress'),
+    inreview: t('tasks.status.inreview'),
+    done: t('tasks.status.done'),
+    cancelled: t('tasks.status.cancelled'),
+  };
 
   return (
     <div>
@@ -81,7 +82,7 @@ function TaskDetailsHeader({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Edit task</p>
+                    <p>{t('taskDetails.editTask')}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -99,25 +100,23 @@ function TaskDetailsHeader({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Delete task</p>
+                    <p>{t('taskDetails.deleteTask')}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             )}
-            {!hideCloseButton && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" onClick={onClose}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Close panel</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" onClick={onClose}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t('taskDetails.closePanel')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
 
@@ -147,12 +146,12 @@ function TaskDetailsHeader({
                     {isDescriptionExpanded ? (
                       <>
                         <ChevronUp className="h-3 w-3 mr-1" />
-                        Show less
+                        {t('taskDetails.showLess')}
                       </>
                     ) : (
                       <>
                         <ChevronDown className="h-3 w-3 mr-1" />
-                        Show more
+                        {t('taskDetails.showMore')}
                       </>
                     )}
                   </Button>
@@ -160,7 +159,7 @@ function TaskDetailsHeader({
               </div>
             ) : (
               <p className="text-xs text-muted-foreground italic">
-                No description provided
+                {t('taskDetails.noDescription')}
               </p>
             )}
           </div>

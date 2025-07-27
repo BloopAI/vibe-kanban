@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { useDialogKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
+import { useTranslation } from '@/lib/i18n';
 
 const Dialog = React.forwardRef<
   HTMLDivElement,
@@ -12,6 +13,8 @@ const Dialog = React.forwardRef<
     uncloseable?: boolean;
   }
 >(({ className, open, onOpenChange, children, uncloseable, ...props }, ref) => {
+  const { t } = useTranslation();
+  
   // Add keyboard shortcut support for closing dialog with Esc
   useDialogKeyboardShortcuts(() => {
     if (open && onOpenChange && !uncloseable) {
@@ -41,7 +44,7 @@ const Dialog = React.forwardRef<
             onClick={() => onOpenChange?.(false)}
           >
             <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{t('common.close')}</span>
           </button>
         )}
         {children}
