@@ -6,6 +6,7 @@ import {
 } from '@/components/context/taskDetailsContext.ts';
 import { attemptsApi, tasksApi } from '@/lib/api.ts';
 import type { Task, TaskAttempt } from 'shared/types.ts';
+import { useTranslation } from '@/lib/i18n';
 import {
   AlertCircle,
   CheckCircle,
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react';
 
 function RelatedTasksTab() {
+  const { t } = useTranslation();
   const { task, projectId } = useContext(TaskDetailsContext);
   const { relatedTasks, relatedTasksLoading, relatedTasksError } = useContext(
     TaskRelatedTasksContext
@@ -124,9 +126,9 @@ function RelatedTasksTab() {
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
           <div className="text-muted-foreground">
-            <p>No related tasks found.</p>
+            <p>{t('relatedTasks.noRelatedTasksFound')}</p>
             <p className="text-sm mt-2">
-              This task doesn't have any parent task or subtasks.
+              {t('relatedTasks.noParentOrSubtasks')}
             </p>
           </div>
         </div>

@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Key, Loader2, Volume2 } from 'lucide-react';
+import { Key, Loader2, Volume2, Globe } from 'lucide-react';
 import type { EditorType, SoundFile, ThemeMode } from 'shared/types';
 import {
   EDITOR_LABELS,
@@ -32,6 +32,7 @@ import { useTheme } from '@/components/theme-provider';
 import { useConfig } from '@/components/config-provider';
 import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
+import { useTranslation, LANGUAGE_LABELS, type Language } from '@/lib/i18n';
 
 export function Settings() {
   const { config, updateConfig, saveConfig, loading, updateAndSaveConfig } =
@@ -41,6 +42,7 @@ export function Settings() {
   const [success, setSuccess] = useState(false);
   const { setTheme } = useTheme();
   const [showGitHubLogin, setShowGitHubLogin] = useState(false);
+  const { t, currentLanguage, setLanguage } = useTranslation();
 
   const playSound = async (soundFile: SoundFile) => {
     const audio = new Audio(`/api/sounds/${soundFile}.wav`);
@@ -110,7 +112,7 @@ export function Settings() {
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading settings...</span>
+          <span className="ml-2">{t('settings.loading')}</span>
         </div>
       </div>
     );
@@ -120,7 +122,7 @@ export function Settings() {
     return (
       <div className="container mx-auto px-4 py-8">
         <Alert variant="destructive">
-          <AlertDescription>Failed to load settings. {error}</AlertDescription>
+          <AlertDescription>{t('settings.failed')} {error}</AlertDescription>
         </Alert>
       </div>
     );
@@ -130,9 +132,9 @@ export function Settings() {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Settings</h1>
+          <h1 className="text-3xl font-bold">{t('settings.title')}</h1>
           <p className="text-muted-foreground">
-            Configure your preferences and application settings.
+            {t('settings.subtitle')}
           </p>
         </div>
 
@@ -145,7 +147,7 @@ export function Settings() {
         {success && (
           <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
             <AlertDescription className="font-medium">
-              ✓ Settings saved successfully!
+              {t('settings.saved')}
             </AlertDescription>
           </Alert>
         )}
@@ -153,14 +155,49 @@ export function Settings() {
         <div className="grid gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Appearance</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                {t('settings.language.title')}
+              </CardTitle>
               <CardDescription>
-                Customize how the application looks and feels.
+                {t('settings.language.subtitle')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="theme">Theme</Label>
+                <Label htmlFor="language">{t('settings.language.language')}</Label>
+                <Select
+                  value={currentLanguage}
+                  onValueChange={(value: Language) => setLanguage(value)}
+                >
+                  <SelectTrigger id="language">
+                    <SelectValue placeholder={t('settings.language.languagePlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(LANGUAGE_LABELS).map(([code, label]) => (
+                      <SelectItem key={code} value={code}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.language.languageDescription')}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('settings.appearance.title')}</CardTitle>
+              <CardDescription>
+                {t('settings.appearance.subtitle')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="theme">{t('settings.appearance.theme')}</Label>
                 <Select
                   value={config.theme}
                   onValueChange={(value: ThemeMode) => {
@@ -169,21 +206,21 @@ export function Settings() {
                   }}
                 >
                   <SelectTrigger id="theme">
-                    <SelectValue placeholder="Select theme" />
+                    <SelectValue placeholder={t('settings.appearance.themePlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="dark">Dark</SelectItem>
-                    <SelectItem value="system">System</SelectItem>
-                    <SelectItem value="purple">Purple</SelectItem>
-                    <SelectItem value="green">Green</SelectItem>
-                    <SelectItem value="blue">Blue</SelectItem>
-                    <SelectItem value="orange">Orange</SelectItem>
-                    <SelectItem value="red">Red</SelectItem>
+                    <SelectItem value="light">{t('settings.appearance.themes.light')}</SelectItem>
+                    <SelectItem value="dark">{t('settings.appearance.themes.dark')}</SelectItem>
+                    <SelectItem value="system">{t('settings.appearance.themes.system')}</SelectItem>
+                    <SelectItem value="purple">{t('settings.appearance.themes.purple')}</SelectItem>
+                    <SelectItem value="green">{t('settings.appearance.themes.green')}</SelectItem>
+                    <SelectItem value="blue">{t('settings.appearance.themes.blue')}</SelectItem>
+                    <SelectItem value="orange">{t('settings.appearance.themes.orange')}</SelectItem>
+                    <SelectItem value="red">{t('settings.appearance.themes.red')}</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-muted-foreground">
-                  Choose your preferred color scheme.
+                  {t('settings.appearance.themeDescription')}
                 </p>
               </div>
             </CardContent>
@@ -191,14 +228,14 @@ export function Settings() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Task Execution</CardTitle>
+              <CardTitle>{t('settings.taskExecution.title')}</CardTitle>
               <CardDescription>
-                Configure how tasks are executed and processed.
+                {t('settings.taskExecution.subtitle')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="executor">Default Executor</Label>
+                <Label htmlFor="executor">{t('settings.taskExecution.executor')}</Label>
                 <Select
                   value={config.executor.type}
                   onValueChange={(value: 'echo' | 'claude' | 'amp') =>
@@ -206,7 +243,7 @@ export function Settings() {
                   }
                 >
                   <SelectTrigger id="executor">
-                    <SelectValue placeholder="Select executor" />
+                    <SelectValue placeholder={t('settings.taskExecution.executorPlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
                     {EXECUTOR_TYPES.map((type) => (
@@ -217,7 +254,7 @@ export function Settings() {
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-muted-foreground">
-                  Choose the default executor for running tasks.
+                  {t('settings.taskExecution.executorDescription')}
                 </p>
               </div>
             </CardContent>
@@ -225,14 +262,14 @@ export function Settings() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Editor</CardTitle>
+              <CardTitle>{t('settings.editor.title')}</CardTitle>
               <CardDescription>
-                Configure which editor to open when viewing task attempts.
+                {t('settings.editor.subtitle')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="editor">Preferred Editor</Label>
+                <Label htmlFor="editor">{t('settings.editor.editor')}</Label>
                 <Select
                   value={config.editor.editor_type}
                   onValueChange={(value: EditorType) =>
@@ -249,7 +286,7 @@ export function Settings() {
                   }
                 >
                   <SelectTrigger id="editor">
-                    <SelectValue placeholder="Select editor" />
+                    <SelectValue placeholder={t('settings.editor.editorPlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
                     {EDITOR_TYPES.map((type) => (
@@ -260,16 +297,16 @@ export function Settings() {
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-muted-foreground">
-                  Choose your preferred code editor for opening task attempts.
+                  {t('settings.editor.editorDescription')}
                 </p>
               </div>
 
               {config.editor.editor_type === 'custom' && (
                 <div className="space-y-2">
-                  <Label htmlFor="custom-command">Custom Command</Label>
+                  <Label htmlFor="custom-command">{t('settings.editor.customCommand')}</Label>
                   <Input
                     id="custom-command"
-                    placeholder="e.g., code, subl, vim"
+                    placeholder={t('settings.editor.customCommandPlaceholder')}
                     value={config.editor.custom_command || ''}
                     onChange={(e) =>
                       updateConfig({
@@ -281,8 +318,7 @@ export function Settings() {
                     }
                   />
                   <p className="text-sm text-muted-foreground">
-                    Enter the command to run your custom editor. Use spaces for
-                    arguments (e.g., "code --wait").
+                    {t('settings.editor.customCommandDescription')}
                   </p>
                 </div>
               )}
@@ -293,20 +329,19 @@ export function Settings() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Key className="h-5 w-5" />
-                GitHub Integration
+                {t('settings.github.title')}
               </CardTitle>
               <CardDescription>
-                Configure GitHub settings for creating pull requests from task
-                attempts.
+                {t('settings.github.subtitle')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="github-token">Personal Access Token</Label>
+                <Label htmlFor="github-token">{t('settings.github.token')}</Label>
                 <Input
                   id="github-token"
                   type="password"
-                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                  placeholder={t('settings.github.tokenPlaceholder')}
                   value={config.github.pat || ''}
                   onChange={(e) =>
                     updateConfig({
@@ -318,33 +353,32 @@ export function Settings() {
                   }
                 />
                 <p className="text-sm text-muted-foreground">
-                  GitHub Personal Access Token with 'repo' permissions. Required
-                  for creating pull requests.{' '}
+                  {t('settings.github.tokenDescription')}{' '}
                   <a
                     href="https://github.com/settings/tokens"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:underline"
                   >
-                    Create token here
+                    {t('settings.github.createToken')}
                   </a>
                 </p>
               </div>
               {config && isAuthenticated ? (
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <Label>Signed in as</Label>
+                    <Label>{t('settings.github.signedInAs')}</Label>
                     <div className="text-lg font-mono">
                       {config.github.username}
                     </div>
                   </div>
                   <Button variant="outline" onClick={handleLogout}>
-                    Log out
+                    {t('settings.github.logOut')}
                   </Button>
                 </div>
               ) : (
                 <Button onClick={() => setShowGitHubLogin(true)}>
-                  Sign in with GitHub
+                  {t('settings.github.signIn')}
                 </Button>
               )}
               <GitHubLoginDialog
@@ -352,10 +386,10 @@ export function Settings() {
                 onOpenChange={setShowGitHubLogin}
               />
               <div className="space-y-2 pt-4">
-                <Label htmlFor="default-pr-base">Default PR Base Branch</Label>
+                <Label htmlFor="default-pr-base">{t('settings.github.defaultPrBase')}</Label>
                 <Input
                   id="default-pr-base"
-                  placeholder="main"
+                  placeholder={t('settings.github.defaultPrBasePlaceholder')}
                   value={config.github.default_pr_base || ''}
                   onChange={(e) =>
                     updateConfig({
@@ -367,8 +401,7 @@ export function Settings() {
                   }
                 />
                 <p className="text-sm text-muted-foreground">
-                  Default base branch for pull requests. Defaults to 'main' if
-                  not specified.
+                  {t('settings.github.defaultPrBaseDescription')}
                 </p>
               </div>
             </CardContent>
@@ -376,9 +409,9 @@ export function Settings() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Notifications</CardTitle>
+              <CardTitle>{t('settings.notifications.title')}</CardTitle>
               <CardDescription>
-                Configure how you receive notifications about task completion.
+                {t('settings.notifications.subtitle')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -392,17 +425,17 @@ export function Settings() {
                 />
                 <div className="space-y-0.5">
                   <Label htmlFor="sound-alerts" className="cursor-pointer">
-                    Sound Alerts
+                    {t('settings.notifications.soundAlerts')}
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Play a sound when task attempts finish running.
+                    {t('settings.notifications.soundAlertsDescription')}
                   </p>
                 </div>
               </div>
 
               {config.sound_alerts && (
                 <div className="space-y-2 ml-6">
-                  <Label htmlFor="sound-file">Sound</Label>
+                  <Label htmlFor="sound-file">{t('settings.notifications.sound')}</Label>
                   <div className="flex items-center gap-2">
                     <Select
                       value={config.sound_file}
@@ -411,7 +444,7 @@ export function Settings() {
                       }
                     >
                       <SelectTrigger id="sound-file" className="flex-1">
-                        <SelectValue placeholder="Select sound" />
+                        <SelectValue placeholder={t('settings.notifications.soundPlaceholder')} />
                       </SelectTrigger>
                       <SelectContent>
                         {SOUND_FILES.map((soundFile) => (
@@ -431,8 +464,7 @@ export function Settings() {
                     </Button>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Choose the sound to play when tasks complete. Click the
-                    volume button to preview.
+                    {t('settings.notifications.soundDescription')}
                   </p>
                 </div>
               )}
@@ -449,10 +481,10 @@ export function Settings() {
                     htmlFor="push-notifications"
                     className="cursor-pointer"
                   >
-                    Push Notifications
+                    {t('settings.notifications.pushNotifications')}
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Show system notifications when task attempts finish running.
+                    {t('settings.notifications.pushNotificationsDescription')}
                   </p>
                 </div>
               </div>
@@ -461,9 +493,9 @@ export function Settings() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Privacy</CardTitle>
+              <CardTitle>{t('settings.privacy.title')}</CardTitle>
               <CardDescription>
-                Help improve Vibe-Kanban by sharing anonymous usage data.
+                {t('settings.privacy.subtitle')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -477,12 +509,10 @@ export function Settings() {
                 />
                 <div className="space-y-0.5">
                   <Label htmlFor="analytics-enabled" className="cursor-pointer">
-                    Enable Telemetry
+                    {t('settings.privacy.enableTelemetry')}
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Enables anonymous usage events tracking to help improve the
-                    application. No prompts or project information are
-                    collected.
+                    {t('settings.privacy.telemetryDescription')}
                   </p>
                 </div>
               </div>
@@ -491,10 +521,9 @@ export function Settings() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Task Templates</CardTitle>
+              <CardTitle>{t('settings.taskTemplates.title')}</CardTitle>
               <CardDescription>
-                Manage global task templates that can be used across all
-                projects.
+                {t('settings.taskTemplates.subtitle')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -504,20 +533,20 @@ export function Settings() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Safety & Disclaimers</CardTitle>
+              <CardTitle>{t('settings.safety.title')}</CardTitle>
               <CardDescription>
-                Manage safety warnings and acknowledgments.
+                {t('settings.safety.subtitle')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label>Disclaimer Status</Label>
+                    <Label>{t('settings.safety.disclaimerStatus')}</Label>
                     <p className="text-sm text-muted-foreground">
                       {config.disclaimer_acknowledged
-                        ? 'You have acknowledged the safety disclaimer.'
-                        : 'The safety disclaimer has not been acknowledged.'}
+                        ? t('settings.safety.disclaimerAcknowledged')
+                        : t('settings.safety.disclaimerNotAcknowledged')}
                     </p>
                   </div>
                   <Button
@@ -526,22 +555,21 @@ export function Settings() {
                     size="sm"
                     disabled={!config.disclaimer_acknowledged}
                   >
-                    Reset Disclaimer
+                    {t('settings.safety.resetDisclaimer')}
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Resetting the disclaimer will require you to acknowledge the
-                  safety warning again.
+                  {t('settings.safety.resetDisclaimerDescription')}
                 </p>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label>Onboarding Status</Label>
+                    <Label>{t('settings.safety.onboardingStatus')}</Label>
                     <p className="text-sm text-muted-foreground">
                       {config.onboarding_acknowledged
-                        ? 'You have completed the onboarding process.'
-                        : 'The onboarding process has not been completed.'}
+                        ? t('settings.safety.onboardingCompleted')
+                        : t('settings.safety.onboardingNotCompleted')}
                     </p>
                   </div>
                   <Button
@@ -550,21 +578,21 @@ export function Settings() {
                     size="sm"
                     disabled={!config.onboarding_acknowledged}
                   >
-                    Reset Onboarding
+                    {t('settings.safety.resetOnboarding')}
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Resetting the onboarding will show the setup screen again.
+                  {t('settings.safety.resetOnboardingDescription')}
                 </p>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label>Telemetry Acknowledgment</Label>
+                    <Label>{t('settings.safety.telemetryAcknowledgment')}</Label>
                     <p className="text-sm text-muted-foreground">
                       {config.telemetry_acknowledged
-                        ? 'You have acknowledged the telemetry notice.'
-                        : 'The telemetry notice has not been acknowledged.'}
+                        ? t('settings.safety.telemetryAcknowledged')
+                        : t('settings.safety.telemetryNotAcknowledged')}
                     </p>
                   </div>
                   <Button
@@ -575,12 +603,11 @@ export function Settings() {
                     size="sm"
                     disabled={!config.telemetry_acknowledged}
                   >
-                    Reset Acknowledgment
+                    {t('settings.safety.resetAcknowledgment')}
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Resetting the acknowledgment will require you to acknowledge
-                  the telemetry notice again.
+                  {t('settings.safety.resetAcknowledgmentDescription')}
                 </p>
               </div>
             </CardContent>
@@ -597,7 +624,7 @@ export function Settings() {
             >
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {success && <span className="mr-2">✓</span>}
-              {success ? 'Settings Saved!' : 'Save Settings'}
+              {success ? t('settings.saving') : t('settings.save')}
             </Button>
           </div>
         </div>

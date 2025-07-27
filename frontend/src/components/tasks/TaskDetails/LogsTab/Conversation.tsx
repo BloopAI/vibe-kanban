@@ -15,8 +15,10 @@ import { AlertTriangle } from 'lucide-react';
 import Prompt from './Prompt';
 import ConversationEntry from './ConversationEntry';
 import { ConversationEntryDisplayType } from '@/lib/types';
+import { useTranslation } from '@/lib/i18n';
 
 function Conversation() {
+  const { t } = useTranslation();
   const { attemptData, isAttemptRunning } = useContext(TaskAttemptDataContext);
   const { isPlanningMode, latestProcessHasNoPlan } = useTaskPlan();
   const [shouldAutoScrollLogs, setShouldAutoScrollLogs] = useState(true);
@@ -221,9 +223,9 @@ function Conversation() {
         <Loader
           message={
             <>
-              Coding Agent Starting
+              {t('codingAgent.starting')}
               <br />
-              Initializing conversation...
+              {t('codingAgent.initializing')}
             </>
           }
           size={48}
@@ -242,13 +244,13 @@ function Conversation() {
             }`}
           >
             {mostRecentProcess.status === 'failed'
-              ? 'Coding Agent Failed'
-              : 'Coding Agent Stopped'}
+              ? t('codingAgent.failed')
+              : t('codingAgent.stopped')}
           </p>
           <p className="text-muted-foreground">
             {mostRecentProcess.status === 'failed'
-              ? 'The coding agent encountered an error.'
-              : 'The coding agent was stopped.'}
+              ? t('codingAgent.failedMessage')
+              : t('codingAgent.stoppedMessage')}
           </p>
         </div>
       )}

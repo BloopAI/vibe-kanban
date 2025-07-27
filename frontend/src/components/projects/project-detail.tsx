@@ -24,6 +24,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
+import { useTranslation } from '@/lib/i18n';
 
 interface ProjectDetailProps {
   projectId: string;
@@ -31,6 +32,7 @@ interface ProjectDetailProps {
 }
 
 export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [project, setProject] = useState<ProjectWithBranch | null>(null);
   const [loading, setLoading] = useState(false);
@@ -100,7 +102,7 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
       <div className="space-y-4 py-12 px-4">
         <Button variant="outline" onClick={onBack}>
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Projects
+          {t('gitRepoSelection.backToProjects')}
         </Button>
         <Card>
           <CardContent className="py-12 text-center">
@@ -113,7 +115,7 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
                 "The project you're looking for doesn't exist or has been deleted."}
             </p>
             <Button className="mt-4" onClick={onBack}>
-              Back to Projects
+              {t('gitRepoSelection.backToProjects')}
             </Button>
           </CardContent>
         </Card>
@@ -127,7 +129,7 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
         <div className="flex items-center space-x-4">
           <Button variant="outline" onClick={onBack}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Projects
+            {t('gitRepoSelection.backToProjects')}
           </Button>
           <div>
             <div className="flex items-center gap-3">
@@ -146,11 +148,11 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
         <div className="flex gap-2">
           <Button onClick={() => navigate(`/projects/${projectId}/tasks`)}>
             <CheckSquare className="mr-2 h-4 w-4" />
-            View Tasks
+            {t('projectDetails.viewTasks')}
           </Button>
           <Button variant="outline" onClick={() => setShowEditForm(true)}>
             <Edit className="mr-2 h-4 w-4" />
-            Edit
+            {t('projectDetails.edit')}
           </Button>
           <Button
             variant="outline"
@@ -158,7 +160,7 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
             className="text-destructive hover:text-destructive-foreground hover:bg-destructive/10"
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            Delete
+            {t('projectDetails.delete')}
           </Button>
         </div>
       </div>
@@ -175,27 +177,27 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
           <CardHeader>
             <CardTitle className="flex items-center">
               <Calendar className="mr-2 h-5 w-5" />
-              Project Information
+              {t('projectDetails.projectInformation')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">
-                Status
+                {t('projectDetails.status')}
               </span>
-              <Badge variant="secondary">Active</Badge>
+              <Badge variant="secondary">{t('projectDetails.active')}</Badge>
             </div>
             <div className="space-y-2">
               <div className="flex items-center text-sm">
                 <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Created:</span>
+                <span className="text-muted-foreground">{t('projectDetails.created')}</span>
                 <span className="ml-2">
                   {new Date(project.created_at).toLocaleDateString()}
                 </span>
               </div>
               <div className="flex items-center text-sm">
                 <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Last Updated:</span>
+                <span className="text-muted-foreground">{t('projectDetails.lastUpdated')}</span>
                 <span className="ml-2">
                   {new Date(project.updated_at).toLocaleDateString()}
                 </span>
@@ -206,15 +208,15 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Project Details</CardTitle>
+            <CardTitle>{t('projectDetails.projectDetailsSection')}</CardTitle>
             <CardDescription>
-              Technical information about this project
+              {t('projectDetails.technicalInformation')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
               <h4 className="text-sm font-medium text-muted-foreground">
-                Project ID
+                {t('projectDetails.projectId')}
               </h4>
               <code className="mt-1 block text-xs bg-muted p-2 rounded font-mono">
                 {project.id}
@@ -222,7 +224,7 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
             </div>
             <div>
               <h4 className="text-sm font-medium text-muted-foreground">
-                Created At
+                {t('projectDetails.createdAt')}
               </h4>
               <p className="mt-1 text-sm">
                 {new Date(project.created_at).toLocaleString()}
@@ -230,7 +232,7 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
             </div>
             <div>
               <h4 className="text-sm font-medium text-muted-foreground">
-                Last Modified
+                {t('projectDetails.lastModified')}
               </h4>
               <p className="mt-1 text-sm">
                 {new Date(project.updated_at).toLocaleString()}

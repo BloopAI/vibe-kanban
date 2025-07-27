@@ -5,6 +5,7 @@ import type { WorktreeDiff } from 'shared/types.ts';
 import { TaskBackgroundRefreshContext } from '@/components/context/taskDetailsContext.ts';
 import DiffFile from '@/components/tasks/TaskDetails/DiffFile.tsx';
 import { Loader } from '@/components/ui/loader';
+import { useTranslation } from '@/lib/i18n';
 
 interface DiffCardProps {
   diff: WorktreeDiff | null;
@@ -19,6 +20,7 @@ export function DiffCard({
   compact = false,
   className = '',
 }: DiffCardProps) {
+  const { t } = useTranslation();
   const { isBackgroundRefreshing } = useContext(TaskBackgroundRefreshContext);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
 
@@ -39,7 +41,7 @@ export function DiffCard({
       >
         <div className="text-center py-4 text-muted-foreground">
           <GitCompare className="h-8 w-8 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">No changes detected</p>
+          <p className="text-sm">{t('diff.noChangesDetected')}</p>
         </div>
       </div>
     );

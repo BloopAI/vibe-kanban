@@ -10,8 +10,10 @@ import {
   TaskSelectedAttemptContext,
 } from '@/components/context/taskDetailsContext.ts';
 import { Loader } from '@/components/ui/loader';
+import { useTranslation } from '@/lib/i18n';
 
 export function TaskFollowUpSection() {
+  const { t } = useTranslation();
   const { task, projectId } = useContext(TaskDetailsContext);
   const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
   const { attemptData, fetchAttemptData, isAttemptRunning } = useContext(
@@ -82,7 +84,7 @@ export function TaskFollowUpSection() {
           )}
           <div className="flex gap-2 items-start">
             <FileSearchTextarea
-              placeholder="Continue working on this task... Type @ to search files."
+              placeholder={t('taskFollowUp.placeholder')}
               value={followUpMessage}
               onChange={(value) => {
                 setFollowUpMessage(value);
@@ -118,7 +120,7 @@ export function TaskFollowUpSection() {
               ) : (
                 <>
                   <Send className="h-4 w-4 mr-2" />
-                  Send
+                  {t('taskFollowUp.send')}
                 </>
               )}
             </Button>

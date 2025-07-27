@@ -12,6 +12,7 @@ import {
   TaskRelatedTasksContext,
 } from '@/components/context/taskDetailsContext.ts';
 import { useTaskPlan } from '@/components/context/TaskPlanContext.ts';
+import { useTranslation } from '@/lib/i18n';
 
 type Props = {
   activeTab: 'logs' | 'diffs' | 'related' | 'processes' | 'plan';
@@ -21,6 +22,7 @@ type Props = {
 };
 
 function TabNavigation({ activeTab, setActiveTab }: Props) {
+  const { t } = useTranslation();
   const { diff } = useContext(TaskDiffContext);
   const { totalRelatedCount } = useContext(TaskRelatedTasksContext);
   const { attemptData } = useContext(TaskAttemptDataContext);
@@ -39,7 +41,7 @@ function TabNavigation({ activeTab, setActiveTab }: Props) {
           }`}
         >
           <MessageSquare className="h-4 w-4 mr-2" />
-          Logs
+          {t('taskDetails.tabs.logs')}
         </button>
         {isPlanningMode && (
           <button
@@ -53,7 +55,7 @@ function TabNavigation({ activeTab, setActiveTab }: Props) {
             }`}
           >
             <FileText className="h-4 w-4 mr-2" />
-            Plans
+            {t('taskDetails.tabs.plans')}
             <span className="ml-2 px-1.5 py-0.5 text-xs bg-primary/10 text-primary rounded-full">
               {planCount}
             </span>
@@ -70,7 +72,7 @@ function TabNavigation({ activeTab, setActiveTab }: Props) {
           }`}
         >
           <GitCompare className="h-4 w-4 mr-2" />
-          Diffs
+          {t('taskDetails.tabs.diffs')}
           {diff && diff.files.length > 0 && (
             <span className="ml-2 px-1.5 py-0.5 text-xs bg-primary/10 text-primary rounded-full">
               {diff.files.length}
@@ -88,7 +90,7 @@ function TabNavigation({ activeTab, setActiveTab }: Props) {
           }`}
         >
           <Network className="h-4 w-4 mr-2" />
-          Related Tasks
+          {t('taskDetails.tabs.relatedTasks')}
           {totalRelatedCount > 0 && (
             <span className="ml-2 px-1.5 py-0.5 text-xs bg-primary/10 text-primary rounded-full">
               {totalRelatedCount}
@@ -106,7 +108,7 @@ function TabNavigation({ activeTab, setActiveTab }: Props) {
           }`}
         >
           <Cog className="h-4 w-4 mr-2" />
-          Processes
+          {t('taskDetails.tabs.processes')}
           {attemptData.processes && attemptData.processes.length > 0 && (
             <span className="ml-2 px-1.5 py-0.5 text-xs bg-primary/10 text-primary rounded-full">
               {attemptData.processes.length}
