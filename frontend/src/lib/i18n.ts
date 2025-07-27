@@ -650,6 +650,32 @@ const translations = {
       typeAtToSearch: 'Type @ to search files.',
       send: 'Send',
     },
+
+    // Create Attempt Component
+    createAttemptComponent: {
+      title: 'Create Attempt',
+      description: 'Each time you start an attempt, a new session is initiated with your selected coding agent, and a git worktree and corresponding task branch are created.',
+      baseBranch: 'Base branch',
+      codingAgent: 'Coding agent',
+      selectAgent: 'Select agent',
+      default: 'Default',
+      start: 'Start',
+      current: 'current',
+      planRequired: 'Plan Required',
+      cannotStartAttempt: 'Cannot start attempt - no plan was generated in the last execution. Please generate a plan first.',
+      planRequiredTooltip: 'Plan required before starting attempt',
+      startNewAttemptTitle: 'Start New Attempt?',
+      startNewAttemptDescription: 'Are you sure you want to start a new attempt for this task? This will create a new session and branch.',
+      cancel: 'Cancel',
+    },
+
+    // Common UI elements
+    common: {
+      cancel: 'Cancel',
+      save: 'Save',
+      saving: 'Saving...',
+      general: 'General',
+    },
   },
   
   'zh-TW': {
@@ -1309,6 +1335,32 @@ const translations = {
     taskFollowUp: {
       placeholder: '繼續處理此任務... 輸入 @ 搜尋檔案。',
       send: '發送',
+    },
+
+    // Create Attempt Component
+    createAttemptComponent: {
+      title: '建立嘗試',
+      description: '每次開始嘗試時，都會啟動一個新的會話與您選擇的程式碼代理，並建立一個 git worktree 和對應的任務分支。',
+      baseBranch: '基底分支',
+      codingAgent: '程式碼代理',
+      selectAgent: '選擇代理',
+      default: '（預設）',
+      start: '開始',
+      current: 'current',
+      planRequired: '需要計劃',
+      cannotStartAttempt: '無法開始嘗試 - 上次執行中未產生計劃。請先產生計劃。',
+      planRequiredTooltip: '開始嘗試前需要計劃',
+      startNewAttemptTitle: '開始新嘗試？',
+      startNewAttemptDescription: '您確定要為此任務開始新嘗試嗎？這將建立新的會話和分支。',
+      cancel: '取消',
+    },
+
+    // Common UI elements
+    common: {
+      cancel: '取消',
+      save: '儲存',
+      saving: '儲存中...',
+      general: '一般',
     },
   },
 } as const;
