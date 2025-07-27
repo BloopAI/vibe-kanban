@@ -1,23 +1,21 @@
 import { Dispatch, SetStateAction, useCallback, useContext } from 'react';
 import { Button } from '@/components/ui/button.tsx';
-import { ArrowDown, Settings2, X } from 'lucide-react';
+import { ArrowDown, Play, Settings2, X, AlertTriangle } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
-import type {
-  ProfileConfig,
-  GitBranch,
-  ProfileVariantLabel,
-} from 'shared/types';
-import type { TaskAttempt } from 'shared/types';
+import type { GitBranch, TaskAttempt } from 'shared/types.ts';
 import { attemptsApi } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,
   TaskDetailsContext,
 } from '@/components/context/taskDetailsContext.ts';
+import { useTaskPlan } from '@/components/context/TaskPlanContext.ts';
+import { useConfig } from '@/components/config-provider.tsx';
 import BranchSelector from '@/components/tasks/BranchSelector.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
 import {
@@ -33,70 +31,73 @@ import { useState } from 'react';
 type Props = {
   branches: GitBranch[];
   taskAttempts: TaskAttempt[];
+  createAttemptExecutor: string;
   createAttemptBranch: string | null;
-  selectedProfile: ProfileVariantLabel | null;
+  selectedExecutor: string;
   selectedBranch: string | null;
   fetchTaskAttempts: () => void;
   setIsInCreateAttemptMode: Dispatch<SetStateAction<boolean>>;
   setCreateAttemptBranch: Dispatch<SetStateAction<string | null>>;
-  setSelectedProfile: Dispatch<SetStateAction<ProfileVariantLabel | null>>;
-  availableProfiles: ProfileConfig[] | null;
+  setCreateAttemptExecutor: Dispatch<SetStateAction<string>>;
+  availableExecutors: {
+    id: string;
+    name: string;
+  }[];
 };
 
 function CreateAttempt({
   branches,
   taskAttempts,
+  createAttemptExecutor,
   createAttemptBranch,
-  selectedProfile,
+  selectedExecutor,
   selectedBranch,
   fetchTaskAttempts,
   setIsInCreateAttemptMode,
   setCreateAttemptBranch,
-  setSelectedProfile,
-  availableProfiles,
+  setCreateAttemptExecutor,
+  availableExecutors,
 }: Props) {
-  const { task } = useContext(TaskDetailsContext);
+  const { task, projectId } = useContext(TaskDetailsContext);
   const { isAttemptRunning } = useContext(TaskAttemptDataContext);
+  const { isPlanningMode, canCreateTask } = useTaskPlan();
+  const { config } = useConfig();
+  const { t } = useTranslation();
 
   const [showCreateAttemptConfirmation, setShowCreateAttemptConfirmation] =
     useState(false);
-
+  const [pendingExecutor, setPendingExecutor] = useState<string | undefined>(
+    undefined
+  );
   const [pendingBaseBranch, setPendingBaseBranch] = useState<
     string | undefined
   >(undefined);
 
   // Create attempt logic
   const actuallyCreateAttempt = useCallback(
-    async (profile: ProfileVariantLabel, baseBranch?: string) => {
-      const effectiveBaseBranch = baseBranch || selectedBranch;
-
-      if (!effectiveBaseBranch) {
-        throw new Error('Base branch is required to create an attempt');
+    async (executor?: string, baseBranch?: string) => {
+      try {
+        await attemptsApi.create(projectId!, task.id, {
+          executor: executor || selectedExecutor,
+          base_branch: baseBranch || selectedBranch,
+        });
+        fetchTaskAttempts();
+      } catch (error) {
+        // Optionally handle error
       }
-
-      await attemptsApi.create({
-        task_id: task.id,
-        profile_variant_label: profile,
-        base_branch: effectiveBaseBranch,
-      });
-      fetchTaskAttempts();
     },
-    [task.id, selectedProfile, selectedBranch, fetchTaskAttempts]
+    [projectId, task.id, selectedExecutor, selectedBranch, fetchTaskAttempts]
   );
 
   // Handler for Enter key or Start button
   const onCreateNewAttempt = useCallback(
-    (
-      profile: ProfileVariantLabel,
-      baseBranch?: string,
-      isKeyTriggered?: boolean
-    ) => {
+    (executor?: string, baseBranch?: string, isKeyTriggered?: boolean) => {
       if (task.status === 'todo' && isKeyTriggered) {
-        setSelectedProfile(profile);
+        setPendingExecutor(executor);
         setPendingBaseBranch(baseBranch);
         setShowCreateAttemptConfirmation(true);
       } else {
-        actuallyCreateAttempt(profile, baseBranch);
+        actuallyCreateAttempt(executor, baseBranch);
         setShowCreateAttemptConfirmation(false);
         setIsInCreateAttemptMode(false);
       }
@@ -110,11 +111,8 @@ function CreateAttempt({
       if (showCreateAttemptConfirmation) {
         handleConfirmCreateAttempt();
       } else {
-        if (!selectedProfile) {
-          return;
-        }
         onCreateNewAttempt(
-          selectedProfile,
+          createAttemptExecutor,
           createAttemptBranch || undefined,
           true
         );
@@ -129,17 +127,11 @@ function CreateAttempt({
   };
 
   const handleCreateAttempt = () => {
-    if (!selectedProfile) {
-      return;
-    }
-    onCreateNewAttempt(selectedProfile, createAttemptBranch || undefined);
+    onCreateNewAttempt(createAttemptExecutor, createAttemptBranch || undefined);
   };
 
   const handleConfirmCreateAttempt = () => {
-    if (!selectedProfile) {
-      return;
-    }
-    actuallyCreateAttempt(selectedProfile, pendingBaseBranch);
+    actuallyCreateAttempt(pendingExecutor, pendingBaseBranch);
     setShowCreateAttemptConfirmation(false);
     setIsInCreateAttemptMode(false);
   };
@@ -148,7 +140,7 @@ function CreateAttempt({
     <div className="p-4 bg-muted/20 rounded-lg border">
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold">Create Attempt</h3>
+          <h3 className="text-base font-semibold">{t('createAttemptComponent.title')}</h3>
           {taskAttempts.length > 0 && (
             <Button
               variant="ghost"
@@ -161,155 +153,81 @@ function CreateAttempt({
         </div>
         <div className="flex items-center w-4/5">
           <label className="text-xs font-medium text-muted-foreground">
-            Each time you start an attempt, a new session is initiated with your
-            selected coding agent, and a git worktree and corresponding task
-            branch are created.
+            {t('createAttemptComponent.description')}
           </label>
         </div>
+
+        {/* Plan warning when in planning mode without plan */}
+        {isPlanningMode && !canCreateTask && (
+          <div className="p-3 rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/20">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+              <p className="text-sm font-semibold text-orange-800 dark:text-orange-300">
+                {t('createAttemptComponent.planRequired')}
+              </p>
+            </div>
+            <p className="text-xs text-orange-700 dark:text-orange-400">
+              {t('createAttemptComponent.cannotStartAttempt')}
+            </p>
+          </div>
+        )}
 
         <div className="grid grid-cols-3 gap-3 items-end">
           {/* Step 1: Choose Base Branch */}
           <div className="space-y-1">
             <div className="flex items-center gap-1.5">
               <label className="text-xs font-medium text-muted-foreground">
-                Base branch <span className="text-red-500">*</span>
+                {t('createAttemptComponent.baseBranch')}
               </label>
             </div>
             <BranchSelector
               branches={branches}
               selectedBranch={createAttemptBranch}
               onBranchSelect={setCreateAttemptBranch}
-              placeholder="Select branch"
+              placeholder={t('createAttemptComponent.current')}
             />
           </div>
 
-          {/* Step 2: Choose Profile and Mode */}
+          {/* Step 2: Choose Coding Agent */}
           <div className="space-y-1">
             <div className="flex items-center gap-1.5">
               <label className="text-xs font-medium text-muted-foreground">
-                Profile
+                {t('createAttemptComponent.codingAgent')}
               </label>
             </div>
-            <div className="flex gap-2">
-              {availableProfiles && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 justify-between text-xs"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <Settings2 className="h-3 w-3" />
-                        <span className="truncate">
-                          {selectedProfile?.profile || 'Select profile'}
-                        </span>
-                      </div>
-                      <ArrowDown className="h-3 w-3" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-full">
-                    {availableProfiles.map((profile) => (
-                      <DropdownMenuItem
-                        key={profile.label}
-                        onClick={() => {
-                          setSelectedProfile({
-                            profile: profile.label,
-                            variant: null,
-                          });
-                        }}
-                        className={
-                          selectedProfile?.profile === profile.label
-                            ? 'bg-accent'
-                            : ''
-                        }
-                      >
-                        {profile.label}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-
-              {/* Show variant dropdown or disabled button */}
-              {(() => {
-                const currentProfile = availableProfiles?.find(
-                  (p) => p.label === selectedProfile?.profile
-                );
-                const hasVariants =
-                  currentProfile?.variants &&
-                  currentProfile.variants.length > 0;
-
-                if (hasVariants) {
-                  return (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-24 px-2 flex items-center justify-between text-xs"
-                        >
-                          <span className="truncate flex-1 text-left">
-                            {selectedProfile?.variant || 'Default'}
-                          </span>
-                          <ArrowDown className="h-3 w-3 ml-1 flex-shrink-0" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            if (selectedProfile) {
-                              setSelectedProfile({
-                                ...selectedProfile,
-                                variant: null,
-                              });
-                            }
-                          }}
-                          className={
-                            !selectedProfile?.variant ? 'bg-accent' : ''
-                          }
-                        >
-                          Default
-                        </DropdownMenuItem>
-                        {currentProfile.variants.map((variant) => (
-                          <DropdownMenuItem
-                            key={variant.label}
-                            onClick={() => {
-                              if (selectedProfile) {
-                                setSelectedProfile({
-                                  ...selectedProfile,
-                                  variant: variant.label,
-                                });
-                              }
-                            }}
-                            className={
-                              selectedProfile?.variant === variant.label
-                                ? 'bg-accent'
-                                : ''
-                            }
-                          >
-                            {variant.label}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  );
-                } else if (currentProfile) {
-                  // Show disabled button when profile exists but has no variants
-                  return (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-24 px-2 flex items-center justify-between text-xs"
-                      disabled
-                    >
-                      <span className="truncate flex-1 text-left">Default</span>
-                    </Button>
-                  );
-                }
-                return null;
-              })()}
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-between text-xs"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Settings2 className="h-3 w-3" />
+                    <span className="truncate">
+                      {availableExecutors.find(
+                        (e) => e.id === createAttemptExecutor
+                      )?.name || t('createAttemptComponent.selectAgent')}
+                    </span>
+                  </div>
+                  <ArrowDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-full">
+                {availableExecutors.map((executor) => (
+                  <DropdownMenuItem
+                    key={executor.id}
+                    onClick={() => setCreateAttemptExecutor(executor.id)}
+                    className={
+                      createAttemptExecutor === executor.id ? 'bg-accent' : ''
+                    }
+                  >
+                    {executor.name}
+                    {config?.executor.type === executor.id && ` ${t('createAttemptComponent.default')}`}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Step 3: Start Attempt */}
@@ -317,19 +235,29 @@ function CreateAttempt({
             <Button
               onClick={handleCreateAttempt}
               disabled={
-                !selectedProfile || !createAttemptBranch || isAttemptRunning
+                !createAttemptExecutor ||
+                isAttemptRunning ||
+                (isPlanningMode && !canCreateTask)
               }
               size="sm"
-              className={'w-full text-xs gap-2'}
+              className={`w-full text-xs gap-2 ${
+                isPlanningMode && !canCreateTask
+                  ? 'opacity-60 cursor-not-allowed bg-red-600 hover:bg-red-600'
+                  : ''
+              }`}
               title={
-                !createAttemptBranch
-                  ? 'Base branch is required'
-                  : !selectedProfile
-                    ? 'Coding agent is required'
-                    : undefined
+                isPlanningMode && !canCreateTask
+                  ? t('createAttemptComponent.planRequiredTooltip')
+                  : undefined
               }
             >
-              Start
+              {isPlanningMode && !canCreateTask && (
+                <AlertTriangle className="h-3 w-3 mr-1.5" />
+              )}
+              {!(isPlanningMode && !canCreateTask) && (
+                <Play className="h-3 w-3 mr-1.5" />
+              )}
+              {t('createAttemptComponent.start')}
             </Button>
           </div>
         </div>
@@ -342,10 +270,9 @@ function CreateAttempt({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Start New Attempt?</DialogTitle>
+            <DialogTitle>{t('createAttemptComponent.startNewAttemptTitle')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to start a new attempt for this task? This
-              will create a new session and branch.
+              {t('createAttemptComponent.startNewAttemptDescription')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -353,9 +280,9 @@ function CreateAttempt({
               variant="outline"
               onClick={() => setShowCreateAttemptConfirmation(false)}
             >
-              Cancel
+              {t('createAttemptComponent.cancel')}
             </Button>
-            <Button onClick={handleConfirmCreateAttempt}>Start</Button>
+            <Button onClick={handleConfirmCreateAttempt}>{t('createAttemptComponent.start')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
