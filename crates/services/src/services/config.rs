@@ -7,8 +7,6 @@ use strum_macros::EnumString;
 use ts_rs::TS;
 use utils::{assets::SoundAssets, cache_dir};
 
-// use crate::{SoundAssets, executor::ExecutorConfig};
-
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct EnvironmentInfo {

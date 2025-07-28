@@ -59,6 +59,56 @@ pub enum CodingAgentExecutors {
     // Codex,
 }
 
+impl CodingAgentExecutorType {
+    /// Get the JSON attribute path for MCP servers in the config file
+    /// Returns None if the executor doesn't support MCP
+    pub fn mcp_attribute_path(&self) -> Option<Vec<&'static str>> {
+        match self {
+            //ExecutorConfig::CharmOpencode => Some(vec!["mcpServers"]),
+            //ExecutorConfig::SstOpencode => Some(vec!["mcp"]),
+            Self::ClaudeCode => Some(vec!["mcpServers"]),
+            //ExecutorConfig::ClaudePlan => None, // Claude Plan shares Claude config
+            Self::Amp => Some(vec!["amp", "mcpServers"]), // Nested path for Amp
+            Self::Gemini => Some(vec!["mcpServers"]),
+            //ExecutorConfig::ClaudeCodeRouter => Some(vec!["mcpServers"]),
+            //ExecutorConfig::Aider => None, // Aider doesn't support MCP. https://github.com/Aider-AI/aider/issues/3314
+            //ExecutorConfig::Codex => None, // Codex uses TOML config, frontend doesn't handle TOML yet
+        }
+    }
+
+    pub fn supports_mcp(&self) -> bool {
+        self.mcp_attribute_path().is_some()
+    }
+
+    pub fn config_path(&self) -> Option<PathBuf> {
+        match self {
+            //ExecutorConfig::CharmOpencode => {
+            //dirs::home_dir().map(|home| home.join(".opencode.json"))
+            //}
+            Self::ClaudeCode => dirs::home_dir().map(|home| home.join(".claude.json")),
+            //ExecutorConfig::ClaudePlan => dirs::home_dir().map(|home| home.join(".claude.json")),
+            //ExecutorConfig::ClaudeCodeRouter => {
+            //dirs::home_dir().map(|home| home.join(".claude.json"))
+            //}
+            //ExecutorConfig::SstOpencode => {
+            //#[cfg(unix)]
+            //{
+            //xdg::BaseDirectories::with_prefix("opencode").get_config_file("opencode.json")
+            //}
+            //    #[cfg(not(unix))]
+            //    {
+            //        dirs::config_dir().map(|config| config.join("opencode").join("opencode.json"))
+            //    }
+            //ExecutorConfig::Aider => None,
+            //ExecutorConfig::Codex => {
+            //    dirs::home_dir().map(|home| home.join(".codex").join("config.toml"))
+            //}
+            Self::Amp => dirs::config_dir().map(|config| config.join("amp").join("settings.json")),
+            Self::Gemini => dirs::home_dir().map(|home| home.join(".gemini").join("settings.json")),
+        }
+    }
+}
+
 #[async_trait]
 #[enum_dispatch(CodingAgentExecutors)]
 pub trait StandardCodingAgentExecutor {
