@@ -280,27 +280,25 @@ export function TaskFormDialog({
           )}
 
           <div>
-            <Label htmlFor="task-title" className="text-sm font-medium">
-              Title
-            </Label>
-            <div className="relative mt-1.5">
-              <Input
-                id="task-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="What needs to be done?"
-                className="pr-10"
+            <div className="flex items-center justify-between">
+              <Label htmlFor="task-title" className="text-sm font-medium">
+                Title
+              </Label>
+              <SpeechToTextButton
+                onTranscript={(text) => setTitle(text)}
                 disabled={isSubmitting || isSubmittingAndStart}
-                autoFocus
+                taskType="title"
               />
-              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                <SpeechToTextButton
-                  onTranscript={(text) => setTitle(text)}
-                  disabled={isSubmitting || isSubmittingAndStart}
-                  taskType="title"
-                />
-              </div>
             </div>
+            <Input
+              id="task-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="What needs to be done?"
+              className="mt-1.5"
+              disabled={isSubmitting || isSubmittingAndStart}
+              autoFocus
+            />
           </div>
 
           <div>
@@ -311,7 +309,6 @@ export function TaskFormDialog({
               <SpeechToTextButton
                 onTranscript={(text) => setDescription(text)}
                 disabled={isSubmitting || isSubmittingAndStart}
-                className="mb-1"
                 taskType="description"
               />
             </div>
