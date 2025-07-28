@@ -5,7 +5,7 @@ use axum::{
 
 use crate::DeploymentImpl;
 
-// pub mod auth;
+pub mod auth;
 pub mod config;
 // pub mod filesystem;
 // pub mod github;
@@ -26,6 +26,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(task_attempts::router(&deployment))
         .merge(execution_processes::router(&deployment))
         .merge(task_templates::router(&deployment))
+        .merge(auth::auth_router(&deployment))
         .with_state(deployment);
 
     Router::new().nest("/api", base_routes).into_make_service()

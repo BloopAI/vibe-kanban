@@ -12,6 +12,7 @@ use db::{DBService, models::task_attempt::TaskAttemptError};
 use git2::Error as Git2Error;
 use serde_json::Value;
 use services::services::{
+    auth::{AuthError, AuthService},
     container::{ContainerError, ContainerService},
     git::{GitService, GitServiceError},
 };
@@ -32,6 +33,8 @@ pub enum DeploymentError {
     TaskAttempt(#[from] TaskAttemptError),
     #[error(transparent)]
     Container(#[from] ContainerError),
+    #[error(transparent)]
+    Auth(#[from] AuthError),
     #[error(transparent)]
     Other(#[from] AnyhowError),
 }
@@ -62,6 +65,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn analytics(&self) -> &Option<AnalyticsService>;
 
     fn container(&self) -> &impl ContainerService;
+
+    fn auth_service(&self) -> &AuthService;
 
     fn git(&self) -> &GitService;
 

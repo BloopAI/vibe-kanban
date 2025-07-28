@@ -5,6 +5,7 @@ use db::DBService;
 use deployment::{Deployment, DeploymentError};
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsService, generate_user_id},
+    auth::AuthService,
     config::Config,
     container::ContainerService,
     git::GitService,
@@ -30,6 +31,7 @@ pub struct LocalDeployment {
     container: LocalContainerService,
     git: GitService,
     process: ProcessService,
+    auth_service: AuthService,
 }
 
 #[async_trait]
@@ -44,6 +46,7 @@ impl Deployment for LocalDeployment {
         let msg_stores = Arc::new(RwLock::new(HashMap::new()));
         let container = LocalContainerService::new(db.clone(), git.clone(), msg_stores.clone());
         let process = ProcessService::new();
+        let auth_service = AuthService::new();
 
         Ok(Self {
             config,
@@ -55,6 +58,7 @@ impl Deployment for LocalDeployment {
             container,
             git,
             process,
+            auth_service,
         })
     }
 
@@ -84,6 +88,9 @@ impl Deployment for LocalDeployment {
 
     fn container(&self) -> &impl ContainerService {
         &self.container
+    }
+    fn auth_service(&self) -> &AuthService {
+        &self.auth_service
     }
 
     fn git(&self) -> &GitService {
