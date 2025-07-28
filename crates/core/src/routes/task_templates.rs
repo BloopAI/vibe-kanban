@@ -16,22 +16,30 @@ use crate::{middleware::load_task_template_middleware, DeploymentImpl};
 
 #[derive(Debug, Deserialize)]
 pub struct TaskTemplateQuery {
+    global: Option<bool>,
     project_id: Option<Uuid>,
 }
 
 pub async fn get_templates(
     State(deployment): State<DeploymentImpl>,
-    Query(query): Query<Option<TaskTemplateQuery>>,
+    Query(query): Query<TaskTemplateQuery>,
 ) -> Result<ResponseJson<ApiResponse<Vec<TaskTemplate>>>, DeploymentError> {
-    let templates = match query {
-        Some(query) => {
-            // If project_id is provided, return only templates for that project
-            // If project_id is None, return global templates
-            TaskTemplate::find_by_project_id(&deployment.db().pool, query.project_id).await?
+    let templates = match (query.global, query.project_id) {
+        // All templates: Global and project-specific
+        (None, None) => TaskTemplate::find_all(&deployment.db().pool).await?,
+        // Only global templates
+        (Some(true), None) => TaskTemplate::find_by_project_id(&deployment.db().pool, None).await?,
+        // Only project-specific templates
+        (None | Some(false), Some(project_id)) => {
+            TaskTemplate::find_by_project_id(&deployment.db().pool, Some(project_id)).await?
         }
-        None => {
-            // If no query, return all templates
-            TaskTemplate::find_all(&deployment.db().pool).await?
+        // No global templates, but project_id is None, return empty list
+        (Some(false), None) => vec![],
+        // Invalid combination: Cannot query both global and project-specific templates
+        (Some(_), Some(_)) => {
+            return Err(DeploymentError::Sqlx(SqlxError::InvalidArgument(
+                "Cannot query both global and project-specific templates".to_string(),
+            )));
         }
     };
     Ok(ResponseJson(ApiResponse::success(templates)))
