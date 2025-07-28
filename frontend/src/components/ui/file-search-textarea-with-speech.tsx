@@ -2,6 +2,7 @@ import { KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { SpeechToTextButton } from '@/components/ui/speech-to-text-button';
+import { useSpeechToText } from '@/hooks/useSpeechToText';
 import { projectsApi } from '@/lib/api';
 
 interface FileSearchResult {
@@ -42,6 +43,10 @@ export function FileSearchTextareaWithSpeech({
   speechLanguage,
   showSpeechButton = true,
 }: FileSearchTextareaWithSpeechProps) {
+  // Check if speech is supported in the browser
+  const { isSupported } = useSpeechToText();
+  const shouldShowSpeechButton = showSpeechButton && onSpeechTranscript && isSupported;
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FileSearchResult[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -252,12 +257,12 @@ export function FileSearchTextareaWithSpeech({
         rows={rows}
         disabled={disabled}
         className={`${className} ${
-          showSpeechButton && onSpeechTranscript ? 'pr-12' : ''
+          shouldShowSpeechButton ? 'pr-12' : ''
         }`} // Add right padding for speech button
         maxRows={maxRows}
       />
 
-      {showSpeechButton && onSpeechTranscript && (
+      {shouldShowSpeechButton && (
         <div className="absolute right-2 top-2">
           <SpeechToTextButton
             onTranscript={onSpeechTranscript}
