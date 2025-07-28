@@ -10,12 +10,14 @@ use axum::{
     Extension, Json, Router,
 };
 use db::models::project::{
-    CreateBranch, CreateProject, GitBranch, Project, ProjectWithBranch, SearchMatchType,
-    SearchResult, UpdateProject,
+    CreateProject, Project, ProjectWithBranch, SearchMatchType, SearchResult, UpdateProject,
 };
 use deployment::{Deployment, DeploymentError};
 use ignore::WalkBuilder;
-use services::services::config::{EditorConfig, EditorType};
+use services::services::{
+    config::{EditorConfig, EditorType},
+    git::{CreateBranch, GitBranch, GitService},
+};
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -37,15 +39,17 @@ pub async fn get_project(
 pub async fn get_project_with_branch(
     Extension(project): Extension<Project>,
 ) -> Result<ResponseJson<ApiResponse<ProjectWithBranch>>, DeploymentError> {
-    Ok(ResponseJson(ApiResponse::success(
-        project.with_branch_info(),
-    )))
+    let current_branch = GitService::new()
+        .get_current_branch(&project.git_repo_path)
+        .ok();
+    let project_with_branch = ProjectWithBranch::from_project(project, current_branch);
+    Ok(ResponseJson(ApiResponse::success(project_with_branch)))
 }
 
 pub async fn get_project_branches(
     Extension(project): Extension<Project>,
 ) -> Result<ResponseJson<ApiResponse<Vec<GitBranch>>>, DeploymentError> {
-    let branches = project.get_all_branches()?;
+    let branches = GitService::new().get_all_branches(&project.git_repo_path)?;
     Ok(ResponseJson(ApiResponse::success(branches)))
 }
 
@@ -67,7 +71,11 @@ pub async fn create_project_branch(
         )));
     }
 
-    match project.create_branch(&payload.name, payload.base_branch.as_deref()) {
+    match GitService::new().create_branch(
+        &project.git_repo_path,
+        &payload.name,
+        payload.base_branch.as_deref(),
+    ) {
         Ok(branch) => Ok(ResponseJson(ApiResponse::success(branch))),
         Err(e) => {
             tracing::error!(

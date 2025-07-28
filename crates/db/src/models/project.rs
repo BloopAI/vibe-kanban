@@ -61,6 +61,22 @@ pub struct ProjectWithBranch {
     pub updated_at: DateTime<Utc>,
 }
 
+impl ProjectWithBranch {
+    pub fn from_project(project: Project, current_branch: Option<String>) -> Self {
+        Self {
+            id: project.id,
+            name: project.name,
+            git_repo_path: project.git_repo_path,
+            setup_script: project.setup_script,
+            dev_script: project.dev_script,
+            cleanup_script: project.cleanup_script,
+            current_branch,
+            created_at: project.created_at,
+            updated_at: project.updated_at,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, TS)]
 #[ts(export)]
 pub struct SearchResult {
@@ -75,23 +91,6 @@ pub enum SearchMatchType {
     FileName,
     DirectoryName,
     FullPath,
-}
-
-#[derive(Debug, Serialize, TS)]
-#[ts(export)]
-pub struct GitBranch {
-    pub name: String,
-    pub is_current: bool,
-    pub is_remote: bool,
-    #[ts(type = "Date")]
-    pub last_commit_date: DateTime<Utc>,
-}
-
-#[derive(Debug, Deserialize, TS)]
-#[ts(export)]
-pub struct CreateBranch {
-    pub name: String,
-    pub base_branch: Option<String>,
 }
 
 impl Project {
@@ -204,150 +203,5 @@ impl Project {
         .await?;
 
         Ok(result.count > 0)
-    }
-
-    pub fn get_current_branch(&self) -> Result<String, git2::Error> {
-        let repo = Repository::open(&self.git_repo_path)?;
-        let head = repo.head()?;
-
-        if let Some(branch_name) = head.shorthand() {
-            Ok(branch_name.to_string())
-        } else {
-            Ok("HEAD".to_string())
-        }
-    }
-
-    pub fn with_branch_info(self) -> ProjectWithBranch {
-        let current_branch = self.get_current_branch().ok();
-
-        ProjectWithBranch {
-            id: self.id,
-            name: self.name,
-            git_repo_path: self.git_repo_path,
-            setup_script: self.setup_script,
-            dev_script: self.dev_script,
-            cleanup_script: self.cleanup_script,
-            current_branch,
-            created_at: self.created_at,
-            updated_at: self.updated_at,
-        }
-    }
-
-    pub fn get_all_branches(&self) -> Result<Vec<GitBranch>, git2::Error> {
-        let repo = Repository::open(&self.git_repo_path)?;
-        let current_branch = self.get_current_branch().unwrap_or_default();
-        let mut branches = Vec::new();
-
-        // Helper function to get last commit date for a branch
-        let get_last_commit_date = |branch: &git2::Branch| -> Result<DateTime<Utc>, git2::Error> {
-            if let Some(target) = branch.get().target() {
-                if let Ok(commit) = repo.find_commit(target) {
-                    let timestamp = commit.time().seconds();
-                    return Ok(DateTime::from_timestamp(timestamp, 0).unwrap_or_else(Utc::now));
-                }
-            }
-            Ok(Utc::now()) // Default to now if we can't get the commit date
-        };
-
-        // Get local branches
-        let local_branches = repo.branches(Some(BranchType::Local))?;
-        for branch_result in local_branches {
-            let (branch, _) = branch_result?;
-            if let Some(name) = branch.name()? {
-                let last_commit_date = get_last_commit_date(&branch)?;
-                branches.push(GitBranch {
-                    name: name.to_string(),
-                    is_current: name == current_branch,
-                    is_remote: false,
-                    last_commit_date,
-                });
-            }
-        }
-
-        // Get remote branches
-        let remote_branches = repo.branches(Some(BranchType::Remote))?;
-        for branch_result in remote_branches {
-            let (branch, _) = branch_result?;
-            if let Some(name) = branch.name()? {
-                // Skip remote HEAD references
-                if !name.ends_with("/HEAD") {
-                    let last_commit_date = get_last_commit_date(&branch)?;
-                    branches.push(GitBranch {
-                        name: name.to_string(),
-                        is_current: false,
-                        is_remote: true,
-                        last_commit_date,
-                    });
-                }
-            }
-        }
-
-        // Sort branches: current first, then by most recent commit date
-        branches.sort_by(|a, b| {
-            if a.is_current && !b.is_current {
-                std::cmp::Ordering::Less
-            } else if !a.is_current && b.is_current {
-                std::cmp::Ordering::Greater
-            } else {
-                // Sort by most recent commit date (newest first)
-                b.last_commit_date.cmp(&a.last_commit_date)
-            }
-        });
-
-        Ok(branches)
-    }
-
-    pub fn create_branch(
-        &self,
-        branch_name: &str,
-        base_branch: Option<&str>,
-    ) -> Result<GitBranch, git2::Error> {
-        let repo = Repository::open(&self.git_repo_path)?;
-
-        // Get the base branch reference - default to current branch if not specified
-        let base_branch_name = match base_branch {
-            Some(name) => name.to_string(),
-            None => self
-                .get_current_branch()
-                .unwrap_or_else(|_| "HEAD".to_string()),
-        };
-
-        // Find the base commit
-        let base_commit = if base_branch_name == "HEAD" {
-            repo.head()?.peel_to_commit()?
-        } else {
-            // Try to find the branch as local first, then remote
-            let base_ref = if let Ok(local_ref) =
-                repo.find_reference(&format!("refs/heads/{}", base_branch_name))
-            {
-                local_ref
-            } else if let Ok(remote_ref) =
-                repo.find_reference(&format!("refs/remotes/{}", base_branch_name))
-            {
-                remote_ref
-            } else {
-                return Err(git2::Error::from_str(&format!(
-                    "Base branch '{}' not found",
-                    base_branch_name
-                )));
-            };
-            base_ref.peel_to_commit()?
-        };
-
-        // Create the new branch
-        let _new_branch = repo.branch(branch_name, &base_commit, false)?;
-
-        // Get the commit date for the new branch (same as base commit)
-        let last_commit_date = {
-            let timestamp = base_commit.time().seconds();
-            DateTime::from_timestamp(timestamp, 0).unwrap_or_else(Utc::now)
-        };
-
-        Ok(GitBranch {
-            name: branch_name.to_string(),
-            is_current: false,
-            is_remote: false,
-            last_commit_date,
-        })
     }
 }
