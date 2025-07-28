@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileSearchTextareaWithSpeech } from '@/components/ui/file-search-textarea-with-speech';
 import { useContext, useMemo, useState } from 'react';
 import { attemptsApi } from '@/lib/api.ts';
+import { useConfig } from '@/components/config-provider';
 import {
   TaskAttemptDataContext,
   TaskDetailsContext,
@@ -12,6 +13,7 @@ import {
 import { Loader } from '@/components/ui/loader';
 
 export function TaskFollowUpSection() {
+  const { config } = useConfig();
   const { task, projectId } = useContext(TaskDetailsContext);
   const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
   const { attemptData, fetchAttemptData, isAttemptRunning } = useContext(
@@ -109,6 +111,7 @@ export function TaskFollowUpSection() {
                 disabled={!canSendFollowUp}
                 speechDisabled={!canSendFollowUp || isSendingFollowUp}
                 speechTaskType="description"
+                showSpeechButton={config?.speech_enabled ?? false}
                 projectId={projectId}
                 rows={1}
                 maxRows={6}

@@ -292,6 +292,7 @@ export function TaskFormDialog({
               disabled={isSubmitting || isSubmittingAndStart}
               speechDisabled={isSubmitting || isSubmittingAndStart}
               speechTaskType="title"
+              showSpeechButton={config?.speech_enabled ?? false}
               autoFocus
             />
           </div>
@@ -311,6 +312,7 @@ export function TaskFormDialog({
               disabled={isSubmitting || isSubmittingAndStart}
               speechDisabled={isSubmitting || isSubmittingAndStart}
               speechTaskType="description"
+              showSpeechButton={config?.speech_enabled ?? false}
               projectId={projectId}
             />
           </div>

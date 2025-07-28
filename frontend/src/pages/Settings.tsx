@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Key, Loader2, Volume2 } from 'lucide-react';
+import { Key, Loader2, Volume2, Mic } from 'lucide-react';
 import type { EditorType, SoundFile, ThemeMode } from 'shared/types';
 import {
   EDITOR_LABELS,
@@ -283,6 +283,44 @@ export function Settings() {
                   <p className="text-sm text-muted-foreground">
                     Enter the command to run your custom editor. Use spaces for
                     arguments (e.g., "code --wait").
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mic className="h-5 w-5" />
+                Speech Input
+              </CardTitle>
+              <CardDescription>
+                Configure speech-to-text features for task input fields.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="speech-enabled"
+                  checked={config.speech_enabled}
+                  onCheckedChange={(checked: boolean) =>
+                    updateConfig({ speech_enabled: checked })
+                  }
+                />
+                <div className="space-y-0.5">
+                  <Label htmlFor="speech-enabled" className="cursor-pointer">
+                    Enable Speech Input
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Show speech-to-text buttons in task input fields. Speech recognition requires microphone access and internet connection.
+                  </p>
+                </div>
+              </div>
+              {!config.speech_enabled && (
+                <div className="ml-6 p-3 bg-muted/50 rounded-md">
+                  <p className="text-sm text-muted-foreground">
+                    Speech input is disabled by default. Enable it to use voice input for creating and editing tasks.
                   </p>
                 </div>
               )}
