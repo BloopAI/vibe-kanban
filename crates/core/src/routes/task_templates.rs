@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Query, State},
     middleware::from_fn_with_state,
     response::Json as ResponseJson,
     routing::get,
@@ -7,36 +7,34 @@ use axum::{
 };
 use db::models::task_template::{CreateTaskTemplate, TaskTemplate, UpdateTaskTemplate};
 use deployment::{Deployment, DeploymentError};
+use serde::Deserialize;
 use sqlx::Error as SqlxError;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{middleware::load_task_template_middleware, DeploymentImpl};
 
-pub async fn list_templates(
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<Vec<TaskTemplate>>>, DeploymentError> {
-    Ok(ResponseJson(ApiResponse::success(
-        TaskTemplate::find_all(&deployment.db().pool).await?,
-    )))
+#[derive(Debug, Deserialize)]
+pub struct TaskTemplateQuery {
+    project_id: Option<Uuid>,
 }
 
-// TODO merge with list_templates
-pub async fn list_project_templates(
+pub async fn get_templates(
     State(deployment): State<DeploymentImpl>,
-    Path(project_id): Path<Uuid>,
+    Query(query): Query<Option<TaskTemplateQuery>>,
 ) -> Result<ResponseJson<ApiResponse<Vec<TaskTemplate>>>, DeploymentError> {
-    Ok(ResponseJson(ApiResponse::success(
-        TaskTemplate::find_by_project_id(&deployment.db().pool, Some(project_id)).await?,
-    )))
-}
-
-pub async fn list_global_templates(
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<Vec<TaskTemplate>>>, DeploymentError> {
-    Ok(ResponseJson(ApiResponse::success(
-        TaskTemplate::find_by_project_id(&deployment.db().pool, None).await?,
-    )))
+    let templates = match query {
+        Some(query) => {
+            // If project_id is provided, return only templates for that project
+            // If project_id is None, return global templates
+            TaskTemplate::find_by_project_id(&deployment.db().pool, query.project_id).await?
+        }
+        None => {
+            // If no query, return all templates
+            TaskTemplate::find_all(&deployment.db().pool).await?
+        }
+    };
+    Ok(ResponseJson(ApiResponse::success(templates)))
 }
 
 pub async fn get_template(
@@ -90,11 +88,8 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         ));
 
     let inner = Router::new()
-        .route("/", get(list_templates).post(create_template))
-        .nest("/{template_id}", task_template_router)
-        .route("/{project_id}/templates", get(list_project_templates))
-        .route("/global", get(list_global_templates));
+        .route("/", get(get_templates).post(create_template))
+        .nest("/{template_id}", task_template_router);
 
-    // mount under /templates
     Router::new().nest("/templates", inner)
 }
