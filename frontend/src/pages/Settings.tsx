@@ -315,6 +315,9 @@ export function Settings() {
                   <p className="text-sm text-muted-foreground">
                     Show speech-to-text buttons in task input fields. Speech recognition requires microphone access and internet connection.
                   </p>
+                  <p className="text-sm text-amber-600 dark:text-amber-400">
+                    ⚠️ Speech input only works with Chrome and other browsers that support the Web Speech API.
+                  </p>
                 </div>
               </div>
               {!config.speech_enabled && (
