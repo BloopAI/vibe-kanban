@@ -4,7 +4,9 @@ use axum::{
     middleware::Next,
     response::Response,
 };
-use db::models::{project::Project, task::Task, task_attempt::TaskAttempt};
+use db::models::{
+    project::Project, task::Task, task_attempt::TaskAttempt, task_template::TaskTemplate,
+};
 use deployment::Deployment;
 use uuid::Uuid;
 
@@ -176,31 +178,30 @@ pub async fn load_task_attempt_middleware(
 //     Ok(next.run(request).await)
 // }
 
-// TODO: fix
 // Middleware that loads and injects TaskTemplate based on the template_id path parameter
-// pub async fn load_task_template_middleware(
-//     State(deployment): State<DeploymentImpl>,
-//     Path(template_id): Path<Uuid>,
-//     request: axum::extract::Request,
-//     next: Next,
-// ) -> Result<Response, StatusCode> {
-//     // Load the task template from the database
-//     let task_template = match TaskTemplate::find_by_id(&deployment.db().pool, template_id).await {
-//         Ok(Some(template)) => template,
-//         Ok(None) => {
-//             tracing::warn!("TaskTemplate {} not found", template_id);
-//             return Err(StatusCode::NOT_FOUND);
-//         }
-//         Err(e) => {
-//             tracing::error!("Failed to fetch task template {}: {}", template_id, e);
-//             return Err(StatusCode::INTERNAL_SERVER_ERROR);
-//         }
-//     };
+pub async fn load_task_template_middleware(
+    State(deployment): State<DeploymentImpl>,
+    Path(template_id): Path<Uuid>,
+    request: axum::extract::Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    // Load the task template from the database
+    let task_template = match TaskTemplate::find_by_id(&deployment.db().pool, template_id).await {
+        Ok(Some(template)) => template,
+        Ok(None) => {
+            tracing::warn!("TaskTemplate {} not found", template_id);
+            return Err(StatusCode::NOT_FOUND);
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch task template {}: {}", template_id, e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
 
-//     // Insert the task template as an extension
-//     let mut request = request;
-//     request.extensions_mut().insert(task_template);
+    // Insert the task template as an extension
+    let mut request = request;
+    request.extensions_mut().insert(task_template);
 
-//     // Continue with the next middleware/handler
-//     Ok(next.run(request).await)
-// }
+    // Continue with the next middleware/handler
+    Ok(next.run(request).await)
+}

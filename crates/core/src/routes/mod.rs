@@ -12,9 +12,9 @@ pub mod config;
 pub mod health;
 pub mod projects;
 // pub mod stream;
-pub mod task_attempts;
-// pub mod task_templates;
 pub mod execution_processes;
+pub mod task_attempts;
+pub mod task_templates;
 pub mod tasks;
 
 pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
@@ -26,6 +26,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(tasks::router(&deployment))
         .merge(task_attempts::router(&deployment))
         .merge(execution_processes::router(&deployment))
+        .merge(task_templates::router(&deployment))
         .with_state(deployment);
 
     Router::new().nest("/api", base_routes).into_make_service()

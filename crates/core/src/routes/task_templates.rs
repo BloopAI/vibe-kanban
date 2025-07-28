@@ -1,147 +1,100 @@
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
-    response::IntoResponse,
-    Extension, Json,
+    middleware::from_fn_with_state,
+    response::Json as ResponseJson,
+    routing::get,
+    Extension, Json, Router,
 };
+use db::models::task_template::{CreateTaskTemplate, TaskTemplate, UpdateTaskTemplate};
+use deployment::{Deployment, DeploymentError};
+use sqlx::Error as SqlxError;
+use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{
-    app_state::AppState,
-    models::{
-        api_response::ApiResponse,
-        task_template::{CreateTaskTemplate, TaskTemplate, UpdateTaskTemplate},
-    },
-};
+use crate::{middleware::load_task_template_middleware, DeploymentImpl};
 
 pub async fn list_templates(
-    State(state): State<AppState>,
-) -> Result<impl IntoResponse, (StatusCode, Json<ApiResponse<()>>)> {
-    match TaskTemplate::find_all(&state.db_pool).await {
-        Ok(templates) => Ok(Json(ApiResponse::success(templates))),
-        Err(e) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ApiResponse::error(&format!(
-                "Failed to fetch templates: {}",
-                e
-            ))),
-        )),
-    }
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<TaskTemplate>>>, DeploymentError> {
+    Ok(ResponseJson(ApiResponse::success(
+        TaskTemplate::find_all(&deployment.db().pool).await?,
+    )))
 }
 
+// TODO merge with list_templates
 pub async fn list_project_templates(
-    State(state): State<AppState>,
+    State(deployment): State<DeploymentImpl>,
     Path(project_id): Path<Uuid>,
-) -> Result<impl IntoResponse, (StatusCode, Json<ApiResponse<()>>)> {
-    match TaskTemplate::find_by_project_id(&state.db_pool, Some(project_id)).await {
-        Ok(templates) => Ok(Json(ApiResponse::success(templates))),
-        Err(e) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ApiResponse::error(&format!(
-                "Failed to fetch templates: {}",
-                e
-            ))),
-        )),
-    }
+) -> Result<ResponseJson<ApiResponse<Vec<TaskTemplate>>>, DeploymentError> {
+    Ok(ResponseJson(ApiResponse::success(
+        TaskTemplate::find_by_project_id(&deployment.db().pool, Some(project_id)).await?,
+    )))
 }
 
 pub async fn list_global_templates(
-    State(state): State<AppState>,
-) -> Result<impl IntoResponse, (StatusCode, Json<ApiResponse<()>>)> {
-    match TaskTemplate::find_by_project_id(&state.db_pool, None).await {
-        Ok(templates) => Ok(Json(ApiResponse::success(templates))),
-        Err(e) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ApiResponse::error(&format!(
-                "Failed to fetch global templates: {}",
-                e
-            ))),
-        )),
-    }
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<TaskTemplate>>>, DeploymentError> {
+    Ok(ResponseJson(ApiResponse::success(
+        TaskTemplate::find_by_project_id(&deployment.db().pool, None).await?,
+    )))
 }
 
 pub async fn get_template(
     Extension(template): Extension<TaskTemplate>,
-) -> Result<impl IntoResponse, (StatusCode, Json<ApiResponse<()>>)> {
+) -> Result<ResponseJson<ApiResponse<TaskTemplate>>, DeploymentError> {
     Ok(Json(ApiResponse::success(template)))
 }
 
 pub async fn create_template(
-    State(state): State<AppState>,
+    State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateTaskTemplate>,
-) -> Result<impl IntoResponse, (StatusCode, Json<ApiResponse<()>>)> {
-    match TaskTemplate::create(&state.db_pool, &payload).await {
-        Ok(template) => Ok((StatusCode::CREATED, Json(ApiResponse::success(template)))),
-        Err(e) => {
-            if e.to_string().contains("UNIQUE constraint failed") {
-                Err((
-                    StatusCode::CONFLICT,
-                    Json(ApiResponse::error(
-                        "A template with this name already exists in this scope",
-                    )),
-                ))
-            } else {
-                Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(ApiResponse::error(&format!(
-                        "Failed to create template: {}",
-                        e
-                    ))),
-                ))
-            }
-        }
-    }
+) -> Result<ResponseJson<ApiResponse<TaskTemplate>>, DeploymentError> {
+    Ok(ResponseJson(ApiResponse::success(
+        TaskTemplate::create(&deployment.db().pool, &payload).await?,
+    )))
 }
 
 pub async fn update_template(
     Extension(template): Extension<TaskTemplate>,
-    State(state): State<AppState>,
+    State(deployment): State<DeploymentImpl>,
     Json(payload): Json<UpdateTaskTemplate>,
-) -> Result<impl IntoResponse, (StatusCode, Json<ApiResponse<()>>)> {
-    match TaskTemplate::update(&state.db_pool, template.id, &payload).await {
-        Ok(template) => Ok(Json(ApiResponse::success(template))),
-        Err(e) => {
-            if matches!(e, sqlx::Error::RowNotFound) {
-                Err((
-                    StatusCode::NOT_FOUND,
-                    Json(ApiResponse::error("Template not found")),
-                ))
-            } else if e.to_string().contains("UNIQUE constraint failed") {
-                Err((
-                    StatusCode::CONFLICT,
-                    Json(ApiResponse::error(
-                        "A template with this name already exists in this scope",
-                    )),
-                ))
-            } else {
-                Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(ApiResponse::error(&format!(
-                        "Failed to update template: {}",
-                        e
-                    ))),
-                ))
-            }
-        }
-    }
+) -> Result<ResponseJson<ApiResponse<TaskTemplate>>, DeploymentError> {
+    Ok(ResponseJson(ApiResponse::success(
+        TaskTemplate::update(&deployment.db().pool, template.id, &payload).await?,
+    )))
 }
 
 pub async fn delete_template(
     Extension(template): Extension<TaskTemplate>,
-    State(state): State<AppState>,
-) -> Result<impl IntoResponse, (StatusCode, Json<ApiResponse<()>>)> {
-    match TaskTemplate::delete(&state.db_pool, template.id).await {
-        Ok(0) => Err((
-            StatusCode::NOT_FOUND,
-            Json(ApiResponse::error("Template not found")),
-        )),
-        Ok(_) => Ok(Json(ApiResponse::success(()))),
-        Err(e) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ApiResponse::error(&format!(
-                "Failed to delete template: {}",
-                e
-            ))),
-        )),
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<()>>, DeploymentError> {
+    let rows_affected = TaskTemplate::delete(&deployment.db().pool, template.id).await?;
+    if rows_affected == 0 {
+        Err(DeploymentError::Sqlx(SqlxError::RowNotFound))
+    } else {
+        Ok(ResponseJson(ApiResponse::success(())))
     }
+}
+
+pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
+    let task_template_router = Router::new()
+        .route(
+            "/",
+            get(get_template)
+                .put(update_template)
+                .delete(delete_template),
+        )
+        .layer(from_fn_with_state(
+            deployment.clone(),
+            load_task_template_middleware,
+        ));
+
+    let inner = Router::new()
+        .route("/", get(list_templates).post(create_template))
+        .nest("/{template_id}", task_template_router)
+        .route("/{project_id}/templates", get(list_project_templates))
+        .route("/global", get(list_global_templates));
+
+    // mount under /templates
+    Router::new().nest("/templates", inner)
 }
