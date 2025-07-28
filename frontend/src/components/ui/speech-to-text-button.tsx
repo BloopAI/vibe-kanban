@@ -14,6 +14,7 @@ interface SpeechToTextButtonProps {
   disabled?: boolean;
   className?: string;
   taskType?: 'title' | 'description';
+  language?: string;
 }
 
 export function SpeechToTextButton({
@@ -21,6 +22,7 @@ export function SpeechToTextButton({
   disabled = false,
   className = '',
   taskType,
+  language,
 }: SpeechToTextButtonProps) {
   const [accumulatedText, setAccumulatedText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -37,6 +39,7 @@ export function SpeechToTextButton({
   } = useSpeechToText({
     continuous: true,
     interimResults: true,
+    language: language || navigator.language,
   });
 
   // Process speech with Anthropic API
@@ -56,6 +59,7 @@ export function SpeechToTextButton({
         body: JSON.stringify({
           transcript: rawTranscript,
           task_type: taskType,
+          language: language || navigator.language,
         }),
       });
 

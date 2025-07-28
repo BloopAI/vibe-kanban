@@ -13,6 +13,7 @@ use crate::{app_state::AppState, models::ApiResponse, utils::claude_config::get_
 pub struct ProcessSpeechRequest {
     pub transcript: String,
     pub task_type: Option<TaskType>,
+    pub language: Option<String>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -37,14 +38,25 @@ pub async fn process_speech_text(
     
     // If no API key is provided, return the original transcript
     let enhanced_text = if let Some(api_key) = api_key {
+        // Determine language context
+        let language_context = match payload.language.as_deref() {
+            Some(lang) if lang.starts_with("de") => "The text is in German. Please maintain German language in your response.",
+            Some(lang) if lang.starts_with("fr") => "The text is in French. Please maintain French language in your response.",
+            Some(lang) if lang.starts_with("es") => "The text is in Spanish. Please maintain Spanish language in your response.",
+            Some(lang) if lang.starts_with("it") => "The text is in Italian. Please maintain Italian language in your response.",
+            _ => "The text is in English.",
+        };
+
         // Create a prompt based on task type
         let prompt = match payload.task_type {
             Some(TaskType::Title) => {
                 format!(
                     "Transform this speech transcript into a clear, concise task title. \
-                    Make it actionable and specific. Keep it under 80 characters if possible.\n\n\
+                    Make it actionable and specific. Keep it under 80 characters if possible. \
+                    {}\n\n\
                     Transcript: \"{}\"\n\n\
                     Return only the improved title, nothing else.",
+                    language_context,
                     payload.transcript
                 )
             }
@@ -52,18 +64,22 @@ pub async fn process_speech_text(
                 format!(
                     "Transform this speech transcript into a well-structured task description. \
                     Fix any grammar issues, organize the content clearly, and make it actionable. \
-                    Include relevant details while keeping it concise.\n\n\
+                    Include relevant details while keeping it concise. \
+                    {}\n\n\
                     Transcript: \"{}\"\n\n\
                     Return only the improved description, nothing else.",
+                    language_context,
                     payload.transcript
                 )
             }
             None => {
                 format!(
                     "Improve this speech transcript by fixing grammar, organizing the content, \
-                    and making it more readable while preserving the original meaning.\n\n\
+                    and making it more readable while preserving the original meaning. \
+                    {}\n\n\
                     Transcript: \"{}\"\n\n\
                     Return only the improved text, nothing else.",
+                    language_context,
                     payload.transcript
                 )
             }
