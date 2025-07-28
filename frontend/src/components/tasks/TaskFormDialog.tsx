@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Globe2, AlertTriangle } from 'lucide-react';
-import { SpeechToTextButton } from '@/components/ui/speech-to-text-button';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -8,8 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
+import { InputWithSpeech } from '@/components/ui/input-with-speech';
+import { FileSearchTextareaWithSpeech } from '@/components/ui/file-search-textarea-with-speech';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -280,46 +279,38 @@ export function TaskFormDialog({
           )}
 
           <div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="task-title" className="text-sm font-medium">
-                Title
-              </Label>
-              <SpeechToTextButton
-                onTranscript={(text) => setTitle(text)}
-                disabled={isSubmitting || isSubmittingAndStart}
-                taskType="title"
-              />
-            </div>
-            <Input
+            <Label htmlFor="task-title" className="text-sm font-medium">
+              Title
+            </Label>
+            <InputWithSpeech
               id="task-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              onSpeechTranscript={(text) => setTitle(text)}
               placeholder="What needs to be done?"
               className="mt-1.5"
               disabled={isSubmitting || isSubmittingAndStart}
+              speechDisabled={isSubmitting || isSubmittingAndStart}
+              speechTaskType="title"
               autoFocus
             />
           </div>
 
           <div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="task-description" className="text-sm font-medium">
-                Description
-              </Label>
-              <SpeechToTextButton
-                onTranscript={(text) => setDescription(text)}
-                disabled={isSubmitting || isSubmittingAndStart}
-                taskType="description"
-              />
-            </div>
-            <FileSearchTextarea
+            <Label htmlFor="task-description" className="text-sm font-medium">
+              Description
+            </Label>
+            <FileSearchTextareaWithSpeech
               value={description}
               onChange={setDescription}
+              onSpeechTranscript={(text) => setDescription(text)}
               rows={3}
               maxRows={8}
               placeholder="Add more details (optional). Type @ to search files or use the microphone."
               className="mt-1.5"
               disabled={isSubmitting || isSubmittingAndStart}
+              speechDisabled={isSubmitting || isSubmittingAndStart}
+              speechTaskType="description"
               projectId={projectId}
             />
           </div>

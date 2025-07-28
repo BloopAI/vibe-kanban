@@ -102,7 +102,7 @@ export function SpeechToTextButton({
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               disabled
               className={`${className} opacity-50`}
@@ -123,11 +123,11 @@ export function SpeechToTextButton({
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
-            variant={isListening ? "default" : "outline"}
+            variant={isListening ? "default" : "ghost"}
             size="sm"
             onClick={handleToggle}
             disabled={disabled || isProcessing}
-            className={`${className} ${isListening ? 'bg-red-600 hover:bg-red-700 text-white' : ''}`}
+            className={`${className} ${isListening ? 'bg-red-600 hover:bg-red-700 text-white' : 'hover:bg-muted'}`}
           >
             {isProcessing ? (
               <Loader2 className="h-4 w-4 animate-spin" />

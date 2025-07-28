@@ -1,8 +1,7 @@
 import { AlertCircle, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
-import { SpeechToTextButton } from '@/components/ui/speech-to-text-button';
+import { FileSearchTextareaWithSpeech } from '@/components/ui/file-search-textarea-with-speech';
 import { useContext, useMemo, useState } from 'react';
 import { attemptsApi } from '@/lib/api.ts';
 import {
@@ -82,12 +81,16 @@ export function TaskFollowUpSection() {
             </Alert>
           )}
           <div className="flex gap-2 items-start">
-            <div className="flex-1 relative">
-              <FileSearchTextarea
+            <div className="flex-1">
+              <FileSearchTextareaWithSpeech
                 placeholder="Continue working on this task... Type @ to search files or use the microphone."
                 value={followUpMessage}
                 onChange={(value) => {
                   setFollowUpMessage(value);
+                  if (followUpError) setFollowUpError(null);
+                }}
+                onSpeechTranscript={(text) => {
+                  setFollowUpMessage(text);
                   if (followUpError) setFollowUpError(null);
                 }}
                 onKeyDown={(e) => {
@@ -102,22 +105,14 @@ export function TaskFollowUpSection() {
                     }
                   }
                 }}
-                className="min-h-[40px] resize-none pr-12"
+                className="min-h-[40px] resize-none"
                 disabled={!canSendFollowUp}
+                speechDisabled={!canSendFollowUp || isSendingFollowUp}
+                speechTaskType="description"
                 projectId={projectId}
                 rows={1}
                 maxRows={6}
               />
-              <div className="absolute right-2 top-2">
-                <SpeechToTextButton
-                  onTranscript={(text) => {
-                    setFollowUpMessage(text);
-                    if (followUpError) setFollowUpError(null);
-                  }}
-                  disabled={!canSendFollowUp || isSendingFollowUp}
-                  taskType="description"
-                />
-              </div>
             </div>
             <Button
               onClick={onSendFollowUp}
