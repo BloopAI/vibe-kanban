@@ -318,6 +318,9 @@ export function Settings() {
                   <p className="text-sm text-amber-600 dark:text-amber-400">
                     ⚠️ Speech input only works with Chrome and other browsers that support the Web Speech API.
                   </p>
+                  <p className="text-sm text-blue-600 dark:text-blue-400">
+                    💡 An Anthropic API key is required for speech text enhancement. Configure via <code className="px-1 py-0.5 bg-blue-100 dark:bg-blue-900 rounded">ANTHROPIC_API_KEY</code> environment variable or <code className="px-1 py-0.5 bg-blue-100 dark:bg-blue-900 rounded">~/.claude.json</code> file with <code className="px-1 py-0.5 bg-blue-100 dark:bg-blue-900 rounded">primaryApiKey</code> field. Without it, only raw transcription will be available.
+                  </p>
                 </div>
               </div>
               {!config.speech_enabled && (
