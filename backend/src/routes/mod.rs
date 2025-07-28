@@ -4,6 +4,7 @@ pub mod filesystem;
 pub mod github;
 pub mod health;
 pub mod projects;
+pub mod speech;
 pub mod stream;
 pub mod task_attempts;
 pub mod task_templates;

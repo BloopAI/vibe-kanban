@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Globe2, AlertTriangle } from 'lucide-react';
+import { SpeechToTextButton } from '@/components/ui/speech-to-text-button';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -282,27 +283,44 @@ export function TaskFormDialog({
             <Label htmlFor="task-title" className="text-sm font-medium">
               Title
             </Label>
-            <Input
-              id="task-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="What needs to be done?"
-              className="mt-1.5"
-              disabled={isSubmitting || isSubmittingAndStart}
-              autoFocus
-            />
+            <div className="relative mt-1.5">
+              <Input
+                id="task-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="What needs to be done?"
+                className="pr-10"
+                disabled={isSubmitting || isSubmittingAndStart}
+                autoFocus
+              />
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                <SpeechToTextButton
+                  onTranscript={(text) => setTitle(text)}
+                  disabled={isSubmitting || isSubmittingAndStart}
+                  taskType="title"
+                />
+              </div>
+            </div>
           </div>
 
           <div>
-            <Label htmlFor="task-description" className="text-sm font-medium">
-              Description
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="task-description" className="text-sm font-medium">
+                Description
+              </Label>
+              <SpeechToTextButton
+                onTranscript={(text) => setDescription(text)}
+                disabled={isSubmitting || isSubmittingAndStart}
+                className="mb-1"
+                taskType="description"
+              />
+            </div>
             <FileSearchTextarea
               value={description}
               onChange={setDescription}
               rows={3}
               maxRows={8}
-              placeholder="Add more details (optional). Type @ to search files."
+              placeholder="Add more details (optional). Type @ to search files or use the microphone."
               className="mt-1.5"
               disabled={isSubmitting || isSubmittingAndStart}
               projectId={projectId}
