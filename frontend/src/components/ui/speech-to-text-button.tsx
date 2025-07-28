@@ -27,6 +27,29 @@ export function SpeechToTextButton({
   const [accumulatedText, setAccumulatedText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   
+  // Helper function to get better language detection (for supported browsers only)
+  const getPreferredLanguage = () => {
+    if (language) {
+      return language;
+    }
+    
+    // Check for German language preference in user's languages
+    const navLangs = navigator.languages || [navigator.language];
+    
+    // Look for German language variants and prioritize them
+    const germanVariants = ['de', 'de-DE', 'de-AT', 'de-CH'];
+    const foundGerman = navLangs.find(lang => 
+      germanVariants.some(variant => lang.startsWith(variant))
+    );
+    
+    if (foundGerman) {
+      return 'de-DE'; // Use standardized German for better recognition
+    }
+    
+    // Default to first language preference or fallback
+    return navLangs[0] || 'en-US';
+  };
+
   const {
     isListening,
     transcript,
@@ -39,7 +62,7 @@ export function SpeechToTextButton({
   } = useSpeechToText({
     continuous: true,
     interimResults: true,
-    language: language || navigator.language,
+    language: getPreferredLanguage(),
   });
 
   // Process speech with Anthropic API
@@ -59,7 +82,7 @@ export function SpeechToTextButton({
         body: JSON.stringify({
           transcript: rawTranscript,
           task_type: taskType,
-          language: language || navigator.language,
+          language: getPreferredLanguage(),
         }),
       });
 
@@ -97,6 +120,8 @@ export function SpeechToTextButton({
   };
 
   if (!isSupported) {
+    const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
+    
     return (
       <TooltipProvider>
         <Tooltip>
@@ -111,7 +136,18 @@ export function SpeechToTextButton({
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Speech recognition not supported in this browser</p>
+            <div className="max-w-xs">
+              <p className="font-medium">Speech recognition not available</p>
+              {isFirefox ? (
+                <p className="text-xs mt-1">
+                  Firefox requires experimental features enabled. Use Chrome, Safari, or Edge for full speech support.
+                </p>
+              ) : (
+                <p className="text-xs mt-1">
+                  This browser doesn't support speech recognition. Try Chrome, Safari, or Edge.
+                </p>
+              )}
+            </div>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -148,8 +184,11 @@ export function SpeechToTextButton({
                 : 'Click to start voice input'
               }
             </p>
+            <p className="text-xs text-muted-foreground">
+              Language: {getPreferredLanguage()}
+            </p>
             {error && (
-              <p className="text-red-500 text-xs">{error}</p>
+              <p className="text-red-500 text-xs max-w-xs">{error}</p>
             )}
             {interimTranscript && (
               <p className="text-xs text-muted-foreground max-w-xs">

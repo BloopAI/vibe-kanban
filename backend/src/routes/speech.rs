@@ -38,13 +38,21 @@ pub async fn process_speech_text(
     
     // If no API key is provided, return the original transcript
     let enhanced_text = if let Some(api_key) = api_key {
-        // Determine language context
+        // Determine language context with better detection
         let language_context = match payload.language.as_deref() {
-            Some(lang) if lang.starts_with("de") => "The text is in German. Please maintain German language in your response.",
-            Some(lang) if lang.starts_with("fr") => "The text is in French. Please maintain French language in your response.",
-            Some(lang) if lang.starts_with("es") => "The text is in Spanish. Please maintain Spanish language in your response.",
-            Some(lang) if lang.starts_with("it") => "The text is in Italian. Please maintain Italian language in your response.",
-            _ => "The text is in English.",
+            Some(lang) if lang.starts_with("de") => {
+                "The text is in German (Deutsch). Please maintain German language in your response and follow German grammar rules."
+            },
+            Some(lang) if lang.starts_with("fr") => {
+                "The text is in French (Français). Please maintain French language in your response and follow French grammar rules."
+            },
+            Some(lang) if lang.starts_with("es") => {
+                "The text is in Spanish (Español). Please maintain Spanish language in your response and follow Spanish grammar rules."
+            },
+            Some(lang) if lang.starts_with("it") => {
+                "The text is in Italian (Italiano). Please maintain Italian language in your response and follow Italian grammar rules."
+            },
+            _ => "The text is in English. Please maintain English language in your response.",
         };
 
         // Create a prompt based on task type

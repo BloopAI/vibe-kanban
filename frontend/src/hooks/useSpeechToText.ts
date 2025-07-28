@@ -32,8 +32,20 @@ export function useSpeechToText(options: SpeechToTextOptions = {}): SpeechToText
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
+  // Helper function to detect Firefox
+  const isFirefox = () => {
+    return navigator.userAgent.toLowerCase().includes('firefox');
+  };
+
   useEffect(() => {
-    // Check if speech recognition is supported
+    // Disable speech recognition entirely for Firefox due to poor support
+    if (isFirefox()) {
+      setIsSupported(false);
+      setError('Speech recognition is not supported in Firefox. Please use Chrome, Safari, or Edge for voice input.');
+      return;
+    }
+
+    // Check if speech recognition is supported in other browsers
     const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
     
     if (!SpeechRecognition) {
@@ -74,7 +86,30 @@ export function useSpeechToText(options: SpeechToTextOptions = {}): SpeechToText
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      setError(`Speech recognition error: ${event.error}`);
+      let errorMessage = `Speech recognition error: ${event.error}`;
+      
+      // Provide user-friendly error messages
+      switch (event.error) {
+        case 'not-allowed':
+          errorMessage = 'Microphone access denied. Please allow microphone access and try again.';
+          break;
+        case 'no-speech':
+          errorMessage = 'No speech detected. Please try speaking again.';
+          break;
+        case 'audio-capture':
+          errorMessage = 'Audio capture failed. Please check your microphone and try again.';
+          break;
+        case 'network':
+          errorMessage = 'Network error. Speech recognition requires an internet connection.';
+          break;
+        case 'service-not-allowed':
+          errorMessage = 'Speech service not available. Please try again later.';
+          break;
+        default:
+          errorMessage = `Speech recognition failed: ${event.error}`;
+      }
+      
+      setError(errorMessage);
       setIsListening(false);
     };
 
