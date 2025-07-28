@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Mic, MicOff, AlertCircle, Loader2 } from 'lucide-react';
+import { Mic, MicOff, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSpeechToText } from '@/hooks/useSpeechToText';
 import {
@@ -13,7 +13,6 @@ interface SpeechToTextButtonProps {
   onTranscript: (text: string) => void;
   disabled?: boolean;
   className?: string;
-  taskType?: 'title' | 'description';
   language?: string;
 }
 
@@ -21,11 +20,9 @@ export function SpeechToTextButton({
   onTranscript,
   disabled = false,
   className = '',
-  taskType,
   language,
 }: SpeechToTextButtonProps) {
   const [accumulatedText, setAccumulatedText] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
   
   // Helper function to get better language detection (for supported browsers only)
   const getPreferredLanguage = () => {
@@ -65,49 +62,13 @@ export function SpeechToTextButton({
     language: getPreferredLanguage(),
   });
 
-  // Process speech with Anthropic API
-  const processSpeech = async (rawTranscript: string) => {
-    if (!taskType) {
-      onTranscript(rawTranscript);
-      return;
-    }
-
-    setIsProcessing(true);
-    try {
-      const response = await fetch('/api/process-speech', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          transcript: rawTranscript,
-          task_type: taskType,
-          language: getPreferredLanguage(),
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        onTranscript(data.data.enhanced_text);
-      } else {
-        // Fallback to raw transcript if API fails
-        onTranscript(rawTranscript);
-      }
-    } catch (error) {
-      // Fallback to raw transcript if API fails
-      onTranscript(rawTranscript);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   // Handle transcript updates
   useEffect(() => {
     if (transcript && transcript !== accumulatedText) {
       setAccumulatedText(transcript);
-      processSpeech(transcript);
+      onTranscript(transcript);
     }
-  }, [transcript, accumulatedText]);
+  }, [transcript, accumulatedText, onTranscript]);
 
   const handleToggle = () => {
     if (isListening) {
@@ -120,8 +81,6 @@ export function SpeechToTextButton({
   };
 
   if (!isSupported) {
-    const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
-    
     return (
       <TooltipProvider>
         <Tooltip>
@@ -138,15 +97,9 @@ export function SpeechToTextButton({
           <TooltipContent>
             <div className="max-w-xs">
               <p className="font-medium">Speech recognition not available</p>
-              {isFirefox ? (
-                <p className="text-xs mt-1">
-                  Firefox requires experimental features enabled. Use Chrome, Safari, or Edge for full speech support.
-                </p>
-              ) : (
-                <p className="text-xs mt-1">
-                  This browser doesn't support speech recognition. Try Chrome, Safari, or Edge.
-                </p>
-              )}
+              <p className="text-xs mt-1">
+                Speech recognition requires Chrome or other browsers with Web Speech API support.
+              </p>
             </div>
           </TooltipContent>
         </Tooltip>
@@ -162,12 +115,10 @@ export function SpeechToTextButton({
             variant={isListening ? "default" : "ghost"}
             size="sm"
             onClick={handleToggle}
-            disabled={disabled || isProcessing}
+            disabled={disabled}
             className={`${className} ${isListening ? 'bg-red-600 hover:bg-red-700 text-white' : 'hover:bg-muted'}`}
           >
-            {isProcessing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : isListening ? (
+            {isListening ? (
               <MicOff className="h-4 w-4" />
             ) : (
               <Mic className="h-4 w-4" />
@@ -177,9 +128,7 @@ export function SpeechToTextButton({
         <TooltipContent>
           <div className="space-y-1">
             <p>
-              {isProcessing
-                ? 'Processing speech with AI...'
-                : isListening 
+              {isListening 
                 ? 'Click to stop recording' 
                 : 'Click to start voice input'
               }

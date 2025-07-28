@@ -291,7 +291,6 @@ export function TaskFormDialog({
               className="mt-1.5"
               disabled={isSubmitting || isSubmittingAndStart}
               speechDisabled={isSubmitting || isSubmittingAndStart}
-              speechTaskType="title"
               showSpeechButton={config?.speech_enabled ?? false}
               autoFocus
             />
@@ -311,7 +310,6 @@ export function TaskFormDialog({
               className="mt-1.5"
               disabled={isSubmitting || isSubmittingAndStart}
               speechDisabled={isSubmitting || isSubmittingAndStart}
-              speechTaskType="description"
               showSpeechButton={config?.speech_enabled ?? false}
               projectId={projectId}
             />

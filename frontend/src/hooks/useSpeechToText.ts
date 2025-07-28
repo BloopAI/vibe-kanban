@@ -32,20 +32,8 @@ export function useSpeechToText(options: SpeechToTextOptions = {}): SpeechToText
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
-  // Helper function to detect Firefox
-  const isFirefox = () => {
-    return navigator.userAgent.toLowerCase().includes('firefox');
-  };
-
   useEffect(() => {
-    // Disable speech recognition entirely for Firefox due to poor support
-    if (isFirefox()) {
-      setIsSupported(false);
-      setError('Speech recognition is not supported in Firefox. Please use Chrome, Safari, or Edge for voice input.');
-      return;
-    }
-
-    // Check if speech recognition is supported in other browsers
+    // Check if speech recognition is supported (Chrome Web Speech API)
     const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
     
     if (!SpeechRecognition) {

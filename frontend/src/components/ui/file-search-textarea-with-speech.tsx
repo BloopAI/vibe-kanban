@@ -22,7 +22,6 @@ interface FileSearchTextareaWithSpeechProps {
   maxRows?: number;
   onSpeechTranscript?: (text: string) => void;
   speechDisabled?: boolean;
-  speechTaskType?: 'title' | 'description';
   speechLanguage?: string;
   showSpeechButton?: boolean;
 }
@@ -39,7 +38,6 @@ export function FileSearchTextareaWithSpeech({
   maxRows = 10,
   onSpeechTranscript,
   speechDisabled = false,
-  speechTaskType,
   speechLanguage,
   showSpeechButton = true,
 }: FileSearchTextareaWithSpeechProps) {
@@ -267,7 +265,6 @@ export function FileSearchTextareaWithSpeech({
           <SpeechToTextButton
             onTranscript={onSpeechTranscript}
             disabled={speechDisabled || disabled}
-            taskType={speechTaskType}
             language={speechLanguage}
             className="h-6 w-6 p-1"
           />

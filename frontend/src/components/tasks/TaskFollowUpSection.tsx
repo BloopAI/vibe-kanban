@@ -110,7 +110,6 @@ export function TaskFollowUpSection() {
                 className="min-h-[40px] resize-none"
                 disabled={!canSendFollowUp}
                 speechDisabled={!canSendFollowUp || isSendingFollowUp}
-                speechTaskType="description"
                 showSpeechButton={config?.speech_enabled ?? false}
                 projectId={projectId}
                 rows={1}
