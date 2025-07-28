@@ -19,7 +19,7 @@ use crate::DeploymentImpl;
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/info", get(get_user_system_info))
-        .route("/config", post(update_config))
+        .route("/config", get(get_config).put(update_config))
     // TODO: fix
     // .route("/mcp-servers", get(get_mcp_servers))
     // .route("/mcp-servers", post(update_mcp_servers))
@@ -68,6 +68,11 @@ async fn get_user_system_info(
     };
 
     ResponseJson(ApiResponse::success(user_system_info))
+}
+
+async fn get_config(State(deployment): State<DeploymentImpl>) -> ResponseJson<ApiResponse<Config>> {
+    let config = deployment.config().read().await;
+    ResponseJson(ApiResponse::success(config.clone()))
 }
 
 async fn update_config(
