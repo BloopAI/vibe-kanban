@@ -65,18 +65,47 @@ pub trait ContainerService {
         id: &Uuid,
     ) -> Option<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>> {
         if let Some(store) = self.get_msg_store_by_id(id).await {
-            Some(
+            // First try in-memory store
+            return Some(
                 store
-                    .history_plus_stream() // BoxStream<Result<LogMsg, io::Error>>
+                    .history_plus_stream()
                     .await
                     .filter(|msg| {
                         future::ready(matches!(msg, Ok(LogMsg::Stdout(..) | LogMsg::Stderr(..))))
                     })
-                    .map_ok(|m| m.to_sse_event()) // LogMsg -> Event
+                    .map_ok(|m| m.to_sse_event())
                     .boxed(),
-            )
+            );
         } else {
-            None
+            // Fallback: load from DB and create direct stream
+            let logs_record =
+                match ExecutionProcessLogs::find_by_execution_id(&self.db().pool, *id).await {
+                    Ok(Some(record)) => record,
+                    Ok(None) => return None, // No logs exist
+                    Err(e) => {
+                        tracing::error!("Failed to fetch logs for execution {}: {}", id, e);
+                        return None;
+                    }
+                };
+
+            let messages = match logs_record.parse_logs() {
+                Ok(msgs) => msgs,
+                Err(e) => {
+                    tracing::error!("Failed to parse logs for execution {}: {}", id, e);
+                    return None;
+                }
+            };
+
+            // Direct stream from parsed messages (no MsgStore overhead)
+            let stream = futures::stream::iter(
+                messages
+                    .into_iter()
+                    .filter(|m| matches!(m, LogMsg::Stdout(_) | LogMsg::Stderr(_)))
+                    .map(|m| Ok::<_, std::io::Error>(m.to_sse_event())),
+            )
+            .boxed();
+
+            Some(stream)
         }
     }
 
