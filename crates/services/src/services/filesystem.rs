@@ -33,6 +33,7 @@ pub struct DirectoryEntry {
     pub path: String,
     pub is_directory: bool,
     pub is_git_repo: bool,
+    pub last_modified: Option<u64>,
 }
 
 impl FilesystemService {
@@ -49,7 +50,7 @@ impl FilesystemService {
             .map(PathBuf::from)
             .unwrap_or_else(Self::get_home_directory);
         Self::verify_directory(&base_path)?;
-        let git_repos = WalkBuilder::new(&base_path)
+        let mut git_repos: Vec<DirectoryEntry> = WalkBuilder::new(&base_path)
             .follow_links(false)
             .hidden(true)
             .git_ignore(true)
@@ -63,14 +64,21 @@ impl FilesystemService {
                 if !entry.path().join(".git").exists() {
                     return None;
                 }
+                let last_modified = entry
+                    .metadata()
+                    .ok()
+                    .and_then(|m| m.modified().ok())
+                    .map(|t| t.elapsed().unwrap_or_default().as_secs());
                 Some(DirectoryEntry {
                     name: name.to_string(),
                     path: entry.path().to_string_lossy().to_string(),
                     is_directory: true,
                     is_git_repo: true,
+                    last_modified: last_modified,
                 })
             })
             .collect();
+        git_repos.sort_by_key(|entry| entry.last_modified.unwrap_or(0));
         Ok(git_repos)
     }
 
@@ -132,6 +140,7 @@ impl FilesystemService {
                     path: path.to_string_lossy().to_string(),
                     is_directory,
                     is_git_repo,
+                    last_modified: None,
                 });
             }
         }

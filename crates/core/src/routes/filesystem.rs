@@ -66,6 +66,6 @@ pub async fn list_git_repos(
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
-        .route("/filesystem/list", get(list_directory))
-        .route("/filesystem/list_git_repos", get(list_git_repos))
+        .route("/filesystem/directory", get(list_directory))
+        .route("/filesystem/git-repos", get(list_git_repos))
 }
