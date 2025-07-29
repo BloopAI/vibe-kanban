@@ -12,6 +12,7 @@ use super::{
     patch::ConversationPatch,
 };
 
+#[derive(Clone)]
 pub struct AmpLogNormalizer {}
 
 impl AmpLogNormalizer {

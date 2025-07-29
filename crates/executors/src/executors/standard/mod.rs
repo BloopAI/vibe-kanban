@@ -5,9 +5,12 @@ use command_group::AsyncGroupChild;
 use enum_dispatch::enum_dispatch;
 use serde::Serialize;
 
-use crate::executors::{
-    ExecutorError,
-    standard::{amp::AmpExecutor, gemini::GeminiExecutor},
+use crate::{
+    executors::{
+        ExecutorError,
+        standard::{amp::AmpExecutor, gemini::GeminiExecutor},
+    },
+    logs::{LogNormalizers, amp::AmpLogNormalizer, gemini::GeminiLogNormalizer},
 };
 
 pub mod amp;
@@ -34,6 +37,19 @@ pub trait StandardCodingAgentExecutor {
         prompt: &str,
         session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError>;
+}
+
+impl StandardCodingAgentExecutors {
+    pub fn to_normalizer(&self) -> LogNormalizers {
+        match self {
+            StandardCodingAgentExecutors::AmpExecutor(_) => {
+                LogNormalizers::AmpLogNormalizer(AmpLogNormalizer {})
+            }
+            StandardCodingAgentExecutors::GeminiExecutor(_) => {
+                LogNormalizers::GeminiLogNormalizer(GeminiLogNormalizer::new())
+            }
+        }
+    }
 }
 
 impl FromStr for StandardCodingAgentExecutors {

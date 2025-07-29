@@ -6,6 +6,7 @@ use utils::msg_store::MsgStore;
 
 use super::{LogNormalizer, NormalizedEntry, NormalizedEntryType, patch::ConversationPatch};
 
+#[derive(Clone)]
 pub struct GeminiLogNormalizer {}
 
 const MESSAGE_SIZE: usize = 8192; // ~8KB for new message boundaries
@@ -42,7 +43,7 @@ impl NormalizedLogProcessor {
 
             // Create entry for the finished part
             let finished_entry = NormalizedEntry {
-                timestamp: Some(chrono::Utc::now().to_rfc3339()),
+                timestamp: None,
                 entry_type: NormalizedEntryType::AssistantMessage,
                 content: finished,
                 metadata: None,
@@ -62,7 +63,7 @@ impl NormalizedLogProcessor {
         // 3. After all splitting, handle remaining buffer content
         if !self.buffer.is_empty() {
             let entry = NormalizedEntry {
-                timestamp: Some(chrono::Utc::now().to_rfc3339()),
+                timestamp: None,
                 entry_type: NormalizedEntryType::AssistantMessage,
                 content: self.buffer.clone(),
                 metadata: None,

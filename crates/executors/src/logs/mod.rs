@@ -1,14 +1,25 @@
 use std::{path::PathBuf, sync::Arc};
 
 use async_trait::async_trait;
+use enum_dispatch::enum_dispatch;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utils::msg_store::MsgStore;
+
+use self::{amp::AmpLogNormalizer, gemini::GeminiLogNormalizer};
 
 pub mod amp;
 pub mod gemini;
 pub mod patch;
 
+#[enum_dispatch]
+#[derive(Clone)]
+pub enum LogNormalizers {
+    AmpLogNormalizer,
+    GeminiLogNormalizer,
+}
+
+#[enum_dispatch(LogNormalizers)]
 pub trait LogNormalizer {
     fn normalize_logs(&self, _raw_logs_event_store: Arc<MsgStore>, _worktree_path: &PathBuf);
 }

@@ -12,7 +12,7 @@ use db::{
 };
 use executors::{
     actions::{ExecutorAction, ExecutorActions, script::ScriptContext},
-    logs::{LogNormalizer, amp::AmpLogNormalizer},
+    logs::{LogNormalizer, LogNormalizers},
 };
 use futures::{TryStreamExt, stream::select};
 use services::services::{
@@ -175,7 +175,7 @@ impl LocalContainerService {
         &self,
         id: Uuid,
         child: &mut AsyncGroupChild,
-        normalizer: Option<impl LogNormalizer + Send>,
+        normalizer: Option<LogNormalizers>,
         current_dir: &PathBuf,
     ) {
         let store = Arc::new(MsgStore::new());
@@ -268,14 +268,20 @@ impl ContainerService for LocalContainerService {
 
         // Create the child and stream, add to execution tracker
         let mut child = executor_action.spawn(&current_dir).await?;
-        let normalizer = AmpLogNormalizer {};
-        self.track_child_msgs_in_store(
-            execution_process.id,
-            &mut child,
-            Some(normalizer),
-            &current_dir,
-        )
-        .await;
+        let normalizer = match executor_action {
+            ExecutorActions::StandardCodingAgentRequest(request) => {
+                Some(request.executor.to_normalizer())
+            }
+            ExecutorActions::StandardFollowUpCodingAgentRequest(request) => {
+                Some(request.executor.to_normalizer())
+            }
+            ExecutorActions::ScriptRequest(_) => {
+                // Scripts don't need normalizers since they output raw text
+                None
+            }
+        };
+        self.track_child_msgs_in_store(execution_process.id, &mut child, normalizer, &current_dir)
+            .await;
 
         self.add_child_to_store(execution_process.id, child).await;
 
