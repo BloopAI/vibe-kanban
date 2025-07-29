@@ -20,9 +20,9 @@ impl WorktreeManager {
     /// Ensure worktree exists, recreating if necessary with proper synchronization
     /// This is the main entry point for ensuring a worktree exists and prevents race conditions
     pub async fn ensure_worktree_exists(
-        repo_path: String,
-        branch_name: String,
-        worktree_path: PathBuf,
+        repo_path: &Path,
+        branch_name: &str,
+        worktree_path: &Path,
     ) -> Result<(), GitError> {
         let path_str = worktree_path.to_string_lossy().to_string();
 
@@ -51,9 +51,9 @@ impl WorktreeManager {
 
     /// Internal worktree recreation function (always recreates)
     async fn recreate_worktree_internal(
-        repo_path: String,
-        branch_name: String,
-        worktree_path: PathBuf,
+        repo_path: &Path,
+        branch_name: &str,
+        worktree_path: &Path,
     ) -> Result<(), GitError> {
         let path_str = worktree_path.to_string_lossy().to_string();
         let branch_name_owned = branch_name.to_string();
@@ -106,10 +106,10 @@ impl WorktreeManager {
 
     /// Check if a worktree is properly set up (filesystem + git metadata)
     async fn is_worktree_properly_set_up(
-        repo_path: &str,
+        repo_path: &Path,
         worktree_path: &Path,
     ) -> Result<bool, GitError> {
-        let repo_path = repo_path.to_string();
+        let repo_path = repo_path.to_path_buf();
         let worktree_path = worktree_path.to_path_buf();
 
         tokio::task::spawn_blocking(move || {
@@ -199,11 +199,11 @@ impl WorktreeManager {
 
     /// Async version of comprehensive cleanup to avoid blocking the main runtime
     async fn comprehensive_worktree_cleanup_async(
-        git_repo_path: &str,
+        git_repo_path: &Path,
         worktree_path: &Path,
         worktree_name: &str,
     ) -> Result<(), GitError> {
-        let git_repo_path_owned = git_repo_path.to_string();
+        let git_repo_path_owned = git_repo_path.to_path_buf();
         let worktree_path_owned = worktree_path.to_path_buf();
         let worktree_name_owned = worktree_name.to_string();
 
@@ -230,7 +230,7 @@ impl WorktreeManager {
             Ok(Err(e)) => {
                 // Repository doesn't exist (likely deleted project), fall back to simple cleanup
                 debug!(
-                    "Failed to open repository at {}: {}. Falling back to simple cleanup for worktree at {}",
+                    "Failed to open repository at {:?}: {}. Falling back to simple cleanup for worktree at {}",
                     git_repo_path_owned,
                     e,
                     worktree_path_owned.display()
@@ -244,13 +244,13 @@ impl WorktreeManager {
 
     /// Create worktree with retry logic in non-blocking manner
     async fn create_worktree_with_retry(
-        git_repo_path: &str,
+        git_repo_path: &Path,
         branch_name: &str,
         worktree_path: &Path,
         worktree_name: &str,
         path_str: &str,
     ) -> Result<(), GitError> {
-        let git_repo_path = git_repo_path.to_string();
+        let git_repo_path = git_repo_path.to_path_buf();
         let branch_name = branch_name.to_string();
         let worktree_path = worktree_path.to_path_buf();
         let worktree_name = worktree_name.to_string();
@@ -357,20 +357,20 @@ impl WorktreeManager {
     }
 
     /// Get the git repository path
-    fn get_git_repo_path(repo: &Repository) -> Result<String, GitError> {
+    fn get_git_repo_path(repo: &Repository) -> Result<PathBuf, GitError> {
         repo.workdir()
             .ok_or_else(|| GitError::from_str("Repository has no working directory"))?
             .to_str()
             .ok_or_else(|| GitError::from_str("Repository path is not valid UTF-8"))
-            .map(|s| s.to_string())
+            .map(|s| PathBuf::from(s))
     }
 
     /// Force cleanup worktree metadata directory
     fn force_cleanup_worktree_metadata(
-        git_repo_path: &str,
+        git_repo_path: &Path,
         worktree_name: &str,
     ) -> Result<(), std::io::Error> {
-        let git_worktree_metadata_path = Path::new(git_repo_path)
+        let git_worktree_metadata_path = git_repo_path
             .join(".git")
             .join("worktrees")
             .join(worktree_name);
@@ -390,7 +390,7 @@ impl WorktreeManager {
     /// If git_repo_path is None, attempts to infer it from the worktree itself
     pub async fn cleanup_worktree(
         worktree_path: &Path,
-        git_repo_path: Option<&str>,
+        git_repo_path: Option<&Path>,
     ) -> Result<(), GitError> {
         let path_str = worktree_path.to_string_lossy().to_string();
 
@@ -408,7 +408,7 @@ impl WorktreeManager {
         if let Some(worktree_name) = worktree_path.file_name().and_then(|n| n.to_str()) {
             // Try to determine the git repo path if not provided
             let resolved_repo_path = if let Some(repo_path) = git_repo_path {
-                Some(repo_path.to_string())
+                Some(repo_path.to_path_buf())
             } else {
                 Self::infer_git_repo_path(worktree_path).await
             };
@@ -438,7 +438,7 @@ impl WorktreeManager {
     }
 
     /// Try to infer the git repository path from a worktree
-    async fn infer_git_repo_path(worktree_path: &Path) -> Option<String> {
+    async fn infer_git_repo_path(worktree_path: &Path) -> Option<PathBuf> {
         // Try using git rev-parse --git-common-dir from within the worktree
         let worktree_path_owned = worktree_path.to_path_buf();
 
@@ -457,12 +457,12 @@ impl WorktreeManager {
 
                 // git-common-dir gives us the path to the .git directory
                 // We need the working directory (parent of .git)
-                let git_dir_path = std::path::Path::new(&git_common_dir);
+                let git_dir_path = Path::new(&git_common_dir);
                 if git_dir_path.file_name() == Some(std::ffi::OsStr::new(".git")) {
-                    git_dir_path.parent()?.to_str().map(|s| s.to_string())
+                    git_dir_path.parent()?.to_str().map(|s| PathBuf::from(s))
                 } else {
                     // In case of bare repo or unusual setup, use the git-common-dir as is
-                    Some(git_common_dir)
+                    Some(PathBuf::from(git_common_dir))
                 }
             } else {
                 None

@@ -220,12 +220,15 @@ impl ContainerService for LocalContainerService {
             Some(&task_attempt.base_branch),
         )?;
 
+        // Update both container_ref and branch in the database
         TaskAttempt::update_container_ref(
             &self.db.pool,
             task_attempt.id,
             &worktree_path.to_string_lossy(),
         )
         .await?;
+
+        TaskAttempt::update_branch(&self.db.pool, task_attempt.id, &task_branch_name).await?;
 
         Ok(worktree_path.to_string_lossy().to_string())
     }

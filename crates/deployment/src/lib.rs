@@ -26,6 +26,8 @@ use utils::{msg_store::MsgStore, response::ApiResponse};
 #[derive(Debug, Error)]
 pub enum DeploymentError {
     #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error(transparent)]
     Sqlx(#[from] SqlxError),
     #[error(transparent)]
     Git2(#[from] Git2Error),

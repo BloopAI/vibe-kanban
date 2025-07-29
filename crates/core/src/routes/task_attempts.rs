@@ -13,8 +13,10 @@ use axum::{
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     executor_session::ExecutorSession,
+    project::Project,
     task,
-    task_attempt::{CreateTaskAttempt, TaskAttempt},
+    task::{Task, TaskStatus},
+    task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptContext, TaskAttemptError},
 };
 use deployment::{Deployment, DeploymentError};
 use executors::actions::{
@@ -24,13 +26,19 @@ use executors::actions::{
     ExecutorActionKind, ExecutorActions,
 };
 use serde::{Deserialize, Serialize};
-use services::services::container::ContainerService;
+use services::services::{
+    config::{Config, EditorConfig, EditorType},
+    container::{ContainerRef, ContainerService},
+    git::{BranchStatus, GitService, GitServiceError, WorktreeDiff},
+    github_service::{CreatePrRequest, GitHubRepoInfo, GitHubService, GitHubServiceError},
+    worktree_manager::WorktreeManager,
+};
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
-use utils::response::ApiResponse;
+use utils::{assets::config_path, response::ApiResponse};
 use uuid::Uuid;
 
-use crate::{middleware::load_task_attempt_middleware, DeploymentImpl};
+use crate::{error::RouteError, middleware::load_task_attempt_middleware, DeploymentImpl};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct RebaseTaskAttemptRequest {
@@ -380,299 +388,458 @@ pub async fn follow_up(
     Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
 
-// pub async fn get_task_attempt_diff(
-//     Extension(project): Extension<Project>,
-//     Extension(task): Extension<Task>,
-//     Extension(task_attempt): Extension<TaskAttempt>,
-//     State(app_state): State<AppState>,
-// ) -> Result<ResponseJson<ApiResponse<WorktreeDiff>>, StatusCode> {
-//     match TaskAttempt::get_diff(&app_state.db_pool, task_attempt.id, task.id, project.id).await {
-//         Ok(diff) => Ok(ResponseJson(ApiResponse::success(diff))),
-//         Err(e) => {
-//             tracing::error!(
-//                 "Failed to get diff for task attempt {}: {}",
-//                 task_attempt.id,
-//                 e
-//             );
-//             Err(StatusCode::INTERNAL_SERVER_ERROR)
-//         }
-//     }
-// }
+pub async fn get_task_attempt_diff(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<WorktreeDiff>>, RouteError> {
+    let pool = &deployment.db().pool;
+    let task = task_attempt
+        .parent_task(pool)
+        .await?
+        .ok_or(RouteError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
+    let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
 
-// #[axum::debug_handler]
-// pub async fn merge_task_attempt(
-//     Extension(project): Extension<Project>,
-//     Extension(task): Extension<Task>,
-//     Extension(task_attempt): Extension<TaskAttempt>,
-//     State(app_state): State<AppState>,
-// ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-//     match TaskAttempt::merge_changes(&app_state.db_pool, task_attempt.id, task.id, project.id).await
-//     {
-//         Ok(_) => {
-//             // Update task status to Done
-//             if let Err(e) = Task::update_status(
-//                 &app_state.db_pool,
-//                 task.id,
-//                 project.id,
-//                 crate::models::task::TaskStatus::Done,
-//             )
-//             .await
-//             {
-//                 tracing::error!("Failed to update task status to Done after merge: {}", e);
-//                 return Err(StatusCode::INTERNAL_SERVER_ERROR);
-//             }
+    if let Some(merge_commit_id) = &ctx.task_attempt.merge_commit {
+        // Task attempt has been merged - show the diff from the merge commit
+        let diff = GitService::new().get_enhanced_diff(
+            &ctx.project.git_repo_path,
+            std::path::Path::new(""),
+            Some(merge_commit_id),
+            &ctx.task_attempt.base_branch,
+        )?;
+        Ok(ResponseJson(ApiResponse::success(diff)))
+    } else {
+        let container_ref = task_attempt.container_ref.as_ref().ok_or_else(|| {
+            RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+                "No container ref found".to_string(),
+            ))
+        })?;
+        let worktree_path = std::path::Path::new(container_ref);
 
-//             // Track task attempt merged event
-//             app_state
-//                 .track_analytics_event(
-//                     "task_attempt_merged",
-//                     Some(serde_json::json!({
-//                         "task_id": task.id.to_string(),
-//                         "project_id": project.id.to_string(),
-//                         "attempt_id": task_attempt.id.to_string(),
-//                     })),
-//                 )
-//                 .await;
+        WorktreeManager::ensure_worktree_exists(
+            &ctx.project.git_repo_path,
+            &ctx.task_attempt.branch.as_ref().ok_or_else(|| {
+                RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+                    "Branch not found for task attempt".to_string(),
+                ))
+            })?,
+            worktree_path,
+        )
+        .await?;
 
-//             Ok(ResponseJson(ApiResponse::success(())))
-//         }
-//         Err(e) => {
-//             tracing::error!("Failed to merge task attempt {}: {}", task_attempt.id, e);
-//             Ok(ResponseJson(ApiResponse::error(&format!(
-//                 "Failed to merge: {}",
-//                 e
-//             ))))
-//         }
-//     }
-// }
+        let diff = GitService::new().get_enhanced_diff(
+            &ctx.project.git_repo_path,
+            &worktree_path,
+            None,
+            &ctx.task_attempt.base_branch,
+        )?;
+        Ok(ResponseJson(ApiResponse::success(diff)))
+    }
+}
 
-// pub async fn create_github_pr(
-//     Extension(project): Extension<Project>,
-//     Extension(task): Extension<Task>,
-//     Extension(task_attempt): Extension<TaskAttempt>,
-//     State(app_state): State<AppState>,
-//     Json(request): Json<CreateGitHubPRRequest>,
-// ) -> Result<ResponseJson<ApiResponse<String>>, StatusCode> {
-//     // Load the user's GitHub configuration
-//     let config = match Config::load(&crate::utils::config_path()) {
-//         Ok(config) => config,
-//         Err(e) => {
-//             tracing::error!("Failed to load config: {}", e);
-//             return Err(StatusCode::INTERNAL_SERVER_ERROR);
-//         }
-//     };
+#[axum::debug_handler]
+pub async fn merge_task_attempt(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<()>>, RouteError> {
+    let pool = &deployment.db().pool;
 
-//     let github_token = match config.github.token {
-//         Some(token) => token,
-//         None => {
-//             return Ok(ResponseJson(ApiResponse::error(
-//                 "GitHub authentication not configured. Please sign in with GitHub.",
-//             )));
-//         }
-//     };
+    let task = task_attempt
+        .parent_task(pool)
+        .await?
+        .ok_or(RouteError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
+    let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
 
-//     // Get the task attempt to access the stored base branch
-//     let attempt = &task_attempt;
+    let container_ref = task_attempt.container_ref.as_ref().ok_or_else(|| {
+        RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+            "No container ref found".to_string(),
+        ))
+    })?;
 
-//     let base_branch = request.base_branch.unwrap_or_else(|| {
-//         // Use the stored base branch from the task attempt as the default
-//         // Fall back to config default or "main" only if stored base branch is somehow invalid
-//         if !attempt.base_branch.trim().is_empty() {
-//             attempt.base_branch.clone()
-//         } else {
-//             config
-//                 .github
-//                 .default_pr_base
-//                 .unwrap_or_else(|| "main".to_string())
-//         }
-//     });
+    let worktree_path = std::path::Path::new(container_ref);
+    WorktreeManager::ensure_worktree_exists(
+        &ctx.project.git_repo_path,
+        &ctx.task_attempt.branch.as_ref().ok_or_else(|| {
+            RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+                "Branch not found for task attempt".to_string(),
+            ))
+        })?,
+        worktree_path,
+    )
+    .await?;
 
-//     match TaskAttempt::create_github_pr(
-//         &app_state.db_pool,
-//         CreatePrParams {
-//             attempt_id: task_attempt.id,
-//             task_id: task.id,
-//             project_id: project.id,
-//             github_token: &config.github.pat.unwrap_or(github_token),
-//             title: &request.title,
-//             body: request.body.as_deref(),
-//             base_branch: Some(&base_branch),
-//         },
-//     )
-//     .await
-//     {
-//         Ok(pr_url) => {
-//             app_state
-//                 .track_analytics_event(
-//                     "github_pr_created",
-//                     Some(serde_json::json!({
-//                         "task_id": task.id.to_string(),
-//                         "project_id": project.id.to_string(),
-//                         "attempt_id": task_attempt.id.to_string(),
-//                     })),
-//                 )
-//                 .await;
+    let task_uuid_str = task.id.to_string();
+    let first_uuid_section = task_uuid_str.split('-').next().unwrap_or(&task_uuid_str);
 
-//             Ok(ResponseJson(ApiResponse::success(pr_url)))
-//         }
-//         Err(e) => {
-//             tracing::error!(
-//                 "Failed to create GitHub PR for attempt {}: {}",
-//                 task_attempt.id,
-//                 e
-//             );
-//             let message = match &e {
-//                 crate::models::task_attempt::TaskAttemptError::GitHubService(
-//                     crate::services::GitHubServiceError::TokenInvalid,
-//                 ) => Some("github_token_invalid".to_string()),
-//                 crate::models::task_attempt::TaskAttemptError::GitService(
-//                     crate::services::git_service::GitServiceError::Git(err),
-//                 ) if err
-//                     .message()
-//                     .contains("too many redirects or authentication replays") =>
-//                 {
-//                     Some("insufficient_github_permissions".to_string()) // PAT is invalid
-//                 }
-//                 crate::models::task_attempt::TaskAttemptError::GitService(
-//                     crate::services::git_service::GitServiceError::Git(err),
-//                 ) if err.message().contains("status code: 403") => {
-//                     Some("insufficient_github_permissions".to_string())
-//                 }
-//                 crate::models::task_attempt::TaskAttemptError::GitService(
-//                     crate::services::git_service::GitServiceError::Git(err),
-//                 ) if err.message().contains("status code: 404") => {
-//                     Some("github_repo_not_found_or_no_access".to_string())
-//                 }
-//                 _ => Some(format!("Failed to create PR: {}", e)),
-//             };
-//             Ok(ResponseJson(ApiResponse::error(
-//                 message.as_deref().unwrap_or("Unknown error"),
-//             )))
-//         }
-//     }
-// }
+    // Create commit message with task title and description
+    let mut commit_message = format!("{} (vibe-kanban {})", ctx.task.title, first_uuid_section);
 
-// #[derive(serde::Deserialize)]
-// pub struct OpenEditorRequest {
-//     editor_type: Option<String>,
-// }
+    // Add description on next line if it exists
+    if let Some(description) = &ctx.task.description {
+        if !description.trim().is_empty() {
+            commit_message.push_str("\n\n");
+            commit_message.push_str(description);
+        }
+    }
 
-// pub async fn open_task_attempt_in_editor(
-//     Extension(_project): Extension<Project>,
-//     Extension(_task): Extension<Task>,
-//     Extension(task_attempt): Extension<TaskAttempt>,
-//     State(app_state): State<AppState>,
-//     Json(payload): Json<Option<OpenEditorRequest>>,
-// ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-//     // Get the task attempt to access the worktree path
-//     let attempt = &task_attempt;
+    // Get branch name from task attempt
+    let branch_name = ctx.task_attempt.branch.as_ref().ok_or_else(|| {
+        RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+            "No branch found for task attempt".to_string(),
+        ))
+    })?;
 
-//     // Get editor command from config or override
-//     let editor_command = {
-//         let config_guard = app_state.get_config().read().await;
-//         if let Some(ref request) = payload {
-//             if let Some(ref editor_type) = request.editor_type {
-//                 // Create a temporary editor config with the override
-//                 use crate::models::config::{EditorConfig, EditorType};
-//                 let override_editor_type = match editor_type.as_str() {
-//                     "vscode" => EditorType::VSCode,
-//                     "cursor" => EditorType::Cursor,
-//                     "windsurf" => EditorType::Windsurf,
-//                     "intellij" => EditorType::IntelliJ,
-//                     "zed" => EditorType::Zed,
-//                     "custom" => EditorType::Custom,
-//                     _ => config_guard.editor.editor_type.clone(),
-//                 };
-//                 let temp_config = EditorConfig {
-//                     editor_type: override_editor_type,
-//                     custom_command: config_guard.editor.custom_command.clone(),
-//                 };
-//                 temp_config.get_command()
-//             } else {
-//                 config_guard.editor.get_command()
-//             }
-//         } else {
-//             config_guard.editor.get_command()
-//         }
-//     };
+    let merge_commit_id = GitService::new().merge_changes(
+        &ctx.project.git_repo_path,
+        &worktree_path,
+        branch_name,
+        &ctx.task_attempt.base_branch,
+        &commit_message,
+    )?;
 
-//     // Open editor in the worktree directory
-//     let mut cmd = std::process::Command::new(&editor_command[0]);
-//     for arg in &editor_command[1..] {
-//         cmd.arg(arg);
-//     }
-//     cmd.arg(&attempt.worktree_path);
+    TaskAttempt::update_merge_commit(pool, task_attempt.id, &merge_commit_id).await?;
+    Task::update_status(pool, ctx.task.id, ctx.project.id, TaskStatus::Done).await?;
 
-//     match cmd.spawn() {
-//         Ok(_) => {
-//             tracing::info!(
-//                 "Opened editor ({}) for task attempt {} at path: {}",
-//                 editor_command.join(" "),
-//                 task_attempt.id,
-//                 attempt.worktree_path
-//             );
-//             Ok(ResponseJson(ApiResponse::success(())))
-//         }
-//         Err(e) => {
-//             tracing::error!(
-//                 "Failed to open editor ({}) for attempt {}: {}",
-//                 editor_command.join(" "),
-//                 task_attempt.id,
-//                 e
-//             );
-//             Err(StatusCode::INTERNAL_SERVER_ERROR)
-//         }
-//     }
-// }
+    deployment
+        .track_if_analytics_allowed(
+            "task_attempt_merged",
+            serde_json::json!({
+                "task_id": ctx.task.id.to_string(),
+                "project_id": ctx.project.id.to_string(),
+                "attempt_id": task_attempt.id.to_string(),
+            }),
+        )
+        .await;
 
-// pub async fn get_task_attempt_branch_status(
-//     Extension(project): Extension<Project>,
-//     Extension(task): Extension<Task>,
-//     Extension(task_attempt): Extension<TaskAttempt>,
-//     State(app_state): State<AppState>,
-// ) -> Result<ResponseJson<ApiResponse<BranchStatus>>, StatusCode> {
-//     match TaskAttempt::get_branch_status(&app_state.db_pool, task_attempt.id, task.id, project.id)
-//         .await
-//     {
-//         Ok(status) => Ok(ResponseJson(ApiResponse::success(status))),
-//         Err(e) => {
-//             tracing::error!(
-//                 "Failed to get branch status for task attempt {}: {}",
-//                 task_attempt.id,
-//                 e
-//             );
-//             Err(StatusCode::INTERNAL_SERVER_ERROR)
-//         }
-//     }
-// }
+    Ok(ResponseJson(ApiResponse::success(())))
+}
 
-// #[axum::debug_handler]
-// pub async fn rebase_task_attempt(
-//     Extension(project): Extension<Project>,
-//     Extension(task): Extension<Task>,
-//     Extension(task_attempt): Extension<TaskAttempt>,
-//     State(app_state): State<AppState>,
-//     request_body: Option<Json<RebaseTaskAttemptRequest>>,
-// ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-//     // Extract new base branch from request body if provided
-//     let new_base_branch = request_body.and_then(|body| body.new_base_branch.clone());
+pub async fn create_github_pr(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+    Json(request): Json<CreateGitHubPRRequest>,
+) -> Result<ResponseJson<ApiResponse<String>>, RouteError> {
+    // Load the user's GitHub configuration
+    // TODO: This should return a better error variant
+    let config = Config::load(&config_path()).map_err(|e| {
+        RouteError::TaskAttempt(TaskAttemptError::ValidationError(format!(
+            "Failed to load config: {}",
+            e
+        )))
+    })?;
 
-//     match TaskAttempt::rebase_attempt(
-//         &app_state.db_pool,
-//         task_attempt.id,
-//         task.id,
-//         project.id,
-//         new_base_branch,
-//     )
-//     .await
-//     {
-//         Ok(_new_base_commit) => Ok(ResponseJson(ApiResponse::success(()))),
-//         Err(e) => {
-//             tracing::error!("Failed to rebase task attempt {}: {}", task_attempt.id, e);
-//             Ok(ResponseJson(ApiResponse::error(&e.to_string())))
-//         }
-//     }
-// }
+    let github_token = match config.github.token {
+        Some(token) => token,
+        None => {
+            return Ok(ResponseJson(ApiResponse::error(
+                "GitHub authentication not configured. Please sign in with GitHub.",
+            )));
+        }
+    };
+
+    // Get the task attempt to access the stored base branch
+    let base_branch = request.base_branch.unwrap_or_else(|| {
+        // Use the stored base branch from the task attempt as the default
+        // Fall back to config default or "main" only if stored base branch is somehow invalid
+        if !task_attempt.base_branch.trim().is_empty() {
+            task_attempt.base_branch.clone()
+        } else {
+            config
+                .github
+                .default_pr_base
+                .unwrap_or_else(|| "main".to_string())
+        }
+    });
+
+    // Load context with full validation
+    let pool = &deployment.db().pool;
+
+    let task = task_attempt
+        .parent_task(pool)
+        .await?
+        .ok_or(RouteError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
+    let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
+
+    // Ensure worktree exists (recreate if needed for cold task support)
+    let container_ref = task_attempt.container_ref.as_ref().ok_or_else(|| {
+        RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+            "No container ref found for task attempt".to_string(),
+        ))
+    })?;
+
+    let worktree_path = std::path::Path::new(container_ref);
+    WorktreeManager::ensure_worktree_exists(
+        &ctx.project.git_repo_path,
+        &ctx.task_attempt.branch.as_ref().ok_or_else(|| {
+            RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+                "Branch not found for task attempt".to_string(),
+            ))
+        })?,
+        worktree_path,
+    )
+    .await?;
+
+    // Create GitHub service instance
+    let github_token_to_use = config.github.pat.as_ref().unwrap_or(&github_token);
+    let github_service = match GitHubService::new(github_token_to_use) {
+        Ok(service) => service,
+        Err(GitHubServiceError::TokenInvalid) => {
+            return Ok(ResponseJson(ApiResponse::error("github_token_invalid")));
+        }
+        Err(e) => {
+            return Err(RouteError::GitHubService(e));
+        }
+    };
+
+    // Use GitService to get the remote URL, then create GitHubRepoInfo
+    let (owner, repo_name) = GitService::new().get_github_repo_info(&ctx.project.git_repo_path)?;
+    let repo_info = GitHubRepoInfo { owner, repo_name };
+
+    // Get branch name from task attempt
+    let branch_name = ctx.task_attempt.branch.as_ref().ok_or_else(|| {
+        RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+            "No branch found for task attempt".to_string(),
+        ))
+    })?;
+
+    // Push the branch to GitHub first
+    if let Err(e) =
+        GitService::new().push_to_github(&worktree_path, branch_name, github_token_to_use)
+    {
+        tracing::error!("Failed to push branch to GitHub: {}", e);
+        let message = match &e {
+            GitServiceError::Git(err)
+                if err
+                    .message()
+                    .contains("too many redirects or authentication replays") =>
+            {
+                "insufficient_github_permissions"
+            }
+            GitServiceError::Git(err) if err.message().contains("status code: 403") => {
+                "insufficient_github_permissions"
+            }
+            GitServiceError::Git(err) if err.message().contains("status code: 404") => {
+                "github_repo_not_found_or_no_access"
+            }
+            _ => "Failed to push branch to GitHub",
+        };
+        return Ok(ResponseJson(ApiResponse::error(message)));
+    }
+
+    // Create the PR using GitHub service
+    let pr_request = CreatePrRequest {
+        title: request.title.clone(),
+        body: request.body.clone(),
+        head_branch: branch_name.clone(),
+        base_branch: base_branch.clone(),
+    };
+
+    match github_service.create_pr(&repo_info, &pr_request).await {
+        Ok(pr_info) => {
+            // Update the task attempt with PR information
+            if let Err(e) = TaskAttempt::update_pr_status(
+                pool,
+                task_attempt.id,
+                pr_info.url.clone(),
+                pr_info.number,
+                pr_info.status.clone(),
+            )
+            .await
+            {
+                tracing::error!("Failed to update task attempt PR status: {}", e);
+            }
+
+            deployment
+                .track_if_analytics_allowed(
+                    "github_pr_created",
+                    serde_json::json!({
+                        "task_id": ctx.task.id.to_string(),
+                        "project_id": ctx.project.id.to_string(),
+                        "attempt_id": task_attempt.id.to_string(),
+                    }),
+                )
+                .await;
+
+            Ok(ResponseJson(ApiResponse::success(pr_info.url)))
+        }
+        Err(e) => {
+            tracing::error!(
+                "Failed to create GitHub PR for attempt {}: {}",
+                task_attempt.id,
+                e
+            );
+            let message = match &e {
+                services::services::github_service::GitHubServiceError::TokenInvalid => {
+                    "github_token_invalid"
+                }
+                _ => "Failed to create PR",
+            };
+            Ok(ResponseJson(ApiResponse::error(message)))
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
+pub struct OpenEditorRequest {
+    editor_type: Option<String>,
+}
+
+pub async fn open_task_attempt_in_editor(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<Option<OpenEditorRequest>>,
+) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
+    // Get the task attempt to access the worktree path
+    let attempt = &task_attempt;
+
+    // Get editor command from config or override
+    let editor_command = {
+        let config_guard = deployment.config().read().await;
+        if let Some(ref request) = payload {
+            if let Some(ref editor_type) = request.editor_type {
+                // Create a temporary editor config with the override
+                let override_editor_type = match editor_type.as_str() {
+                    "vscode" => EditorType::VSCode,
+                    "cursor" => EditorType::Cursor,
+                    "windsurf" => EditorType::Windsurf,
+                    "intellij" => EditorType::IntelliJ,
+                    "zed" => EditorType::Zed,
+                    "custom" => EditorType::Custom,
+                    _ => config_guard.editor.editor_type.clone(),
+                };
+                let temp_config = EditorConfig {
+                    editor_type: override_editor_type,
+                    custom_command: config_guard.editor.custom_command.clone(),
+                };
+                temp_config.get_command()
+            } else {
+                config_guard.editor.get_command()
+            }
+        } else {
+            config_guard.editor.get_command()
+        }
+    };
+
+    // Open editor in the worktree directory
+    let mut cmd = std::process::Command::new(&editor_command[0]);
+    for arg in &editor_command[1..] {
+        cmd.arg(arg);
+    }
+    cmd.arg(attempt.container_ref.as_ref().unwrap());
+
+    match cmd.spawn() {
+        Ok(_) => {
+            tracing::info!(
+                "Opened editor ({}) for task attempt {} at path: {}",
+                editor_command.join(" "),
+                task_attempt.id,
+                attempt.container_ref.as_ref().unwrap_or(&String::new())
+            );
+            Ok(ResponseJson(ApiResponse::success(())))
+        }
+        Err(e) => {
+            tracing::error!(
+                "Failed to open editor ({}) for attempt {}: {}",
+                editor_command.join(" "),
+                task_attempt.id,
+                e
+            );
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+pub async fn get_task_attempt_branch_status(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<BranchStatus>>, RouteError> {
+    let pool = &deployment.db().pool;
+
+    let task = task_attempt
+        .parent_task(pool)
+        .await?
+        .ok_or(RouteError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
+    let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
+
+    let branch_status = GitService::new()
+        .get_branch_status(
+            &ctx.project.git_repo_path,
+            &ctx.task_attempt.branch.as_ref().ok_or_else(|| {
+                RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+                    "No branch found for task attempt".to_string(),
+                ))
+            })?,
+            &ctx.task_attempt.base_branch,
+            ctx.task_attempt.merge_commit.is_some(),
+        )
+        .map_err(|e| {
+            tracing::error!(
+                "Failed to get branch status for task attempt {}: {}",
+                task_attempt.id,
+                e
+            );
+            RouteError::GitService(e)
+        })?;
+
+    Ok(ResponseJson(ApiResponse::success(branch_status)))
+}
+
+#[axum::debug_handler]
+pub async fn rebase_task_attempt(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+    request_body: Option<Json<RebaseTaskAttemptRequest>>,
+) -> Result<ResponseJson<ApiResponse<()>>, RouteError> {
+    // Extract new base branch from request body if provided
+    let new_base_branch = request_body.and_then(|body| body.new_base_branch.clone());
+
+    let pool = &deployment.db().pool;
+
+    let task = task_attempt
+        .parent_task(pool)
+        .await?
+        .ok_or(RouteError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
+    let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
+
+    // Use the stored base branch if no new base branch is provided
+    let effective_base_branch =
+        new_base_branch.or_else(|| Some(ctx.task_attempt.base_branch.clone()));
+
+    let container_ref = task_attempt.container_ref.unwrap();
+    let worktree_path = std::path::Path::new(&container_ref);
+    WorktreeManager::ensure_worktree_exists(
+        &ctx.project.git_repo_path,
+        &ctx.task_attempt.branch.as_ref().ok_or_else(|| {
+            RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+                "Branch not found for task attempt".to_string(),
+            ))
+        })?,
+        worktree_path,
+    )
+    .await?;
+
+    let _new_base_commit = GitService::new().rebase_branch(
+        &ctx.project.git_repo_path,
+        &worktree_path,
+        effective_base_branch.clone().as_deref(),
+        &ctx.task_attempt.base_branch.clone(),
+    )?;
+
+    if let Some(new_base_branch) = &effective_base_branch {
+        if new_base_branch != &ctx.task_attempt.base_branch {
+            // for remote branches, store the local branch name in the database
+            let db_branch_name = if new_base_branch.starts_with("origin/") {
+                new_base_branch.strip_prefix("origin/").unwrap()
+            } else {
+                new_base_branch
+            };
+            TaskAttempt::update_base_branch(&deployment.db().pool, task_attempt.id, db_branch_name)
+                .await?;
+        }
+    }
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
 
 // pub async fn get_task_attempt_execution_processes(
 //     Extension(_project): Extension<Project>,
@@ -821,40 +988,63 @@ pub async fn follow_up(
 //     Ok(ResponseJson(ApiResponse::success(())))
 // }
 
-// #[derive(serde::Deserialize)]
-// pub struct DeleteFileQuery {
-//     file_path: String,
-// }
+#[derive(serde::Deserialize)]
+pub struct DeleteFileQuery {
+    file_path: String,
+}
 
-// #[axum::debug_handler]
-// pub async fn delete_task_attempt_file(
-//     Extension(project): Extension<Project>,
-//     Extension(task): Extension<Task>,
-//     Extension(task_attempt): Extension<TaskAttempt>,
-//     Query(query): Query<DeleteFileQuery>,
-//     State(app_state): State<AppState>,
-// ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-//     match TaskAttempt::delete_file(
-//         &app_state.db_pool,
-//         task_attempt.id,
-//         task.id,
-//         project.id,
-//         &query.file_path,
-//     )
-//     .await
-//     {
-//         Ok(_commit_id) => Ok(ResponseJson(ApiResponse::success(()))),
-//         Err(e) => {
-//             tracing::error!(
-//                 "Failed to delete file '{}' from task attempt {}: {}",
-//                 query.file_path,
-//                 task_attempt.id,
-//                 e
-//             );
-//             Ok(ResponseJson(ApiResponse::error(&e.to_string())))
-//         }
-//     }
-// }
+#[axum::debug_handler]
+pub async fn delete_task_attempt_file(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    Query(query): Query<DeleteFileQuery>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<()>>, RouteError> {
+    let pool = &deployment.db().pool;
+    let task = task_attempt
+        .parent_task(pool)
+        .await?
+        .ok_or(RouteError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
+    let project = task
+        .parent_project(pool)
+        .await?
+        .ok_or(RouteError::TaskAttempt(TaskAttemptError::ProjectNotFound))?;
+
+    let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, project.id).await?;
+
+    // Ensure worktree exists (recreate if needed for cold task support)
+    let container_ref = task_attempt.container_ref.ok_or_else(|| {
+        RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+            "Container ref not found for task attempt".to_string(),
+        ))
+    })?;
+    let worktree_path = std::path::Path::new(&container_ref);
+
+    WorktreeManager::ensure_worktree_exists(
+        &ctx.project.git_repo_path,
+        &ctx.task_attempt.branch.as_ref().ok_or_else(|| {
+            RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+                "Branch not found for task attempt".to_string(),
+            ))
+        })?,
+        worktree_path,
+    )
+    .await?;
+
+    // Use GitService to delete file and commit
+    let _commit_id = GitService::new()
+        .delete_file_and_commit(worktree_path, &query.file_path)
+        .map_err(|e| {
+            tracing::error!(
+                "Failed to delete file '{}' from task attempt {}: {}",
+                query.file_path,
+                task_attempt.id,
+                e
+            );
+            RouteError::GitService(e)
+        })?;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
 
 // pub async fn start_dev_server(
 //     Extension(project): Extension<Project>,
@@ -1191,13 +1381,19 @@ pub async fn follow_up(
 // }
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
-    let task_attempt_id_router =
-        Router::new()
-            .route("/follow-up", post(follow_up))
-            .layer(from_fn_with_state(
-                deployment.clone(),
-                load_task_attempt_middleware,
-            ));
+    let task_attempt_id_router = Router::new()
+        .route("/follow-up", post(follow_up))
+        .route("/branch-status", get(get_task_attempt_branch_status))
+        .route("/diff", get(get_task_attempt_diff))
+        .route("/merge", post(merge_task_attempt))
+        .route("/rebase", post(rebase_task_attempt))
+        .route("/pr", post(create_github_pr))
+        .route("/open-editor", post(open_task_attempt_in_editor))
+        .route("/delete-file", post(delete_task_attempt_file))
+        .layer(from_fn_with_state(
+            deployment.clone(),
+            load_task_attempt_middleware,
+        ));
 
     let task_attempts_router = Router::new()
         .route("/", get(get_task_attempts).post(create_task_attempt))

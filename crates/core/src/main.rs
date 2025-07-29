@@ -310,6 +310,7 @@
 
 // mod command_executor;
 // mod deployment;
+mod error;
 mod middleware;
 mod routes;
 // mod utils;

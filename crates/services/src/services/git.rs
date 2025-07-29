@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use chrono::{DateTime, Utc};
 use git2::{
     BranchType, CherrypickOptions, Cred, DiffOptions, Error as GitError, FetchOptions,
-    RemoteCallbacks, Repository, WorktreeAddOptions, build::CheckoutBuilder,
+    RemoteCallbacks, Repository, Status, StatusOptions, WorktreeAddOptions, build::CheckoutBuilder,
 };
 use regex;
 use serde::{Deserialize, Serialize};
@@ -109,6 +109,18 @@ pub struct CreateBranch {
     pub base_branch: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct BranchStatus {
+    pub is_behind: bool,
+    pub commits_behind: usize,
+    pub commits_ahead: usize,
+    pub up_to_date: bool,
+    pub merged: bool,
+    pub has_uncommitted_changes: bool,
+    pub base_branch_name: String,
+}
+
 impl GitService {
     /// Create a new GitService for the given repository path
     pub fn new() -> Self {
@@ -135,7 +147,7 @@ impl GitService {
     }
 
     /// Open the repository
-    fn open_repo(&self, repo_path: &PathBuf) -> Result<Repository, GitServiceError> {
+    fn open_repo(&self, repo_path: &Path) -> Result<Repository, GitServiceError> {
         Repository::open(repo_path).map_err(GitServiceError::from)
     }
 
@@ -240,8 +252,8 @@ impl GitService {
     /// Merge changes from a worktree branch back to the main repository
     pub fn merge_changes(
         &self,
-        repo_path: &PathBuf,
-        worktree_path: &PathBuf,
+        repo_path: &Path,
+        worktree_path: &Path,
         branch_name: &str,
         base_branch_name: &str,
         commit_message: &str,
@@ -297,6 +309,67 @@ impl GitService {
 
         info!("Created squash merge commit: {}", squash_commit_id);
         Ok(squash_commit_id.to_string())
+    }
+
+    pub fn get_branch_status(
+        &self,
+        repo_path: &Path,
+        branch_name: &str,
+        base_branch_name: &str,
+        is_merged: bool,
+    ) -> Result<BranchStatus, GitServiceError> {
+        let repo = Repository::open(repo_path)?;
+
+        let branch_ref = repo
+            // try "refs/heads/<name>" first, then raw name
+            .find_reference(&format!("refs/heads/{}", branch_name))
+            .or_else(|_| repo.find_reference(&branch_name))?;
+        let branch_oid = branch_ref.target().unwrap();
+
+        // 1. prefer the branch’s configured upstream, if any
+        if let Ok(local_branch) = repo.find_branch(&branch_name, BranchType::Local) {
+            if let Ok(upstream) = local_branch.upstream() {
+                if let Some(_name) = upstream.name()? {
+                    if let Some(base_oid) = upstream.get().target() {
+                        let (_ahead, _behind) = repo.graph_ahead_behind(branch_oid, base_oid)?;
+                        // Ignore upstream since we use stored base branch
+                    }
+                }
+            }
+        }
+        // Calculate ahead/behind counts using the stored base branch
+        let (commits_ahead, commits_behind) =
+            if let Ok(base_branch) = repo.find_branch(&base_branch_name, BranchType::Local) {
+                if let Some(base_oid) = base_branch.get().target() {
+                    repo.graph_ahead_behind(branch_oid, base_oid)?
+                } else {
+                    (0, 0) // Base branch has no commits
+                }
+            } else {
+                // Base branch doesn't exist, assume no relationship
+                (0, 0)
+            };
+
+        let mut status_opts = StatusOptions::new();
+        status_opts
+            .include_untracked(true)
+            .recurse_untracked_dirs(true)
+            .include_ignored(false);
+
+        let has_uncommitted_changes = repo
+            .statuses(Some(&mut status_opts))?
+            .iter()
+            .any(|e| e.status() != Status::CURRENT);
+
+        Ok(BranchStatus {
+            is_behind: commits_behind > 0,
+            commits_behind,
+            commits_ahead,
+            up_to_date: commits_behind == 0 && commits_ahead == 0,
+            merged: is_merged,
+            has_uncommitted_changes,
+            base_branch_name: base_branch_name.to_string(),
+        })
     }
 
     /// Check if the worktree is clean (no uncommitted changes to tracked files)
@@ -457,7 +530,7 @@ impl GitService {
     /// Rebase a worktree branch onto a new base
     pub fn rebase_branch(
         &self,
-        repo_path: &PathBuf,
+        repo_path: &Path,
         worktree_path: &Path,
         new_base_branch: Option<&str>,
         old_base_branch: &str,
@@ -586,7 +659,7 @@ impl GitService {
     /// Get enhanced diff for task attempts (from merge commit or worktree)
     pub fn get_enhanced_diff(
         &self,
-        repo_path: &PathBuf,
+        repo_path: &Path,
         worktree_path: &Path,
         merge_commit_id: Option<&str>,
         base_branch: &str,
@@ -607,7 +680,7 @@ impl GitService {
     /// Get diff from a merge commit
     fn get_merged_diff(
         &self,
-        repo_path: &PathBuf,
+        repo_path: &Path,
         merge_commit_id: &str,
         files: &mut Vec<FileDiff>,
     ) -> Result<(), GitServiceError> {
@@ -698,7 +771,7 @@ impl GitService {
     /// Get diff for a worktree (before merge)
     fn get_worktree_diff(
         &self,
-        repo_path: &PathBuf,
+        repo_path: &Path,
         worktree_path: &Path,
         base_branch: &str,
         files: &mut Vec<FileDiff>,
@@ -1163,31 +1236,18 @@ impl GitService {
         }
 
         // Extract repository path for WorktreeManager
-        let repo_path = repo
-            .workdir()
-            .ok_or_else(|| {
-                GitServiceError::InvalidRepository(
-                    "Repository has no working directory".to_string(),
-                )
-            })?
-            .to_str()
-            .ok_or_else(|| {
-                GitServiceError::InvalidRepository("Repository path is not valid UTF-8".to_string())
-            })?
-            .to_string();
-
-        WorktreeManager::ensure_worktree_exists(
-            repo_path,
-            branch_name.to_string(),
-            stored_worktree_path.to_path_buf(),
-        )
-        .await
-        .map_err(|e| {
-            GitServiceError::IoError(std::io::Error::other(format!(
-                "WorktreeManager error: {}",
-                e
-            )))
+        let repo_path = repo.workdir().ok_or_else(|| {
+            GitServiceError::InvalidRepository("Repository has no working directory".to_string())
         })?;
+
+        WorktreeManager::ensure_worktree_exists(repo_path, branch_name, stored_worktree_path)
+            .await
+            .map_err(|e| {
+                GitServiceError::IoError(std::io::Error::other(format!(
+                    "WorktreeManager error: {}",
+                    e
+                )))
+            })?;
 
         info!(
             "Successfully recreated worktree at original path: {} -> {}",
