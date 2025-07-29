@@ -62,53 +62,54 @@ impl LocalContainerService {
         map.remove(id);
     }
 
-    // / Spawn a background task that polls the child process for completion and
-    // / cleans up the execution entry when it exits.
-    pub fn spawn_exit_monitor(
-        &self,
-        exec_id: Uuid,
-        child_store: Arc<RwLock<HashMap<Uuid, Arc<RwLock<AsyncGroupChild>>>>>,
-        msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
-    ) -> JoinHandle<()> {
-        let child_store = child_store.clone();
-        let msg_stores = msg_stores.clone();
+    /// Spawn a background task that polls the child process for completion and
+    /// cleans up the execution entry when it exits.
+    pub fn spawn_exit_monitor(&self, exec_id: Uuid) -> JoinHandle<()> {
+        let child_store = self.child_store.clone();
+        let msg_stores = self.msg_stores.clone();
+
         tokio::spawn(async move {
             loop {
-                // Keep the lock only while calling try_wait (needs &mut)
                 let status_opt = {
-                    let map = child_store.read().await;
-                    match map.get(&exec_id) {
-                        Some(child) => match child.clone().write().await.try_wait() {
-                            Ok(Some(status)) => Some(Ok(status)),
-                            Ok(None) => None,
-                            Err(e) => Some(Err(e)),
-                        },
-                        None => break, // already removed elsewhere
+                    let child_lock = {
+                        let map = child_store.read().await;
+                        map.get(&exec_id)
+                            .cloned()
+                            .expect(&format!("Child handle missing for {}", exec_id))
+                    };
+
+                    let mut child_handler = child_lock.write().await;
+                    match child_handler.try_wait() {
+                        Ok(Some(status)) => Some(Ok(status)),
+                        Ok(None) => None,
+                        Err(e) => Some(Err(e)),
                     }
                 };
 
-                let mut map = msg_stores.write().await;
-                match map.get_mut(&exec_id) {
-                    Some(msg_store) => match status_opt {
-                        Some(Ok(status)) => {
-                            let code = status.code().unwrap_or_default();
-                            // TODO: remove execution from event and child store when it's finished
-                            // let _ = msg_store.remove_execution(&exec_id).await;
-
-                            // Optional: persist completion here if desired
-                            // e.g. ExecutionProcess::mark_finished(...).await?;
-
-                            break;
+                // Cleanup if exit
+                if status_opt.is_some() {
+                    // Cleanup msg store
+                    if let Some(msg_arc) = msg_stores.write().await.remove(&exec_id) {
+                        msg_arc.push_finished();
+                        tokio::time::sleep(Duration::from_millis(50)).await; // Wait for the finish message to propogate
+                        match Arc::try_unwrap(msg_arc) {
+                            Ok(inner) => drop(inner),
+                            Err(arc) => tracing::error!(
+                                "There are still {} strong Arcs to MsgStore for {}",
+                                Arc::strong_count(&arc),
+                                exec_id
+                            ),
                         }
-                        Some(Err(e)) => {
-                            msg_store.push_stderr(format!("wait error: {e}"));
-                            // let _ = svc.remove_execution(&exec_id).await;
-                            break;
-                        }
-                        None => tokio::time::sleep(Duration::from_millis(250)).await,
-                    },
-                    None => break,
+                    }
+
+                    // Cleanup child handle
+                    child_store.write().await.remove(&exec_id);
+
+                    break;
                 }
+
+                // still running, sleep and try again
+                tokio::time::sleep(Duration::from_millis(250)).await;
             }
         })
     }
@@ -284,6 +285,9 @@ impl ContainerService for LocalContainerService {
             .await;
 
         self.add_child_to_store(execution_process.id, child).await;
+
+        // Spawn exit monitor
+        let _hn = self.spawn_exit_monitor(execution_process.id);
 
         Ok(execution_process)
     }

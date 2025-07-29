@@ -68,6 +68,10 @@ impl MsgStore {
         self.push(LogMsg::JsonPatch(patch));
     }
 
+    pub fn push_finished(&self) {
+        self.push(LogMsg::Finished);
+    }
+
     pub fn get_receiver(&self) -> broadcast::Receiver<LogMsg> {
         self.sender.subscribe()
     }
@@ -133,7 +137,6 @@ impl MsgStore {
                     Err(e) => self.push(LogMsg::Stderr(format!("stream error: {e}"))),
                 }
             }
-            // No "closed" sentinel since your LogMsg has only Stdout/Stderr/JsonPatch.
         })
     }
 }

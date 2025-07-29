@@ -5,12 +5,14 @@ use serde::{Deserialize, Serialize};
 pub const EV_STDOUT: &str = "stdout";
 pub const EV_STDERR: &str = "stderr";
 pub const EV_JSON_PATCH: &str = "json_patch";
+pub const EV_FINISHED: &str = "finished";
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum LogMsg {
     Stdout(String),
     Stderr(String),
     JsonPatch(Patch),
+    Finished,
 }
 
 impl LogMsg {
@@ -19,6 +21,7 @@ impl LogMsg {
             LogMsg::Stdout(_) => EV_STDOUT,
             LogMsg::Stderr(_) => EV_STDERR,
             LogMsg::JsonPatch(_) => EV_JSON_PATCH,
+            LogMsg::Finished => EV_FINISHED,
         }
     }
 
@@ -30,6 +33,7 @@ impl LogMsg {
                 let data = serde_json::to_string(patch).unwrap_or_else(|_| "[]".to_string());
                 Event::default().event(EV_JSON_PATCH).data(data)
             }
+            LogMsg::Finished => Event::default().event(EV_FINISHED),
         }
     }
 
@@ -43,6 +47,7 @@ impl LogMsg {
                 let json_len = serde_json::to_string(patch).map(|s| s.len()).unwrap_or(2);
                 EV_JSON_PATCH.len() + json_len + OVERHEAD
             }
+            LogMsg::Finished => OVERHEAD,
         }
     }
 }
