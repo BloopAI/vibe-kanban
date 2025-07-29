@@ -89,7 +89,35 @@ pub trait ContainerService {
         }
     }
 
-    fn spawn_stream_raw_logs_to_db(&self, execution_id: &Uuid) -> JoinHandle<()> {
-        todo!();
+    fn spawn_stream_raw_logs_to_db(
+        &self,
+        execution_id: &Uuid,
+    ) -> Result<JoinHandle<()>, ContainerError> {
+        let execution_id = *execution_id;
+        let msg_stores = self.msg_stores().clone();
+
+        let handle = tokio::spawn(async move {
+            // Get the message store for this execution
+            let store = {
+                let map = msg_stores.read().await;
+                map.get(&execution_id).cloned()
+            };
+
+            if let Some(store) = store {
+                let mut stream = store.history_plus_stream().await;
+
+                while let Some(Ok(msg)) = stream.next().await {
+                    match msg {
+                        LogMsg::Stdout(chunk) | LogMsg::Stderr(chunk) => {
+                            // TODO: Save raw log message to database
+                        }
+                        LogMsg::Finished => break,
+                        _ => continue,
+                    }
+                }
+            }
+        });
+
+        Ok(handle)
     }
 }
