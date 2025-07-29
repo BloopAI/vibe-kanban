@@ -1,15 +1,17 @@
 use std::collections::HashMap;
 
 use axum::{
-    extract::{Query, State},
-    response::Json as ResponseJson,
+    body::Body,
+    extract::{Path, Query, State},
+    http,
+    response::{Json as ResponseJson, Response},
     routing::{get, post},
     Json, Router,
 };
-use deployment::Deployment;
+use deployment::{Deployment, DeploymentError};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use services::services::config::{Config, EditorConstants, SoundConstants};
+use services::services::config::{Config, EditorConstants, SoundConstants, SoundFile};
 use tokio::fs;
 use ts_rs::TS;
 use utils::{assets::config_path, response::ApiResponse};
@@ -20,6 +22,7 @@ pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/info", get(get_user_system_info))
         .route("/config", get(get_config).put(update_config))
+        .route("/sounds/{sound}", get(get_sound))
     // TODO: fix
     // .route("/mcp-servers", get(get_mcp_servers))
     // .route("/mcp-servers", post(update_mcp_servers))
@@ -91,6 +94,19 @@ async fn update_config(
         }
         Err(e) => ResponseJson(ApiResponse::error(&format!("Failed to save config: {}", e))),
     }
+}
+
+async fn get_sound(Path(sound): Path<SoundFile>) -> Result<Response, DeploymentError> {
+    let sound = sound.serve().await?;
+    let response = Response::builder()
+        .status(http::StatusCode::OK)
+        .header(
+            http::header::CONTENT_TYPE,
+            http::HeaderValue::from_static("audio/wav"),
+        )
+        .body(Body::from(sound.data.into_owned()))
+        .unwrap();
+    Ok(response)
 }
 
 // #[derive(Debug, Deserialize)]

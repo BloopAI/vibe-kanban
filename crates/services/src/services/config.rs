@@ -1,5 +1,6 @@
 use std::{fmt, path::PathBuf};
 
+use anyhow::Error;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utils::{assets::SoundAssets, cache_dir};
@@ -294,6 +295,19 @@ impl SoundFile {
         }
     }
 
+    // load the sound file from the embedded assets or cache
+    pub async fn serve(&self) -> Result<rust_embed::EmbeddedFile, Error> {
+        match SoundAssets::get(self.to_filename()) {
+            Some(content) => Ok(content),
+            None => {
+                tracing::error!("Sound file not found: {}", self.to_filename());
+                return Err(anyhow::anyhow!(
+                    "Sound file not found: {}",
+                    self.to_filename()
+                ));
+            }
+        }
+    }
     /// Get or create a cached sound file with the embedded sound data
     pub async fn get_path(&self) -> Result<PathBuf, Box<dyn std::error::Error + Send + Sync>> {
         use std::io::Write;
