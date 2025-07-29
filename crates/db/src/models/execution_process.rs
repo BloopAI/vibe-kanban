@@ -4,24 +4,6 @@ use sqlx::{FromRow, SqlitePool, Type};
 use ts_rs::TS;
 use uuid::Uuid;
 
-// use crate::app_state::ExecutionType;
-
-/// Filter out stderr boundary markers from output
-fn filter_stderr_boundary_markers(stderr: &Option<String>) -> Option<String> {
-    stderr
-        .as_ref()
-        .map(|s| s.replace("---STDERR_CHUNK_BOUNDARY---", ""))
-}
-
-/// Custom serializer for stderr field that filters out boundary markers
-fn serialize_filtered_stderr<S>(stderr: &Option<String>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let filtered = filter_stderr_boundary_markers(stderr);
-    filtered.serialize(serializer)
-}
-
 #[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
 #[sqlx(type_name = "execution_process_status", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
@@ -75,9 +57,6 @@ pub struct ExecutionProcess {
     pub process_type: ExecutionProcessType,
     pub executor_type: Option<String>, // "echo", "claude", "amp", etc. - only for CodingAgent processes
     pub status: ExecutionProcessStatus,
-    pub stdout: Option<String>,
-    #[serde(serialize_with = "serialize_filtered_stderr")]
-    pub stderr: Option<String>,
     pub exit_code: Option<i64>,
     pub started_at: DateTime<Utc>,
     pub completed_at: Option<DateTime<Utc>>,
@@ -128,8 +107,6 @@ impl ExecutionProcess {
                 process_type as "process_type!: ExecutionProcessType",
                 executor_type,
                 status as "status!: ExecutionProcessStatus",
-                stdout, 
-                stderr, 
                 exit_code,
                 started_at as "started_at!: DateTime<Utc>",
                 completed_at as "completed_at?: DateTime<Utc>",
@@ -156,8 +133,6 @@ impl ExecutionProcess {
                 process_type as "process_type!: ExecutionProcessType",
                 executor_type,
                 status as "status!: ExecutionProcessStatus",
-                stdout, 
-                stderr, 
                 exit_code,
                 started_at as "started_at!: DateTime<Utc>",
                 completed_at as "completed_at?: DateTime<Utc>",
@@ -209,8 +184,6 @@ impl ExecutionProcess {
                 process_type as "process_type!: ExecutionProcessType",
                 executor_type,
                 status as "status!: ExecutionProcessStatus",
-                stdout, 
-                stderr, 
                 exit_code,
                 started_at as "started_at!: DateTime<Utc>",
                 completed_at as "completed_at?: DateTime<Utc>",
@@ -237,8 +210,6 @@ impl ExecutionProcess {
                 ep.process_type as "process_type!: ExecutionProcessType",
                 ep.executor_type,
                 ep.status as "status!: ExecutionProcessStatus",
-                ep.stdout, 
-                ep.stderr, 
                 ep.exit_code,
                 ep.started_at as "started_at!: DateTime<Utc>",
                 ep.completed_at as "completed_at?: DateTime<Utc>",
@@ -269,18 +240,16 @@ impl ExecutionProcess {
             ExecutionProcess,
             r#"INSERT INTO execution_processes (
                 id, task_attempt_id, process_type, executor_type, status, 
-                stdout, stderr, exit_code, started_at, 
+                exit_code, started_at, 
                 completed_at, created_at, updated_at
                ) 
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
                RETURNING 
                 id as "id!: Uuid", 
                 task_attempt_id as "task_attempt_id!: Uuid", 
                 process_type as "process_type!: ExecutionProcessType",
                 executor_type,
                 status as "status!: ExecutionProcessStatus",
-                stdout, 
-                stderr, 
                 exit_code,
                 started_at as "started_at!: DateTime<Utc>",
                 completed_at as "completed_at?: DateTime<Utc>",
@@ -291,8 +260,6 @@ impl ExecutionProcess {
             data.process_type,
             data.executor_type,
             ExecutionProcessStatus::Running,
-            None::<String>,        // stdout
-            None::<String>,        // stderr
             None::<i64>,           // exit_code
             now,                   // started_at
             None::<DateTime<Utc>>, // completed_at
@@ -327,58 +294,6 @@ impl ExecutionProcess {
         )
         .execute(pool)
         .await?;
-
-        Ok(())
-    }
-
-    /// Append to stdout for this execution process (for streaming updates)
-    pub async fn append_stdout(
-        pool: &SqlitePool,
-        id: Uuid,
-        stdout_append: &str,
-    ) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            "UPDATE execution_processes SET stdout = COALESCE(stdout, '') || $1, updated_at = datetime('now') WHERE id = $2",
-            stdout_append,
-            id
-        )
-        .execute(pool)
-        .await?;
-
-        Ok(())
-    }
-
-    /// Append to stderr for this execution process (for streaming updates)
-    pub async fn append_stderr(
-        pool: &SqlitePool,
-        id: Uuid,
-        stderr_append: &str,
-    ) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            "UPDATE execution_processes SET stderr = COALESCE(stderr, '') || $1, updated_at = datetime('now') WHERE id = $2",
-            stderr_append,
-            id
-        )
-        .execute(pool)
-        .await?;
-
-        Ok(())
-    }
-
-    /// Append to both stdout and stderr for this execution process
-    pub async fn append_output(
-        pool: &SqlitePool,
-        id: Uuid,
-        stdout_append: Option<&str>,
-        stderr_append: Option<&str>,
-    ) -> Result<(), sqlx::Error> {
-        if let Some(stdout_data) = stdout_append {
-            Self::append_stdout(pool, id, stdout_data).await?;
-        }
-
-        if let Some(stderr_data) = stderr_append {
-            Self::append_stderr(pool, id, stderr_data).await?;
-        }
 
         Ok(())
     }

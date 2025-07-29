@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                process_type as \"process_type!: ExecutionProcessType\",\n                executor_type,\n                status as \"status!: ExecutionProcessStatus\",\n                stdout, \n                stderr, \n                exit_code,\n                started_at as \"started_at!: DateTime<Utc>\",\n                completed_at as \"completed_at?: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes \n               WHERE task_attempt_id = $1 \n               ORDER BY created_at ASC",
+  "query": "INSERT INTO execution_processes (\n                id, task_attempt_id, process_type, executor_type, status, \n                exit_code, started_at, \n                completed_at, created_at, updated_at\n               ) \n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \n               RETURNING \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                process_type as \"process_type!: ExecutionProcessType\",\n                executor_type,\n                status as \"status!: ExecutionProcessStatus\",\n                exit_code,\n                started_at as \"started_at!: DateTime<Utc>\",\n                completed_at as \"completed_at?: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -29,43 +29,33 @@
         "type_info": "Text"
       },
       {
-        "name": "stdout",
-        "ordinal": 5,
-        "type_info": "Text"
-      },
-      {
-        "name": "stderr",
-        "ordinal": 6,
-        "type_info": "Text"
-      },
-      {
         "name": "exit_code",
-        "ordinal": 7,
+        "ordinal": 5,
         "type_info": "Integer"
       },
       {
         "name": "started_at!: DateTime<Utc>",
-        "ordinal": 8,
+        "ordinal": 6,
         "type_info": "Text"
       },
       {
         "name": "completed_at?: DateTime<Utc>",
-        "ordinal": 9,
+        "ordinal": 7,
         "type_info": "Text"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 10,
+        "ordinal": 8,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 11,
+        "ordinal": 9,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 10
     },
     "nullable": [
       true,
@@ -74,13 +64,11 @@
       true,
       false,
       true,
-      true,
-      true,
       false,
       true,
       false,
       false
     ]
   },
-  "hash": "e42452b86d493248043a9061a9b6874bd9c6a87031ac8873e15a4c8b5964b47a"
+  "hash": "2e3c475516c4cfae965d75acef48e78d09d0fafe08ba4343ec0a480484081eef"
 }

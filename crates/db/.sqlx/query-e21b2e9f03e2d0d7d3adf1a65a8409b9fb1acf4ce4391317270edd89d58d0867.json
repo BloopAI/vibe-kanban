@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                process_type as \"process_type!: ExecutionProcessType\",\n                executor_type,\n                status as \"status!: ExecutionProcessStatus\",\n                stdout, \n                stderr, \n                exit_code,\n                started_at as \"started_at!: DateTime<Utc>\",\n                completed_at as \"completed_at?: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes \n               WHERE id = $1",
+  "query": "SELECT \n                ep.id as \"id!: Uuid\", \n                ep.task_attempt_id as \"task_attempt_id!: Uuid\", \n                ep.process_type as \"process_type!: ExecutionProcessType\",\n                ep.executor_type,\n                ep.status as \"status!: ExecutionProcessStatus\",\n                ep.exit_code,\n                ep.started_at as \"started_at!: DateTime<Utc>\",\n                ep.completed_at as \"completed_at?: DateTime<Utc>\",\n                ep.created_at as \"created_at!: DateTime<Utc>\", \n                ep.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes ep\n               JOIN task_attempts ta ON ep.task_attempt_id = ta.id\n               JOIN tasks t ON ta.task_id = t.id\n               WHERE ep.status = 'running' \n               AND ep.process_type = 'devserver'\n               AND t.project_id = $1\n               ORDER BY ep.created_at ASC",
   "describe": {
     "columns": [
       {
@@ -29,38 +29,28 @@
         "type_info": "Text"
       },
       {
-        "name": "stdout",
-        "ordinal": 5,
-        "type_info": "Text"
-      },
-      {
-        "name": "stderr",
-        "ordinal": 6,
-        "type_info": "Text"
-      },
-      {
         "name": "exit_code",
-        "ordinal": 7,
+        "ordinal": 5,
         "type_info": "Integer"
       },
       {
         "name": "started_at!: DateTime<Utc>",
-        "ordinal": 8,
+        "ordinal": 6,
         "type_info": "Text"
       },
       {
         "name": "completed_at?: DateTime<Utc>",
-        "ordinal": 9,
+        "ordinal": 7,
         "type_info": "Text"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 10,
+        "ordinal": 8,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 11,
+        "ordinal": 9,
         "type_info": "Text"
       }
     ],
@@ -74,13 +64,11 @@
       true,
       false,
       true,
-      true,
-      true,
       false,
       true,
       false,
       false
     ]
   },
-  "hash": "7b69f1a9a89e8e14c305c3cd5bf8c8a76ef75ad0c6d232f1a056ae5cfa2d658a"
+  "hash": "e21b2e9f03e2d0d7d3adf1a65a8409b9fb1acf4ce4391317270edd89d58d0867"
 }
