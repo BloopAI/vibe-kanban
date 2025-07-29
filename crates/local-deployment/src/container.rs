@@ -6,7 +6,9 @@ use command_group::AsyncGroupChild;
 use db::{
     DBService,
     models::{
-        execution_process::{CreateExecutionProcess, ExecutionProcess, ExecutionProcessType},
+        execution_process::{
+            CreateExecutionProcess, ExecutionProcess, ExecutionProcessStatus, ExecutionProcessType,
+        },
         task_attempt::TaskAttempt,
     },
 };
@@ -68,6 +70,7 @@ impl LocalContainerService {
         let exec_id = exec_id.clone();
         let child_store = self.child_store.clone();
         let msg_stores = self.msg_stores.clone();
+        let db = self.db.clone();
 
         tokio::spawn(async move {
             loop {
@@ -87,8 +90,28 @@ impl LocalContainerService {
                     }
                 };
 
-                // Cleanup if exit
-                if status_opt.is_some() {
+                // Update execution process and cleanup if exit
+                if let Some(status_result) = status_opt {
+                    // Update execution process record with completion info
+                    let (exit_code, status) = match status_result {
+                        Ok(exit_status) => {
+                            let code = exit_status.code().unwrap_or(-1) as i64;
+                            let status = if exit_status.success() {
+                                ExecutionProcessStatus::Completed
+                            } else {
+                                ExecutionProcessStatus::Failed
+                            };
+                            (Some(code), status)
+                        }
+                        Err(_) => (None, ExecutionProcessStatus::Failed),
+                    };
+
+                    if let Err(e) =
+                        ExecutionProcess::update_completion(&db.pool, exec_id, status, exit_code)
+                            .await
+                    {
+                        tracing::error!("Failed to update execution process completion: {}", e);
+                    }
                     // Cleanup msg store
                     if let Some(msg_arc) = msg_stores.write().await.remove(&exec_id) {
                         msg_arc.push_finished();
