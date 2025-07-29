@@ -14,6 +14,7 @@ use serde_json::Value;
 use services::services::{
     auth::{AuthError, AuthService},
     container::{ContainerError, ContainerService},
+    filesystem::{FilesystemError, FilesystemService},
     git::{GitService, GitServiceError},
 };
 use sqlx::{Error as SqlxError, types::Uuid};
@@ -35,6 +36,8 @@ pub enum DeploymentError {
     Container(#[from] ContainerError),
     #[error(transparent)]
     Auth(#[from] AuthError),
+    #[error(transparent)]
+    Filesystem(#[from] FilesystemError),
     #[error(transparent)]
     Other(#[from] AnyhowError),
 }
@@ -69,6 +72,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn auth(&self) -> &AuthService;
 
     fn git(&self) -> &GitService;
+
+    fn filesystem(&self) -> &FilesystemService;
 
     fn msg_stores(&self) -> &Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>;
 

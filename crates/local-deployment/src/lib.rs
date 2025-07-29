@@ -8,6 +8,7 @@ use services::services::{
     auth::AuthService,
     config::Config,
     container::ContainerService,
+    filesystem::FilesystemService,
     git::GitService,
     process_service::ProcessService,
     sentry::SentryService,
@@ -32,6 +33,7 @@ pub struct LocalDeployment {
     git: GitService,
     process: ProcessService,
     auth: AuthService,
+    filesystem: FilesystemService,
 }
 
 #[async_trait]
@@ -47,6 +49,7 @@ impl Deployment for LocalDeployment {
         let container = LocalContainerService::new(db.clone(), git.clone(), msg_stores.clone());
         let process = ProcessService::new();
         let auth = AuthService::new();
+        let filesystem = FilesystemService::new();
 
         Ok(Self {
             config,
@@ -59,6 +62,7 @@ impl Deployment for LocalDeployment {
             git,
             process,
             auth,
+            filesystem,
         })
     }
 
@@ -95,6 +99,10 @@ impl Deployment for LocalDeployment {
 
     fn git(&self) -> &GitService {
         &self.git
+    }
+
+    fn filesystem(&self) -> &FilesystemService {
+        &self.filesystem
     }
 
     fn msg_stores(&self) -> &Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>> {

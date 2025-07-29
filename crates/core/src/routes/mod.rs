@@ -7,7 +7,7 @@ use crate::DeploymentImpl;
 
 pub mod auth;
 pub mod config;
-// pub mod filesystem;
+pub mod filesystem;
 // pub mod github;
 pub mod execution_processes;
 pub mod health;
@@ -27,6 +27,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(execution_processes::router(&deployment))
         .merge(task_templates::router(&deployment))
         .merge(auth::router(&deployment))
+        .merge(filesystem::router())
         .with_state(deployment);
 
     Router::new().nest("/api", base_routes).into_make_service()
