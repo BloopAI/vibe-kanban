@@ -412,61 +412,6 @@ impl GitService {
         Ok(branches)
     }
 
-    pub fn create_branch(
-        &self,
-        repo_path: &Path,
-        branch_name: &str,
-        base_branch: Option<&str>,
-    ) -> Result<GitBranch, git2::Error> {
-        let repo = Repository::open(&repo_path)?;
-
-        // Get the base branch reference - default to current branch if not specified
-        let base_branch_name = match base_branch {
-            Some(name) => name.to_string(),
-            None => self
-                .get_current_branch(&repo_path)
-                .unwrap_or_else(|_| "HEAD".to_string()),
-        };
-
-        // Find the base commit
-        let base_commit = if base_branch_name == "HEAD" {
-            repo.head()?.peel_to_commit()?
-        } else {
-            // Try to find the branch as local first, then remote
-            let base_ref = if let Ok(local_ref) =
-                repo.find_reference(&format!("refs/heads/{}", base_branch_name))
-            {
-                local_ref
-            } else if let Ok(remote_ref) =
-                repo.find_reference(&format!("refs/remotes/{}", base_branch_name))
-            {
-                remote_ref
-            } else {
-                return Err(git2::Error::from_str(&format!(
-                    "Base branch '{}' not found",
-                    base_branch_name
-                )));
-            };
-            base_ref.peel_to_commit()?
-        };
-
-        // Create the new branch
-        let _new_branch = repo.branch(branch_name, &base_commit, false)?;
-
-        // Get the commit date for the new branch (same as base commit)
-        let last_commit_date = {
-            let timestamp = base_commit.time().seconds();
-            DateTime::from_timestamp(timestamp, 0).unwrap_or_else(Utc::now)
-        };
-
-        Ok(GitBranch {
-            name: branch_name.to_string(),
-            is_current: false,
-            is_remote: false,
-            last_commit_date,
-        })
-    }
-
     /// Perform a squash merge of task branch into base branch, but fail on conflicts
     fn perform_squash_merge(
         &self,

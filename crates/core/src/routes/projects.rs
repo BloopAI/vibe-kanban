@@ -16,7 +16,7 @@ use deployment::{Deployment, DeploymentError};
 use ignore::WalkBuilder;
 use services::services::{
     config::{EditorConfig, EditorType},
-    git::{CreateBranch, GitBranch, GitService},
+    git::{GitBranch, GitService},
 };
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -51,45 +51,6 @@ pub async fn get_project_branches(
 ) -> Result<ResponseJson<ApiResponse<Vec<GitBranch>>>, DeploymentError> {
     let branches = GitService::new().get_all_branches(&project.git_repo_path)?;
     Ok(ResponseJson(ApiResponse::success(branches)))
-}
-
-pub async fn create_project_branch(
-    Extension(project): Extension<Project>,
-    Json(payload): Json<CreateBranch>,
-) -> Result<ResponseJson<ApiResponse<GitBranch>>, DeploymentError> {
-    // Validate branch name
-    if payload.name.trim().is_empty() {
-        return Ok(ResponseJson(ApiResponse::error(
-            "Branch name cannot be empty",
-        )));
-    }
-
-    // Check if branch name contains invalid characters
-    if payload.name.contains(' ') {
-        return Ok(ResponseJson(ApiResponse::error(
-            "Branch name cannot contain spaces",
-        )));
-    }
-
-    match GitService::new().create_branch(
-        &project.git_repo_path,
-        &payload.name,
-        payload.base_branch.as_deref(),
-    ) {
-        Ok(branch) => Ok(ResponseJson(ApiResponse::success(branch))),
-        Err(e) => {
-            tracing::error!(
-                "Failed to create branch '{}' for project {}: {}",
-                payload.name,
-                project.id,
-                e
-            );
-            Ok(ResponseJson(ApiResponse::error(&format!(
-                "Failed to create branch: {}",
-                e
-            ))))
-        }
-    }
 }
 
 pub async fn create_project(
@@ -483,10 +444,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             get(get_project).put(update_project).delete(delete_project),
         )
         .route("/with-branch", get(get_project_with_branch))
-        .route(
-            "/branches",
-            get(get_project_branches).post(create_project_branch),
-        )
+        .route("/branches", get(get_project_branches))
         .route("/search", get(search_project_files))
         .route("/open-editor", post(open_project_in_editor))
         .layer(from_fn_with_state(
