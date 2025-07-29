@@ -64,7 +64,8 @@ impl LocalContainerService {
 
     /// Spawn a background task that polls the child process for completion and
     /// cleans up the execution entry when it exits.
-    pub fn spawn_exit_monitor(&self, exec_id: Uuid) -> JoinHandle<()> {
+    pub fn spawn_exit_monitor(&self, exec_id: &Uuid) -> JoinHandle<()> {
+        let exec_id = exec_id.clone();
         let child_store = self.child_store.clone();
         let msg_stores = self.msg_stores.clone();
 
@@ -287,7 +288,7 @@ impl ContainerService for LocalContainerService {
         self.add_child_to_store(execution_process.id, child).await;
 
         // Spawn exit monitor
-        let _hn = self.spawn_exit_monitor(execution_process.id);
+        let _hn = self.spawn_exit_monitor(&execution_process.id);
 
         Ok(execution_process)
     }

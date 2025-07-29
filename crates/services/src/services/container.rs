@@ -13,7 +13,7 @@ use executors::{
 use futures::{StreamExt, TryStreamExt, future, stream::select};
 use sqlx::Error as SqlxError;
 use thiserror::Error;
-use tokio::sync::RwLock;
+use tokio::{sync::RwLock, task::JoinHandle};
 use tokio_util::io::ReaderStream;
 use utils::{log_msg::LogMsg, msg_store::MsgStore};
 use uuid::Uuid;
@@ -87,5 +87,9 @@ pub trait ContainerService {
         } else {
             None
         }
+    }
+
+    fn spawn_stream_raw_logs_to_db(&self, execution_id: &Uuid) -> JoinHandle<()> {
+        todo!();
     }
 }
