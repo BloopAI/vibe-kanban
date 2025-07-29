@@ -27,7 +27,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 async fn device_start(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<DeviceFlowStartResponse>>, DeploymentError> {
-    let device_start_response = deployment.auth_service().device_start().await?;
+    let device_start_response = deployment.auth().device_start().await?;
     Ok(ResponseJson(ApiResponse::success(device_start_response)))
 }
 
@@ -35,7 +35,7 @@ async fn device_start(
 async fn device_poll(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<String>>, DeploymentError> {
-    let user_info = match deployment.auth_service().device_poll().await {
+    let user_info = match deployment.auth().device_poll().await {
         Ok(info) => info,
         Err(AuthError::Pending) => {
             return Ok(ResponseJson(ApiResponse::error(
@@ -79,11 +79,7 @@ async fn github_check_token(
     let config = deployment.config().read().await;
     let token = config.github.token.clone();
     drop(config);
-    match deployment
-        .auth_service()
-        .check_token(token.as_deref())
-        .await
-    {
+    match deployment.auth().check_token(token.as_deref()).await {
         Ok(_) => Ok(ResponseJson(ApiResponse::success(()))),
         Err(AuthError::InvalidAccessToken) => Ok(ResponseJson(ApiResponse::error(
             "Invalid access token".into(),

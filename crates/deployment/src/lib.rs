@@ -66,7 +66,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn container(&self) -> &impl ContainerService;
 
-    fn auth_service(&self) -> &AuthService;
+    fn auth(&self) -> &AuthService;
 
     fn git(&self) -> &GitService;
 

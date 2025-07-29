@@ -31,7 +31,7 @@ pub struct LocalDeployment {
     container: LocalContainerService,
     git: GitService,
     process: ProcessService,
-    auth_service: AuthService,
+    auth: AuthService,
 }
 
 #[async_trait]
@@ -46,7 +46,7 @@ impl Deployment for LocalDeployment {
         let msg_stores = Arc::new(RwLock::new(HashMap::new()));
         let container = LocalContainerService::new(db.clone(), git.clone(), msg_stores.clone());
         let process = ProcessService::new();
-        let auth_service = AuthService::new();
+        let auth = AuthService::new();
 
         Ok(Self {
             config,
@@ -58,7 +58,7 @@ impl Deployment for LocalDeployment {
             container,
             git,
             process,
-            auth_service,
+            auth,
         })
     }
 
@@ -89,8 +89,8 @@ impl Deployment for LocalDeployment {
     fn container(&self) -> &impl ContainerService {
         &self.container
     }
-    fn auth_service(&self) -> &AuthService {
-        &self.auth_service
+    fn auth(&self) -> &AuthService {
+        &self.auth
     }
 
     fn git(&self) -> &GitService {
