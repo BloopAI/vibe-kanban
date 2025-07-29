@@ -4,7 +4,14 @@ use anyhow::{Error as AnyhowError, anyhow};
 use async_trait::async_trait;
 use axum::response::sse::Event;
 use command_group::AsyncGroupChild;
-use db::models::{execution_process::ExecutionProcess, task_attempt::TaskAttempt};
+use db::{
+    DBService,
+    models::{
+        execution_process::ExecutionProcess,
+        execution_process_logs::{self, ExecutionProcessLogs},
+        task_attempt::TaskAttempt,
+    },
+};
 use executors::{
     actions::ExecutorActions,
     executors::ExecutorError,
@@ -36,6 +43,8 @@ pub enum ContainerError {
 #[async_trait]
 pub trait ContainerService {
     fn msg_stores(&self) -> &Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>;
+
+    fn db(&self) -> &DBService;
 
     async fn create(&self, task_attempt: &TaskAttempt) -> Result<ContainerRef, ContainerError>;
 
@@ -89,12 +98,10 @@ pub trait ContainerService {
         }
     }
 
-    fn spawn_stream_raw_logs_to_db(
-        &self,
-        execution_id: &Uuid,
-    ) -> Result<JoinHandle<()>, ContainerError> {
+    fn spawn_stream_raw_logs_to_db(&self, execution_id: &Uuid) -> JoinHandle<()> {
         let execution_id = *execution_id;
         let msg_stores = self.msg_stores().clone();
+        let db = self.db().clone();
 
         let handle = tokio::spawn(async move {
             // Get the message store for this execution
@@ -107,17 +114,44 @@ pub trait ContainerService {
                 let mut stream = store.history_plus_stream().await;
 
                 while let Some(Ok(msg)) = stream.next().await {
-                    match msg {
-                        LogMsg::Stdout(chunk) | LogMsg::Stderr(chunk) => {
-                            // TODO: Save raw log message to database
+                    match &msg {
+                        LogMsg::Stdout(_) | LogMsg::Stderr(_) => {
+                            // Serialize this individual message as a JSONL line
+                            match serde_json::to_string(&msg) {
+                                Ok(jsonl_line) => {
+                                    let jsonl_line_with_newline = format!("{}\n", jsonl_line);
+
+                                    // Append this line to the database
+                                    if let Err(e) = ExecutionProcessLogs::append_log_line(
+                                        &db.pool,
+                                        execution_id,
+                                        &jsonl_line_with_newline,
+                                    )
+                                    .await
+                                    {
+                                        eprintln!(
+                                            "Failed to append log line for execution {}: {}",
+                                            execution_id, e
+                                        );
+                                    }
+                                }
+                                Err(e) => {
+                                    eprintln!(
+                                        "Failed to serialize log message for execution {}: {}",
+                                        execution_id, e
+                                    );
+                                }
+                            }
                         }
-                        LogMsg::Finished => break,
+                        LogMsg::Finished => {
+                            break;
+                        }
                         _ => continue,
                     }
                 }
             }
         });
 
-        Ok(handle)
+        handle
     }
 }

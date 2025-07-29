@@ -204,6 +204,9 @@ impl LocalContainerService {
             normalizer.normalize_logs(store.clone(), current_dir);
         }
 
+        // Start MsgStore -> DB sync
+        self.spawn_stream_raw_logs_to_db(&id);
+
         let mut map = self.msg_stores().write().await;
         map.insert(id, store);
     }
@@ -214,6 +217,11 @@ impl ContainerService for LocalContainerService {
     fn msg_stores(&self) -> &Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>> {
         &self.msg_stores
     }
+
+    fn db(&self) -> &DBService {
+        &self.db
+    }
+
     /// Create a container
     async fn create(&self, task_attempt: &TaskAttempt) -> Result<ContainerRef, ContainerError> {
         let task = task_attempt

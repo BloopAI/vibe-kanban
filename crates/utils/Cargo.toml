@@ -52,4 +52,4 @@ reqwest-eventsource = "0.6"
 base64 = "0.22"
 tokio.workspace = true
 futures = "0.3.31"
-tokio-stream = "0.1.17"
+tokio-stream = { version = "0.1.17", features = ["sync"] }

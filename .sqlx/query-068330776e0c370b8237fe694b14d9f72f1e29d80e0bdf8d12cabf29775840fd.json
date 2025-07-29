@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM execution_process_logs WHERE execution_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "068330776e0c370b8237fe694b14d9f72f1e29d80e0bdf8d12cabf29775840fd"
+}
