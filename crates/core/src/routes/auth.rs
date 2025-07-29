@@ -12,7 +12,7 @@ use utils::response::ApiResponse;
 
 use crate::DeploymentImpl;
 
-pub fn auth_router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
+pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     Router::new()
         .route("/auth/github/device/start", post(device_start))
         .route("/auth/github/device/poll", post(device_poll))
