@@ -197,9 +197,7 @@ export const tasksApi = {
   },
 
   getById: async (projectId: string, taskId: string): Promise<Task> => {
-    const response = await makeRequest(
-      `/api/projects/${projectId}/tasks/${taskId}`
-    );
+    const response = await makeRequest(`/api/tasks/${taskId}`);
     return handleApiResponse<Task>(response);
   },
 
@@ -230,23 +228,17 @@ export const tasksApi = {
     taskId: string,
     data: UpdateTask
   ): Promise<Task> => {
-    const response = await makeRequest(
-      `/api/projects/${projectId}/tasks/${taskId}`,
-      {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      }
-    );
+    const response = await makeRequest(`/api/tasks/${taskId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
     return handleApiResponse<Task>(response);
   },
 
   delete: async (projectId: string, taskId: string): Promise<void> => {
-    const response = await makeRequest(
-      `/api/projects/${projectId}/tasks/${taskId}`,
-      {
-        method: 'DELETE',
-      }
-    );
+    const response = await makeRequest(`/api/tasks/${taskId}`, {
+      method: 'DELETE',
+    });
     return handleApiResponse<void>(response);
   },
 
