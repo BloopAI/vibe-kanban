@@ -36,16 +36,6 @@ pub async fn get_project(
     Ok(ResponseJson(ApiResponse::success(project)))
 }
 
-pub async fn get_project_with_branch(
-    Extension(project): Extension<Project>,
-) -> Result<ResponseJson<ApiResponse<ProjectWithBranch>>, ApiError> {
-    let current_branch = GitService::new()
-        .get_current_branch(&project.git_repo_path)
-        .ok();
-    let project_with_branch = ProjectWithBranch::from_project(project, current_branch);
-    Ok(ResponseJson(ApiResponse::success(project_with_branch)))
-}
-
 pub async fn get_project_branches(
     Extension(project): Extension<Project>,
 ) -> Result<ResponseJson<ApiResponse<Vec<GitBranch>>>, ApiError> {
@@ -400,7 +390,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             "/",
             get(get_project).put(update_project).delete(delete_project),
         )
-        .route("/with-branch", get(get_project_with_branch))
         .route("/branches", get(get_project_branches))
         .route("/search", get(search_project_files))
         .route("/open-editor", post(open_project_in_editor))

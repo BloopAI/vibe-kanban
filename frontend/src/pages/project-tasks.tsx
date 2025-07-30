@@ -40,6 +40,7 @@ import type {
   TaskStatus,
   TaskWithAttemptStatus,
   TaskTemplate,
+  Project,
 } from 'shared/types';
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 
@@ -52,7 +53,7 @@ export function ProjectTasks() {
   }>();
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [project, setProject] = useState<ProjectWithBranch | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
@@ -102,7 +103,7 @@ export function ProjectTasks() {
 
   const fetchProject = useCallback(async () => {
     try {
-      const result = await projectsApi.getWithBranch(projectId!);
+      const result = await projectsApi.getById(projectId!);
       setProject(result);
     } catch (err) {
       setError('Failed to load project');
@@ -383,11 +384,6 @@ export function ProjectTasks() {
         <div className="px-8 my-12 flex flex-row">
           <div className="w-full flex items-center gap-3">
             <h1 className="text-2xl font-bold">{project?.name || 'Project'}</h1>
-            {project?.current_branch && (
-              <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded-md">
-                {project.current_branch}
-              </span>
-            )}
             <Button
               variant="ghost"
               size="sm"

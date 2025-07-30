@@ -142,11 +142,6 @@ export const projectsApi = {
     return handleApiResponse<Project>(response);
   },
 
-  getWithBranch: async (id: string): Promise<ProjectWithBranch> => {
-    const response = await makeRequest(`/api/projects/${id}/with-branch`);
-    return handleApiResponse<ProjectWithBranch>(response);
-  },
-
   create: async (data: CreateProject): Promise<Project> => {
     const response = await makeRequest('/api/projects', {
       method: 'POST',
