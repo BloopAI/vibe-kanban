@@ -202,7 +202,7 @@ export const tasksApi = {
   },
 
   create: async (projectId: string, data: CreateTask): Promise<Task> => {
-    const response = await makeRequest(`/api/projects/${projectId}/tasks`, {
+    const response = await makeRequest(`/api/tasks`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
