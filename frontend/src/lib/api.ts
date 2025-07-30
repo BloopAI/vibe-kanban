@@ -580,12 +580,12 @@ export const templatesApi = {
   },
 
   listGlobal: async (): Promise<TaskTemplate[]> => {
-    const response = await makeRequest('/api/templates/global');
+    const response = await makeRequest('/api/templates?global=true');
     return handleApiResponse<TaskTemplate[]>(response);
   },
 
   listByProject: async (projectId: string): Promise<TaskTemplate[]> => {
-    const response = await makeRequest(`/api/projects/${projectId}/templates`);
+    const response = await makeRequest(`/api/templates?project_id=${projectId}`);
     return handleApiResponse<TaskTemplate[]>(response);
   },
 
