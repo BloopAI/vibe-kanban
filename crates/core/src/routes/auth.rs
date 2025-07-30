@@ -7,6 +7,7 @@ use axum::{
     Router,
 };
 use deployment::{Deployment, DeploymentError};
+use serde::{Deserialize, Serialize};
 use services::services::auth::{AuthError, DeviceFlowStartResponse};
 use utils::response::ApiResponse;
 
@@ -31,20 +32,29 @@ async fn device_start(
     Ok(ResponseJson(ApiResponse::success(device_start_response)))
 }
 
+#[derive(Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "UPPERCASE")]
+#[ts(export)]
+pub enum DevicePollStatus {
+    NotStarted,
+    Pending,
+    Success,
+}
+
 /// POST /auth/github/device/poll
 async fn device_poll(
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<String>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<DevicePollStatus>>, ApiError> {
     let user_info = match deployment.auth().device_poll().await {
         Ok(info) => info,
         Err(AuthError::Pending) => {
-            return Ok(ResponseJson(ApiResponse::error(
-                "Device flow pending".into(),
+            return Ok(ResponseJson(ApiResponse::success(
+                DevicePollStatus::Pending,
             )));
         }
         Err(AuthError::DeviceFlowNotStarted) => {
-            return Ok(ResponseJson(ApiResponse::error(
-                "Device flow not started".into(),
+            return Ok(ResponseJson(ApiResponse::success(
+                DevicePollStatus::NotStarted,
             )));
         }
         Err(e) => return Err(e.into()),
@@ -70,7 +80,7 @@ async fn device_poll(
         .track_if_analytics_allowed("$identify", props)
         .await;
     Ok(ResponseJson(ApiResponse::success(
-        "GitHub login successful".to_string(),
+        DevicePollStatus::Success,
     )))
 }
 
