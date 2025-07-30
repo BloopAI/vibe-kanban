@@ -511,7 +511,7 @@ export const executionProcessesApi = {
 export const fileSystemApi = {
   list: async (path?: string): Promise<DirectoryListResponse> => {
     const queryParam = path ? `?path=${encodeURIComponent(path)}` : '';
-    const response = await makeRequest(`/api/filesystem/list${queryParam}`);
+    const response = await makeRequest(`/api/filesystem/directory${queryParam}`);
     return handleApiResponse<DirectoryListResponse>(response);
   },
 };
