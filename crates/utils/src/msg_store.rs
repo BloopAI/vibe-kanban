@@ -4,7 +4,7 @@ use std::{
 };
 
 use axum::response::sse::Event;
-use futures::{StreamExt, TryStreamExt};
+use futures::{StreamExt, TryStreamExt, future};
 use tokio::{sync::broadcast, task::JoinHandle};
 use tokio_stream::wrappers::BroadcastStream;
 
@@ -107,6 +107,7 @@ impl MsgStore {
     ) -> futures::stream::BoxStream<'static, Result<String, std::io::Error>> {
         self.history_plus_stream()
             .await
+            .take_while(|res| future::ready(!matches!(res, Ok(LogMsg::Finished))))
             .filter_map(|res| async move {
                 match res {
                     Ok(LogMsg::Stdout(s)) => Some(Ok(s)),

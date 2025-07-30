@@ -5,6 +5,8 @@ use sqlx::{FromRow, SqlitePool, Type};
 use ts_rs::TS;
 use uuid::Uuid;
 
+use crate::models::task_attempt::TaskAttempt;
+
 #[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
 #[sqlx(type_name = "execution_process_status", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
@@ -325,5 +327,13 @@ impl ExecutionProcess {
 
     pub fn executor_actions(&self) -> &ExecutorActions {
         &self.executor_action
+    }
+
+    /// Get the parent TaskAttempt for this execution process
+    pub async fn parent_task_attempt(
+        &self,
+        pool: &SqlitePool,
+    ) -> Result<Option<TaskAttempt>, sqlx::Error> {
+        TaskAttempt::find_by_id(pool, self.task_attempt_id).await
     }
 }

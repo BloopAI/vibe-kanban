@@ -156,10 +156,57 @@ pub trait ContainerService {
             }
             temp_store.push_finished();
 
-            // TODO: Reimplement in-memory normaliser for finished executions
-            // // Spawn normalizer on populated store
-            // let normalizer = AmpLogNormalizer {};
-            // normalizer.normalize_logs(temp_store.clone(), &PathBuf::from("/"));
+            let process = match ExecutionProcess::find_by_id(&self.db().pool, *id).await {
+                Ok(Some(process)) => process,
+                Ok(None) => {
+                    tracing::error!("No execution process found for ID: {}", id);
+                    return None;
+                }
+                Err(e) => {
+                    tracing::error!("Failed to fetch execution process {}: {}", id, e);
+                    return None;
+                }
+            };
+
+            // Get the task attempt to determine correct directory
+            let task_attempt = match process.parent_task_attempt(&self.db().pool).await {
+                Ok(Some(task_attempt)) => task_attempt,
+                Ok(None) => {
+                    tracing::error!("No task attempt found for ID: {}", process.task_attempt_id);
+                    return None;
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "Failed to fetch task attempt {}: {}",
+                        process.task_attempt_id,
+                        e
+                    );
+                    return None;
+                }
+            };
+
+            let current_dir = self.task_attempt_to_current_dir(&task_attempt);
+
+            // Spawn normalizer on populated store
+            match process.executor_actions() {
+                ExecutorActions::CodingAgentInitialRequest(request) => {
+                    request
+                        .executor
+                        .normalize_logs(temp_store.clone(), &current_dir);
+                }
+                ExecutorActions::CodingAgentFollowUpRequest(request) => {
+                    request
+                        .executor
+                        .normalize_logs(temp_store.clone(), &current_dir);
+                }
+                _ => {
+                    tracing::debug!(
+                        "Executor action doesn't support log normalization: {:?}",
+                        process.executor_actions()
+                    );
+                    return None;
+                }
+            }
 
             Some(
                 temp_store

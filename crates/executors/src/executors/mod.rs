@@ -1,15 +1,16 @@
-use std::{path::PathBuf, str::FromStr, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 
 use async_trait::async_trait;
 use command_group::AsyncGroupChild;
 use enum_dispatch::enum_dispatch;
 use futures_io::Error as FuturesIoError;
 use serde::{Deserialize, Serialize};
+use strum_macros::EnumDiscriminants;
 use thiserror::Error;
 use ts_rs::TS;
 use utils::msg_store::MsgStore;
 
-use crate::executors::{amp::AmpExecutor, gemini::GeminiExecutor};
+use crate::executors::{amp::Amp, gemini::Gemini};
 
 pub mod amp;
 pub mod gemini;
@@ -24,12 +25,36 @@ pub enum ExecutorError {
     UnknownExecutorType(String),
 }
 
+fn unknown_executor_error(s: &str) -> ExecutorError {
+    ExecutorError::UnknownExecutorType(format!("Unknown executor type: {}.", s))
+}
+
 #[enum_dispatch]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-#[ts(export)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, TS, EnumDiscriminants, strum_macros::EnumString,
+)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+#[strum(parse_err_ty = ExecutorError, parse_err_fn = unknown_executor_error)]
+#[strum_discriminants(
+    name(CodingAgentExecutorType),
+    derive(strum_macros::Display, Serialize, Deserialize, TS),
+    ts(export),
+    serde(tag = "type", rename_all = "kebab-case")
+)]
 pub enum CodingAgentExecutors {
-    AmpExecutor,
-    GeminiExecutor,
+    // Echo,
+    // Claude,
+    // ClaudePlan,
+    Amp,
+    Gemini,
+    // ClaudeCodeRouter,
+    // #[serde(alias = "charmopencode")]
+    // CharmOpencode,
+    // #[serde(alias = "opencode")]
+    // SstOpencode,
+    // Aider,
+    // Codex,
 }
 
 #[async_trait]
@@ -47,16 +72,4 @@ pub trait StandardCodingAgentExecutor {
         session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError>;
     fn normalize_logs(&self, _raw_logs_event_store: Arc<MsgStore>, _worktree_path: &PathBuf);
-}
-
-impl FromStr for CodingAgentExecutors {
-    type Err = ExecutorError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "amp" => Ok(CodingAgentExecutors::AmpExecutor(AmpExecutor {})),
-            "gemini" => Ok(CodingAgentExecutors::GeminiExecutor(GeminiExecutor {})),
-            _ => Err(ExecutorError::UnknownExecutorType(s.to_string())),
-        }
-    }
 }

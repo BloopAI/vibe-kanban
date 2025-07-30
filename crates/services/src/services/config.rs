@@ -1,6 +1,7 @@
-use std::{fmt, path::PathBuf};
+use std::path::PathBuf;
 
 use anyhow::Error;
+use executors::executors::CodingAgentExecutorType;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utils::{assets::SoundAssets, cache_dir};
@@ -16,58 +17,11 @@ pub struct EnvironmentInfo {
     pub bitness: String,
 }
 
-/// Configuration for different executor types
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[serde(tag = "type", rename_all = "kebab-case")]
-pub enum ExecutorConfig {
-    Echo,
-    Claude,
-    ClaudePlan,
-    Amp,
-    Gemini,
-    #[serde(alias = "setup_script")]
-    SetupScript {
-        script: String,
-    },
-    ClaudeCodeRouter,
-    #[serde(alias = "charmopencode")]
-    CharmOpencode,
-    #[serde(alias = "opencode")]
-    SstOpencode,
-    Aider,
-    Codex,
-}
-
-impl ExecutorConfig {
-    /// Cheap, non-allocating view of the "type" string.
-    pub fn as_type_str(&self) -> &'static str {
-        match self {
-            ExecutorConfig::Echo => "echo",
-            ExecutorConfig::Claude => "claude",
-            ExecutorConfig::ClaudePlan => "claude-plan",
-            ExecutorConfig::Amp => "amp",
-            ExecutorConfig::Gemini => "gemini",
-            ExecutorConfig::SetupScript { .. } => "setup-script",
-            ExecutorConfig::ClaudeCodeRouter => "claude-code-router",
-            ExecutorConfig::CharmOpencode => "charm-opencode",
-            ExecutorConfig::SstOpencode => "sst-opencode",
-            ExecutorConfig::Aider => "aider",
-            ExecutorConfig::Codex => "codex",
-        }
-    }
-}
-
-impl fmt::Display for ExecutorConfig {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_type_str())
-    }
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct Config {
     pub theme: ThemeMode,
-    pub executor: ExecutorConfig,
+    pub executor: CodingAgentExecutorType,
     pub disclaimer_acknowledged: bool,
     pub onboarding_acknowledged: bool,
     pub github_login_acknowledged: bool,
@@ -220,7 +174,7 @@ impl Default for Config {
         Self {
             theme: ThemeMode::System,
             // TODO: fix
-            executor: ExecutorConfig::Claude,
+            executor: CodingAgentExecutorType::Amp, // TODO: revert to Claude
             disclaimer_acknowledged: false,
             onboarding_acknowledged: false,
             github_login_acknowledged: false,

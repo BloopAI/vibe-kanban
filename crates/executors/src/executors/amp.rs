@@ -28,12 +28,12 @@ use crate::{
 };
 
 /// An executor that uses Amp to process tasks
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, Default)]
 #[ts(export)]
-pub struct AmpExecutor {}
+pub struct Amp {}
 
 #[async_trait]
-impl StandardCodingAgentExecutor for AmpExecutor {
+impl StandardCodingAgentExecutor for Amp {
     async fn spawn(
         &self,
         current_dir: &PathBuf,
