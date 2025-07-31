@@ -519,16 +519,8 @@ pub async fn create_github_pr(
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<CreateGitHubPRRequest>,
 ) -> Result<ResponseJson<ApiResponse<String>>, RouteError> {
-    // Load the user's GitHub configuration
-    // TODO: This should return a better error variant
-    let config = Config::load(&config_path()).map_err(|e| {
-        RouteError::TaskAttempt(TaskAttemptError::ValidationError(format!(
-            "Failed to load config: {}",
-            e
-        )))
-    })?;
-
-    let github_token = match config.github.token {
+    let config = deployment.config().read().await;
+    let github_token = match &config.github.token {
         Some(token) => token,
         None => {
             return Ok(ResponseJson(ApiResponse::error(
@@ -547,13 +539,12 @@ pub async fn create_github_pr(
             config
                 .github
                 .default_pr_base
-                .unwrap_or_else(|| "main".to_string())
+                .as_ref()
+                .map_or_else(|| "main".to_string(), |b| b.to_string())
         }
     });
 
-    // Load context with full validation
     let pool = &deployment.db().pool;
-
     let task = task_attempt
         .parent_task(pool)
         .await?
@@ -691,56 +682,32 @@ pub async fn open_task_attempt_in_editor(
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
     // Get the task attempt to access the worktree path
     let attempt = &task_attempt;
+    let path = attempt.container_ref.as_ref().ok_or_else(|| {
+        tracing::error!(
+            "No container ref found for task attempt {}",
+            task_attempt.id
+        );
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
-    // Get editor command from config or override
-    let editor_command = {
-        let config_guard = deployment.config().read().await;
-        if let Some(ref request) = payload {
-            if let Some(ref editor_type) = request.editor_type {
-                // Create a temporary editor config with the override
-                let override_editor_type = match editor_type.as_str() {
-                    "vscode" => EditorType::VSCode,
-                    "cursor" => EditorType::Cursor,
-                    "windsurf" => EditorType::Windsurf,
-                    "intellij" => EditorType::IntelliJ,
-                    "zed" => EditorType::Zed,
-                    "custom" => EditorType::Custom,
-                    _ => config_guard.editor.editor_type.clone(),
-                };
-                let temp_config = EditorConfig {
-                    editor_type: override_editor_type,
-                    custom_command: config_guard.editor.custom_command.clone(),
-                };
-                temp_config.get_command()
-            } else {
-                config_guard.editor.get_command()
-            }
-        } else {
-            config_guard.editor.get_command()
-        }
+    let editor_config = {
+        let config = deployment.config().read().await;
+        let editor_type_str = payload.as_ref().and_then(|req| req.editor_type.as_deref());
+        config.editor.with_override(editor_type_str)
     };
 
-    // Open editor in the worktree directory
-    let mut cmd = std::process::Command::new(&editor_command[0]);
-    for arg in &editor_command[1..] {
-        cmd.arg(arg);
-    }
-    cmd.arg(attempt.container_ref.as_ref().unwrap());
-
-    match cmd.spawn() {
+    match editor_config.open_file(path) {
         Ok(_) => {
             tracing::info!(
-                "Opened editor ({}) for task attempt {} at path: {}",
-                editor_command.join(" "),
+                "Opened editor for task attempt {} at path: {}",
                 task_attempt.id,
-                attempt.container_ref.as_ref().unwrap_or(&String::new())
+                path
             );
             Ok(ResponseJson(ApiResponse::success(())))
         }
         Err(e) => {
             tracing::error!(
-                "Failed to open editor ({}) for attempt {}: {}",
-                editor_command.join(" "),
+                "Failed to open editor for attempt {}: {}",
                 task_attempt.id,
                 e
             );

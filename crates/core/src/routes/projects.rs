@@ -263,58 +263,21 @@ pub async fn open_project_in_editor(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<Option<OpenEditorRequest>>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-    // Get editor command from config or override
-    let editor_command = {
-        let config_guard = deployment.config().read().await;
-        if let Some(ref request) = payload {
-            if let Some(ref editor_type) = request.editor_type {
-                // Create a temporary editor config with the override
-                let override_editor_type = match editor_type.as_str() {
-                    "vscode" => EditorType::VSCode,
-                    "cursor" => EditorType::Cursor,
-                    "windsurf" => EditorType::Windsurf,
-                    "intellij" => EditorType::IntelliJ,
-                    "zed" => EditorType::Zed,
-                    "custom" => EditorType::Custom,
-                    _ => config_guard.editor.editor_type.clone(),
-                };
-                let temp_config = EditorConfig {
-                    editor_type: override_editor_type,
-                    custom_command: config_guard.editor.custom_command.clone(),
-                };
-                temp_config.get_command()
-            } else {
-                config_guard.editor.get_command()
-            }
-        } else {
-            config_guard.editor.get_command()
-        }
+    let path = project.git_repo_path.to_string_lossy();
+
+    let editor_config = {
+        let config = deployment.config().read().await;
+        let editor_type_str = payload.as_ref().and_then(|req| req.editor_type.as_deref());
+        config.editor.with_override(editor_type_str)
     };
 
-    // Open editor in the project directory
-    let mut cmd = std::process::Command::new(&editor_command[0]);
-    for arg in &editor_command[1..] {
-        cmd.arg(arg);
-    }
-    cmd.arg(&project.git_repo_path);
-
-    match cmd.spawn() {
+    match editor_config.open_file(&path) {
         Ok(_) => {
-            tracing::info!(
-                "Opened editor ({}) for project {} at path: {}",
-                editor_command.join(" "),
-                project.id,
-                project.git_repo_path.to_string_lossy()
-            );
+            tracing::info!("Opened editor for project {} at path: {}", project.id, path);
             Ok(ResponseJson(ApiResponse::success(())))
         }
         Err(e) => {
-            tracing::error!(
-                "Failed to open editor ({}) for project {}: {}",
-                editor_command.join(" "),
-                project.id,
-                e
-            );
+            tracing::error!("Failed to open editor for project {}: {}", project.id, e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }

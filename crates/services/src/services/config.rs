@@ -79,6 +79,20 @@ pub enum EditorType {
     Custom,
 }
 
+impl EditorType {
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s.to_lowercase().as_str() {
+            "vscode" => Some(Self::VSCode),
+            "cursor" => Some(Self::Cursor),
+            "windsurf" => Some(Self::Windsurf),
+            "intellij" => Some(Self::IntelliJ),
+            "zed" => Some(Self::Zed),
+            "custom" => Some(Self::Custom),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 #[serde(rename_all = "kebab-case")]
@@ -232,6 +246,30 @@ impl EditorConfig {
                     vec!["code".to_string()] // fallback to VSCode
                 }
             }
+        }
+    }
+
+    pub fn open_file(&self, path: &str) -> Result<(), std::io::Error> {
+        let command = self.get_command();
+        let mut cmd = std::process::Command::new(&command[0]);
+        for arg in &command[1..] {
+            cmd.arg(arg);
+        }
+        cmd.arg(path);
+        cmd.spawn()?;
+        Ok(())
+    }
+
+    pub fn with_override(&self, editor_type_str: Option<&str>) -> Self {
+        if let Some(editor_type_str) = editor_type_str {
+            let editor_type =
+                EditorType::from_str(editor_type_str).unwrap_or(self.editor_type.clone());
+            EditorConfig {
+                editor_type,
+                custom_command: self.custom_command.clone(),
+            }
+        } else {
+            self.clone()
         }
     }
 }
