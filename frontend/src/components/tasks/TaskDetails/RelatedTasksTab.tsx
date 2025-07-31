@@ -50,7 +50,6 @@ function RelatedTasksTab() {
           task.parent_task_attempt
         );
         const parentTask = await tasksApi.getById(
-          projectId,
           attemptData.task_id
         );
         setParentTaskDetails({

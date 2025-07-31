@@ -177,7 +177,7 @@ export function ProjectTasks() {
   const handleCreateTask = useCallback(
     async (title: string, description: string) => {
       try {
-        const createdTask = await tasksApi.create(projectId!, {
+        const createdTask = await tasksApi.create({
           project_id: projectId!,
           title,
           description: description || null,
@@ -221,7 +221,7 @@ export function ProjectTasks() {
       if (!editingTask) return;
 
       try {
-        await tasksApi.update(projectId!, editingTask.id, {
+        await tasksApi.update(editingTask.id, {
           title,
           description: description || null,
           status,
@@ -241,7 +241,7 @@ export function ProjectTasks() {
       if (!confirm('Are you sure you want to delete this task?')) return;
 
       try {
-        await tasksApi.delete(projectId!, taskId);
+        await tasksApi.delete(taskId);
         await fetchTasks();
       } catch (error) {
         setError('Failed to delete task');
@@ -296,7 +296,7 @@ export function ProjectTasks() {
       );
 
       try {
-        await tasksApi.update(projectId!, taskId, {
+        await tasksApi.update(taskId, {
           title: task.title,
           description: task.description,
           status: newStatus,

@@ -194,12 +194,12 @@ export const tasksApi = {
     return handleApiResponse<TaskWithAttemptStatus[]>(response);
   },
 
-  getById: async (projectId: string, taskId: string): Promise<Task> => {
+  getById: async (taskId: string): Promise<Task> => {
     const response = await makeRequest(`/api/tasks/${taskId}`);
     return handleApiResponse<Task>(response);
   },
 
-  create: async (projectId: string, data: CreateTask): Promise<Task> => {
+  create: async (data: CreateTask): Promise<Task> => {
     const response = await makeRequest(`/api/tasks`, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -222,7 +222,6 @@ export const tasksApi = {
   },
 
   update: async (
-    projectId: string,
     taskId: string,
     data: UpdateTask
   ): Promise<Task> => {
@@ -233,7 +232,7 @@ export const tasksApi = {
     return handleApiResponse<Task>(response);
   },
 
-  delete: async (projectId: string, taskId: string): Promise<void> => {
+  delete: async (taskId: string): Promise<void> => {
     const response = await makeRequest(`/api/tasks/${taskId}`, {
       method: 'DELETE',
     });
