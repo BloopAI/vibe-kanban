@@ -76,10 +76,6 @@ export type UpdateTaskAttempt = Record<string, never>;
 
 export type CreateFollowUpAttempt = { prompt: string, };
 
-export type DirectoryEntry = { name: string, path: string, is_directory: boolean, is_git_repo: boolean, };
-
-export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_path: string, };
-
 export type DeviceStartResponse = { device_code: string, user_code: string, verification_uri: string, expires_in: number, interval: number, };
 
 export type RepositoryInfo = { id: bigint, name: string, full_name: string, owner: string, description: string | null, clone_url: string, ssh_url: string, default_branch: string, private: boolean, };
@@ -142,7 +138,7 @@ export const EXECUTOR_TYPES: string[] = [
 
 export const EDITOR_TYPES: EditorType[] = [
     "vscode",
-    "cursor", 
+    "cursor",
     "windsurf",
     "intellij",
     "zed",

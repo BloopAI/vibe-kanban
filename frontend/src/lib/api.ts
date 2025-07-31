@@ -31,6 +31,7 @@ import {
 
 import {
   DirectoryEntry,
+  DirectoryListResponse,
 } from 'shared/types';
 
 export const makeRequest = async (url: string, options: RequestInit = {}) => {
@@ -61,12 +62,6 @@ export interface FollowUpResponse {
 export interface FileSearchResult {
   path: string;
   name: string;
-}
-
-// Directory listing response
-export interface DirectoryListResponse {
-  entries: DirectoryEntry[];
-  current_path: string;
 }
 
 // GitHub Repository Info (manually defined since not exported from Rust yet)
@@ -499,10 +494,10 @@ export const executionProcessesApi = {
 
 // File System APIs
 export const fileSystemApi = {
-  list: async (path?: string): Promise<DirectoryEntry[]> => {
+  list: async (path?: string): Promise<DirectoryListResponse> => {
     const queryParam = path ? `?path=${encodeURIComponent(path)}` : '';
     const response = await makeRequest(`/api/filesystem/directory${queryParam}`);
-    return handleApiResponse<DirectoryEntry[]>(response);
+    return handleApiResponse<DirectoryListResponse>(response);
   },
 };
 

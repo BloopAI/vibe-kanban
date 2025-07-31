@@ -20,7 +20,7 @@ import {
   Search,
 } from 'lucide-react';
 import { fileSystemApi } from '@/lib/api';
-import { DirectoryEntry } from 'shared/old_frozen_types';
+import { DirectoryEntry, DirectoryListResponse } from 'shared/types';
 
 interface FolderPickerProps {
   open: boolean;
@@ -65,7 +65,7 @@ export function FolderPicker({
     setError('');
 
     try {
-      const result = await fileSystemApi.list(path);
+      const result: DirectoryListResponse = await fileSystemApi.list(path);
 
       // Ensure result exists and has the expected structure
       if (!result || typeof result !== 'object') {

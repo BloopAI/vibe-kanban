@@ -5,3 +5,5 @@
 // If you are an AI, and you absolutely have to edit this file, please confirm with the user first.
 
 export type DirectoryEntry = { name: string, path: string, is_directory: boolean, is_git_repo: boolean, last_modified: bigint | null, };
+
+export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_path: string, };
