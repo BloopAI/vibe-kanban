@@ -19,12 +19,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Key, Loader2, Volume2 } from 'lucide-react';
-import type { SoundFile, ThemeMode } from 'shared/types';
-import { CodingAgentExecutorType, EditorType } from 'shared/types';
-import {
-  SOUND_FILES,
-  SOUND_LABELS,
-} from 'shared/old_frozen_types';
+import type { ThemeMode } from 'shared/types';
+import { CodingAgentExecutorType, EditorType, SoundFile } from 'shared/types';
+
 import { toPrettyCase } from '@/utils/string';
 import { useTheme } from '@/components/theme-provider';
 import { useConfig } from '@/components/config-provider';
@@ -412,9 +409,9 @@ export function Settings() {
                         <SelectValue placeholder="Select sound" />
                       </SelectTrigger>
                       <SelectContent>
-                        {SOUND_FILES.map((soundFile) => (
+                        {Object.values(SoundFile).map((soundFile) => (
                           <SelectItem key={soundFile} value={soundFile}>
-                            {SOUND_LABELS[soundFile]}
+                            {toPrettyCase(soundFile)}
                           </SelectItem>
                         ))}
                       </SelectContent>

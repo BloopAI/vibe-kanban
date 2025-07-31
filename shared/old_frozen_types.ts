@@ -120,23 +120,3 @@ export const MCP_SUPPORTED_EXECUTORS: string[] = [
     "charm-opencode",
     "claude-code-router"
 ];
-
-export const SOUND_FILES: SoundFile[] = [
-    "abstract-sound1",
-    "abstract-sound2",
-    "abstract-sound3",
-    "abstract-sound4",
-    "cow-mooing",
-    "phone-vibration",
-    "rooster"
-];
-
-export const SOUND_LABELS: Record<string, string> = {
-    "abstract-sound1": "Gentle Chime",
-    "abstract-sound2": "Soft Bell",
-    "abstract-sound3": "Digital Tone",
-    "abstract-sound4": "Subtle Alert",
-    "cow-mooing": "Cow Mooing",
-    "phone-vibration": "Phone Vibration",
-    "rooster": "Rooster Call"
-};

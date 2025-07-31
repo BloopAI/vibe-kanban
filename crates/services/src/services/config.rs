@@ -81,9 +81,10 @@ pub enum EditorType {
     Custom,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString)]
+#[ts(use_ts_enum)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum SoundFile {
     AbstractSound1,
     AbstractSound2,
@@ -94,50 +95,10 @@ pub enum SoundFile {
     Rooster,
 }
 
-// Constants for frontend
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct EditorConstants {
-    pub editor_types: Vec<EditorType>,
-    pub editor_labels: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct SoundConstants {
     pub sound_files: Vec<SoundFile>,
     pub sound_labels: Vec<String>,
-}
-
-impl SoundConstants {
-    pub fn new() -> Self {
-        Self {
-            sound_files: vec![
-                SoundFile::AbstractSound1,
-                SoundFile::AbstractSound2,
-                SoundFile::AbstractSound3,
-                SoundFile::AbstractSound4,
-                SoundFile::CowMooing,
-                SoundFile::PhoneVibration,
-                SoundFile::Rooster,
-            ],
-            sound_labels: vec![
-                "Gentle Chime".to_string(),
-                "Soft Bell".to_string(),
-                "Digital Tone".to_string(),
-                "Subtle Alert".to_string(),
-                "Cow Mooing".to_string(),
-                "Phone Vibration".to_string(),
-                "Rooster Call".to_string(),
-            ],
-        }
-    }
-}
-
-impl Default for SoundConstants {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl Default for Config {

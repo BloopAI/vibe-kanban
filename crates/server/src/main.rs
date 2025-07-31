@@ -308,12 +308,6 @@
 //         })
 // }
 
-// mod command_executor;
-// mod deployment;
-mod error;
-mod middleware;
-mod routes;
-// mod utils;
 use std::{
     str::FromStr,
     sync::{Arc, PoisonError},
@@ -322,17 +316,13 @@ use std::{
 use anyhow::{self, Error as AnyhowError};
 use axum::Router;
 use deployment::{Deployment, DeploymentError};
+use server::{routes, DeploymentImpl};
 use services::services::config::Config;
 use sqlx::{sqlite::SqliteConnectOptions, Error as SqlxError, SqlitePool};
 use strip_ansi_escapes::strip;
 use thiserror::Error;
 use tracing_subscriber::{filter::LevelFilter, prelude::*};
 use utils::{browser::open_browser, sentry::sentry_layer};
-
-// #[cfg(feature = "cloud")]
-// type DeploymentImpl = vibe_kanban_cloud::deployment::CloudDeployment;
-// #[cfg(not(feature = "cloud"))]
-type DeploymentImpl = local_deployment::LocalDeployment;
 
 #[derive(Debug, Error)]
 pub enum VibeKanbanError {

@@ -1,13 +1,6 @@
 use std::{env, fs, path::Path};
 
-use executors::executors::CodingAgentExecutorType;
-use services::services::config::{
-    Config, EditorConfig, EditorConstants, EditorType, EnvironmentInfo, GitHubConfig,
-    SoundConstants, SoundFile, ThemeMode,
-};
 use ts_rs::TS;
-
-type DeploymentImpl = local_deployment::LocalDeployment;
 
 fn generate_types_content() -> String {
     // 4. Friendly banner
@@ -24,18 +17,17 @@ fn generate_types_content() -> String {
         db::models::project::UpdateProject::decl(),
         db::models::project::SearchResult::decl(),
         db::models::project::SearchMatchType::decl(),
-        // UserSystemInfo::decl(),
-        // Environment::decl(),
-        Config::decl(),
-        EnvironmentInfo::decl(),
-        ThemeMode::decl(),
-        EditorConfig::decl(),
-        EditorType::decl(),
-        EditorConstants::decl(),
-        GitHubConfig::decl(),
-        SoundFile::decl(),
-        SoundConstants::decl(),
-        CodingAgentExecutorType::decl(),
+        server::routes::config::UserSystemInfo::decl(),
+        server::routes::config::Environment::decl(),
+        services::services::config::Config::decl(),
+        services::services::config::EnvironmentInfo::decl(),
+        services::services::config::ThemeMode::decl(),
+        services::services::config::EditorConfig::decl(),
+        services::services::config::EditorType::decl(),
+        services::services::config::GitHubConfig::decl(),
+        services::services::config::SoundFile::decl(),
+        services::services::config::SoundConstants::decl(),
+        executors::executors::CodingAgentExecutorType::decl(),
     ];
 
     let body = decls
