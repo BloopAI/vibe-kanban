@@ -22,8 +22,6 @@ import { Key, Loader2, Volume2 } from 'lucide-react';
 import type { SoundFile, ThemeMode } from 'shared/types';
 import { CodingAgentExecutorType, EditorType } from 'shared/types';
 import {
-  EDITOR_LABELS,
-  EDITOR_TYPES,
   SOUND_FILES,
   SOUND_LABELS,
 } from 'shared/old_frozen_types';
@@ -252,9 +250,9 @@ export function Settings() {
                     <SelectValue placeholder="Select editor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {EDITOR_TYPES.map((type) => (
+                    {Object.values(EditorType).map((type) => (
                       <SelectItem key={type} value={type}>
-                        {EDITOR_LABELS[type]}
+                        {toPrettyCase(type)}
                       </SelectItem>
                     ))}
                   </SelectContent>

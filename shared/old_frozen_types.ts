@@ -4,27 +4,17 @@
 
 export type ApiResponse<T> = { success: boolean, data: T | null, message: string | null, };
 
-export type Config = { theme: ThemeMode, executor: ExecutorConfig, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, github_login_acknowledged: boolean, telemetry_acknowledged: boolean, sound_alerts: boolean, sound_file: SoundFile, push_notifications: boolean, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean | null, environment: EnvironmentInfo, workspace_dir: string | null, };
-
 export type EnvironmentInfo = { os_type: string, os_version: string, architecture: string, bitness: string, };
 
 export type Environment = "local" | "cloud";
 
 export type ThemeMode = "light" | "dark" | "system" | "purple" | "green" | "blue" | "orange" | "red";
 
-export type EditorConfig = { editor_type: EditorType, custom_command: string | null, };
-
 export type GitHubConfig = { pat: string | null, token: string | null, username: string | null, primary_email: string | null, default_pr_base: string | null, };
-
-export type EditorType = "vscode" | "cursor" | "windsurf" | "intellij" | "zed" | "custom";
-
-export type EditorConstants = { editor_types: Array<EditorType>, editor_labels: Array<string>, };
 
 export type SoundFile = "abstract-sound1" | "abstract-sound2" | "abstract-sound3" | "abstract-sound4" | "cow-mooing" | "phone-vibration" | "rooster";
 
 export type SoundConstants = { sound_files: Array<SoundFile>, sound_labels: Array<string>, };
-
-export type ConfigConstants = { editor: EditorConstants, sound: SoundConstants, mode: Environment, };
 
 export type ExecutorConfig = { "type": "echo" } | { "type": "claude" } | { "type": "claude-plan" } | { "type": "amp" } | { "type": "gemini" } | { "type": "setup-script", script: string, } | { "type": "claude-code-router" } | { "type": "charm-opencode" } | { "type": "sst-opencode" } | { "type": "aider" } | { "type": "codex" };
 
@@ -121,51 +111,6 @@ export type NormalizedEntry = { timestamp: string | null, entry_type: Normalized
 export type NormalizedEntryType = { "type": "user_message" } | { "type": "assistant_message" } | { "type": "tool_use", tool_name: string, action_type: ActionType, } | { "type": "system_message" } | { "type": "error_message" } | { "type": "thinking" };
 
 export type ActionType = { "action": "file_read", path: string, } | { "action": "file_write", path: string, } | { "action": "command_run", command: string, } | { "action": "search", query: string, } | { "action": "web_fetch", url: string, } | { "action": "task_create", description: string, } | { "action": "plan_presentation", plan: string, } | { "action": "other", description: string, };
-
-// Generated constants
-export const EXECUTOR_TYPES: string[] = [
-    "echo",
-    "claude",
-    "claude-plan",
-    "amp",
-    "gemini",
-    "charm-opencode",
-    "claude-code-router",
-    "sst-opencode",
-    "aider",
-    "codex",
-];
-
-export const EDITOR_TYPES: EditorType[] = [
-    "vscode",
-    "cursor",
-    "windsurf",
-    "intellij",
-    "zed",
-    "custom"
-];
-
-export const EXECUTOR_LABELS: Record<string, string> = {
-    "echo": "Echo (Test Mode)",
-    "claude": "Claude Code",
-    "claude-plan": "Claude Code Plan",
-    "amp": "Amp",
-    "gemini": "Gemini",
-    "charm-opencode": "Charm Opencode",
-    "claude-code-router": "Claude Code Router",
-    "sst-opencode": "SST Opencode",
-    "aider": "Aider",
-    "codex": "Codex"
-};
-
-export const EDITOR_LABELS: Record<string, string> = {
-    "vscode": "VS Code",
-    "cursor": "Cursor",
-    "windsurf": "Windsurf",
-    "intellij": "IntelliJ IDEA",
-    "zed": "Zed",
-    "custom": "Custom"
-};
 
 export const MCP_SUPPORTED_EXECUTORS: string[] = [
     "claude",

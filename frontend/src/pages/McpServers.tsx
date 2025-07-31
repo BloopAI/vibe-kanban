@@ -19,10 +19,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
 import {
-  EXECUTOR_TYPES,
-  EXECUTOR_LABELS,
   MCP_SUPPORTED_EXECUTORS,
 } from 'shared/old_frozen_types';
+import { CodingAgentExecutorType } from 'shared/types';
 import { useConfig } from '@/components/config-provider';
 import { mcpServersApi } from '../lib/api';
 
@@ -323,11 +322,11 @@ export function McpServers() {
                   <SelectValue placeholder="Select executor" />
                 </SelectTrigger>
                 <SelectContent>
-                  {EXECUTOR_TYPES.filter((type) =>
+                  {Object.values(CodingAgentExecutorType).filter((type) =>
                     MCP_SUPPORTED_EXECUTORS.includes(type)
                   ).map((type) => (
                     <SelectItem key={type} value={type}>
-                      {EXECUTOR_LABELS[type]}
+                      {type}
                     </SelectItem>
                   ))}
                 </SelectContent>

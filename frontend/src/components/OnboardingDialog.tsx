@@ -20,10 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sparkles, Code } from 'lucide-react';
 import { EditorType, CodingAgentExecutorType } from 'shared/types';
-import {
-  EDITOR_TYPES,
-  EDITOR_LABELS,
-} from 'shared/old_frozen_types';
+
 import { toPrettyCase } from '@/utils/string';
 
 interface OnboardingDialogProps {
@@ -120,9 +117,9 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
                     <SelectValue placeholder="Select your preferred editor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {EDITOR_TYPES.map((type) => (
+                    {Object.values(EditorType).map((type) => (
                       <SelectItem key={type} value={type}>
-                        {EDITOR_LABELS[type]}
+                        {toPrettyCase(type)}
                       </SelectItem>
                     ))}
                   </SelectContent>

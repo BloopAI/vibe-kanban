@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useConfig } from '@/components/config-provider';
 import { attemptsApi, projectsApi } from '@/lib/api';
 import type { GitBranch, TaskAttempt } from 'shared/old_frozen_types';
-import { EXECUTOR_LABELS, EXECUTOR_TYPES } from 'shared/old_frozen_types';
+
 import { CodingAgentExecutorType } from 'shared/types';
 import {
   TaskAttemptDataContext,
@@ -18,9 +18,9 @@ import CreatePRDialog from '@/components/tasks/Toolbar/CreatePRDialog.tsx';
 import CreateAttempt from '@/components/tasks/Toolbar/CreateAttempt.tsx';
 import CurrentAttempt from '@/components/tasks/Toolbar/CurrentAttempt.tsx';
 
-const availableExecutors = EXECUTOR_TYPES.map((id) => ({
+const availableExecutors = Object.values(CodingAgentExecutorType).map((id) => ({
   id,
-  name: EXECUTOR_LABELS[id] || id,
+  name: id,
 }));
 
 function TaskDetailsToolbar() {
