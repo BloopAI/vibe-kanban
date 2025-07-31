@@ -52,8 +52,6 @@ impl Environment {
 pub struct UserSystemInfo {
     pub config: Config,
     pub environment: Environment,
-    pub editor_config_options: EditorConstants,
-    pub sound_config_options: SoundConstants,
 }
 
 // TODO: update frontend, BE schema has changed, this replaces GET /config and /config/constants
@@ -66,8 +64,6 @@ async fn get_user_system_info(
     let user_system_info = UserSystemInfo {
         config: config.clone(),
         environment: Environment::new(),
-        editor_config_options: EditorConstants::new(),
-        sound_config_options: SoundConstants::new(),
     };
 
     ResponseJson(ApiResponse::success(user_system_info))

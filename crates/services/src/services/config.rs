@@ -68,7 +68,7 @@ pub struct GitHubConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
+#[ts(use_ts_enum)]
 #[serde(rename_all = "lowercase")]
 pub enum EditorType {
     VSCode,

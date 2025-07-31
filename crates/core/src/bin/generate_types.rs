@@ -1,5 +1,10 @@
 use std::{env, fs, path::Path};
 
+#[path = "../routes/config.rs"]
+mod config;
+
+use config::UserSystemInfo;
+use services::services::config::EditorType;
 use ts_rs::TS;
 
 type DeploymentImpl = local_deployment::LocalDeployment;
@@ -19,6 +24,8 @@ fn generate_types_content() -> String {
         db::models::project::UpdateProject::decl(),
         db::models::project::SearchResult::decl(),
         db::models::project::SearchMatchType::decl(),
+        UserSystemInfo::decl(),
+        EditorType::decl(),
     ];
 
     let body = decls
