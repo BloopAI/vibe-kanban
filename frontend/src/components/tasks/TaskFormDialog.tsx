@@ -19,7 +19,8 @@ import {
 } from '@/components/ui/select';
 import { useConfig } from '@/components/config-provider';
 import { templatesApi } from '@/lib/api';
-import type { TaskStatus, ExecutorConfig, TaskTemplate } from 'shared/old_frozen_types';
+import type { TaskStatus, ExecutorConfig } from 'shared/old_frozen_types';
+import type { TaskTemplate } from 'shared/types';
 import { CodingAgentExecutorType } from 'shared/types';
 
 interface Task {

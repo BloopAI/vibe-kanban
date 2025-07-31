@@ -20,6 +20,12 @@ export type SearchResult = { path: string, is_file: boolean, match_type: SearchM
 
 export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
+export type TaskTemplate = { id: string, project_id: string | null, title: string, description: string | null, template_name: string, created_at: string, updated_at: string, };
+
+export type CreateTaskTemplate = { project_id: string | null, title: string, description: string | null, template_name: string, };
+
+export type UpdateTaskTemplate = { title: string | null, description: string | null, template_name: string | null, };
+
 export type UserSystemInfo = { config: Config, environment: Environment, };
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };

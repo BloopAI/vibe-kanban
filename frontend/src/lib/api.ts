@@ -5,7 +5,6 @@ import {
   CreateTask,
   CreateTaskAndStart,
   CreateTaskAttempt,
-  CreateTaskTemplate,
   DeviceStartResponse,
   ExecutionProcess,
   ExecutionProcessSummary,
@@ -13,21 +12,22 @@ import {
   Task,
   TaskAttempt,
   TaskAttemptState,
-  TaskTemplate,
   TaskWithAttemptStatus,
   UpdateTask,
-  UpdateTaskTemplate,
   WorktreeDiff,
 } from 'shared/old_frozen_types';
 
 import {
   Config,
+  CreateTaskTemplate,
   DirectoryListResponse,
   EditorType,
   GitBranch,
   Project,
   CreateProject,
+  TaskTemplate,
   UpdateProject,
+  UpdateTaskTemplate,
   UserSystemInfo,
 } from 'shared/types';
 

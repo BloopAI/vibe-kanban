@@ -32,12 +32,6 @@ export type TaskWithAttemptStatus = { id: string, project_id: string, title: str
 
 export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_task_attempt: string | null, };
 
-export type TaskTemplate = { id: string, project_id: string | null, title: string, description: string | null, template_name: string, created_at: string, updated_at: string, };
-
-export type CreateTaskTemplate = { project_id: string | null, title: string, description: string | null, template_name: string, };
-
-export type UpdateTaskTemplate = { title: string | null, description: string | null, template_name: string | null, };
-
 export type TaskAttemptStatus = "setuprunning" | "setupcomplete" | "setupfailed" | "executorrunning" | "executorcomplete" | "executorfailed";
 
 export type TaskAttempt = { id: string, task_id: string, worktree_path: string, branch: string, base_branch: string, merge_commit: string | null, executor: string | null, pr_url: string | null, pr_number: bigint | null, pr_status: string | null, pr_merged_at: string | null, worktree_deleted: boolean, setup_completed_at: string | null, created_at: string, updated_at: string, };
