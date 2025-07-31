@@ -22,7 +22,7 @@ import {
   EXECUTOR_TYPES,
   EXECUTOR_LABELS,
   MCP_SUPPORTED_EXECUTORS,
-} from 'shared/types';
+} from 'shared/old_frozen_types';
 import { useConfig } from '@/components/config-provider';
 import { mcpServersApi } from '../lib/api';
 

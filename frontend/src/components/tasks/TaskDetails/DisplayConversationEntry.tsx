@@ -21,7 +21,7 @@ import {
   NormalizedEntry,
   type NormalizedEntryType,
   type WorktreeDiff,
-} from 'shared/types.ts';
+} from 'shared/old_frozen_types';
 import { TaskDiffContext } from '@/components/context/taskDetailsContext.ts';
 
 type Props = {

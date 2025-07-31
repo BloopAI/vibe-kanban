@@ -7,7 +7,7 @@ import {
   KanbanProvider,
 } from '@/components/ui/shadcn-io/kanban';
 import { TaskCard } from './TaskCard';
-import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
+import type { TaskStatus, TaskWithAttemptStatus } from 'shared/old_frozen_types';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   useKeyboardShortcuts,

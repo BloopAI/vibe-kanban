@@ -54,7 +54,7 @@ import type {
   ExecutionProcess,
   GitBranch,
   TaskAttempt,
-} from 'shared/types.ts';
+} from 'shared/old_frozen_types';
 import {
   TaskAttemptDataContext,
   TaskAttemptStoppingContext,
@@ -263,7 +263,7 @@ function CurrentAttempt({
 
   useKeyboardShortcuts({
     stopExecution: () => setShowStopConfirmation(true),
-    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => {},
+    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => { },
     hasOpenDialog: showStopConfirmation,
     closeDialog: () => setShowStopConfirmation(false),
     onEnter: () => {
@@ -556,24 +556,24 @@ function CurrentAttempt({
                 </div>
               )
             ) : // Merge status for regular tasks
-            selectedAttempt.merge_commit ? (
-              <div className="flex items-center gap-1.5">
-                <div className="h-2 w-2 bg-green-500 rounded-full" />
-                <span className="text-sm font-medium text-green-700">
-                  Merged
-                </span>
-                <span className="text-xs font-mono text-muted-foreground">
-                  ({selectedAttempt.merge_commit.slice(0, 8)})
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5">
-                <div className="h-2 w-2 bg-yellow-500 rounded-full" />
-                <span className="text-sm font-medium text-yellow-700">
-                  Not merged
-                </span>
-              </div>
-            )}
+              selectedAttempt.merge_commit ? (
+                <div className="flex items-center gap-1.5">
+                  <div className="h-2 w-2 bg-green-500 rounded-full" />
+                  <span className="text-sm font-medium text-green-700">
+                    Merged
+                  </span>
+                  <span className="text-xs font-mono text-muted-foreground">
+                    ({selectedAttempt.merge_commit.slice(0, 8)})
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <div className="h-2 w-2 bg-yellow-500 rounded-full" />
+                  <span className="text-sm font-medium text-yellow-700">
+                    Not merged
+                  </span>
+                </div>
+              )}
           </div>
         </div>
       </div>
@@ -594,11 +594,10 @@ function CurrentAttempt({
           </Button>
         </div>
         <div
-          className={`text-xs font-mono px-2 py-1 rounded break-all cursor-pointer transition-all duration-300 flex items-center gap-2 ${
-            copied
+          className={`text-xs font-mono px-2 py-1 rounded break-all cursor-pointer transition-all duration-300 flex items-center gap-2 ${copied
               ? 'bg-green-100 text-green-800 border border-green-300'
               : 'text-muted-foreground bg-muted hover:bg-muted/80'
-          }`}
+            }`}
           onClick={handleCopyWorktreePath}
           title={copied ? 'Copied!' : 'Click to copy worktree path'}
         >

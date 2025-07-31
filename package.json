@@ -11,8 +11,8 @@
     "backend:dev": "BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) npm run backend:dev:watch",
     "backend:check": "cargo check",
     "backend:dev:watch": "DISABLE_WORKTREE_ORPHAN_CLEANUP=1 cargo watch -w crates -x 'run --bin core'",
-    "generate-types": "cd backend && cargo run --bin generate_types",
-    "generate-types:check": "cd backend && cargo run --bin generate_types -- --check",
+    "generate-types": "cargo run --bin generate_types",
+    "generate-types:check": "cargo run --bin generate_types -- --check",
     "prepare-db": "node scripts/prepare-db.js"
   },
   "devDependencies": {

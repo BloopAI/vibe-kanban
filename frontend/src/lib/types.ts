@@ -3,7 +3,7 @@ import {
   ExecutionProcess,
   ExecutionProcessSummary,
   ProcessLogsResponse,
-} from 'shared/types.ts';
+} from 'shared/old_frozen_types';
 
 export type AttemptData = {
   processes: ExecutionProcessSummary[];

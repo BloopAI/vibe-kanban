@@ -16,7 +16,7 @@ import type {
   TaskTemplate,
   CreateTaskTemplate,
   UpdateTaskTemplate,
-} from 'shared/types';
+} from 'shared/old_frozen_types';
 
 interface TaskTemplateManagerProps {
   projectId?: string;

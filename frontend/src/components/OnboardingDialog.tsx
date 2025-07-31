@@ -19,13 +19,13 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sparkles, Code } from 'lucide-react';
-import type { EditorType, ExecutorConfig } from 'shared/types';
+import type { EditorType, ExecutorConfig } from 'shared/old_frozen_types';
 import {
   EXECUTOR_TYPES,
   EDITOR_TYPES,
   EXECUTOR_LABELS,
   EDITOR_LABELS,
-} from 'shared/types';
+} from 'shared/old_frozen_types';
 
 interface OnboardingDialogProps {
   open: boolean;

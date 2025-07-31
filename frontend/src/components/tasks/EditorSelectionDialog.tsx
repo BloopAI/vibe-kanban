@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { EditorType } from 'shared/types';
+import type { EditorType } from 'shared/old_frozen_types';
 import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
 
 interface EditorSelectionDialogProps {

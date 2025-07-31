@@ -15,7 +15,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip.tsx';
 import { Input } from '@/components/ui/input.tsx';
-import type { GitBranch } from 'shared/types.ts';
+import type { GitBranch } from 'shared/old_frozen_types';
 
 type Props = {
   branches: GitBranch[];
@@ -120,9 +120,8 @@ function BranchSelector({
                     }
                   }}
                   disabled={isCurrentAndExcluded}
-                  className={`${selectedBranch === branch.name ? 'bg-accent' : ''} ${
-                    isCurrentAndExcluded ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
+                  className={`${selectedBranch === branch.name ? 'bg-accent' : ''} ${isCurrentAndExcluded ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                 >
                   <div className="flex items-center justify-between w-full">
                     <span className={branch.is_current ? 'font-medium' : ''}>

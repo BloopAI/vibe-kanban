@@ -12,7 +12,7 @@ import { useConfig } from './config-provider';
 import { Check, Clipboard, Github } from 'lucide-react';
 import { Loader } from './ui/loader';
 import { githubAuthApi } from '../lib/api';
-import { DeviceStartResponse } from 'shared/types.ts';
+import { DeviceStartResponse } from 'shared/old_frozen_types';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 export function GitHubLoginDialog({

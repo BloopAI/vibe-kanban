@@ -21,7 +21,7 @@ import {
   Project,
   UpdateProject,
   Environment,
-} from 'shared/types';
+} from 'shared/old_frozen_types';
 import { projectsApi, configApi, githubApi, RepositoryInfo } from '@/lib/api';
 
 interface ProjectFormProps {

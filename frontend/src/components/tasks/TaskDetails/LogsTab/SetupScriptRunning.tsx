@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { ExecutionProcess } from 'shared/types.ts';
+import { ExecutionProcess } from 'shared/old_frozen_types';
 
 type Props = {
   setupProcessId: string | null;
@@ -21,8 +21,8 @@ function SetupScriptRunning({ setupProcessId, runningProcessDetails }: Props) {
       setupProcessId
         ? runningProcessDetails[setupProcessId]
         : Object.values(runningProcessDetails).find(
-            (process) => process.process_type === 'setupscript'
-          ),
+          (process) => process.process_type === 'setupscript'
+        ),
     [setupProcessId, runningProcessDetails]
   );
 

@@ -6,7 +6,7 @@ import type {
   TaskAttemptState,
   TaskWithAttemptStatus,
   WorktreeDiff,
-} from 'shared/types.ts';
+} from 'shared/old_frozen_types';
 import { AttemptData } from '@/lib/types.ts';
 
 export interface TaskDetailsContextValue {

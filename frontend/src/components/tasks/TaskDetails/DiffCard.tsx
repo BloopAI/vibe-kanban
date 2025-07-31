@@ -1,7 +1,7 @@
 import { useContext, useState } from 'react';
 import { Button } from '@/components/ui/button.tsx';
 import { GitCompare } from 'lucide-react';
-import type { WorktreeDiff } from 'shared/types.ts';
+import type { WorktreeDiff } from 'shared/old_frozen_types';
 import { TaskBackgroundRefreshContext } from '@/components/context/taskDetailsContext.ts';
 import DiffFile from '@/components/tasks/TaskDetails/DiffFile.tsx';
 import { Loader } from '@/components/ui/loader';

@@ -14,7 +14,7 @@ import {
 import { useTaskPlan } from '@/components/context/TaskPlanContext.ts';
 import { Loader } from '@/components/ui/loader';
 import MarkdownRenderer from '@/components/ui/markdown-renderer.tsx';
-import { NormalizedEntry } from 'shared/types.ts';
+import { NormalizedEntry } from 'shared/old_frozen_types';
 
 interface PlanEntry {
   entry: NormalizedEntry;
@@ -159,7 +159,7 @@ function PlanTab() {
           const planId = `${planEntry.processId}-${planEntry.planIndex}`;
           const planContent =
             planEntry.entry.entry_type.type === 'tool_use' &&
-            planEntry.entry.entry_type.action_type.action ===
+              planEntry.entry.entry_type.action_type.action ===
               'plan_presentation'
               ? planEntry.entry.entry_type.action_type.plan
               : planEntry.entry.content;
@@ -168,11 +168,10 @@ function PlanTab() {
           return (
             <div
               key={planId}
-              className={`border rounded-lg transition-all ${
-                planEntry.isCurrent
+              className={`border rounded-lg transition-all ${planEntry.isCurrent
                   ? 'border-blue-400 bg-blue-50/50 dark:bg-blue-950/20 shadow-md'
                   : 'border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-950/20 opacity-75'
-              }`}
+                }`}
             >
               <div
                 className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors"
@@ -193,11 +192,10 @@ function PlanTab() {
                     )}
                   </button>
                   <span
-                    className={`px-2 py-1 rounded text-xs font-medium ${
-                      planEntry.isCurrent
+                    className={`px-2 py-1 rounded text-xs font-medium ${planEntry.isCurrent
                         ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200'
                         : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-                    }`}
+                      }`}
                   >
                     Plan {index + 1}
                   </span>

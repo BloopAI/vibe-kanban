@@ -19,7 +19,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Key, Loader2, Volume2 } from 'lucide-react';
-import type { EditorType, SoundFile, ThemeMode } from 'shared/types';
+import type { EditorType, SoundFile, ThemeMode } from 'shared/old_frozen_types';
 import {
   EDITOR_LABELS,
   EDITOR_TYPES,
@@ -27,7 +27,7 @@ import {
   EXECUTOR_TYPES,
   SOUND_FILES,
   SOUND_LABELS,
-} from 'shared/types';
+} from 'shared/old_frozen_types';
 import { useTheme } from '@/components/theme-provider';
 import { useConfig } from '@/components/config-provider';
 import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';

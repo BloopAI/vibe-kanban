@@ -13,7 +13,7 @@ import { executionProcessesApi } from '@/lib/api.ts';
 import type {
   ExecutionProcessStatus,
   ExecutionProcessSummary,
-} from 'shared/types.ts';
+} from 'shared/old_frozen_types';
 
 function ProcessesTab() {
   const { attemptData, setAttemptData } = useContext(TaskAttemptDataContext);
@@ -110,11 +110,10 @@ function ProcessesTab() {
             {attemptData.processes.map((process) => (
               <div
                 key={process.id}
-                className={`border rounded-lg p-4 hover:bg-muted/30 cursor-pointer transition-colors ${
-                  loadingProcessId === process.id
+                className={`border rounded-lg p-4 hover:bg-muted/30 cursor-pointer transition-colors ${loadingProcessId === process.id
                     ? 'opacity-50 cursor-wait'
                     : ''
-                }`}
+                  }`}
                 onClick={() => handleProcessClick(process)}
               >
                 <div className="flex items-start justify-between">

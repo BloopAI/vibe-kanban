@@ -4,8 +4,8 @@ import { Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useConfig } from '@/components/config-provider';
 import { attemptsApi, projectsApi } from '@/lib/api';
-import type { GitBranch, TaskAttempt } from 'shared/types';
-import { EXECUTOR_LABELS, EXECUTOR_TYPES } from 'shared/types';
+import type { GitBranch, TaskAttempt } from 'shared/old_frozen_types';
+import { EXECUTOR_LABELS, EXECUTOR_TYPES } from 'shared/old_frozen_types';
 import {
   TaskAttemptDataContext,
   TaskAttemptLoadingContext,

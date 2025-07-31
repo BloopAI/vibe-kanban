@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import { useConfig } from '@/components/config-provider';
 import { templatesApi } from '@/lib/api';
-import type { TaskStatus, ExecutorConfig, TaskTemplate } from 'shared/types';
+import type { TaskStatus, ExecutorConfig, TaskTemplate } from 'shared/old_frozen_types';
 
 interface Task {
   id: string;

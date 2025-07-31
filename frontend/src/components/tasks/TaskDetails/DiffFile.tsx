@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button.tsx';
 import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import DiffChunkSection from '@/components/tasks/TaskDetails/DiffChunkSection.tsx';
-import { FileDiff } from 'shared/types.ts';
+import { FileDiff } from 'shared/old_frozen_types';
 import {
   Dispatch,
   SetStateAction,
@@ -206,14 +206,12 @@ function DiffFile({
 
   return (
     <div
-      className={`border rounded-lg overflow-hidden ${
-        collapsedFiles.has(file.path) ? 'border-muted' : 'border-border'
-      }`}
+      className={`border rounded-lg overflow-hidden ${collapsedFiles.has(file.path) ? 'border-muted' : 'border-border'
+        }`}
     >
       <div
-        className={`bg-muted px-3 py-1.5 flex items-center justify-between ${
-          !collapsedFiles.has(file.path) ? 'border-b' : ''
-        }`}
+        className={`bg-muted px-3 py-1.5 flex items-center justify-between ${!collapsedFiles.has(file.path) ? 'border-b' : ''
+          }`}
       >
         <div className="flex items-center gap-2">
           <Button

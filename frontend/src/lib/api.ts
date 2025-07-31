@@ -11,7 +11,6 @@ import {
   CreateTaskAttempt,
   CreateTaskTemplate,
   DeviceStartResponse,
-  DirectoryEntry,
   type EditorType,
   ExecutionProcess,
   ExecutionProcessSummary,
@@ -28,6 +27,10 @@ import {
   UpdateTask,
   UpdateTaskTemplate,
   WorktreeDiff,
+} from 'shared/old_frozen_types';
+
+import {
+  DirectoryEntry,
 } from 'shared/types';
 
 export const makeRequest = async (url: string, options: RequestInit = {}) => {
@@ -496,10 +499,10 @@ export const executionProcessesApi = {
 
 // File System APIs
 export const fileSystemApi = {
-  list: async (path?: string): Promise<DirectoryListResponse> => {
+  list: async (path?: string): Promise<DirectoryEntry[]> => {
     const queryParam = path ? `?path=${encodeURIComponent(path)}` : '';
     const response = await makeRequest(`/api/filesystem/directory${queryParam}`);
-    return handleApiResponse<DirectoryListResponse>(response);
+    return handleApiResponse<DirectoryEntry[]>(response);
   },
 };
 

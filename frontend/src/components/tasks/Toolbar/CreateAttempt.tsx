@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
-import type { GitBranch, TaskAttempt } from 'shared/types.ts';
+import type { GitBranch, TaskAttempt } from 'shared/old_frozen_types';
 import { attemptsApi } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,
@@ -241,11 +241,10 @@ function CreateAttempt({
                 (isPlanningMode && !canCreateTask)
               }
               size="sm"
-              className={`w-full text-xs gap-2 ${
-                isPlanningMode && !canCreateTask
+              className={`w-full text-xs gap-2 ${isPlanningMode && !canCreateTask
                   ? 'opacity-60 cursor-not-allowed bg-red-600 hover:bg-red-600'
                   : ''
-              }`}
+                }`}
               title={
                 isPlanningMode && !canCreateTask
                   ? 'Plan required before starting attempt'

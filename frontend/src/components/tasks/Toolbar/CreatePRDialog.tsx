@@ -25,7 +25,7 @@ import {
 import { ApiError, attemptsApi } from '@/lib/api.ts';
 import { ProvidePatDialog } from '@/components/ProvidePatDialog';
 import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
-import { GitBranch } from 'shared/types.ts';
+import { GitBranch } from 'shared/old_frozen_types';
 
 type Props = {
   showCreatePRDialog: boolean;

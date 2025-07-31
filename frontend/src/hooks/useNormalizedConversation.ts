@@ -16,7 +16,7 @@ import {
   ExecutionProcess,
   NormalizedConversation,
   NormalizedEntry,
-} from 'shared/types';
+} from 'shared/old_frozen_types';
 
 const useNormalizedConversation = ({
   executionProcess,

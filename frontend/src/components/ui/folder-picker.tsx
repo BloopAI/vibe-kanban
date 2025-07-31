@@ -20,7 +20,7 @@ import {
   Search,
 } from 'lucide-react';
 import { fileSystemApi } from '@/lib/api';
-import { DirectoryEntry } from 'shared/types';
+import { DirectoryEntry } from 'shared/old_frozen_types';
 
 interface FolderPickerProps {
   open: boolean;

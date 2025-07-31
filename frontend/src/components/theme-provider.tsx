@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import type { ThemeMode } from 'shared/types';
+import type { ThemeMode } from 'shared/old_frozen_types';
 
 type ThemeProviderProps = {
   children: React.ReactNode;

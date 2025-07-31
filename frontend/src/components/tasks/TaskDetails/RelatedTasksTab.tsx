@@ -5,7 +5,7 @@ import {
   TaskRelatedTasksContext,
 } from '@/components/context/taskDetailsContext.ts';
 import { attemptsApi, tasksApi } from '@/lib/api.ts';
-import type { Task, TaskAttempt } from 'shared/types.ts';
+import type { Task, TaskAttempt } from 'shared/old_frozen_types';
 import {
   AlertCircle,
   CheckCircle,

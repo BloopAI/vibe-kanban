@@ -16,7 +16,7 @@ import {
   Trash2,
   XCircle,
 } from 'lucide-react';
-import type { TaskWithAttemptStatus } from 'shared/types';
+import type { TaskWithAttemptStatus } from 'shared/old_frozen_types';
 import { is_planning_executor_type } from '@/lib/utils';
 
 type Task = TaskWithAttemptStatus;
