@@ -360,6 +360,7 @@ fn main() -> Result<(), VibeKanbanError> {
             let deployment = DeploymentImpl::new().await?;
 
             deployment.update_sentry_scope().await?;
+            deployment.cleanup_orphan_executions().await?;
 
             let app_router = routes::router(deployment);
 

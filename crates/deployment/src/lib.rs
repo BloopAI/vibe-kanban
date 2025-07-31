@@ -2,7 +2,19 @@ use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Error as AnyhowError;
 use async_trait::async_trait;
-use db::{DBService, models::task_attempt::TaskAttemptError};
+use axum::{
+    Json,
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
+use db::{
+    DBService,
+    models::{
+        execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
+        task::{Task, TaskStatus},
+        task_attempt::{TaskAttempt, TaskAttemptError},
+    },
+};
 use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
 use serde_json::Value;
@@ -91,5 +103,65 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                 analytics.track_event(self.user_id(), event_name, Some(properties.clone()));
             }
         }
+    }
+
+    /// Cleanup executions marked as running in the db, call at startup
+    async fn cleanup_orphan_executions(&self) -> Result<(), DeploymentError> {
+        let running_processes = ExecutionProcess::find_running(&self.db().pool).await?;
+        for process in running_processes {
+            tracing::info!(
+                "Found orphaned execution process {} for task attempt {}",
+                process.id,
+                process.task_attempt_id
+            );
+            // Update the execution process status first
+            if let Err(e) = ExecutionProcess::update_completion(
+                &self.db().pool,
+                process.id,
+                ExecutionProcessStatus::Failed,
+                None, // No exit code for orphaned processes
+            )
+            .await
+            {
+                tracing::error!(
+                    "Failed to update orphaned execution process {} status: {}",
+                    process.id,
+                    e
+                );
+                continue;
+            }
+            // Process marked as failed
+            tracing::info!("Marked orphaned execution process {} as failed", process.id);
+            // Update task status to InReview for coding agent and setup script failures
+            if matches!(
+                process.run_reason,
+                ExecutionProcessRunReason::CodingAgent
+                    | ExecutionProcessRunReason::SetupScript
+                    | ExecutionProcessRunReason::CleanupScript
+            ) {
+                if let Ok(Some(task_attempt)) =
+                    TaskAttempt::find_by_id(&self.db().pool, process.task_attempt_id).await
+                {
+                    if let Ok(Some(task)) =
+                        Task::find_by_id(&self.db().pool, task_attempt.task_id).await
+                    {
+                        if let Err(e) = Task::update_status(
+                            &self.db().pool,
+                            task.id,
+                            task.project_id,
+                            TaskStatus::InReview,
+                        )
+                        .await
+                        {
+                            tracing::error!(
+                                "Failed to update task status to InReview for orphaned attempt: {}",
+                                e
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 }
