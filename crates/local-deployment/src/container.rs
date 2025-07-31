@@ -289,26 +289,6 @@ impl LocalContainerService {
         format!("vk-{}-{}", short_uuid(attempt_id), task_title_id)
     }
 
-    /// Get the base directory for vibe-kanban worktrees
-    pub fn get_worktree_base_dir() -> std::path::PathBuf {
-        let dir_name = if cfg!(debug_assertions) {
-            "vibe-kanban-dev"
-        } else {
-            "vibe-kanban"
-        };
-
-        if cfg!(target_os = "macos") {
-            // macOS already uses /var/folders/... which is persistent storage
-            std::env::temp_dir().join(dir_name)
-        } else if cfg!(target_os = "linux") {
-            // Linux: use /var/tmp instead of /tmp to avoid RAM usage
-            std::path::PathBuf::from("/var/tmp").join(dir_name)
-        } else {
-            // Windows and other platforms: use temp dir with vibe-kanban subdirectory
-            std::env::temp_dir().join(dir_name)
-        }
-    }
-
     async fn track_child_msgs_in_store(&self, id: Uuid, child: &mut AsyncGroupChild) {
         let store = Arc::new(MsgStore::new());
 
@@ -357,7 +337,7 @@ impl ContainerService for LocalContainerService {
 
         let task_branch_name =
             LocalContainerService::dir_name_from_task_attempt(&task_attempt.id, &task.title);
-        let worktree_path = LocalContainerService::get_worktree_base_dir().join(&task_branch_name);
+        let worktree_path = WorktreeManager::get_worktree_base_dir().join(&task_branch_name);
 
         let project = task
             .parent_project(&self.db.pool)
