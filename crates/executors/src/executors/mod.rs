@@ -10,9 +10,10 @@ use thiserror::Error;
 use ts_rs::TS;
 use utils::msg_store::MsgStore;
 
-use crate::executors::{amp::Amp, gemini::Gemini};
+use crate::executors::{amp::Amp, claude::ClaudeCode, gemini::Gemini};
 
 pub mod amp;
+pub mod claude;
 pub mod gemini;
 
 #[derive(Debug, Error)]
@@ -44,7 +45,8 @@ fn unknown_executor_error(s: &str) -> ExecutorError {
 )]
 pub enum CodingAgentExecutors {
     // Echo,
-    // Claude,
+    #[serde(alias = "claude")]
+    ClaudeCode,
     // ClaudePlan,
     Amp,
     Gemini,

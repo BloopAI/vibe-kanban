@@ -188,7 +188,7 @@ impl Default for Config {
         Self {
             theme: ThemeMode::System,
             // TODO: fix
-            executor: CodingAgentExecutorType::Amp, // TODO: revert to Claude
+            executor: CodingAgentExecutorType::ClaudeCode,
             disclaimer_acknowledged: false,
             onboarding_acknowledged: false,
             github_login_acknowledged: false,
