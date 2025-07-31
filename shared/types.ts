@@ -32,7 +32,7 @@ export type ThemeMode = "light" | "dark" | "system" | "purple" | "green" | "blue
 
 export type EditorConfig = { editor_type: EditorType, custom_command: string | null, };
 
-export enum EditorType { V_S_CODE = "V_S_CODE", CURSOR = "CURSOR", WINDSURF = "WINDSURF", INTELLI_J = "INTELLI_J", ZED = "ZED", CUSTOM = "CUSTOM" }
+export enum EditorType { VS_CODE = "VS_CODE", CURSOR = "CURSOR", WINDSURF = "WINDSURF", INTELLI_J = "INTELLI_J", ZED = "ZED", CUSTOM = "CUSTOM" }
 
 export type EditorConstants = { editor_types: Array<EditorType>, editor_labels: Array<string>, };
 

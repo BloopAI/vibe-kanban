@@ -19,8 +19,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Key, Loader2, Volume2 } from 'lucide-react';
-import type { EditorType, SoundFile, ThemeMode } from 'shared/types';
-import { CodingAgentExecutorType } from 'shared/types';
+import type { SoundFile, ThemeMode } from 'shared/types';
+import { CodingAgentExecutorType, EditorType } from 'shared/types';
 import {
   EDITOR_LABELS,
   EDITOR_TYPES,
@@ -241,7 +241,7 @@ export function Settings() {
                         ...config.editor,
                         editor_type: value,
                         custom_command:
-                          value === 'custom'
+                          value === EditorType.CUSTOM
                             ? config.editor.custom_command
                             : null,
                       },
@@ -264,7 +264,7 @@ export function Settings() {
                 </p>
               </div>
 
-              {config.editor.editor_type === 'custom' && (
+              {config.editor.editor_type === EditorType.CUSTOM && (
                 <div className="space-y-2">
                   <Label htmlFor="custom-command">Custom Command</Label>
                   <Input

@@ -36,7 +36,7 @@ interface OnboardingDialogProps {
 
 export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
   const [executor, setExecutor] = useState<CodingAgentExecutorType>(CodingAgentExecutorType.CLAUDE_CODE);
-  const [editorType, setEditorType] = useState<EditorType>(EditorType.vscode);
+  const [editorType, setEditorType] = useState<EditorType>(EditorType.VS_CODE);
   const [customCommand, setCustomCommand] = useState<string>('');
 
   const handleComplete = () => {
@@ -44,14 +44,14 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
       executor,
       editor: {
         editor_type: editorType,
-        custom_command: editorType === 'custom' ? customCommand || null : null,
+        custom_command: editorType === EditorType.CUSTOM ? customCommand || null : null,
       },
     });
   };
 
   const isValid =
-    editorType !== 'custom' ||
-    (editorType === 'custom' && customCommand.trim() !== '');
+    editorType !== EditorType.CUSTOM ||
+    (editorType === EditorType.CUSTOM && customCommand.trim() !== '');
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
@@ -133,7 +133,7 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
                 </p>
               </div>
 
-              {editorType === 'custom' && (
+              {editorType === EditorType.CUSTOM && (
                 <div className="space-y-2">
                   <Label htmlFor="custom-command">Custom Command</Label>
                   <Input
