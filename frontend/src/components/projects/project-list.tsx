@@ -7,7 +7,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Project } from 'shared/old_frozen_types';
+import { Project } from 'shared/types';
 import { ProjectForm } from './project-form';
 import { projectsApi } from '@/lib/api';
 import { AlertCircle, Loader2, Plus } from 'lucide-react';

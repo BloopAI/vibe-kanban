@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { projectsApi } from '@/lib/api.ts';
-import { Project } from 'shared/old_frozen_types';
+import { Project } from 'shared/types';
 import { useEffect, useRef } from 'react';
 
 type Props = {

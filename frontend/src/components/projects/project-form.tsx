@@ -16,7 +16,7 @@ import {
   CreateProject,
   Project,
   UpdateProject,
-} from 'shared/old_frozen_types';
+} from 'shared/types';
 import { projectsApi } from '@/lib/api';
 
 interface ProjectFormProps {
