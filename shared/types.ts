@@ -28,6 +28,8 @@ export type UpdateTaskTemplate = { title: string | null, description: string | n
 
 export type ApiResponse<T> = { success: boolean, data: T | null, message: string | null, };
 
+export type ApiError = string;
+
 export type UserSystemInfo = { config: Config, environment: Environment, };
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };

@@ -21,6 +21,7 @@ fn generate_types_content() -> String {
         db::models::task_template::CreateTaskTemplate::decl(),
         db::models::task_template::UpdateTaskTemplate::decl(),
         utils::response::ApiResponse::<()>::decl(),
+        server::error::ApiError::decl(),
         server::routes::config::UserSystemInfo::decl(),
         server::routes::config::Environment::decl(),
         services::services::config::Config::decl(),

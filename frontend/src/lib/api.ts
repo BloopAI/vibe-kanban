@@ -37,6 +37,20 @@ import {
 // Re-export types for convenience
 export type { RepositoryInfo } from 'shared/types';
 
+export class ApiError extends Error {
+  public status?: number;
+  
+  constructor(
+    message: string,
+    public statusCode?: number,
+    public response?: Response
+  ) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = statusCode;
+  }
+}
+
 export const makeRequest = async (url: string, options: RequestInit = {}) => {
   const headers = {
     'Content-Type': 'application/json',
@@ -53,20 +67,6 @@ export interface FollowUpResponse {
   message: string;
   actual_attempt_id: string;
   created_new_attempt: boolean;
-}
-
-
-
-
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public status?: number,
-    public response?: Response
-  ) {
-    super(message);
-    this.name = 'ApiError';
-  }
 }
 
 const handleApiResponse = async <T>(response: Response): Promise<T> => {
