@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use chrono::{DateTime, Utc};
 use git2::{
     BranchType, CherrypickOptions, Cred, DiffOptions, Error as GitError, FetchOptions,
-    RemoteCallbacks, Repository, Status, StatusOptions, WorktreeAddOptions, build::CheckoutBuilder,
+    RemoteCallbacks, Repository, Status, StatusOptions, build::CheckoutBuilder,
 };
 use regex;
 use serde::{Deserialize, Serialize};
@@ -127,75 +127,7 @@ impl GitService {
         Repository::open(repo_path).map_err(GitServiceError::from)
     }
 
-    /// Create a worktree with a new branch
-    pub fn create_worktree(
-        &self,
-        repo_path: &PathBuf,
-        branch_name: &str,
-        worktree_path: &Path,
-        base_branch: Option<&str>,
-    ) -> Result<(), GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-
-        // Ensure parent directory exists
-        if let Some(parent) = worktree_path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-
-        // Choose base reference
-        let base_reference = if let Some(base_branch) = base_branch {
-            let branch = repo
-                .find_branch(base_branch, BranchType::Local)
-                .map_err(|_| GitServiceError::BranchNotFound(base_branch.to_string()))?;
-            branch.into_reference()
-        } else {
-            // Handle new repositories without any commits
-            match repo.head() {
-                Ok(head_ref) => head_ref,
-                Err(e)
-                    if e.class() == git2::ErrorClass::Reference
-                        && e.code() == git2::ErrorCode::UnbornBranch =>
-                {
-                    // Repository has no commits yet, create an initial commit
-                    self.create_initial_commit(&repo)?;
-                    repo.find_reference("refs/heads/main")?
-                }
-                Err(e) => return Err(e.into()),
-            }
-        };
-
-        // Create branch
-        repo.branch(branch_name, &base_reference.peel_to_commit()?, false)?;
-
-        let branch = repo.find_branch(branch_name, BranchType::Local)?;
-        let branch_ref = branch.into_reference();
-        let mut worktree_opts = WorktreeAddOptions::new();
-        worktree_opts.reference(Some(&branch_ref));
-
-        // Create the worktree at the specified path
-        repo.worktree(branch_name, worktree_path, Some(&worktree_opts))?;
-
-        // Fix commondir for Windows/WSL compatibility
-        let worktree_name = worktree_path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or(branch_name);
-        if let Err(e) =
-            WorktreeManager::fix_worktree_commondir_for_windows_wsl(repo_path, worktree_name)
-        {
-            tracing::warn!("Failed to fix worktree commondir for Windows/WSL: {}", e);
-        }
-
-        info!(
-            "Created worktree '{}' at path: {}",
-            branch_name,
-            worktree_path.display()
-        );
-        Ok(())
-    }
-
-    /// Create an initial commit for empty repositories
-    fn create_initial_commit(&self, repo: &Repository) -> Result<(), GitServiceError> {
+    pub fn create_initial_commit(&self, repo: &Repository) -> Result<(), GitServiceError> {
         let signature = repo.signature().unwrap_or_else(|_| {
             // Fallback if no Git config is set
             git2::Signature::now("Vibe Kanban", "noreply@vibekanban.com")
@@ -857,7 +789,7 @@ impl GitService {
                         path_str,
                         &delta,
                     ) {
-                        eprintln!("Error processing unstaged file {}: {:?}", path_str, e);
+                        tracing::warn!("Error processing unstaged file {}: {:?}", path_str, e);
                     }
                 }
                 true
@@ -1163,73 +1095,6 @@ impl GitService {
             Err(_) => Ok("main".to_string()), // Fallback
         };
         result
-    }
-
-    /// Recreate a worktree from an existing branch (for cold task support)
-    pub async fn recreate_worktree_from_branch(
-        &self,
-        repo_path: &PathBuf,
-        branch_name: &str,
-        stored_worktree_path: &Path,
-    ) -> Result<PathBuf, GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-
-        // Verify branch exists before proceeding
-        let _branch = repo
-            .find_branch(branch_name, BranchType::Local)
-            .map_err(|_| GitServiceError::BranchNotFound(branch_name.to_string()))?;
-        drop(_branch);
-
-        let stored_worktree_path_str = stored_worktree_path.to_string_lossy().to_string();
-
-        info!(
-            "Recreating worktree using stored path: {} (branch: {})",
-            stored_worktree_path_str, branch_name
-        );
-
-        // Clean up existing directory if it exists to avoid git sync issues
-        if stored_worktree_path.exists() {
-            debug!(
-                "Removing existing directory before worktree recreation: {}",
-                stored_worktree_path_str
-            );
-            std::fs::remove_dir_all(stored_worktree_path).map_err(|e| {
-                GitServiceError::IoError(std::io::Error::other(format!(
-                    "Failed to remove existing worktree directory {}: {}",
-                    stored_worktree_path_str, e
-                )))
-            })?;
-        }
-
-        // Ensure parent directory exists - critical for session continuity
-        if let Some(parent) = stored_worktree_path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| {
-                GitServiceError::IoError(std::io::Error::other(format!(
-                    "Failed to create parent directory for worktree path {}: {}",
-                    stored_worktree_path_str, e
-                )))
-            })?;
-        }
-
-        // Extract repository path for WorktreeManager
-        let repo_path = repo.workdir().ok_or_else(|| {
-            GitServiceError::InvalidRepository("Repository has no working directory".to_string())
-        })?;
-
-        WorktreeManager::ensure_worktree_exists(repo_path, branch_name, stored_worktree_path)
-            .await
-            .map_err(|e| {
-                GitServiceError::IoError(std::io::Error::other(format!(
-                    "WorktreeManager error: {}",
-                    e
-                )))
-            })?;
-
-        info!(
-            "Successfully recreated worktree at original path: {} -> {}",
-            branch_name, stored_worktree_path_str
-        );
-        Ok(stored_worktree_path.to_path_buf())
     }
 
     /// Extract GitHub owner and repo name from git repo path

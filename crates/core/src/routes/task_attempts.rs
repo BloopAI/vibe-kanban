@@ -30,7 +30,6 @@ use services::services::{
     container::{ContainerRef, ContainerService},
     git::{BranchStatus, GitService, GitServiceError, WorktreeDiff},
     github_service::{CreatePrRequest, GitHubRepoInfo, GitHubService, GitHubServiceError},
-    worktree_manager::WorktreeManager,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -406,23 +405,11 @@ pub async fn get_task_attempt_diff(
         )?;
         Ok(ResponseJson(ApiResponse::success(diff)))
     } else {
-        let container_ref = task_attempt.container_ref.as_ref().ok_or_else(|| {
-            ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-                "No container ref found".to_string(),
-            ))
-        })?;
-        let worktree_path = std::path::Path::new(container_ref);
-
-        WorktreeManager::ensure_worktree_exists(
-            &ctx.project.git_repo_path,
-            &ctx.task_attempt.branch.as_ref().ok_or_else(|| {
-                ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-                    "Branch not found for task attempt".to_string(),
-                ))
-            })?,
-            worktree_path,
-        )
-        .await?;
+        let container_ref = deployment
+            .container()
+            .ensure_container_exists(&task_attempt)
+            .await?;
+        let worktree_path = std::path::Path::new(&container_ref);
 
         let diff = GitService::new().get_enhanced_diff(
             &ctx.project.git_repo_path,
@@ -447,23 +434,11 @@ pub async fn merge_task_attempt(
         .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
     let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
 
-    let container_ref = task_attempt.container_ref.as_ref().ok_or_else(|| {
-        ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-            "No container ref found".to_string(),
-        ))
-    })?;
-
-    let worktree_path = std::path::Path::new(container_ref);
-    WorktreeManager::ensure_worktree_exists(
-        &ctx.project.git_repo_path,
-        &ctx.task_attempt.branch.as_ref().ok_or_else(|| {
-            ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-                "Branch not found for task attempt".to_string(),
-            ))
-        })?,
-        worktree_path,
-    )
-    .await?;
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
+    let worktree_path = std::path::Path::new(&container_ref);
 
     let task_uuid_str = task.id.to_string();
     let first_uuid_section = task_uuid_str.split('-').next().unwrap_or(&task_uuid_str);
@@ -549,23 +524,11 @@ pub async fn create_github_pr(
     let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
 
     // Ensure worktree exists (recreate if needed for cold task support)
-    let container_ref = task_attempt.container_ref.as_ref().ok_or_else(|| {
-        ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-            "No container ref found for task attempt".to_string(),
-        ))
-    })?;
-
-    let worktree_path = std::path::Path::new(container_ref);
-    WorktreeManager::ensure_worktree_exists(
-        &ctx.project.git_repo_path,
-        &ctx.task_attempt.branch.as_ref().ok_or_else(|| {
-            ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-                "Branch not found for task attempt".to_string(),
-            ))
-        })?,
-        worktree_path,
-    )
-    .await?;
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
+    let worktree_path = std::path::Path::new(&container_ref);
 
     // Create GitHub service instance
     let github_token_to_use = config.github.pat.as_ref().unwrap_or(&github_token);
@@ -773,18 +736,11 @@ pub async fn rebase_task_attempt(
     let effective_base_branch =
         new_base_branch.or_else(|| Some(ctx.task_attempt.base_branch.clone()));
 
-    let container_ref = task_attempt.container_ref.unwrap();
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
     let worktree_path = std::path::Path::new(&container_ref);
-    WorktreeManager::ensure_worktree_exists(
-        &ctx.project.git_repo_path,
-        &ctx.task_attempt.branch.as_ref().ok_or_else(|| {
-            ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-                "Branch not found for task attempt".to_string(),
-            ))
-        })?,
-        worktree_path,
-    )
-    .await?;
 
     let _new_base_commit = GitService::new().rebase_branch(
         &ctx.project.git_repo_path,
@@ -967,36 +923,11 @@ pub async fn delete_task_attempt_file(
     Query(query): Query<DeleteFileQuery>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    let pool = &deployment.db().pool;
-    let task = task_attempt
-        .parent_task(pool)
-        .await?
-        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
-    let project = task
-        .parent_project(pool)
-        .await?
-        .ok_or(ApiError::TaskAttempt(TaskAttemptError::ProjectNotFound))?;
-
-    let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, project.id).await?;
-
-    // Ensure worktree exists (recreate if needed for cold task support)
-    let container_ref = task_attempt.container_ref.ok_or_else(|| {
-        ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-            "Container ref not found for task attempt".to_string(),
-        ))
-    })?;
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
     let worktree_path = std::path::Path::new(&container_ref);
-
-    WorktreeManager::ensure_worktree_exists(
-        &ctx.project.git_repo_path,
-        &ctx.task_attempt.branch.as_ref().ok_or_else(|| {
-            ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-                "Branch not found for task attempt".to_string(),
-            ))
-        })?,
-        worktree_path,
-    )
-    .await?;
 
     // Use GitService to delete file and commit
     let _commit_id = GitService::new()

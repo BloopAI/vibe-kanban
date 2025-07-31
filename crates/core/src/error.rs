@@ -9,7 +9,7 @@ use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
 use services::services::{
     auth::AuthError, container::ContainerError, git::GitServiceError,
-    github_service::GitHubServiceError,
+    github_service::GitHubServiceError, worktree_manager::WorktreeError,
 };
 use thiserror::Error;
 use utils::response::ApiResponse;
@@ -34,9 +34,10 @@ pub enum ApiError {
     Executor(#[from] ExecutorError),
     #[error(transparent)]
     Database(#[from] sqlx::Error),
+    #[error(transparent)]
+    Worktree(#[from] WorktreeError),
 }
 
-// TODO: Define a WorktreeError type and return from WorktreeManager
 impl From<Git2Error> for ApiError {
     fn from(err: Git2Error) -> Self {
         ApiError::GitService(GitServiceError::from(err))
@@ -55,6 +56,7 @@ impl IntoResponse for ApiError {
             ApiError::Container(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ContainerError"),
             ApiError::Executor(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ExecutorError"),
             ApiError::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DatabaseError"),
+            ApiError::Worktree(_) => (StatusCode::INTERNAL_SERVER_ERROR, "WorktreeError"),
         };
 
         let error_message = format!("{}: {}", error_type, self);

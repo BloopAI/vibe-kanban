@@ -21,6 +21,7 @@ use services::services::{
     filesystem::{FilesystemError, FilesystemService},
     git::{GitService, GitServiceError},
     sentry::SentryService,
+    worktree_manager::WorktreeError,
 };
 use sqlx::{Error as SqlxError, types::Uuid};
 use thiserror::Error;
@@ -47,6 +48,8 @@ pub enum DeploymentError {
     Auth(#[from] AuthError),
     #[error(transparent)]
     Filesystem(#[from] FilesystemError),
+    #[error(transparent)]
+    Worktree(#[from] WorktreeError),
     #[error(transparent)]
     Other(#[from] AnyhowError),
 }

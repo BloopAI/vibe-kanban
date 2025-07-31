@@ -26,7 +26,7 @@ use tokio_util::io::ReaderStream;
 use utils::{log_msg::LogMsg, msg_store::MsgStore};
 use uuid::Uuid;
 
-use crate::services::git::GitServiceError;
+use crate::services::{git::GitServiceError, worktree_manager::WorktreeError};
 pub type ContainerRef = String;
 
 #[derive(Debug, Error)]
@@ -37,6 +37,8 @@ pub enum ContainerError {
     Sqlx(#[from] SqlxError),
     #[error(transparent)]
     ExecutorError(#[from] ExecutorError),
+    #[error(transparent)]
+    Worktree(#[from] WorktreeError),
     #[error(transparent)]
     Other(#[from] AnyhowError), // Catches any unclassified errors
 }
@@ -50,6 +52,11 @@ pub trait ContainerService {
     fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf;
 
     async fn create(&self, task_attempt: &TaskAttempt) -> Result<ContainerRef, ContainerError>;
+
+    async fn ensure_container_exists(
+        &self,
+        task_attempt: &TaskAttempt,
+    ) -> Result<ContainerRef, ContainerError>;
 
     async fn start_execution_inner(
         &self,
