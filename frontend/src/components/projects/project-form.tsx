@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -14,15 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FolderPicker } from '@/components/ui/folder-picker';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 import { ProjectFormFields } from './project-form-fields';
-import { GitHubRepositoryPicker } from './github-repository-picker';
 import {
   CreateProject,
-  CreateProjectFromGitHub,
   Project,
   UpdateProject,
-  Environment,
 } from 'shared/old_frozen_types';
-import { projectsApi, configApi, githubApi, RepositoryInfo } from '@/lib/api';
+import { projectsApi } from '@/lib/api';
 
 interface ProjectFormProps {
   open: boolean;
@@ -51,33 +46,7 @@ export function ProjectForm({
   const [parentPath, setParentPath] = useState('');
   const [folderName, setFolderName] = useState('');
 
-  // Environment and GitHub repository state
-  const [environment, setEnvironment] = useState<Environment>('local');
-  const [selectedRepository, setSelectedRepository] =
-    useState<RepositoryInfo | null>(null);
-  const [modeLoading, setModeLoading] = useState(true);
-
   const isEditing = !!project;
-
-  // Load cloud mode configuration
-  useEffect(() => {
-    const loadMode = async () => {
-      try {
-        const constants = await configApi.getConstants();
-        setEnvironment(constants.mode);
-      } catch (err) {
-        console.error('Failed to load config constants:', err);
-      } finally {
-        setModeLoading(false);
-      }
-    };
-
-    if (!isEditing) {
-      loadMode();
-    } else {
-      setModeLoading(false);
-    }
-  }, [isEditing]);
 
   // Update form fields when project prop changes
   useEffect(() => {
@@ -93,7 +62,6 @@ export function ProjectForm({
       setSetupScript('');
       setDevScript('');
       setCleanupScript('');
-      setSelectedRepository(null);
     }
   }, [project]);
 
@@ -139,44 +107,45 @@ export function ProjectForm({
         await projectsApi.update(project.id, updateData);
       } else {
         // Creating new project
-        if (environment === 'cloud') {
-          // Cloud mode: Create project from GitHub repository
-          if (!selectedRepository) {
-            setError('Please select a GitHub repository');
-            return;
-          }
+        // TODO: Compile time check for cloud
+        // if (environment === 'cloud') {
+        //   // Cloud mode: Create project from GitHub repository
+        //   if (!selectedRepository) {
+        //     setError('Please select a GitHub repository');
+        //     return;
+        //   }
 
-          const githubData: CreateProjectFromGitHub = {
-            repository_id: BigInt(selectedRepository.id),
-            name,
-            clone_url: selectedRepository.clone_url,
-            setup_script: setupScript.trim() || null,
-            dev_script: devScript.trim() || null,
-            cleanup_script: cleanupScript.trim() || null,
-          };
+        //   const githubData: CreateProjectFromGitHub = {
+        //     repository_id: BigInt(selectedRepository.id),
+        //     name,
+        //     clone_url: selectedRepository.clone_url,
+        //     setup_script: setupScript.trim() || null,
+        //     dev_script: devScript.trim() || null,
+        //     cleanup_script: cleanupScript.trim() || null,
+        //   };
 
-          await githubApi.createProjectFromRepository(githubData);
-        } else {
-          // Local mode: Create local project
-          let finalGitRepoPath = gitRepoPath;
-          if (repoMode === 'new') {
-            finalGitRepoPath = `${parentPath}/${folderName}`.replace(
-              /\/+/g,
-              '/'
-            );
-          }
-
-          const createData: CreateProject = {
-            name,
-            git_repo_path: finalGitRepoPath,
-            use_existing_repo: repoMode === 'existing',
-            setup_script: setupScript.trim() || null,
-            dev_script: devScript.trim() || null,
-            cleanup_script: cleanupScript.trim() || null,
-          };
-
-          await projectsApi.create(createData);
+        //   await githubApi.createProjectFromRepository(githubData);
+        // } else {
+        // Local mode: Create local project
+        let finalGitRepoPath = gitRepoPath;
+        if (repoMode === 'new') {
+          finalGitRepoPath = `${parentPath}/${folderName}`.replace(
+            /\/+/g,
+            '/'
+          );
         }
+
+        const createData: CreateProject = {
+          name,
+          git_repo_path: finalGitRepoPath,
+          use_existing_repo: repoMode === 'existing',
+          setup_script: setupScript.trim() || null,
+          dev_script: devScript.trim() || null,
+          cleanup_script: cleanupScript.trim() || null,
+        };
+
+        await projectsApi.create(createData);
+        // }
       }
 
       onSuccess();
@@ -188,7 +157,6 @@ export function ProjectForm({
       setCleanupScript('');
       setParentPath('');
       setFolderName('');
-      setSelectedRepository(null);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'An error occurred');
     } finally {
@@ -283,7 +251,9 @@ export function ProjectForm({
           </Tabs>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            {modeLoading ? (
+            {/*
+            TODO: compile time cloud check
+            modeLoading ? (
               <div className="flex items-center justify-center py-4">
                 <Loader2 className="h-6 w-6 animate-spin" />
                 <span className="ml-2">Loading...</span>
@@ -299,7 +269,7 @@ export function ProjectForm({
                   error={error}
                 />
 
-                {/* Show script fields for GitHub source */}
+
                 <div className="space-y-4 pt-4 border-t">
                   <div className="space-y-2">
                     <Label htmlFor="setup-script">
@@ -342,30 +312,30 @@ export function ProjectForm({
                   </div>
                 </div>
               </>
-            ) : (
+            ) : (*/}
               // Local mode: Show existing form
-              <ProjectFormFields
-                isEditing={isEditing}
-                repoMode={repoMode}
-                setRepoMode={setRepoMode}
-                gitRepoPath={gitRepoPath}
-                handleGitRepoPathChange={handleGitRepoPathChange}
-                setShowFolderPicker={setShowFolderPicker}
-                parentPath={parentPath}
-                setParentPath={setParentPath}
-                folderName={folderName}
-                setFolderName={setFolderName}
-                setName={setName}
-                name={name}
-                setupScript={setupScript}
-                setSetupScript={setSetupScript}
-                devScript={devScript}
-                setDevScript={setDevScript}
-                cleanupScript={cleanupScript}
-                setCleanupScript={setCleanupScript}
-                error={error}
-              />
-            )}
+            <ProjectFormFields
+              isEditing={isEditing}
+              repoMode={repoMode}
+              setRepoMode={setRepoMode}
+              gitRepoPath={gitRepoPath}
+              handleGitRepoPathChange={handleGitRepoPathChange}
+              setShowFolderPicker={setShowFolderPicker}
+              parentPath={parentPath}
+              setParentPath={setParentPath}
+              folderName={folderName}
+              setFolderName={setFolderName}
+              setName={setName}
+              name={name}
+              setupScript={setupScript}
+              setSetupScript={setSetupScript}
+              devScript={devScript}
+              setDevScript={setDevScript}
+              cleanupScript={cleanupScript}
+              setCleanupScript={setCleanupScript}
+              error={error}
+            />
+            {/* )} */}
             <DialogFooter>
               <Button
                 type="button"
@@ -380,11 +350,9 @@ export function ProjectForm({
                 disabled={
                   loading ||
                   !name.trim() ||
-                  (environment === 'cloud'
-                    ? !selectedRepository
-                    : repoMode === 'existing'
-                      ? !gitRepoPath.trim()
-                      : !parentPath.trim() || !folderName.trim())
+                  (repoMode === 'existing'
+                    ? !gitRepoPath.trim()
+                    : !parentPath.trim() || !folderName.trim())
                 }
               >
                 {loading ? 'Creating...' : 'Create Project'}

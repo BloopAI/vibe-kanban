@@ -2,7 +2,6 @@
 import {
   BranchStatus,
   Config,
-  ConfigConstants,
   CreateFollowUpAttempt,
   CreateProjectFromGitHub,
   CreateTask,
@@ -512,10 +511,6 @@ export const configApi = {
       body: JSON.stringify(config),
     });
     return handleApiResponse<Config>(response);
-  },
-  getConstants: async (): Promise<ConfigConstants> => {
-    const response = await makeRequest('/api/config/constants');
-    return handleApiResponse<ConfigConstants>(response);
   },
 };
 
