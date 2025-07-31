@@ -68,6 +68,7 @@ pub struct Config {
     pub editor: EditorConfig,
     pub github: GitHubConfig,
     pub analytics_enabled: Option<bool>,
+    pub speech_enabled: bool,
     pub environment: EnvironmentInfo,
     pub workspace_dir: Option<String>,
 }
@@ -220,6 +221,7 @@ impl Default for Config {
             editor: EditorConfig::default(),
             github: GitHubConfig::default(),
             analytics_enabled: None,
+            speech_enabled: false,
             environment: EnvironmentInfo {
                 os_type: info.os_type().to_string(),
                 os_version: info.version().to_string(),

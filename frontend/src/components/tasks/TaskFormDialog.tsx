@@ -7,8 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
+import { InputWithSpeech } from '@/components/ui/input-with-speech';
+import { FileSearchTextareaWithSpeech } from '@/components/ui/file-search-textarea-with-speech';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -282,13 +282,16 @@ export function TaskFormDialog({
             <Label htmlFor="task-title" className="text-sm font-medium">
               Title
             </Label>
-            <Input
+            <InputWithSpeech
               id="task-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              onSpeechTranscript={(text) => setTitle(text)}
               placeholder="What needs to be done?"
               className="mt-1.5"
               disabled={isSubmitting || isSubmittingAndStart}
+              speechDisabled={isSubmitting || isSubmittingAndStart}
+              showSpeechButton={config?.speech_enabled ?? false}
               autoFocus
             />
           </div>
@@ -297,14 +300,17 @@ export function TaskFormDialog({
             <Label htmlFor="task-description" className="text-sm font-medium">
               Description
             </Label>
-            <FileSearchTextarea
+            <FileSearchTextareaWithSpeech
               value={description}
               onChange={setDescription}
+              onSpeechTranscript={(text) => setDescription(text)}
               rows={3}
               maxRows={8}
-              placeholder="Add more details (optional). Type @ to search files."
+              placeholder="Add more details (optional). Type @ to search files or use the microphone."
               className="mt-1.5"
               disabled={isSubmitting || isSubmittingAndStart}
+              speechDisabled={isSubmitting || isSubmittingAndStart}
+              showSpeechButton={config?.speech_enabled ?? false}
               projectId={projectId}
             />
           </div>

@@ -1,9 +1,10 @@
 import { AlertCircle, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
+import { FileSearchTextareaWithSpeech } from '@/components/ui/file-search-textarea-with-speech';
 import { useContext, useMemo, useState } from 'react';
 import { attemptsApi } from '@/lib/api.ts';
+import { useConfig } from '@/components/config-provider';
 import {
   TaskAttemptDataContext,
   TaskDetailsContext,
@@ -12,6 +13,7 @@ import {
 import { Loader } from '@/components/ui/loader';
 
 export function TaskFollowUpSection() {
+  const { config } = useConfig();
   const { task, projectId } = useContext(TaskDetailsContext);
   const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
   const { attemptData, fetchAttemptData, isAttemptRunning } = useContext(
@@ -81,31 +83,39 @@ export function TaskFollowUpSection() {
             </Alert>
           )}
           <div className="flex gap-2 items-start">
-            <FileSearchTextarea
-              placeholder="Continue working on this task... Type @ to search files."
-              value={followUpMessage}
-              onChange={(value) => {
-                setFollowUpMessage(value);
-                if (followUpError) setFollowUpError(null);
-              }}
-              onKeyDown={(e) => {
-                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                  e.preventDefault();
-                  if (
-                    canSendFollowUp &&
-                    followUpMessage.trim() &&
-                    !isSendingFollowUp
-                  ) {
-                    onSendFollowUp();
+            <div className="flex-1">
+              <FileSearchTextareaWithSpeech
+                placeholder="Continue working on this task... Type @ to search files or use the microphone."
+                value={followUpMessage}
+                onChange={(value) => {
+                  setFollowUpMessage(value);
+                  if (followUpError) setFollowUpError(null);
+                }}
+                onSpeechTranscript={(text) => {
+                  setFollowUpMessage(text);
+                  if (followUpError) setFollowUpError(null);
+                }}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    if (
+                      canSendFollowUp &&
+                      followUpMessage.trim() &&
+                      !isSendingFollowUp
+                    ) {
+                      onSendFollowUp();
+                    }
                   }
-                }
-              }}
-              className="flex-1 min-h-[40px] resize-none"
-              disabled={!canSendFollowUp}
-              projectId={projectId}
-              rows={1}
-              maxRows={6}
-            />
+                }}
+                className="min-h-[40px] resize-none"
+                disabled={!canSendFollowUp}
+                speechDisabled={!canSendFollowUp || isSendingFollowUp}
+                showSpeechButton={config?.speech_enabled ?? false}
+                projectId={projectId}
+                rows={1}
+                maxRows={6}
+              />
+            </div>
             <Button
               onClick={onSendFollowUp}
               disabled={
