@@ -5,7 +5,7 @@ use axum::{
     extract::{Path, Query, State},
     http,
     response::{Json as ResponseJson, Response},
-    routing::{get, post},
+    routing::{get, post, put},
     Json, Router,
 };
 use deployment::{Deployment, DeploymentError};
@@ -21,7 +21,7 @@ use crate::{error::ApiError, DeploymentImpl};
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/info", get(get_user_system_info))
-        .route("/config", get(get_config).put(update_config))
+        .route("/config", put(update_config))
         .route("/sounds/{sound}", get(get_sound))
     // TODO: fix
     // .route("/mcp-servers", get(get_mcp_servers))

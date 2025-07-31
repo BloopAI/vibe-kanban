@@ -516,7 +516,7 @@ export const configApi = {
   },
   saveConfig: async (config: Config): Promise<Config> => {
     const response = await makeRequest('/api/config', {
-      method: 'POST',
+      method: 'PUT',
       body: JSON.stringify(config),
     });
     return handleApiResponse<Config>(response);

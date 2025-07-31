@@ -58,3 +58,5 @@ thiserror = { workspace = true }
 futures = "0.3.31"
 tokio-stream = "0.1.17"
 secrecy = "0.10.3"
+strum_macros = "0.27.2"
+strum = "0.27.2"

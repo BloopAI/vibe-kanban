@@ -9,7 +9,7 @@
   "sound_file": "abstract-sound4",
   "push_notifications": true,
   "editor": {
-    "editor_type": "vscode",
+    "editor_type": "VS_CODE",
     "custom_command": null
   },
   "github": {
