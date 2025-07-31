@@ -1,4 +1,7 @@
+use std::path::PathBuf;
+
 use chrono::{DateTime, Utc};
+use schemars::visit::ReplaceBoolSchemas;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, QueryBuilder, SqlitePool, Type};
 use thiserror::Error;
@@ -256,19 +259,19 @@ impl TaskAttempt {
         Ok(())
     }
 
-    // /// Helper function to mark a worktree as deleted in the database
-    // pub async fn mark_worktree_deleted(
-    //     pool: &SqlitePool,
-    //     attempt_id: Uuid,
-    // ) -> Result<(), sqlx::Error> {
-    //     sqlx::query!(
-    //         "UPDATE task_attempts SET worktree_deleted = TRUE, updated_at = datetime('now') WHERE id = ?",
-    //         attempt_id
-    //     )
-    //     .execute(pool)
-    //     .await?;
-    //     Ok(())
-    // }
+    /// Helper function to mark a worktree as deleted in the database
+    pub async fn mark_worktree_deleted(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE task_attempts SET worktree_deleted = TRUE, updated_at = datetime('now') WHERE id = ?",
+            attempt_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
 
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
@@ -326,78 +329,105 @@ impl TaskAttempt {
     //     .await
     // }
 
-    // /// Find task attempts by task_id with project git repo path for cleanup operations
-    // pub async fn find_by_task_id_with_project(
-    //     pool: &SqlitePool,
-    //     task_id: Uuid,
-    // ) -> Result<Vec<(Uuid, String, String)>, sqlx::Error> {
-    //     let records = sqlx::query!(
-    //         r#"
-    //         SELECT ta.id as "attempt_id!: Uuid", ta.worktree_path, p.git_repo_path as "git_repo_path!"
-    //         FROM task_attempts ta
-    //         JOIN tasks t ON ta.task_id = t.id
-    //         JOIN projects p ON t.project_id = p.id
-    //         WHERE ta.task_id = $1
-    //         "#,
-    //         task_id
-    //     )
-    //     .fetch_all(pool)
-    //     .await?;
+    /// Find task attempts by task_id with project git repo path for cleanup operations
+    pub async fn find_by_task_id_with_project(
+        pool: &SqlitePool,
+        task_id: Uuid,
+    ) -> Result<Vec<(Uuid, Option<String>, String)>, sqlx::Error> {
+        let records = sqlx::query!(
+            r#"
+            SELECT ta.id as "attempt_id!: Uuid", ta.container_ref, p.git_repo_path as "git_repo_path!"
+            FROM task_attempts ta
+            JOIN tasks t ON ta.task_id = t.id
+            JOIN projects p ON t.project_id = p.id
+            WHERE ta.task_id = $1
+            "#,
+            task_id
+        )
+        .fetch_all(pool)
+        .await?;
 
-    //     Ok(records
-    //         .into_iter()
-    //         .map(|r| (r.attempt_id, r.worktree_path, r.git_repo_path))
-    //         .collect())
-    // }
+        Ok(records
+            .into_iter()
+            .map(|r| (r.attempt_id, r.container_ref, r.git_repo_path))
+            .collect())
+    }
 
-    // /// Find task attempts that are expired (24+ hours since last activity) and eligible for worktree cleanup
-    // /// Activity includes: execution completion, task attempt updates (including worktree recreation),
-    // /// and any attempts that are currently in progress
-    // pub async fn find_expired_for_cleanup(
-    //     pool: &SqlitePool,
-    // ) -> Result<Vec<(Uuid, String, String)>, sqlx::Error> {
-    //     let records = sqlx::query!(
-    //         r#"
-    //         SELECT ta.id as "attempt_id!: Uuid", ta.worktree_path, p.git_repo_path as "git_repo_path!"
-    //         FROM task_attempts ta
-    //         LEFT JOIN execution_processes ep ON ta.id = ep.task_attempt_id AND ep.completed_at IS NOT NULL
-    //         JOIN tasks t ON ta.task_id = t.id
-    //         JOIN projects p ON t.project_id = p.id
-    //         WHERE ta.worktree_deleted = FALSE
-    //             -- Exclude attempts with any running processes (in progress)
-    //             AND ta.id NOT IN (
-    //                 SELECT DISTINCT ep2.task_attempt_id
-    //                 FROM execution_processes ep2
-    //                 WHERE ep2.completed_at IS NULL
-    //             )
-    //         GROUP BY ta.id, ta.worktree_path, p.git_repo_path, ta.updated_at
-    //         HAVING datetime('now', '-24 hours') > datetime(
-    //             MAX(
-    //                 CASE
-    //                     WHEN ep.completed_at IS NOT NULL THEN ep.completed_at
-    //                     ELSE ta.updated_at
-    //                 END
-    //             )
-    //         )
-    //         ORDER BY MAX(
-    //             CASE
-    //                 WHEN ep.completed_at IS NOT NULL THEN ep.completed_at
-    //                 ELSE ta.updated_at
-    //             END
-    //         ) ASC
-    //         "#
-    //     )
-    //     .fetch_all(pool)
-    //     .await?;
+    pub async fn find_by_worktree_deleted(
+        pool: &SqlitePool,
+    ) -> Result<Vec<(Uuid, String)>, sqlx::Error> {
+        let records = sqlx::query!(
+        r#"SELECT id as "id!: Uuid", container_ref FROM task_attempts WHERE worktree_deleted = FALSE"#,
+        )
+        .fetch_all(pool).await?;
+        Ok(records
+            .into_iter()
+            .filter_map(|r| r.container_ref.map(|path| (r.id, path)))
+            .collect())
+    }
 
-    //     Ok(records
-    //         .into_iter()
-    //         .filter_map(|r| {
-    //             r.worktree_path
-    //                 .map(|path| (r.attempt_id, path, r.git_repo_path))
-    //         })
-    //         .collect())
-    // }
+    pub async fn container_ref_exists(
+        pool: &SqlitePool,
+        container_ref: &str,
+    ) -> Result<bool, sqlx::Error> {
+        let result = sqlx::query!(
+            r#"SELECT EXISTS(SELECT 1 FROM task_attempts WHERE container_ref = ?) as "exists!: bool""#,
+            container_ref
+        )
+        .fetch_one(pool)
+        .await?;
+
+        Ok(result.exists)
+    }
+
+    /// Find task attempts that are expired (24+ hours since last activity) and eligible for worktree cleanup
+    /// Activity includes: execution completion, task attempt updates (including worktree recreation),
+    /// and any attempts that are currently in progress
+    pub async fn find_expired_for_cleanup(
+        pool: &SqlitePool,
+    ) -> Result<Vec<(Uuid, String, String)>, sqlx::Error> {
+        let records = sqlx::query!(
+            r#"
+            SELECT ta.id as "attempt_id!: Uuid", ta.container_ref, p.git_repo_path as "git_repo_path!"
+            FROM task_attempts ta
+            LEFT JOIN execution_processes ep ON ta.id = ep.task_attempt_id AND ep.completed_at IS NOT NULL
+            JOIN tasks t ON ta.task_id = t.id
+            JOIN projects p ON t.project_id = p.id
+            WHERE ta.worktree_deleted = FALSE
+                -- Exclude attempts with any running processes (in progress)
+                AND ta.id NOT IN (
+                    SELECT DISTINCT ep2.task_attempt_id
+                    FROM execution_processes ep2
+                    WHERE ep2.completed_at IS NULL
+                )
+            GROUP BY ta.id, ta.container_ref, p.git_repo_path, ta.updated_at
+            HAVING datetime('now', '-24 hours') > datetime(
+                MAX(
+                    CASE
+                        WHEN ep.completed_at IS NOT NULL THEN ep.completed_at
+                        ELSE ta.updated_at
+                    END
+                )
+            )
+            ORDER BY MAX(
+                CASE
+                    WHEN ep.completed_at IS NOT NULL THEN ep.completed_at
+                    ELSE ta.updated_at
+                END
+            ) ASC
+            "#
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(records
+            .into_iter()
+            .filter_map(|r| {
+                r.container_ref
+                    .map(|path| (r.attempt_id, path, r.git_repo_path))
+            })
+            .collect())
+    }
 
     pub async fn create(
         pool: &SqlitePool,
