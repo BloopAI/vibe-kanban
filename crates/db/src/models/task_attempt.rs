@@ -1,51 +1,25 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, QueryBuilder, SqlitePool, Type};
+use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
-use crate::models::{project::Project, task::Task};
+use super::{project::Project, task::Task};
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum TaskAttemptError {
-    Database(sqlx::Error),
+    #[error(transparent)]
+    Database(#[from] sqlx::Error),
+    #[error("Task not found")]
     TaskNotFound,
+    #[error("Project not found")]
     ProjectNotFound,
+    #[error("Validation error: {0}")]
     ValidationError(String),
+    #[error("Branch not found: {0}")]
     BranchNotFound(String),
 }
-
-impl std::fmt::Display for TaskAttemptError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TaskAttemptError::Database(e) => write!(f, "Database error: {}", e),
-            TaskAttemptError::TaskNotFound => write!(f, "Task not found"),
-            TaskAttemptError::ProjectNotFound => write!(f, "Project not found"),
-            TaskAttemptError::ValidationError(e) => write!(f, "Validation error: {}", e),
-            TaskAttemptError::BranchNotFound(branch) => write!(f, "Branch '{}' not found", branch),
-        }
-    }
-}
-
-impl std::error::Error for TaskAttemptError {}
-
-impl From<sqlx::Error> for TaskAttemptError {
-    fn from(err: sqlx::Error) -> Self {
-        TaskAttemptError::Database(err)
-    }
-}
-
-// impl From<GitServiceError> for TaskAttemptError {
-//     fn from(err: GitServiceError) -> Self {
-//         TaskAttemptError::GitService(err)
-//     }
-// }
-
-// impl From<GitHubServiceError> for TaskAttemptError {
-//     fn from(err: GitHubServiceError) -> Self {
-//         TaskAttemptError::GitHubService(err)
-//     }
-// }
 
 #[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
 #[sqlx(type_name = "task_attempt_status", rename_all = "lowercase")]

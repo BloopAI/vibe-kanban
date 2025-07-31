@@ -1,27 +1,24 @@
 use std::{collections::HashMap, sync::Arc};
 
-use ::services::services::{analytics::AnalyticsService, config::Config, sentry::SentryService};
 use anyhow::Error as AnyhowError;
 use async_trait::async_trait;
-use axum::{
-    Json,
-    http::StatusCode,
-    response::{IntoResponse, Response},
-};
 use db::{DBService, models::task_attempt::TaskAttemptError};
 use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
 use serde_json::Value;
 use services::services::{
+    analytics::AnalyticsService,
     auth::{AuthError, AuthService},
+    config::Config,
     container::{ContainerError, ContainerService},
     filesystem::{FilesystemError, FilesystemService},
     git::{GitService, GitServiceError},
+    sentry::SentryService,
 };
 use sqlx::{Error as SqlxError, types::Uuid};
 use thiserror::Error;
 use tokio::sync::RwLock;
-use utils::{msg_store::MsgStore, response::ApiResponse};
+use utils::msg_store::MsgStore;
 
 #[derive(Debug, Error)]
 pub enum DeploymentError {
@@ -45,15 +42,6 @@ pub enum DeploymentError {
     Filesystem(#[from] FilesystemError),
     #[error(transparent)]
     Other(#[from] AnyhowError),
-}
-
-impl IntoResponse for DeploymentError {
-    fn into_response(self) -> Response {
-        tracing::error!("Internal error occurred: {:?}", self);
-        let code = StatusCode::INTERNAL_SERVER_ERROR;
-        let body = Json(ApiResponse::<()>::error(&self.to_string()));
-        (code, body).into_response()
-    }
 }
 
 #[async_trait]

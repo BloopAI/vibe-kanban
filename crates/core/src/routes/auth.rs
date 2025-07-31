@@ -10,7 +10,7 @@ use deployment::{Deployment, DeploymentError};
 use services::services::auth::{AuthError, DeviceFlowStartResponse};
 use utils::response::ApiResponse;
 
-use crate::DeploymentImpl;
+use crate::{error::ApiError, DeploymentImpl};
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     Router::new()
@@ -26,7 +26,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 /// POST /auth/github/device/start
 async fn device_start(
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<DeviceFlowStartResponse>>, DeploymentError> {
+) -> Result<ResponseJson<ApiResponse<DeviceFlowStartResponse>>, ApiError> {
     let device_start_response = deployment.auth().device_start().await?;
     Ok(ResponseJson(ApiResponse::success(device_start_response)))
 }
@@ -34,7 +34,7 @@ async fn device_start(
 /// POST /auth/github/device/poll
 async fn device_poll(
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<String>>, DeploymentError> {
+) -> Result<ResponseJson<ApiResponse<String>>, ApiError> {
     let user_info = match deployment.auth().device_poll().await {
         Ok(info) => info,
         Err(AuthError::Pending) => {
@@ -57,7 +57,9 @@ async fn device_poll(
         config.github.primary_email = user_info.primary_email.clone();
         config.github.token = Some(user_info.token.to_string());
         config.github_login_acknowledged = true; // Also acknowledge the GitHub login step
-        config.save(&config_path)?;
+        config
+            .save(&config_path)
+            .map_err(|e| DeploymentError::Other(e))?;
     }
     let _ = deployment.update_sentry_scope().await;
     let props = serde_json::json!({
@@ -75,7 +77,7 @@ async fn device_poll(
 /// GET /auth/github/check
 async fn github_check_token(
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<()>>, DeploymentError> {
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     let config = deployment.config().read().await;
     let token = config.github.token.clone();
     drop(config);

@@ -10,13 +10,14 @@ use db::models::{
     project::Project,
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
 };
-use deployment::{Deployment, DeploymentError};
+use deployment::Deployment;
 use serde::Deserialize;
 use sqlx::Error as SqlxError;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{
+    error::ApiError,
     middleware::{load_project_middleware, load_task_middleware},
     DeploymentImpl,
 };
@@ -29,7 +30,7 @@ pub struct TaskQuery {
 pub async fn get_tasks(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TaskQuery>,
-) -> Result<ResponseJson<ApiResponse<Vec<TaskWithAttemptStatus>>>, DeploymentError> {
+) -> Result<ResponseJson<ApiResponse<Vec<TaskWithAttemptStatus>>>, ApiError> {
     let tasks =
         Task::find_by_project_id_with_attempt_status(&deployment.db().pool, query.project_id)
             .await?;
@@ -40,14 +41,14 @@ pub async fn get_tasks(
 pub async fn get_task(
     Extension(task): Extension<Task>,
     State(_deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<Task>>, DeploymentError> {
+) -> Result<ResponseJson<ApiResponse<Task>>, ApiError> {
     Ok(ResponseJson(ApiResponse::success(task)))
 }
 
 pub async fn create_task(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateTask>,
-) -> Result<ResponseJson<ApiResponse<Task>>, DeploymentError> {
+) -> Result<ResponseJson<ApiResponse<Task>>, ApiError> {
     let id = Uuid::new_v4();
 
     tracing::debug!(
@@ -176,7 +177,7 @@ pub async fn update_task(
     Extension(existing_task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<UpdateTask>,
-) -> Result<ResponseJson<ApiResponse<Task>>, DeploymentError> {
+) -> Result<ResponseJson<ApiResponse<Task>>, ApiError> {
     // Use existing values if not provided in update
     let title = payload.title.unwrap_or(existing_task.title);
     let description = payload.description.or(existing_task.description);
@@ -202,7 +203,7 @@ pub async fn update_task(
 pub async fn delete_task(
     Extension(task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<()>>, DeploymentError> {
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     // Clean up all worktrees for this task before deletion
     // TODO: readd worktree cleanup
     // if let Err(e) =
@@ -246,7 +247,7 @@ pub async fn delete_task(
     let rows_affected = Task::delete(&deployment.db().pool, task.id).await?;
 
     if rows_affected == 0 {
-        Err(DeploymentError::Sqlx(SqlxError::RowNotFound))
+        Err(ApiError::Database(SqlxError::RowNotFound))
     } else {
         Ok(ResponseJson(ApiResponse::success(())))
     }

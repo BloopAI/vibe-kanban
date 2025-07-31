@@ -7,6 +7,7 @@ use git2::{
 };
 use regex;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use tracing::{debug, info};
 use ts_rs::TS;
 
@@ -17,47 +18,22 @@ use crate::services::worktree_manager::WorktreeManager;
 //     utils::worktree_manager::WorktreeManager,
 // };
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum GitServiceError {
-    Git(GitError),
-    IoError(std::io::Error),
+    #[error(transparent)]
+    Git(#[from] GitError),
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
+    #[error("Invalid repository: {0}")]
     InvalidRepository(String),
+    #[error("Branch not found: {0}")]
     BranchNotFound(String),
-
+    #[error("Merge conflicts: {0}")]
     MergeConflicts(String),
+    #[error("Invalid path: {0}")]
     InvalidPath(String),
+    #[error("Worktree has uncommitted changes: {0}")]
     WorktreeDirty(String),
-}
-
-impl std::fmt::Display for GitServiceError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            GitServiceError::Git(e) => write!(f, "Git error: {}", e),
-            GitServiceError::IoError(e) => write!(f, "IO error: {}", e),
-            GitServiceError::InvalidRepository(e) => write!(f, "Invalid repository: {}", e),
-            GitServiceError::BranchNotFound(e) => write!(f, "Branch not found: {}", e),
-
-            GitServiceError::MergeConflicts(e) => write!(f, "Merge conflicts: {}", e),
-            GitServiceError::InvalidPath(e) => write!(f, "Invalid path: {}", e),
-            GitServiceError::WorktreeDirty(e) => {
-                write!(f, "Worktree has uncommitted changes: {}", e)
-            }
-        }
-    }
-}
-
-impl std::error::Error for GitServiceError {}
-
-impl From<GitError> for GitServiceError {
-    fn from(err: GitError) -> Self {
-        GitServiceError::Git(err)
-    }
-}
-
-impl From<std::io::Error> for GitServiceError {
-    fn from(err: std::io::Error) -> Self {
-        GitServiceError::IoError(err)
-    }
 }
 
 /// Service for managing Git operations in task execution workflows

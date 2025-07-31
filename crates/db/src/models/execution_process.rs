@@ -1,11 +1,11 @@
 use chrono::{DateTime, Utc};
-use executors::actions::{ExecutorActionKind, ExecutorActions, script::ScriptContext};
+use executors::actions::{ExecutorActionKind, ExecutorActions};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool, Type};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use crate::models::task_attempt::TaskAttempt;
+use super::task_attempt::TaskAttempt;
 
 #[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
 #[sqlx(type_name = "execution_process_status", rename_all = "lowercase")]

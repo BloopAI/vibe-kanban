@@ -10,6 +10,7 @@ tokio = { workspace = true }
 tokio-util = { version = "0.7", features = ["io"] }
 bytes = "1.0"
 axum = { workspace = true }
+thiserror = { workspace = true }
 tower-http = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

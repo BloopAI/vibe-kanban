@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -18,7 +17,7 @@ use db::models::{
     task::{Task, TaskStatus},
     task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptContext, TaskAttemptError},
 };
-use deployment::{Deployment, DeploymentError};
+use deployment::Deployment;
 use executors::actions::{
     coding_agent_follow_up::CodingAgentFollowUpRequest,
     coding_agent_initial::CodingAgentInitialRequest,
@@ -38,7 +37,7 @@ use ts_rs::TS;
 use utils::{assets::config_path, response::ApiResponse};
 use uuid::Uuid;
 
-use crate::{error::RouteError, middleware::load_task_attempt_middleware, DeploymentImpl};
+use crate::{error::ApiError, middleware::load_task_attempt_middleware, DeploymentImpl};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct RebaseTaskAttemptRequest {
@@ -232,13 +231,9 @@ pub struct TaskAttemptQuery {
 pub async fn get_task_attempts(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TaskAttemptQuery>,
-) -> Result<Json<Vec<TaskAttempt>>, DeploymentError> {
-    // pull out your DB pool
+) -> Result<Json<Vec<TaskAttempt>>, ApiError> {
     let pool = &deployment.db().pool;
-
-    // run it!
     let attempts = TaskAttempt::fetch_all(pool, query.task_id).await?;
-
     Ok(Json(attempts))
 }
 
@@ -253,7 +248,7 @@ pub struct CreateTaskAttemptBody {
 pub async fn create_task_attempt(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateTaskAttemptBody>,
-) -> Result<ResponseJson<ApiResponse<TaskAttempt>>, DeploymentError> {
+) -> Result<ResponseJson<ApiResponse<TaskAttempt>>, ApiError> {
     let executor = payload
         .executor
         .unwrap_or(deployment.config().read().await.executor.to_string());
@@ -336,7 +331,7 @@ pub async fn follow_up(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateFollowUpAttempt>,
-) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, DeploymentError> {
+) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, ApiError> {
     tracing::info!("{:?}", task_attempt);
 
     // First, get the most recent execution process with executor action type = StandardCoding
@@ -346,8 +341,8 @@ pub async fn follow_up(
         &ExecutorActionKind::CodingAgentInitialRequest,
     )
     .await?
-    .ok_or(DeploymentError::Other(anyhow!(
-        "Couldn't find initial coding agent process, has it run yet?"
+    .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
+        "Couldn't find initial coding agent process, has it run yet?".to_string(),
     )))?;
 
     // Get session_id
@@ -356,17 +351,19 @@ pub async fn follow_up(
         initial_execution_process.id,
     )
     .await?
-    .ok_or(DeploymentError::Other(anyhow!(
-        "Couldn't find related executor session for this execution process"
+    .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
+        "Couldn't find related executor session for this execution process".to_string(),
     )))?
     .session_id
-    .ok_or(DeploymentError::Other(anyhow!(
-        "This executor session doesn't have a session_id"
+    .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
+        "This executor session doesn't have a session_id".to_string(),
     )))?;
 
     let executor = match initial_execution_process.executor_actions() {
         ExecutorActions::CodingAgentInitialRequest(request) => Ok(request.executor.clone()),
-        _ => Err(DeploymentError::Other(anyhow!("Couldn't find executor"))),
+        _ => Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
+            "Couldn't find executor".to_string(),
+        ))),
     }?;
 
     let follow_up_action =
@@ -391,12 +388,12 @@ pub async fn follow_up(
 pub async fn get_task_attempt_diff(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<WorktreeDiff>>, RouteError> {
+) -> Result<ResponseJson<ApiResponse<WorktreeDiff>>, ApiError> {
     let pool = &deployment.db().pool;
     let task = task_attempt
         .parent_task(pool)
         .await?
-        .ok_or(RouteError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
+        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
     let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
 
     if let Some(merge_commit_id) = &ctx.task_attempt.merge_commit {
@@ -410,7 +407,7 @@ pub async fn get_task_attempt_diff(
         Ok(ResponseJson(ApiResponse::success(diff)))
     } else {
         let container_ref = task_attempt.container_ref.as_ref().ok_or_else(|| {
-            RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+            ApiError::TaskAttempt(TaskAttemptError::ValidationError(
                 "No container ref found".to_string(),
             ))
         })?;
@@ -419,7 +416,7 @@ pub async fn get_task_attempt_diff(
         WorktreeManager::ensure_worktree_exists(
             &ctx.project.git_repo_path,
             &ctx.task_attempt.branch.as_ref().ok_or_else(|| {
-                RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+                ApiError::TaskAttempt(TaskAttemptError::ValidationError(
                     "Branch not found for task attempt".to_string(),
                 ))
             })?,
@@ -441,17 +438,17 @@ pub async fn get_task_attempt_diff(
 pub async fn merge_task_attempt(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<()>>, RouteError> {
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     let pool = &deployment.db().pool;
 
     let task = task_attempt
         .parent_task(pool)
         .await?
-        .ok_or(RouteError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
+        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
     let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
 
     let container_ref = task_attempt.container_ref.as_ref().ok_or_else(|| {
-        RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+        ApiError::TaskAttempt(TaskAttemptError::ValidationError(
             "No container ref found".to_string(),
         ))
     })?;
@@ -460,7 +457,7 @@ pub async fn merge_task_attempt(
     WorktreeManager::ensure_worktree_exists(
         &ctx.project.git_repo_path,
         &ctx.task_attempt.branch.as_ref().ok_or_else(|| {
-            RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+            ApiError::TaskAttempt(TaskAttemptError::ValidationError(
                 "Branch not found for task attempt".to_string(),
             ))
         })?,
@@ -484,7 +481,7 @@ pub async fn merge_task_attempt(
 
     // Get branch name from task attempt
     let branch_name = ctx.task_attempt.branch.as_ref().ok_or_else(|| {
-        RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+        ApiError::TaskAttempt(TaskAttemptError::ValidationError(
             "No branch found for task attempt".to_string(),
         ))
     })?;
@@ -518,7 +515,7 @@ pub async fn create_github_pr(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<CreateGitHubPRRequest>,
-) -> Result<ResponseJson<ApiResponse<String>>, RouteError> {
+) -> Result<ResponseJson<ApiResponse<String>>, ApiError> {
     let config = deployment.config().read().await;
     let github_token = match &config.github.token {
         Some(token) => token,
@@ -548,12 +545,12 @@ pub async fn create_github_pr(
     let task = task_attempt
         .parent_task(pool)
         .await?
-        .ok_or(RouteError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
+        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
     let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
 
     // Ensure worktree exists (recreate if needed for cold task support)
     let container_ref = task_attempt.container_ref.as_ref().ok_or_else(|| {
-        RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+        ApiError::TaskAttempt(TaskAttemptError::ValidationError(
             "No container ref found for task attempt".to_string(),
         ))
     })?;
@@ -562,7 +559,7 @@ pub async fn create_github_pr(
     WorktreeManager::ensure_worktree_exists(
         &ctx.project.git_repo_path,
         &ctx.task_attempt.branch.as_ref().ok_or_else(|| {
-            RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+            ApiError::TaskAttempt(TaskAttemptError::ValidationError(
                 "Branch not found for task attempt".to_string(),
             ))
         })?,
@@ -578,7 +575,7 @@ pub async fn create_github_pr(
             return Ok(ResponseJson(ApiResponse::error("github_token_invalid")));
         }
         Err(e) => {
-            return Err(RouteError::GitHubService(e));
+            return Err(ApiError::GitHubService(e));
         }
     };
 
@@ -588,7 +585,7 @@ pub async fn create_github_pr(
 
     // Get branch name from task attempt
     let branch_name = ctx.task_attempt.branch.as_ref().ok_or_else(|| {
-        RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+        ApiError::TaskAttempt(TaskAttemptError::ValidationError(
             "No branch found for task attempt".to_string(),
         ))
     })?;
@@ -679,7 +676,7 @@ pub async fn open_task_attempt_in_editor(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<Option<OpenEditorRequest>>,
-) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     // Get the task attempt to access the worktree path
     let attempt = &task_attempt;
     let path = attempt.container_ref.as_ref().ok_or_else(|| {
@@ -687,7 +684,9 @@ pub async fn open_task_attempt_in_editor(
             "No container ref found for task attempt {}",
             task_attempt.id
         );
-        StatusCode::INTERNAL_SERVER_ERROR
+        ApiError::TaskAttempt(TaskAttemptError::ValidationError(
+            "No container ref found".to_string(),
+        ))
     })?;
 
     let editor_config = {
@@ -711,7 +710,9 @@ pub async fn open_task_attempt_in_editor(
                 task_attempt.id,
                 e
             );
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
+                format!("Failed to open editor: {}", e),
+            )))
         }
     }
 }
@@ -719,20 +720,20 @@ pub async fn open_task_attempt_in_editor(
 pub async fn get_task_attempt_branch_status(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<BranchStatus>>, RouteError> {
+) -> Result<ResponseJson<ApiResponse<BranchStatus>>, ApiError> {
     let pool = &deployment.db().pool;
 
     let task = task_attempt
         .parent_task(pool)
         .await?
-        .ok_or(RouteError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
+        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
     let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
 
     let branch_status = GitService::new()
         .get_branch_status(
             &ctx.project.git_repo_path,
             &ctx.task_attempt.branch.as_ref().ok_or_else(|| {
-                RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+                ApiError::TaskAttempt(TaskAttemptError::ValidationError(
                     "No branch found for task attempt".to_string(),
                 ))
             })?,
@@ -745,7 +746,7 @@ pub async fn get_task_attempt_branch_status(
                 task_attempt.id,
                 e
             );
-            RouteError::GitService(e)
+            ApiError::GitService(e)
         })?;
 
     Ok(ResponseJson(ApiResponse::success(branch_status)))
@@ -756,7 +757,7 @@ pub async fn rebase_task_attempt(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
     request_body: Option<Json<RebaseTaskAttemptRequest>>,
-) -> Result<ResponseJson<ApiResponse<()>>, RouteError> {
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     // Extract new base branch from request body if provided
     let new_base_branch = request_body.and_then(|body| body.new_base_branch.clone());
 
@@ -765,7 +766,7 @@ pub async fn rebase_task_attempt(
     let task = task_attempt
         .parent_task(pool)
         .await?
-        .ok_or(RouteError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
+        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
     let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
 
     // Use the stored base branch if no new base branch is provided
@@ -777,7 +778,7 @@ pub async fn rebase_task_attempt(
     WorktreeManager::ensure_worktree_exists(
         &ctx.project.git_repo_path,
         &ctx.task_attempt.branch.as_ref().ok_or_else(|| {
-            RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+            ApiError::TaskAttempt(TaskAttemptError::ValidationError(
                 "Branch not found for task attempt".to_string(),
             ))
         })?,
@@ -965,22 +966,22 @@ pub async fn delete_task_attempt_file(
     Extension(task_attempt): Extension<TaskAttempt>,
     Query(query): Query<DeleteFileQuery>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<()>>, RouteError> {
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     let pool = &deployment.db().pool;
     let task = task_attempt
         .parent_task(pool)
         .await?
-        .ok_or(RouteError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
+        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
     let project = task
         .parent_project(pool)
         .await?
-        .ok_or(RouteError::TaskAttempt(TaskAttemptError::ProjectNotFound))?;
+        .ok_or(ApiError::TaskAttempt(TaskAttemptError::ProjectNotFound))?;
 
     let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, project.id).await?;
 
     // Ensure worktree exists (recreate if needed for cold task support)
     let container_ref = task_attempt.container_ref.ok_or_else(|| {
-        RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+        ApiError::TaskAttempt(TaskAttemptError::ValidationError(
             "Container ref not found for task attempt".to_string(),
         ))
     })?;
@@ -989,7 +990,7 @@ pub async fn delete_task_attempt_file(
     WorktreeManager::ensure_worktree_exists(
         &ctx.project.git_repo_path,
         &ctx.task_attempt.branch.as_ref().ok_or_else(|| {
-            RouteError::TaskAttempt(TaskAttemptError::ValidationError(
+            ApiError::TaskAttempt(TaskAttemptError::ValidationError(
                 "Branch not found for task attempt".to_string(),
             ))
         })?,
@@ -1007,7 +1008,7 @@ pub async fn delete_task_attempt_file(
                 task_attempt.id,
                 e
             );
-            RouteError::GitService(e)
+            ApiError::GitService(e)
         })?;
 
     Ok(ResponseJson(ApiResponse::success(())))

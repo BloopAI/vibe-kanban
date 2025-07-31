@@ -6,13 +6,13 @@ use axum::{
     Extension, Json, Router,
 };
 use db::models::task_template::{CreateTaskTemplate, TaskTemplate, UpdateTaskTemplate};
-use deployment::{Deployment, DeploymentError};
+use deployment::Deployment;
 use serde::Deserialize;
 use sqlx::Error as SqlxError;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{middleware::load_task_template_middleware, DeploymentImpl};
+use crate::{error::ApiError, middleware::load_task_template_middleware, DeploymentImpl};
 
 #[derive(Debug, Deserialize)]
 pub struct TaskTemplateQuery {
@@ -23,7 +23,7 @@ pub struct TaskTemplateQuery {
 pub async fn get_templates(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TaskTemplateQuery>,
-) -> Result<ResponseJson<ApiResponse<Vec<TaskTemplate>>>, DeploymentError> {
+) -> Result<ResponseJson<ApiResponse<Vec<TaskTemplate>>>, ApiError> {
     let templates = match (query.global, query.project_id) {
         // All templates: Global and project-specific
         (None, None) => TaskTemplate::find_all(&deployment.db().pool).await?,
@@ -37,7 +37,7 @@ pub async fn get_templates(
         (Some(false), None) => vec![],
         // Invalid combination: Cannot query both global and project-specific templates
         (Some(_), Some(_)) => {
-            return Err(DeploymentError::Sqlx(SqlxError::InvalidArgument(
+            return Err(ApiError::Database(SqlxError::InvalidArgument(
                 "Cannot query both global and project-specific templates".to_string(),
             )));
         }
@@ -47,14 +47,14 @@ pub async fn get_templates(
 
 pub async fn get_template(
     Extension(template): Extension<TaskTemplate>,
-) -> Result<ResponseJson<ApiResponse<TaskTemplate>>, DeploymentError> {
+) -> Result<ResponseJson<ApiResponse<TaskTemplate>>, ApiError> {
     Ok(Json(ApiResponse::success(template)))
 }
 
 pub async fn create_template(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateTaskTemplate>,
-) -> Result<ResponseJson<ApiResponse<TaskTemplate>>, DeploymentError> {
+) -> Result<ResponseJson<ApiResponse<TaskTemplate>>, ApiError> {
     Ok(ResponseJson(ApiResponse::success(
         TaskTemplate::create(&deployment.db().pool, &payload).await?,
     )))
@@ -64,7 +64,7 @@ pub async fn update_template(
     Extension(template): Extension<TaskTemplate>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<UpdateTaskTemplate>,
-) -> Result<ResponseJson<ApiResponse<TaskTemplate>>, DeploymentError> {
+) -> Result<ResponseJson<ApiResponse<TaskTemplate>>, ApiError> {
     Ok(ResponseJson(ApiResponse::success(
         TaskTemplate::update(&deployment.db().pool, template.id, &payload).await?,
     )))
@@ -73,10 +73,10 @@ pub async fn update_template(
 pub async fn delete_template(
     Extension(template): Extension<TaskTemplate>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<()>>, DeploymentError> {
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     let rows_affected = TaskTemplate::delete(&deployment.db().pool, template.id).await?;
     if rows_affected == 0 {
-        Err(DeploymentError::Sqlx(SqlxError::RowNotFound))
+        Err(ApiError::Database(SqlxError::RowNotFound))
     } else {
         Ok(ResponseJson(ApiResponse::success(())))
     }

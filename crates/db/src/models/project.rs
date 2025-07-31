@@ -1,11 +1,25 @@
 use std::path::PathBuf;
 
 use chrono::{DateTime, Utc};
-use git2::{BranchType, Repository};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
+use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
+
+#[derive(Debug, Error)]
+pub enum ProjectError {
+    #[error(transparent)]
+    Database(#[from] sqlx::Error),
+    #[error("Project not found")]
+    ProjectNotFound,
+    #[error("Project with git repository path already exists")]
+    GitRepoPathExists,
+    #[error("Failed to check existing git repository path: {0}")]
+    GitRepoCheckFailed(String),
+    #[error("Failed to create project: {0}")]
+    CreateFailed(String),
+}
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
 #[ts(export)]

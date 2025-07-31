@@ -16,7 +16,7 @@ use tokio::fs;
 use ts_rs::TS;
 use utils::{assets::config_path, response::ApiResponse};
 
-use crate::DeploymentImpl;
+use crate::{error::ApiError, DeploymentImpl};
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
@@ -96,8 +96,8 @@ async fn update_config(
     }
 }
 
-async fn get_sound(Path(sound): Path<SoundFile>) -> Result<Response, DeploymentError> {
-    let sound = sound.serve().await?;
+async fn get_sound(Path(sound): Path<SoundFile>) -> Result<Response, ApiError> {
+    let sound = sound.serve().await.map_err(|e| DeploymentError::Other(e))?;
     let response = Response::builder()
         .status(http::StatusCode::OK)
         .header(

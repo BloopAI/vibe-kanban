@@ -3,73 +3,62 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use db::models::task_attempt::TaskAttemptError;
+use db::models::{project::ProjectError, task_attempt::TaskAttemptError};
+use deployment::DeploymentError;
+use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
-use services::services::{git::GitServiceError, github_service::GitHubServiceError};
+use services::services::{
+    auth::AuthError, container::ContainerError, git::GitServiceError,
+    github_service::GitHubServiceError,
+};
+use thiserror::Error;
 use utils::response::ApiResponse;
 
-#[derive(Debug)]
-pub enum RouteError {
-    TaskAttempt(TaskAttemptError),
-    GitService(GitServiceError),
-    GitHubService(GitHubServiceError),
-    Database(sqlx::Error),
-}
-
-impl std::fmt::Display for RouteError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            RouteError::TaskAttempt(e) => write!(f, "{}", e),
-            RouteError::GitService(e) => write!(f, "{}", e),
-            RouteError::GitHubService(e) => write!(f, "{}", e),
-            RouteError::Database(e) => write!(f, "{}", e),
-        }
-    }
-}
-
-impl From<TaskAttemptError> for RouteError {
-    fn from(err: TaskAttemptError) -> Self {
-        RouteError::TaskAttempt(err)
-    }
-}
-
-impl From<GitServiceError> for RouteError {
-    fn from(err: GitServiceError) -> Self {
-        RouteError::GitService(err)
-    }
-}
-
-impl From<GitHubServiceError> for RouteError {
-    fn from(err: GitHubServiceError) -> Self {
-        RouteError::GitHubService(err)
-    }
-}
-
-impl From<sqlx::Error> for RouteError {
-    fn from(err: sqlx::Error) -> Self {
-        RouteError::Database(err)
-    }
+#[derive(Debug, Error)]
+pub enum ApiError {
+    #[error(transparent)]
+    Project(#[from] ProjectError),
+    #[error(transparent)]
+    TaskAttempt(#[from] TaskAttemptError),
+    #[error(transparent)]
+    GitService(#[from] GitServiceError),
+    #[error(transparent)]
+    GitHubService(#[from] GitHubServiceError),
+    #[error(transparent)]
+    Auth(#[from] AuthError),
+    #[error(transparent)]
+    Deployment(#[from] DeploymentError),
+    #[error(transparent)]
+    Container(#[from] ContainerError),
+    #[error(transparent)]
+    Executor(#[from] ExecutorError),
+    #[error(transparent)]
+    Database(#[from] sqlx::Error),
 }
 
 // TODO: Define a WorktreeError type and return from WorktreeManager
-impl From<Git2Error> for RouteError {
+impl From<Git2Error> for ApiError {
     fn from(err: Git2Error) -> Self {
-        RouteError::GitService(GitServiceError::from(err))
+        ApiError::GitService(GitServiceError::from(err))
     }
 }
 
-impl IntoResponse for RouteError {
+impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        let error_type = match &self {
-            RouteError::TaskAttempt(_) => "TaskAttemptError",
-            RouteError::GitService(_) => "GitServiceError",
-            RouteError::GitHubService(_) => "GitHubServiceError",
-            RouteError::Database(_) => "DatabaseError",
+        let (status_code, error_type) = match &self {
+            ApiError::Project(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ProjectError"),
+            ApiError::TaskAttempt(_) => (StatusCode::INTERNAL_SERVER_ERROR, "TaskAttemptError"),
+            ApiError::GitService(_) => (StatusCode::INTERNAL_SERVER_ERROR, "GitServiceError"),
+            ApiError::GitHubService(_) => (StatusCode::INTERNAL_SERVER_ERROR, "GitHubServiceError"),
+            ApiError::Auth(_) => (StatusCode::INTERNAL_SERVER_ERROR, "AuthError"),
+            ApiError::Deployment(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DeploymentError"),
+            ApiError::Container(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ContainerError"),
+            ApiError::Executor(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ExecutorError"),
+            ApiError::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DatabaseError"),
         };
 
         let error_message = format!("{}: {}", error_type, self);
         let response = ApiResponse::<()>::error(&error_message);
-
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(response)).into_response()
+        (status_code, Json(response)).into_response()
     }
 }

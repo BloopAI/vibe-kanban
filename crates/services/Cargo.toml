@@ -54,7 +54,7 @@ json-patch = "2.0"
 backon = "1.5.1"
 reqwest-eventsource = "0.6"
 base64 = "0.22"
-thiserror = "2.0.12"
+thiserror = { workspace = true }
 futures = "0.3.31"
 tokio-stream = "0.1.17"
 secrecy = "0.10.3"

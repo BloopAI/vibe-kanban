@@ -3,33 +3,25 @@ use std::time::Duration;
 use backon::{ExponentialBuilder, Retryable};
 use octocrab::{Octocrab, OctocrabBuilder};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use tracing::info;
 use ts_rs::TS;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum GitHubServiceError {
+    #[error(transparent)]
     Client(octocrab::Error),
+    #[error("Authentication error: {0}")]
     Auth(String),
+    #[error("Repository error: {0}")]
     Repository(String),
+    #[error("Pull request error: {0}")]
     PullRequest(String),
+    #[error("Branch error: {0}")]
     Branch(String),
+    #[error("GitHub token is invalid or expired.")]
     TokenInvalid,
 }
-
-impl std::fmt::Display for GitHubServiceError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            GitHubServiceError::Client(e) => write!(f, "GitHub client error: {}", e),
-            GitHubServiceError::Auth(e) => write!(f, "Authentication error: {}", e),
-            GitHubServiceError::Repository(e) => write!(f, "Repository error: {}", e),
-            GitHubServiceError::PullRequest(e) => write!(f, "Pull request error: {}", e),
-            GitHubServiceError::Branch(e) => write!(f, "Branch error: {}", e),
-            GitHubServiceError::TokenInvalid => write!(f, "GitHub token is invalid or expired."),
-        }
-    }
-}
-
-impl std::error::Error for GitHubServiceError {}
 
 impl From<octocrab::Error> for GitHubServiceError {
     fn from(err: octocrab::Error) -> Self {

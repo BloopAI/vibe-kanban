@@ -1,6 +1,5 @@
 use std::{collections::HashMap, path::Path};
 
-use anyhow::anyhow;
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -10,9 +9,10 @@ use axum::{
     Extension, Json, Router,
 };
 use db::models::project::{
-    CreateProject, Project, ProjectWithBranch, SearchMatchType, SearchResult, UpdateProject,
+    CreateProject, Project, ProjectError, ProjectWithBranch, SearchMatchType, SearchResult,
+    UpdateProject,
 };
-use deployment::{Deployment, DeploymentError};
+use deployment::Deployment;
 use ignore::WalkBuilder;
 use services::services::{
     config::{EditorConfig, EditorType},
@@ -21,24 +21,24 @@ use services::services::{
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{middleware::load_project_middleware, DeploymentImpl};
+use crate::{error::ApiError, middleware::load_project_middleware, DeploymentImpl};
 
 pub async fn get_projects(
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<Vec<Project>>>, DeploymentError> {
+) -> Result<ResponseJson<ApiResponse<Vec<Project>>>, ApiError> {
     let projects = Project::find_all(&deployment.db().pool).await?;
     Ok(ResponseJson(ApiResponse::success(projects)))
 }
 
 pub async fn get_project(
     Extension(project): Extension<Project>,
-) -> Result<ResponseJson<ApiResponse<Project>>, DeploymentError> {
+) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
     Ok(ResponseJson(ApiResponse::success(project)))
 }
 
 pub async fn get_project_with_branch(
     Extension(project): Extension<Project>,
-) -> Result<ResponseJson<ApiResponse<ProjectWithBranch>>, DeploymentError> {
+) -> Result<ResponseJson<ApiResponse<ProjectWithBranch>>, ApiError> {
     let current_branch = GitService::new()
         .get_current_branch(&project.git_repo_path)
         .ok();
@@ -48,7 +48,7 @@ pub async fn get_project_with_branch(
 
 pub async fn get_project_branches(
     Extension(project): Extension<Project>,
-) -> Result<ResponseJson<ApiResponse<Vec<GitBranch>>>, DeploymentError> {
+) -> Result<ResponseJson<ApiResponse<Vec<GitBranch>>>, ApiError> {
     let branches = GitService::new().get_all_branches(&project.git_repo_path)?;
     Ok(ResponseJson(ApiResponse::success(branches)))
 }
@@ -56,7 +56,7 @@ pub async fn get_project_branches(
 pub async fn create_project(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateProject>,
-) -> Result<ResponseJson<ApiResponse<Project>>, DeploymentError> {
+) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
     let id = Uuid::new_v4();
 
     tracing::debug!("Creating project '{}'", payload.name);
@@ -72,10 +72,7 @@ pub async fn create_project(
             // Path is available, continue
         }
         Err(e) => {
-            return Err(DeploymentError::Other(anyhow!(
-                "Failed to check for existing git repo path: {}",
-                e
-            )));
+            return Err(ProjectError::GitRepoCheckFailed(e.to_string()).into());
         }
     }
 
@@ -161,10 +158,7 @@ pub async fn create_project(
             Ok(ResponseJson(ApiResponse::success(project)))
         }
         Err(e) => {
-            return Err(DeploymentError::Other(anyhow!(
-                "Failed to create project: {}",
-                e
-            )));
+            return Err(ProjectError::CreateFailed(e.to_string()).into());
         }
     }
 }
