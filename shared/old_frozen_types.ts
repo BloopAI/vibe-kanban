@@ -12,10 +12,6 @@ export type ThemeMode = "light" | "dark" | "system" | "purple" | "green" | "blue
 
 export type GitHubConfig = { pat: string | null, token: string | null, username: string | null, primary_email: string | null, default_pr_base: string | null, };
 
-export type SoundFile = "abstract-sound1" | "abstract-sound2" | "abstract-sound3" | "abstract-sound4" | "cow-mooing" | "phone-vibration" | "rooster";
-
-export type SoundConstants = { sound_files: Array<SoundFile>, sound_labels: Array<string>, };
-
 export type ExecutorConfig = { "type": "echo" } | { "type": "claude" } | { "type": "claude-plan" } | { "type": "amp" } | { "type": "gemini" } | { "type": "setup-script", script: string, } | { "type": "claude-code-router" } | { "type": "charm-opencode" } | { "type": "sst-opencode" } | { "type": "aider" } | { "type": "codex" };
 
 export type ExecutorConstants = { executor_types: Array<ExecutorConfig>, executor_labels: Array<string>, };
