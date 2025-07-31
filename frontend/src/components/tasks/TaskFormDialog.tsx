@@ -20,6 +20,7 @@ import {
 import { useConfig } from '@/components/config-provider';
 import { templatesApi } from '@/lib/api';
 import type { TaskStatus, ExecutorConfig, TaskTemplate } from 'shared/types';
+import { useTranslation } from '@/lib/i18n';
 
 interface Task {
   id: string;
@@ -76,6 +77,7 @@ export function TaskFormDialog({
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
 
   const { config } = useConfig();
+  const { t } = useTranslation();
   const isEditMode = Boolean(task);
 
   // Check if task creation should be disabled based on plan context
@@ -257,7 +259,7 @@ export function TaskFormDialog({
       <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
           <DialogTitle>
-            {isEditMode ? 'Edit Task' : 'Create New Task'}
+            {isEditMode ? t('tasks.form.editTask') : t('tasks.form.createNewTask')}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
@@ -267,26 +269,24 @@ export function TaskFormDialog({
               <div className="flex items-center gap-2 mb-2">
                 <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                 <p className="text-sm font-semibold text-orange-800 dark:text-orange-300">
-                  Plan Required
+                  {t('tasks.form.planRequired')}
                 </p>
               </div>
               <p className="text-sm text-orange-700 dark:text-orange-400">
-                No plan was generated in the last execution attempt. Task
-                creation is disabled until a plan is available. Please generate
-                a plan first.
+                {t('tasks.form.planRequiredMessage')}
               </p>
             </div>
           )}
 
           <div>
             <Label htmlFor="task-title" className="text-sm font-medium">
-              Title
+              {t('tasks.form.titleLabel')}
             </Label>
             <Input
               id="task-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="What needs to be done?"
+              placeholder={t('tasks.form.titlePlaceholderForm')}
               className="mt-1.5"
               disabled={isSubmitting || isSubmittingAndStart}
               autoFocus
@@ -295,14 +295,14 @@ export function TaskFormDialog({
 
           <div>
             <Label htmlFor="task-description" className="text-sm font-medium">
-              Description
+              {t('tasks.form.descriptionLabel')}
             </Label>
             <FileSearchTextarea
               value={description}
               onChange={setDescription}
               rows={3}
               maxRows={8}
-              placeholder="Add more details (optional). Type @ to search files."
+              placeholder={t('tasks.form.descriptionPlaceholderForm')}
               className="mt-1.5"
               disabled={isSubmitting || isSubmittingAndStart}
               projectId={projectId}
@@ -324,22 +324,21 @@ export function TaskFormDialog({
                       clipRule="evenodd"
                     />
                   </svg>
-                  Use a template
+                  {t('tasks.form.useTemplate')}
                 </summary>
                 <div className="mt-3 space-y-2">
                   <p className="text-xs text-muted-foreground">
-                    Templates help you quickly create tasks with predefined
-                    content.
+                    {t('tasks.form.templateHelp')}
                   </p>
                   <Select
                     value={selectedTemplate}
                     onValueChange={handleTemplateChange}
                   >
                     <SelectTrigger id="task-template" className="w-full">
-                      <SelectValue placeholder="Choose a template to prefill this form" />
+                      <SelectValue placeholder={t('tasks.form.chooseTemplate')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">No template</SelectItem>
+                      <SelectItem value="none">{t('tasks.form.noTemplate')}</SelectItem>
                       {templates.map((template) => (
                         <SelectItem key={template.id} value={template.id}>
                           <div className="flex items-center gap-2">
@@ -360,7 +359,7 @@ export function TaskFormDialog({
           {isEditMode && (
             <div className="pt-2">
               <Label htmlFor="task-status" className="text-sm font-medium">
-                Status
+                {t('tasks.form.statusLabel')}
               </Label>
               <Select
                 value={status}
@@ -371,11 +370,11 @@ export function TaskFormDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todo">To Do</SelectItem>
-                  <SelectItem value="inprogress">In Progress</SelectItem>
-                  <SelectItem value="inreview">In Review</SelectItem>
-                  <SelectItem value="done">Done</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="todo">{t('tasks.status.todo')}</SelectItem>
+                  <SelectItem value="inprogress">{t('tasks.status.inprogress')}</SelectItem>
+                  <SelectItem value="inreview">{t('tasks.status.inreview')}</SelectItem>
+                  <SelectItem value="done">{t('tasks.status.done')}</SelectItem>
+                  <SelectItem value="cancelled">{t('tasks.status.cancelled')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -387,14 +386,14 @@ export function TaskFormDialog({
               onClick={handleCancel}
               disabled={isSubmitting || isSubmittingAndStart}
             >
-              Cancel
+              {t('tasks.form.cancel')}
             </Button>
             {isEditMode ? (
               <Button
                 onClick={handleSubmit}
                 disabled={isSubmitting || !title.trim()}
               >
-                {isSubmitting ? 'Updating...' : 'Update Task'}
+                {isSubmitting ? t('tasks.form.updatingTask') : t('tasks.form.updateTask')}
               </Button>
             ) : (
               <>
@@ -414,14 +413,14 @@ export function TaskFormDialog({
                   }
                   title={
                     isPlanningModeWithoutPlan
-                      ? 'Plan required before creating task'
+                      ? t('tasks.form.planRequiredTooltip')
                       : undefined
                   }
                 >
                   {isPlanningModeWithoutPlan && (
                     <AlertTriangle className="h-4 w-4 mr-2" />
                   )}
-                  {isSubmitting ? 'Creating...' : 'Create Task'}
+                  {isSubmitting ? t('tasks.form.creatingTask') : t('tasks.form.createTask')}
                 </Button>
                 {onCreateAndStartTask && (
                   <Button
@@ -435,7 +434,7 @@ export function TaskFormDialog({
                     className={`font-medium ${isPlanningModeWithoutPlan ? 'opacity-60 cursor-not-allowed bg-red-600 hover:bg-red-600' : ''}`}
                     title={
                       isPlanningModeWithoutPlan
-                        ? 'Plan required before creating and starting task'
+                        ? t('tasks.form.planRequiredStartTooltip')
                         : undefined
                     }
                   >
@@ -443,8 +442,8 @@ export function TaskFormDialog({
                       <AlertTriangle className="h-4 w-4 mr-2" />
                     )}
                     {isSubmittingAndStart
-                      ? 'Creating & Starting...'
-                      : 'Create & Start'}
+                      ? t('tasks.form.creatingAndStarting')
+                      : t('tasks.form.createAndStartTask')}
                   </Button>
                 )}
               </>

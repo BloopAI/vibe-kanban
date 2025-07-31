@@ -26,6 +26,7 @@ import {
   EXECUTOR_LABELS,
   EDITOR_LABELS,
 } from 'shared/types';
+import { useTranslation } from '@/lib/i18n';
 
 interface OnboardingDialogProps {
   open: boolean;
@@ -36,6 +37,7 @@ interface OnboardingDialogProps {
 }
 
 export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
+  const { t } = useTranslation();
   const [executor, setExecutor] = useState<ExecutorConfig>({ type: 'claude' });
   const [editorType, setEditorType] = useState<EditorType>('vscode');
   const [customCommand, setCustomCommand] = useState<string>('');
@@ -60,11 +62,10 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
         <DialogHeader>
           <div className="flex items-center gap-3">
             <Sparkles className="h-6 w-6 text-primary" />
-            <DialogTitle>Welcome to Vibe Kanban</DialogTitle>
+            <DialogTitle>{t('onboarding.title')}</DialogTitle>
           </div>
           <DialogDescription className="text-left pt-2">
-            Let's set up your coding preferences. You can always change these
-            later in Settings.
+            {t('onboarding.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -73,18 +74,18 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />
-                Choose Your Coding Agent
+{t('onboarding.codingAgent.title')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="executor">Default Executor</Label>
+                <Label htmlFor="executor">{t('onboarding.codingAgent.label')}</Label>
                 <Select
                   value={executor.type}
                   onValueChange={(value) => setExecutor({ type: value as any })}
                 >
                   <SelectTrigger id="executor">
-                    <SelectValue placeholder="Select your preferred coding agent" />
+                    <SelectValue placeholder={t('onboarding.codingAgent.placeholder')} />
                   </SelectTrigger>
                   <SelectContent>
                     {EXECUTOR_TYPES.map((type) => (
@@ -95,15 +96,12 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-muted-foreground">
-                  {executor.type === 'claude' && 'Claude Code from Anthropic'}
-                  {executor.type === 'amp' && 'From Sourcegraph'}
-                  {executor.type === 'gemini' && 'Google Gemini from Bloop'}
-                  {executor.type === 'charm-opencode' &&
-                    'Charm/Opencode AI assistant'}
-                  {executor.type === 'claude-code-router' &&
-                    'Claude Code Router'}
-                  {executor.type === 'echo' &&
-                    'This is just for debugging vibe-kanban itself'}
+                  {executor.type === 'claude' && t('onboarding.codingAgent.descriptions.claude')}
+                  {executor.type === 'amp' && t('onboarding.codingAgent.descriptions.amp')}
+                  {executor.type === 'gemini' && t('onboarding.codingAgent.descriptions.gemini')}
+                  {executor.type === 'charm-opencode' && t('onboarding.codingAgent.descriptions.charmOpencode')}
+                  {executor.type === 'claude-code-router' && t('onboarding.codingAgent.descriptions.claudeCodeRouter')}
+                  {executor.type === 'echo' && t('onboarding.codingAgent.descriptions.echo')}
                 </p>
               </div>
             </CardContent>
@@ -113,18 +111,18 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Code className="h-4 w-4" />
-                Choose Your Code Editor
+{t('onboarding.codeEditor.title')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="editor">Preferred Editor</Label>
+                <Label htmlFor="editor">{t('onboarding.codeEditor.label')}</Label>
                 <Select
                   value={editorType}
                   onValueChange={(value: EditorType) => setEditorType(value)}
                 >
                   <SelectTrigger id="editor">
-                    <SelectValue placeholder="Select your preferred editor" />
+                    <SelectValue placeholder={t('onboarding.codeEditor.placeholder')} />
                   </SelectTrigger>
                   <SelectContent>
                     {EDITOR_TYPES.map((type) => (
@@ -135,23 +133,21 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-muted-foreground">
-                  This editor will be used to open task attempts and project
-                  files.
+                  {t('onboarding.codeEditor.description')}
                 </p>
               </div>
 
               {editorType === 'custom' && (
                 <div className="space-y-2">
-                  <Label htmlFor="custom-command">Custom Command</Label>
+                  <Label htmlFor="custom-command">{t('onboarding.codeEditor.customCommand')}</Label>
                   <Input
                     id="custom-command"
-                    placeholder="e.g., code, subl, vim"
+                    placeholder={t('onboarding.codeEditor.customPlaceholder')}
                     value={customCommand}
                     onChange={(e) => setCustomCommand(e.target.value)}
                   />
                   <p className="text-sm text-muted-foreground">
-                    Enter the command to run your custom editor. Use spaces for
-                    arguments (e.g., "code --wait").
+                    {t('onboarding.codeEditor.customDescription')}
                   </p>
                 </div>
               )}
@@ -165,7 +161,7 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
             disabled={!isValid}
             className="w-full"
           >
-            Continue
+{t('onboarding.continueButton')}
           </Button>
         </DialogFooter>
       </DialogContent>

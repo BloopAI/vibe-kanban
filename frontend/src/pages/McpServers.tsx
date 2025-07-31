@@ -25,8 +25,10 @@ import {
 } from 'shared/types';
 import { useConfig } from '@/components/config-provider';
 import { mcpServersApi } from '../lib/api';
+import { useTranslation } from '@/lib/i18n';
 
 export function McpServers() {
+  const { t } = useTranslation();
   const { config } = useConfig();
   const [mcpServers, setMcpServers] = useState('{}');
   const [mcpError, setMcpError] = useState<string | null>(null);
@@ -123,20 +125,20 @@ export function McpServers() {
             typeof config['amp.mcpServers'] !== 'object'
           ) {
             setMcpError(
-              'AMP configuration must contain an "amp.mcpServers" object'
+              t('mcpServers.errors.ampConfiguration')
             );
           }
         } else if (selectedMcpExecutor === 'sst-opencode') {
           if (!config.mcp || typeof config.mcp !== 'object') {
-            setMcpError('Configuration must contain an "mcp" object');
+            setMcpError(t('mcpServers.errors.mcpConfiguration'));
           }
         } else {
           if (!config.mcpServers || typeof config.mcpServers !== 'object') {
-            setMcpError('Configuration must contain an "mcpServers" object');
+            setMcpError(t('mcpServers.errors.mcpServersConfiguration'));
           }
         }
       } catch (err) {
-        setMcpError('Invalid JSON format');
+        setMcpError(t('mcpServers.errors.invalidJson'));
       }
     }
   };
@@ -194,7 +196,7 @@ export function McpServers() {
       setMcpServers(configJson);
       setMcpError(null);
     } catch (err) {
-      setMcpError('Failed to configure vibe-kanban MCP server');
+      setMcpError(t('mcpServers.errors.failedToConfigure'));
       console.error('Error configuring vibe-kanban:', err);
     }
   };
@@ -219,14 +221,14 @@ export function McpServers() {
               typeof fullConfig['amp.mcpServers'] !== 'object'
             ) {
               throw new Error(
-                'AMP configuration must contain an "amp.mcpServers" object'
+                t('mcpServers.errors.ampConfiguration')
               );
             }
             // Extract just the inner servers object for the API - backend will handle nesting
             mcpServersConfig = fullConfig['amp.mcpServers'];
           } else if (selectedMcpExecutor === 'sst-opencode') {
             if (!fullConfig.mcp || typeof fullConfig.mcp !== 'object') {
-              throw new Error('Configuration must contain an "mcp" object');
+              throw new Error(t('mcpServers.errors.mcpConfiguration'));
             }
             // Extract just the mcp part for the API
             mcpServersConfig = fullConfig.mcp;
@@ -236,7 +238,7 @@ export function McpServers() {
               typeof fullConfig.mcpServers !== 'object'
             ) {
               throw new Error(
-                'Configuration must contain an "mcpServers" object'
+                t('mcpServers.errors.mcpServersConfiguration')
               );
             }
             // Extract just the mcpServers part for the API
@@ -250,18 +252,18 @@ export function McpServers() {
           setTimeout(() => setSuccess(false), 3000);
         } catch (mcpErr) {
           if (mcpErr instanceof SyntaxError) {
-            setMcpError('Invalid JSON format');
+            setMcpError(t('mcpServers.errors.invalidJson'));
           } else {
             setMcpError(
               mcpErr instanceof Error
                 ? mcpErr.message
-                : 'Failed to save MCP servers'
+                : t('mcpServers.errors.failedToSave')
             );
           }
         }
       }
     } catch (err) {
-      setMcpError('Failed to apply MCP server configuration');
+      setMcpError(t('mcpServers.errors.failedToApply'));
       console.error('Error applying MCP servers:', err);
     } finally {
       setMcpApplying(false);
@@ -272,7 +274,7 @@ export function McpServers() {
     return (
       <div className="container mx-auto px-4 py-8">
         <Alert variant="destructive">
-          <AlertDescription>Failed to load configuration.</AlertDescription>
+          <AlertDescription>{t('mcpServers.errors.failedToLoadConfiguration')}</AlertDescription>
         </Alert>
       </div>
     );
@@ -282,16 +284,16 @@ export function McpServers() {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">MCP Servers</h1>
+          <h1 className="text-3xl font-bold">{t('mcpServers.title')}</h1>
           <p className="text-muted-foreground">
-            Configure MCP servers to extend executor capabilities.
+            {t('mcpServers.subtitle')}
           </p>
         </div>
 
         {mcpError && (
           <Alert variant="destructive">
             <AlertDescription>
-              MCP Configuration Error: {mcpError}
+              {t('mcpServers.errors.configurationError', { error: mcpError })}
             </AlertDescription>
           </Alert>
         )}
@@ -299,28 +301,27 @@ export function McpServers() {
         {success && (
           <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
             <AlertDescription className="font-medium">
-              ✓ MCP configuration saved successfully!
+              {t('mcpServers.successMessage')}
             </AlertDescription>
           </Alert>
         )}
 
         <Card>
           <CardHeader>
-            <CardTitle>Configuration</CardTitle>
+            <CardTitle>{t('mcpServers.configuration.title')}</CardTitle>
             <CardDescription>
-              Configure MCP servers for different executors to extend their
-              capabilities with custom tools and resources.
+              {t('mcpServers.configuration.description')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="mcp-executor">Executor</Label>
+              <Label htmlFor="mcp-executor">{t('mcpServers.executor.label')}</Label>
               <Select
                 value={selectedMcpExecutor}
                 onValueChange={(value: string) => setSelectedMcpExecutor(value)}
               >
                 <SelectTrigger id="mcp-executor">
-                  <SelectValue placeholder="Select executor" />
+                  <SelectValue placeholder={t('mcpServers.executor.placeholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {EXECUTOR_TYPES.filter((type) =>
@@ -333,7 +334,7 @@ export function McpServers() {
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">
-                Choose which executor to configure MCP servers for.
+                {t('mcpServers.executor.description')}
               </p>
             </div>
 
@@ -342,13 +343,12 @@ export function McpServers() {
                 <div className="flex">
                   <div className="ml-3">
                     <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                      MCP Not Supported
+                      {t('mcpServers.notSupported.title')}
                     </h3>
                     <div className="mt-2 text-sm text-amber-700 dark:text-amber-300">
                       <p>{mcpError}</p>
                       <p className="mt-1">
-                        To use MCP servers, please select a different executor
-                        (Claude, Amp, or Gemini) above.
+                        {t('mcpServers.notSupported.description')}
                       </p>
                     </div>
                   </div>
@@ -356,15 +356,15 @@ export function McpServers() {
               </div>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="mcp-servers">MCP Server Configuration</Label>
+                <Label htmlFor="mcp-servers">{t('mcpServers.configuration.label')}</Label>
                 <Textarea
                   id="mcp-servers"
                   placeholder={
                     mcpLoading
-                      ? 'Loading current configuration...'
-                      : '{\n  "server-name": {\n    "type": "stdio",\n    "command": "your-command",\n    "args": ["arg1", "arg2"]\n  }\n}'
+                      ? t('mcpServers.configuration.loadingPlaceholder')
+                      : t('mcpServers.configuration.placeholder')
                   }
-                  value={mcpLoading ? 'Loading...' : mcpServers}
+                  value={mcpLoading ? t('mcpServers.configuration.loading') : mcpServers}
                   onChange={(e) => handleMcpServersChange(e.target.value)}
                   disabled={mcpLoading}
                   className="font-mono text-sm min-h-[300px]"
@@ -376,10 +376,10 @@ export function McpServers() {
                 )}
                 <div className="text-sm text-muted-foreground">
                   {mcpLoading ? (
-                    'Loading current MCP server configuration...'
+                    t('mcpServers.configuration.loadingText')
                   ) : (
                     <span>
-                      Changes will be saved to:
+                      {t('mcpServers.configuration.saveLocation')}
                       {mcpConfigPath && (
                         <span className="ml-2 font-mono text-xs">
                           {mcpConfigPath}
@@ -395,10 +395,10 @@ export function McpServers() {
                     disabled={mcpApplying || mcpLoading || !selectedMcpExecutor}
                     className="w-64"
                   >
-                    Add Vibe-Kanban MCP
+                    {t('mcpServers.addVibeKanban.button')}
                   </Button>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Automatically adds the Vibe-Kanban MCP server.
+                    {t('mcpServers.addVibeKanban.description')}
                   </p>
                 </div>
               </div>
@@ -416,7 +416,7 @@ export function McpServers() {
             >
               {mcpApplying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {success && <span className="mr-2">✓</span>}
-              {success ? 'Settings Saved!' : 'Save Settings'}
+              {success ? t('mcpServers.saveButton.saved') : t('mcpServers.saveButton.save')}
             </Button>
           </div>
         </div>

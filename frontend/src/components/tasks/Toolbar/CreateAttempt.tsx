@@ -1,6 +1,7 @@
 import { Dispatch, SetStateAction, useCallback, useContext } from 'react';
 import { Button } from '@/components/ui/button.tsx';
 import { ArrowDown, Play, Settings2, X, AlertTriangle } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,6 +62,7 @@ function CreateAttempt({
   const { isAttemptRunning } = useContext(TaskAttemptDataContext);
   const { isPlanningMode, canCreateTask } = useTaskPlan();
   const { config } = useConfig();
+  const { t } = useTranslation();
 
   const [showCreateAttemptConfirmation, setShowCreateAttemptConfirmation] =
     useState(false);
@@ -138,7 +140,7 @@ function CreateAttempt({
     <div className="p-4 bg-muted/20 rounded-lg border">
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold">Create Attempt</h3>
+          <h3 className="text-base font-semibold">{t('createAttemptComponent.title')}</h3>
           {taskAttempts.length > 0 && (
             <Button
               variant="ghost"
@@ -151,9 +153,7 @@ function CreateAttempt({
         </div>
         <div className="flex items-center w-4/5">
           <label className="text-xs font-medium text-muted-foreground">
-            Each time you start an attempt, a new session is initiated with your
-            selected coding agent, and a git worktree and corresponding task
-            branch are created.
+            {t('createAttemptComponent.description')}
           </label>
         </div>
 
@@ -163,12 +163,11 @@ function CreateAttempt({
             <div className="flex items-center gap-2 mb-1">
               <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
               <p className="text-sm font-semibold text-orange-800 dark:text-orange-300">
-                Plan Required
+                {t('createAttemptComponent.planRequired')}
               </p>
             </div>
             <p className="text-xs text-orange-700 dark:text-orange-400">
-              Cannot start attempt - no plan was generated in the last
-              execution. Please generate a plan first.
+              {t('createAttemptComponent.cannotStartAttempt')}
             </p>
           </div>
         )}
@@ -178,14 +177,14 @@ function CreateAttempt({
           <div className="space-y-1">
             <div className="flex items-center gap-1.5">
               <label className="text-xs font-medium text-muted-foreground">
-                Base branch
+                {t('createAttemptComponent.baseBranch')}
               </label>
             </div>
             <BranchSelector
               branches={branches}
               selectedBranch={createAttemptBranch}
               onBranchSelect={setCreateAttemptBranch}
-              placeholder="current"
+              placeholder={t('createAttemptComponent.current')}
             />
           </div>
 
@@ -193,7 +192,7 @@ function CreateAttempt({
           <div className="space-y-1">
             <div className="flex items-center gap-1.5">
               <label className="text-xs font-medium text-muted-foreground">
-                Coding agent
+                {t('createAttemptComponent.codingAgent')}
               </label>
             </div>
             <DropdownMenu>
@@ -208,7 +207,7 @@ function CreateAttempt({
                     <span className="truncate">
                       {availableExecutors.find(
                         (e) => e.id === createAttemptExecutor
-                      )?.name || 'Select agent'}
+                      )?.name || t('createAttemptComponent.selectAgent')}
                     </span>
                   </div>
                   <ArrowDown className="h-3 w-3" />
@@ -224,7 +223,7 @@ function CreateAttempt({
                     }
                   >
                     {executor.name}
-                    {config?.executor.type === executor.id && ' (Default)'}
+                    {config?.executor.type === executor.id && ` ${t('createAttemptComponent.default')}`}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -248,7 +247,7 @@ function CreateAttempt({
               }`}
               title={
                 isPlanningMode && !canCreateTask
-                  ? 'Plan required before starting attempt'
+                  ? t('createAttemptComponent.planRequiredTooltip')
                   : undefined
               }
             >
@@ -258,7 +257,7 @@ function CreateAttempt({
               {!(isPlanningMode && !canCreateTask) && (
                 <Play className="h-3 w-3 mr-1.5" />
               )}
-              Start
+              {t('createAttemptComponent.start')}
             </Button>
           </div>
         </div>
@@ -271,10 +270,9 @@ function CreateAttempt({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Start New Attempt?</DialogTitle>
+            <DialogTitle>{t('createAttemptComponent.startNewAttemptTitle')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to start a new attempt for this task? This
-              will create a new session and branch.
+              {t('createAttemptComponent.startNewAttemptDescription')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -282,9 +280,9 @@ function CreateAttempt({
               variant="outline"
               onClick={() => setShowCreateAttemptConfirmation(false)}
             >
-              Cancel
+              {t('createAttemptComponent.cancel')}
             </Button>
-            <Button onClick={handleConfirmCreateAttempt}>Start</Button>
+            <Button onClick={handleConfirmCreateAttempt}>{t('createAttemptComponent.start')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

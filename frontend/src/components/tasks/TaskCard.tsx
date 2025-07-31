@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { is_planning_executor_type } from '@/lib/utils';
+import { useTranslation } from '@/lib/i18n';
 
 type Task = TaskWithAttemptStatus;
 
@@ -42,6 +43,7 @@ export function TaskCard({
   isFocused,
   tabIndex = -1,
 }: TaskCardProps) {
+  const { t } = useTranslation();
   const localRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (isFocused && localRef.current) {
@@ -125,14 +127,14 @@ export function TaskCard({
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => onEdit(task)}>
                     <Edit className="h-4 w-4 mr-2" />
-                    Edit
+                    {t('tasks.actions.edit')}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => onDelete(task.id)}
                     className="text-destructive"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
+                    {t('tasks.actions.delete')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

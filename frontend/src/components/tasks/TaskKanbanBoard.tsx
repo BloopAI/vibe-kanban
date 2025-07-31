@@ -13,6 +13,7 @@ import {
   useKeyboardShortcuts,
   useKanbanKeyboardNavigation,
 } from '@/lib/keyboard-shortcuts.ts';
+import { useTranslation } from '@/lib/i18n';
 
 type Task = TaskWithAttemptStatus;
 
@@ -34,13 +35,7 @@ const allTaskStatuses: TaskStatus[] = [
   'cancelled',
 ];
 
-const statusLabels: Record<TaskStatus, string> = {
-  todo: 'To Do',
-  inprogress: 'In Progress',
-  inreview: 'In Review',
-  done: 'Done',
-  cancelled: 'Cancelled',
-};
+// 將狀態標籤移到組件內部，使用翻譯
 
 const statusBoardColors: Record<TaskStatus, string> = {
   todo: 'hsl(var(--neutral))',
@@ -64,6 +59,16 @@ function TaskKanbanBoard({
     taskId?: string;
   }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
+
+  // 使用翻譯的狀態標籤
+  const statusLabels: Record<TaskStatus, string> = {
+    todo: t('tasks.status.todo'),
+    inprogress: t('tasks.status.inprogress'),
+    inreview: t('tasks.status.inreview'),
+    done: t('tasks.status.done'),
+    cancelled: t('tasks.status.cancelled'),
+  };
 
   useKeyboardShortcuts({
     navigate,
