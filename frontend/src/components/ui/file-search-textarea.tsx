@@ -3,8 +3,9 @@ import { createPortal } from 'react-dom';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { projectsApi } from '@/lib/api';
 
-interface FileSearchResult {
-  path: string;
+import type { SearchResult } from 'shared/types';
+
+interface FileSearchResult extends SearchResult {
   name: string;
 }
 
@@ -55,7 +56,12 @@ export function FileSearchTextarea({
 
       try {
         const result = await projectsApi.searchFiles(projectId, searchQuery);
-        setSearchResults(result);
+        // Transform SearchResult to FileSearchResult by adding name field
+        const fileResults: FileSearchResult[] = result.map(item => ({
+          ...item,
+          name: item.path.split('/').pop() || item.path
+        }));
+        setSearchResults(fileResults);
         setShowDropdown(true);
         setSelectedIndex(-1);
       } catch (error) {

@@ -18,6 +18,7 @@ import {
 } from 'shared/old_frozen_types';
 
 import {
+  ApiResponse,
   Config,
   CreateTaskTemplate,
   DirectoryListResponse,
@@ -25,11 +26,16 @@ import {
   GitBranch,
   Project,
   CreateProject,
+  RepositoryInfo,
+  SearchResult,
   TaskTemplate,
   UpdateProject,
   UpdateTaskTemplate,
   UserSystemInfo,
 } from 'shared/types';
+
+// Re-export types for convenience
+export type { RepositoryInfo } from 'shared/types';
 
 export const makeRequest = async (url: string, options: RequestInit = {}) => {
   const headers = {
@@ -43,36 +49,14 @@ export const makeRequest = async (url: string, options: RequestInit = {}) => {
   });
 };
 
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  message?: string;
-}
-
 export interface FollowUpResponse {
   message: string;
   actual_attempt_id: string;
   created_new_attempt: boolean;
 }
 
-// Additional interface for file search results
-export interface FileSearchResult {
-  path: string;
-  name: string;
-}
 
-// GitHub Repository Info (manually defined since not exported from Rust yet)
-export interface RepositoryInfo {
-  id: number;
-  name: string;
-  full_name: string;
-  owner: string;
-  description: string | null;
-  clone_url: string;
-  ssh_url: string;
-  default_branch: string;
-  private: boolean;
-}
+
 
 export class ApiError extends Error {
   constructor(
@@ -178,11 +162,11 @@ export const projectsApi = {
   searchFiles: async (
     id: string,
     query: string
-  ): Promise<FileSearchResult[]> => {
+  ): Promise<SearchResult[]> => {
     const response = await makeRequest(
       `/api/projects/${id}/search?q=${encodeURIComponent(query)}`
     );
-    return handleApiResponse<FileSearchResult[]>(response);
+    return handleApiResponse<SearchResult[]>(response);
   },
 };
 

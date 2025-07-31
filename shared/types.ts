@@ -26,6 +26,8 @@ export type CreateTaskTemplate = { project_id: string | null, title: string, des
 
 export type UpdateTaskTemplate = { title: string | null, description: string | null, template_name: string | null, };
 
+export type ApiResponse<T> = { success: boolean, data: T | null, message: string | null, };
+
 export type UserSystemInfo = { config: Config, environment: Environment, };
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
@@ -47,5 +49,7 @@ export enum SoundFile { ABSTRACT_SOUND1 = "ABSTRACT_SOUND1", ABSTRACT_SOUND2 = "
 export type SoundConstants = { sound_files: Array<SoundFile>, sound_labels: Array<string>, };
 
 export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
+
+export type RepositoryInfo = { id: bigint, name: string, full_name: string, owner: string, description: string | null, clone_url: string, ssh_url: string, default_branch: string, private: boolean, };
 
 export enum CodingAgentExecutorType { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI = "GEMINI" }

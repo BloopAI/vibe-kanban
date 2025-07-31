@@ -38,8 +38,8 @@ import {
   executionProcessesApi,
   makeRequest,
   FollowUpResponse,
-  ApiResponse,
 } from '@/lib/api.ts';
+import type { ApiResponse } from 'shared/types';
 import {
   Dispatch,
   SetStateAction,
