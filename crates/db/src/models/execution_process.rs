@@ -5,7 +5,7 @@ use sqlx::{FromRow, SqlitePool, Type};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::task_attempt::TaskAttempt;
+use super::{task::Task, task_attempt::TaskAttempt};
 
 #[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
 #[sqlx(type_name = "execution_process_status", rename_all = "lowercase")]
@@ -72,6 +72,13 @@ pub struct ExecutionProcessSummary {
     pub completed_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug)]
+pub struct ExecutionContext {
+    pub execution_process: ExecutionProcess,
+    pub task_attempt: TaskAttempt,
+    pub task: Task,
 }
 
 impl ExecutionProcess {
@@ -335,5 +342,29 @@ impl ExecutionProcess {
         pool: &SqlitePool,
     ) -> Result<Option<TaskAttempt>, sqlx::Error> {
         TaskAttempt::find_by_id(pool, self.task_attempt_id).await
+    }
+
+    /// Load execution context with related task attempt and task
+    pub async fn load_context(
+        pool: &SqlitePool,
+        exec_id: Uuid,
+    ) -> Result<ExecutionContext, sqlx::Error> {
+        let execution_process = Self::find_by_id(pool, exec_id)
+            .await?
+            .ok_or(sqlx::Error::RowNotFound)?;
+
+        let task_attempt = TaskAttempt::find_by_id(pool, execution_process.task_attempt_id)
+            .await?
+            .ok_or(sqlx::Error::RowNotFound)?;
+
+        let task = Task::find_by_id(pool, task_attempt.task_id)
+            .await?
+            .ok_or(sqlx::Error::RowNotFound)?;
+
+        Ok(ExecutionContext {
+            execution_process,
+            task_attempt,
+            task,
+        })
     }
 }

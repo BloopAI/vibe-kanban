@@ -28,12 +28,10 @@ pub fn config_path() -> std::path::PathBuf {
     asset_dir().join("config.json")
 }
 
-// TODO: FIX
 #[derive(RustEmbed)]
-#[folder = "../../sounds"]
+#[folder = "../../assets/sounds"]
 pub struct SoundAssets;
 
-// TODO: FIX
-// #[derive(RustEmbed)]
-// #[folder = "scripts"]
-// pub struct ScriptAssets;
+#[derive(RustEmbed)]
+#[folder = "../../assets/scripts"]
+pub struct ScriptAssets;

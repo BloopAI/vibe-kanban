@@ -1,12 +1,13 @@
-use std::path::PathBuf;
+// use db::models::{
+//     task::{Task, TaskStatus},
+//     task_attempt::TaskAttempt,
+// };
+// use deployment::Deployment;
+// use git2::Repository;
+// use services::services::{notification, worktree_manager::WorktreeManager};
+// use uuid::Uuid;
 
-use db::{models::task_attempt::TaskAttempt, DBService};
-use deployment::Deployment;
-use git2::Repository;
-use services::services::worktree_manager::WorktreeManager;
-use uuid::Uuid;
-
-use crate::DeploymentImpl;
+// use crate::DeploymentImpl;
 
 // /// Delegation context structure
 // #[derive(Debug, serde::Deserialize)]
@@ -125,194 +126,69 @@ use crate::DeploymentImpl;
 // }
 
 /// Commit any unstaged changes in the worktree after execution completion
-async fn commit_execution_changes(
-    worktree_path: &str,
-    attempt_id: Uuid,
-    summary: Option<&str>,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    // Run git operations in a blocking task since git2 is synchronous
-    let worktree_path = worktree_path.to_string();
-    let summary = summary.map(|s| s.to_string());
-    tokio::task::spawn_blocking(move || {
-        let worktree_repo = Repository::open(&worktree_path)?;
+// async fn commit_execution_changes(
+//     worktree_path: &str,
+//     attempt_id: Uuid,
+//     summary: Option<&str>,
+// ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+//     // Run git operations in a blocking task since git2 is synchronous
+//     let worktree_path = worktree_path.to_string();
+//     let summary = summary.map(|s| s.to_string());
+//     tokio::task::spawn_blocking(move || {
+//         let worktree_repo = Repository::open(&worktree_path)?;
 
-        // Check if there are any changes to commit
-        let status = worktree_repo.statuses(None)?;
-        let has_changes = status.iter().any(|entry| {
-            let flags = entry.status();
-            flags.contains(git2::Status::INDEX_NEW)
-                || flags.contains(git2::Status::INDEX_MODIFIED)
-                || flags.contains(git2::Status::INDEX_DELETED)
-                || flags.contains(git2::Status::WT_NEW)
-                || flags.contains(git2::Status::WT_MODIFIED)
-                || flags.contains(git2::Status::WT_DELETED)
-        });
+//         // Check if there are any changes to commit
+//         let status = worktree_repo.statuses(None)?;
+//         let has_changes = status.iter().any(|entry| {
+//             let flags = entry.status();
+//             flags.contains(git2::Status::INDEX_NEW)
+//                 || flags.contains(git2::Status::INDEX_MODIFIED)
+//                 || flags.contains(git2::Status::INDEX_DELETED)
+//                 || flags.contains(git2::Status::WT_NEW)
+//                 || flags.contains(git2::Status::WT_MODIFIED)
+//                 || flags.contains(git2::Status::WT_DELETED)
+//         });
 
-        if !has_changes {
-            return Ok::<(), Box<dyn std::error::Error + Send + Sync>>(());
-        }
+//         if !has_changes {
+//             return Ok::<(), Box<dyn std::error::Error + Send + Sync>>(());
+//         }
 
-        // Get the current signature for commits
-        let signature = worktree_repo.signature()?;
+//         // Get the current signature for commits
+//         let signature = worktree_repo.signature()?;
 
-        // Get the current HEAD commit
-        let head = worktree_repo.head()?;
-        let parent_commit = head.peel_to_commit()?;
+//         // Get the current HEAD commit
+//         let head = worktree_repo.head()?;
+//         let parent_commit = head.peel_to_commit()?;
 
-        // Stage all changes
-        let mut worktree_index = worktree_repo.index()?;
-        worktree_index.add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)?;
-        worktree_index.write()?;
+//         // Stage all changes
+//         let mut worktree_index = worktree_repo.index()?;
+//         worktree_index.add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)?;
+//         worktree_index.write()?;
 
-        let tree_id = worktree_index.write_tree()?;
-        let tree = worktree_repo.find_tree(tree_id)?;
+//         let tree_id = worktree_index.write_tree()?;
+//         let tree = worktree_repo.find_tree(tree_id)?;
 
-        // Create commit for the changes
-        let commit_message = if let Some(ref summary_msg) = summary {
-            summary_msg.clone()
-        } else {
-            format!("Task attempt {} - Final changes", attempt_id)
-        };
-        worktree_repo.commit(
-            Some("HEAD"),
-            &signature,
-            &signature,
-            &commit_message,
-            &tree,
-            &[&parent_commit],
-        )?;
+//         // Create commit for the changes
+//         let commit_message = if let Some(ref summary_msg) = summary {
+//             summary_msg.clone()
+//         } else {
+//             format!("Task attempt {} - Final changes", attempt_id)
+//         };
+//         worktree_repo.commit(
+//             Some("HEAD"),
+//             &signature,
+//             &signature,
+//             &commit_message,
+//             &tree,
+//             &[&parent_commit],
+//         )?;
 
-        Ok(())
-    })
-    .await??;
+//         Ok(())
+//     })
+//     .await??;
 
-    Ok(())
-}
-
-/// Check if worktree has uncommitted changes and warn if so
-fn check_uncommitted_changes(worktree_path: &str) {
-    if let Ok(repo) = Repository::open(worktree_path) {
-        if let Ok(statuses) = repo.statuses(None) {
-            // Simplified check: any status entry indicates changes
-            if !statuses.is_empty() {
-                tracing::warn!(
-                    "Deleting worktree {} with uncommitted changes",
-                    worktree_path
-                );
-            }
-        }
-    }
-}
-
-/// Delete a single git worktree and its filesystem directory using WorktreeManager
-async fn delete_worktree(
-    worktree_path: String,
-    main_repo_str: String,
-    attempt_id: Uuid,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let worktree_path_buf = std::path::PathBuf::from(&worktree_path);
-    let main_repo_path = std::path::PathBuf::from(main_repo_str);
-
-    // Check if worktree directory exists first - no-op if already gone
-    if !worktree_path_buf.exists() {
-        tracing::debug!(
-            "Worktree {} already doesn't exist, skipping cleanup",
-            worktree_path
-        );
-        return Ok(());
-    }
-
-    // Check for uncommitted changes and warn
-    check_uncommitted_changes(&worktree_path);
-
-    match WorktreeManager::cleanup_worktree(&worktree_path_buf, Some(&main_repo_path)).await {
-        Ok(_) => {
-            tracing::info!(
-                "Successfully cleaned up worktree for attempt {}",
-                attempt_id
-            );
-            Ok(())
-        }
-        Err(e) => {
-            tracing::error!(
-                "Failed to cleanup worktree for attempt {}: {}",
-                attempt_id,
-                e
-            );
-            Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
-        }
-    }
-}
-
-/// Clean up all worktrees for a specific task (immediate cleanup)
-pub async fn cleanup_task_worktrees(
-    pool: &sqlx::SqlitePool,
-    task_id: Uuid,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let task_attempts_with_project =
-        TaskAttempt::find_by_task_id_with_project(pool, task_id).await?;
-
-    let task_attempts_with_project: Vec<(Uuid, String, String)> = task_attempts_with_project
-        .into_iter()
-        .filter_map(|(id, ref_, git_)| {
-            if let Some(worktree_path) = &ref_ {
-                Some((id, worktree_path.clone(), git_.clone()))
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    if task_attempts_with_project.is_empty() {
-        tracing::debug!("No worktrees found for task {} to clean up", task_id);
-        return Ok(());
-    }
-
-    tracing::info!(
-        "Starting immediate cleanup of {} worktrees for task {}",
-        task_attempts_with_project.len(),
-        task_id
-    );
-
-    let mut cleaned_count = 0;
-    let mut failed_count = 0;
-
-    for (attempt_id, worktree_path, git_repo_path) in task_attempts_with_project {
-        if let Err(e) = delete_worktree(worktree_path, git_repo_path, attempt_id).await {
-            tracing::error!(
-                "Failed to cleanup worktree for attempt {}: {}",
-                attempt_id,
-                e
-            );
-            failed_count += 1;
-            // Continue with other attempts even if one fails
-        } else {
-            // Mark worktree as deleted in database after successful cleanup
-            if let Err(e) =
-                db::models::task_attempt::TaskAttempt::mark_worktree_deleted(pool, attempt_id).await
-            {
-                tracing::error!(
-                    "Failed to mark worktree as deleted in database for attempt {}: {}",
-                    attempt_id,
-                    e
-                );
-            } else {
-                cleaned_count += 1;
-            }
-        }
-        tracing::info!(
-            "Completed immediate cleanup for task {}: {} worktrees cleaned, {} failed",
-            task_id,
-            cleaned_count,
-            failed_count
-        );
-    }
-    Ok(())
-}
-
-pub async fn execution_monitor(deployment: DeploymentImpl) {
-    // let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
-}
+//     Ok(())
+// }
 
 // /// Handle setup script completion
 // async fn handle_setup_completion(
@@ -520,71 +396,31 @@ pub async fn execution_monitor(deployment: DeploymentImpl) {
 //     }
 // }
 
-// /// Finalize task completion with notifications and status updates
+// // /// Finalize task completion with notifications and status updates
 // async fn finalize_task_completion(
-//     app_state: &AppState,
+//     deployment: &DeploymentImpl,
 //     task_attempt_id: Uuid,
-//     task: &crate::models::task::Task,
+//     task: db::models::task::Task,
 //     success: bool,
 //     exit_code: Option<i64>,
 // ) {
-//     // Send notifications if enabled
-//     let sound_enabled = app_state.get_sound_alerts_enabled().await;
-//     let push_enabled = app_state.get_push_notifications_enabled().await;
-
-//     if sound_enabled || push_enabled {
-//         let sound_file = app_state.get_sound_file().await;
-//         let notification_config = NotificationConfig {
-//             sound_enabled,
-//             push_enabled,
-//         };
-
-//         let notification_service = NotificationService::new(notification_config);
-
-//         // Get task attempt for notification details
-//         if let Ok(Some(task_attempt)) =
-//             TaskAttempt::find_by_id(&app_state.db_pool, task_attempt_id).await
-//         {
-//             let title = format!("Task Complete: {}", task.title);
-//             let message = if success {
-//                 format!(
-//                     "✅ '{}' completed successfully\nBranch: {}\nExecutor: {}",
-//                     task.title,
-//                     task_attempt.branch,
-//                     task_attempt.executor.as_deref().unwrap_or("default")
-//                 )
-//             } else {
-//                 format!(
-//                     "❌ '{}' execution failed\nBranch: {}\nExecutor: {}",
-//                     task.title,
-//                     task_attempt.branch,
-//                     task_attempt.executor.as_deref().unwrap_or("default")
-//                 )
-//             };
-
-//             notification_service
-//                 .notify(&title, &message, &sound_file)
-//                 .await;
-//         }
-//     }
-
 //     // Track analytics event
-//     app_state
-//         .track_analytics_event(
+//     deployment
+//         .track_if_analytics_allowed(
 //             "task_attempt_finished",
-//             Some(serde_json::json!({
+//             serde_json::json!({
 //                 "task_id": task.id.to_string(),
 //                 "project_id": task.project_id.to_string(),
 //                 "attempt_id": task_attempt_id.to_string(),
 //                 "execution_success": success,
 //                 "exit_code": exit_code,
-//             })),
+//             }),
 //         )
 //         .await;
 
 //     // Update task status to InReview
 //     if let Err(e) = Task::update_status(
-//         &app_state.db_pool,
+//         &deployment.db().pool,
 //         task.id,
 //         task.project_id,
 //         TaskStatus::InReview,

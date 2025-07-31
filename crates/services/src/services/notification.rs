@@ -1,59 +1,58 @@
 use std::sync::OnceLock;
 
-use crate::models::config::SoundFile;
+use db::models::execution_process::{ExecutionContext, ExecutionProcessStatus};
+use utils;
+
+use crate::services::config::SoundFile;
 
 /// Service for handling cross-platform notifications including sound alerts and push notifications
 #[derive(Debug, Clone)]
-pub struct NotificationService {
-    sound_enabled: bool,
-    push_enabled: bool,
-}
-
-/// Configuration for notifications
-#[derive(Debug, Clone)]
-pub struct NotificationConfig {
-    pub sound_enabled: bool,
-    pub push_enabled: bool,
-}
-
-impl Default for NotificationConfig {
-    fn default() -> Self {
-        Self {
-            sound_enabled: true,
-            push_enabled: true,
-        }
-    }
-}
+pub struct NotificationService {}
+use crate::services::config::NotificationConfig;
 
 /// Cache for WSL root path from PowerShell
 static WSL_ROOT_PATH_CACHE: OnceLock<Option<String>> = OnceLock::new();
 
 impl NotificationService {
-    /// Create a new NotificationService with the given configuration
-    pub fn new(config: NotificationConfig) -> Self {
-        Self {
-            sound_enabled: config.sound_enabled,
-            push_enabled: config.push_enabled,
-        }
+    pub async fn notify_execution_halted(config: NotificationConfig, ctx: &ExecutionContext) {
+        let title = format!("Task Complete: {}", ctx.task.title);
+        let message = match ctx.execution_process.status {
+            ExecutionProcessStatus::Completed => format!(
+                "✅ '{}' completed successfully\nBranch: {:?}\nExecutor: {}",
+                ctx.task.title,
+                ctx.task_attempt.branch,
+                ctx.task_attempt.executor.as_deref().unwrap_or("default")
+            ),
+            ExecutionProcessStatus::Failed | ExecutionProcessStatus::Killed => format!(
+                "❌ '{}' execution failed\nBranch: {:?}\nExecutor: {}",
+                ctx.task.title,
+                ctx.task_attempt.branch,
+                ctx.task_attempt.executor.as_deref().unwrap_or("default")
+            ),
+            _ => {
+                tracing::warn!(
+                    "Tried to notify attempt completion for {} but process is still running!",
+                    ctx.task_attempt.id
+                );
+                return;
+            }
+        };
+        Self::notify(config, &title, &message).await;
     }
 
     /// Send both sound and push notifications if enabled
-    pub async fn notify(&self, title: &str, message: &str, sound_file: &SoundFile) {
-        if self.sound_enabled {
-            self.play_sound_notification(sound_file).await;
+    pub async fn notify(config: NotificationConfig, title: &str, message: &str) {
+        if config.sound_enabled {
+            Self::play_sound_notification(&config.sound_file).await;
         }
 
-        if self.push_enabled {
-            self.send_push_notification(title, message).await;
+        if config.push_enabled {
+            Self::send_push_notification(title, message).await;
         }
     }
 
     /// Play a system sound notification across platforms
-    pub async fn play_sound_notification(&self, sound_file: &SoundFile) {
-        if !self.sound_enabled {
-            return;
-        }
-
+    async fn play_sound_notification(sound_file: &SoundFile) {
         let file_path = match sound_file.get_path().await {
             Ok(path) => path,
             Err(e) => {
@@ -68,7 +67,7 @@ impl NotificationService {
             let _ = tokio::process::Command::new("afplay")
                 .arg(&file_path)
                 .spawn();
-        } else if cfg!(target_os = "linux") && !crate::utils::is_wsl2() {
+        } else if cfg!(target_os = "linux") && !utils::is_wsl2() {
             // Try different Linux audio players
             if tokio::process::Command::new("paplay")
                 .arg(&file_path)
@@ -89,11 +88,9 @@ impl NotificationService {
                     .arg("\\a")
                     .spawn();
             }
-        } else if cfg!(target_os = "windows")
-            || (cfg!(target_os = "linux") && crate::utils::is_wsl2())
-        {
+        } else if cfg!(target_os = "windows") || (cfg!(target_os = "linux") && utils::is_wsl2()) {
             // Convert WSL path to Windows path if in WSL2
-            let file_path = if crate::utils::is_wsl2() {
+            let file_path = if utils::is_wsl2() {
                 if let Some(windows_path) = Self::wsl_to_windows_path(&file_path).await {
                     windows_path
                 } else {
@@ -114,24 +111,18 @@ impl NotificationService {
     }
 
     /// Send a cross-platform push notification
-    pub async fn send_push_notification(&self, title: &str, message: &str) {
-        if !self.push_enabled {
-            return;
-        }
-
+    async fn send_push_notification(title: &str, message: &str) {
         if cfg!(target_os = "macos") {
-            self.send_macos_notification(title, message).await;
-        } else if cfg!(target_os = "linux") && !crate::utils::is_wsl2() {
-            self.send_linux_notification(title, message).await;
-        } else if cfg!(target_os = "windows")
-            || (cfg!(target_os = "linux") && crate::utils::is_wsl2())
-        {
-            self.send_windows_notification(title, message).await;
+            Self::send_macos_notification(title, message).await;
+        } else if cfg!(target_os = "linux") && !utils::is_wsl2() {
+            Self::send_linux_notification(title, message).await;
+        } else if cfg!(target_os = "windows") || (cfg!(target_os = "linux") && utils::is_wsl2()) {
+            Self::send_windows_notification(title, message).await;
         }
     }
 
     /// Send macOS notification using osascript
-    async fn send_macos_notification(&self, title: &str, message: &str) {
+    async fn send_macos_notification(title: &str, message: &str) {
         let script = format!(
             r#"display notification "{message}" with title "{title}" sound name "Glass""#,
             message = message.replace('"', r#"\""#),
@@ -145,7 +136,7 @@ impl NotificationService {
     }
 
     /// Send Linux notification using notify-rust
-    async fn send_linux_notification(&self, title: &str, message: &str) {
+    async fn send_linux_notification(title: &str, message: &str) {
         use notify_rust::Notification;
 
         let title = title.to_string();
@@ -165,8 +156,8 @@ impl NotificationService {
     }
 
     /// Send Windows/WSL notification using PowerShell toast script
-    async fn send_windows_notification(&self, title: &str, message: &str) {
-        let script_path = match crate::utils::get_powershell_script().await {
+    async fn send_windows_notification(title: &str, message: &str) {
+        let script_path = match utils::get_powershell_script().await {
             Ok(path) => path,
             Err(e) => {
                 tracing::error!("Failed to get PowerShell script: {}", e);
@@ -175,7 +166,7 @@ impl NotificationService {
         };
 
         // Convert WSL path to Windows path if in WSL2
-        let script_path_str = if crate::utils::is_wsl2() {
+        let script_path_str = if utils::is_wsl2() {
             if let Some(windows_path) = Self::wsl_to_windows_path(&script_path).await {
                 windows_path
             } else {

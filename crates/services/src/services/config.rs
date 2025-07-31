@@ -25,9 +25,7 @@ pub struct Config {
     pub onboarding_acknowledged: bool,
     pub github_login_acknowledged: bool,
     pub telemetry_acknowledged: bool,
-    pub sound_alerts: bool,
-    pub sound_file: SoundFile,
-    pub push_notifications: bool,
+    pub notifications: NotificationConfig,
     pub editor: EditorConfig,
     pub github: GitHubConfig,
     pub analytics_enabled: Option<bool>,
@@ -64,6 +62,14 @@ pub struct GitHubConfig {
     pub username: Option<String>,
     pub primary_email: Option<String>,
     pub default_pr_base: Option<String>,
+}
+
+/// Configuration for notifications
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct NotificationConfig {
+    pub sound_enabled: bool,
+    pub push_enabled: bool,
+    pub sound_file: SoundFile,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString)]
@@ -111,9 +117,7 @@ impl Default for Config {
             onboarding_acknowledged: false,
             github_login_acknowledged: false,
             telemetry_acknowledged: false,
-            sound_alerts: true,
-            sound_file: SoundFile::AbstractSound4,
-            push_notifications: true,
+            notifications: NotificationConfig::default(),
             editor: EditorConfig::default(),
             github: GitHubConfig::default(),
             analytics_enabled: None,
@@ -124,6 +128,16 @@ impl Default for Config {
                 bitness: info.bitness().to_string(),
             },
             workspace_dir: None,
+        }
+    }
+}
+
+impl Default for NotificationConfig {
+    fn default() -> Self {
+        Self {
+            sound_enabled: true,
+            push_enabled: true,
+            sound_file: SoundFile::CowMooing,
         }
     }
 }

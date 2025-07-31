@@ -14,7 +14,9 @@ use deployment::DeploymentError;
 use executors::actions::{ExecutorAction, ExecutorActions};
 use futures::{TryStreamExt, stream::select};
 use services::services::{
+    config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
+    notification::NotificationService,
     worktree_manager::WorktreeManager,
 };
 use tokio::{sync::RwLock, task::JoinHandle};
@@ -31,16 +33,22 @@ pub struct LocalContainerService {
     db: DBService,
     child_store: Arc<RwLock<HashMap<Uuid, Arc<RwLock<AsyncGroupChild>>>>>,
     msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
+    config: Arc<RwLock<Config>>,
 }
 
 impl LocalContainerService {
-    pub fn new(db: DBService, msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>) -> Self {
+    pub fn new(
+        db: DBService,
+        msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
+        config: Arc<RwLock<Config>>,
+    ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
 
         LocalContainerService {
             db,
             child_store,
             msg_stores,
+            config,
         }
     }
 
@@ -217,6 +225,7 @@ impl LocalContainerService {
         let child_store = self.child_store.clone();
         let msg_stores = self.msg_stores.clone();
         let db = self.db.clone();
+        let config = self.config.clone();
 
         tokio::spawn(async move {
             loop {
@@ -274,6 +283,15 @@ impl LocalContainerService {
 
                     // Cleanup child handle
                     child_store.write().await.remove(&exec_id);
+                    match ExecutionProcess::load_context(&db.pool, exec_id).await {
+                        Ok(ctx) => {
+                            let notify_cfg = config.read().await.notifications.clone();
+                            NotificationService::notify_execution_halted(notify_cfg, &ctx).await
+                        }
+                        Err(e) => {
+                            tracing::error!("Failed to get execution context: {}", e);
+                        }
+                    }
 
                     break;
                 }
