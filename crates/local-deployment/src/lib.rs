@@ -50,6 +50,7 @@ impl Deployment for LocalDeployment {
         let git = GitService::new();
         let msg_stores = Arc::new(RwLock::new(HashMap::new()));
         let container = LocalContainerService::new(db.clone(), git.clone(), msg_stores.clone());
+        container.spawn_worktree_cleanup().await;
         let process = ProcessService::new();
         let auth = AuthService::new();
         let filesystem = FilesystemService::new();

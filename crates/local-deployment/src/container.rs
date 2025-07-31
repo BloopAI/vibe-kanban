@@ -6,15 +6,17 @@ use command_group::AsyncGroupChild;
 use db::{
     DBService,
     models::{
-        execution_process::{CreateExecutionProcess, ExecutionProcess, ExecutionProcessStatus},
+        execution_process::{ExecutionProcess, ExecutionProcessStatus},
         task_attempt::TaskAttempt,
     },
 };
-use executors::actions::{ExecutorAction, ExecutorActions, script::ScriptContext};
+use deployment::DeploymentError;
+use executors::actions::{ExecutorAction, ExecutorActions};
 use futures::{TryStreamExt, stream::select};
 use services::services::{
     container::{ContainerError, ContainerRef, ContainerService},
     git::GitService,
+    worktree_manager::WorktreeManager,
 };
 use tokio::{sync::RwLock, task::JoinHandle};
 use tokio_util::io::ReaderStream;
@@ -57,6 +59,162 @@ impl LocalContainerService {
     pub async fn remove_child_from_store(&self, id: &Uuid) {
         let mut map = self.child_store.write().await;
         map.remove(id);
+    }
+    /// Defensively check for externally deleted worktrees and mark them as deleted in the database
+    async fn check_externally_deleted_worktrees(db: &DBService) -> Result<(), DeploymentError> {
+        let active_attempts = TaskAttempt::find_by_worktree_deleted(&db.pool).await?;
+        tracing::debug!(
+            "Checking {} active worktrees for external deletion...",
+            active_attempts.len()
+        );
+        for (attempt_id, worktree_path) in active_attempts {
+            // Check if worktree directory exists
+            if !std::path::Path::new(&worktree_path).exists() {
+                // Worktree was deleted externally, mark as deleted in database
+                if let Err(e) = db::models::task_attempt::TaskAttempt::mark_worktree_deleted(
+                    &db.pool, attempt_id,
+                )
+                .await
+                {
+                    tracing::error!(
+                        "Failed to mark externally deleted worktree as deleted for attempt {}: {}",
+                        attempt_id,
+                        e
+                    );
+                } else {
+                    tracing::info!(
+                        "Marked externally deleted worktree as deleted for attempt {} (path: {})",
+                        attempt_id,
+                        worktree_path
+                    );
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Find and delete orphaned worktrees that don't correspond to any task attempts
+    async fn cleanup_orphaned_worktrees(&self) {
+        // Check if orphan cleanup is disabled via environment variable
+        if std::env::var("DISABLE_WORKTREE_ORPHAN_CLEANUP").is_ok() {
+            tracing::debug!(
+                "Orphan worktree cleanup is disabled via DISABLE_WORKTREE_ORPHAN_CLEANUP environment variable"
+            );
+            return;
+        }
+        let worktree_base_dir = Self::get_worktree_base_dir();
+        if !worktree_base_dir.exists() {
+            tracing::debug!(
+                "Worktree base directory {} does not exist, skipping orphan cleanup",
+                worktree_base_dir.display()
+            );
+            return;
+        }
+        let entries = match std::fs::read_dir(&worktree_base_dir) {
+            Ok(entries) => entries,
+            Err(e) => {
+                tracing::error!(
+                    "Failed to read worktree base directory {}: {}",
+                    worktree_base_dir.display(),
+                    e
+                );
+                return;
+            }
+        };
+        for entry in entries {
+            let entry = match entry {
+                Ok(entry) => entry,
+                Err(e) => {
+                    tracing::warn!("Failed to read directory entry: {}", e);
+                    continue;
+                }
+            };
+            let path = entry.path();
+            // Only process directories
+            if !path.is_dir() {
+                continue;
+            }
+
+            let worktree_path_str = path.to_string_lossy().to_string();
+            if let Ok(false) =
+                TaskAttempt::container_ref_exists(&self.db().pool, &worktree_path_str).await
+            {
+                // This is an orphaned worktree - delete it
+                tracing::info!("Found orphaned worktree: {}", worktree_path_str);
+                if let Err(e) = WorktreeManager::cleanup_worktree(&path, None).await {
+                    tracing::error!(
+                        "Failed to remove orphaned worktree {}: {}",
+                        worktree_path_str,
+                        e
+                    );
+                } else {
+                    tracing::info!(
+                        "Successfully removed orphaned worktree: {}",
+                        worktree_path_str
+                    );
+                }
+            }
+        }
+    }
+
+    pub async fn cleanup_expired_attempt(
+        db: &DBService,
+        attempt_id: Uuid,
+        worktree_path: PathBuf,
+        git_repo_path: PathBuf,
+    ) -> Result<(), DeploymentError> {
+        WorktreeManager::cleanup_worktree(&worktree_path, Some(&git_repo_path)).await?;
+        // Mark worktree as deleted in database after successful cleanup
+        db::models::task_attempt::TaskAttempt::mark_worktree_deleted(&db.pool, attempt_id).await?;
+        tracing::info!("Successfully marked worktree as deleted for attempt {attempt_id}",);
+        Ok(())
+    }
+
+    pub async fn cleanup_expired_attempts(db: &DBService) -> Result<(), DeploymentError> {
+        let expired_attempts = TaskAttempt::find_expired_for_cleanup(&db.pool).await?;
+        if expired_attempts.is_empty() {
+            tracing::debug!("No expired worktrees found");
+            return Ok(());
+        }
+        tracing::info!(
+            "Found {} expired worktrees to clean up",
+            expired_attempts.len()
+        );
+        for (attempt_id, worktree_path, git_repo_path) in expired_attempts {
+            Self::cleanup_expired_attempt(
+                &db,
+                attempt_id,
+                PathBuf::from(worktree_path),
+                PathBuf::from(git_repo_path),
+            )
+            .await
+            .unwrap_or_else(|e| {
+                tracing::error!("Failed to clean up expired attempt {attempt_id}: {e}",);
+            });
+        }
+        Ok(())
+    }
+
+    pub async fn spawn_worktree_cleanup(&self) {
+        let db = self.db.clone();
+        let mut cleanup_interval = tokio::time::interval(tokio::time::Duration::from_secs(1800)); // 30 minutes
+        self.cleanup_orphaned_worktrees().await;
+        tokio::spawn(async move {
+            loop {
+                cleanup_interval.tick().await;
+                tracing::info!("Starting periodic worktree cleanup...");
+                Self::check_externally_deleted_worktrees(&db)
+                    .await
+                    .unwrap_or_else(|e| {
+                        tracing::error!("Failed to check externally deleted worktrees: {}", e);
+                    });
+                Self::cleanup_expired_attempts(&db)
+                    .await
+                    .unwrap_or_else(|e| {
+                        tracing::error!("Failed to clean up expired worktree attempts: {}", e)
+                    });
+            }
+        });
     }
 
     /// Spawn a background task that polls the child process for completion and
