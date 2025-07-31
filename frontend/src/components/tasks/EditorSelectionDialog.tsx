@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { EditorType } from 'shared/old_frozen_types';
+import { EditorType } from 'shared/types';
 import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
 
 interface EditorSelectionDialogProps {
@@ -23,49 +23,14 @@ interface EditorSelectionDialogProps {
   onClose: () => void;
 }
 
-const editorOptions: {
-  value: EditorType;
-  label: string;
-  description: string;
-}[] = [
-  {
-    value: 'vscode',
-    label: 'Visual Studio Code',
-    description: "Microsoft's popular code editor",
-  },
-  {
-    value: 'cursor',
-    label: 'Cursor',
-    description: 'AI-powered code editor',
-  },
-  {
-    value: 'windsurf',
-    label: 'Windsurf',
-    description: 'Modern code editor',
-  },
-  {
-    value: 'intellij',
-    label: 'IntelliJ IDEA',
-    description: 'JetBrains IDE',
-  },
-  {
-    value: 'zed',
-    label: 'Zed',
-    description: 'High-performance code editor',
-  },
-  {
-    value: 'custom',
-    label: 'Custom Editor',
-    description: 'Use your configured custom editor',
-  },
-];
+
 
 export function EditorSelectionDialog({
   isOpen,
   onClose,
 }: EditorSelectionDialogProps) {
   const { handleOpenInEditor } = useContext(TaskDetailsContext);
-  const [selectedEditor, setSelectedEditor] = useState<EditorType>('vscode');
+  const [selectedEditor, setSelectedEditor] = useState<EditorType>(EditorType.VS_CODE);
 
   const handleConfirm = () => {
     handleOpenInEditor(selectedEditor);
@@ -93,14 +58,9 @@ export function EditorSelectionDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {editorOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{option.label}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {option.description}
-                      </span>
-                    </div>
+                {Object.values(EditorType).map((editor) => (
+                  <SelectItem key={editor} value={editor}>
+                    {editor}
                   </SelectItem>
                 ))}
               </SelectContent>

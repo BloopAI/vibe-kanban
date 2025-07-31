@@ -20,6 +20,7 @@ import {
 import { useConfig } from '@/components/config-provider';
 import { templatesApi } from '@/lib/api';
 import type { TaskStatus, ExecutorConfig, TaskTemplate } from 'shared/old_frozen_types';
+import { CodingAgentExecutorType } from 'shared/types';
 
 interface Task {
   id: string;
@@ -168,7 +169,7 @@ export function TaskFormDialog({
     try {
       if (!isEditMode && onCreateAndStartTask) {
         // Convert CodingAgentExecutorType to ExecutorConfig format  
-        const executorConfig = config?.executor ? { type: config.executor.type === 'claude-code' ? 'claude' : config.executor.type } as any : undefined;
+        const executorConfig = config?.executor ? { type: config.executor === CodingAgentExecutorType.CLAUDE_CODE ? 'claude' : config.executor } as any : undefined;
         await onCreateAndStartTask(title, description, executorConfig);
       }
 

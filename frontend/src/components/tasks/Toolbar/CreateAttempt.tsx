@@ -224,7 +224,7 @@ function CreateAttempt({
                     }
                   >
                     {executor.name}
-                    {config?.executor.type === executor.id && ' (Default)'}
+                    {config?.executor === executor.id && ' (Default)'}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
