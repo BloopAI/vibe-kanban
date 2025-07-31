@@ -36,12 +36,11 @@ import { TaskDetailsPanel } from '@/components/tasks/TaskDetailsPanel';
 import type {
   CreateTaskAndStart,
   ExecutorConfig,
-  ProjectWithBranch,
   TaskStatus,
   TaskWithAttemptStatus,
   TaskTemplate,
-  Project,
 } from 'shared/old_frozen_types';
+import type { Project } from 'shared/types';
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 
 type Task = TaskWithAttemptStatus;

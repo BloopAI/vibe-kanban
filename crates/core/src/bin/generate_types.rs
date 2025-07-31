@@ -13,6 +13,12 @@ fn generate_types_content() -> String {
     let mut decls: Vec<String> = vec![
         services::services::filesystem::DirectoryEntry::decl(),
         services::services::filesystem::DirectoryListResponse::decl(),
+        db::models::project::Project::decl(),
+        db::models::project::ProjectWithBranch::decl(),
+        db::models::project::CreateProject::decl(),
+        db::models::project::UpdateProject::decl(),
+        db::models::project::SearchResult::decl(),
+        db::models::project::SearchMatchType::decl(),
     ];
 
     let body = decls

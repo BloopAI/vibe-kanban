@@ -4,7 +4,6 @@ import {
   Config,
   ConfigConstants,
   CreateFollowUpAttempt,
-  CreateProject,
   CreateProjectFromGitHub,
   CreateTask,
   CreateTaskAndStart,
@@ -16,22 +15,21 @@ import {
   ExecutionProcessSummary,
   GitBranch,
   ProcessLogsResponse,
-  Project,
-  ProjectWithBranch,
   Task,
   TaskAttempt,
   TaskAttemptState,
   TaskTemplate,
   TaskWithAttemptStatus,
-  UpdateProject,
   UpdateTask,
   UpdateTaskTemplate,
   WorktreeDiff,
 } from 'shared/old_frozen_types';
 
 import {
-  DirectoryEntry,
   DirectoryListResponse,
+  Project,
+  CreateProject,
+  UpdateProject,
 } from 'shared/types';
 
 export const makeRequest = async (url: string, options: RequestInit = {}) => {
@@ -139,6 +137,8 @@ export const projectsApi = {
     const response = await makeRequest(`/api/projects/${id}`);
     return handleApiResponse<Project>(response);
   },
+
+
 
   create: async (data: CreateProject): Promise<Project> => {
     const response = await makeRequest('/api/projects', {
