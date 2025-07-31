@@ -24,10 +24,6 @@ export type SearchResult = { path: string, is_file: boolean, match_type: SearchM
 
 export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
-export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
-
-export type CreateBranch = { name: string, base_branch: string | null, };
-
 export type CreateTask = { project_id: string, title: string, description: string | null, parent_task_attempt: string | null, };
 
 export type CreateTaskAndStart = { project_id: string, title: string, description: string | null, parent_task_attempt: string | null, executor: ExecutorConfig | null, };

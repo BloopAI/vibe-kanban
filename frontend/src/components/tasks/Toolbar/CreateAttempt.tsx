@@ -7,7 +7,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
-import type { GitBranch, TaskAttempt } from 'shared/old_frozen_types';
+import type { GitBranch } from 'shared/types';
+import type { TaskAttempt } from 'shared/old_frozen_types';
 import { attemptsApi } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,

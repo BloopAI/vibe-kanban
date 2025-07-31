@@ -78,12 +78,7 @@ pub struct GitBranch {
     pub last_commit_date: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize, TS)]
-#[ts(export)]
-pub struct CreateBranch {
-    pub name: String,
-    pub base_branch: Option<String>,
-}
+
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]

@@ -52,9 +52,9 @@ import {
 import type {
   BranchStatus,
   ExecutionProcess,
-  GitBranch,
   TaskAttempt,
 } from 'shared/old_frozen_types';
+import type { GitBranch } from 'shared/types';
 import {
   TaskAttemptDataContext,
   TaskAttemptStoppingContext,

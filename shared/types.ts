@@ -40,4 +40,6 @@ export enum SoundFile { ABSTRACT_SOUND1 = "ABSTRACT_SOUND1", ABSTRACT_SOUND2 = "
 
 export type SoundConstants = { sound_files: Array<SoundFile>, sound_labels: Array<string>, };
 
+export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
+
 export enum CodingAgentExecutorType { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI = "GEMINI" }
