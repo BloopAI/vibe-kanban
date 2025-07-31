@@ -16,15 +16,17 @@ use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use futures::StreamExt;
 use json_patch::Patch;
 use serde::{Deserialize, Serialize};
-use serde_json::{from_value, json};
-use tokio::{io::AsyncWriteExt, process::Command, task::JoinHandle};
+use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
 use utils::{log_msg::LogMsg, msg_store::MsgStore, shell::get_shell_command};
 
 use crate::{
     executors::{ExecutorError, StandardCodingAgentExecutor},
-    logs::{NormalizedEntry, NormalizedEntryType},
-    patch::ConversationPatch,
+    logs::{
+        NormalizedEntry, NormalizedEntryType,
+        stderr_processor::normalize_stderr_logs,
+        utils::{EntryIndexProvider, patch::ConversationPatch},
+    },
 };
 
 /// An executor that uses Amp to process tasks
@@ -99,17 +101,22 @@ impl StandardCodingAgentExecutor for Amp {
     }
 
     fn normalize_logs(&self, raw_logs_msg_store: Arc<MsgStore>, current_dir: &PathBuf) {
+        let entry_index_provider = EntryIndexProvider::new();
+
+        // Process stderr logs using the standard stderr processor
+        normalize_stderr_logs(raw_logs_msg_store.clone(), entry_index_provider.clone());
+
+        // Process stdout logs (Amp's JSON output)
         let current_dir = current_dir.clone();
         tokio::spawn(async move {
             let mut s = raw_logs_msg_store.history_plus_stream().await;
             let mut buf = String::new();
-            let mut last_patch_entry_id = 0;
             // 1 amp message id = multiple patch entry ids
             let mut seen_amp_message_ids: HashMap<usize, Vec<usize>> = HashMap::new();
             while let Some(Ok(m)) = s.next().await {
                 let chunk = match m {
-                    LogMsg::Stdout(x) | LogMsg::Stderr(x) => x,
-                    LogMsg::JsonPatch(_) | LogMsg::SessionId(_) => {
+                    LogMsg::Stdout(x) => x,
+                    LogMsg::JsonPatch(_) | LogMsg::SessionId(_) | LogMsg::Stderr(_) => {
                         continue;
                     }
                     LogMsg::Finished => break,
@@ -146,8 +153,7 @@ impl StandardCodingAgentExecutor for Amp {
                                         ) {
                                             let patch: Patch = match &mut has_patch_ids {
                                                 None => {
-                                                    let new_id = last_patch_entry_id + 1;
-                                                    last_patch_entry_id = new_id;
+                                                    let new_id = entry_index_provider.next();
                                                     seen_amp_message_ids
                                                         .entry(amp_message_id)
                                                         .or_default()
@@ -162,8 +168,8 @@ impl StandardCodingAgentExecutor for Amp {
                                                             )
                                                         }
                                                         None => {
-                                                            let new_id = last_patch_entry_id + 1;
-                                                            last_patch_entry_id = new_id;
+                                                            let new_id =
+                                                                entry_index_provider.next();
                                                             patch_ids.push(new_id);
                                                             ConversationPatch::add(new_id, entry)
                                                         }
@@ -185,17 +191,18 @@ impl StandardCodingAgentExecutor for Amp {
                         },
                         Err(_) => {
                             let trimmed = line.trim();
-                            let entry = NormalizedEntry {
-                                timestamp: None,
-                                entry_type: NormalizedEntryType::SystemMessage,
-                                content: format!("Raw output: {}", trimmed),
-                                metadata: None,
-                            };
+                            if !trimmed.is_empty() {
+                                let entry = NormalizedEntry {
+                                    timestamp: None,
+                                    entry_type: NormalizedEntryType::SystemMessage,
+                                    content: format!("Raw output: {}", trimmed),
+                                    metadata: None,
+                                };
 
-                            let new_id = last_patch_entry_id + 1;
-                            last_patch_entry_id = new_id;
-                            let patch = ConversationPatch::add(new_id, entry);
-                            raw_logs_msg_store.push_patch(patch);
+                                let new_id = entry_index_provider.next();
+                                let patch = ConversationPatch::add(new_id, entry);
+                                raw_logs_msg_store.push_patch(patch);
+                            }
                         }
                     };
                 }

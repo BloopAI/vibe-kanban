@@ -12,8 +12,11 @@ use utils::{
 
 use crate::{
     executors::{ExecutorError, StandardCodingAgentExecutor},
-    logs::{ActionType, NormalizedEntry, NormalizedEntryType},
-    patch::ConversationPatch,
+    logs::{
+        ActionType, NormalizedEntry, NormalizedEntryType,
+        stderr_processor::normalize_stderr_logs,
+        utils::{EntryIndexProvider, patch::ConversationPatch},
+    },
 };
 
 /// Command builder for Claude CLI with configurable slots
@@ -159,7 +162,18 @@ impl StandardCodingAgentExecutor for ClaudeCode {
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &PathBuf) {
-        ClaudeLogProcessor::process_logs(self, msg_store, current_dir);
+        let entry_index_provider = EntryIndexProvider::new();
+
+        // Process stdout logs (Claude's JSON output)
+        ClaudeLogProcessor::process_logs(
+            self,
+            msg_store.clone(),
+            current_dir,
+            entry_index_provider.clone(),
+        );
+
+        // Process stderr logs using the standard stderr processor
+        normalize_stderr_logs(msg_store, entry_index_provider);
     }
 }
 
@@ -222,12 +236,16 @@ struct ClaudeLogProcessor;
 
 impl ClaudeLogProcessor {
     /// Process raw logs and convert them to normalized entries with patches
-    fn process_logs(_executor: &ClaudeCode, msg_store: Arc<MsgStore>, current_dir: &PathBuf) {
+    fn process_logs(
+        _executor: &ClaudeCode,
+        msg_store: Arc<MsgStore>,
+        current_dir: &PathBuf,
+        entry_index_provider: EntryIndexProvider,
+    ) {
         let current_dir_clone = current_dir.clone();
         tokio::spawn(async move {
             let mut stream = msg_store.history_plus_stream().await;
             let mut buffer = String::new();
-            let mut nex_patch_entry_id = 0;
             let worktree_path = current_dir_clone.to_string_lossy().to_string();
 
             while let Some(Ok(msg)) = stream.next().await {
@@ -260,8 +278,7 @@ impl ClaudeLogProcessor {
 
                             // Convert to normalized entries and create patches
                             for entry in Self::to_normalized_entries(&claude_json, &worktree_path) {
-                                let patch_id = nex_patch_entry_id;
-                                nex_patch_entry_id += 1;
+                                let patch_id = entry_index_provider.next();
                                 let patch = ConversationPatch::add(patch_id, entry);
                                 msg_store.push_patch(patch);
                             }
@@ -276,8 +293,7 @@ impl ClaudeLogProcessor {
                                     metadata: None,
                                 };
 
-                                let patch_id = nex_patch_entry_id;
-                                nex_patch_entry_id += 1;
+                                let patch_id = entry_index_provider.next();
                                 let patch = ConversationPatch::add(patch_id, entry);
                                 msg_store.push_patch(patch);
                             }
@@ -298,7 +314,7 @@ impl ClaudeLogProcessor {
                     metadata: None,
                 };
 
-                let patch_id = nex_patch_entry_id;
+                let patch_id = entry_index_provider.next();
                 let patch = ConversationPatch::add(patch_id, entry);
                 msg_store.push_patch(patch);
             }

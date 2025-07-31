@@ -117,6 +117,21 @@ impl MsgStore {
             .boxed()
     }
 
+    pub async fn stderr_chunked_stream(
+        &self,
+    ) -> futures::stream::BoxStream<'static, Result<String, std::io::Error>> {
+        self.history_plus_stream()
+            .await
+            .take_while(|res| future::ready(!matches!(res, Ok(LogMsg::Finished))))
+            .filter_map(|res| async move {
+                match res {
+                    Ok(LogMsg::Stderr(s)) => Some(Ok(s)),
+                    _ => None,
+                }
+            })
+            .boxed()
+    }
+
     /// Same stream but mapped to `Event` for SSE handlers.
     pub async fn sse_stream(
         &self,

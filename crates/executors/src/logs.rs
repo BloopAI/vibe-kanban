@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+pub mod plain_text_processor;
+pub mod stderr_processor;
+pub mod utils;
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct NormalizedConversation {
     pub entries: Vec<NormalizedEntry>,

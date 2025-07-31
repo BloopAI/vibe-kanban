@@ -1,20 +1,8 @@
-// use std::{
-//     path::{Path, PathBuf},
-//     process::Stdio,
-// };
-
-// use async_trait::async_trait;
-// use command_group::{AsyncCommandGroup, AsyncGroupChild};
-// use serde::{Deserialize, Serialize};
-// use tokio::{io::AsyncWriteExt, process::Command};
-
-// use crate::utils::shell::get_shell_command;
 use std::{path::PathBuf, process::Stdio, sync::Arc};
 
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use futures::StreamExt;
-use json_patch::Patch;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
@@ -22,8 +10,10 @@ use utils::{msg_store::MsgStore, shell::get_shell_command};
 
 use crate::{
     executors::{ExecutorError, StandardCodingAgentExecutor},
-    logs::{NormalizedEntry, NormalizedEntryType},
-    patch::ConversationPatch,
+    logs::{
+        NormalizedEntry, NormalizedEntryType, plain_text_processor::PlainTextLogProcessor,
+        stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider,
+    },
 };
 
 /// An executor that uses Gemini to process tasks
@@ -74,13 +64,46 @@ impl StandardCodingAgentExecutor for Gemini {
         Err(ExecutorError::FollowUpNotSupported)
     }
 
+    /// Parses both stderr and stdout logs for Gemini executor using PlainTextLogProcessor.
+    ///
+    /// - Stderr: uses the standard stderr log processor, which formats stderr output as ErrorMessage entries.
+    /// - Stdout: applies custom `format_chunk` to insert line breaks on period-to-capital transitions,
+    ///   then create assitant messages from the output.
+    ///
+    /// Each entry is converted into an `AssistantMessage` or `ErrorMessage` and emitted as patches.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// gemini.normalize_logs(msg_store.clone(), &worktree_path);
+    /// ```
+    ///
+    /// Subsequent queries to `msg_store` will receive JSON patches representing parsed log entries.
+    /// Sets up log normalization for the Gemini executor:
+    /// - stderr via [`normalize_stderr_logs`]
+    /// - stdout via [`PlainTextLogProcessor`] with Gemini-specific formatting and default heuristics
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, _worktree_path: &PathBuf) {
+        let entry_index_counter = EntryIndexProvider::new();
+        normalize_stderr_logs(msg_store.clone(), entry_index_counter.clone());
         tokio::spawn(async move {
             let mut stdout = msg_store.stdout_chunked_stream().await;
-            let mut processor = NormalizedLogProcessor::new();
+
+            // Create a processor with Gemini-specific formatting
+            let mut processor = PlainTextLogProcessor::builder()
+                .normalized_entry_producer(Box::new(|content: String| NormalizedEntry {
+                    timestamp: None,
+                    entry_type: NormalizedEntryType::AssistantMessage,
+                    content,
+                    metadata: None,
+                }))
+                .format_chunk(Box::new(|partial_line: Option<&str>, chunk: String| {
+                    Self::format_stdout_chunk(&chunk, partial_line.unwrap_or(""))
+                }))
+                .index_provider(entry_index_counter)
+                .build();
 
             while let Some(Ok(chunk)) = stdout.next().await {
-                for patch in processor.process(chunk.as_str()) {
+                for patch in processor.process(chunk) {
                     msg_store.push_patch(patch);
                 }
             }
@@ -88,81 +111,11 @@ impl StandardCodingAgentExecutor for Gemini {
     }
 }
 
-const MESSAGE_SIZE: usize = 8192; // ~8KB for new message boundaries
-
-/// Stateful processor for normalized log entries with message boundary detection
-struct NormalizedLogProcessor {
-    buffer: String, // text we are still building
-    idx: usize,     // current entry index
-    added: bool,    // have we already sent an ADD for this entry?
-}
-
-impl NormalizedLogProcessor {
-    fn new() -> Self {
-        Self {
-            buffer: String::new(),
-            idx: 0,
-            added: false,
-        }
-    }
-
-    /// Process a chunk of stdout and return patches to emit
-    fn process(&mut self, chunk: &str) -> Vec<Patch> {
-        let mut patches = Vec::new();
-
-        // 1. Append formatted chunk to buffer
-        let formatted_chunk = Self::format_chunk(chunk, &self.buffer);
-        self.buffer.push_str(&formatted_chunk);
-
-        // 2. Handle splitting FIRST - before creating any patch entries
-        while self.buffer.len() >= MESSAGE_SIZE {
-            let split_pos = Self::find_optimal_message_boundary(&self.buffer[..MESSAGE_SIZE]);
-            let finished = self.buffer[..split_pos].to_string();
-            self.buffer = self.buffer[split_pos..].to_string();
-
-            // Create entry for the finished part
-            let finished_entry = NormalizedEntry {
-                timestamp: None,
-                entry_type: NormalizedEntryType::AssistantMessage,
-                content: finished,
-                metadata: None,
-            };
-
-            if !self.added {
-                patches.push(ConversationPatch::add(self.idx, finished_entry));
-            } else {
-                patches.push(ConversationPatch::replace(self.idx, finished_entry));
-            }
-
-            // Move to next entry
-            self.idx += 1;
-            self.added = false;
-        }
-
-        // 3. After all splitting, handle remaining buffer content
-        if !self.buffer.is_empty() {
-            let entry = NormalizedEntry {
-                timestamp: None,
-                entry_type: NormalizedEntryType::AssistantMessage,
-                content: self.buffer.clone(),
-                metadata: None,
-            };
-
-            if !self.added {
-                patches.push(ConversationPatch::add(self.idx, entry));
-                self.added = true;
-            } else {
-                patches.push(ConversationPatch::replace(self.idx, entry));
-            }
-        }
-
-        patches
-    }
-
+impl Gemini {
     /// Make Gemini output more readable by inserting line breaks where periods are directly
     /// followed by capital letters (common Gemini CLI formatting issue).
     /// Handles both intra-chunk and cross-chunk period-to-capital transitions.
-    fn format_chunk(content: &str, accumulated_message: &str) -> String {
+    fn format_stdout_chunk(content: &str, accumulated_message: &str) -> String {
         let mut result = String::with_capacity(content.len() + 100);
         let chars: Vec<char> = content.chars().collect();
 
@@ -193,20 +146,5 @@ impl NormalizedLogProcessor {
         }
 
         result
-    }
-
-    /// Find a good position to split a message (newline preferred, sentence fallback)
-    fn find_optimal_message_boundary(buffer: &str) -> usize {
-        // Look for newline within the max_size limit (prefer this)
-        if let Some(pos) = buffer.rfind('\n') {
-            return pos + 1; // Include the newline
-        }
-
-        // Fallback: look for sentence boundaries (period + space or period + end)
-        if let Some(pos) = buffer.rfind(". ") {
-            return pos + 2; // Include the period and space
-        }
-
-        buffer.len()
     }
 }
