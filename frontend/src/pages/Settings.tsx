@@ -27,20 +27,7 @@ import {
   SOUND_FILES,
   SOUND_LABELS,
 } from 'shared/old_frozen_types';
-
-// Helper to get executor labels
-const getExecutorLabel = (executor: CodingAgentExecutorType): string => {
-  switch (executor) {
-    case CodingAgentExecutorType.CLAUDE_CODE:
-      return 'Claude Code';
-    case CodingAgentExecutorType.AMP:
-      return 'Amp';
-    case CodingAgentExecutorType.GEMINI:
-      return 'Gemini';
-    default:
-      return 'Unknown';
-  }
-};
+import { toPrettyCase } from '@/utils/string';
 import { useTheme } from '@/components/theme-provider';
 import { useConfig } from '@/components/config-provider';
 import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
@@ -224,7 +211,7 @@ export function Settings() {
                   <SelectContent>
                     {Object.values(CodingAgentExecutorType).map((executorType) => (
                       <SelectItem key={executorType} value={executorType}>
-                        {getExecutorLabel(executorType)}
+                        {toPrettyCase(executorType)}
                       </SelectItem>
                     ))}
                   </SelectContent>

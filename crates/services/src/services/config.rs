@@ -71,7 +71,7 @@ pub struct GitHubConfig {
 #[ts(use_ts_enum)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum EditorType {
-    VSCode,
+    VsCode,
     Cursor,
     Windsurf,
     IntelliJ,
@@ -82,7 +82,7 @@ pub enum EditorType {
 impl EditorType {
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
-            "vscode" => Some(Self::VSCode),
+            "vscode" => Some(Self::VsCode),
             "cursor" => Some(Self::Cursor),
             "windsurf" => Some(Self::Windsurf),
             "intellij" => Some(Self::IntelliJ),
@@ -125,7 +125,7 @@ impl EditorConstants {
     pub fn new() -> Self {
         Self {
             editor_types: vec![
-                EditorType::VSCode,
+                EditorType::VsCode,
                 EditorType::Cursor,
                 EditorType::Windsurf,
                 EditorType::IntelliJ,
@@ -213,7 +213,7 @@ impl Default for Config {
 impl Default for EditorConfig {
     fn default() -> Self {
         Self {
-            editor_type: EditorType::VSCode,
+            editor_type: EditorType::VsCode,
             custom_command: None,
         }
     }
@@ -234,7 +234,7 @@ impl Default for GitHubConfig {
 impl EditorConfig {
     pub fn get_command(&self) -> Vec<String> {
         match &self.editor_type {
-            EditorType::VSCode => vec!["code".to_string()],
+            EditorType::VsCode => vec!["code".to_string()],
             EditorType::Cursor => vec!["cursor".to_string()],
             EditorType::Windsurf => vec!["windsurf".to_string()],
             EditorType::IntelliJ => vec!["idea".to_string()],
