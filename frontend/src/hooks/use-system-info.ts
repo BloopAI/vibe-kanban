@@ -1,31 +1,17 @@
 import { useState, useEffect } from 'react';
-
-interface SystemInfo {
-  os_type: string;
-  os_version: string;
-  architecture: string;
-  bitness: string;
-}
+import { systemApi } from '@/lib/api';
+import type { Environment } from 'shared/types';
 
 export function useSystemInfo() {
-  const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
+  const [systemInfo, setSystemInfo] = useState<Environment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchSystemInfo = async () => {
       try {
-        const response = await fetch('/api/config');
-        if (!response.ok) {
-          throw new Error('Failed to fetch system info');
-        }
-        const data = await response.json();
-
-        if (data.success && data.data?.environment) {
-          setSystemInfo(data.data.environment);
-        } else {
-          throw new Error('Invalid response format');
-        }
+        const data = await systemApi.getInfo();
+        setSystemInfo(data.environment);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {

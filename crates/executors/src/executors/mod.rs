@@ -34,14 +34,14 @@ fn unknown_executor_error(s: &str) -> ExecutorError {
 #[derive(
     Debug, Clone, Serialize, Deserialize, PartialEq, TS, EnumDiscriminants, strum_macros::EnumString,
 )]
-#[serde(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 #[strum(parse_err_ty = ExecutorError, parse_err_fn = unknown_executor_error)]
 #[strum_discriminants(
     name(CodingAgentExecutorType),
     derive(strum_macros::Display, Serialize, Deserialize, TS),
-    ts(export),
-    serde(tag = "type", rename_all = "kebab-case")
+    ts(use_ts_enum),
+    serde(rename_all = "SCREAMING_SNAKE_CASE")
 )]
 pub enum CodingAgentExecutors {
     // Echo,

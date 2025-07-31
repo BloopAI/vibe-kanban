@@ -6,7 +6,7 @@ import {
   useEffect,
   useState,
 } from 'react';
-import type { Config } from 'shared/old_frozen_types';
+import type { Config } from 'shared/types';
 import { configApi, githubAuthApi } from '../lib/api';
 
 interface ConfigContextType {

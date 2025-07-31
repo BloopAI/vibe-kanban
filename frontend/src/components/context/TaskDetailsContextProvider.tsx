@@ -10,7 +10,6 @@ import {
   useState,
 } from 'react';
 import type {
-  EditorType,
   ExecutionProcess,
   ExecutionProcessSummary,
   Task,
@@ -19,6 +18,7 @@ import type {
   TaskWithAttemptStatus,
   WorktreeDiff,
 } from 'shared/old_frozen_types';
+import type { EditorType } from 'shared/types';
 import { attemptsApi, executionProcessesApi, tasksApi } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,

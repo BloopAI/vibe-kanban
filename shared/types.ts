@@ -19,3 +19,27 @@ export type UpdateProject = { name: string | null, git_repo_path: string | null,
 export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, };
 
 export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
+
+export type UserSystemInfo = { config: Config, environment: Environment, };
+
+export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
+
+export type Config = { theme: ThemeMode, executor: CodingAgentExecutorType, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, github_login_acknowledged: boolean, telemetry_acknowledged: boolean, sound_alerts: boolean, sound_file: SoundFile, push_notifications: boolean, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean | null, environment: EnvironmentInfo, workspace_dir: string | null, };
+
+export type EnvironmentInfo = { os_type: string, os_version: string, architecture: string, bitness: string, };
+
+export type ThemeMode = "light" | "dark" | "system" | "purple" | "green" | "blue" | "orange" | "red";
+
+export type EditorConfig = { editor_type: EditorType, custom_command: string | null, };
+
+export enum EditorType { V_S_CODE = "V_S_CODE", CURSOR = "CURSOR", WINDSURF = "WINDSURF", INTELLI_J = "INTELLI_J", ZED = "ZED", CUSTOM = "CUSTOM" }
+
+export type EditorConstants = { editor_types: Array<EditorType>, editor_labels: Array<string>, };
+
+export type GitHubConfig = { pat: string | null, token: string | null, username: string | null, primary_email: string | null, default_pr_base: string | null, };
+
+export type SoundFile = "ABSTRACT_SOUND1" | "ABSTRACT_SOUND2" | "ABSTRACT_SOUND3" | "ABSTRACT_SOUND4" | "COW_MOOING" | "PHONE_VIBRATION" | "ROOSTER";
+
+export type SoundConstants = { sound_files: Array<SoundFile>, sound_labels: Array<string>, };
+
+export enum CodingAgentExecutorType { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI = "GEMINI" }

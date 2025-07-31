@@ -69,7 +69,7 @@ pub struct GitHubConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(use_ts_enum)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum EditorType {
     VSCode,
     Cursor,
@@ -95,7 +95,7 @@ impl EditorType {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
-#[serde(rename_all = "kebab-case")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SoundFile {
     AbstractSound1,
     AbstractSound2,

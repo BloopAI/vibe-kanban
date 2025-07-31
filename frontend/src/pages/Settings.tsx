@@ -19,15 +19,28 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Key, Loader2, Volume2 } from 'lucide-react';
-import type { EditorType, SoundFile, ThemeMode } from 'shared/old_frozen_types';
+import type { EditorType, SoundFile, ThemeMode } from 'shared/types';
+import { CodingAgentExecutorType } from 'shared/types';
 import {
   EDITOR_LABELS,
   EDITOR_TYPES,
-  EXECUTOR_LABELS,
-  EXECUTOR_TYPES,
   SOUND_FILES,
   SOUND_LABELS,
 } from 'shared/old_frozen_types';
+
+// Helper to get executor labels
+const getExecutorLabel = (executor: CodingAgentExecutorType): string => {
+  switch (executor) {
+    case CodingAgentExecutorType.CLAUDE_CODE:
+      return 'Claude Code';
+    case CodingAgentExecutorType.AMP:
+      return 'Amp';
+    case CodingAgentExecutorType.GEMINI:
+      return 'Gemini';
+    default:
+      return 'Unknown';
+  }
+};
 import { useTheme } from '@/components/theme-provider';
 import { useConfig } from '@/components/config-provider';
 import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
@@ -200,18 +213,18 @@ export function Settings() {
               <div className="space-y-2">
                 <Label htmlFor="executor">Default Executor</Label>
                 <Select
-                  value={config.executor.type}
-                  onValueChange={(value: 'echo' | 'claude' | 'amp') =>
-                    updateConfig({ executor: { type: value } })
+                  value={config.executor}
+                  onValueChange={(value: CodingAgentExecutorType) =>
+                    updateConfig({ executor: value })
                   }
                 >
                   <SelectTrigger id="executor">
                     <SelectValue placeholder="Select executor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {EXECUTOR_TYPES.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {EXECUTOR_LABELS[type]}
+                    {Object.values(CodingAgentExecutorType).map((executorType) => (
+                      <SelectItem key={executorType} value={executorType}>
+                        {getExecutorLabel(executorType)}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -1,7 +1,6 @@
 // Import all necessary types from shared types
 import {
   BranchStatus,
-  Config,
   CreateFollowUpAttempt,
   CreateProjectFromGitHub,
   CreateTask,
@@ -9,7 +8,6 @@ import {
   CreateTaskAttempt,
   CreateTaskTemplate,
   DeviceStartResponse,
-  type EditorType,
   ExecutionProcess,
   ExecutionProcessSummary,
   GitBranch,
@@ -25,10 +23,13 @@ import {
 } from 'shared/old_frozen_types';
 
 import {
+  Config,
   DirectoryListResponse,
+  EditorType,
   Project,
   CreateProject,
   UpdateProject,
+  UserSystemInfo,
 } from 'shared/types';
 
 export const makeRequest = async (url: string, options: RequestInit = {}) => {
@@ -499,11 +500,19 @@ export const fileSystemApi = {
   },
 };
 
-// Config APIs
+// System API (new)
+export const systemApi = {
+  getInfo: async (): Promise<UserSystemInfo> => {
+    const response = await makeRequest('/api/info');
+    return handleApiResponse<UserSystemInfo>(response);
+  },
+};
+
+// Config APIs (backwards compatible)
 export const configApi = {
   getConfig: async (): Promise<Config> => {
-    const response = await makeRequest('/api/config');
-    return handleApiResponse<Config>(response);
+    const { config } = await systemApi.getInfo();
+    return config;
   },
   saveConfig: async (config: Config): Promise<Config> => {
     const response = await makeRequest('/api/config', {

@@ -167,7 +167,9 @@ export function TaskFormDialog({
     setIsSubmittingAndStart(true);
     try {
       if (!isEditMode && onCreateAndStartTask) {
-        await onCreateAndStartTask(title, description, config?.executor);
+        // Convert CodingAgentExecutorType to ExecutorConfig format  
+        const executorConfig = config?.executor ? { type: config.executor.type === 'claude-code' ? 'claude' : config.executor.type } as any : undefined;
+        await onCreateAndStartTask(title, description, executorConfig);
       }
 
       // Reset form on successful creation

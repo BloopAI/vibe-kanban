@@ -19,25 +19,37 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sparkles, Code } from 'lucide-react';
-import type { EditorType, ExecutorConfig } from 'shared/old_frozen_types';
+import { EditorType, CodingAgentExecutorType } from 'shared/types';
 import {
-  EXECUTOR_TYPES,
   EDITOR_TYPES,
-  EXECUTOR_LABELS,
   EDITOR_LABELS,
 } from 'shared/old_frozen_types';
+
+// Helper to get executor labels
+const getExecutorLabel = (executor: CodingAgentExecutorType): string => {
+  switch (executor) {
+    case CodingAgentExecutorType.CLAUDE_CODE:
+      return 'Claude Code';
+    case CodingAgentExecutorType.AMP:
+      return 'Amp';
+    case CodingAgentExecutorType.GEMINI:
+      return 'Gemini';
+    default:
+      return 'Unknown';
+  }
+};
 
 interface OnboardingDialogProps {
   open: boolean;
   onComplete: (config: {
-    executor: ExecutorConfig;
+    executor: CodingAgentExecutorType;
     editor: { editor_type: EditorType; custom_command: string | null };
   }) => void;
 }
 
 export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
-  const [executor, setExecutor] = useState<ExecutorConfig>({ type: 'claude' });
-  const [editorType, setEditorType] = useState<EditorType>('vscode');
+  const [executor, setExecutor] = useState<CodingAgentExecutorType>(CodingAgentExecutorType.CLAUDE_CODE);
+  const [editorType, setEditorType] = useState<EditorType>(EditorType.vscode);
   const [customCommand, setCustomCommand] = useState<string>('');
 
   const handleComplete = () => {
@@ -80,30 +92,24 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
               <div className="space-y-2">
                 <Label htmlFor="executor">Default Executor</Label>
                 <Select
-                  value={executor.type}
-                  onValueChange={(value) => setExecutor({ type: value as any })}
+                  value={executor}
+                  onValueChange={(value) => setExecutor(value as CodingAgentExecutorType)}
                 >
                   <SelectTrigger id="executor">
                     <SelectValue placeholder="Select your preferred coding agent" />
                   </SelectTrigger>
                   <SelectContent>
-                    {EXECUTOR_TYPES.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {EXECUTOR_LABELS[type]}
+                    {Object.values(CodingAgentExecutorType).map((executorType) => (
+                      <SelectItem key={executorType} value={executorType}>
+                        {getExecutorLabel(executorType)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-muted-foreground">
-                  {executor.type === 'claude' && 'Claude Code from Anthropic'}
-                  {executor.type === 'amp' && 'From Sourcegraph'}
-                  {executor.type === 'gemini' && 'Google Gemini from Bloop'}
-                  {executor.type === 'charm-opencode' &&
-                    'Charm/Opencode AI assistant'}
-                  {executor.type === 'claude-code-router' &&
-                    'Claude Code Router'}
-                  {executor.type === 'echo' &&
-                    'This is just for debugging vibe-kanban itself'}
+                  {executor === CodingAgentExecutorType.CLAUDE_CODE && 'Claude Code from Anthropic'}
+                  {executor === CodingAgentExecutorType.AMP && 'From Sourcegraph'}
+                  {executor === CodingAgentExecutorType.GEMINI && 'Google Gemini'}
                 </p>
               </div>
             </CardContent>
