@@ -2,6 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Error as AnyhowError;
 use async_trait::async_trait;
+use axum::response::sse::Event;
 use db::{
     DBService,
     models::{
@@ -11,6 +12,7 @@ use db::{
     },
 };
 use executors::executors::ExecutorError;
+use futures::{StreamExt, TryStreamExt, future, stream::select};
 use git2::Error as Git2Error;
 use serde_json::Value;
 use services::services::{
@@ -18,6 +20,7 @@ use services::services::{
     auth::{AuthError, AuthService},
     config::Config,
     container::{ContainerError, ContainerService},
+    events::{EventError, EventService},
     filesystem::{FilesystemError, FilesystemService},
     git::{GitService, GitServiceError},
     sentry::SentryService,
@@ -51,6 +54,8 @@ pub enum DeploymentError {
     #[error(transparent)]
     Worktree(#[from] WorktreeError),
     #[error(transparent)]
+    Event(#[from] EventError),
+    #[error(transparent)]
     Other(#[from] AnyhowError),
 }
 
@@ -79,6 +84,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn filesystem(&self) -> &FilesystemService;
 
     fn msg_stores(&self) -> &Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>;
+
+    fn events(&self) -> &EventService;
 
     async fn update_sentry_scope(&self) -> Result<(), DeploymentError> {
         let user_id = self.user_id();
@@ -161,5 +168,16 @@ pub trait Deployment: Clone + Send + Sync + 'static {
             }
         }
         Ok(())
+    }
+
+    async fn stream_events(
+        &self,
+    ) -> futures::stream::BoxStream<'static, Result<Event, std::io::Error>> {
+        self.events()
+            .msg_store()
+            .history_plus_stream()
+            .await
+            .map_ok(|m| m.to_sse_event())
+            .boxed()
     }
 }

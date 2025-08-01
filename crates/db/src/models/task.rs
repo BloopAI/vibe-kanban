@@ -183,6 +183,18 @@ ORDER BY t.created_at DESC"#,
         .await
     }
 
+    pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Task,
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+               FROM tasks 
+               WHERE rowid = $1"#,
+            rowid
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
     pub async fn find_by_id_and_project_id(
         pool: &SqlitePool,
         id: Uuid,

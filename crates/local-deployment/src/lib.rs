@@ -8,6 +8,7 @@ use services::services::{
     auth::AuthService,
     config::Config,
     container::ContainerService,
+    events::EventService,
     filesystem::FilesystemService,
     git::GitService,
     process_service::ProcessService,
@@ -37,6 +38,7 @@ pub struct LocalDeployment {
     process: ProcessService,
     auth: AuthService,
     filesystem: FilesystemService,
+    events: EventService,
 }
 
 #[async_trait]
@@ -54,6 +56,7 @@ impl Deployment for LocalDeployment {
         let process = ProcessService::new();
         let auth = AuthService::new();
         let filesystem = FilesystemService::new();
+        let events = EventService::new(db.clone()).await?;
 
         Ok(Self {
             config,
@@ -67,6 +70,7 @@ impl Deployment for LocalDeployment {
             process,
             auth,
             filesystem,
+            events,
         })
     }
 
@@ -111,5 +115,9 @@ impl Deployment for LocalDeployment {
 
     fn msg_stores(&self) -> &Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>> {
         &self.msg_stores
+    }
+
+    fn events(&self) -> &EventService {
+        &self.events
     }
 }

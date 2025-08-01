@@ -9,6 +9,7 @@ pub mod auth;
 pub mod config;
 pub mod filesystem;
 // pub mod github;
+pub mod events;
 pub mod execution_processes;
 pub mod health;
 pub mod projects;
@@ -28,6 +29,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(task_templates::router(&deployment))
         .merge(auth::router(&deployment))
         .merge(filesystem::router())
+        .merge(events::router(&deployment))
         .with_state(deployment);
 
     Router::new().nest("/api", base_routes).into_make_service()

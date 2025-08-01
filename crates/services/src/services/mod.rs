@@ -2,6 +2,7 @@ pub mod analytics;
 pub mod auth;
 pub mod config;
 pub mod container;
+pub mod events;
 pub mod filesystem;
 pub mod git;
 pub mod github_service;
