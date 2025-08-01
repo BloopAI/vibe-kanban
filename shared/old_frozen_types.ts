@@ -16,26 +16,6 @@ export type FileDiff = { path: string, chunks: Array<DiffChunk>, };
 
 export type WorktreeDiff = { files: Array<FileDiff>, };
 
-export type ExecutionState = "NotStarted" | "SetupRunning" | "SetupComplete" | "SetupFailed" | "SetupStopped" | "CodingAgentRunning" | "CodingAgentComplete" | "CodingAgentFailed" | "CodingAgentStopped" | "Complete";
-
-export type ExecutionProcessStatus = "running" | "completed" | "failed" | "killed";
-
-export type ExecutionProcessType = "setupscript" | "cleanupscript" | "codingagent" | "devserver";
-
-export type CreateExecutionProcess = { task_attempt_id: string, process_type: ExecutionProcessType, executor_type: string | null, command: string, args: string | null, working_directory: string, };
-
-export type ExecutorSession = { id: string, task_attempt_id: string, execution_process_id: string, session_id: string | null, prompt: string | null, summary: string | null, created_at: string, updated_at: string, };
-
-export type CreateExecutorSession = { task_attempt_id: string, execution_process_id: string, prompt: string | null, };
-
-export type UpdateExecutorSession = { session_id: string | null, prompt: string | null, summary: string | null, };
-
-export type NormalizedConversation = { entries: Array<NormalizedEntry>, session_id: string | null, executor_type: string, prompt: string | null, summary: string | null, };
-
-export type NormalizedEntry = { timestamp: string | null, entry_type: NormalizedEntryType, content: string, };
-
-export type NormalizedEntryType = { "type": "user_message" } | { "type": "assistant_message" } | { "type": "tool_use", tool_name: string, action_type: ActionType, } | { "type": "system_message" } | { "type": "error_message" } | { "type": "thinking" };
-
 export type ActionType = { "action": "file_read", path: string, } | { "action": "file_write", path: string, } | { "action": "command_run", command: string, } | { "action": "search", query: string, } | { "action": "web_fetch", url: string, } | { "action": "task_create", description: string, } | { "action": "plan_presentation", plan: string, } | { "action": "other", description: string, };
 
 export const MCP_SUPPORTED_EXECUTORS: string[] = [
