@@ -24,8 +24,6 @@ export type FileDiff = { path: string, chunks: Array<DiffChunk>, };
 
 export type WorktreeDiff = { files: Array<FileDiff>, };
 
-export type BranchStatus = { is_behind: boolean, commits_behind: number, commits_ahead: number, up_to_date: boolean, merged: boolean, has_uncommitted_changes: boolean, base_branch_name: string, };
-
 export type ExecutionState = "NotStarted" | "SetupRunning" | "SetupComplete" | "SetupFailed" | "SetupStopped" | "CodingAgentRunning" | "CodingAgentComplete" | "CodingAgentFailed" | "CodingAgentStopped" | "Complete";
 
 export type TaskAttemptState = { execution_state: ExecutionState, has_changes: boolean, has_setup_script: boolean, setup_process_id: string | null, coding_agent_process_id: string | null, };

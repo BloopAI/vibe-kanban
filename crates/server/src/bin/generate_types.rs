@@ -37,6 +37,7 @@ fn generate_types_content() -> String {
         services::services::config::SoundFile::decl(),
         services::services::config::SoundConstants::decl(),
         services::services::git::GitBranch::decl(),
+        services::services::git::BranchStatus::decl(),
         services::services::github_service::RepositoryInfo::decl(),
         executors::executors::CodingAgentExecutorType::decl(),
         server::routes::task_attempts::CreateTaskAttemptBody::decl(),

@@ -50,10 +50,9 @@ import {
   useState,
 } from 'react';
 import type {
-  BranchStatus,
   ExecutionProcess,
 } from 'shared/old_frozen_types';
-import type { GitBranch, TaskAttempt } from 'shared/types';
+import type { BranchStatus, GitBranch, TaskAttempt } from 'shared/types';
 import {
   TaskAttemptDataContext,
   TaskAttemptStoppingContext,
@@ -288,13 +287,11 @@ function CurrentAttempt({
   };
 
   const fetchBranchStatus = useCallback(async () => {
-    if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
+    if (!selectedAttempt?.id) return;
 
     try {
       setBranchStatusLoading(true);
       const result = await attemptsApi.getBranchStatus(
-        projectId,
-        selectedAttempt.task_id,
         selectedAttempt.id
       );
       setBranchStatus((prev) => {

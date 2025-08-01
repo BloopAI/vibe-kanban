@@ -1,6 +1,5 @@
 // Import all necessary types from shared types
 import {
-  BranchStatus,
   CreateFollowUpAttempt,
   CreateTaskAndStart,
   DeviceStartResponse,
@@ -13,6 +12,7 @@ import {
 
 import {
   ApiResponse,
+  BranchStatus,
   Config,
   CreateTask,
   CreateTaskAttemptBody,
@@ -342,12 +342,10 @@ export const attemptsApi = {
   },
 
   getBranchStatus: async (
-    projectId: string,
-    taskId: string,
     attemptId: string
   ): Promise<BranchStatus> => {
     const response = await makeRequest(
-      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/branch-status`
+      `/api/task-attempts/${attemptId}/branch-status`
     );
     return handleApiResponse<BranchStatus>(response);
   },
