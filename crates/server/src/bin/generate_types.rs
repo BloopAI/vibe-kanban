@@ -44,6 +44,9 @@ fn generate_types_content() -> String {
         db::models::task_attempt::TaskAttempt::decl(),
         db::models::task_attempt::TaskAttemptState::decl(),
         db::models::task_attempt::ExecutionState::decl(),
+        services::services::events::EventPatch::decl(),
+        services::services::events::EventPatchInner::decl(),
+        services::services::events::RecordTypes::decl(),
     ];
 
     let body = decls

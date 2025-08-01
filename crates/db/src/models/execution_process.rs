@@ -29,11 +29,12 @@ pub enum ExecutionProcessRunReason {
     DevServer,
 }
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
 pub struct ExecutionProcess {
     pub id: Uuid,
     pub task_attempt_id: Uuid,
     pub run_reason: ExecutionProcessRunReason,
+    #[ts(skip)]
     pub executor_action: sqlx::types::Json<ExecutorActions>,
     pub status: ExecutionProcessStatus,
     pub exit_code: Option<i64>,
@@ -100,6 +101,29 @@ impl ExecutionProcess {
                FROM execution_processes 
                WHERE id = $1"#,
             id
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
+    /// Find execution process by rowid
+    pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            ExecutionProcess,
+            r#"SELECT 
+                id as "id!: Uuid", 
+                task_attempt_id as "task_attempt_id!: Uuid", 
+                run_reason as "run_reason!: ExecutionProcessRunReason",
+                executor_action as "executor_action!: sqlx::types::Json<ExecutorActions>",
+                status as "status!: ExecutionProcessStatus",
+                exit_code,
+                started_at as "started_at!: DateTime<Utc>",
+                completed_at as "completed_at?: DateTime<Utc>",
+                created_at as "created_at!: DateTime<Utc>", 
+                updated_at as "updated_at!: DateTime<Utc>"
+               FROM execution_processes 
+               WHERE rowid = $1"#,
+            rowid
         )
         .fetch_optional(pool)
         .await

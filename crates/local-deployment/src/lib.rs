@@ -47,7 +47,6 @@ impl Deployment for LocalDeployment {
         let config = Arc::new(RwLock::new(Config::load(&config_path())?));
         let sentry = SentryService::new();
         let user_id = generate_user_id();
-        let db = DBService::new().await?;
         let analytics = AnalyticsConfig::new().map(AnalyticsService::new);
         let git = GitService::new();
         let msg_stores = Arc::new(RwLock::new(HashMap::new()));
@@ -56,7 +55,25 @@ impl Deployment for LocalDeployment {
         let process = ProcessService::new();
         let auth = AuthService::new();
         let filesystem = FilesystemService::new();
-        let events = EventService::new(db.clone()).await?;
+
+        // Create shared components for EventService
+        let events_msg_store = Arc::new(MsgStore::new());
+        let events_entry_count = Arc::new(RwLock::new(0));
+
+        // Create DB with event hooks
+        let db = {
+            let hook = EventService::create_hook(
+                events_msg_store.clone(),
+                events_entry_count.clone(),
+                DBService::new().await?, // Temporary DB service for the hook
+            );
+            DBService::new_with_after_connect(hook).await?
+        };
+
+        let container = LocalContainerService::new(db.clone(), msg_stores.clone());
+        container.spawn_worktree_cleanup().await;
+
+        let events = EventService::new(db.clone(), events_msg_store, events_entry_count);
 
         Ok(Self {
             config,
