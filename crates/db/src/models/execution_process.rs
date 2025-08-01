@@ -61,11 +61,13 @@ pub struct UpdateExecutionProcess {
     pub completed_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct ExecutionProcessSummary {
     pub id: Uuid,
     pub task_attempt_id: Uuid,
     pub run_reason: ExecutionProcessRunReason,
+    #[ts(skip)]
     pub executor_action: sqlx::types::Json<ExecutorActions>,
     pub status: ExecutionProcessStatus,
     pub exit_code: Option<i64>,

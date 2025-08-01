@@ -81,13 +81,13 @@ function LogsTab() {
     let setupProcess = executionState.setup_process_id
       ? attemptData.runningProcessDetails[executionState.setup_process_id]
       : Object.values(attemptData.runningProcessDetails).find(
-          (process) => process.process_type === 'setupscript'
-        );
+      (process) => process.run_reason === 'setupscript'
+      );
 
     // If not found in runningProcessDetails, try to find in processes array
     if (!setupProcess) {
       const setupSummary = attemptData.processes.find(
-        (process) => process.process_type === 'setupscript'
+        (process) => process.run_reason === 'setupscript'
       );
 
       if (setupSummary) {

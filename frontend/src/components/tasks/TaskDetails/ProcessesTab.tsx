@@ -13,7 +13,7 @@ import { executionProcessesApi } from '@/lib/api.ts';
 import type {
   ExecutionProcessStatus,
   ExecutionProcessSummary,
-} from 'shared/old_frozen_types';
+} from 'shared/types';
 
 function ProcessesTab() {
   const { attemptData, setAttemptData } = useContext(TaskAttemptDataContext);
@@ -121,22 +121,11 @@ function ProcessesTab() {
                     {getStatusIcon(process.status)}
                     <div>
                       <h3 className="font-medium text-sm">
-                        {process.process_type}
-                        {process.executor_type && (
-                          <span className="text-muted-foreground">
-                            {' '}
-                            ({process.executor_type})
-                          </span>
-                        )}
+                        {process.run_reason}
                       </h3>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {process.command}
+                        Process ID: {process.id}
                       </p>
-                      {process.args && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Args: {process.args}
-                        </p>
-                      )}
                     </div>
                   </div>
                   <div className="text-right">
@@ -162,7 +151,7 @@ function ProcessesTab() {
                     )}
                   </div>
                   <div className="mt-1">
-                    Working directory: {process.working_directory}
+                    Process ID: {process.id}
                   </div>
                 </div>
               </div>
@@ -190,18 +179,13 @@ function ProcessesTab() {
                     <div className="space-y-1 text-sm">
                       <p>
                         <span className="font-medium">Type:</span>{' '}
-                        {selectedProcess.process_type}
+                        {selectedProcess.run_reason}
                       </p>
                       <p>
                         <span className="font-medium">Status:</span>{' '}
                         {selectedProcess.status}
                       </p>
-                      {selectedProcess.executor_type && (
-                        <p>
-                          <span className="font-medium">Executor:</span>{' '}
-                          {selectedProcess.executor_type}
-                        </p>
-                      )}
+                      {/* Executor type field not available in new type */}
                       <p>
                         <span className="font-medium">Exit Code:</span>{' '}
                         {selectedProcess.exit_code?.toString() ?? 'N/A'}
@@ -225,48 +209,19 @@ function ProcessesTab() {
                   </div>
                 </div>
 
+                {/* Command, working directory, stdout, stderr fields not available in new ExecutionProcess type */}
                 <div>
-                  <h3 className="font-medium text-sm mb-2">Command</h3>
+                  <h3 className="font-medium text-sm mb-2">Process Information</h3>
                   <div className="bg-muted/50 p-3 rounded-md font-mono text-sm">
-                    {selectedProcess.command}
-                    {selectedProcess.args && (
-                      <div className="mt-1 text-muted-foreground">
-                        Args: {selectedProcess.args}
-                      </div>
+                    <div>Process ID: {selectedProcess.id}</div>
+                    <div>Task Attempt ID: {selectedProcess.task_attempt_id}</div>
+                    <div>Run Reason: {selectedProcess.run_reason}</div>
+                    <div>Status: {selectedProcess.status}</div>
+                    {selectedProcess.exit_code !== null && (
+                      <div>Exit Code: {selectedProcess.exit_code.toString()}</div>
                     )}
                   </div>
                 </div>
-
-                <div>
-                  <h3 className="font-medium text-sm mb-2">
-                    Working Directory
-                  </h3>
-                  <div className="bg-muted/50 p-3 rounded-md font-mono text-sm">
-                    {selectedProcess.working_directory}
-                  </div>
-                </div>
-
-                {selectedProcess.stdout && (
-                  <div>
-                    <h3 className="font-medium text-sm mb-2">Stdout</h3>
-                    <div className="bg-black text-green-400 p-3 rounded-md font-mono text-sm h-64 overflow-auto">
-                      <pre className="whitespace-pre-wrap">
-                        {selectedProcess.stdout}
-                      </pre>
-                    </div>
-                  </div>
-                )}
-
-                {selectedProcess.stderr && (
-                  <div>
-                    <h3 className="font-medium text-sm mb-2">Stderr</h3>
-                    <div className="bg-black text-red-400 p-3 rounded-md font-mono text-sm h-64 overflow-auto">
-                      <pre className="whitespace-pre-wrap">
-                        {selectedProcess.stderr}
-                      </pre>
-                    </div>
-                  </div>
-                )}
               </div>
             ) : loadingProcessId === selectedProcessId ? (
               <div className="text-center text-muted-foreground">

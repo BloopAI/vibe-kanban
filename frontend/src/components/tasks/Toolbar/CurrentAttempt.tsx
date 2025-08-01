@@ -49,9 +49,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import type {
-  ExecutionProcess,
-} from 'shared/old_frozen_types';
+import type { ExecutionProcess } from 'shared/types';
 import type { BranchStatus, GitBranch, TaskAttempt } from 'shared/types';
 import {
   TaskAttemptDataContext,
@@ -143,20 +141,17 @@ function CurrentAttempt({
 
   const processedDevServerLogs = useMemo(() => {
     if (!devServerDetails) return 'No output yet...';
-
-    const stdout = devServerDetails.stdout || '';
-    const stderr = devServerDetails.stderr || '';
-    const allOutput = stdout + (stderr ? '\n' + stderr : '');
-    const lines = allOutput.split('\n').filter((line) => line.trim());
-    const lastLines = lines.slice(-10);
-    return lastLines.length > 0 ? lastLines.join('\n') : 'No output yet...';
+    
+    // TODO: stdout/stderr fields need to be restored to ExecutionProcess type
+    // For now, show basic status information
+    return `Status: ${devServerDetails.status}\nStarted: ${devServerDetails.started_at}`;
   }, [devServerDetails]);
 
   // Find running dev server in current project
   const runningDevServer = useMemo(() => {
     return attemptData.processes.find(
       (process) =>
-        process.process_type === 'devserver' && process.status === 'running'
+        process.run_reason === 'devserver' && process.status === 'running'
     );
   }, [attemptData.processes]);
 
@@ -217,12 +212,7 @@ function CurrentAttempt({
     setIsStartingDevServer(true);
 
     try {
-      await attemptsApi.stopExecutionProcess(
-        projectId,
-        selectedAttempt.task_id,
-        selectedAttempt.id,
-        runningDevServer.id
-      );
+      await attemptsApi.stopExecutionProcess(runningDevServer.id);
       fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
     } catch (err) {
       console.error('Failed to stop dev server:', err);

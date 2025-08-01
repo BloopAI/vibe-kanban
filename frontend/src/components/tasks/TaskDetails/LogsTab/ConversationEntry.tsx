@@ -3,7 +3,7 @@ import DisplayConversationEntry from '../DisplayConversationEntry';
 import { NormalizedConversationViewer } from './NormalizedConversationViewer';
 import Prompt from './Prompt';
 import { Loader } from '@/components/ui/loader.tsx';
-import { ExecutionProcess } from 'shared/old_frozen_types';
+import { ExecutionProcess } from 'shared/types';
 
 type Props = {
   item: ConversationEntryDisplayType;
