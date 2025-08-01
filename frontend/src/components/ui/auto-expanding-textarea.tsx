@@ -34,7 +34,7 @@ const AutoExpandingTextarea = React.forwardRef<
     // Set the height to scrollHeight, but cap at maxHeight
     const newHeight = Math.min(textarea.scrollHeight, maxHeight);
     textarea.style.height = `${newHeight}px`;
-  }, [maxRows]);
+  }, [maxRows, textareaRef]);
 
   // Adjust height on mount and when content changes
   React.useEffect(() => {
@@ -49,7 +49,7 @@ const AutoExpandingTextarea = React.forwardRef<
         props.onInput(e);
       }
     },
-    [adjustHeight, props.onInput]
+    [adjustHeight, props]
   );
 
   return (

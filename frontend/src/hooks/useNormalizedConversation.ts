@@ -70,208 +70,6 @@ const useNormalizedConversation = ({
     onopenCalled: false,
   });
 
-  // SSE Connection Manager with Production-Ready Resilience using fetch-event-source
-  const createSSEConnection = useCallback(
-    (processId: string, projectId: string): AbortController => {
-      const manager = sseManagerRef.current;
-      // Build URL with resume cursor if we have processed batches
-      const baseUrl = `/api/projects/${projectId}/execution-processes/${processId}/normalized-logs/stream`;
-      const url =
-        manager.highestBatchId > 0
-          ? `${baseUrl}?since_batch_id=${manager.highestBatchId}`
-          : baseUrl;
-      debugLog(
-        `🚀 SSE: Creating connection for process ${processId} (cursor: ${manager.highestBatchId})`
-      );
-
-      const abortController = new AbortController();
-
-      fetchEventSource(url, {
-        signal: abortController.signal,
-        onopen: async (response) => {
-          const manager = sseManagerRef.current;
-          if (manager.onopenCalled) {
-            // This is a "phantom" reconnect, so abort and re-create
-            debugLog(
-              '⚠️ SSE: onopen called again for same connection, forcing reconnect'
-            );
-            abortController.abort();
-            manager.abortController = null;
-            manager.isActive = false;
-            manager.onopenCalled = false;
-            // Re-establish with latest cursor
-            scheduleReconnect(processId, projectId);
-            return;
-          }
-          manager.onopenCalled = true;
-          if (response.ok) {
-            debugLog(`✅ SSE: Connected to ${processId}`);
-            manager.isActive = true;
-            manager.reconnectAttempts = 0; // Reset on successful connection
-            manager.patchFailureCount = 0; // Reset patch failure count
-
-            if (manager.reconnectTimeout) {
-              clearTimeout(manager.reconnectTimeout);
-              manager.reconnectTimeout = null;
-            }
-          } else {
-            throw new Error(`SSE connection failed: ${response.status}`);
-          }
-        },
-        onmessage: (event) => {
-          if (event.event === 'patch') {
-            try {
-              const batchData = JSON.parse(event.data);
-              const { batch_id, patches } = batchData;
-
-              // Skip duplicates - use manager's batch tracking
-              if (batch_id && batch_id <= manager.highestBatchId) {
-                debugLog(
-                  `⏭️ SSE: Skipping duplicate batch_id=${batch_id} (current=${manager.highestBatchId})`
-                );
-                return;
-              }
-
-              // Update cursor BEFORE processing
-              if (batch_id) {
-                manager.highestBatchId = batch_id;
-                debugLog(`📍 SSE: Processing batch_id=${batch_id}`);
-              }
-
-              setConversation((prev) => {
-                // Create empty conversation if none exists
-                const baseConversation = prev || {
-                  entries: [],
-                  session_id: null,
-                  executor_type: 'unknown',
-                  prompt: null,
-                  summary: null,
-                };
-
-                try {
-                  const updated = applyPatch(
-                    JSON.parse(JSON.stringify(baseConversation)),
-                    patches
-                  ).newDocument as NormalizedConversation;
-
-                  updated.entries = updated.entries.filter(Boolean);
-
-                  debugLog(
-                    `🔧 SSE: Applied batch_id=${batch_id}, entries: ${updated.entries.length}`
-                  );
-
-                  // Reset patch failure count on successful application
-                  manager.patchFailureCount = 0;
-
-                  // Clear loading state on first successful patch
-                  if (!prev) {
-                    setLoading(false);
-                    setError(null);
-                  }
-
-                  if (onConversationUpdate) {
-                    setTimeout(onConversationUpdate, 0);
-                  }
-
-                  return updated;
-                } catch (patchError) {
-                  console.warn('❌ SSE: Patch failed:', patchError);
-                  // Reset cursor on failure for potential retry
-                  if (batch_id && batch_id > 0) {
-                    manager.highestBatchId = batch_id - 1;
-                  }
-                  // Track patch failures for monitoring
-                  manager.patchFailureCount++;
-                  debugLog(
-                    `⚠️ SSE: Patch failure #${manager.patchFailureCount} for batch_id=${batch_id}`
-                  );
-                  return prev || baseConversation;
-                }
-              });
-            } catch (e) {
-              console.warn('❌ SSE: Parse failed:', e);
-            }
-          }
-        },
-        onerror: (err) => {
-          console.warn(`🔌 SSE: Connection error for ${processId}:`, err);
-          manager.isActive = false;
-
-          // Only attempt reconnection if process is still running
-          if (manager.processStatus === 'running') {
-            scheduleReconnect(processId, projectId);
-          }
-        },
-        onclose: () => {
-          debugLog(`🔌 SSE: Connection closed for ${processId}`);
-          manager.isActive = false;
-        },
-      }).catch((error) => {
-        if (error.name !== 'AbortError') {
-          console.warn(`❌ SSE: Fetch error for ${processId}:`, error);
-          manager.isActive = false;
-
-          // Only attempt reconnection if process is still running
-          if (manager.processStatus === 'running') {
-            scheduleReconnect(processId, projectId);
-          }
-        }
-      });
-
-      return abortController;
-    },
-    [onConversationUpdate, debugLog]
-  );
-
-  const scheduleReconnect = useCallback(
-    (processId: string, projectId: string) => {
-      const manager = sseManagerRef.current;
-
-      // Clear any existing reconnection timeout
-      if (manager.reconnectTimeout) {
-        clearTimeout(manager.reconnectTimeout);
-      }
-
-      // Exponential backoff: 1s, 2s, 4s, 8s, max 30s
-      const delay = Math.min(
-        1000 * Math.pow(2, manager.reconnectAttempts),
-        30000
-      );
-      manager.reconnectAttempts++;
-
-      debugLog(
-        `🔄 SSE: Scheduling reconnect attempt ${manager.reconnectAttempts} in ${delay}ms`
-      );
-
-      manager.reconnectTimeout = window.setTimeout(() => {
-        if (manager.processStatus === 'running') {
-          debugLog(`🔄 SSE: Attempting reconnect for ${processId}`);
-          establishSSEConnection(processId, projectId);
-        }
-      }, delay);
-    },
-    [debugLog]
-  );
-
-  const establishSSEConnection = useCallback(
-    (processId: string, projectId: string) => {
-      const manager = sseManagerRef.current;
-
-      // Close existing connection if any
-      if (manager.abortController) {
-        manager.abortController.abort();
-        manager.abortController = null;
-        manager.isActive = false;
-      }
-
-      const abortController = createSSEConnection(processId, projectId);
-      manager.abortController = abortController;
-
-      return abortController;
-    },
-    [createSSEConnection]
-  );
-
   // Helper functions for SSE manager
   const setProcessId = (id: string) => {
     sseManagerRef.current.processId = id;
@@ -296,6 +94,190 @@ const useNormalizedConversation = ({
     }
     manager.onopenCalled = false;
   }, []);
+
+  // SSE Connection Management without circular dependencies
+  const establishSSEConnection = useCallback((processId: string, projectId: string) => {
+    const manager = sseManagerRef.current;
+
+    // Close existing connection if any
+    if (manager.abortController) {
+      manager.abortController.abort();
+      manager.abortController = null;
+      manager.isActive = false;
+    }
+
+    // Build URL with resume cursor if we have processed batches
+    const baseUrl = `/api/projects/${projectId}/execution-processes/${processId}/normalized-logs/stream`;
+    const url =
+      manager.highestBatchId > 0
+        ? `${baseUrl}?since_batch_id=${manager.highestBatchId}`
+        : baseUrl;
+    debugLog(
+      `🚀 SSE: Creating connection for process ${processId} (cursor: ${manager.highestBatchId})`
+    );
+
+    const abortController = new AbortController();
+
+    const scheduleReconnect = () => {
+      // Clear any existing reconnection timeout
+      if (manager.reconnectTimeout) {
+        clearTimeout(manager.reconnectTimeout);
+      }
+
+      // Exponential backoff: 1s, 2s, 4s, 8s, max 30s
+      const delay = Math.min(
+        1000 * Math.pow(2, manager.reconnectAttempts),
+        30000
+      );
+      manager.reconnectAttempts++;
+
+      debugLog(
+        `🔄 SSE: Scheduling reconnect attempt ${manager.reconnectAttempts} in ${delay}ms`
+      );
+
+      manager.reconnectTimeout = window.setTimeout(() => {
+        if (manager.processStatus === 'running') {
+          debugLog(`🔄 SSE: Attempting reconnect for ${processId}`);
+          establishSSEConnection(processId, projectId);
+        }
+      }, delay);
+    };
+
+    fetchEventSource(url, {
+      signal: abortController.signal,
+      onopen: async (response) => {
+        const manager = sseManagerRef.current;
+        if (manager.onopenCalled) {
+          // This is a "phantom" reconnect, so abort and re-create
+          debugLog(
+            '⚠️ SSE: onopen called again for same connection, forcing reconnect'
+          );
+          abortController.abort();
+          manager.abortController = null;
+          manager.isActive = false;
+          manager.onopenCalled = false;
+          // Re-establish with latest cursor
+          scheduleReconnect();
+          return;
+        }
+        manager.onopenCalled = true;
+        if (response.ok) {
+          debugLog(`✅ SSE: Connected to ${processId}`);
+          manager.isActive = true;
+          manager.reconnectAttempts = 0; // Reset on successful connection
+          manager.patchFailureCount = 0; // Reset patch failure count
+
+          if (manager.reconnectTimeout) {
+            clearTimeout(manager.reconnectTimeout);
+            manager.reconnectTimeout = null;
+          }
+        } else {
+          throw new Error(`SSE connection failed: ${response.status}`);
+        }
+      },
+      onmessage: (event) => {
+        if (event.event === 'patch') {
+          try {
+            const batchData = JSON.parse(event.data);
+            const { batch_id, patches } = batchData;
+
+            // Skip duplicates - use manager's batch tracking
+            if (batch_id && batch_id <= manager.highestBatchId) {
+              debugLog(
+                `⏭️ SSE: Skipping duplicate batch_id=${batch_id} (current=${manager.highestBatchId})`
+              );
+              return;
+            }
+
+            // Update cursor BEFORE processing
+            if (batch_id) {
+              manager.highestBatchId = batch_id;
+              debugLog(`📍 SSE: Processing batch_id=${batch_id}`);
+            }
+
+            setConversation((prev) => {
+              // Create empty conversation if none exists
+              const baseConversation = prev || {
+                entries: [],
+                session_id: null,
+                executor_type: 'unknown',
+                prompt: null,
+                summary: null,
+              };
+
+              try {
+                const updated = applyPatch(
+                  JSON.parse(JSON.stringify(baseConversation)),
+                  patches
+                ).newDocument as NormalizedConversation;
+
+                updated.entries = updated.entries.filter(Boolean);
+
+                debugLog(
+                  `🔧 SSE: Applied batch_id=${batch_id}, entries: ${updated.entries.length}`
+                );
+
+                // Reset patch failure count on successful application
+                manager.patchFailureCount = 0;
+
+                // Clear loading state on first successful patch
+                if (!prev) {
+                  setLoading(false);
+                  setError(null);
+                }
+
+                if (onConversationUpdate) {
+                  setTimeout(onConversationUpdate, 0);
+                }
+
+                return updated;
+              } catch (patchError) {
+                console.warn('❌ SSE: Patch failed:', patchError);
+                // Reset cursor on failure for potential retry
+                if (batch_id && batch_id > 0) {
+                  manager.highestBatchId = batch_id - 1;
+                }
+                // Track patch failures for monitoring
+                manager.patchFailureCount++;
+                debugLog(
+                  `⚠️ SSE: Patch failure #${manager.patchFailureCount} for batch_id=${batch_id}`
+                );
+                return prev || baseConversation;
+              }
+            });
+          } catch (e) {
+            console.warn('❌ SSE: Parse failed:', e);
+          }
+        }
+      },
+      onerror: (err) => {
+        console.warn(`🔌 SSE: Connection error for ${processId}:`, err);
+        manager.isActive = false;
+
+        // Only attempt reconnection if process is still running
+        if (manager.processStatus === 'running') {
+          scheduleReconnect();
+        }
+      },
+      onclose: () => {
+        debugLog(`🔌 SSE: Connection closed for ${processId}`);
+        manager.isActive = false;
+      },
+    }).catch((error) => {
+      if (error.name !== 'AbortError') {
+        console.warn(`❌ SSE: Fetch error for ${processId}:`, error);
+        manager.isActive = false;
+
+        // Only attempt reconnection if process is still running
+        if (manager.processStatus === 'running') {
+          scheduleReconnect();
+        }
+      }
+    });
+
+    manager.abortController = abortController;
+    return abortController;
+  }, [onConversationUpdate, debugLog]);
 
   // Process-based data fetching - fetch once from appropriate source
   useEffect(() => {
@@ -410,7 +392,14 @@ const useNormalizedConversation = ({
         cleanupSSEConnection();
       }
     };
-  }, [executionProcess?.id, executionProcess?.status]);
+  }, [
+    executionProcess?.id,
+    executionProcess?.status,
+    cleanupSSEConnection,
+    debugLog,
+    establishSSEConnection,
+    projectId,
+  ]);
 
   // Memoize display entries to avoid unnecessary re-renders
   const displayEntries = useMemo(() => {

@@ -107,7 +107,7 @@ export function ProjectTasks() {
     } catch (err) {
       setError('Failed to load project');
     }
-  }, [projectId, navigate]);
+  }, [projectId]);
 
   const fetchTemplates = useCallback(async () => {
     if (!projectId) return;
@@ -195,6 +195,16 @@ export function ProjectTasks() {
     [projectId, fetchTasks, navigate]
   );
 
+  const handleViewTaskDetails = useCallback(
+    (task: Task) => {
+      // setSelectedTask(task);
+      // setIsPanelOpen(true);
+      // Update URL to include task ID
+      navigate(`/projects/${projectId}/tasks/${task.id}`, { replace: true });
+    },
+    [projectId, navigate]
+  );
+
   const handleCreateAndStartTask = useCallback(
     async (title: string, description: string, executor?: ExecutorConfig) => {
       try {
@@ -213,7 +223,7 @@ export function ProjectTasks() {
         setError('Failed to create and start task');
       }
     },
-    [projectId, fetchTasks]
+    [projectId, fetchTasks, handleViewTaskDetails]
   );
 
   const handleUpdateTask = useCallback(
@@ -254,16 +264,6 @@ export function ProjectTasks() {
     setEditingTask(task);
     setIsTaskDialogOpen(true);
   }, []);
-
-  const handleViewTaskDetails = useCallback(
-    (task: Task) => {
-      // setSelectedTask(task);
-      // setIsPanelOpen(true);
-      // Update URL to include task ID
-      navigate(`/projects/${projectId}/tasks/${task.id}`, { replace: true });
-    },
-    [projectId, navigate]
-  );
 
   const handleClosePanel = useCallback(() => {
     // setIsPanelOpen(false);
@@ -340,7 +340,7 @@ export function ProjectTasks() {
       // Cleanup interval on unmount
       return () => clearInterval(interval);
     }
-  }, [projectId]);
+  }, [projectId, fetchProject, fetchTasks, fetchTemplates]);
 
   // Handle direct navigation to task URLs
   useEffect(() => {
