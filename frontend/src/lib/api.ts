@@ -254,12 +254,10 @@ export const attemptsApi = {
   },
 
   getState: async (
-    projectId: string,
-    taskId: string,
     attemptId: string
   ): Promise<TaskAttemptState> => {
     const response = await makeRequest(
-      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}`
+      `/api/task-attempts/${attemptId}`
     );
     return handleApiResponse<TaskAttemptState>(response);
   },

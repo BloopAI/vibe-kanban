@@ -155,11 +155,11 @@ const TaskDetailsProvider: FC<{
     }, [selectedAttempt, task, fetchRelatedTasks]);
 
     const fetchExecutionState = useCallback(
-      async (attemptId: string, taskId: string) => {
+      async (attemptId: string) => {
         if (!task) return;
 
         try {
-          const result = await attemptsApi.getState(projectId, taskId, attemptId);
+          const result = await attemptsApi.getState(attemptId);
 
           if (result !== undefined) {
             setExecutionState((prev) => {
@@ -255,7 +255,7 @@ const TaskDetailsProvider: FC<{
     useEffect(() => {
       if (selectedAttempt && task) {
         fetchAttemptData(selectedAttempt.id);
-        fetchExecutionState(selectedAttempt.id, selectedAttempt.task_id);
+        fetchExecutionState(selectedAttempt.id);
       }
     }, [selectedAttempt, task, fetchAttemptData, fetchExecutionState]);
 
@@ -279,7 +279,7 @@ const TaskDetailsProvider: FC<{
       const interval = setInterval(() => {
         if (selectedAttempt) {
           fetchAttemptData(selectedAttempt.id);
-          fetchExecutionState(selectedAttempt.id, selectedAttempt.task_id);
+          fetchExecutionState(selectedAttempt.id);
         }
       }, 5000);
 
