@@ -351,6 +351,7 @@ fn main() -> Result<(), VibeKanbanError> {
 
             deployment.update_sentry_scope().await?;
             deployment.cleanup_orphan_executions().await?;
+            deployment.spawn_pr_monitor_service().await;
 
             let app_router = routes::router(deployment);
 

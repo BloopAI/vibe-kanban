@@ -65,7 +65,7 @@ async fn device_poll(
         let mut config = deployment.config().write().await;
         config.github.username = Some(user_info.username.clone());
         config.github.primary_email = user_info.primary_email.clone();
-        config.github.token = Some(user_info.token.to_string());
+        config.github.oauth_token = Some(user_info.token.to_string());
         config.github_login_acknowledged = true; // Also acknowledge the GitHub login step
         config
             .save(&config_path)
@@ -88,9 +88,8 @@ async fn device_poll(
 async fn github_check_token(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    let config = deployment.config().read().await;
-    let token = config.github.token.clone();
-    drop(config);
+    let gh_config = deployment.config().read().await.github.clone();
+    let token = gh_config.token();
     match deployment.auth().check_token(token.as_deref()).await {
         Ok(_) => Ok(ResponseJson(ApiResponse::success(()))),
         Err(AuthError::InvalidAccessToken) => Ok(ResponseJson(ApiResponse::error(

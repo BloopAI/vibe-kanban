@@ -58,7 +58,7 @@ pub struct EditorConfig {
 #[ts(export)]
 pub struct GitHubConfig {
     pub pat: Option<String>,
-    pub token: Option<String>,
+    pub oauth_token: Option<String>,
     pub username: Option<String>,
     pub primary_email: Option<String>,
     pub default_pr_base: Option<String>,
@@ -155,11 +155,20 @@ impl Default for GitHubConfig {
     fn default() -> Self {
         Self {
             pat: None,
-            token: None,
+            oauth_token: None,
             username: None,
             primary_email: None,
             default_pr_base: Some("main".to_string()),
         }
+    }
+}
+
+impl GitHubConfig {
+    pub fn token(&self) -> Option<String> {
+        self.pat
+            .as_deref()
+            .or(self.oauth_token.as_deref())
+            .map(|s| s.to_string())
     }
 }
 

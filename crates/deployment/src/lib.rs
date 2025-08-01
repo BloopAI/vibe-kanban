@@ -20,6 +20,7 @@ use services::services::{
     container::{ContainerError, ContainerService},
     filesystem::{FilesystemError, FilesystemService},
     git::{GitService, GitServiceError},
+    pr_monitor::PrMonitorService,
     sentry::SentryService,
     worktree_manager::WorktreeError,
 };
@@ -91,6 +92,12 @@ pub trait Deployment: Clone + Send + Sync + 'static {
             .await;
 
         Ok(())
+    }
+
+    async fn spawn_pr_monitor_service(&self) -> tokio::task::JoinHandle<()> {
+        let db = self.db().clone();
+        let config = self.config().clone();
+        PrMonitorService::spawn(db, config).await
     }
 
     async fn track_if_analytics_allowed(&self, event_name: &str, properties: Value) {

@@ -4,33 +4,51 @@ use db::{
     DBService,
     models::{
         task::{Task, TaskStatus},
-        task_attempt::{PrInfo, TaskAttempt},
+        task_attempt::{PrInfo, TaskAttempt, TaskAttemptError},
     },
 };
+use sqlx::error::Error as SqlxError;
+use thiserror::Error;
 use tokio::{sync::RwLock, time::interval};
 use tracing::{debug, error, info};
 
 use crate::services::{
     config::Config,
-    github_service::{GitHubRepoInfo, GitHubService},
+    github_service::{GitHubRepoInfo, GitHubService, GitHubServiceError},
 };
+
+#[derive(Debug, Error)]
+enum PrMonitorError {
+    #[error("No GitHub token configured")]
+    NoGitHubToken,
+    #[error(transparent)]
+    GitHubServiceError(#[from] GitHubServiceError),
+    #[error(transparent)]
+    TaskAttemptError(#[from] TaskAttemptError),
+    #[error(transparent)]
+    Sqlx(#[from] SqlxError),
+}
 
 /// Service to monitor GitHub PRs and update task status when they are merged
 pub struct PrMonitorService {
     db: DBService,
+    config: Arc<RwLock<Config>>,
     poll_interval: Duration,
 }
 
 impl PrMonitorService {
-    pub fn new(db: DBService) -> Self {
-        Self {
+    pub async fn spawn(db: DBService, config: Arc<RwLock<Config>>) -> tokio::task::JoinHandle<()> {
+        let service = Self {
             db,
+            config,
             poll_interval: Duration::from_secs(60), // Check every minute
-        }
+        };
+        tokio::spawn(async move {
+            service.start().await;
+        })
     }
 
-    /// Start the PR monitoring service with config
-    pub async fn start_with_config(&self, config: Arc<RwLock<Config>>) {
+    async fn start(&self) {
         info!(
             "Starting PR monitoring service with interval {:?}",
             self.poll_interval
@@ -40,31 +58,14 @@ impl PrMonitorService {
 
         loop {
             interval.tick().await;
-
-            // Get GitHub token from config
-            let github_token = {
-                let github_config = config.read().await.github.clone();
-                github_config.pat.or(github_config.token)
-            };
-
-            match github_token {
-                Some(token) => {
-                    if let Err(e) = self.check_all_open_prs_with_token(&token).await {
-                        error!("Error checking PRs: {}", e);
-                    }
-                }
-                None => {
-                    debug!("No GitHub token configured, skipping PR monitoring");
-                }
+            if let Err(e) = self.check_all_open_prs().await {
+                error!("Error checking open PRs: {}", e);
             }
         }
     }
 
     /// Check all open PRs for updates with the provided GitHub token
-    async fn check_all_open_prs_with_token(
-        &self,
-        github_token: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn check_all_open_prs(&self) -> Result<(), PrMonitorError> {
         let open_prs = TaskAttempt::get_open_prs(&self.db.pool).await?;
 
         if open_prs.is_empty() {
@@ -75,7 +76,7 @@ impl PrMonitorService {
         info!("Checking {} open PRs", open_prs.len());
 
         for pr_info in open_prs {
-            if let Err(e) = self.check_pr_status(&pr_info, github_token).await {
+            if let Err(e) = self.check_pr_status(&pr_info).await {
                 error!(
                     "Error checking PR #{} for attempt {}: {}",
                     pr_info.pr_number, pr_info.attempt_id, e
@@ -87,12 +88,11 @@ impl PrMonitorService {
     }
 
     /// Check the status of a specific PR
-    async fn check_pr_status(
-        &self,
-        pr_info: &PrInfo,
-        github_token: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let github_service = GitHubService::new(github_token)?;
+    async fn check_pr_status(&self, pr_info: &PrInfo) -> Result<(), PrMonitorError> {
+        let github_config = self.config.read().await.github.clone();
+        let github_token = github_config.token().ok_or(PrMonitorError::NoGitHubToken)?;
+
+        let github_service = GitHubService::new(&github_token)?;
 
         let repo_info = GitHubRepoInfo {
             owner: pr_info.repo_owner.clone(),

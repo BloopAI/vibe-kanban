@@ -23,7 +23,7 @@ impl PrInfo {
         pr_number: i64,
         pr_url: &str,
     ) -> Result<Self, sqlx::Error> {
-        let re = regex::Regex::new(r"/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)").unwrap();
+        let re = regex::Regex::new(r"github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)").unwrap();
         let caps = re
             .captures(pr_url)
             .ok_or_else(|| sqlx::Error::ColumnNotFound("Invalid URL format".into()))?;
