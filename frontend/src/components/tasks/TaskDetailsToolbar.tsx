@@ -168,7 +168,6 @@ function TaskDetailsToolbar() {
         setAttemptData({
           processes: [],
           runningProcessDetails: {},
-          allLogs: [],
         });
       }
     } catch (error) {

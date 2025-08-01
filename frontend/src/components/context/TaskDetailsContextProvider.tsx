@@ -27,8 +27,6 @@ import {
   TaskRelatedTasksContext,
   TaskSelectedAttemptContext,
 } from './taskDetailsContext.ts';
-import { TaskPlanContext } from './TaskPlanContext.ts';
-import { is_planning_executor_type } from '@/lib/utils.ts';
 import type { AttemptData } from '@/lib/types.ts';
 
 const TaskDetailsProvider: FC<{
@@ -72,7 +70,6 @@ const TaskDetailsProvider: FC<{
     const [attemptData, setAttemptData] = useState<AttemptData>({
       processes: [],
       runningProcessDetails: {},
-      allLogs: [], // new field for all logs
     });
 
     const relatedTasksLoadingRef = useRef(false);
@@ -203,16 +200,13 @@ const TaskDetailsProvider: FC<{
     );
 
     const fetchAttemptData = useCallback(
-      async (attemptId: string, taskId: string) => {
+      async (attemptId: string) => {
         if (!task) return;
 
         try {
-          const [processesResult, allLogsResult] = await Promise.all([
-            attemptsApi.getExecutionProcesses(attemptId),
-            attemptsApi.getAllLogs(projectId, taskId, attemptId),
-          ]);
+          const processesResult = await attemptsApi.getExecutionProcesses(attemptId);
 
-          if (processesResult !== undefined && allLogsResult !== undefined) {
+          if (processesResult !== undefined) {
             const runningProcesses = processesResult.filter(
               (process) => process.status === 'running'
             );
@@ -246,7 +240,6 @@ const TaskDetailsProvider: FC<{
               const newData = {
                 processes: processesResult,
                 runningProcessDetails,
-                allLogs: allLogsResult,
               };
               if (JSON.stringify(prev) === JSON.stringify(newData)) return prev;
               return newData;
@@ -261,7 +254,7 @@ const TaskDetailsProvider: FC<{
 
     useEffect(() => {
       if (selectedAttempt && task) {
-        fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
+        fetchAttemptData(selectedAttempt.id);
         fetchExecutionState(selectedAttempt.id, selectedAttempt.task_id);
       }
     }, [selectedAttempt, task, fetchAttemptData, fetchExecutionState]);
@@ -285,7 +278,7 @@ const TaskDetailsProvider: FC<{
 
       const interval = setInterval(() => {
         if (selectedAttempt) {
-          fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
+          fetchAttemptData(selectedAttempt.id);
           fetchExecutionState(selectedAttempt.id, selectedAttempt.task_id);
         }
       }, 5000);
@@ -427,54 +420,6 @@ const TaskDetailsProvider: FC<{
       ]
     );
 
-    // Plan context value
-    const planValue = useMemo(() => {
-      const isPlanningMode =
-        selectedAttempt?.executor ? 
-          is_planning_executor_type(selectedAttempt.executor) 
-          : false;
-
-      const planCount =
-        attemptData.allLogs?.reduce((count, processLog) => {
-          const planEntries =
-            processLog.normalized_conversation?.entries.filter(
-              (entry) =>
-                entry.entry_type.type === 'tool_use' &&
-                entry.entry_type.action_type.action === 'plan_presentation'
-            ) ?? [];
-          return count + planEntries.length;
-        }, 0) ?? 0;
-
-      const hasPlans = planCount > 0;
-
-      const latestProcessHasNoPlan = (() => {
-        if (!attemptData.allLogs || attemptData.allLogs.length === 0)
-          return false;
-        const latestProcessLog =
-          attemptData.allLogs[attemptData.allLogs.length - 1];
-        if (!latestProcessLog.normalized_conversation?.entries) return true;
-
-        return !latestProcessLog.normalized_conversation.entries.some(
-          (entry) =>
-            entry.entry_type.type === 'tool_use' &&
-            entry.entry_type.action_type.action === 'plan_presentation'
-        );
-      })();
-
-      // Can create task if not in planning mode, or if in planning mode and has plans
-      const canCreateTask =
-        !isPlanningMode ||
-        (isPlanningMode && hasPlans && !latestProcessHasNoPlan);
-
-      return {
-        isPlanningMode,
-        hasPlans,
-        planCount,
-        latestProcessHasNoPlan,
-        canCreateTask,
-      };
-    }, [selectedAttempt?.executor, attemptData.allLogs]);
-
     return (
       <TaskDetailsContext.Provider value={value}>
         <TaskAttemptLoadingContext.Provider value={taskAttemptLoadingValue}>
@@ -492,9 +437,7 @@ const TaskDetailsProvider: FC<{
                         <TaskRelatedTasksContext.Provider
                           value={relatedTasksValue}
                         >
-                          <TaskPlanContext.Provider value={planValue}>
-                            {children}
-                          </TaskPlanContext.Provider>
+                          {children}
                         </TaskRelatedTasksContext.Provider>
                       </TaskBackgroundRefreshContext.Provider>
                     </TaskExecutionStateContext.Provider>
