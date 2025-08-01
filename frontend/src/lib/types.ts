@@ -1,9 +1,8 @@
 import {
   DiffChunkType,
-  ExecutionProcess,
-  ExecutionProcessSummary,
   ProcessLogsResponse,
 } from 'shared/old_frozen_types';
+import { ExecutionProcess, ExecutionProcessSummary } from 'shared/types';
 
 export type AttemptData = {
   processes: ExecutionProcessSummary[];

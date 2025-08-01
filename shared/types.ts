@@ -76,8 +76,16 @@ export type TaskAttemptState = { execution_state: ExecutionState, has_changes: b
 
 export type ExecutionState = "NotStarted" | "SetupRunning" | "SetupComplete" | "SetupFailed" | "SetupStopped" | "CodingAgentRunning" | "CodingAgentComplete" | "CodingAgentFailed" | "CodingAgentStopped" | "Complete";
 
+export type ExecutionProcess = { id: string, task_attempt_id: string, run_reason: ExecutionProcessRunReason, status: ExecutionProcessStatus, exit_code: bigint | null, started_at: string, completed_at: string | null, created_at: string, updated_at: string, };
+
+export type ExecutionProcessSummary = { id: string, task_attempt_id: string, run_reason: ExecutionProcessRunReason, status: ExecutionProcessStatus, exit_code: bigint | null, started_at: string, completed_at: string | null, created_at: string, updated_at: string, };
+
+export type ExecutionProcessStatus = "running" | "completed" | "failed" | "killed";
+
+export type ExecutionProcessRunReason = "setupscript" | "cleanupscript" | "codingagent" | "devserver";
+
 export type EventPatch = { op: string, path: string, value: EventPatchInner, };
 
 export type EventPatchInner = { db_op: string, record: RecordTypes, };
 
-export type RecordTypes = { "type": "TASK", "data": Task } | { "type": "TASK_ATTEMPT", "data": TaskAttempt } | { "type": "DELETED_TASK", "data": { rowid: bigint, } } | { "type": "DELETED_TASK_ATTEMPT", "data": { rowid: bigint, } };
+export type RecordTypes = { "type": "TASK", "data": Task } | { "type": "TASK_ATTEMPT", "data": TaskAttempt } | { "type": "EXECUTION_PROCESS", "data": ExecutionProcess } | { "type": "DELETED_TASK", "data": { rowid: bigint, } } | { "type": "DELETED_TASK_ATTEMPT", "data": { rowid: bigint, } } | { "type": "DELETED_EXECUTION_PROCESS", "data": { rowid: bigint, } };

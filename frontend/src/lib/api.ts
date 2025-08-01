@@ -3,8 +3,6 @@ import {
   CreateFollowUpAttempt,
   CreateTaskAndStart,
   DeviceStartResponse,
-  ExecutionProcess,
-  ExecutionProcessSummary,
   ProcessLogsResponse,
   WorktreeDiff,
 } from 'shared/old_frozen_types';
@@ -18,6 +16,8 @@ import {
   CreateTaskTemplate,
   DirectoryListResponse,
   EditorType,
+  ExecutionProcess,
+  ExecutionProcessSummary,
   GitBranch,
   Project,
   CreateProject,
@@ -412,24 +412,19 @@ export const attemptsApi = {
   },
 
   getExecutionProcesses: async (
-    projectId: string,
-    taskId: string,
     attemptId: string
   ): Promise<ExecutionProcessSummary[]> => {
     const response = await makeRequest(
-      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/execution-processes`
+      `/api/execution-processes?task_attempt_id=${attemptId}`
     );
     return handleApiResponse<ExecutionProcessSummary[]>(response);
   },
 
   stopExecutionProcess: async (
-    projectId: string,
-    taskId: string,
-    attemptId: string,
     processId: string
   ): Promise<void> => {
     const response = await makeRequest(
-      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/execution-processes/${processId}/stop`,
+      `/api/execution-processes/${processId}/stop`,
       {
         method: 'POST',
       }

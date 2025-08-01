@@ -34,7 +34,7 @@ export function TaskFollowUpSection() {
 
     const completedOrKilledCodingAgentProcesses = attemptData.processes.filter(
       (process) =>
-        process.process_type === 'codingagent' &&
+        process.run_reason === 'codingagent' &&
         (process.status === 'completed' || process.status === 'killed')
     );
 

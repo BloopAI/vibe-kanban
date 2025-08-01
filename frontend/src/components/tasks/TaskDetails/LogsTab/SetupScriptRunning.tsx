@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { ExecutionProcess } from 'shared/old_frozen_types';
+import { ExecutionProcess } from 'shared/types';
 
 type Props = {
   setupProcessId: string | null;
@@ -21,7 +21,7 @@ function SetupScriptRunning({ setupProcessId, runningProcessDetails }: Props) {
       setupProcessId
         ? runningProcessDetails[setupProcessId]
         : Object.values(runningProcessDetails).find(
-          (process) => process.process_type === 'setupscript'
+        (process) => process.run_reason === 'setupscript'
         ),
     [setupProcessId, runningProcessDetails]
   );
@@ -37,9 +37,10 @@ function SetupScriptRunning({ setupProcessId, runningProcessDetails }: Props) {
 
       {setupProcess && (
         <div className="font-mono text-sm whitespace-pre-wrap text-muted-foreground">
-          {[setupProcess.stdout || '', setupProcess.stderr || '']
-            .filter(Boolean)
-            .join('\n') || 'Waiting for setup script output...'}
+          {/* TODO: stdout/stderr fields need to be restored to ExecutionProcess type */}
+          Setup script status: {setupProcess.status}
+          {setupProcess.completed_at && <div>Completed: {setupProcess.completed_at}</div>}
+          {setupProcess.exit_code !== null && <div>Exit code: {setupProcess.exit_code.toString()}</div>}
         </div>
       )}
     </div>

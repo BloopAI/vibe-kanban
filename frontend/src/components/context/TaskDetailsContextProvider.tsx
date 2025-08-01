@@ -10,10 +10,9 @@ import {
   useState,
 } from 'react';
 import type {
-  ExecutionProcess,
-  ExecutionProcessSummary,
   WorktreeDiff,
 } from 'shared/old_frozen_types';
+import type { ExecutionProcess, ExecutionProcessSummary } from 'shared/types';
 import type { EditorType, Task, TaskAttempt, TaskAttemptState, TaskWithAttemptStatus } from 'shared/types';
 import { attemptsApi, executionProcessesApi, tasksApi } from '@/lib/api.ts';
 import {
@@ -209,7 +208,7 @@ const TaskDetailsProvider: FC<{
 
         try {
           const [processesResult, allLogsResult] = await Promise.all([
-            attemptsApi.getExecutionProcesses(projectId, taskId, attemptId),
+            attemptsApi.getExecutionProcesses(attemptId),
             attemptsApi.getAllLogs(projectId, taskId, attemptId),
           ]);
 
@@ -231,7 +230,7 @@ const TaskDetailsProvider: FC<{
 
             // Also fetch setup script process details if it exists in the processes
             const setupProcess = processesResult.find(
-              (process) => process.process_type === 'setupscript'
+              (process) => process.run_reason === 'setupscript'
             );
             if (setupProcess && !runningProcessDetails[setupProcess.id]) {
               const result = await executionProcessesApi.getDetails(
@@ -274,9 +273,9 @@ const TaskDetailsProvider: FC<{
 
       return attemptData.processes.some(
         (process: ExecutionProcessSummary) =>
-          (process.process_type === 'codingagent' ||
-            process.process_type === 'setupscript' ||
-            process.process_type === 'cleanupscript') &&
+          (process.run_reason === 'codingagent' ||
+            process.run_reason === 'setupscript' ||
+            process.run_reason === 'cleanupscript') &&
           process.status === 'running'
       );
     }, [selectedAttempt, attemptData.processes, isStopping]);
@@ -431,11 +430,9 @@ const TaskDetailsProvider: FC<{
     // Plan context value
     const planValue = useMemo(() => {
       const isPlanningMode =
-        attemptData.processes?.some(
-          (process) =>
-            process.executor_type &&
-            is_planning_executor_type(process.executor_type)
-        ) ?? false;
+        selectedAttempt?.executor ? 
+          is_planning_executor_type(selectedAttempt.executor) 
+          : false;
 
       const planCount =
         attemptData.allLogs?.reduce((count, processLog) => {
@@ -476,7 +473,7 @@ const TaskDetailsProvider: FC<{
         latestProcessHasNoPlan,
         canCreateTask,
       };
-    }, [attemptData.processes, attemptData.allLogs]);
+    }, [selectedAttempt?.executor, attemptData.allLogs]);
 
     return (
       <TaskDetailsContext.Provider value={value}>

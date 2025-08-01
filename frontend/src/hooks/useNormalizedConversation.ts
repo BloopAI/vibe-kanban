@@ -13,10 +13,10 @@ import {
   useState,
 } from 'react';
 import {
-  ExecutionProcess,
   NormalizedConversation,
   NormalizedEntry,
 } from 'shared/old_frozen_types';
+import { ExecutionProcess } from 'shared/types';
 
 const useNormalizedConversation = ({
   executionProcess,

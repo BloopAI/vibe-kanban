@@ -1,7 +1,8 @@
 import { Hammer } from 'lucide-react';
 import { Loader } from '@/components/ui/loader.tsx';
 import MarkdownRenderer from '@/components/ui/markdown-renderer.tsx';
-import type { ExecutionProcess, WorktreeDiff } from 'shared/old_frozen_types';
+import type { WorktreeDiff } from 'shared/old_frozen_types';
+import type { ExecutionProcess } from 'shared/types';
 import DisplayConversationEntry from '@/components/tasks/TaskDetails/DisplayConversationEntry.tsx';
 import useNormalizedConversation from '@/hooks/useNormalizedConversation';
 
