@@ -236,7 +236,8 @@ pub async fn get_task_attempts(
     Ok(Json(attempts))
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ts_rs::TS)]
+#[ts(export)]
 pub struct CreateTaskAttemptBody {
     pub task_id: Uuid,
     pub executor: Option<String>,

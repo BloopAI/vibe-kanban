@@ -57,12 +57,6 @@ pub struct TaskAttempt {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize, TS)]
-#[ts(export)]
-pub struct UpdateTaskAttempt {
-    // Currently no updateable fields, but keeping struct for API compatibility
-}
-
 /// GitHub PR creation parameters
 pub struct CreatePrParams<'a> {
     pub attempt_id: Uuid,

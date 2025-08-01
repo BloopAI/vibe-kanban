@@ -4,13 +4,11 @@ import {
   CreateFollowUpAttempt,
   CreateTask,
   CreateTaskAndStart,
-  CreateTaskAttempt,
   DeviceStartResponse,
   ExecutionProcess,
   ExecutionProcessSummary,
   ProcessLogsResponse,
   Task,
-  TaskAttempt,
   TaskAttemptState,
   TaskWithAttemptStatus,
   UpdateTask,
@@ -20,6 +18,7 @@ import {
 import {
   ApiResponse,
   Config,
+  CreateTaskAttemptBody,
   CreateTaskTemplate,
   DirectoryListResponse,
   EditorType,
@@ -28,6 +27,7 @@ import {
   CreateProject,
   RepositoryInfo,
   SearchResult,
+  TaskAttempt,
   TaskTemplate,
   UpdateProject,
   UpdateTaskTemplate,
@@ -39,7 +39,7 @@ export type { RepositoryInfo } from 'shared/types';
 
 export class ApiError extends Error {
   public status?: number;
-  
+
   constructor(
     message: string,
     public statusCode?: number,
@@ -236,20 +236,18 @@ export const tasksApi = {
 
 // Task Attempts APIs
 export const attemptsApi = {
-  getAll: async (projectId: string, taskId: string): Promise<TaskAttempt[]> => {
+  getAll: async (taskId: string): Promise<TaskAttempt[]> => {
     const response = await makeRequest(
-      `/api/projects/${projectId}/tasks/${taskId}/attempts`
+      `/api/task-attempts?task_id=${taskId}`
     );
     return handleApiResponse<TaskAttempt[]>(response);
   },
 
   create: async (
-    projectId: string,
-    taskId: string,
-    data: CreateTaskAttempt
+    data: CreateTaskAttemptBody
   ): Promise<TaskAttempt> => {
     const response = await makeRequest(
-      `/api/projects/${projectId}/tasks/${taskId}/attempts`,
+      `/api/task-attempts`,
       {
         method: 'POST',
         body: JSON.stringify(data),

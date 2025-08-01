@@ -28,8 +28,6 @@ export type UpdateTaskTemplate = { title: string | null, description: string | n
 
 export type ApiResponse<T> = { success: boolean, data: T | null, message: string | null, };
 
-export type ApiError = string;
-
 export type UserSystemInfo = { config: Config, environment: Environment, };
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
@@ -55,3 +53,7 @@ export type GitBranch = { name: string, is_current: boolean, is_remote: boolean,
 export type RepositoryInfo = { id: bigint, name: string, full_name: string, owner: string, description: string | null, clone_url: string, ssh_url: string, default_branch: string, private: boolean, };
 
 export enum CodingAgentExecutorType { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI = "GEMINI" }
+
+export type CreateTaskAttemptBody = { task_id: string, executor: string | null, base_branch: string, };
+
+export type TaskAttempt = { id: string, task_id: string, container_ref: string | null, branch: string | null, base_branch: string, merge_commit: string | null, executor: string | null, pr_url: string | null, pr_number: bigint | null, pr_status: string | null, pr_merged_at: string | null, worktree_deleted: boolean, setup_completed_at: string | null, created_at: string, updated_at: string, };

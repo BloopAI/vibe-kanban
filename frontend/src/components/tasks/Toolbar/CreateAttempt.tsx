@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
 import type { GitBranch } from 'shared/types';
-import type { TaskAttempt } from 'shared/old_frozen_types';
+import type { TaskAttempt } from 'shared/types';
 import { attemptsApi } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,
@@ -58,7 +58,7 @@ function CreateAttempt({
   setCreateAttemptExecutor,
   availableExecutors,
 }: Props) {
-  const { task, projectId } = useContext(TaskDetailsContext);
+  const { task } = useContext(TaskDetailsContext);
   const { isAttemptRunning } = useContext(TaskAttemptDataContext);
   const { isPlanningMode, canCreateTask } = useTaskPlan();
   const { config } = useConfig();
@@ -75,17 +75,25 @@ function CreateAttempt({
   // Create attempt logic
   const actuallyCreateAttempt = useCallback(
     async (executor?: string, baseBranch?: string) => {
+      const effectiveBaseBranch = baseBranch || selectedBranch;
+      
+      if (!effectiveBaseBranch) {
+        throw new Error('Base branch is required to create an attempt');
+      }
+
       try {
-        await attemptsApi.create(projectId!, task.id, {
+        await attemptsApi.create({
+          task_id: task.id,
           executor: executor || selectedExecutor,
-          base_branch: baseBranch || selectedBranch,
+          base_branch: effectiveBaseBranch,
         });
         fetchTaskAttempts();
       } catch (error) {
         // Optionally handle error
+        throw error;
       }
     },
-    [projectId, task.id, selectedExecutor, selectedBranch, fetchTaskAttempts]
+    [task.id, selectedExecutor, selectedBranch, fetchTaskAttempts]
   );
 
   // Handler for Enter key or Start button
@@ -179,14 +187,14 @@ function CreateAttempt({
           <div className="space-y-1">
             <div className="flex items-center gap-1.5">
               <label className="text-xs font-medium text-muted-foreground">
-                Base branch
+                Base branch <span className="text-red-500">*</span>
               </label>
             </div>
             <BranchSelector
               branches={branches}
               selectedBranch={createAttemptBranch}
               onBranchSelect={setCreateAttemptBranch}
-              placeholder="current"
+              placeholder="Select branch"
             />
           </div>
 
@@ -238,6 +246,7 @@ function CreateAttempt({
               onClick={handleCreateAttempt}
               disabled={
                 !createAttemptExecutor ||
+                !createAttemptBranch ||
                 isAttemptRunning ||
                 (isPlanningMode && !canCreateTask)
               }
@@ -249,6 +258,10 @@ function CreateAttempt({
               title={
                 isPlanningMode && !canCreateTask
                   ? 'Plan required before starting attempt'
+                  : !createAttemptBranch
+                  ? 'Base branch is required'
+                  : !createAttemptExecutor
+                  ? 'Coding agent is required'
                   : undefined
               }
             >

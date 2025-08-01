@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useConfig } from '@/components/config-provider';
 import { attemptsApi, projectsApi } from '@/lib/api';
 import type { GitBranch } from 'shared/types';
-import type { TaskAttempt } from 'shared/old_frozen_types';
+import type { TaskAttempt } from 'shared/types';
 
 import { CodingAgentExecutorType } from 'shared/types';
 import {
@@ -120,7 +120,7 @@ function TaskDetailsToolbar() {
 
     try {
       setLoading(true);
-      const result = await attemptsApi.getAll(projectId, task.id);
+      const result = await attemptsApi.getAll(task.id);
 
       setTaskAttempts((prev) => {
         if (JSON.stringify(prev) === JSON.stringify(result)) return prev;

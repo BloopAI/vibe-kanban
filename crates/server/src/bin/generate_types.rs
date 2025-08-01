@@ -21,7 +21,6 @@ fn generate_types_content() -> String {
         db::models::task_template::CreateTaskTemplate::decl(),
         db::models::task_template::UpdateTaskTemplate::decl(),
         utils::response::ApiResponse::<()>::decl(),
-        server::error::ApiError::decl(),
         server::routes::config::UserSystemInfo::decl(),
         server::routes::config::Environment::decl(),
         services::services::config::Config::decl(),
@@ -35,6 +34,8 @@ fn generate_types_content() -> String {
         services::services::git::GitBranch::decl(),
         services::services::github_service::RepositoryInfo::decl(),
         executors::executors::CodingAgentExecutorType::decl(),
+        server::routes::task_attempts::CreateTaskAttemptBody::decl(),
+        db::models::task_attempt::TaskAttempt::decl(),
     ];
 
     let body = decls
