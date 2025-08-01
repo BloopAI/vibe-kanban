@@ -26,6 +26,8 @@ use utils::{
 };
 use uuid::Uuid;
 
+use crate::command;
+
 #[derive(Clone)]
 pub struct LocalContainerService {
     db: DBService,
@@ -446,8 +448,7 @@ impl ContainerService for LocalContainerService {
         // Kill the child process and remove from the store
         {
             let mut child_guard = child.write().await;
-            // TODO: Revive cross-platform signal handling
-            child_guard.kill().await?;
+            command::kill_process_group(&mut *child_guard).await?;
         }
         self.remove_child_from_store(&execution_process.id).await;
 

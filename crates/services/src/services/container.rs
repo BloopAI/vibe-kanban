@@ -38,6 +38,8 @@ pub enum ContainerError {
     Worktree(#[from] WorktreeError),
     #[error("Io error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("Failed to kill process: {0}")]
+    KillFailed(std::io::Error),
     #[error(transparent)]
     Other(#[from] AnyhowError), // Catches any unclassified errors
 }
