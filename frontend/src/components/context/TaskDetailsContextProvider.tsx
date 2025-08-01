@@ -12,12 +12,10 @@ import {
 import type {
   ExecutionProcess,
   ExecutionProcessSummary,
-  Task,
   TaskAttemptState,
-  TaskWithAttemptStatus,
   WorktreeDiff,
 } from 'shared/old_frozen_types';
-import type { EditorType, TaskAttempt } from 'shared/types';
+import type { EditorType, Task, TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import { attemptsApi, executionProcessesApi, tasksApi } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,

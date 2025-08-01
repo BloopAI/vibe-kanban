@@ -2,22 +2,19 @@
 import {
   BranchStatus,
   CreateFollowUpAttempt,
-  CreateTask,
   CreateTaskAndStart,
   DeviceStartResponse,
   ExecutionProcess,
   ExecutionProcessSummary,
   ProcessLogsResponse,
-  Task,
   TaskAttemptState,
-  TaskWithAttemptStatus,
-  UpdateTask,
   WorktreeDiff,
 } from 'shared/old_frozen_types';
 
 import {
   ApiResponse,
   Config,
+  CreateTask,
   CreateTaskAttemptBody,
   CreateTaskTemplate,
   DirectoryListResponse,
@@ -27,9 +24,12 @@ import {
   CreateProject,
   RepositoryInfo,
   SearchResult,
+  Task,
   TaskAttempt,
   TaskTemplate,
+  TaskWithAttemptStatus,
   UpdateProject,
+  UpdateTask,
   UpdateTaskTemplate,
   UserSystemInfo,
 } from 'shared/types';

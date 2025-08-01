@@ -6,7 +6,7 @@ import {
   getBackdropClasses,
   getTaskPanelClasses,
 } from '@/lib/responsive-config';
-import type { TaskWithAttemptStatus } from 'shared/old_frozen_types';
+import type { TaskWithAttemptStatus } from 'shared/types';
 import DiffTab from '@/components/tasks/TaskDetails/DiffTab.tsx';
 import LogsTab from '@/components/tasks/TaskDetails/LogsTab.tsx';
 import RelatedTasksTab from '@/components/tasks/TaskDetails/RelatedTasksTab.tsx';

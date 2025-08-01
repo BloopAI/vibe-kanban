@@ -8,7 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { TaskStatus, TaskWithAttemptStatus } from 'shared/old_frozen_types';
+import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
 
 interface TaskDetailsHeaderProps {
