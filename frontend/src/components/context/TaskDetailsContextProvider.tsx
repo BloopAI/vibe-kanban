@@ -9,10 +9,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import type {
-  WorktreeDiff,
-} from 'shared/old_frozen_types';
-import type { ExecutionProcess, ExecutionProcessSummary } from 'shared/types';
+import type { ExecutionProcess, ExecutionProcessSummary, WorktreeDiff } from 'shared/types';
 import type { EditorType, Task, TaskAttempt, TaskAttemptState, TaskWithAttemptStatus } from 'shared/types';
 import { attemptsApi, executionProcessesApi, tasksApi } from '@/lib/api.ts';
 import {
