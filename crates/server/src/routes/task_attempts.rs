@@ -230,10 +230,11 @@ pub struct TaskAttemptQuery {
 pub async fn get_task_attempts(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TaskAttemptQuery>,
-) -> Result<Json<Vec<TaskAttempt>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<Vec<TaskAttempt>>>, ApiError> {
     let pool = &deployment.db().pool;
     let attempts = TaskAttempt::fetch_all(pool, query.task_id).await?;
-    Ok(Json(attempts))
+
+    Ok(ResponseJson(ApiResponse::success(attempts)))
 }
 
 pub async fn get_task_attempt(
