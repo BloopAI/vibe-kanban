@@ -6,7 +6,6 @@ import {
   ExecutionProcess,
   ExecutionProcessSummary,
   ProcessLogsResponse,
-  TaskAttemptState,
   WorktreeDiff,
 } from 'shared/old_frozen_types';
 
@@ -26,6 +25,7 @@ import {
   SearchResult,
   Task,
   TaskAttempt,
+  TaskAttemptState,
   TaskTemplate,
   TaskWithAttemptStatus,
   UpdateProject,
@@ -298,24 +298,20 @@ export const attemptsApi = {
   },
 
   getDiff: async (
-    projectId: string,
-    taskId: string,
     attemptId: string
   ): Promise<WorktreeDiff> => {
     const response = await makeRequest(
-      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/diff`
+      `/api/task-attempts/${attemptId}/diff`
     );
     return handleApiResponse<WorktreeDiff>(response);
   },
 
   deleteFile: async (
-    projectId: string,
-    taskId: string,
     attemptId: string,
     fileToDelete: string
   ): Promise<void> => {
     const response = await makeRequest(
-      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/delete-filefile_path=${encodeURIComponent(
+      `/api/task-attempts/${attemptId}/delete-file?file_path=${encodeURIComponent(
         fileToDelete
       )}`,
       {
@@ -386,8 +382,6 @@ export const attemptsApi = {
   },
 
   createPR: async (
-    projectId: string,
-    taskId: string,
     attemptId: string,
     data: {
       title: string;
@@ -396,7 +390,7 @@ export const attemptsApi = {
     }
   ): Promise<string> => {
     const response = await makeRequest(
-      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/create-pr`,
+      `/api/task-attempts/${attemptId}/create-pr`,
       {
         method: 'POST',
         body: JSON.stringify(data),

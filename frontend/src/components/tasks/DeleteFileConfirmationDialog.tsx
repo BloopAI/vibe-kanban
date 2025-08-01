@@ -30,12 +30,7 @@ function DeleteFileConfirmationDialog() {
     setDeletingFiles((prev) => new Set(prev).add(fileToDelete));
 
     try {
-      await attemptsApi.deleteFile(
-        projectId!,
-        selectedAttempt.task_id,
-        selectedAttempt.id,
-        fileToDelete
-      );
+      await attemptsApi.deleteFile(selectedAttempt.id, fileToDelete);
       await fetchDiff();
     } catch (error: unknown) {
       // @ts-expect-error it is type ApiError

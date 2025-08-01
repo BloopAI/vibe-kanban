@@ -1,9 +1,8 @@
 import { createContext, Dispatch, SetStateAction } from 'react';
 import type {
-  TaskAttemptState,
   WorktreeDiff,
 } from 'shared/old_frozen_types';
-import type { EditorType, Task, TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
+import type { EditorType, Task, TaskAttempt, TaskAttemptState, TaskWithAttemptStatus } from 'shared/types';
 import { AttemptData } from '@/lib/types.ts';
 
 export interface TaskDetailsContextValue {

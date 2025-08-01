@@ -42,6 +42,8 @@ fn generate_types_content() -> String {
         executors::executors::CodingAgentExecutorType::decl(),
         server::routes::task_attempts::CreateTaskAttemptBody::decl(),
         db::models::task_attempt::TaskAttempt::decl(),
+        db::models::task_attempt::TaskAttemptState::decl(),
+        db::models::task_attempt::ExecutionState::decl(),
     ];
 
     let body = decls

@@ -76,16 +76,11 @@ function CreatePrDialog({
     setCreatingPR(true);
 
     try {
-      const prUrl = await attemptsApi.createPR(
-        projectId!,
-        selectedAttempt.task_id,
-        selectedAttempt.id,
-        {
-          title: prTitle,
-          body: prBody || null,
-          base_branch: prBaseBranch || null,
-        }
-      );
+      const prUrl = await attemptsApi.createPR(selectedAttempt.id, {
+        title: prTitle,
+        body: prBody || null,
+        base_branch: prBaseBranch || null,
+      });
       // Open the PR URL in a new tab
       window.open(prUrl, '_blank');
       setShowCreatePRDialog(false);

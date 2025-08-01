@@ -12,10 +12,9 @@ import {
 import type {
   ExecutionProcess,
   ExecutionProcessSummary,
-  TaskAttemptState,
   WorktreeDiff,
 } from 'shared/old_frozen_types';
-import type { EditorType, Task, TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
+import type { EditorType, Task, TaskAttempt, TaskAttemptState, TaskWithAttemptStatus } from 'shared/types';
 import { attemptsApi, executionProcessesApi, tasksApi } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,
@@ -127,11 +126,7 @@ const TaskDetailsProvider: FC<{
         setDiffError(null);
 
         try {
-          const result = await attemptsApi.getDiff(
-            projectId,
-            selectedAttempt.task_id,
-            selectedAttempt.id
-          );
+          const result = await attemptsApi.getDiff(selectedAttempt.id);
 
           if (result !== undefined) {
             setDiff(result);
