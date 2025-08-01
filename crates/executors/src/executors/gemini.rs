@@ -74,7 +74,7 @@ impl StandardCodingAgentExecutor for Gemini {
     ///
     /// # Example
     ///
-    /// ```no_run
+    /// ```rust,ignore
     /// gemini.normalize_logs(msg_store.clone(), &worktree_path);
     /// ```
     ///
