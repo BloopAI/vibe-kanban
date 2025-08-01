@@ -1,6 +1,6 @@
 import {
   DiffChunkType,
-} from 'shared/old_frozen_types';
+} from 'shared/types';
 import { ExecutionProcess, ExecutionProcessSummary } from 'shared/types';
 
 export type AttemptData = {

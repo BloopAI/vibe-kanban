@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button.tsx';
 import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import DiffChunkSection from '@/components/tasks/TaskDetails/DiffChunkSection.tsx';
-import { FileDiff } from 'shared/old_frozen_types';
+import { FileDiff } from 'shared/types';
 import {
   Dispatch,
   SetStateAction,

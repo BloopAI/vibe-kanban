@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button.tsx';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import type { DiffChunkType } from 'shared/old_frozen_types';
+import type { DiffChunkType } from 'shared/types';
 import { Dispatch, SetStateAction } from 'react';
 import { ProcessedSection } from '@/lib/types.ts';
 

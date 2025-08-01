@@ -2,7 +2,6 @@
 import {
   CreateFollowUpAttempt,
   DeviceStartResponse,
-  WorktreeDiff,
 } from 'shared/old_frozen_types';
 
 import {
@@ -31,6 +30,7 @@ import {
   UpdateTask,
   UpdateTaskTemplate,
   UserSystemInfo,
+  WorktreeDiff,
 } from 'shared/types';
 
 // Re-export types for convenience

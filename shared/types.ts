@@ -66,6 +66,14 @@ export type GitBranch = { name: string, is_current: boolean, is_remote: boolean,
 
 export type BranchStatus = { is_behind: boolean, commits_behind: number, commits_ahead: number, up_to_date: boolean, merged: boolean, has_uncommitted_changes: boolean, base_branch_name: string, };
 
+export type WorktreeDiff = { files: Array<FileDiff>, };
+
+export type FileDiff = { path: string, chunks: Array<DiffChunk>, };
+
+export type DiffChunk = { chunk_type: DiffChunkType, content: string, };
+
+export type DiffChunkType = "Equal" | "Insert" | "Delete";
+
 export type RepositoryInfo = { id: bigint, name: string, full_name: string, owner: string, description: string | null, clone_url: string, ssh_url: string, default_branch: string, private: boolean, };
 
 export enum CodingAgentExecutorType { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI = "GEMINI" }
