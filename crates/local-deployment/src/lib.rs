@@ -50,8 +50,6 @@ impl Deployment for LocalDeployment {
         let analytics = AnalyticsConfig::new().map(AnalyticsService::new);
         let git = GitService::new();
         let msg_stores = Arc::new(RwLock::new(HashMap::new()));
-        let container = LocalContainerService::new(db.clone(), msg_stores.clone(), config.clone());
-        container.spawn_worktree_cleanup().await;
         let process = ProcessService::new();
         let auth = AuthService::new();
         let filesystem = FilesystemService::new();
@@ -70,7 +68,7 @@ impl Deployment for LocalDeployment {
             DBService::new_with_after_connect(hook).await?
         };
 
-        let container = LocalContainerService::new(db.clone(), msg_stores.clone());
+        let container = LocalContainerService::new(db.clone(), msg_stores.clone(), config.clone());
         container.spawn_worktree_cleanup().await;
 
         let events = EventService::new(db.clone(), events_msg_store, events_entry_count);
