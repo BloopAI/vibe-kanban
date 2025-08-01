@@ -41,8 +41,7 @@ import type {
 } from 'shared/types';
 import type {
   CreateTaskAndStart,
-  ExecutorConfig,
-} from 'shared/old_frozen_types';
+} from 'shared/types';
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 
 type Task = TaskWithAttemptStatus;
@@ -198,14 +197,13 @@ export function ProjectTasks() {
   );
 
   const handleCreateAndStartTask = useCallback(
-    async (title: string, description: string, executor?: ExecutorConfig) => {
+    async (title: string, description: string) => {
       try {
         const payload: CreateTaskAndStart = {
           project_id: projectId!,
           title,
           description: description || null,
           parent_task_attempt: null,
-          executor: executor || null,
         };
         const result = await tasksApi.createAndStart(projectId!, payload);
         await fetchTasks();

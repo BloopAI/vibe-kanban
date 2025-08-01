@@ -20,8 +20,6 @@ import {
 import { useConfig } from '@/components/config-provider';
 import { templatesApi } from '@/lib/api';
 import type { TaskStatus, TaskTemplate } from 'shared/types';
-import type { ExecutorConfig } from 'shared/old_frozen_types';
-import { CodingAgentExecutorType } from 'shared/types';
 
 interface Task {
   id: string;
@@ -42,8 +40,7 @@ interface TaskFormDialogProps {
   onCreateTask?: (title: string, description: string) => Promise<void>;
   onCreateAndStartTask?: (
     title: string,
-    description: string,
-    executor?: ExecutorConfig
+    description: string
   ) => Promise<void>;
   onUpdateTask?: (
     title: string,
@@ -169,9 +166,7 @@ export function TaskFormDialog({
     setIsSubmittingAndStart(true);
     try {
       if (!isEditMode && onCreateAndStartTask) {
-        // Convert CodingAgentExecutorType to ExecutorConfig format  
-        const executorConfig = config?.executor ? { type: config.executor === CodingAgentExecutorType.CLAUDE_CODE ? 'claude' : config.executor } as any : undefined;
-        await onCreateAndStartTask(title, description, executorConfig);
+        await onCreateAndStartTask(title, description);
       }
 
       // Reset form on successful creation
