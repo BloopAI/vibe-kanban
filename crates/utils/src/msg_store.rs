@@ -8,7 +8,7 @@ use futures::{StreamExt, TryStreamExt, future};
 use tokio::{sync::broadcast, task::JoinHandle};
 use tokio_stream::wrappers::BroadcastStream;
 
-use crate::log_msg::LogMsg;
+use crate::{log_msg::LogMsg, stream_lines::LinesStreamExt};
 
 // 100 MB Limit
 const HISTORY_BYTES: usize = 100000 * 1024;
@@ -117,6 +117,12 @@ impl MsgStore {
             .boxed()
     }
 
+    pub async fn stdout_lines_stream(
+        &self,
+    ) -> futures::stream::BoxStream<'static, std::io::Result<String>> {
+        self.stdout_chunked_stream().await.lines()
+    }
+
     pub async fn stderr_chunked_stream(
         &self,
     ) -> futures::stream::BoxStream<'static, Result<String, std::io::Error>> {
@@ -130,6 +136,12 @@ impl MsgStore {
                 }
             })
             .boxed()
+    }
+
+    pub async fn stderr_lines_stream(
+        &self,
+    ) -> futures::stream::BoxStream<'static, std::io::Result<String>> {
+        self.stderr_chunked_stream().await.lines()
     }
 
     /// Same stream but mapped to `Event` for SSE handlers.

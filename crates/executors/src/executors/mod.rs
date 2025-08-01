@@ -12,11 +12,12 @@ use utils::msg_store::MsgStore;
 
 use crate::{
     command::AgentProfiles,
-    executors::{amp::Amp, claude::ClaudeCode, gemini::Gemini},
+    executors::{amp::Amp, claude::ClaudeCode, codex::Codex, gemini::Gemini},
 };
 
 pub mod amp;
 pub mod claude;
+pub mod codex;
 pub mod gemini;
 
 #[derive(Debug, Error)]
@@ -54,13 +55,13 @@ pub enum CodingAgent {
     // ClaudePlan,
     Amp,
     Gemini,
+    Codex,
     // ClaudeCodeRouter,
     // #[serde(alias = "charmopencode")]
     // CharmOpencode,
     // #[serde(alias = "opencode")]
     // SstOpencode,
     // Aider,
-    // Codex,
 }
 
 impl CodingAgent {
@@ -72,6 +73,7 @@ impl CodingAgent {
             "claude-code-plan" => Ok(CodingAgent::ClaudeCode(ClaudeCode::new_plan_mode())),
             "amp" => Ok(CodingAgent::Amp(Amp::new())),
             "gemini" => Ok(CodingAgent::Gemini(Gemini::new())),
+            "codex" => Ok(CodingAgent::Codex(Codex::new())),
             _ => {
                 // Try to load from AgentProfiles
                 if let Some(agent_profile) = AgentProfiles::get_cached().get_profile(profile) {
@@ -87,6 +89,9 @@ impl CodingAgent {
                         ))),
                         BaseCodingAgent::Gemini => Ok(CodingAgent::Gemini(
                             Gemini::with_command_builder(agent_profile.command.clone()),
+                        )),
+                        BaseCodingAgent::Codex => Ok(CodingAgent::Codex(
+                            Codex::with_command_builder(agent_profile.command.clone()),
                         )),
                     }
                 } else {
@@ -113,7 +118,7 @@ impl BaseCodingAgent {
             Self::Gemini => Some(vec!["mcpServers"]),
             //ExecutorConfig::ClaudeCodeRouter => Some(vec!["mcpServers"]),
             //ExecutorConfig::Aider => None, // Aider doesn't support MCP. https://github.com/Aider-AI/aider/issues/3314
-            //ExecutorConfig::Codex => None, // Codex uses TOML config, frontend doesn't handle TOML yet
+            Self::Codex => None, // Codex uses TOML config, frontend doesn't handle TOML yet
         }
     }
 
@@ -140,10 +145,8 @@ impl BaseCodingAgent {
             //    {
             //        dirs::config_dir().map(|config| config.join("opencode").join("opencode.json"))
             //    }
-            //                                                                                //ExecutorConfig::Aider => None,
-            //ExecutorConfig::Codex => {
-            //    dirs::home_dir().map(|home| home.join(".codex").join("config.toml"))
-            //}
+            //ExecutorConfig::Aider => None,
+            Self::Codex => dirs::home_dir().map(|home| home.join(".codex").join("config.toml")),
             Self::Amp => dirs::config_dir().map(|config| config.join("amp").join("settings.json")),
             Self::Gemini => dirs::home_dir().map(|home| home.join(".gemini").join("settings.json")),
         }

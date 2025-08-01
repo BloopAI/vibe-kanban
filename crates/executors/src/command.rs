@@ -97,7 +97,7 @@ impl AgentProfile {
         Self {
             label: "amp".to_string(),
             agent: BaseCodingAgent::Amp,
-            command: CommandBuilder::new("npx @sourcegraph/amp@0.0.1752148945-gd8844f")
+            command: CommandBuilder::new("npx -y @sourcegraph/amp@0.0.1752148945-gd8844f")
                 .params(vec!["--format=jsonl"]),
         }
     }
@@ -106,7 +106,19 @@ impl AgentProfile {
         Self {
             label: "gemini".to_string(),
             agent: BaseCodingAgent::Gemini,
-            command: CommandBuilder::new("npx @google/gemini-cli@latest").params(vec!["--yolo"]),
+            command: CommandBuilder::new("npx -y @google/gemini-cli@latest").params(vec!["--yolo"]),
+        }
+    }
+
+    pub fn codex() -> Self {
+        Self {
+            label: "codex".to_string(),
+            agent: BaseCodingAgent::Codex,
+            command: CommandBuilder::new("npx -y @openai/codex exec").params(vec![
+                "--json",
+                "--dangerously-bypass-approvals-and-sandbox",
+                "--skip-git-repo-check",
+            ]),
         }
     }
 }
@@ -143,6 +155,7 @@ impl AgentProfiles {
                 AgentProfile::claude_code_plan(),
                 AgentProfile::amp(),
                 AgentProfile::gemini(),
+                AgentProfile::codex(),
             ],
         }
     }
@@ -216,7 +229,7 @@ mod tests {
     #[test]
     fn test_default_profiles() {
         let profiles = AgentProfiles::from_defaults();
-        assert_eq!(profiles.profiles.len(), 4);
+        assert!(profiles.profiles.len() == 5);
 
         let claude_profile = profiles.get_profile("claude-code").unwrap();
         assert_eq!(claude_profile.agent, BaseCodingAgent::ClaudeCode);
@@ -247,6 +260,11 @@ mod tests {
         assert_eq!(gemini_profile.agent, BaseCodingAgent::Gemini);
         assert!(gemini_profile.command.build_initial().contains("gemini"));
         assert!(gemini_profile.command.build_initial().contains("--yolo"));
+
+        let codex_profile = profiles.get_profile("codex").unwrap();
+        assert_eq!(codex_profile.agent, BaseCodingAgent::Codex);
+        assert!(codex_profile.command.build_initial().contains("codex"));
+        assert!(codex_profile.command.build_initial().contains("--json"));
     }
 
     #[test]

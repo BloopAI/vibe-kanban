@@ -4,7 +4,7 @@
 //! Each entry is normalized as `ErrorMessage` and emitted as JSON patches to the message store.
 //!
 //! Example:
-//! ```rust
+//! ```rust,ignore
 //! normalize_stderr_logs(msg_store.clone(), EntryIndexProvider::new());
 //! ```
 //!
