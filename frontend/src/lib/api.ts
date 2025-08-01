@@ -223,12 +223,10 @@ export const tasksApi = {
   },
 
   getChildren: async (
-    projectId: string,
-    taskId: string,
     attemptId: string
   ): Promise<Task[]> => {
     const response = await makeRequest(
-      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/children`
+      `/api/task-attempts/${attemptId}/children`
     );
     return handleApiResponse<Task[]>(response);
   },

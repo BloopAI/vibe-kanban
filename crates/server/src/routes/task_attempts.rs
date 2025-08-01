@@ -1179,25 +1179,22 @@ pub async fn delete_task_attempt_file(
 //     Ok(ResponseJson(ApiResponse::success(task_attempt)))
 // }
 
-// pub async fn get_task_attempt_children(
-//     Extension(task_attempt): Extension<TaskAttempt>,
-//     Extension(project): Extension<Project>,
-//     State(app_state): State<AppState>,
-// ) -> Result<ResponseJson<ApiResponse<Vec<Task>>>, StatusCode> {
-//     match Task::find_related_tasks_by_attempt_id(&app_state.db_pool, task_attempt.id, project.id)
-//         .await
-//     {
-//         Ok(related_tasks) => Ok(ResponseJson(ApiResponse::success(related_tasks))),
-//         Err(e) => {
-//             tracing::error!(
-//                 "Failed to fetch children for task attempt {}: {}",
-//                 task_attempt.id,
-//                 e
-//             );
-//             Err(StatusCode::INTERNAL_SERVER_ERROR)
-//         }
-//     }
-// }
+pub async fn get_task_attempt_children(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<Task>>>, StatusCode> {
+    match Task::find_related_tasks_by_attempt_id(&deployment.db().pool, task_attempt.id).await {
+        Ok(related_tasks) => Ok(ResponseJson(ApiResponse::success(related_tasks))),
+        Err(e) => {
+            tracing::error!(
+                "Failed to fetch children for task attempt {}: {}",
+                task_attempt.id,
+                e
+            );
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
 
 // pub fn task_attempts_list_router(_state: AppState) -> Router<AppState> {
 //     Router::new().route(
@@ -1299,6 +1296,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/pr", post(create_github_pr))
         .route("/open-editor", post(open_task_attempt_in_editor))
         .route("/delete-file", post(delete_task_attempt_file))
+        .route("/children", get(get_task_attempt_children))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_task_attempt_middleware,

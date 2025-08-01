@@ -291,7 +291,6 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_related_tasks_by_attempt_id(
         pool: &SqlitePool,
         attempt_id: Uuid,
-        project_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         // Find both children and parent for this attempt
         sqlx::query_as!(
@@ -300,22 +299,19 @@ ORDER BY t.created_at DESC"#,
                FROM tasks t
                WHERE (
                    -- Find children: tasks that have this attempt as parent
-                   t.parent_task_attempt = $1 AND t.project_id = $2
+                   t.parent_task_attempt = $1
                ) OR (
                    -- Find parent: task that owns the parent attempt of current task
                    EXISTS (
                        SELECT 1 FROM tasks current_task 
                        JOIN task_attempts parent_attempt ON current_task.parent_task_attempt = parent_attempt.id
                        WHERE parent_attempt.task_id = t.id 
-                       AND parent_attempt.id = $1 
-                       AND current_task.project_id = $2
                    )
                )
                -- Exclude the current task itself to prevent circular references
                AND t.id != (SELECT task_id FROM task_attempts WHERE id = $1)
                ORDER BY t.created_at DESC"#,
             attempt_id,
-            project_id
         )
         .fetch_all(pool)
         .await

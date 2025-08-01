@@ -96,8 +96,6 @@ const TaskDetailsProvider: FC<{
 
       try {
         const children = await tasksApi.getChildren(
-          projectId,
-          task.id,
           selectedAttempt.id
         );
         setRelatedTasks(children);
