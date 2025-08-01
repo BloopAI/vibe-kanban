@@ -143,13 +143,9 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                     if let Ok(Some(task)) =
                         Task::find_by_id(&self.db().pool, task_attempt.task_id).await
                     {
-                        if let Err(e) = Task::update_status(
-                            &self.db().pool,
-                            task.id,
-                            task.project_id,
-                            TaskStatus::InReview,
-                        )
-                        .await
+                        if let Err(e) =
+                            Task::update_status(&self.db().pool, task.id, TaskStatus::InReview)
+                                .await
                         {
                             tracing::error!(
                                 "Failed to update task status to InReview for orphaned attempt: {}",

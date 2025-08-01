@@ -470,7 +470,7 @@ pub async fn merge_task_attempt(
     )?;
 
     TaskAttempt::update_merge_commit(pool, task_attempt.id, &merge_commit_id).await?;
-    Task::update_status(pool, ctx.task.id, ctx.project.id, TaskStatus::Done).await?;
+    Task::update_status(pool, ctx.task.id, TaskStatus::Done).await?;
 
     deployment
         .track_if_analytics_allowed(

@@ -1,7 +1,4 @@
-use std::path::PathBuf;
-
 use chrono::{DateTime, Utc};
-use schemars::visit::ReplaceBoolSchemas;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, QueryBuilder, SqlitePool, Type};
 use thiserror::Error;
@@ -9,6 +6,40 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{project::Project, task::Task};
+
+#[derive(Debug)]
+pub struct PrInfo {
+    pub attempt_id: Uuid,
+    pub task_id: Uuid,
+    pub pr_number: i64,
+    pub repo_owner: String,
+    pub repo_name: String,
+}
+
+impl PrInfo {
+    pub fn from_task_attempt_data(
+        attempt_id: Uuid,
+        task_id: Uuid,
+        pr_number: i64,
+        pr_url: &str,
+    ) -> Result<Self, sqlx::Error> {
+        let re = regex::Regex::new(r"/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)").unwrap();
+        let caps = re
+            .captures(pr_url)
+            .ok_or_else(|| sqlx::Error::ColumnNotFound("Invalid URL format".into()))?;
+
+        let owner = caps.name("owner").unwrap().as_str().to_string();
+        let repo_name = caps.name("repo").unwrap().as_str().to_string();
+
+        Ok(Self {
+            attempt_id: attempt_id,
+            task_id: task_id,
+            pr_number: pr_number,
+            repo_owner: owner,
+            repo_name: repo_name,
+        })
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum TaskAttemptError {
@@ -668,6 +699,26 @@ impl TaskAttempt {
         .await?;
 
         Ok(())
+    }
+
+    pub async fn get_open_prs(pool: &SqlitePool) -> Result<Vec<PrInfo>, sqlx::Error> {
+        let rows = sqlx::query!(
+            r#"SELECT 
+                ta.id as "attempt_id!: Uuid",
+                ta.task_id as "task_id!: Uuid",
+                ta.pr_number as "pr_number!: i64",
+                ta.pr_url as "pr_url!: String"
+               FROM task_attempts ta
+               WHERE ta.pr_status = 'open' AND ta.pr_number IS NOT NULL"#
+        )
+        .fetch_all(pool)
+        .await?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                PrInfo::from_task_attempt_data(r.attempt_id, r.task_id, r.pr_number, &r.pr_url).ok()
+            })
+            .collect())
     }
 
     // /// Get the current execution state for a task attempt

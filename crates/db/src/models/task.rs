@@ -251,14 +251,12 @@ ORDER BY t.created_at DESC"#,
     pub async fn update_status(
         pool: &SqlitePool,
         id: Uuid,
-        project_id: Uuid,
         status: TaskStatus,
     ) -> Result<(), sqlx::Error> {
         let status_value = status as TaskStatus;
         sqlx::query!(
-            "UPDATE tasks SET status = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND project_id = $2",
+            "UPDATE tasks SET status = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
             id,
-            project_id,
             status_value
         )
         .execute(pool)
