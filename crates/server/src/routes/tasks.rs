@@ -9,6 +9,7 @@ use axum::{
 use db::models::{
     project::Project,
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
+    task_attempt::TaskAttempt,
 };
 use deployment::Deployment;
 use serde::Deserialize;
@@ -206,16 +207,15 @@ pub async fn delete_task(
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     // Clean up all worktrees for this task before deletion
     // TODO: readd worktree cleanup
-    // if let Err(e) =
-    //     execution_monitor::cleanup_task_worktrees(&deployment.db().pool, task.id).await
+    // if let Err(e) = execution_monitor::cleanup_task_worktrees(&deployment.db().pool, task.id).await
     // {
     //     tracing::error!("Failed to cleanup worktrees for task {}: {}", task.id, e);
     //     // Continue with deletion even if cleanup fails
     // }
 
     // // Clean up all executor sessions for this task before deletion
-    // match TaskAttempt::find_by_task_id(&deployment.db().pool, task.id).await {
-    //     Ok(task_attempts) => {
+    // match TaskAttempt::fetch_all(&deployment.db().pool, Some(task.id)).await {
+    //    Ok(task_attempts) => {
     //         for attempt in task_attempts {
     //             if let Err(e) =
     //                 crate::models::executor_session::ExecutorSession::delete_by_task_attempt_id(

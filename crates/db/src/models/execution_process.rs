@@ -6,6 +6,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{task::Task, task_attempt::TaskAttempt};
+use crate::models::execution_process_logs::ExecutionProcessLogs;
 
 #[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
 #[sqlx(type_name = "execution_process_status", rename_all = "lowercase")]
@@ -340,8 +341,23 @@ impl ExecutionProcess {
         Ok(())
     }
 
+    pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<(), sqlx::Error> {
+        sqlx::query!("DELETE FROM execution_processes WHERE id = $1", id)
+            .execute(pool)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn delete_recursive(&self, pool: &SqlitePool) -> Result<(), sqlx::Error> {
+        // Delete logs first
+        if let Err(e) = ExecutionProcessLogs::delete_by_execution_id(pool, self.id).await {
+            tracing::error!("Failed to delete execution process logs: {:?}", e);
+        }
+        Self::delete(pool, self.id).await
+    }
+
     /// Delete execution processes for a task attempt (cleanup)
-    #[allow(dead_code)]
     pub async fn delete_by_task_attempt_id(
         pool: &SqlitePool,
         task_attempt_id: Uuid,

@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use futures_util::future::join_all;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, QueryBuilder, SqlitePool, Type};
 use thiserror::Error;
@@ -6,6 +7,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{project::Project, task::Task};
+use crate::models::execution_process::ExecutionProcess;
 
 #[derive(Debug)]
 pub struct PrInfo {
@@ -515,6 +517,25 @@ impl TaskAttempt {
         )
         .fetch_one(pool)
         .await?)
+    }
+
+    pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<(), sqlx::Error> {
+        sqlx::query!("DELETE FROM task_attempts WHERE id = ?", id)
+            .execute(pool)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn delete_recursive(pool: &SqlitePool, id: Uuid) -> Result<(), sqlx::Error> {
+        if let Ok(processes) = ExecutionProcess::find_by_task_attempt_id(pool, id).await {
+            // Delete all execution processes associated with this task attempt
+            for ep in processes {
+                ep.delete_recursive(pool).await.unwrap_or_else(|e| {
+                    tracing::error!("Failed to delete execution process {}: {}", ep.id, e);
+                });
+            }
+        }
+        Self::delete(pool, id).await
     }
 
     // pub async fn create(

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM task_attempts WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "c53a884897c111c3d9d071e87b5c6db612c338b2fd81dbd3ea0b4d01b01aeaa8"
+}

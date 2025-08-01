@@ -7,6 +7,8 @@ use db::{
     DBService,
     models::{
         execution_process::{ExecutionProcess, ExecutionProcessStatus},
+        project::Project,
+        task::Task,
         task_attempt::TaskAttempt,
     },
 };
@@ -382,6 +384,50 @@ impl ContainerService for LocalContainerService {
         TaskAttempt::update_branch(&self.db.pool, task_attempt.id, &task_branch_name).await?;
 
         Ok(worktree_path.to_string_lossy().to_string())
+    }
+
+    async fn purge_task(&self, task_id: Uuid) -> Result<(), ContainerError> {
+        // Find all task attempts for this task
+        let Some(task) = Task::find_by_id(&self.db.pool, task_id).await? else {
+            return Ok(()); // No task found, nothing to delete
+        };
+        let git_repo_path = match Project::find_by_id(&self.db.pool, task.project_id).await {
+            Ok(Some(project)) => Some(project.git_repo_path.clone()),
+            Ok(None) => None,
+            Err(e) => {
+                tracing::error!("Failed to fetch project {}: {}", task.project_id, e);
+                None
+            }
+        };
+        let attempts = TaskAttempt::fetch_all(&self.db.pool, Some(task_id)).await?;
+        for attempt in attempts {
+            if let Some(container_ref) = &attempt.container_ref {
+                WorktreeManager::cleanup_worktree(
+                    &PathBuf::from(container_ref),
+                    git_repo_path.as_ref().map(|p| p.as_path()),
+                )
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::error!(
+                        "Failed to cleanup worktree for task attempt {}: {}",
+                        attempt.id,
+                        e
+                    );
+                });
+            }
+            TaskAttempt::delete_recursive(&self.db.pool, attempt.id)
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::error!(
+                        "Failed to delete task attempt {} for task {}: {}",
+                        attempt.id,
+                        task_id,
+                        e
+                    );
+                });
+        }
+        Task::delete(&self.db.pool, task_id).await?;
+        Ok(())
     }
 
     async fn ensure_container_exists(

@@ -11,7 +11,7 @@ use db::{
         execution_process_logs::{self, ExecutionProcessLogs},
         executor_session::{CreateExecutorSession, ExecutorSession},
         task,
-        task_attempt::TaskAttempt,
+        task_attempt::{TaskAttempt, TaskAttemptError},
     },
 };
 use executors::{
@@ -40,6 +40,8 @@ pub enum ContainerError {
     #[error(transparent)]
     Worktree(#[from] WorktreeError),
     #[error(transparent)]
+    TaskAttemptError(#[from] TaskAttemptError),
+    #[error(transparent)]
     Other(#[from] AnyhowError), // Catches any unclassified errors
 }
 
@@ -52,6 +54,8 @@ pub trait ContainerService {
     fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf;
 
     async fn create(&self, task_attempt: &TaskAttempt) -> Result<ContainerRef, ContainerError>;
+
+    async fn purge_task(&self, task_id: Uuid) -> Result<(), ContainerError>;
 
     async fn ensure_container_exists(
         &self,
