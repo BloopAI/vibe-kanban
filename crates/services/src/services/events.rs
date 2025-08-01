@@ -96,12 +96,7 @@ impl EventService {
             Box::pin(async move {
                 let mut handle = conn.lock_handle().await?;
                 let runtime_handle = tokio::runtime::Handle::current();
-
-                tracing::info!("Setting up update hook on new connection");
-
                 handle.set_update_hook(move |hook: sqlx::sqlite::UpdateHookResult<'_>| {
-                    tracing::info!("Update hook triggered for table: {}", hook.table);
-
                     let runtime_handle = runtime_handle.clone();
                     let entry_count_for_hook = entry_count_for_hook.clone();
                     let msg_store_for_hook = msg_store_for_hook.clone();
@@ -110,7 +105,6 @@ impl EventService {
                     if let Ok(table) = HookTables::from_str(hook.table) {
                         let rowid = hook.rowid;
                         runtime_handle.spawn(async move {
-                            tracing::info!("Processing hook for rowid: {}", rowid);
                             let record_type: RecordTypes = match (table, hook.operation.clone()) {
                                 (HookTables::Tasks, SqliteOperation::Delete) => {
                                     RecordTypes::DeletedTask { rowid }
