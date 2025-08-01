@@ -86,14 +86,14 @@ export function Settings() {
     updateConfig({ onboarding_acknowledged: false });
   };
 
-  const isAuthenticated = !!(config?.github?.username && config?.github?.token);
+  const isAuthenticated = !!(config?.github?.username && config?.github?.oauth_token);
 
   const handleLogout = useCallback(async () => {
     if (!config) return;
     updateAndSaveConfig({
       github: {
         ...config.github,
-        token: null,
+        oauth_token: null,
         username: null,
         primary_email: null,
       },
@@ -380,9 +380,9 @@ export function Settings() {
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="sound-alerts"
-                  checked={config.sound_alerts}
+                  checked={config.notifications.sound_enabled}
                   onCheckedChange={(checked: boolean) =>
-                    updateConfig({ sound_alerts: checked })
+                    updateConfig({ notifications: { ...config.notifications, sound_enabled: checked } })
                   }
                 />
                 <div className="space-y-0.5">
@@ -395,14 +395,14 @@ export function Settings() {
                 </div>
               </div>
 
-              {config.sound_alerts && (
+              {config.notifications.sound_enabled && (
                 <div className="space-y-2 ml-6">
                   <Label htmlFor="sound-file">Sound</Label>
                   <div className="flex items-center gap-2">
                     <Select
-                      value={config.sound_file}
+                      value={config.notifications.sound_file}
                       onValueChange={(value: SoundFile) =>
-                        updateConfig({ sound_file: value })
+                        updateConfig({ notifications: { ...config.notifications, sound_file: value } })
                       }
                     >
                       <SelectTrigger id="sound-file" className="flex-1">
@@ -419,7 +419,7 @@ export function Settings() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => playSound(config.sound_file)}
+                      onClick={() => playSound(config.notifications.sound_file)}
                       className="px-3"
                     >
                       <Volume2 className="h-4 w-4" />
@@ -434,9 +434,9 @@ export function Settings() {
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="push-notifications"
-                  checked={config.push_notifications}
+                  checked={config.notifications.push_enabled}
                   onCheckedChange={(checked: boolean) =>
-                    updateConfig({ push_notifications: checked })
+                    updateConfig({ notifications: { ...config.notifications, push_enabled: checked } })
                   }
                 />
                 <div className="space-y-0.5">

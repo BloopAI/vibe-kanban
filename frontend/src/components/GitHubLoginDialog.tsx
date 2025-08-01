@@ -32,7 +32,7 @@ export function GitHubLoginDialog({
   const [copied, setCopied] = useState(false);
 
   const isAuthenticated =
-    !!(config?.github?.username && config?.github?.token) &&
+    !!(config?.github?.username && config?.github?.oauth_token) &&
     !githubTokenInvalid;
 
   const handleLogin = async () => {

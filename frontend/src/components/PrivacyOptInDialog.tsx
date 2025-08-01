@@ -24,7 +24,7 @@ export function PrivacyOptInDialog({
 
   // Check if user is authenticated with GitHub
   const isGitHubAuthenticated =
-    config?.github?.username && config?.github?.token;
+    config?.github?.username && config?.github?.oauth_token;
 
   const handleOptIn = () => {
     onComplete(true);
@@ -35,7 +35,7 @@ export function PrivacyOptInDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
+    <Dialog open={open} onOpenChange={() => { }}>
       <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
           <div className="flex items-center gap-3">

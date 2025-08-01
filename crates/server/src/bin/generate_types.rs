@@ -26,6 +26,7 @@ fn generate_types_content() -> String {
         server::routes::config::Environment::decl(),
         services::services::config::Config::decl(),
         services::services::config::EnvironmentInfo::decl(),
+        services::services::config::NotificationConfig::decl(),
         services::services::config::ThemeMode::decl(),
         services::services::config::EditorConfig::decl(),
         services::services::config::EditorType::decl(),

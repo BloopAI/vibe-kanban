@@ -38,6 +38,8 @@ export type Config = { theme: ThemeMode, executor: CodingAgentExecutorType, disc
 
 export type EnvironmentInfo = { os_type: string, os_version: string, architecture: string, bitness: string, };
 
+export type NotificationConfig = { sound_enabled: boolean, push_enabled: boolean, sound_file: SoundFile, };
+
 export type ThemeMode = "light" | "dark" | "system" | "purple" | "green" | "blue" | "orange" | "red";
 
 export type EditorConfig = { editor_type: EditorType, custom_command: string | null, };
