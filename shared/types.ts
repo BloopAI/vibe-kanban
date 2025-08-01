@@ -34,6 +34,8 @@ export type TaskWithAttemptStatus = { id: string, project_id: string, title: str
 
 export type CreateTask = { project_id: string, title: string, description: string | null, parent_task_attempt: string | null, };
 
+export type CreateTaskAndStart = { project_id: string, title: string, description: string | null, parent_task_attempt: string | null, };
+
 export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_task_attempt: string | null, };
 
 export type ApiResponse<T> = { success: boolean, data: T | null, message: string | null, };

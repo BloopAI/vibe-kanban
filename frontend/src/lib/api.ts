@@ -1,7 +1,6 @@
 // Import all necessary types from shared types
 import {
   CreateFollowUpAttempt,
-  CreateTaskAndStart,
   DeviceStartResponse,
   ProcessLogsResponse,
   WorktreeDiff,
@@ -12,6 +11,7 @@ import {
   BranchStatus,
   Config,
   CreateTask,
+  CreateTaskAndStart,
   CreateTaskAttemptBody,
   CreateTaskTemplate,
   DirectoryListResponse,
