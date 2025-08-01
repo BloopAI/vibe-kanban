@@ -44,6 +44,11 @@ impl LocalContainerService {
         }
     }
 
+    pub async fn get_child_from_store(&self, id: &Uuid) -> Option<Arc<RwLock<AsyncGroupChild>>> {
+        let map = self.child_store.read().await;
+        map.get(id).cloned()
+    }
+
     pub async fn add_child_to_store(&self, id: Uuid, exec: AsyncGroupChild) {
         let mut map = self.child_store.write().await;
         map.insert(id, Arc::new(RwLock::new(exec)));
@@ -53,6 +58,7 @@ impl LocalContainerService {
         let mut map = self.child_store.write().await;
         map.remove(id);
     }
+
     /// Defensively check for externally deleted worktrees and mark them as deleted in the database
     async fn check_externally_deleted_worktrees(db: &DBService) -> Result<(), DeploymentError> {
         let active_attempts = TaskAttempt::find_by_worktree_deleted(&db.pool).await?;
@@ -64,11 +70,7 @@ impl LocalContainerService {
             // Check if worktree directory exists
             if !std::path::Path::new(&worktree_path).exists() {
                 // Worktree was deleted externally, mark as deleted in database
-                if let Err(e) = db::models::task_attempt::TaskAttempt::mark_worktree_deleted(
-                    &db.pool, attempt_id,
-                )
-                .await
-                {
+                if let Err(e) = TaskAttempt::mark_worktree_deleted(&db.pool, attempt_id).await {
                     tracing::error!(
                         "Failed to mark externally deleted worktree as deleted for attempt {}: {}",
                         attempt_id,
@@ -158,7 +160,7 @@ impl LocalContainerService {
     ) -> Result<(), DeploymentError> {
         WorktreeManager::cleanup_worktree(&worktree_path, Some(&git_repo_path)).await?;
         // Mark worktree as deleted in database after successful cleanup
-        db::models::task_attempt::TaskAttempt::mark_worktree_deleted(&db.pool, attempt_id).await?;
+        TaskAttempt::mark_worktree_deleted(&db.pool, attempt_id).await?;
         tracing::info!("Successfully marked worktree as deleted for attempt {attempt_id}",);
         Ok(())
     }
@@ -426,6 +428,41 @@ impl ContainerService for LocalContainerService {
 
         // Spawn exit monitor
         let _hn = self.spawn_exit_monitor(&execution_process.id);
+
+        Ok(())
+    }
+
+    async fn stop_execution(
+        &self,
+        execution_process: &ExecutionProcess,
+    ) -> Result<(), ContainerError> {
+        let child = self
+            .get_child_from_store(&execution_process.id)
+            .await
+            .ok_or_else(|| {
+                ContainerError::Other(anyhow!("Child process not found for execution"))
+            })?;
+
+        // Kill the child process and remove from the store
+        {
+            let mut child_guard = child.write().await;
+            // TODO: Revive cross-platform signal handling
+            child_guard.kill().await?;
+        }
+        self.remove_child_from_store(&execution_process.id).await;
+
+        // Mark the process finished in the MsgStore
+        if let Some(msg) = self.msg_stores.write().await.remove(&execution_process.id) {
+            msg.push_finished();
+        }
+
+        ExecutionProcess::update_completion(
+            &self.db.pool,
+            execution_process.id,
+            ExecutionProcessStatus::Killed,
+            None,
+        )
+        .await?;
 
         Ok(())
     }

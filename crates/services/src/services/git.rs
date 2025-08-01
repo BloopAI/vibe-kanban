@@ -78,8 +78,6 @@ pub struct GitBranch {
     pub last_commit_date: DateTime<Utc>,
 }
 
-
-
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct BranchStatus {

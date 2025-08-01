@@ -99,7 +99,7 @@ impl CodingAgentExecutorType {
             //    {
             //        dirs::config_dir().map(|config| config.join("opencode").join("opencode.json"))
             //    }
-            //ExecutorConfig::Aider => None,
+            //                                                                                //ExecutorConfig::Aider => None,
             //ExecutorConfig::Codex => {
             //    dirs::home_dir().map(|home| home.join(".codex").join("config.toml"))
             //}

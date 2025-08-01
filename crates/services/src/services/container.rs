@@ -1,16 +1,14 @@
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
-use anyhow::{Error as AnyhowError, anyhow};
+use anyhow::Error as AnyhowError;
 use async_trait::async_trait;
 use axum::response::sse::Event;
-use command_group::AsyncGroupChild;
 use db::{
     DBService,
     models::{
         execution_process::{CreateExecutionProcess, ExecutionProcess, ExecutionProcessRunReason},
-        execution_process_logs::{self, ExecutionProcessLogs},
+        execution_process_logs::ExecutionProcessLogs,
         executor_session::{CreateExecutorSession, ExecutorSession},
-        task,
         task_attempt::TaskAttempt,
     },
 };
@@ -18,11 +16,10 @@ use executors::{
     actions::ExecutorActions,
     executors::{ExecutorError, StandardCodingAgentExecutor},
 };
-use futures::{StreamExt, TryStreamExt, future, stream::select};
+use futures::{StreamExt, TryStreamExt, future};
 use sqlx::Error as SqlxError;
 use thiserror::Error;
 use tokio::{sync::RwLock, task::JoinHandle};
-use tokio_util::io::ReaderStream;
 use utils::{log_msg::LogMsg, msg_store::MsgStore};
 use uuid::Uuid;
 
@@ -39,6 +36,8 @@ pub enum ContainerError {
     ExecutorError(#[from] ExecutorError),
     #[error(transparent)]
     Worktree(#[from] WorktreeError),
+    #[error("Io error: {0}")]
+    Io(#[from] std::io::Error),
     #[error(transparent)]
     Other(#[from] AnyhowError), // Catches any unclassified errors
 }
@@ -63,6 +62,11 @@ pub trait ContainerService {
         task_attempt: &TaskAttempt,
         execution_process: &ExecutionProcess,
         executor_action: &ExecutorActions,
+    ) -> Result<(), ContainerError>;
+
+    async fn stop_execution(
+        &self,
+        execution_process: &ExecutionProcess,
     ) -> Result<(), ContainerError>;
 
     /// Fetch the MsgStore for a given execution ID, panicking if missing.

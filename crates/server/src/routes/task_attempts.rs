@@ -10,10 +10,8 @@ use axum::{
     BoxError, Extension, Json, Router,
 };
 use db::models::{
-    execution_process::{ExecutionProcess, ExecutionProcessRunReason},
+    execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
     executor_session::ExecutorSession,
-    project::Project,
-    task,
     task::{Task, TaskStatus},
     task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptContext, TaskAttemptError},
 };
@@ -945,78 +943,77 @@ pub async fn delete_task_attempt_file(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
-// pub async fn start_dev_server(
-//     Extension(project): Extension<Project>,
-//     Extension(task): Extension<Task>,
-//     Extension(task_attempt): Extension<TaskAttempt>,
-//     State(app_state): State<AppState>,
-// ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-//     // Stop any existing dev servers for this project
-//     let existing_dev_servers =
-//         match ExecutionProcess::find_running_dev_servers_by_project(&app_state.db_pool, project.id)
-//             .await
-//         {
-//             Ok(servers) => servers,
-//             Err(e) => {
-//                 tracing::error!(
-//                     "Failed to find running dev servers for project {}: {}",
-//                     project.id,
-//                     e
-//                 );
-//                 return Err(StatusCode::INTERNAL_SERVER_ERROR);
-//             }
-//         };
+#[axum::debug_handler]
+pub async fn start_dev_server(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let pool = &deployment.db().pool;
 
-//     for dev_server in existing_dev_servers {
-//         tracing::info!(
-//             "Stopping existing dev server {} for project {}",
-//             dev_server.id,
-//             project.id
-//         );
+    // Get parent task
+    let task = task_attempt
+        .parent_task(&deployment.db().pool)
+        .await?
+        .ok_or(SqlxError::RowNotFound)?;
 
-//         // Stop the running process
-//         if let Err(e) = app_state.stop_running_execution_by_id(dev_server.id).await {
-//             tracing::error!("Failed to stop dev server {}: {}", dev_server.id, e);
-//         } else {
-//             // Update the execution process status in the database
-//             if let Err(e) = ExecutionProcess::update_completion(
-//                 &app_state.db_pool,
-//                 dev_server.id,
-//                 crate::models::execution_process::ExecutionProcessStatus::Killed,
-//                 None,
-//             )
-//             .await
-//             {
-//                 tracing::error!(
-//                     "Failed to update dev server {} status: {}",
-//                     dev_server.id,
-//                     e
-//                 );
-//             }
-//         }
-//     }
+    // Get parent project
+    let project = task
+        .parent_project(&deployment.db().pool)
+        .await?
+        .ok_or(SqlxError::RowNotFound)?;
 
-//     // Start dev server execution
-//     match TaskAttempt::start_dev_server(
-//         &app_state.db_pool,
-//         &app_state,
-//         task_attempt.id,
-//         task.id,
-//         project.id,
-//     )
-//     .await
-//     {
-//         Ok(_) => Ok(ResponseJson(ApiResponse::success(()))),
-//         Err(e) => {
-//             tracing::error!(
-//                 "Failed to start dev server for task attempt {}: {}",
-//                 task_attempt.id,
-//                 e
-//             );
-//             Ok(ResponseJson(ApiResponse::error(&e.to_string())))
-//         }
-//     }
-// }
+    // Stop any existing dev servers for this project
+    let existing_dev_servers =
+        match ExecutionProcess::find_running_dev_servers_by_project(pool, project.id).await {
+            Ok(servers) => servers,
+            Err(e) => {
+                tracing::error!(
+                    "Failed to find running dev servers for project {}: {}",
+                    project.id,
+                    e
+                );
+                return Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
+                    e.to_string(),
+                )));
+            }
+        };
+
+    for dev_server in existing_dev_servers {
+        tracing::info!(
+            "Stopping existing dev server {} for project {}",
+            dev_server.id,
+            project.id
+        );
+
+        if let Err(e) = deployment.container().stop_execution(&dev_server).await {
+            tracing::error!("Failed to stop dev server {}: {}", dev_server.id, e);
+        }
+    }
+
+    if let Some(dev_server) = project.dev_script {
+        // TODO: Derive script language from system config
+        let executor_action = ExecutorActions::ScriptRequest(ScriptRequest {
+            script: dev_server,
+            language: ScriptRequestLanguage::Bash,
+            context: ScriptContext::DevServer,
+        });
+
+        deployment
+            .container()
+            .start_execution(
+                &task_attempt,
+                &executor_action,
+                &ExecutionProcessRunReason::DevServer,
+            )
+            .await?
+    } else {
+        return Ok(ResponseJson(ApiResponse::error(
+            "No dev server script configured for this project",
+        )));
+    };
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
 
 // pub async fn get_task_attempt_execution_state(
 //     Extension(project): Extension<Project>,
@@ -1282,6 +1279,7 @@ pub async fn delete_task_attempt_file(
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
         .route("/follow-up", post(follow_up))
+        .route("/start-dev-server", post(start_dev_server))
         .route("/branch-status", get(get_task_attempt_branch_status))
         .route("/diff", get(get_task_attempt_diff))
         .route("/merge", post(merge_task_attempt))
