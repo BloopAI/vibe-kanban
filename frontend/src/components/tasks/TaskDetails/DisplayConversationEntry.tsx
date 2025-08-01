@@ -112,6 +112,14 @@ const getContentClassName = (entryType: NormalizedEntryType) => {
     return `${baseClasses} font-mono text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/20 px-2 py-1 rounded`;
   }
 
+  // Special styling for other unrecognized tools
+  if (
+    entryType.type === 'tool_use' &&
+    entryType.action_type.action === 'other'
+  ) {
+    return `${baseClasses} text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-950/20 px-2 py-1 rounded`;
+  }
+
   // Special styling for plan presentations
   if (
     entryType.type === 'tool_use' &&
@@ -269,6 +277,9 @@ const shouldRenderMarkdown = (entryType: NormalizedEntryType) => {
 function DisplayConversationEntry({ entry, index, diffDeletable }: Props) {
   const { diff } = useContext(TaskDiffContext);
   const [expandedErrors, setExpandedErrors] = useState<Set<number>>(new Set());
+  const [expandedToolDetails, setExpandedToolDetails] = useState<Set<number>>(
+    new Set()
+  );
 
   const toggleErrorExpansion = (index: number) => {
     setExpandedErrors((prev) => {
@@ -282,9 +293,32 @@ function DisplayConversationEntry({ entry, index, diffDeletable }: Props) {
     });
   };
 
+  const toggleToolDetailsExpansion = (index: number) => {
+    setExpandedToolDetails((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
   const isErrorMessage = entry.entry_type.type === 'error_message';
   const isExpanded = expandedErrors.has(index);
   const hasMultipleLines = isErrorMessage && entry.content.includes('\n');
+  const isToolUse = entry.entry_type.type === 'tool_use';
+  const isToolDetailsExpanded = expandedToolDetails.has(index);
+
+  // Determine if this tool call should show expandable details
+  const shouldShowExpandableDetails = useMemo(() => {
+    if (!isToolUse || entry.entry_type.type !== 'tool_use') return false;
+    const actionType = entry.entry_type.action_type;
+
+    // Show expandable details for unrecognized tools (action type "other")
+    return actionType.action === 'other';
+  }, [entry.entry_type, isToolUse]);
   const isFileModification = useMemo(
     () => isFileModificationToolCall(entry.entry_type),
     [entry.entry_type]
@@ -313,9 +347,16 @@ function DisplayConversationEntry({ entry, index, diffDeletable }: Props) {
     <div key={index}>
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 mt-1">
-          {isErrorMessage && hasMultipleLines ? (
+          {(isErrorMessage && hasMultipleLines) ||
+          shouldShowExpandableDetails ? (
             <button
-              onClick={() => toggleErrorExpansion(index)}
+              onClick={() => {
+                if (isErrorMessage && hasMultipleLines) {
+                  toggleErrorExpansion(index);
+                } else if (shouldShowExpandableDetails) {
+                  toggleToolDetailsExpansion(index);
+                }
+              }}
               className="transition-colors hover:opacity-70"
             >
               {getEntryIcon(entry.entry_type)}
@@ -361,14 +402,59 @@ function DisplayConversationEntry({ entry, index, diffDeletable }: Props) {
               )}
             </div>
           ) : (
-            <div className={getContentClassName(entry.entry_type)}>
-              {shouldRenderMarkdown(entry.entry_type) ? (
-                <MarkdownRenderer
-                  content={entry.content}
-                  className="whitespace-pre-wrap break-words"
-                />
-              ) : (
-                entry.content
+            <div>
+              <div
+                className={`${getContentClassName(entry.entry_type)} ${shouldShowExpandableDetails ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                onClick={
+                  shouldShowExpandableDetails
+                    ? () => toggleToolDetailsExpansion(index)
+                    : undefined
+                }
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    {shouldRenderMarkdown(entry.entry_type) ? (
+                      <MarkdownRenderer
+                        content={entry.content}
+                        className="whitespace-pre-wrap break-words"
+                      />
+                    ) : (
+                      entry.content
+                    )}
+                  </div>
+                  {shouldShowExpandableDetails && (
+                    <div className="ml-2 flex-shrink-0">
+                      {isToolDetailsExpanded ? (
+                        <ChevronUp className="h-3 w-3" />
+                      ) : (
+                        <ChevronRight className="h-3 w-3" />
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Expandable tool details */}
+              {shouldShowExpandableDetails && isToolDetailsExpanded && (
+                <div className="mt-3 space-y-3">
+                  {entry.tool_arguments && (
+                    <div>
+                      <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                        Tool Arguments:
+                      </div>
+                      <pre className="text-xs bg-gray-100 dark:bg-gray-900 p-2 rounded border overflow-x-auto">
+                        <code>
+                          {JSON.stringify(entry.tool_arguments, null, 2)}
+                        </code>
+                      </pre>
+                    </div>
+                  )}
+                  {!entry.tool_arguments && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 italic">
+                      No additional tool details available.
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}

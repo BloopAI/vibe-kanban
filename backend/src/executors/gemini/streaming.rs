@@ -216,6 +216,7 @@ impl GeminiStreaming {
             entry_type: NormalizedEntryType::AssistantMessage,
             content: content.to_string(),
             metadata: None,
+            tool_arguments: None,
         };
 
         match serde_json::to_string(&entry) {

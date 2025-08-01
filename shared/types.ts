@@ -120,7 +120,7 @@ export type UpdateExecutorSession = { session_id: string | null, prompt: string 
 
 export type NormalizedConversation = { entries: Array<NormalizedEntry>, session_id: string | null, executor_type: string, prompt: string | null, summary: string | null, };
 
-export type NormalizedEntry = { timestamp: string | null, entry_type: NormalizedEntryType, content: string, };
+export type NormalizedEntry = { timestamp: string | null, entry_type: NormalizedEntryType, content: string, tool_arguments: any, };
 
 export type NormalizedEntryType = { "type": "user_message" } | { "type": "assistant_message" } | { "type": "tool_use", tool_name: string, action_type: ActionType, } | { "type": "system_message" } | { "type": "error_message" } | { "type": "thinking" };
 
