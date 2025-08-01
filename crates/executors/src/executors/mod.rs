@@ -10,10 +10,11 @@ use thiserror::Error;
 use ts_rs::TS;
 use utils::msg_store::MsgStore;
 
-use crate::executors::{amp::Amp, claude::ClaudeCode, gemini::Gemini};
+use crate::executors::{amp::Amp, claude::ClaudeCode, codex::Codex, gemini::Gemini};
 
 pub mod amp;
 pub mod claude;
+pub mod codex;
 pub mod gemini;
 
 #[derive(Debug, Error)]
@@ -50,13 +51,13 @@ pub enum CodingAgentExecutors {
     // ClaudePlan,
     Amp,
     Gemini,
+    Codex,
     // ClaudeCodeRouter,
     // #[serde(alias = "charmopencode")]
     // CharmOpencode,
     // #[serde(alias = "opencode")]
     // SstOpencode,
     // Aider,
-    // Codex,
 }
 
 impl CodingAgentExecutorType {
