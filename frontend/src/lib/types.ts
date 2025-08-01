@@ -1,13 +1,11 @@
 import {
   DiffChunkType,
-  ProcessLogsResponse,
 } from 'shared/old_frozen_types';
 import { ExecutionProcess, ExecutionProcessSummary } from 'shared/types';
 
 export type AttemptData = {
   processes: ExecutionProcessSummary[];
   runningProcessDetails: Record<string, ExecutionProcess>;
-  allLogs: ProcessLogsResponse[];
 };
 
 export interface ProcessedLine {

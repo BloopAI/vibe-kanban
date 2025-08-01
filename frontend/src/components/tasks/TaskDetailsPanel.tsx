@@ -11,7 +11,6 @@ import DiffTab from '@/components/tasks/TaskDetails/DiffTab.tsx';
 import LogsTab from '@/components/tasks/TaskDetails/LogsTab.tsx';
 import RelatedTasksTab from '@/components/tasks/TaskDetails/RelatedTasksTab.tsx';
 import ProcessesTab from '@/components/tasks/TaskDetails/ProcessesTab.tsx';
-import PlanTab from '@/components/tasks/TaskDetails/PlanTab.tsx';
 import DeleteFileConfirmationDialog from '@/components/tasks/DeleteFileConfirmationDialog.tsx';
 import TabNavigation from '@/components/tasks/TaskDetails/TabNavigation.tsx';
 import CollapsibleToolbar from '@/components/tasks/TaskDetails/CollapsibleToolbar.tsx';
@@ -105,8 +104,6 @@ export function TaskDetailsPanel({
                   <RelatedTasksTab />
                 ) : activeTab === 'processes' ? (
                   <ProcessesTab />
-                ) : activeTab === 'plan' ? (
-                  <PlanTab />
                 ) : (
                   <LogsTab />
                 )}
