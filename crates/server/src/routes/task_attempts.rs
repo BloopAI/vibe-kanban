@@ -236,6 +236,13 @@ pub async fn get_task_attempts(
     Ok(Json(attempts))
 }
 
+pub async fn get_task_attempt(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(_deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<TaskAttempt>>, ApiError> {
+    Ok(ResponseJson(ApiResponse::success(task_attempt)))
+}
+
 #[derive(Debug, Deserialize, ts_rs::TS)]
 #[ts(export)]
 pub struct CreateTaskAttemptBody {
@@ -1282,6 +1289,7 @@ pub async fn delete_task_attempt_file(
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
+        .route("/", get(get_task_attempt))
         .route("/follow-up", post(follow_up))
         .route("/branch-status", get(get_task_attempt_branch_status))
         .route("/diff", get(get_task_attempt_diff))
