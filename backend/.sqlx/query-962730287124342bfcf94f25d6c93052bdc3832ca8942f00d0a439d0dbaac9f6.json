@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE task_attempts SET pr_status = $1, pr_merged_at = $2, merge_commit = $3 WHERE id = $4",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "962730287124342bfcf94f25d6c93052bdc3832ca8942f00d0a439d0dbaac9f6"
+}

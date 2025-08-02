@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE task_attempts SET pr_url = $1, pr_number = $2, pr_status = $3 WHERE id = $4",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "a88fcbd57069ea207a7e403fb39ac8e68fc27a149639a645a9137ae1ace093f8"
+}

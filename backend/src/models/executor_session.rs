@@ -157,7 +157,7 @@ impl ExecutorSession {
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
             r#"UPDATE executor_sessions
-               SET session_id = $1, updated_at = datetime('now')
+               SET session_id = $1
                WHERE execution_process_id = $2"#,
             external_session_id,
             execution_process_id
@@ -177,7 +177,7 @@ impl ExecutorSession {
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
             r#"UPDATE executor_sessions 
-               SET prompt = $1, updated_at = datetime('now') 
+               SET prompt = $1 
                WHERE id = $2"#,
             prompt,
             id
@@ -196,7 +196,7 @@ impl ExecutorSession {
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
             r#"UPDATE executor_sessions 
-               SET summary = $1, updated_at = datetime('now') 
+               SET summary = $1 
                WHERE execution_process_id = $2"#,
             summary,
             execution_process_id

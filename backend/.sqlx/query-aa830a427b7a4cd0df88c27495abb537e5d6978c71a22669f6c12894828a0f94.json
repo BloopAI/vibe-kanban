@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE executor_sessions \n               SET prompt = $1 \n               WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "aa830a427b7a4cd0df88c27495abb537e5d6978c71a22669f6c12894828a0f94"
+}

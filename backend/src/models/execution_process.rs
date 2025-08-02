@@ -347,7 +347,7 @@ impl ExecutionProcess {
 
         sqlx::query!(
             r#"UPDATE execution_processes 
-               SET status = $1, exit_code = $2, completed_at = $3, updated_at = datetime('now') 
+               SET status = $1, exit_code = $2, completed_at = $3 
                WHERE id = $4"#,
             status,
             exit_code,
@@ -367,7 +367,7 @@ impl ExecutionProcess {
         stdout_append: &str,
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "UPDATE execution_processes SET stdout = COALESCE(stdout, '') || $1, updated_at = datetime('now') WHERE id = $2",
+            "UPDATE execution_processes SET stdout = COALESCE(stdout, '') || $1 WHERE id = $2",
             stdout_append,
             id
         )
@@ -384,7 +384,7 @@ impl ExecutionProcess {
         stderr_append: &str,
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "UPDATE execution_processes SET stderr = COALESCE(stderr, '') || $1, updated_at = datetime('now') WHERE id = $2",
+            "UPDATE execution_processes SET stderr = COALESCE(stderr, '') || $1 WHERE id = $2",
             stderr_append,
             id
         )
