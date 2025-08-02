@@ -8,9 +8,10 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
+use base64::Engine;
+use futures_util::{stream::StreamExt, Stream};
 use serde::Serialize;
-use tokio::sync::Mutex;
-use tokio_util::io::ReaderStream;
+use tokio::{io::AsyncReadExt, sync::Mutex};
 use tracing_subscriber::prelude::*;
 use uuid::Uuid;
 use vibe_kanban::command_runner::{CommandProcess, CommandRunner, CommandRunnerArgs};
@@ -21,7 +22,6 @@ struct ProcessEntry {
     // Store the actual stdout/stderr streams for direct streaming
     stdout_stream: Option<Box<dyn tokio::io::AsyncRead + Unpin + Send>>,
     stderr_stream: Option<Box<dyn tokio::io::AsyncRead + Unpin + Send>>,
-    completed: Arc<Mutex<bool>>,
 }
 
 impl std::fmt::Debug for ProcessEntry {
@@ -30,7 +30,6 @@ impl std::fmt::Debug for ProcessEntry {
             .field("process", &self.process)
             .field("stdout_stream", &self.stdout_stream.is_some())
             .field("stderr_stream", &self.stderr_stream.is_some())
-            .field("completed", &self.completed)
             .finish()
     }
 }
@@ -81,6 +80,115 @@ struct ProcessStatusResponse {
     running: bool,
     exit_code: Option<i32>,
     success: Option<bool>,
+}
+
+// Helper function to convert AsyncRead stream to SSE format
+fn stream_to_sse(
+    reader: Box<dyn tokio::io::AsyncRead + Unpin + Send>,
+) -> impl Stream<Item = Result<String, std::io::Error>> {
+    async_stream::stream! {
+        let mut reader = reader;
+        let mut read_buffer = vec![0u8; 1024];
+        let mut accumulate_buffer = Vec::new();
+        let mut flush_interval = tokio::time::interval(tokio::time::Duration::from_millis(50));
+        loop {
+            tokio::select! {
+                // Try to read data
+                read_result = reader.read(&mut read_buffer) => {
+                    match read_result {
+                        Ok(0) => {
+                            break; // EOF
+                        }
+                        Ok(n) => {
+                            accumulate_buffer.extend_from_slice(&read_buffer[..n]);
+                        }
+                        Err(e) => {
+                            tracing::error!("Error reading stream data: {}", e);
+                            yield Err(e);
+                            break;
+                        }
+                    }
+                }
+
+                // Flush every 50ms if we have data
+                _ = flush_interval.tick() => {
+                    if !accumulate_buffer.is_empty() {
+                        let encoded = base64::engine::general_purpose::STANDARD.encode(&accumulate_buffer);
+                        let sse_message = format!("data: {}\n\n", encoded);
+                        yield Ok(sse_message);
+                        accumulate_buffer.clear();
+                    }
+                }
+            }
+        }
+
+        // Final flush of any remaining data
+        if !accumulate_buffer.is_empty() {
+            let encoded = base64::engine::general_purpose::STANDARD.encode(&accumulate_buffer);
+            let sse_message = format!("data: {}\n\n", encoded);
+            yield Ok(sse_message);
+        }
+    }
+}
+
+// Helper function to create SSE stream response for stdout/stderr
+async fn create_sse_stream_response(
+    state: AppState,
+    process_id: String,
+    stream_type: &str, // "stdout" or "stderr"
+) -> Result<Response, StatusCode> {
+    tracing::info!(
+        "Starting SSE {} stream for process_id: {}",
+        stream_type,
+        process_id
+    );
+
+    let mut processes = state.processes.lock().await;
+
+    if let Some(entry) = processes.get_mut(&process_id) {
+        // Take ownership of the appropriate stream
+        let stream = match stream_type {
+            "stdout" => entry.stdout_stream.take(),
+            "stderr" => entry.stderr_stream.take(),
+            _ => None,
+        };
+
+        if let Some(stream) = stream {
+            drop(processes); // Release the lock early
+
+            // Convert the AsyncRead to SSE format
+            let sse_stream = stream_to_sse(stream);
+
+            // Convert to bytes stream for HTTP response
+            let bytes_stream = sse_stream.map(|result| {
+                result
+                    .map(|s| s.into_bytes())
+                    .map_err(std::io::Error::other)
+            });
+
+            let response = Response::builder()
+                .header("content-type", "text/event-stream")
+                .header("cache-control", "no-cache")
+                .header("x-accel-buffering", "no")
+                .body(Body::from_stream(bytes_stream))
+                .map_err(|e| {
+                    tracing::error!("Failed to build SSE response stream: {}", e);
+                    StatusCode::INTERNAL_SERVER_ERROR
+                })?;
+
+            Ok(response)
+        } else {
+            tracing::error!(
+                "{} already taken or unavailable for process {}",
+                stream_type.to_ascii_uppercase(),
+                process_id
+            );
+            Err(StatusCode::GONE)
+        }
+    } else {
+        tracing::warn!("Process not found for {}: {}", stream_type, process_id);
+        Err(StatusCode::NOT_FOUND)
+    }
 }
 
 #[tokio::main]
@@ -149,9 +257,6 @@ async fn create_command(
     // Generate unique process ID
     let process_id = Uuid::new_v4().to_string();
 
-    // Create completion flag
-    let completed = Arc::new(Mutex::new(false));
-
     // Get the streams from the process - we'll store them directly
     let mut streams = match process.stream().await {
         Ok(streams) => streams,
@@ -164,30 +269,11 @@ async fn create_command(
     // Extract the streams for direct use
     let stdout_stream = streams.stdout.take();
     let stderr_stream = streams.stderr.take();
-
-    // Spawn a task to monitor process completion
-    {
-        let process_id_for_completion = process_id.clone();
-        let completed_flag = completed.clone();
-        let processes_ref = state.processes.clone();
-        tokio::spawn(async move {
-            // Wait for the process to complete
-            if let Ok(mut processes) = processes_ref.try_lock() {
-                if let Some(entry) = processes.get_mut(&process_id_for_completion) {
-                    let _ = entry.process.wait().await;
-                    *completed_flag.lock().await = true;
-                    tracing::debug!("Marked process {} as completed", process_id_for_completion);
-                }
-            }
-        });
-    }
-
     // Create process entry
     let entry = ProcessEntry {
         process,
         stdout_stream,
         stderr_stream,
-        completed: completed.clone(),
     };
 
     // Store the process entry
@@ -284,6 +370,11 @@ async fn get_process_status(
     if let Some(entry) = processes.get_mut(&process_id) {
         match entry.process.status().await {
             Ok(Some(exit_status)) => {
+                tracing::info!(
+                    "Process {} completed with exit code: {:?}",
+                    process_id,
+                    exit_status.code()
+                );
                 // Process has completed
                 let response = ProcessStatusResponse {
                     process_id: process_id.clone(),
@@ -294,6 +385,7 @@ async fn get_process_status(
                 Ok(Json(ApiResponse::success(response)))
             }
             Ok(None) => {
+                tracing::debug!("Process {} is still running", process_id);
                 // Process is still running
                 let response = ProcessStatusResponse {
                     process_id: process_id.clone(),
@@ -314,88 +406,18 @@ async fn get_process_status(
     }
 }
 
-// Get stdout stream for a running command (direct streaming, no buffering)
+// Get stdout stream for a running command (SSE format)
 async fn get_process_stdout(
     State(state): State<AppState>,
     Path(process_id): Path<String>,
 ) -> Result<Response, StatusCode> {
-    tracing::info!(
-        "Starting direct stdout stream for process_id: {}",
-        process_id
-    );
-
-    let mut processes = state.processes.lock().await;
-
-    if let Some(entry) = processes.get_mut(&process_id) {
-        // Take ownership of stdout directly for streaming
-        if let Some(stdout) = entry.stdout_stream.take() {
-            drop(processes); // Release the lock early
-
-            // Convert the AsyncRead (stdout) directly into an HTTP stream
-            let stream = ReaderStream::new(stdout);
-
-            let response = Response::builder()
-                .header("content-type", "application/octet-stream")
-                .header("cache-control", "no-cache")
-                .body(Body::from_stream(stream))
-                .map_err(|e| {
-                    tracing::error!("Failed to build response stream: {}", e);
-                    StatusCode::INTERNAL_SERVER_ERROR
-                })?;
-
-            Ok(response)
-        } else {
-            tracing::error!(
-                "Stdout already taken or unavailable for process {}",
-                process_id
-            );
-            Err(StatusCode::GONE)
-        }
-    } else {
-        tracing::warn!("Process not found for stdout: {}", process_id);
-        Err(StatusCode::NOT_FOUND)
-    }
+    create_sse_stream_response(state, process_id, "stdout").await
 }
 
-// Get stderr stream for a running command (direct streaming, no buffering)
+// Get stderr stream for a running command (SSE format)
 async fn get_process_stderr(
     State(state): State<AppState>,
     Path(process_id): Path<String>,
 ) -> Result<Response, StatusCode> {
-    tracing::info!(
-        "Starting direct stderr stream for process_id: {}",
-        process_id
-    );
-
-    let mut processes = state.processes.lock().await;
-
-    if let Some(entry) = processes.get_mut(&process_id) {
-        // Take ownership of stderr directly for streaming
-        if let Some(stderr) = entry.stderr_stream.take() {
-            drop(processes); // Release the lock early
-
-            // Convert the AsyncRead (stderr) directly into an HTTP stream
-            let stream = ReaderStream::new(stderr);
-
-            let response = Response::builder()
-                .header("content-type", "application/octet-stream")
-                .header("cache-control", "no-cache")
-                .body(Body::from_stream(stream))
-                .map_err(|e| {
-                    tracing::error!("Failed to build response stream: {}", e);
-                    StatusCode::INTERNAL_SERVER_ERROR
-                })?;
-
-            Ok(response)
-        } else {
-            tracing::error!(
-                "Stderr already taken or unavailable for process {}",
-                process_id
-            );
-            Err(StatusCode::GONE)
-        }
-    } else {
-        tracing::warn!("Process not found for stderr: {}", process_id);
-        Err(StatusCode::NOT_FOUND)
-    }
+    create_sse_stream_response(state, process_id, "stderr").await
 }

@@ -4,7 +4,9 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use uuid::Uuid;
 
 use crate::{
-    command_runner::{CommandProcess, CommandRunner},
+    app_state::AppState,
+    command_runner::CommandProcess,
+    deployment::Deployment,
     executor::{Executor, ExecutorError, NormalizedConversation, NormalizedEntry},
     models::{execution_process::ExecutionProcess, executor_session::ExecutorSession, task::Task},
     utils::shell::get_shell_command,
@@ -238,12 +240,12 @@ impl SstOpencodeExecutor {
 impl Executor for SstOpencodeExecutor {
     async fn spawn(
         &self,
-        pool: &sqlx::SqlitePool,
+        app_state: &AppState,
         task_id: Uuid,
         worktree_path: &str,
     ) -> Result<CommandProcess, ExecutorError> {
         // Get the task to fetch its description
-        let task = Task::find_by_id(pool, task_id)
+        let task = Task::find_by_id(&app_state.db_pool, task_id)
             .await?
             .ok_or(ExecutorError::TaskNotFound)?;
 
@@ -268,7 +270,7 @@ Task title: {}"#,
         let (shell_cmd, shell_arg) = get_shell_command();
         let opencode_command = &self.command;
 
-        let mut command = CommandRunner::new();
+        let mut command = app_state.deployment.command_runner();
         command
             .command(shell_cmd)
             .arg(shell_arg)
@@ -290,13 +292,13 @@ Task title: {}"#,
     /// Execute with OpenCode filtering for stderr
     async fn execute_streaming(
         &self,
-        pool: &sqlx::SqlitePool,
+        app_state: &AppState,
         task_id: Uuid,
         attempt_id: Uuid,
         execution_process_id: Uuid,
         worktree_path: &str,
     ) -> Result<CommandProcess, ExecutorError> {
-        let mut proc = self.spawn(pool, task_id, worktree_path).await?;
+        let mut proc = self.spawn(app_state, task_id, worktree_path).await?;
 
         // Get stderr stream from CommandProcess for OpenCode filtering
         let mut stream = proc
@@ -309,7 +311,7 @@ Task title: {}"#,
             .expect("Failed to get stderr from command stream");
 
         // Start OpenCode stderr filtering task
-        let pool_clone = pool.clone();
+        let pool_clone = app_state.db_pool.clone();
         let worktree_path_clone = worktree_path.to_string();
         tokio::spawn(stream_opencode_stderr_to_db(
             stderr,
@@ -353,7 +355,7 @@ Task title: {}"#,
     /// Execute follow-up with OpenCode filtering for stderr
     async fn execute_followup_streaming(
         &self,
-        pool: &sqlx::SqlitePool,
+        app_state: &AppState,
         task_id: Uuid,
         attempt_id: Uuid,
         execution_process_id: Uuid,
@@ -362,7 +364,7 @@ Task title: {}"#,
         worktree_path: &str,
     ) -> Result<CommandProcess, ExecutorError> {
         let mut proc = self
-            .spawn_followup(pool, task_id, session_id, prompt, worktree_path)
+            .spawn_followup(app_state, task_id, session_id, prompt, worktree_path)
             .await?;
 
         // Get stderr stream from CommandProcess for OpenCode filtering
@@ -376,7 +378,7 @@ Task title: {}"#,
             .expect("Failed to get stderr from command stream");
 
         // Start OpenCode stderr filtering task
-        let pool_clone = pool.clone();
+        let pool_clone = app_state.db_pool.clone();
         let worktree_path_clone = worktree_path.to_string();
         tokio::spawn(stream_opencode_stderr_to_db(
             stderr,
@@ -391,7 +393,7 @@ Task title: {}"#,
 
     async fn spawn_followup(
         &self,
-        _pool: &sqlx::SqlitePool,
+        app_state: &AppState,
         _task_id: Uuid,
         session_id: &str,
         prompt: &str,
@@ -401,7 +403,7 @@ Task title: {}"#,
         let (shell_cmd, shell_arg) = get_shell_command();
         let opencode_command = format!("{} --session {}", self.command, session_id);
 
-        let mut command = CommandRunner::new();
+        let mut command = app_state.deployment.command_runner();
         command
             .command(shell_cmd)
             .arg(shell_arg)

@@ -2,8 +2,6 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio::io::AsyncRead;
 
-use crate::models::Environment;
-
 mod local;
 mod remote;
 
@@ -60,11 +58,6 @@ pub struct CommandRunner {
     working_dir: Option<String>,
     env_vars: Vec<(String, String)>,
     stdin: Option<String>,
-}
-impl Default for CommandRunner {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 pub struct CommandProcess {
@@ -162,26 +155,25 @@ pub struct CommandStream {
 }
 
 impl CommandRunner {
-    pub fn new() -> Self {
-        let env = std::env::var("ENVIRONMENT").unwrap_or_else(|_| "local".to_string());
-        let mode = env.parse().unwrap_or(Environment::Local);
-        match mode {
-            Environment::Cloud => CommandRunner {
-                executor: Box::new(RemoteCommandExecutor::new()),
-                command: None,
-                args: Vec::new(),
-                working_dir: None,
-                env_vars: Vec::new(),
-                stdin: None,
-            },
-            Environment::Local => CommandRunner {
-                executor: Box::new(LocalCommandExecutor::new()),
-                command: None,
-                args: Vec::new(),
-                working_dir: None,
-                env_vars: Vec::new(),
-                stdin: None,
-            },
+    pub fn new_local() -> Self {
+        CommandRunner {
+            executor: Box::new(LocalCommandExecutor::new()),
+            command: None,
+            args: Vec::new(),
+            working_dir: None,
+            env_vars: Vec::new(),
+            stdin: None,
+        }
+    }
+
+    pub fn new_cloud() -> Self {
+        CommandRunner {
+            executor: Box::new(RemoteCommandExecutor::new()),
+            command: None,
+            args: Vec::new(),
+            working_dir: None,
+            env_vars: Vec::new(),
+            stdin: None,
         }
     }
 
@@ -233,10 +225,16 @@ impl CommandRunner {
         })
     }
 
-    /// Create a CommandRunner from a CreateCommandRequest, respecting the environment
+    pub async fn start(&self) -> Result<CommandProcess, CommandError> {
+        let request = self.to_args().ok_or(CommandError::NoCommandSet)?;
+        let handle = self.executor.start(&request).await?;
+
+        Ok(CommandProcess { handle })
+    }
+
     #[allow(dead_code)]
     pub fn from_args(request: CommandRunnerArgs) -> Self {
-        let mut runner = Self::new();
+        let mut runner = Self::new_local();
         runner.command(&request.command);
 
         for arg in &request.args {
@@ -256,13 +254,6 @@ impl CommandRunner {
         }
 
         runner
-    }
-
-    pub async fn start(&self) -> Result<CommandProcess, CommandError> {
-        let request = self.to_args().ok_or(CommandError::NoCommandSet)?;
-        let handle = self.executor.start(&request).await?;
-
-        Ok(CommandProcess { handle })
     }
 }
 

@@ -92,7 +92,6 @@ fn generate_types_content() -> String {
         vibe_kanban::models::ApiResponse::<()>::decl(),
         vibe_kanban::models::config::Config::decl(),
         vibe_kanban::models::config::EnvironmentInfo::decl(),
-        vibe_kanban::models::config::Environment::decl(),
         vibe_kanban::models::config::ThemeMode::decl(),
         vibe_kanban::models::config::EditorConfig::decl(),
         vibe_kanban::models::config::GitHubConfig::decl(),

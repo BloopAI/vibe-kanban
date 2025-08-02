@@ -5,10 +5,11 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
-    command_runner::{CommandProcess, CommandRunner},
-    executor,
+    app_state::AppState,
+    command_runner::CommandProcess,
+    deployment::Deployment,
     executor::{
-        ActionType, Executor, ExecutorError, NormalizedConversation, NormalizedEntry,
+        self, ActionType, Executor, ExecutorError, NormalizedConversation, NormalizedEntry,
         NormalizedEntryType,
     },
     models::task::Task,
@@ -191,12 +192,12 @@ impl AmpContentItem {
 impl Executor for AmpExecutor {
     async fn spawn(
         &self,
-        pool: &sqlx::SqlitePool,
+        app_state: &AppState,
         task_id: Uuid,
         worktree_path: &str,
     ) -> Result<CommandProcess, ExecutorError> {
         // Get the task to fetch its description
-        let task = Task::find_by_id(pool, task_id)
+        let task = Task::find_by_id(&app_state.db_pool, task_id)
             .await?
             .ok_or(ExecutorError::TaskNotFound)?;
 
@@ -222,7 +223,7 @@ Task title: {}"#,
         // --format=jsonl is deprecated in latest versions of Amp CLI
         let amp_command = "npx @sourcegraph/amp@0.0.1752148945-gd8844f --format=jsonl";
 
-        let mut command = CommandRunner::new();
+        let mut command = app_state.deployment.command_runner();
         command
             .command(shell_cmd)
             .arg(shell_arg)
@@ -242,7 +243,7 @@ Task title: {}"#,
 
     async fn spawn_followup(
         &self,
-        _pool: &sqlx::SqlitePool,
+        app_state: &AppState,
         _task_id: Uuid,
         session_id: &str,
         prompt: &str,
@@ -255,7 +256,7 @@ Task title: {}"#,
             session_id
         );
 
-        let mut command = CommandRunner::new();
+        let mut command = app_state.deployment.command_runner();
         command
             .command(shell_cmd)
             .arg(shell_arg)

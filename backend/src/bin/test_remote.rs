@@ -12,7 +12,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Test 1: Simple echo command
     println!("\n📝 Test 1: Echo command");
-    let mut runner = CommandRunner::new();
+    let mut runner = CommandRunner::new_cloud();
     let mut process = runner
         .command("echo")
         .arg("Hello from remote!")
@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Test 2: Long-running command
     println!("\n⏰ Test 2: Sleep command (5 seconds)");
-    let mut runner2 = CommandRunner::new();
+    let mut runner2 = CommandRunner::new_cloud();
     let mut process2 = runner2.command("sleep").arg("5").start().await?;
 
     println!("✅ Successfully started remote sleep command!");
@@ -41,7 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Test 3: Command with environment variables
     println!("\n🌍 Test 3: Environment variables");
-    let mut runner3 = CommandRunner::new();
+    let mut runner3 = CommandRunner::new_cloud();
     let mut process3 = runner3
         .command("printenv")
         .arg("TEST_VAR")
@@ -54,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Test 4: Working directory
     println!("\n📁 Test 4: Working directory");
-    let mut runner4 = CommandRunner::new();
+    let mut runner4 = CommandRunner::new_cloud();
     let mut process4 = runner4.command("pwd").working_dir("/tmp").start().await?;
 
     println!("✅ Successfully started remote pwd command!");
@@ -64,7 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n📊 Test 5: Process Status Checking (TDD)");
 
     // Test 5a: Status of running process
-    let mut runner5a = CommandRunner::new();
+    let mut runner5a = CommandRunner::new_cloud();
     let mut process5a = runner5a.command("sleep").arg("3").start().await?;
 
     println!("✅ Started sleep process for status testing");
@@ -93,7 +93,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     process5a.kill().await.ok();
 
     // Test 5b: Status of completed process
-    let mut runner5b = CommandRunner::new();
+    let mut runner5b = CommandRunner::new_cloud();
     let mut process5b = runner5b.command("echo").arg("status test").start().await?;
 
     println!("✅ Started echo process for completion status testing");
@@ -114,7 +114,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Test 5c: Wait for process completion
-    let mut runner5c = CommandRunner::new();
+    let mut runner5c = CommandRunner::new_cloud();
     let mut process5c = runner5c.command("echo").arg("wait test").start().await?;
 
     println!("✅ Started echo process for wait testing");
@@ -134,7 +134,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n🌊 Test 6: Output Streaming (TDD)");
 
     // Test 6a: Stdout streaming
-    let mut runner6a = CommandRunner::new();
+    let mut runner6a = CommandRunner::new_cloud();
     let mut process6a = runner6a
         .command("echo")
         .arg("Hello stdout streaming!")
@@ -177,7 +177,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Test 6b: Stderr streaming
-    let mut runner6b = CommandRunner::new();
+    let mut runner6b = CommandRunner::new_cloud();
     let mut process6b = runner6b
         .command("bash")
         .arg("-c")
@@ -219,7 +219,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Test 6c: Streaming from long-running process
-    let mut runner6c = CommandRunner::new();
+    let mut runner6c = CommandRunner::new_cloud();
     let mut process6c = runner6c
         .command("bash")
         .arg("-c")

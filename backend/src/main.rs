@@ -18,6 +18,7 @@ use vibe_kanban::{sentry_layer, Assets, ScriptAssets, SoundAssets};
 
 mod app_state;
 mod command_runner;
+mod deployment;
 mod execution_monitor;
 mod executor;
 mod executors;
@@ -34,10 +35,9 @@ use middleware::{
     load_execution_process_simple_middleware, load_project_middleware,
     load_task_attempt_middleware, load_task_middleware, load_task_template_middleware,
 };
-use models::{ApiResponse, Config, Environment};
+use models::{ApiResponse, Config};
 use routes::{
-    auth, config, filesystem, github, health, projects, stream, task_attempts, task_templates,
-    tasks,
+    auth, config, filesystem, health, projects, stream, task_attempts, task_templates, tasks,
 };
 use services::PrMonitorService;
 
@@ -169,13 +169,8 @@ fn main() -> anyhow::Result<()> {
             let config = Config::load(&config_path)?;
             let config_arc = Arc::new(RwLock::new(config));
 
-            let env = std::env::var("ENVIRONMENT")
-                .unwrap_or_else(|_| "local".to_string());
-            let mode = env.parse().unwrap_or(Environment::Local);
-            tracing::info!("Running in {mode} mode" );
-
             // Create app state
-            let app_state = AppState::new(pool.clone(), config_arc.clone(), mode).await;
+            let app_state = AppState::new(pool.clone(), config_arc.clone()).await;
 
             app_state.update_sentry_scope().await;
 
@@ -253,17 +248,17 @@ fn main() -> anyhow::Result<()> {
                     .layer(from_fn_with_state(app_state.clone(), load_task_attempt_middleware)));
 
             // Conditionally add GitHub routes for cloud mode
-            let mut api_routes = Router::new()
+            let api_routes = Router::new()
                 .merge(base_routes)
                 .merge(template_routes)
                 .merge(project_routes)
                 .merge(task_routes)
                 .merge(task_attempt_routes);
 
-            if mode.is_cloud() {
-                api_routes = api_routes.merge(github::github_router());
-                tracing::info!("GitHub repository routes enabled (cloud mode)");
-            }
+            // if mode.is_cloud() {
+            //     api_routes = api_routes.merge(github::github_router());
+            //     tracing::info!("GitHub repository routes enabled (cloud mode)");
+            // }
 
             // All routes (no auth required)
             let app_routes = Router::new()

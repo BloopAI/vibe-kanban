@@ -30,11 +30,6 @@ pub async fn list_repositories(
     State(app_state): State<AppState>,
     Query(params): Query<RepositoryQuery>,
 ) -> Result<ResponseJson<ApiResponse<Vec<RepositoryInfo>>>, StatusCode> {
-    // Only available in cloud mode
-    if app_state.mode.is_local() {
-        return Err(StatusCode::NOT_FOUND);
-    }
-
     let page = params.page.unwrap_or(1);
 
     // Get GitHub configuration
@@ -88,11 +83,6 @@ pub async fn create_project_from_github(
     State(app_state): State<AppState>,
     Json(payload): Json<CreateProjectFromGitHub>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, StatusCode> {
-    // Only available in cloud mode
-    if app_state.mode.is_local() {
-        return Err(StatusCode::NOT_FOUND);
-    }
-
     tracing::debug!("Creating project '{}' from GitHub repository", payload.name);
 
     // Get workspace path

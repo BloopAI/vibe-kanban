@@ -4,7 +4,9 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use uuid::Uuid;
 
 use crate::{
-    command_runner::{CommandProcess, CommandRunner},
+    app_state::AppState,
+    command_runner::CommandProcess,
+    deployment::Deployment,
     executor::{
         ActionType, Executor, ExecutorError, NormalizedConversation, NormalizedEntry,
         NormalizedEntryType,
@@ -472,12 +474,12 @@ impl AiderExecutor {
 impl Executor for AiderExecutor {
     async fn spawn(
         &self,
-        pool: &sqlx::SqlitePool,
+        app_state: &AppState,
         task_id: Uuid,
         worktree_path: &str,
     ) -> Result<CommandProcess, ExecutorError> {
         // Get the task to fetch its description
-        let task = Task::find_by_id(pool, task_id)
+        let task = Task::find_by_id(&app_state.db_pool, task_id)
             .await?
             .ok_or(ExecutorError::TaskNotFound)?;
 
@@ -536,7 +538,7 @@ impl Executor for AiderExecutor {
 
         tracing::debug!("Spawning Aider command: {}", &aider_command);
 
-        let mut command = CommandRunner::new();
+        let mut command = app_state.deployment.command_runner();
         command
             .command(shell_cmd)
             .arg(shell_arg)
@@ -564,7 +566,7 @@ impl Executor for AiderExecutor {
     /// Execute with Aider filtering for stdout and stderr
     async fn execute_streaming(
         &self,
-        pool: &sqlx::SqlitePool,
+        app_state: &AppState,
         task_id: Uuid,
         attempt_id: Uuid,
         execution_process_id: Uuid,
@@ -572,8 +574,12 @@ impl Executor for AiderExecutor {
     ) -> Result<CommandProcess, ExecutorError> {
         // Generate our own session ID and store it in the database immediately
         let session_id = format!("aider_task_{}", task_id);
-        if let Err(e) =
-            ExecutorSession::update_session_id(pool, execution_process_id, &session_id).await
+        if let Err(e) = ExecutorSession::update_session_id(
+            &app_state.db_pool,
+            execution_process_id,
+            &session_id,
+        )
+        .await
         {
             tracing::error!(
                 "Failed to update session ID for execution process {}: {}",
@@ -588,7 +594,7 @@ impl Executor for AiderExecutor {
             );
         }
 
-        let mut child = self.spawn(pool, task_id, worktree_path).await?;
+        let mut child = self.spawn(app_state, task_id, worktree_path).await?;
 
         // Take stdout and stderr pipes for Aider filtering
         let streams = child
@@ -603,7 +609,7 @@ impl Executor for AiderExecutor {
             .expect("Failed to take stderr from child process");
 
         // Start Aider filtering task
-        let pool_clone = pool.clone();
+        let pool_clone = app_state.db_pool.clone();
         let worktree_path_clone = worktree_path.to_string();
         tokio::spawn(stream_aider_stdout_stderr_to_db(
             stdout,
@@ -648,7 +654,7 @@ impl Executor for AiderExecutor {
     /// Execute follow-up with Aider filtering for stdout and stderr
     async fn execute_followup_streaming(
         &self,
-        pool: &sqlx::SqlitePool,
+        app_state: &AppState,
         task_id: Uuid,
         attempt_id: Uuid,
         execution_process_id: Uuid,
@@ -658,7 +664,8 @@ impl Executor for AiderExecutor {
     ) -> Result<CommandProcess, ExecutorError> {
         // Update session ID for this execution process to ensure continuity
         if let Err(e) =
-            ExecutorSession::update_session_id(pool, execution_process_id, session_id).await
+            ExecutorSession::update_session_id(&app_state.db_pool, execution_process_id, session_id)
+                .await
         {
             tracing::error!(
                 "Failed to update session ID for followup execution process {}: {}",
@@ -674,7 +681,7 @@ impl Executor for AiderExecutor {
         }
 
         let mut child = self
-            .spawn_followup(pool, task_id, session_id, prompt, worktree_path)
+            .spawn_followup(app_state, task_id, session_id, prompt, worktree_path)
             .await?;
 
         // Take stdout and stderr pipes for Aider filtering
@@ -690,7 +697,7 @@ impl Executor for AiderExecutor {
             .expect("Failed to take stderr from child process");
 
         // Start Aider filtering task
-        let pool_clone = pool.clone();
+        let pool_clone = app_state.db_pool.clone();
         let worktree_path_clone = worktree_path.to_string();
         tokio::spawn(stream_aider_stdout_stderr_to_db(
             stdout,
@@ -706,7 +713,7 @@ impl Executor for AiderExecutor {
 
     async fn spawn_followup(
         &self,
-        _pool: &sqlx::SqlitePool,
+        app_state: &AppState,
         _task_id: Uuid,
         session_id: &str,
         prompt: &str,
@@ -760,7 +767,7 @@ impl Executor for AiderExecutor {
 
         tracing::debug!("Spawning Aider command: {}", &aider_command);
 
-        let mut command = CommandRunner::new();
+        let mut command = app_state.deployment.command_runner();
         command
             .command(shell_cmd)
             .arg(shell_arg)
