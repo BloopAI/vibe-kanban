@@ -90,7 +90,7 @@ impl MsgStore {
     }
 
     /// History then live, as `LogMsg`.
-    pub async fn history_plus_stream(
+    pub fn history_plus_stream(
         &self,
     ) -> futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>> {
         let (history, rx) = (self.get_history(), self.get_receiver());
@@ -102,11 +102,10 @@ impl MsgStore {
         Box::pin(hist.chain(live))
     }
 
-    pub async fn stdout_chunked_stream(
+    pub fn stdout_chunked_stream(
         &self,
     ) -> futures::stream::BoxStream<'static, Result<String, std::io::Error>> {
         self.history_plus_stream()
-            .await
             .take_while(|res| future::ready(!matches!(res, Ok(LogMsg::Finished))))
             .filter_map(|res| async move {
                 match res {
@@ -117,17 +116,16 @@ impl MsgStore {
             .boxed()
     }
 
-    pub async fn stdout_lines_stream(
+    pub fn stdout_lines_stream(
         &self,
     ) -> futures::stream::BoxStream<'static, std::io::Result<String>> {
-        self.stdout_chunked_stream().await.lines()
+        self.stdout_chunked_stream().lines()
     }
 
-    pub async fn stderr_chunked_stream(
+    pub fn stderr_chunked_stream(
         &self,
     ) -> futures::stream::BoxStream<'static, Result<String, std::io::Error>> {
         self.history_plus_stream()
-            .await
             .take_while(|res| future::ready(!matches!(res, Ok(LogMsg::Finished))))
             .filter_map(|res| async move {
                 match res {
@@ -138,18 +136,15 @@ impl MsgStore {
             .boxed()
     }
 
-    pub async fn stderr_lines_stream(
+    pub fn stderr_lines_stream(
         &self,
     ) -> futures::stream::BoxStream<'static, std::io::Result<String>> {
-        self.stderr_chunked_stream().await.lines()
+        self.stderr_chunked_stream().lines()
     }
 
     /// Same stream but mapped to `Event` for SSE handlers.
-    pub async fn sse_stream(
-        &self,
-    ) -> futures::stream::BoxStream<'static, Result<Event, std::io::Error>> {
+    pub fn sse_stream(&self) -> futures::stream::BoxStream<'static, Result<Event, std::io::Error>> {
         self.history_plus_stream()
-            .await
             .map_ok(|m| m.to_sse_event())
             .boxed()
     }

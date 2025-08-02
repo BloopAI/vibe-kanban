@@ -35,7 +35,7 @@ use crate::logs::utils::EntryIndexProvider;
 /// * `entry_index_provider` - provider of incremental entry indices for patch ordering.
 pub fn normalize_stderr_logs(msg_store: Arc<MsgStore>, entry_index_provider: EntryIndexProvider) {
     tokio::spawn(async move {
-        let mut stderr = msg_store.stderr_chunked_stream().await;
+        let mut stderr = msg_store.stderr_chunked_stream();
 
         // Create a processor with time-based emission for stderr
         let mut processor = PlainTextLogProcessor::builder()

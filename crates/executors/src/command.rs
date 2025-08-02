@@ -121,6 +121,15 @@ impl AgentProfile {
             ]),
         }
     }
+
+    pub fn opencode() -> Self {
+        Self {
+            label: "opencode".to_string(),
+            agent: BaseCodingAgent::Opencode,
+            command: CommandBuilder::new("npx -y opencode-ai@latest run")
+                .params(vec!["--print-logs"]),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
@@ -156,6 +165,7 @@ impl AgentProfiles {
                 AgentProfile::amp(),
                 AgentProfile::gemini(),
                 AgentProfile::codex(),
+                AgentProfile::opencode(),
             ],
         }
     }
@@ -229,7 +239,7 @@ mod tests {
     #[test]
     fn test_default_profiles() {
         let profiles = AgentProfiles::from_defaults();
-        assert!(profiles.profiles.len() == 5);
+        assert!(profiles.profiles.len() == 6);
 
         let claude_profile = profiles.get_profile("claude-code").unwrap();
         assert_eq!(claude_profile.agent, BaseCodingAgent::ClaudeCode);
@@ -265,6 +275,22 @@ mod tests {
         assert_eq!(codex_profile.agent, BaseCodingAgent::Codex);
         assert!(codex_profile.command.build_initial().contains("codex"));
         assert!(codex_profile.command.build_initial().contains("--json"));
+
+        let opencode_profile = profiles.get_profile("opencode").unwrap();
+        assert_eq!(opencode_profile.agent, BaseCodingAgent::Opencode);
+        assert!(
+            opencode_profile
+                .command
+                .build_initial()
+                .contains("opencode-ai")
+        );
+        assert!(opencode_profile.command.build_initial().contains("run"));
+        assert!(
+            opencode_profile
+                .command
+                .build_initial()
+                .contains("--print-logs")
+        );
     }
 
     #[test]

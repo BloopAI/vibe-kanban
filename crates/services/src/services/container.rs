@@ -136,7 +136,6 @@ pub trait ContainerService {
             return Some(
                 store
                     .history_plus_stream()
-                    .await
                     .filter(|msg| {
                         future::ready(matches!(msg, Ok(LogMsg::Stdout(..) | LogMsg::Stderr(..))))
                     })
@@ -215,7 +214,6 @@ pub trait ContainerService {
             Some(
                 store
                     .history_plus_stream() // BoxStream<Result<LogMsg, io::Error>>
-                    .await
                     .filter(|msg| future::ready(matches!(msg, Ok(LogMsg::JsonPatch(..)))))
                     .map_ok(|m| m.to_sse_event()) // LogMsg -> Event
                     .boxed(),
@@ -313,7 +311,6 @@ pub trait ContainerService {
             Some(
                 temp_store
                     .history_plus_stream()
-                    .await
                     .filter(|msg| future::ready(matches!(msg, Ok(LogMsg::JsonPatch(..)))))
                     .map_ok(|m| m.to_sse_event())
                     .boxed(),
@@ -334,7 +331,7 @@ pub trait ContainerService {
             };
 
             if let Some(store) = store {
-                let mut stream = store.history_plus_stream().await;
+                let mut stream = store.history_plus_stream();
 
                 while let Some(Ok(msg)) = stream.next().await {
                     match &msg {

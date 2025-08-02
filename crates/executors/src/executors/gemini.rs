@@ -95,7 +95,7 @@ impl StandardCodingAgentExecutor for Gemini {
         let entry_index_counter = EntryIndexProvider::new();
         normalize_stderr_logs(msg_store.clone(), entry_index_counter.clone());
         tokio::spawn(async move {
-            let mut stdout = msg_store.stdout_chunked_stream().await;
+            let mut stdout = msg_store.stdout_chunked_stream();
 
             // Create a processor with Gemini-specific formatting
             let mut processor = PlainTextLogProcessor::builder()

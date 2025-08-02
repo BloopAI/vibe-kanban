@@ -60,3 +60,4 @@ tokio-stream = { version = "0.1.17", features = ["io-util"] }
 futures = "0.3.31"
 strum = "0.27.2"
 bon = "3.6"
+fork_stream = "0.1.0"

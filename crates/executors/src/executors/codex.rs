@@ -25,7 +25,7 @@ impl SessionHandler {
     /// Start monitoring stderr lines for session ID extraction
     pub fn start_session_id_extraction(msg_store: Arc<MsgStore>) {
         tokio::spawn(async move {
-            let mut stderr_lines_stream = msg_store.stderr_lines_stream().await;
+            let mut stderr_lines_stream = msg_store.stderr_lines_stream();
 
             while let Some(Ok(line)) = stderr_lines_stream.next().await {
                 if let Some(session_id) = Self::extract_session_id_from_line(&line) {
@@ -215,7 +215,7 @@ impl StandardCodingAgentExecutor for Codex {
         // Process stdout logs (Codex's JSONL output)
         let current_dir = current_dir.clone();
         tokio::spawn(async move {
-            let mut stream = msg_store.stdout_lines_stream().await;
+            let mut stream = msg_store.stdout_lines_stream();
 
             while let Some(Ok(line)) = stream.next().await {
                 let trimmed = line.trim();

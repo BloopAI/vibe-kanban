@@ -180,7 +180,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
         self.events()
             .msg_store()
             .history_plus_stream()
-            .await
             .map_ok(|m| m.to_sse_event())
             .boxed()
     }

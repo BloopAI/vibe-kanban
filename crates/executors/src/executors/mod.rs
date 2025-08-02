@@ -12,13 +12,14 @@ use utils::msg_store::MsgStore;
 
 use crate::{
     command::AgentProfiles,
-    executors::{amp::Amp, claude::ClaudeCode, codex::Codex, gemini::Gemini},
+    executors::{amp::Amp, claude::ClaudeCode, codex::Codex, gemini::Gemini, opencode::Opencode},
 };
 
 pub mod amp;
 pub mod claude;
 pub mod codex;
 pub mod gemini;
+pub mod opencode;
 
 #[derive(Debug, Error)]
 pub enum ExecutorError {
@@ -57,10 +58,7 @@ pub enum CodingAgent {
     Gemini,
     Codex,
     // ClaudeCodeRouter,
-    // #[serde(alias = "charmopencode")]
-    // CharmOpencode,
-    // #[serde(alias = "opencode")]
-    // SstOpencode,
+    Opencode,
     // Aider,
 }
 
@@ -74,6 +72,7 @@ impl CodingAgent {
             "amp" => Ok(CodingAgent::Amp(Amp::new())),
             "gemini" => Ok(CodingAgent::Gemini(Gemini::new())),
             "codex" => Ok(CodingAgent::Codex(Codex::new())),
+            "opencode" => Ok(CodingAgent::Opencode(Opencode::new())),
             _ => {
                 // Try to load from AgentProfiles
                 if let Some(agent_profile) = AgentProfiles::get_cached().get_profile(profile) {
@@ -93,6 +92,9 @@ impl CodingAgent {
                         BaseCodingAgent::Codex => Ok(CodingAgent::Codex(
                             Codex::with_command_builder(agent_profile.command.clone()),
                         )),
+                        BaseCodingAgent::Opencode => Ok(CodingAgent::Opencode(
+                            Opencode::with_command_builder(agent_profile.command.clone()),
+                        )),
                     }
                 } else {
                     Err(ExecutorError::UnknownExecutorType(format!(
@@ -111,7 +113,7 @@ impl BaseCodingAgent {
     pub fn mcp_attribute_path(&self) -> Option<Vec<&'static str>> {
         match self {
             //ExecutorConfig::CharmOpencode => Some(vec!["mcpServers"]),
-            //ExecutorConfig::SstOpencode => Some(vec!["mcp"]),
+            Self::Opencode => Some(vec!["mcp"]),
             Self::ClaudeCode => Some(vec!["mcpServers"]),
             //ExecutorConfig::ClaudePlan => None, // Claude Plan shares Claude config
             Self::Amp => Some(vec!["amp", "mcpServers"]), // Nested path for Amp
@@ -136,15 +138,16 @@ impl BaseCodingAgent {
             //ExecutorConfig::ClaudeCodeRouter => {
             //dirs::home_dir().map(|home| home.join(".claude.json"))
             //}
-            //ExecutorConfig::SstOpencode => {
-            //#[cfg(unix)]
-            //{
-            //xdg::BaseDirectories::with_prefix("opencode").get_config_file("opencode.json")
-            //}
-            //    #[cfg(not(unix))]
-            //    {
-            //        dirs::config_dir().map(|config| config.join("opencode").join("opencode.json"))
-            //    }
+            Self::Opencode => {
+                #[cfg(unix)]
+                {
+                    xdg::BaseDirectories::with_prefix("opencode").get_config_file("opencode.json")
+                }
+                #[cfg(not(unix))]
+                {
+                    dirs::config_dir().map(|config| config.join("opencode").join("opencode.json"))
+                }
+            }
             //ExecutorConfig::Aider => None,
             Self::Codex => dirs::home_dir().map(|home| home.join(".codex").join("config.toml")),
             Self::Amp => dirs::config_dir().map(|config| config.join("amp").join("settings.json")),

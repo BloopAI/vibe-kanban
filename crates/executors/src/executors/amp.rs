@@ -118,7 +118,7 @@ impl StandardCodingAgentExecutor for Amp {
         // Process stdout logs (Amp's JSON output)
         let current_dir = current_dir.clone();
         tokio::spawn(async move {
-            let mut s = raw_logs_msg_store.history_plus_stream().await;
+            let mut s = raw_logs_msg_store.history_plus_stream();
             let mut buf = String::new();
             // 1 amp message id = multiple patch entry ids
             let mut seen_amp_message_ids: HashMap<usize, Vec<usize>> = HashMap::new();
