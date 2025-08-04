@@ -8,43 +8,31 @@ import { useProcessesLogs } from '@/hooks/useProcessesLogs';
 import LogEntryRow from '@/components/logs/LogEntryRow';
 import type { UnifiedLogEntry } from '@/types/logs';
 
-// Fixed height for simple log entries, variable for normalized conversation entries
-const FIXED_ROW_HEIGHT = 24;
-const ESTIMATED_ROW_HEIGHT = 100;
-
 function LogsTab() {
   const { attemptData } = useContext(TaskAttemptDataContext);
   const [autoScroll, setAutoScroll] = useState(true);
   const listRef = useRef<VariableSizeList>(null);
   const [containerRef, bounds] = useMeasure();
-  const rowHeightCache = useRef<Map<number, number>>(new Map());
 
   const { entries } = useProcessesLogs(
     attemptData.processes || [],
     true
   );
 
-  // Get item size for react-window
-  const getItemSize = useCallback((index: number): number => {
-    const cached = rowHeightCache.current.get(index);
-    if (cached) return cached;
+  const rowHeights = useRef<Record<number, number>>({});
 
-    const entry = entries[index];
-    if (!entry) return ESTIMATED_ROW_HEIGHT;
+  const getRowHeight = useCallback((index: number): number => {
+    const h = rowHeights.current[index];
+    return h !== undefined ? h : 100;
+  }, []);
 
-    // Raw logs have fixed height, normalized entries are variable
-    const height = entry.channel === 'normalized' ? ESTIMATED_ROW_HEIGHT : FIXED_ROW_HEIGHT;
-    rowHeightCache.current.set(index, height);
-    return height;
-  }, [entries]);
+  const setRowHeight = useCallback((index: number, size: number) => {
+    console.log("DEBUG0")
 
-  // Clear cache when entries change significantly
-  useEffect(() => {
-    rowHeightCache.current.clear();
-    if (listRef.current) {
-      listRef.current.resetAfterIndex(0);
-    }
-  }, [entries.length]);
+    listRef.current?.resetAfterIndex(0);
+    console.log("DEBUG1")
+    rowHeights.current = { ...rowHeights.current, [index]: size };
+  }, []);
 
   // Auto-scroll to bottom when new entries arrive
   useEffect(() => {
@@ -80,7 +68,7 @@ function LogsTab() {
           height={bounds.height}
           width={bounds.width}
           itemCount={entries.length}
-          itemSize={getItemSize}
+          itemSize={getRowHeight}
           onScroll={onScroll}
           itemData={entries}
         >
@@ -89,6 +77,7 @@ function LogsTab() {
               entry={data[index]}
               index={index}
               style={style}
+              setRowHeight={setRowHeight}
             />
           )}
         </VariableSizeList>

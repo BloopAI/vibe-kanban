@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import type { UnifiedLogEntry } from '@/types/logs';
 import type { NormalizedEntry } from 'shared/types';
 import StdoutEntry from './StdoutEntry';
@@ -10,11 +10,20 @@ interface LogEntryRowProps {
   entry: UnifiedLogEntry;
   index: number;
   style?: React.CSSProperties;
+  setRowHeight: (index: number, height: number) => void;
 }
 
-function LogEntryRow({ entry, index, style }: LogEntryRowProps) {
+function LogEntryRow({ entry, index, style, setRowHeight }: LogEntryRowProps) {
+  const rowRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (rowRef.current) {
+      setRowHeight(index, rowRef.current.clientHeight);
+    }
+  }, [rowRef]);
+
   const content = (
-    <div className="px-4 py-1">
+    <div className="px-4 py-1" ref={rowRef}>
       {(() => {
         switch (entry.channel) {
           case 'stdout':
