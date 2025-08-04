@@ -3,7 +3,6 @@ import type { UnifiedLogEntry } from '@/types/logs';
 import type { NormalizedEntry } from 'shared/types';
 import StdoutEntry from './StdoutEntry';
 import StderrEntry from './StderrEntry';
-import RawEntry from './RawEntry';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 
 interface LogEntryRowProps {
@@ -30,35 +29,21 @@ function LogEntryRow({ entry, index, style, setRowHeight }: LogEntryRowProps) {
             return (
               <StdoutEntry
                 content={entry.payload as string}
-                processName={entry.processName}
               />
             );
           case 'stderr':
             return (
               <StderrEntry
                 content={entry.payload as string}
-                processName={entry.processName}
-              />
-            );
-          case 'raw':
-            return (
-              <RawEntry
-                content={entry.payload as string}
-                processName={entry.processName}
               />
             );
           case 'normalized':
             return (
-              <div className="border-l-2 border-blue-200 pl-3">
-                <div className="text-xs text-gray-500 mb-1">
-                  [{entry.processName}]
-                </div>
-                <DisplayConversationEntry
-                  entry={entry.payload as NormalizedEntry}
-                  index={index}
-                  diffDeletable={false}
-                />
-              </div>
+              <DisplayConversationEntry
+                entry={entry.payload as NormalizedEntry}
+                index={index}
+                diffDeletable={false}
+              />
             );
           default:
             return (
