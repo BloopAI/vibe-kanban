@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, sync::Arc, sync::atomic::{AtomicUsize, Ordering}};
 
 use anyhow::Error as AnyhowError;
 use async_trait::async_trait;
@@ -15,6 +15,7 @@ use db::{
 use executors::{
     actions::ExecutorActions,
     executors::{ExecutorError, StandardCodingAgentExecutor},
+    logs::{NormalizedEntry, NormalizedEntryType, utils::patch::ConversationPatch},
 };
 use futures::{StreamExt, TryStreamExt, future};
 use sqlx::Error as SqlxError;
@@ -83,6 +84,7 @@ pub trait ContainerService {
     ) -> Option<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>> {
         if let Some(store) = self.get_msg_store_by_id(id).await {
             // First try in-memory store
+            let counter = Arc::new(AtomicUsize::new(0));
             return Some(
                 store
                     .history_plus_stream()
@@ -90,7 +92,35 @@ pub trait ContainerService {
                     .filter(|msg| {
                         future::ready(matches!(msg, Ok(LogMsg::Stdout(..) | LogMsg::Stderr(..))))
                     })
-                    .map_ok(|m| m.to_sse_event())
+                    .map_ok({
+                        let counter = counter.clone();
+                        move |m| {
+                            let index = counter.fetch_add(1, Ordering::SeqCst);
+                            match m {
+                                LogMsg::Stdout(content) => {
+                                    let entry = NormalizedEntry {
+                                        timestamp: None,
+                                        entry_type: NormalizedEntryType::SystemMessage,
+                                        content,
+                                        metadata: None,
+                                    };
+                                    let patch = ConversationPatch::add(index, entry);
+                                    LogMsg::JsonPatch(patch).to_sse_event()
+                                }
+                                LogMsg::Stderr(content) => {
+                                    let entry = NormalizedEntry {
+                                        timestamp: None,
+                                        entry_type: NormalizedEntryType::ErrorMessage,
+                                        content,
+                                        metadata: None,
+                                    };
+                                    let patch = ConversationPatch::add(index, entry);
+                                    LogMsg::JsonPatch(patch).to_sse_event()
+                                }
+                                _ => unreachable!("Filter should only pass Stdout/Stderr")
+                            }
+                        }
+                    })
                     .boxed(),
             );
         } else {
@@ -113,12 +143,38 @@ pub trait ContainerService {
                 }
             };
 
-            // Direct stream from parsed messages (no MsgStore overhead)
+            // Direct stream from parsed messages converted to JSON patches
             let stream = futures::stream::iter(
                 messages
                     .into_iter()
                     .filter(|m| matches!(m, LogMsg::Stdout(_) | LogMsg::Stderr(_)))
-                    .map(|m| Ok::<_, std::io::Error>(m.to_sse_event())),
+                    .enumerate()
+                    .map(|(index, m)| {
+                        let event = match m {
+                            LogMsg::Stdout(content) => {
+                                let entry = NormalizedEntry {
+                                    timestamp: None,
+                                    entry_type: NormalizedEntryType::SystemMessage,
+                                    content,
+                                    metadata: None,
+                                };
+                                let patch = ConversationPatch::add(index, entry);
+                                LogMsg::JsonPatch(patch).to_sse_event()
+                            }
+                            LogMsg::Stderr(content) => {
+                                let entry = NormalizedEntry {
+                                    timestamp: None,
+                                    entry_type: NormalizedEntryType::ErrorMessage,
+                                    content,
+                                    metadata: None,
+                                };
+                                let patch = ConversationPatch::add(index, entry);
+                                LogMsg::JsonPatch(patch).to_sse_event()
+                            }
+                            _ => unreachable!("Filter should only pass Stdout/Stderr")
+                        };
+                        Ok::<_, std::io::Error>(event)
+                    }),
             )
             .boxed();
 
