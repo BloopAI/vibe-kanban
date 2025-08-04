@@ -31,6 +31,7 @@ export const useEventSourceManager = ({
   const [error, setError] = useState<string | null>(null);
   const eventSourcesRef = useRef<Map<string, EventSource>>(new Map());
   const processDataRef = useRef<ProcessData>({});
+  const processedEntriesRef = useRef<Map<string, Set<number>>>(new Map());
 
   useEffect(() => {
     if (!enabled || !processes.length) {
@@ -41,6 +42,7 @@ export const useEventSourceManager = ({
       setIsConnected(false);
       setError(null);
       processDataRef.current = {};
+      processedEntriesRef.current.clear();
       return;
     }
 
@@ -52,6 +54,7 @@ export const useEventSourceManager = ({
         es.close();
         eventSourcesRef.current.delete(id);
         delete processDataRef.current[id];
+        processedEntriesRef.current.delete(id);
       }
     });
 
@@ -91,11 +94,34 @@ export const useEventSourceManager = ({
         try {
           const patches = JSON.parse(event.data);
           
-          // Apply JSON patches to this process's data
-          applyPatch(processDataRef.current[process.id], patches);
+          // Initialize tracking for this process if needed
+          if (!processedEntriesRef.current.has(process.id)) {
+            processedEntriesRef.current.set(process.id, new Set());
+          }
           
-          // Trigger re-render with updated data
-          setProcessData({ ...processDataRef.current });
+          const processedSet = processedEntriesRef.current.get(process.id)!;
+          
+          // Filter out patches we've already processed
+          const newPatches = patches.filter((patch: any) => {
+            // Extract entry index from path like "/entries/123"
+            const match = patch.path?.match(/^\/entries\/(\d+)$/);
+            if (match) {
+              const entryIndex = parseInt(match[1], 10);
+              if (processedSet.has(entryIndex)) {
+                return false; // Already processed
+              }
+              processedSet.add(entryIndex);
+            }
+            return true;
+          });
+          
+          // Only apply new patches
+          if (newPatches.length > 0) {
+            applyPatch(processDataRef.current[process.id], newPatches);
+            
+            // Trigger re-render with updated data
+            setProcessData({ ...processDataRef.current });
+          }
         } catch (err) {
           console.error('Failed to apply JSON patch:', err);
           setError('Failed to process log update');
