@@ -22,7 +22,6 @@ function LogEntryRow({ entry, index, style }: LogEntryRowProps) {
               <StdoutEntry
                 content={entry.payload as string}
                 processName={entry.processName}
-                timestamp={entry.ts}
               />
             );
           case 'stderr':
@@ -30,7 +29,6 @@ function LogEntryRow({ entry, index, style }: LogEntryRowProps) {
               <StderrEntry
                 content={entry.payload as string}
                 processName={entry.processName}
-                timestamp={entry.ts}
               />
             );
           case 'raw':
@@ -38,14 +36,13 @@ function LogEntryRow({ entry, index, style }: LogEntryRowProps) {
               <RawEntry
                 content={entry.payload as string}
                 processName={entry.processName}
-                timestamp={entry.ts}
               />
             );
           case 'normalized':
             return (
               <div className="border-l-2 border-blue-200 pl-3">
                 <div className="text-xs text-gray-500 mb-1">
-                  {new Date(entry.ts).toLocaleTimeString()} [{entry.processName}]
+                  [{entry.processName}]
                 </div>
                 <DisplayConversationEntry
                   entry={entry.payload as NormalizedEntry}
