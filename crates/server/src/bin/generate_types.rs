@@ -57,6 +57,10 @@ fn generate_types_content() -> String {
         services::services::events::EventPatch::decl(),
         services::services::events::EventPatchInner::decl(),
         services::services::events::RecordTypes::decl(),
+        executors::logs::NormalizedConversation::decl(),
+        executors::logs::NormalizedEntry::decl(),
+        executors::logs::NormalizedEntryType::decl(),
+        executors::logs::ActionType::decl(),
     ];
 
     let body = decls
