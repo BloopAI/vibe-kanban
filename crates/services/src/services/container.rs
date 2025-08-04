@@ -13,7 +13,9 @@ use axum::response::sse::Event;
 use db::{
     DBService,
     models::{
-        execution_process::{CreateExecutionProcess, ExecutionProcess, ExecutionProcessRunReason},
+        execution_process::{
+            CreateExecutionProcess, ExecutionContext, ExecutionProcess, ExecutionProcessRunReason,
+        },
         execution_process_logs::ExecutionProcessLogs,
         executor_session::{CreateExecutorSession, ExecutorSession},
         task_attempt::TaskAttempt,
@@ -416,5 +418,33 @@ pub trait ContainerService {
 
         self.spawn_stream_raw_logs_to_db(&execution_process.id);
         Ok(execution_process)
+    }
+
+    async fn start_after_setup(&self, ctx: &ExecutionContext) -> Result<(), ContainerError> {
+        let next_action = match ctx.execution_process.executor_actions() {
+            ExecutorActions::ScriptRequest(request) => {
+                request
+                    .next_action
+                    .as_ref()
+                    .ok_or(ContainerError::Other(anyhow::anyhow!(
+                        "No next action configured for SetupScript"
+                    )))?
+            }
+            _ => {
+                return Err(ContainerError::Other(anyhow::anyhow!(
+                    "Excepted ScriptRequest for SetupScript execution"
+                )));
+            }
+        };
+
+        self.start_execution(
+            &ctx.task_attempt,
+            next_action,
+            &ExecutionProcessRunReason::CodingAgent,
+        )
+        .await?;
+
+        tracing::debug!("Started next action after setup: {:?}", next_action);
+        Ok(())
     }
 }

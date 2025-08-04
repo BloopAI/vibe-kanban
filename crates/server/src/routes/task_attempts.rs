@@ -295,6 +295,13 @@ pub async fn create_task_attempt(
             script: setup_script,
             language: ScriptRequestLanguage::Bash,
             context: ScriptContext::SetupScript,
+            // once the setup script is done, run the initial coding agent request
+            next_action: Some(Box::new(ExecutorActions::CodingAgentInitialRequest(
+                CodingAgentInitialRequest {
+                    prompt: task.to_prompt(),
+                    executor: executor.parse()?,
+                },
+            ))),
         });
 
         deployment
@@ -976,6 +983,7 @@ pub async fn start_dev_server(
             script: dev_server,
             language: ScriptRequestLanguage::Bash,
             context: ScriptContext::DevServer,
+            next_action: None,
         });
 
         deployment

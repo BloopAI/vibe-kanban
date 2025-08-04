@@ -1,13 +1,16 @@
-use std::{path::PathBuf, process::Stdio};
+use std::path::PathBuf;
 
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use serde::{Deserialize, Serialize};
-use tokio::{io::AsyncWriteExt, process::Command};
+use tokio::process::Command;
 use ts_rs::TS;
 use utils::shell::get_shell_command;
 
-use crate::{actions::ExecutorAction, executors::ExecutorError};
+use crate::{
+    actions::{ExecutorAction, ExecutorActions},
+    executors::ExecutorError,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 #[ts(export)]
@@ -29,6 +32,8 @@ pub struct ScriptRequest {
     pub script: String,
     pub language: ScriptRequestLanguage,
     pub context: ScriptContext,
+    /// Action to execute once the script has completed
+    pub next_action: Option<Box<ExecutorActions>>,
 }
 
 #[async_trait]

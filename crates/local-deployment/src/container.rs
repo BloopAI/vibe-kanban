@@ -8,7 +8,7 @@ use command_group::AsyncGroupChild;
 use db::{
     DBService,
     models::{
-        execution_process::{ExecutionProcess, ExecutionProcessStatus},
+        execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
         task_attempt::TaskAttempt,
     },
 };
@@ -240,6 +240,7 @@ impl LocalContainerService {
         let msg_stores = self.msg_stores.clone();
         let db = self.db.clone();
         let config = self.config.clone();
+        let container = self.clone();
 
         tokio::spawn(async move {
             loop {
@@ -275,12 +276,40 @@ impl LocalContainerService {
                         Err(_) => (None, ExecutionProcessStatus::Failed),
                     };
 
-                    if let Err(e) =
-                        ExecutionProcess::update_completion(&db.pool, exec_id, status, exit_code)
-                            .await
+                    if let Err(e) = ExecutionProcess::update_completion(
+                        &db.pool,
+                        exec_id,
+                        status.clone(),
+                        exit_code,
+                    )
+                    .await
                     {
                         tracing::error!("Failed to update execution process completion: {}", e);
                     }
+
+                    if let Ok(ctx) = ExecutionProcess::load_context(&db.pool, exec_id).await {
+                        if matches!(status, ExecutionProcessStatus::Completed)
+                            && exit_code == Some(0)
+                        {
+                            if matches!(
+                                ctx.execution_process.run_reason,
+                                ExecutionProcessRunReason::SetupScript
+                            ) {
+                                if let Err(e) = container.start_after_setup(&ctx).await {
+                                    tracing::error!("Failed to start after setup script: {}", e);
+                                } else {
+                                    tracing::debug!(
+                                        "Successfully started next action after setup script: {}",
+                                        ctx.task_attempt.id
+                                    );
+                                }
+                            }
+                        }
+
+                        let notify_cfg = config.read().await.notifications.clone();
+                        NotificationService::notify_execution_halted(notify_cfg, &ctx).await;
+                    }
+
                     // Cleanup msg store
                     if let Some(msg_arc) = msg_stores.write().await.remove(&exec_id) {
                         msg_arc.push_finished();
@@ -297,16 +326,6 @@ impl LocalContainerService {
 
                     // Cleanup child handle
                     child_store.write().await.remove(&exec_id);
-                    match ExecutionProcess::load_context(&db.pool, exec_id).await {
-                        Ok(ctx) => {
-                            let notify_cfg = config.read().await.notifications.clone();
-                            NotificationService::notify_execution_halted(notify_cfg, &ctx).await
-                        }
-                        Err(e) => {
-                            tracing::error!("Failed to get execution context: {}", e);
-                        }
-                    }
-
                     break;
                 }
 
