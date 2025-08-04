@@ -483,6 +483,11 @@ impl ContainerService for LocalContainerService {
         )
         .await?;
 
+        tracing::debug!(
+            "Execution process {} stopped successfully",
+            execution_process.id
+        );
+
         Ok(())
     }
 }

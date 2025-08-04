@@ -231,7 +231,6 @@ pub async fn get_task_attempts(
 ) -> Result<ResponseJson<ApiResponse<Vec<TaskAttempt>>>, ApiError> {
     let pool = &deployment.db().pool;
     let attempts = TaskAttempt::fetch_all(pool, query.task_id).await?;
-
     Ok(ResponseJson(ApiResponse::success(attempts)))
 }
 

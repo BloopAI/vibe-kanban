@@ -5,7 +5,7 @@ use axum::{
         sse::{Event, KeepAlive},
         Json as ResponseJson, Sse,
     },
-    routing::get,
+    routing::{get, post},
     BoxError, Extension, Router,
 };
 use db::models::execution_process::ExecutionProcess;
@@ -71,9 +71,28 @@ pub async fn stream_normalized_logs(
     Ok(Sse::new(stream.map_err(|e| -> BoxError { e.into() })).keep_alive(KeepAlive::default()))
 }
 
+pub async fn stop_execution_process(
+    State(deployment): State<DeploymentImpl>,
+    Path(exec_id): Path<Uuid>,
+) -> Result<(), axum::http::StatusCode> {
+    let execution_process = ExecutionProcess::find_by_id(&deployment.db().pool, exec_id)
+        .await
+        .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?
+        .ok_or(axum::http::StatusCode::NOT_FOUND)?;
+
+    deployment
+        .container()
+        .stop_execution(&execution_process)
+        .await
+        .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(())
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
         .route("/", get(get_execution_process_by_id))
+        .route("/stop", post(stop_execution_process))
         .route("/raw-logs", get(stream_raw_logs))
         .route("/normalized-logs", get(stream_normalized_logs))
         .layer(from_fn_with_state(
