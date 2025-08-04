@@ -247,6 +247,7 @@ impl ClaudeLogProcessor {
             let mut stream = msg_store.history_plus_stream().await;
             let mut buffer = String::new();
             let worktree_path = current_dir_clone.to_string_lossy().to_string();
+            let mut session_id_extracted = false;
 
             while let Some(Ok(msg)) = stream.next().await {
                 let chunk = match msg {
@@ -272,8 +273,11 @@ impl ClaudeLogProcessor {
                     match serde_json::from_str::<ClaudeJson>(trimmed) {
                         Ok(claude_json) => {
                             // Extract session ID if present
-                            if let Some(session_id) = Self::extract_session_id(&claude_json) {
-                                msg_store.push_session_id(session_id);
+                            if !session_id_extracted {
+                                if let Some(session_id) = Self::extract_session_id(&claude_json) {
+                                    msg_store.push_session_id(session_id);
+                                    session_id_extracted = true;
+                                }
                             }
 
                             // Convert to normalized entries and create patches
