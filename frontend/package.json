@@ -37,6 +37,7 @@
     "react-dom": "^18.2.0",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^6.8.1",
+    "react-use-measure": "^2.1.7",
     "react-window": "^1.8.11",
     "rfc6902": "^5.1.2",
     "tailwind-merge": "^2.2.0",

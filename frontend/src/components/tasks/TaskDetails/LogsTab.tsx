@@ -1,7 +1,8 @@
 
 import { useContext, useState, useRef, useEffect, useCallback } from 'react';
 import { VariableSizeList } from 'react-window';
-import { Cog, Wifi, WifiOff } from 'lucide-react';
+import { Cog } from 'lucide-react';
+import useMeasure from 'react-use-measure';
 import { TaskAttemptDataContext } from '@/components/context/taskDetailsContext.ts';
 import { useUnifiedLogs } from '@/hooks/useUnifiedLogs';
 import LogEntryRow from '@/components/logs/LogEntryRow';
@@ -15,10 +16,10 @@ function LogsTab() {
   const { attemptData } = useContext(TaskAttemptDataContext);
   const [autoScroll, setAutoScroll] = useState(true);
   const listRef = useRef<VariableSizeList>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerRef, bounds] = useMeasure();
   const rowHeightCache = useRef<Map<number, number>>(new Map());
 
-  const { entries, isConnected, errors } = useUnifiedLogs(
+  const { entries } = useUnifiedLogs(
     attemptData.processes || [],
     true
   );
@@ -54,12 +55,11 @@ function LogsTab() {
 
   // Handle scroll events to detect user scrolling
   const onScroll = useCallback(({ scrollOffset, scrollUpdateWasRequested }: any) => {
-    if (!scrollUpdateWasRequested && containerRef.current) {
-      const container = containerRef.current;
-      const atBottom = container.scrollHeight - (scrollOffset + container.clientHeight) < 50;
+    if (!scrollUpdateWasRequested && bounds.height) {
+      const atBottom = bounds.height - (scrollOffset + bounds.height) < 50;
       setAutoScroll(atBottom);
     }
-  }, []);
+  }, [bounds.height]);
 
   if (!attemptData.processes || attemptData.processes.length === 0) {
     return (
@@ -72,71 +72,13 @@ function LogsTab() {
     );
   }
 
-  if (entries.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-muted-foreground">
-        <div className="text-center">
-          <div className="flex items-center justify-center mb-4">
-            {isConnected ? (
-              <Wifi className="h-12 w-12 opacity-50" />
-            ) : (
-              <WifiOff className="h-12 w-12 opacity-50" />
-            )}
-          </div>
-          <p>
-            {isConnected ? 'Waiting for log entries...' : 'Connecting to log streams...'}
-          </p>
-          {errors.size > 0 && (
-            <div className="mt-4 text-red-500">
-              <p>Connection errors:</p>
-              <ul className="text-sm mt-2">
-                {Array.from(errors.entries()).map(([processId, error]) => (
-                  <li key={processId}>Process {processId}: {error}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex-1 flex flex-col">
-      {/* Connection status bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b text-sm">
-        <div className="flex items-center gap-2">
-          {isConnected ? (
-            <>
-              <Wifi className="h-4 w-4 text-green-500" />
-              <span className="text-green-700">Connected to {attemptData.processes.length} processes</span>
-            </>
-          ) : (
-            <>
-              <WifiOff className="h-4 w-4 text-red-500" />
-              <span className="text-red-700">Disconnected</span>
-            </>
-          )}
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-gray-600">{entries.length} entries</span>
-          {!autoScroll && (
-            <button
-              onClick={() => setAutoScroll(true)}
-              className="text-blue-600 hover:text-blue-800"
-            >
-              Scroll to bottom
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Virtualized log entries */}
-      <div ref={containerRef} className="flex-1">
+    <div ref={containerRef} className="w-full h-full">
+      {bounds.height && bounds.width &&
         <VariableSizeList
           ref={listRef}
-          height={containerRef.current?.clientHeight || 400}
-          width={containerRef.current?.clientWidth || 800}
+          height={bounds.height}
+          width={bounds.width}
           itemCount={entries.length}
           itemSize={getItemSize}
           onScroll={onScroll}
@@ -150,7 +92,7 @@ function LogsTab() {
             />
           )}
         </VariableSizeList>
-      </div>
+      }
     </div>
   );
 }
