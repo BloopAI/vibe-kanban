@@ -5,7 +5,8 @@ use axum::{
     response::Response,
 };
 use db::models::{
-    project::Project, task::Task, task_attempt::TaskAttempt, task_template::TaskTemplate,
+    execution_process::ExecutionProcess, project::Project, task::Task, task_attempt::TaskAttempt,
+    task_template::TaskTemplate,
 };
 use deployment::Deployment;
 use uuid::Uuid;
@@ -92,35 +93,32 @@ pub async fn load_task_attempt_middleware(
     Ok(next.run(request).await)
 }
 
-// TODO: fix
-// Simple middleware that loads and injects ExecutionProcess based on the process_id path parameter
-// without any additional validation
-// pub async fn load_execution_process_simple_middleware(
-//     State(deployment): State<DeploymentImpl>,
-//     Path(process_id): Path<Uuid>,
-//     mut request: axum::extract::Request,
-//     next: Next,
-// ) -> Result<Response, StatusCode> {
-//     // Load the execution process from the database
-//     let execution_process = match ExecutionProcess::find_by_id(&deployment.db().pool, process_id).await
-//     {
-//         Ok(Some(process)) => process,
-//         Ok(None) => {
-//             tracing::warn!("ExecutionProcess {} not found", process_id);
-//             return Err(StatusCode::NOT_FOUND);
-//         }
-//         Err(e) => {
-//             tracing::error!("Failed to fetch execution process {}: {}", process_id, e);
-//             return Err(StatusCode::INTERNAL_SERVER_ERROR);
-//         }
-//     };
+pub async fn load_execution_process_middleware(
+    State(deployment): State<DeploymentImpl>,
+    Path(process_id): Path<Uuid>,
+    mut request: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    // Load the execution process from the database
+    let execution_process = match ExecutionProcess::find_by_id(&deployment.db().pool, process_id).await
+    {
+        Ok(Some(process)) => process,
+        Ok(None) => {
+            tracing::warn!("ExecutionProcess {} not found", process_id);
+            return Err(StatusCode::NOT_FOUND);
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch execution process {}: {}", process_id, e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
 
-//     // Inject the execution process into the request
-//     request.extensions_mut().insert(execution_process);
+    // Inject the execution process into the request
+    request.extensions_mut().insert(execution_process);
 
-//     // Continue to the next middleware/handler
-//     Ok(next.run(request).await)
-// }
+    // Continue to the next middleware/handler
+    Ok(next.run(request).await)
+}
 
 // TODO: fix
 // Middleware that loads and injects Project, Task, TaskAttempt, and ExecutionProcess

@@ -1,11 +1,12 @@
 use axum::{
     extract::{Path, Query, State},
+    middleware::from_fn_with_state,
     response::{
         sse::{Event, KeepAlive},
         Json as ResponseJson, Sse,
     },
     routing::get,
-    BoxError, Router,
+    BoxError, Extension, Router,
 };
 use db::models::execution_process::ExecutionProcess;
 use deployment::Deployment;
@@ -15,7 +16,7 @@ use services::services::container::ContainerService;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{error::ApiError, DeploymentImpl};
+use crate::{error::ApiError, middleware::load_execution_process_middleware, DeploymentImpl};
 
 #[derive(Debug, Deserialize)]
 pub struct ExecutionProcessQuery {
@@ -31,6 +32,13 @@ pub async fn get_execution_processes(
         ExecutionProcess::find_by_task_attempt_id(pool, query.task_attempt_id).await?;
 
     Ok(ResponseJson(ApiResponse::success(execution_processes)))
+}
+
+pub async fn get_execution_process_by_id(
+    Extension(execution_process): Extension<ExecutionProcess>,
+    State(_deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, ApiError> {
+    Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
 
 pub async fn stream_raw_logs(
@@ -65,8 +73,13 @@ pub async fn stream_normalized_logs(
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
+        .route("/", get(get_execution_process_by_id))
         .route("/raw-logs", get(stream_raw_logs))
-        .route("/normalized-logs", get(stream_normalized_logs));
+        .route("/normalized-logs", get(stream_normalized_logs))
+        .layer(from_fn_with_state(
+            deployment.clone(),
+            load_execution_process_middleware,
+        ));
 
     let task_attempts_router = Router::new()
         .route("/", get(get_execution_processes))
