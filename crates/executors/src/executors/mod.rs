@@ -10,7 +10,10 @@ use thiserror::Error;
 use ts_rs::TS;
 use utils::msg_store::MsgStore;
 
-use crate::executors::{amp::Amp, claude::ClaudeCode, gemini::Gemini};
+use crate::{
+    command_builder::ProfileManager,
+    executors::{amp::Amp, claude::ClaudeCode, gemini::Gemini},
+};
 
 pub mod amp;
 pub mod claude;
@@ -57,6 +60,42 @@ pub enum CodingAgentExecutors {
     // SstOpencode,
     // Aider,
     // Codex,
+}
+
+impl CodingAgentExecutors {
+    /// Create an executor from a profile string
+    /// Handles both reserved profiles ("ClaudeCode", "Amp", "Gemini") and custom profiles
+    pub fn from_profile_str(profile: &str) -> Result<Self, ExecutorError> {
+        match profile {
+            "ClaudeCode" => Ok(CodingAgentExecutors::ClaudeCode(ClaudeCode::new())),
+            "Amp" => Ok(CodingAgentExecutors::Amp(Amp::new())),
+            "Gemini" => Ok(CodingAgentExecutors::Gemini(Gemini::new())),
+            _ => {
+                // Try to load from ProfileManager
+                if let Some(agent_profile) = ProfileManager::get_profile(profile) {
+                    match agent_profile.agent {
+                        CodingAgentExecutorType::ClaudeCode => Ok(
+                            CodingAgentExecutors::ClaudeCode(ClaudeCode::with_command_builder(
+                                profile.to_string(),
+                                agent_profile.command.clone(),
+                            )),
+                        ),
+                        CodingAgentExecutorType::Amp => Ok(CodingAgentExecutors::Amp(
+                            Amp::with_command_builder(agent_profile.command.clone()),
+                        )),
+                        CodingAgentExecutorType::Gemini => Ok(CodingAgentExecutors::Gemini(
+                            Gemini::with_command_builder(agent_profile.command.clone()),
+                        )),
+                    }
+                } else {
+                    Err(ExecutorError::UnknownExecutorType(format!(
+                        "Unknown profile: {}",
+                        profile
+                    )))
+                }
+            }
+        }
+    }
 }
 
 impl CodingAgentExecutorType {

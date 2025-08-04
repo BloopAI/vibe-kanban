@@ -157,9 +157,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                 if let Ok(Some(task_attempt)) =
                     TaskAttempt::find_by_id(&self.db().pool, process.task_attempt_id).await
                 {
-                    if let Ok(Some(task)) =
-                        Task::find_by_id(&self.db().pool, task_attempt.task_id).await
-                    {
+                    if let Ok(Some(task)) = task_attempt.parent_task(&self.db().pool).await {
                         if let Err(e) =
                             Task::update_status(&self.db().pool, task.id, TaskStatus::InReview)
                                 .await

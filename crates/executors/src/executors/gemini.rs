@@ -9,6 +9,7 @@ use ts_rs::TS;
 use utils::{msg_store::MsgStore, shell::get_shell_command};
 
 use crate::{
+    command_builder::{CommandBuilder, DefaultCommandBuilders},
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
         NormalizedEntry, NormalizedEntryType, plain_text_processor::PlainTextLogProcessor,
@@ -17,9 +18,17 @@ use crate::{
 };
 
 /// An executor that uses Gemini to process tasks
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 #[ts(export)]
-pub struct Gemini {}
+pub struct Gemini {
+    command_builder: CommandBuilder,
+}
+
+impl Default for Gemini {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Gemini {
@@ -29,7 +38,7 @@ impl StandardCodingAgentExecutor for Gemini {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let gemini_command = "npx @google/gemini-cli@latest --yolo";
+        let gemini_command = self.command_builder.build_initial();
 
         let mut command = Command::new(shell_cmd);
 
@@ -146,5 +155,19 @@ impl Gemini {
         }
 
         result
+    }
+}
+
+impl Gemini {
+    /// Create a new Gemini executor with default settings
+    pub fn new() -> Self {
+        Self {
+            command_builder: DefaultCommandBuilders::gemini(),
+        }
+    }
+
+    /// Create a new Gemini executor with custom command builder
+    pub fn with_command_builder(command_builder: CommandBuilder) -> Self {
+        Self { command_builder }
     }
 }

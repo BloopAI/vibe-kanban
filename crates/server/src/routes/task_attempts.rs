@@ -299,7 +299,7 @@ pub async fn create_task_attempt(
             next_action: Some(Box::new(ExecutorActions::CodingAgentInitialRequest(
                 CodingAgentInitialRequest {
                     prompt: task.to_prompt(),
-                    executor: executor.parse()?,
+                    profile: executor,
                 },
             ))),
         });
@@ -316,7 +316,7 @@ pub async fn create_task_attempt(
         let executor_action =
             ExecutorActions::CodingAgentInitialRequest(CodingAgentInitialRequest {
                 prompt: task.to_prompt(),
-                executor: executor.parse()?,
+                profile: executor,
             });
 
         deployment
@@ -372,10 +372,10 @@ pub async fn follow_up(
         "This executor session doesn't have a session_id".to_string(),
     )))?;
 
-    let executor = match initial_execution_process.executor_actions() {
-        ExecutorActions::CodingAgentInitialRequest(request) => Ok(request.executor.clone()),
+    let profile = match initial_execution_process.executor_actions() {
+        ExecutorActions::CodingAgentInitialRequest(request) => Ok(request.profile.clone()),
         _ => Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-            "Couldn't find executor".to_string(),
+            "Couldn't find profile from initial request".to_string(),
         ))),
     }?;
 
@@ -383,7 +383,7 @@ pub async fn follow_up(
         ExecutorActions::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
             prompt: payload.prompt,
             session_id,
-            executor,
+            profile,
         });
 
     let execution_process = deployment

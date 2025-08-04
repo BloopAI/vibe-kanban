@@ -14,12 +14,13 @@ use crate::{
 #[ts(export)]
 pub struct CodingAgentInitialRequest {
     pub prompt: String,
-    pub executor: CodingAgentExecutors,
+    pub profile: String,
 }
 
 #[async_trait]
 impl ExecutorAction for CodingAgentInitialRequest {
     async fn spawn(&self, current_dir: &PathBuf) -> Result<AsyncGroupChild, ExecutorError> {
-        self.executor.spawn(current_dir, &self.prompt).await
+        let executor = CodingAgentExecutors::from_profile_str(&self.profile)?;
+        executor.spawn(current_dir, &self.prompt).await
     }
 }

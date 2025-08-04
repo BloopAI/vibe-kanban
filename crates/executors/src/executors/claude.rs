@@ -11,6 +11,7 @@ use utils::{
 };
 
 use crate::{
+    command_builder::{CommandBuilder, DefaultCommandBuilders},
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
         ActionType, NormalizedEntry, NormalizedEntryType,
@@ -19,78 +20,12 @@ use crate::{
     },
 };
 
-/// Command builder for Claude CLI with configurable slots
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ClaudeCommandBuilder {
-    /// Base executable (e.g., "npx -y @anthropic-ai/claude-code@latest", "claude", etc.)
-    pub executable: String,
-    /// Permission mode (e.g., "--dangerously-skip-permissions", "--permission-mode=plan")
-    pub permissions: Option<String>,
-    /// Additional custom parameters
-    pub extra_params: Vec<String>,
-}
-
-impl Default for ClaudeCommandBuilder {
-    fn default() -> Self {
-        Self {
-            executable: "npx -y @anthropic-ai/claude-code@latest".to_string(),
-            permissions: Some("--dangerously-skip-permissions".to_string()),
-            extra_params: vec![],
-        }
-    }
-}
-
-impl ClaudeCommandBuilder {
-    /// Create a new builder with default values
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Set the executable
-    pub fn executable<S: Into<String>>(mut self, executable: S) -> Self {
-        self.executable = executable.into();
-        self
-    }
-
-    /// Set permission mode
-    pub fn permissions<S: Into<String>>(mut self, permissions: Option<S>) -> Self {
-        self.permissions = permissions.map(|p| p.into());
-        self
-    }
-
-    /// Add extra parameters
-    pub fn extra_params<I>(mut self, params: I) -> Self
-    where
-        I: IntoIterator,
-        I::Item: Into<String>,
-    {
-        self.extra_params = params.into_iter().map(|p| p.into()).collect();
-        self
-    }
-
-    /// Build the base command
-    pub fn build(&self) -> String {
-        let mut parts = vec![self.executable.clone(), "-p".to_string()];
-
-        if let Some(ref permissions) = self.permissions {
-            parts.push(permissions.clone());
-        }
-
-        // Always add verbose and output format
-        parts.push("--verbose".to_string());
-        parts.push("--output-format=stream-json".to_string());
-
-        parts.extend(self.extra_params.clone());
-        parts.join(" ")
-    }
-}
-
 /// An executor that uses Claude CLI to process tasks
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 #[ts(export)]
 pub struct ClaudeCode {
     executor_type: String,
-    base_command: String,
+    command_builder: CommandBuilder,
 }
 
 impl Default for ClaudeCode {
@@ -107,7 +42,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let claude_command = self.base_command.clone();
+        let claude_command = self.command_builder.build_initial();
 
         let mut command = Command::new(shell_cmd);
         command
@@ -137,8 +72,10 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        // Append --resume {session_id} to the base command
-        let claude_command = format!("{} --resume {}", self.base_command, session_id);
+        // Build follow-up command with --resume {session_id}
+        let claude_command = self
+            .command_builder
+            .build_follow_up(&["--resume".to_string(), session_id.to_string()]);
 
         let mut command = Command::new(shell_cmd);
         command
@@ -180,29 +117,30 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 impl ClaudeCode {
     /// Create a new Claude executor with default settings
     pub fn new() -> Self {
-        let builder = ClaudeCommandBuilder::default();
         Self {
             executor_type: "Claude Code".to_string(),
-            base_command: builder.build(),
+            command_builder: DefaultCommandBuilders::claude_code(),
         }
     }
 
     /// Create a new Claude executor in plan mode with watchkill script
     pub fn new_plan_mode() -> Self {
-        let builder = ClaudeCommandBuilder::new().permissions(Some("--permission-mode=plan"));
-        let base_command = builder.build();
-        let command = create_watchkill_script(&base_command);
+        let command_builder = DefaultCommandBuilders::claude_code_plan();
+        let base_command = command_builder.build_initial();
+        // Note: We'll need to update this to handle watchkill script properly
+        // For now, we'll create a custom command builder
+        let watchkill_command = create_watchkill_script(&base_command);
         Self {
             executor_type: "ClaudePlan".to_string(),
-            base_command: command,
+            command_builder: CommandBuilder::new(watchkill_command),
         }
     }
 
-    /// Create a new Claude executor with custom base command
-    pub fn with_command(executor_type: String, base_command: String) -> Self {
+    /// Create a new Claude executor with custom command builder
+    pub fn with_command_builder(executor_type: String, command_builder: CommandBuilder) -> Self {
         Self {
             executor_type,
-            base_command,
+            command_builder,
         }
     }
 }
@@ -1068,39 +1006,21 @@ mod tests {
     }
 
     #[test]
-    fn test_command_builder() {
-        // Test default builder produces correct command with crucial -p parameter
-        let builder = ClaudeCommandBuilder::default();
-        let command = builder.build();
-        assert_eq!(
-            command,
-            "npx -y @anthropic-ai/claude-code@latest -p --dangerously-skip-permissions --verbose --output-format=stream-json"
-        );
-
-        // Verify -p parameter is always included
+    fn test_claude_executor_command_building() {
+        // Test default executor produces correct command
+        let executor = ClaudeCode::new();
+        let command = executor.command_builder.build_initial();
+        assert!(command.contains("npx -y @anthropic-ai/claude-code@latest"));
         assert!(command.contains("-p"));
+        assert!(command.contains("--dangerously-skip-permissions"));
         assert!(command.contains("--verbose"));
         assert!(command.contains("--output-format=stream-json"));
-        assert!(command.contains("--dangerously-skip-permissions"));
 
-        // Test plan mode builder produces correct command
-        let plan_builder = ClaudeCommandBuilder::new().permissions(Some("--permission-mode=plan"));
-        let plan_command = plan_builder.build();
-        assert_eq!(
-            plan_command,
-            "npx -y @anthropic-ai/claude-code@latest -p --permission-mode=plan --verbose --output-format=stream-json"
-        );
-        assert!(plan_command.contains("-p"));
-
-        // Test custom executable
-        let custom_builder = ClaudeCommandBuilder::new()
-            .executable("claude")
-            .permissions(Some("--custom-permission"));
-        let custom_command = custom_builder.build();
-        assert_eq!(
-            custom_command,
-            "claude -p --custom-permission --verbose --output-format=stream-json"
-        );
-        assert!(custom_command.contains("-p"));
+        // Test follow-up command
+        let follow_up = executor
+            .command_builder
+            .build_follow_up(&["--resume".to_string(), "test-session-123".to_string()]);
+        assert!(follow_up.contains("--resume test-session-123"));
+        assert!(follow_up.contains("-p")); // Still contains base params
     }
 }

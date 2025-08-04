@@ -28,6 +28,10 @@ pub fn config_path() -> std::path::PathBuf {
     asset_dir().join("config.json")
 }
 
+pub fn profiles_path() -> std::path::PathBuf {
+    asset_dir().join("profiles.json")
+}
+
 #[derive(RustEmbed)]
 #[folder = "../../assets/sounds"]
 pub struct SoundAssets;

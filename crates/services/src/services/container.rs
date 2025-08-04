@@ -23,7 +23,7 @@ use db::{
 };
 use executors::{
     actions::ExecutorActions,
-    executors::{ExecutorError, StandardCodingAgentExecutor},
+    executors::{CodingAgentExecutors, ExecutorError, StandardCodingAgentExecutor},
     logs::{NormalizedEntry, NormalizedEntryType, utils::patch::ConversationPatch},
 };
 use futures::{StreamExt, TryStreamExt, future};
@@ -254,14 +254,24 @@ pub trait ContainerService {
             // Spawn normalizer on populated store
             match process.executor_actions() {
                 ExecutorActions::CodingAgentInitialRequest(request) => {
-                    request
-                        .executor
-                        .normalize_logs(temp_store.clone(), &current_dir);
+                    if let Ok(executor) = CodingAgentExecutors::from_profile_str(&request.profile) {
+                        executor.normalize_logs(temp_store.clone(), &current_dir);
+                    } else {
+                        tracing::error!(
+                            "Failed to resolve profile '{}' for normalization",
+                            request.profile
+                        );
+                    }
                 }
                 ExecutorActions::CodingAgentFollowUpRequest(request) => {
-                    request
-                        .executor
-                        .normalize_logs(temp_store.clone(), &current_dir);
+                    if let Ok(executor) = CodingAgentExecutors::from_profile_str(&request.profile) {
+                        executor.normalize_logs(temp_store.clone(), &current_dir);
+                    } else {
+                        tracing::error!(
+                            "Failed to resolve profile '{}' for normalization",
+                            request.profile
+                        );
+                    }
                 }
                 _ => {
                     tracing::debug!(
@@ -401,16 +411,32 @@ pub trait ContainerService {
         match executor_action {
             ExecutorActions::CodingAgentInitialRequest(request) => {
                 if let Some(msg_store) = self.get_msg_store_by_id(&execution_process.id).await {
-                    request
-                        .executor
-                        .normalize_logs(msg_store, &self.task_attempt_to_current_dir(task_attempt));
+                    if let Ok(executor) = CodingAgentExecutors::from_profile_str(&request.profile) {
+                        executor.normalize_logs(
+                            msg_store,
+                            &self.task_attempt_to_current_dir(task_attempt),
+                        );
+                    } else {
+                        tracing::error!(
+                            "Failed to resolve profile '{}' for normalization",
+                            request.profile
+                        );
+                    }
                 }
             }
             ExecutorActions::CodingAgentFollowUpRequest(request) => {
                 if let Some(msg_store) = self.get_msg_store_by_id(&execution_process.id).await {
-                    request
-                        .executor
-                        .normalize_logs(msg_store, &self.task_attempt_to_current_dir(task_attempt));
+                    if let Ok(executor) = CodingAgentExecutors::from_profile_str(&request.profile) {
+                        executor.normalize_logs(
+                            msg_store,
+                            &self.task_attempt_to_current_dir(task_attempt),
+                        );
+                    } else {
+                        tracing::error!(
+                            "Failed to resolve profile '{}' for normalization",
+                            request.profile
+                        );
+                    }
                 }
             }
             _ => {}

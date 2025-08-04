@@ -16,13 +16,14 @@ use crate::{
 pub struct CodingAgentFollowUpRequest {
     pub prompt: String,
     pub session_id: String,
-    pub executor: CodingAgentExecutors,
+    pub profile: String,
 }
 
 #[async_trait]
 impl ExecutorAction for CodingAgentFollowUpRequest {
     async fn spawn(&self, current_dir: &PathBuf) -> Result<AsyncGroupChild, ExecutorError> {
-        self.executor
+        let executor = CodingAgentExecutors::from_profile_str(&self.profile)?;
+        executor
             .spawn_follow_up(current_dir, &self.prompt, &self.session_id)
             .await
     }

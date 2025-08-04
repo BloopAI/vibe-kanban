@@ -21,6 +21,7 @@ use ts_rs::TS;
 use utils::{log_msg::LogMsg, msg_store::MsgStore, shell::get_shell_command};
 
 use crate::{
+    command_builder::{CommandBuilder, DefaultCommandBuilders},
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
         NormalizedEntry, NormalizedEntryType,
@@ -30,9 +31,17 @@ use crate::{
 };
 
 /// An executor that uses Amp to process tasks
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 #[ts(export)]
-pub struct Amp {}
+pub struct Amp {
+    command_builder: CommandBuilder,
+}
+
+impl Default for Amp {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Amp {
@@ -42,8 +51,7 @@ impl StandardCodingAgentExecutor for Amp {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        // --format=jsonl is deprecated in latest versions of Amp CLI
-        let amp_command = "npx @sourcegraph/amp@0.0.1752148945-gd8844f --format=jsonl";
+        let amp_command = self.command_builder.build_initial();
 
         let mut command = Command::new(shell_cmd);
         command
@@ -74,10 +82,11 @@ impl StandardCodingAgentExecutor for Amp {
     ) -> Result<AsyncGroupChild, ExecutorError> {
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
-        let amp_command = format!(
-            "npx @sourcegraph/amp@0.0.1752148945-gd8844f threads continue {} --format=jsonl",
-            session_id
-        );
+        let amp_command = self.command_builder.build_follow_up(&[
+            "threads".to_string(),
+            "continue".to_string(),
+            session_id.to_string(),
+        ]);
 
         let mut command = Command::new(shell_cmd);
         command
@@ -216,6 +225,20 @@ impl StandardCodingAgentExecutor for Amp {
                 print!("{buf}");
             }
         });
+    }
+}
+
+impl Amp {
+    /// Create a new Amp executor with default settings
+    pub fn new() -> Self {
+        Self {
+            command_builder: DefaultCommandBuilders::amp(),
+        }
+    }
+
+    /// Create a new Amp executor with custom command builder
+    pub fn with_command_builder(command_builder: CommandBuilder) -> Self {
+        Self { command_builder }
     }
 }
 
