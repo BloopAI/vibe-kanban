@@ -311,7 +311,7 @@ function DisplayConversationEntry({ entry, index, diffDeletable }: Props) {
         isFileModification && incrementalDiff && incrementalDiff.files.length > 0;
 
     return (
-        <div key={index}>
+        <div key={index} className="px-4 py-1">
             <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 mt-1">
                     {isErrorMessage && hasMultipleLines ? (

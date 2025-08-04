@@ -22,7 +22,7 @@ function LogEntryRow({ entry, index, style, setRowHeight }: LogEntryRowProps) {
   }, [rowRef]);
 
   const content = (
-    <div className="px-4 py-1" ref={rowRef}>
+    <div className="" ref={rowRef}>
       {(() => {
         switch (entry.channel) {
           case 'stdout':

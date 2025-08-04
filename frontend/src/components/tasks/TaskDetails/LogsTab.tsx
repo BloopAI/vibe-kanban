@@ -27,10 +27,7 @@ function LogsTab() {
   }, []);
 
   const setRowHeight = useCallback((index: number, size: number) => {
-    console.log("DEBUG0")
-
     listRef.current?.resetAfterIndex(0);
-    console.log("DEBUG1")
     rowHeights.current = { ...rowHeights.current, [index]: size };
   }, []);
 

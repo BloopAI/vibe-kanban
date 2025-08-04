@@ -96,7 +96,7 @@ export function TaskDetailsPanel({
 
               {/* Tab Content */}
               <div
-                className={`flex-1 flex flex-col min-h-0 ${activeTab === 'logs' ? 'p-4' : 'pt-4'}`}
+                className="flex-1 flex flex-col min-h-0"
               >
                 {activeTab === 'diffs' ? (
                   <DiffTab />
