@@ -13,6 +13,8 @@ import type {
   ExecutionProcessSummary,
 } from 'shared/types';
 import { useLogStream } from '@/hooks/useLogStream';
+import { useNormalizedConversation } from '@/hooks/useNormalizedConversation';
+import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 
 interface ProcessCardProps {
   process: ExecutionProcessSummary;
@@ -20,15 +22,28 @@ interface ProcessCardProps {
 
 function ProcessCard({ process }: ProcessCardProps) {
   const [showLogs, setShowLogs] = useState(false);
-  const { logs, isConnected, error } = useLogStream(process.id, showLogs);
+  const isCodingAgent = process.run_reason === 'codingagent';
+  
+  // Use appropriate hook based on process type
+  const { logs, isConnected: rawConnected, error: rawError } = useLogStream(
+    process.id, 
+    showLogs && !isCodingAgent
+  );
+  const { entries, isConnected: normalizedConnected, error: normalizedError } = useNormalizedConversation(
+    process.id,
+    showLogs && isCodingAgent
+  );
+  
   const logEndRef = useRef<HTMLDivElement>(null);
+  const isConnected = isCodingAgent ? normalizedConnected : rawConnected;
+  const error = isCodingAgent ? normalizedError : rawError;
 
-  // Auto-scroll to bottom when new logs arrive
+  // Auto-scroll to bottom when new logs/entries arrive
   useEffect(() => {
     if (logEndRef.current) {
       logEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [logs]);
+  }, [logs, entries]);
   const getStatusIcon = (status: ExecutionProcessStatus) => {
     switch (status) {
       case 'running':
@@ -146,18 +161,39 @@ function ProcessCard({ process }: ProcessCardProps) {
                 {error}
               </div>
             )}
-            <div className="bg-black text-white text-xs font-mono p-3 rounded-md max-h-64 overflow-y-auto">
-              {logs.length === 0 ? (
-                <div className="text-gray-400">No logs available...</div>
-              ) : (
-                logs.map((log, index) => (
-                  <div key={index} className="break-all">
-                    {log}
-                  </div>
-                ))
-              )}
-              <div ref={logEndRef} />
-            </div>
+            
+            {isCodingAgent ? (
+              // Normalized conversation display for coding agents
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {entries.length === 0 ? (
+                  <div className="text-gray-400 text-sm">No conversation entries available...</div>
+                ) : (
+                  entries.map((entry, index) => (
+                    <DisplayConversationEntry
+                      key={entry.timestamp ?? index}
+                      entry={entry}
+                      index={index}
+                      diffDeletable={false}
+                    />
+                  ))
+                )}
+                <div ref={logEndRef} />
+              </div>
+            ) : (
+              // Raw logs display for other processes
+              <div className="bg-black text-white text-xs font-mono p-3 rounded-md max-h-64 overflow-y-auto">
+                {logs.length === 0 ? (
+                  <div className="text-gray-400">No logs available...</div>
+                ) : (
+                  logs.map((log, index) => (
+                    <div key={index} className="break-all">
+                      {log}
+                    </div>
+                  ))
+                )}
+                <div ref={logEndRef} />
+              </div>
+            )}
           </div>
         )}
       </div>
