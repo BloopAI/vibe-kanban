@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react';
-import type { ExecutionProcessSummary, NormalizedEntry } from 'shared/types';
+import type { ExecutionProcessSummary, NormalizedEntry, PatchType } from 'shared/types';
 import type { UnifiedLogEntry } from '@/types/logs';
 import { useEventSourceManager } from './useEventSourceManager';
 
@@ -16,11 +16,12 @@ export const useProcessesLogs = (
   enabled: boolean
 ): UseProcessesLogsResult => {
   const getEndpoint = useCallback((process: ExecutionProcessSummary) => {
-    // Coding agents use normalized logs, scripts use raw logs
-    const isScript = process.run_reason === 'setupscript' || process.run_reason === 'cleanupscript';
-    return isScript 
-      ? `/api/execution-processes/${process.id}/raw-logs`
-      : `/api/execution-processes/${process.id}/normalized-logs`;
+    // Coding agents use normalized logs endpoint, scripts use raw logs endpoint
+    // Both endpoints now return PatchType objects via JSON patches
+    const isCodingAgent = process.run_reason === 'codingagent';
+    return isCodingAgent 
+      ? `/api/execution-processes/${process.id}/normalized-logs`
+      : `/api/execution-processes/${process.id}/raw-logs`;
   }, []);
 
   const initialData = useMemo(() => ({ entries: [] }), []);
@@ -38,32 +39,38 @@ export const useProcessesLogs = (
     Object.entries(processData).forEach(([processId, data]) => {
       const process = processes.find(p => p.id === processId);
       if (!process || !data?.entries) return;
-
-      const isScript = process.run_reason === 'setupscript' || process.run_reason === 'cleanupscript';
       
-      data.entries.forEach((entry: any, index: number) => {
-        if (isScript) {
-          // Raw logs: entry is a string
-          allEntries.push({
-            id: `${processId}-${index}`,
-            ts: Date.now() - (data.entries.length - index), // Approximate ordering
-            processId,
-            processName: process.run_reason,
-            channel: 'raw',
-            payload: entry,
-          });
-        } else {
-          // Normalized logs: entry is NormalizedEntry
-          const normalizedEntry = entry as NormalizedEntry;
-          allEntries.push({
-            id: `${processId}-${index}`,
-            ts: normalizedEntry.timestamp ? new Date(normalizedEntry.timestamp).getTime() : Date.now(),
-            processId,
-            processName: process.run_reason,
-            channel: 'normalized',
-            payload: normalizedEntry,
-          });
+      data.entries.forEach((patchEntry: PatchType, index: number) => {
+        // All entries are PatchType objects with type and content
+        let channel: UnifiedLogEntry['channel'];
+        let payload: string | NormalizedEntry;
+
+        switch (patchEntry.type) {
+          case 'STDOUT':
+            channel = 'stdout';
+            payload = patchEntry.content;
+            break;
+          case 'STDERR':
+            channel = 'stderr';
+            payload = patchEntry.content;
+            break;
+          case 'NORMALIZED_ENTRY':
+            channel = 'normalized';
+            payload = patchEntry.content;
+            break;
+          default:
+            // Skip unknown patch types
+            return;
         }
+
+        allEntries.push({
+          id: `${processId}-${index}`,
+          ts: Date.now() - (data.entries.length - index), // Simple ordering
+          processId,
+          processName: process.run_reason,
+          channel,
+          payload,
+        });
       });
     });
 
