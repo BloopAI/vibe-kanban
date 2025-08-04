@@ -1,4 +1,11 @@
-use std::{collections::HashMap, path::PathBuf, sync::Arc, sync::atomic::{AtomicUsize, Ordering}};
+use std::{
+    collections::HashMap,
+    path::PathBuf,
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+};
 
 use anyhow::Error as AnyhowError;
 use async_trait::async_trait;
@@ -98,26 +105,14 @@ pub trait ContainerService {
                             let index = counter.fetch_add(1, Ordering::SeqCst);
                             match m {
                                 LogMsg::Stdout(content) => {
-                                    let entry = NormalizedEntry {
-                                        timestamp: None,
-                                        entry_type: NormalizedEntryType::SystemMessage,
-                                        content,
-                                        metadata: None,
-                                    };
-                                    let patch = ConversationPatch::add(index, entry);
+                                    let patch = ConversationPatch::add_stdout(index, content);
                                     LogMsg::JsonPatch(patch).to_sse_event()
                                 }
                                 LogMsg::Stderr(content) => {
-                                    let entry = NormalizedEntry {
-                                        timestamp: None,
-                                        entry_type: NormalizedEntryType::ErrorMessage,
-                                        content,
-                                        metadata: None,
-                                    };
-                                    let patch = ConversationPatch::add(index, entry);
+                                    let patch = ConversationPatch::add_stderr(index, content);
                                     LogMsg::JsonPatch(patch).to_sse_event()
                                 }
-                                _ => unreachable!("Filter should only pass Stdout/Stderr")
+                                _ => unreachable!("Filter should only pass Stdout/Stderr"),
                             }
                         }
                     })
@@ -152,26 +147,14 @@ pub trait ContainerService {
                     .map(|(index, m)| {
                         let event = match m {
                             LogMsg::Stdout(content) => {
-                                let entry = NormalizedEntry {
-                                    timestamp: None,
-                                    entry_type: NormalizedEntryType::SystemMessage,
-                                    content,
-                                    metadata: None,
-                                };
-                                let patch = ConversationPatch::add(index, entry);
+                                let patch = ConversationPatch::add_stdout(index, content);
                                 LogMsg::JsonPatch(patch).to_sse_event()
                             }
                             LogMsg::Stderr(content) => {
-                                let entry = NormalizedEntry {
-                                    timestamp: None,
-                                    entry_type: NormalizedEntryType::ErrorMessage,
-                                    content,
-                                    metadata: None,
-                                };
-                                let patch = ConversationPatch::add(index, entry);
+                                let patch = ConversationPatch::add_stderr(index, content);
                                 LogMsg::JsonPatch(patch).to_sse_event()
                             }
-                            _ => unreachable!("Filter should only pass Stdout/Stderr")
+                            _ => unreachable!("Filter should only pass Stdout/Stderr"),
                         };
                         Ok::<_, std::io::Error>(event)
                     }),

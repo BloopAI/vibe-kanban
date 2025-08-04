@@ -283,7 +283,8 @@ impl ClaudeLogProcessor {
                             // Convert to normalized entries and create patches
                             for entry in Self::to_normalized_entries(&claude_json, &worktree_path) {
                                 let patch_id = entry_index_provider.next();
-                                let patch = ConversationPatch::add(patch_id, entry);
+                                let patch =
+                                    ConversationPatch::add_normalized_entry(patch_id, entry);
                                 msg_store.push_patch(patch);
                             }
                         }
@@ -298,7 +299,8 @@ impl ClaudeLogProcessor {
                                 };
 
                                 let patch_id = entry_index_provider.next();
-                                let patch = ConversationPatch::add(patch_id, entry);
+                                let patch =
+                                    ConversationPatch::add_normalized_entry(patch_id, entry);
                                 msg_store.push_patch(patch);
                             }
                         }
@@ -319,7 +321,7 @@ impl ClaudeLogProcessor {
                 };
 
                 let patch_id = entry_index_provider.next();
-                let patch = ConversationPatch::add(patch_id, entry);
+                let patch = ConversationPatch::add_normalized_entry(patch_id, entry);
                 msg_store.push_patch(patch);
             }
         });

@@ -61,6 +61,7 @@ fn generate_types_content() -> String {
         executors::logs::NormalizedEntry::decl(),
         executors::logs::NormalizedEntryType::decl(),
         executors::logs::ActionType::decl(),
+        executors::logs::utils::patch::PatchType::decl(),
     ];
 
     let body = decls

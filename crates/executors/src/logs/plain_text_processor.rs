@@ -287,7 +287,7 @@ impl PlainTextLogProcessor {
         };
 
         if !added {
-            ConversationPatch::add(index, entry)
+            ConversationPatch::add_normalized_entry(index, entry)
         } else {
             ConversationPatch::replace(index, entry)
         }

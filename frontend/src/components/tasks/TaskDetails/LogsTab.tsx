@@ -4,7 +4,7 @@ import { VariableSizeList } from 'react-window';
 import { Cog } from 'lucide-react';
 import useMeasure from 'react-use-measure';
 import { TaskAttemptDataContext } from '@/components/context/taskDetailsContext.ts';
-import { useUnifiedLogs } from '@/hooks/useUnifiedLogs';
+import { useProcessesLogs } from '@/hooks/useProcessesLogs';
 import LogEntryRow from '@/components/logs/LogEntryRow';
 import type { UnifiedLogEntry } from '@/types/logs';
 
@@ -19,7 +19,7 @@ function LogsTab() {
   const [containerRef, bounds] = useMeasure();
   const rowHeightCache = useRef<Map<number, number>>(new Map());
 
-  const { entries } = useUnifiedLogs(
+  const { entries } = useProcessesLogs(
     attemptData.processes || [],
     true
   );

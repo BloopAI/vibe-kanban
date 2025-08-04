@@ -13,7 +13,7 @@ import type {
   ExecutionProcessSummary,
 } from 'shared/types';
 import { useLogStream } from '@/hooks/useLogStream';
-import { useNormalizedConversation } from '@/hooks/useNormalizedConversation';
+import { useProcessConversation } from '@/hooks/useProcessConversation';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 
 interface ProcessCardProps {
@@ -29,7 +29,7 @@ function ProcessCard({ process }: ProcessCardProps) {
     process.id, 
     showLogs && !isCodingAgent
   );
-  const { entries, isConnected: normalizedConnected, error: normalizedError } = useNormalizedConversation(
+  const { entries, isConnected: normalizedConnected, error: normalizedError } = useProcessConversation(
     process.id,
     showLogs && isCodingAgent
   );

@@ -132,63 +132,67 @@ impl StandardCodingAgentExecutor for Amp {
                 {
                     let trimmed = line.trim();
                     match serde_json::from_str(trimmed) {
-                        Ok(amp_json) => match amp_json {
-                            AmpJson::Messages {
-                                messages,
-                                tool_results: _,
-                            } => {
-                                for (amp_message_id, message) in messages {
-                                    let role = &message.role;
+                        Ok(amp_json) => {
+                            match amp_json {
+                                AmpJson::Messages {
+                                    messages,
+                                    tool_results: _,
+                                } => {
+                                    for (amp_message_id, message) in messages {
+                                        let role = &message.role;
 
-                                    for (content_index, content_item) in
-                                        message.content.iter().enumerate()
-                                    {
-                                        let mut has_patch_ids =
-                                            seen_amp_message_ids.get_mut(&amp_message_id);
+                                        for (content_index, content_item) in
+                                            message.content.iter().enumerate()
+                                        {
+                                            let mut has_patch_ids =
+                                                seen_amp_message_ids.get_mut(&amp_message_id);
 
-                                        if let Some(entry) = content_item.to_normalized_entry(
-                                            role,
-                                            &message,
-                                            &current_dir.to_string_lossy(),
-                                        ) {
-                                            let patch: Patch = match &mut has_patch_ids {
-                                                None => {
-                                                    let new_id = entry_index_provider.next();
-                                                    seen_amp_message_ids
-                                                        .entry(amp_message_id)
-                                                        .or_default()
-                                                        .push(new_id);
-                                                    ConversationPatch::add(new_id, entry)
-                                                }
-                                                Some(patch_ids) => {
-                                                    match patch_ids.get(content_index) {
-                                                        Some(patch_id) => {
-                                                            ConversationPatch::replace(
-                                                                *patch_id, entry,
-                                                            )
-                                                        }
-                                                        None => {
-                                                            let new_id =
-                                                                entry_index_provider.next();
-                                                            patch_ids.push(new_id);
-                                                            ConversationPatch::add(new_id, entry)
+                                            if let Some(entry) = content_item.to_normalized_entry(
+                                                role,
+                                                &message,
+                                                &current_dir.to_string_lossy(),
+                                            ) {
+                                                let patch: Patch = match &mut has_patch_ids {
+                                                    None => {
+                                                        let new_id = entry_index_provider.next();
+                                                        seen_amp_message_ids
+                                                            .entry(amp_message_id)
+                                                            .or_default()
+                                                            .push(new_id);
+                                                        ConversationPatch::add_normalized_entry(
+                                                            new_id, entry,
+                                                        )
+                                                    }
+                                                    Some(patch_ids) => {
+                                                        match patch_ids.get(content_index) {
+                                                            Some(patch_id) => {
+                                                                ConversationPatch::replace(
+                                                                    *patch_id, entry,
+                                                                )
+                                                            }
+                                                            None => {
+                                                                let new_id =
+                                                                    entry_index_provider.next();
+                                                                patch_ids.push(new_id);
+                                                                ConversationPatch::add_normalized_entry(new_id, entry)
+                                                            }
                                                         }
                                                     }
-                                                }
-                                            };
+                                                };
 
-                                            raw_logs_msg_store.push_patch(patch);
+                                                raw_logs_msg_store.push_patch(patch);
+                                            }
                                         }
                                     }
                                 }
-                            }
-                            AmpJson::Initial { thread_id } => {
-                                if let Some(thread_id) = thread_id {
-                                    raw_logs_msg_store.push_session_id(thread_id);
+                                AmpJson::Initial { thread_id } => {
+                                    if let Some(thread_id) = thread_id {
+                                        raw_logs_msg_store.push_session_id(thread_id);
+                                    }
                                 }
+                                _ => {}
                             }
-                            _ => {}
-                        },
+                        }
                         Err(_) => {
                             let trimmed = line.trim();
                             if !trimmed.is_empty() {
@@ -200,7 +204,7 @@ impl StandardCodingAgentExecutor for Amp {
                                 };
 
                                 let new_id = entry_index_provider.next();
-                                let patch = ConversationPatch::add(new_id, entry);
+                                let patch = ConversationPatch::add_normalized_entry(new_id, entry);
                                 raw_logs_msg_store.push_patch(patch);
                             }
                         }
