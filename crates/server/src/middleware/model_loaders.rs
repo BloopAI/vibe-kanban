@@ -100,18 +100,18 @@ pub async fn load_execution_process_middleware(
     next: Next,
 ) -> Result<Response, StatusCode> {
     // Load the execution process from the database
-    let execution_process = match ExecutionProcess::find_by_id(&deployment.db().pool, process_id).await
-    {
-        Ok(Some(process)) => process,
-        Ok(None) => {
-            tracing::warn!("ExecutionProcess {} not found", process_id);
-            return Err(StatusCode::NOT_FOUND);
-        }
-        Err(e) => {
-            tracing::error!("Failed to fetch execution process {}: {}", process_id, e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
+    let execution_process =
+        match ExecutionProcess::find_by_id(&deployment.db().pool, process_id).await {
+            Ok(Some(process)) => process,
+            Ok(None) => {
+                tracing::warn!("ExecutionProcess {} not found", process_id);
+                return Err(StatusCode::NOT_FOUND);
+            }
+            Err(e) => {
+                tracing::error!("Failed to fetch execution process {}: {}", process_id, e);
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        };
 
     // Inject the execution process into the request
     request.extensions_mut().insert(execution_process);
