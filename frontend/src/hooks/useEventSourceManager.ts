@@ -105,13 +105,14 @@ export const useEventSourceManager = ({
           const newPatches = patches.filter((patch: any) => {
             // Extract entry index from path like "/entries/123"
             const match = patch.path?.match(/^\/entries\/(\d+)$/);
-            if (match) {
+            if (match && patch.op === 'add') {
               const entryIndex = parseInt(match[1], 10);
               if (processedSet.has(entryIndex)) {
                 return false; // Already processed
               }
               processedSet.add(entryIndex);
             }
+            // Always allow replace operations and non-entry patches
             return true;
           });
           
