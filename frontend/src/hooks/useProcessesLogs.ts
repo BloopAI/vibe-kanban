@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import type { ExecutionProcessSummary, NormalizedEntry, PatchType } from 'shared/types';
-import type { UnifiedLogEntry } from '@/types/logs';
+import type { UnifiedLogEntry, ProcessStartPayload } from '@/types/logs';
 import { useEventSourceManager } from './useEventSourceManager';
 
 interface UseProcessesLogsResult {
@@ -35,13 +35,35 @@ export const useProcessesLogs = (
 
   const entries = useMemo(() => {
     const allEntries: UnifiedLogEntry[] = [];
+    let entryCounter = 0;
     
-    Object.entries(processData).forEach(([processId, data]) => {
-      const process = processes.find(p => p.id === processId);
-      if (!process || !data?.entries) return;
+    // Iterate through processes in order, adding process marker followed by logs
+    processes.forEach(process => {
+      const data = processData[process.id];
+      if (!data?.entries) return;
       
-      data.entries.forEach((patchEntry: PatchType, index: number) => {
-        // All entries are PatchType objects with type and content
+      // Add process start marker first
+      const processStartPayload: ProcessStartPayload = {
+        processId: process.id,
+        runReason: process.run_reason,
+        startedAt: process.started_at,
+        status: process.status,
+      };
+
+      allEntries.push({
+        id: `${process.id}-start`,
+        ts: entryCounter++,
+        processId: process.id,
+        processName: process.run_reason,
+        channel: 'process_start',
+        payload: processStartPayload,
+      });
+
+      // Then add all logs for this process (skip the injected PROCESS_START entry)
+      data.entries.forEach((patchEntry: PatchType | { type: 'PROCESS_START'; content: ProcessStartPayload }, index: number) => {
+        // Skip the injected PROCESS_START entry since we handle it above
+        if (patchEntry.type === 'PROCESS_START') return;
+
         let channel: UnifiedLogEntry['channel'];
         let payload: string | NormalizedEntry;
 
@@ -64,9 +86,9 @@ export const useProcessesLogs = (
         }
 
         allEntries.push({
-          id: `${processId}-${index}`,
-          ts: Date.now() - (data.entries.length - index), // Simple ordering
-          processId,
+          id: `${process.id}-${index}`,
+          ts: entryCounter++,
+          processId: process.id,
           processName: process.run_reason,
           channel,
           payload,
@@ -74,10 +96,8 @@ export const useProcessesLogs = (
       });
     });
 
-    // Sort by timestamp and limit entries
-    return allEntries
-      .sort((a, b) => a.ts - b.ts)
-      .slice(-MAX_ENTRIES);
+    // Limit entries (no sorting needed since we build in order)
+    return allEntries.slice(-MAX_ENTRIES);
   }, [processData, processes]);
 
   return { entries, isConnected, error };

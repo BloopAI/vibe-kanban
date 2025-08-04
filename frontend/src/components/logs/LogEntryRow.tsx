@@ -1,8 +1,9 @@
 import { memo, useEffect, useRef } from 'react';
-import type { UnifiedLogEntry } from '@/types/logs';
+import type { UnifiedLogEntry, ProcessStartPayload } from '@/types/logs';
 import type { NormalizedEntry } from 'shared/types';
 import StdoutEntry from './StdoutEntry';
 import StderrEntry from './StderrEntry';
+import ProcessStartCard from './ProcessStartCard';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 
 interface LogEntryRowProps {
@@ -43,6 +44,12 @@ function LogEntryRow({ entry, index, style, setRowHeight }: LogEntryRowProps) {
                 entry={entry.payload as NormalizedEntry}
                 index={index}
                 diffDeletable={false}
+              />
+            );
+          case 'process_start':
+            return (
+              <ProcessStartCard
+                payload={entry.payload as ProcessStartPayload}
               />
             );
           default:

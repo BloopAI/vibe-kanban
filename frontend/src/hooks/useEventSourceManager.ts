@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { applyPatch } from 'rfc6902';
 import type { ExecutionProcessSummary } from 'shared/types';
+import type { ProcessStartPayload } from '@/types/logs';
 
 interface ProcessData {
   [processId: string]: any;
@@ -62,7 +63,22 @@ export const useEventSourceManager = ({
 
       // Initialize process data
       if (!processDataRef.current[process.id]) {
-        processDataRef.current[process.id] = initialData ? structuredClone(initialData) : {};
+        processDataRef.current[process.id] = initialData ? structuredClone(initialData) : { entries: [] };
+        
+        // Inject process start marker as the first entry
+        const processStartPayload: ProcessStartPayload = {
+          processId: process.id,
+          runReason: process.run_reason,
+          startedAt: process.started_at,
+          status: process.status,
+        };
+
+        const processStartEntry = {
+          type: 'PROCESS_START' as const,
+          content: processStartPayload,
+        };
+
+        processDataRef.current[process.id].entries.push(processStartEntry);
       }
 
       const eventSource = new EventSource(endpoint);

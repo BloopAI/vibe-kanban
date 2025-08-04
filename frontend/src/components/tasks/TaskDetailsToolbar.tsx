@@ -221,7 +221,7 @@ function TaskDetailsToolbar() {
 
   return (
     <>
-      <div className="px-6 pb-4 border-b">
+      <div className="px-4 pb-4 border-b">
         {/* Error Display */}
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
