@@ -100,92 +100,48 @@ impl GitService {
     }
 
     /// Builds FileDiffs from a generic git2::Diff
-    fn diff_to_file_diffs(
-        diff: &git2::Diff,
-        repo: &Repository,
-    ) -> Result<Vec<FileDiff>, GitServiceError> {
-        let mut files = Vec::<FileDiff>::new();
+    fn diff_to_file_diffs(diff: &git2::Diff) -> Result<Vec<FileDiff>, GitServiceError> {
+        info!("Processing diff with {} deltas", diff.stats()?.files_changed());
+        let mut files = Vec::new();
 
-        diff.foreach(
-            &mut |delta, _| {
-                if let Some(path) = delta.new_file().path().and_then(|p| p.to_str()) {
-                    // Build a patch for this single file
-                    let old_id = delta.old_file().id();
-                    let new_id = delta.new_file().id();
-                    let mut opts = git2::DiffOptions::new();
-                    opts.context_lines(10);
+        for idx in 0..diff.deltas().len() {
+            let delta = diff.get_delta(idx).unwrap();
+            let path = delta
+                .new_file()
+                .path()
+                .or_else(|| delta.old_file().path())
+                .and_then(|p| p.to_str())
+                .unwrap_or("<unknown>")
+                .to_owned();
 
-                    let old_blob = if !old_id.is_zero() {
-                        Some(repo.find_blob(old_id).unwrap())
-                    } else {
-                        None
-                    };
+            info!("Processing file: {} | status: {:?}", path, delta.status());
 
-                    let new_blob = if !new_id.is_zero() {
-                        Some(repo.find_blob(new_id).unwrap())
-                    } else {
-                        None
-                    };
-
-                    let patch_result = match (&old_blob, &new_blob) {
-                        (Some(old_b), Some(new_b)) => git2::Patch::from_blobs(
-                            old_b,
-                            Some(Path::new(path)),
-                            new_b,
-                            Some(Path::new(path)),
-                            Some(&mut opts),
+            // Build the in-memory patch that libgit2 has already computed
+            if let Some(patch) = git2::Patch::from_diff(diff, idx)? {
+                // Special-case pure add/delete with no hunks
+                let chunks = if patch.num_hunks() == 0 {
+                    vec![DiffChunk {
+                        chunk_type: match delta.status() {
+                            git2::Delta::Added => DiffChunkType::Insert,
+                            git2::Delta::Deleted => DiffChunkType::Delete,
+                            _ => DiffChunkType::Equal,
+                        },
+                        content: format!(
+                            "{} file",
+                            if delta.status() == git2::Delta::Added {
+                                "Added"
+                            } else {
+                                "Deleted"
+                            }
                         ),
-                        (None, Some(new_b)) => git2::Patch::from_buffers(
-                            &[],
-                            None,
-                            new_b.content(),
-                            Some(Path::new(path)),
-                            Some(&mut opts),
-                        ),
-                        (Some(old_b), None) => git2::Patch::from_blob_and_buffer(
-                            old_b,
-                            Some(Path::new(path)),
-                            &[],
-                            None,
-                            Some(&mut opts),
-                        ),
-                        (None, None) => unreachable!(),
-                    };
+                    }]
+                } else {
+                    Self::patch_to_chunks(&patch)
+                };
 
-                    if let Ok(patch) = patch_result {
-                        // Special-case add/delete with no textual body
-                        let chunks = if patch.num_hunks() == 0 {
-                            vec![DiffChunk {
-                                chunk_type: if delta.status() == git2::Delta::Added {
-                                    DiffChunkType::Insert
-                                } else {
-                                    DiffChunkType::Delete
-                                },
-                                content: format!(
-                                    "{} file",
-                                    if delta.status() == git2::Delta::Added {
-                                        "Added"
-                                    } else {
-                                        "Deleted"
-                                    }
-                                ),
-                            }]
-                        } else {
-                            Self::patch_to_chunks(&patch)
-                        };
-
-                        files.push(FileDiff {
-                            path: path.to_owned(),
-                            chunks,
-                        });
-                    }
-                }
-                true
-            },
-            None,
-            None,
-            None,
-        )?;
+                files.push(FileDiff { path, chunks });
+            }
+        }
 
         Ok(files)
     }
@@ -216,7 +172,7 @@ impl GitService {
             }
         };
 
-        Self::diff_to_file_diffs(&diff, repo)
+        Self::diff_to_file_diffs(&diff)
     }
 
     /// Diff for an already-merged squash commit
