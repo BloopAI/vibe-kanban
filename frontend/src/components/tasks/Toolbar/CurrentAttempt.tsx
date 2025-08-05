@@ -10,7 +10,6 @@ import {
   Settings,
   StopCircle,
 } from 'lucide-react';
-import { is_planning_executor_type } from '@/lib/utils';
 import {
   Tooltip,
   TooltipContent,
@@ -36,10 +35,7 @@ import BranchSelector from '@/components/tasks/BranchSelector.tsx';
 import {
   attemptsApi,
   executionProcessesApi,
-  makeRequest,
-  FollowUpResponse,
 } from '@/lib/api.ts';
-import type { ApiResponse } from 'shared/types';
 import {
   Dispatch,
   SetStateAction,
@@ -55,14 +51,10 @@ import {
   TaskAttemptDataContext,
   TaskAttemptStoppingContext,
   TaskDetailsContext,
-  TaskExecutionStateContext,
-  TaskRelatedTasksContext,
   TaskSelectedAttemptContext,
 } from '@/components/context/taskDetailsContext.ts';
-import { useTaskPlan } from '@/components/context/TaskPlanContext.ts';
 import { useConfig } from '@/components/config-provider.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
-import { useNavigate } from 'react-router-dom';
 
 // Helper function to get the display name for different editor types
 function getEditorDisplayName(editorType: string): string {
@@ -114,16 +106,10 @@ function CurrentAttempt({
     useContext(TaskDetailsContext);
   const { config } = useConfig();
   const { setSelectedAttempt } = useContext(TaskSelectedAttemptContext);
-  const navigate = useNavigate();
   const { isStopping, setIsStopping } = useContext(TaskAttemptStoppingContext);
   const { attemptData, fetchAttemptData, isAttemptRunning } = useContext(
     TaskAttemptDataContext
   );
-  const { relatedTasks } = useContext(TaskRelatedTasksContext);
-  const { executionState, fetchExecutionState } = useContext(
-    TaskExecutionStateContext
-  );
-  const { isPlanningMode, canCreateTask } = useTaskPlan();
 
   const [isStartingDevServer, setIsStartingDevServer] = useState(false);
   const [merging, setMerging] = useState(false);
@@ -136,12 +122,11 @@ function CurrentAttempt({
   const [showRebaseDialog, setShowRebaseDialog] = useState(false);
   const [selectedRebaseBranch, setSelectedRebaseBranch] = useState<string>('');
   const [showStopConfirmation, setShowStopConfirmation] = useState(false);
-  const [isApprovingPlan, setIsApprovingPlan] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const processedDevServerLogs = useMemo(() => {
     if (!devServerDetails) return 'No output yet...';
-    
+
     // TODO: stdout/stderr fields need to be restored to ExecutionProcess type
     // For now, show basic status information
     return `Status: ${devServerDetails.status}\nStarted: ${devServerDetails.started_at}`;
@@ -154,14 +139,6 @@ function CurrentAttempt({
         process.run_reason === 'devserver' && process.status === 'running'
     );
   }, [attemptData.processes]);
-
-  // Check if plan approval is needed
-  const isPlanTask = useMemo(() => {
-    return !!(
-      selectedAttempt.executor &&
-      is_planning_executor_type(selectedAttempt.executor)
-    );
-  }, [selectedAttempt.executor]);
 
   const fetchDevServerDetails = useCallback(async () => {
     if (!runningDevServer || !task || !selectedAttempt) return;
@@ -264,9 +241,8 @@ function CurrentAttempt({
     (attempt: TaskAttempt) => {
       setSelectedAttempt(attempt);
       fetchAttemptData(attempt.id, attempt.task_id);
-      fetchExecutionState(attempt.id, attempt.task_id);
     },
-    [fetchAttemptData, fetchExecutionState, setSelectedAttempt]
+    [fetchAttemptData, setSelectedAttempt]
   );
 
   const handleMergeClick = async () => {
@@ -386,48 +362,6 @@ function CurrentAttempt({
     setShowCreatePRDialog(true);
   };
 
-  const handlePlanApproval = async () => {
-    if (!task || !selectedAttempt || !isPlanTask) return;
-
-    setIsApprovingPlan(true);
-    try {
-      const response = await makeRequest(
-        `/api/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttempt.id}/approve-plan`,
-        {
-          method: 'POST',
-          // No body needed - endpoint only handles approval now
-        }
-      );
-
-      if (response.ok) {
-        const result: ApiResponse<FollowUpResponse> = await response.json();
-        if (result.success && result.data) {
-          console.log('Plan approved successfully:', result.message);
-
-          // If a new task was created, navigate to it
-          if (result.data.created_new_attempt) {
-            const newTaskId = result.data.actual_attempt_id;
-            console.log('Navigating to new task:', newTaskId);
-            navigate(`/projects/${projectId}/tasks/${newTaskId}`);
-          } else {
-            // Otherwise, just refresh the current task data
-            fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
-          }
-        } else {
-          setError(`Failed to approve plan: ${result.message}`);
-        }
-      } else {
-        setError('Failed to approve plan');
-      }
-    } catch (error) {
-      setError(
-        `Error approving plan: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-    } finally {
-      setIsApprovingPlan(false);
-    }
-  };
-
   // Get display name for selected branch
   const selectedBranchDisplayName = useMemo(() => {
     if (!selectedBranch) return 'current';
@@ -497,8 +431,7 @@ function CurrentAttempt({
                     disabled={
                       rebasing ||
                       branchStatusLoading ||
-                      isAttemptRunning ||
-                      isPlanTask
+                      isAttemptRunning
                     }
                     className="h-4 w-4 p-0 hover:bg-muted"
                   >
@@ -521,27 +454,10 @@ function CurrentAttempt({
 
         <div>
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-            {isPlanTask ? 'Plan Status' : 'Merge Status'}
+            Merge Status
           </div>
           <div className="flex items-center gap-1.5">
-            {isPlanTask ? (
-              // Plan status for planning tasks
-              relatedTasks && relatedTasks.length > 0 ? (
-                <div className="flex items-center gap-1.5">
-                  <div className="h-2 w-2 bg-green-500 rounded-full" />
-                  <span className="text-sm font-medium text-green-700">
-                    Task Created
-                  </span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5">
-                  <div className="h-2 w-2 bg-gray-500 rounded-full" />
-                  <span className="text-sm font-medium text-gray-700">
-                    Draft
-                  </span>
-                </div>
-              )
-            ) : // Merge status for regular tasks
+            {
               selectedAttempt.merge_commit ? (
                 <div className="flex items-center gap-1.5">
                   <div className="h-2 w-2 bg-green-500 rounded-full" />
@@ -581,8 +497,8 @@ function CurrentAttempt({
         </div>
         <div
           className={`text-xs font-mono px-2 py-1 rounded break-all cursor-pointer transition-all duration-300 flex items-center gap-2 ${copied
-              ? 'bg-green-100 text-green-800 border border-green-300'
-              : 'text-muted-foreground bg-muted hover:bg-muted/80'
+            ? 'bg-green-100 text-green-800 border border-green-300'
+            : 'text-muted-foreground bg-muted hover:bg-muted/80'
             }`}
           onClick={handleCopyWorktreePath}
           title={copied ? 'Copied!' : 'Click to copy worktree path'}
@@ -705,39 +621,22 @@ function CurrentAttempt({
             <>
               {branchStatus.is_behind &&
                 !branchStatus.merged &&
-                !isPlanTask && (
-                  <Button
-                    onClick={handleRebaseClick}
-                    disabled={
-                      rebasing || branchStatusLoading || isAttemptRunning
-                    }
-                    variant="outline"
-                    size="sm"
-                    className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1"
-                  >
-                    <RefreshCw
-                      className={`h-3 w-3 ${rebasing ? 'animate-spin' : ''}`}
-                    />
-                    {rebasing ? 'Rebasing...' : `Rebase`}
-                  </Button>
-                )}
-              {isPlanTask ? (
-                // Plan tasks: show approval button
                 <Button
-                  onClick={handlePlanApproval}
+                  onClick={handleRebaseClick}
                   disabled={
-                    isAttemptRunning ||
-                    executionState?.execution_state === 'CodingAgentFailed' ||
-                    executionState?.execution_state === 'SetupFailed' ||
-                    (isPlanningMode && !canCreateTask)
+                    rebasing || branchStatusLoading || isAttemptRunning
                   }
+                  variant="outline"
                   size="sm"
-                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"
+                  className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1"
                 >
-                  <GitBranchIcon className="h-3 w-3" />
-                  {isApprovingPlan ? 'Approving...' : 'Create Task'}
+                  <RefreshCw
+                    className={`h-3 w-3 ${rebasing ? 'animate-spin' : ''}`}
+                  />
+                  {rebasing ? 'Rebasing...' : `Rebase`}
                 </Button>
-              ) : (
+              }
+              {
                 // Normal merge and PR buttons for regular tasks
                 !branchStatus.merged && (
                   <>
@@ -774,7 +673,7 @@ function CurrentAttempt({
                     </Button>
                   </>
                 )
-              )}
+              }
             </>
           )}
 

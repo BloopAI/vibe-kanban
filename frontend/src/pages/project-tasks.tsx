@@ -10,7 +10,6 @@ import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
 import { ProjectForm } from '@/components/projects/project-form';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
-import { useTaskPlan } from '@/components/context/TaskPlanContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,10 +70,6 @@ export function ProjectTasks() {
   // Panel state
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
-
-  // Plan context for task creation
-  const { isPlanningMode, canCreateTask, latestProcessHasNoPlan } =
-    useTaskPlan();
 
   // Define task creation handler
   const handleCreateNewTask = useCallback(() => {
@@ -540,11 +535,6 @@ export function ProjectTasks() {
         onCreateAndStartTask={handleCreateAndStartTask}
         onUpdateTask={handleUpdateTask}
         initialTemplate={selectedTemplate}
-        planContext={{
-          isPlanningMode,
-          canCreateTask,
-          latestProcessHasNoPlan,
-        }}
       />
 
       <ProjectForm

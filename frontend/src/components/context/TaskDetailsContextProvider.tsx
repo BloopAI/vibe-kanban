@@ -6,12 +6,11 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import type { ExecutionProcess, ExecutionProcessSummary, WorktreeDiff } from 'shared/types';
-import type { EditorType, Task, TaskAttempt, TaskAttemptState, TaskWithAttemptStatus } from 'shared/types';
-import { attemptsApi, executionProcessesApi, tasksApi } from '@/lib/api.ts';
+import type { EditorType, TaskAttempt, TaskAttemptState, TaskWithAttemptStatus } from 'shared/types';
+import { attemptsApi, executionProcessesApi } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,
   TaskAttemptLoadingContext,
@@ -21,7 +20,6 @@ import {
   TaskDetailsContext,
   TaskDiffContext,
   TaskExecutionStateContext,
-  TaskRelatedTasksContext,
   TaskSelectedAttemptContext,
 } from './taskDetailsContext.ts';
 import type { AttemptData } from '@/lib/types.ts';
@@ -53,13 +51,6 @@ const TaskDetailsProvider: FC<{
     const [diffError, setDiffError] = useState<string | null>(null);
     const [isBackgroundRefreshing, setIsBackgroundRefreshing] = useState(false);
 
-    // Related tasks state
-    const [relatedTasks, setRelatedTasks] = useState<Task[] | null>(null);
-    const [relatedTasksLoading, setRelatedTasksLoading] = useState(true);
-    const [relatedTasksError, setRelatedTasksError] = useState<string | null>(
-      null
-    );
-
     const [executionState, setExecutionState] = useState<TaskAttemptState | null>(
       null
     );
@@ -68,38 +59,6 @@ const TaskDetailsProvider: FC<{
       processes: [],
       runningProcessDetails: {},
     });
-
-    const relatedTasksLoadingRef = useRef(false);
-
-    const fetchRelatedTasks = useCallback(async () => {
-      if (!projectId || !task?.id || !selectedAttempt?.id) {
-        setRelatedTasks(null);
-        setRelatedTasksLoading(false);
-        return;
-      }
-
-      // Prevent multiple concurrent requests
-      if (relatedTasksLoadingRef.current) {
-        return;
-      }
-
-      relatedTasksLoadingRef.current = true;
-      setRelatedTasksLoading(true);
-      setRelatedTasksError(null);
-
-      try {
-        const children = await tasksApi.getChildren(
-          selectedAttempt.id
-        );
-        setRelatedTasks(children);
-      } catch (err) {
-        console.error('Failed to load related tasks:', err);
-        setRelatedTasksError('Failed to load related tasks');
-      } finally {
-        relatedTasksLoadingRef.current = false;
-        setRelatedTasksLoading(false);
-      }
-    }, [projectId, task?.id, selectedAttempt?.id]);
 
     const fetchDiff = useCallback(
       async (isBackgroundRefresh = false) => {
@@ -135,21 +94,6 @@ const TaskDetailsProvider: FC<{
       },
       [projectId, selectedAttempt?.id, selectedAttempt?.task_id]
     );
-
-    useEffect(() => {
-      if (selectedAttempt && task) {
-        fetchRelatedTasks();
-      } else if (task && !selectedAttempt) {
-        // If we have a task but no selectedAttempt, wait a bit then clear loading state
-        // This happens when a task has no attempts yet
-        const timeout = setTimeout(() => {
-          setRelatedTasks(null);
-          setRelatedTasksLoading(false);
-        }, 1000); // Wait 1 second for attempts to load
-
-        return () => clearTimeout(timeout);
-      }
-    }, [selectedAttempt, task, fetchRelatedTasks]);
 
     const fetchExecutionState = useCallback(
       async (attemptId: string) => {
@@ -396,27 +340,6 @@ const TaskDetailsProvider: FC<{
       [executionState, fetchExecutionState]
     );
 
-    const relatedTasksValue = useMemo(
-      () => ({
-        relatedTasks,
-        setRelatedTasks,
-        relatedTasksLoading,
-        setRelatedTasksLoading,
-        relatedTasksError,
-        setRelatedTasksError,
-        fetchRelatedTasks,
-        totalRelatedCount:
-          (task?.parent_task_attempt ? 1 : 0) + (relatedTasks?.length || 0),
-      }),
-      [
-        relatedTasks,
-        relatedTasksLoading,
-        relatedTasksError,
-        fetchRelatedTasks,
-        task?.parent_task_attempt,
-      ]
-    );
-
     return (
       <TaskDetailsContext.Provider value={value}>
         <TaskAttemptLoadingContext.Provider value={taskAttemptLoadingValue}>
@@ -431,11 +354,7 @@ const TaskDetailsProvider: FC<{
                       <TaskBackgroundRefreshContext.Provider
                         value={backgroundRefreshingValue}
                       >
-                        <TaskRelatedTasksContext.Provider
-                          value={relatedTasksValue}
-                        >
-                          {children}
-                        </TaskRelatedTasksContext.Provider>
+                        {children}
                       </TaskBackgroundRefreshContext.Provider>
                     </TaskExecutionStateContext.Provider>
                   </TaskAttemptDataContext.Provider>

@@ -105,14 +105,14 @@ function ProcessesTab() {
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {!selectedProcessId ? (
-        <div className="flex-1 overflow-auto px-4 pb-20">
+        <div className="flex-1 overflow-auto px-4 pb-20 pt-4">
           <div className="space-y-3">
             {attemptData.processes.map((process) => (
               <div
                 key={process.id}
                 className={`border rounded-lg p-4 hover:bg-muted/30 cursor-pointer transition-colors ${loadingProcessId === process.id
-                    ? 'opacity-50 cursor-wait'
-                    : ''
+                  ? 'opacity-50 cursor-wait'
+                  : ''
                   }`}
                 onClick={() => handleProcessClick(process)}
               >
