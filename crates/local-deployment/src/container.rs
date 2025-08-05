@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
+use std::{collections::{HashMap, HashSet}, path::PathBuf, sync::Arc, time::Duration};
 
 use anyhow::anyhow;
 use async_trait::async_trait;
@@ -523,11 +523,19 @@ impl ContainerService for LocalContainerService {
                 match res {
                     Ok(events) => {
                         // Convert Vec<DebouncedEvent> to JSON for SSE
-                        // Extract all paths from all events
-                        let all_paths: Vec<_> = events.iter()
-                            .flat_map(|event| &event.paths)
-                            .collect();
-                        let data = serde_json::to_string(&all_paths).unwrap_or_default();
+                        // Collect unique paths to avoid duplicates from multiple event types
+                        let mut unique_paths = HashSet::<PathBuf>::new();
+                        for event in &events {
+                            for path in &event.paths {
+                                unique_paths.insert(path.clone());
+                            }
+                        }
+                        
+                        // Convert to sorted vector for stable output
+                        let mut paths_vec: Vec<_> = unique_paths.into_iter().collect();
+                        paths_vec.sort();
+                        
+                        let data = serde_json::to_string(&paths_vec).unwrap_or_default();
                         yield Event::default().data(data);
                     },
                     Err(errors) => {

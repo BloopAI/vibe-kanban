@@ -13,7 +13,9 @@ use ignore::{
     gitignore::{Gitignore, GitignoreBuilder},
 };
 use notify::{RecommendedWatcher, RecursiveMode};
-use notify_debouncer_full::{new_debouncer, Debouncer, DebouncedEvent, DebounceEventResult, RecommendedCache};
+use notify_debouncer_full::{
+    DebounceEventResult, DebouncedEvent, Debouncer, RecommendedCache, new_debouncer,
+};
 
 fn canonicalize_lossy(path: &Path) -> PathBuf {
     dunce::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
@@ -77,12 +79,19 @@ fn path_allowed(path: &PathBuf, gi: &Gitignore, canonical_root: &Path) -> bool {
 fn debounced_should_forward(event: &DebouncedEvent, gi: &Gitignore, canonical_root: &Path) -> bool {
     // DebouncedEvent is a struct that wraps the underlying notify::Event
     // We can check its paths field to determine if the event should be forwarded
-    event.paths.iter().all(|path| path_allowed(path, gi, canonical_root))
+    event
+        .paths
+        .iter()
+        .all(|path| path_allowed(path, gi, canonical_root))
 }
 
 pub fn async_watcher(
     root: PathBuf,
-) -> notify::Result<(Debouncer<RecommendedWatcher, RecommendedCache>, Receiver<DebounceEventResult>, PathBuf)> {
+) -> notify::Result<(
+    Debouncer<RecommendedWatcher, RecommendedCache>,
+    Receiver<DebounceEventResult>,
+    PathBuf,
+)> {
     let canonical_root = canonicalize_lossy(&root);
     let gi_set = Arc::new(
         build_gitignore_set(&canonical_root)
@@ -94,7 +103,7 @@ pub fn async_watcher(
     let root_clone = canonical_root.clone();
 
     let mut debouncer = new_debouncer(
-        Duration::from_millis(50),
+        Duration::from_millis(200),
         None, // Use default config
         move |res: DebounceEventResult| {
             match res {
@@ -104,7 +113,7 @@ pub fn async_watcher(
                         .into_iter()
                         .filter(|ev| debounced_should_forward(ev, &gi_clone, &root_clone))
                         .collect();
-                    
+
                     if !filtered_events.is_empty() {
                         let filtered_result = Ok(filtered_events);
                         futures::executor::block_on(async {
