@@ -398,33 +398,6 @@ pub async fn get_task_attempt_diff(
     // ) -> Result<ResponseJson<ApiResponse<WorktreeDiff>>, ApiError> {
 ) -> Result<Sse<impl futures_util::Stream<Item = Result<Event, BoxError>>>, axum::http::StatusCode>
 {
-    // let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
-
-    // if let Some(merge_commit_id) = &ctx.task_attempt.merge_commit {
-    //     // Task attempt has been merged - show the diff from the merge commit
-    //     let diff = GitService::new().get_enhanced_diff(
-    //         &ctx.project.git_repo_path,
-    //         std::path::Path::new(""),
-    //         Some(merge_commit_id),
-    //         &ctx.task_attempt.base_branch,
-    //     )?;
-    //     Ok(ResponseJson(ApiResponse::success(diff)))
-    // } else {
-    //     let container_ref = deployment
-    //         .container()
-    //         .ensure_container_exists(&task_attempt)
-    //         .await?;
-    //     let worktree_path = std::path::Path::new(&container_ref);
-
-    //     let diff = GitService::new().get_enhanced_diff(
-    //         &ctx.project.git_repo_path,
-    //         &worktree_path,
-    //         None,
-    //         &ctx.task_attempt.base_branch,
-    //     )?;
-    //     Ok(ResponseJson(ApiResponse::success(diff)))
-    // }
-
     let stream = deployment
         .container()
         .get_diff(&task_attempt)
