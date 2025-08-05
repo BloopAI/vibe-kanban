@@ -32,6 +32,18 @@ AI coding agents are increasingly writing the world's code and human engineers n
 
 You can watch a video overview [here](https://youtu.be/TFT3KnZOOAk).
 
+## Quick Start
+
+Get up and running in minutes:
+
+1. **Authenticate with your coding agent** (e.g., Claude Code, Gemini CLI, etc.)
+2. **Run Vibe Kanban**:
+   ```bash
+   npx vibe-kanban
+   ```
+3. **Open your browser** at http://localhost:3000
+4. **Create your first project** and start orchestrating AI agents!
+
 ## Installation
 
 Make sure you have authenticated with your favourite coding agent. A full list of supported coding agents can be found in the [docs](https://vibekanban.com/). Then in your terminal run:
@@ -39,6 +51,17 @@ Make sure you have authenticated with your favourite coding agent. A full list o
 ```bash
 npx vibe-kanban
 ```
+
+## Supported Coding Agents
+
+Vibe Kanban works with popular AI coding assistants:
+
+- **Claude Code** - Anthropic's coding assistant
+- **Gemini CLI** - Google's AI coding tool
+- **Codex** - Advanced code generation
+- **Amp** - AI pair programming
+- **Aider** - AI pair programming in your terminal
+- **Custom agents** via MCP protocol
 
 ## Documentation
 
