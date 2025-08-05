@@ -90,29 +90,196 @@ pub struct BranchStatus {
     pub base_branch_name: String,
 }
 
+/// Represents a snapshot for diff comparison
+enum Snapshot<'a> {
+    /// Any git tree object
+    Tree(git2::Oid),
+    /// The work-dir / index as it is *now*, compared to the given base tree
+    WorkdirAgainst(git2::Oid, &'a Path),
+}
+
 impl GitService {
     /// Create a new GitService for the given repository path
     pub fn new() -> Self {
-        // let repo_path = repo_path.as_ref().to_path_buf();
-
-        // // Validate that the path exists and is a git repository
-        // if !repo_path.exists() {
-        //     return Err(GitServiceError::InvalidPath(format!(
-        //         "Repository path does not exist: {}",
-        //         repo_path.display()
-        //     )));
-        // }
-
-        // // Try to open the repository to validate it
-        // Repository::open(&repo_path).map_err(|e| {
-        //     GitServiceError::InvalidRepository(format!(
-        //         "Failed to open repository at {}: {}",
-        //         repo_path.display(),
-        //         e
-        //     ))
-        // })?;
-
         Self {}
+    }
+
+    /// Converts a Patch into our "render friendly" representation
+    fn patch_to_chunks(patch: &git2::Patch) -> Vec<DiffChunk> {
+        let mut chunks = Vec::new();
+        for hunk_idx in 0..patch.num_hunks() {
+            let (_, hunk_lines) = patch.hunk(hunk_idx).unwrap();
+            for line_idx in 0..hunk_lines {
+                let l = patch.line_in_hunk(hunk_idx, line_idx).unwrap();
+                let kind = match l.origin() {
+                    ' ' => DiffChunkType::Equal,
+                    '+' => DiffChunkType::Insert,
+                    '-' => DiffChunkType::Delete,
+                    _ => continue,
+                };
+                chunks.push(DiffChunk {
+                    chunk_type: kind,
+                    content: String::from_utf8_lossy(l.content()).into_owned(),
+                });
+            }
+        }
+        chunks
+    }
+
+    /// Builds FileDiffs from a generic git2::Diff
+    fn diff_to_file_diffs(
+        diff: &git2::Diff,
+        repo: &Repository,
+    ) -> Result<Vec<FileDiff>, GitServiceError> {
+        let mut files = Vec::<FileDiff>::new();
+
+        diff.foreach(
+            &mut |delta, _| {
+                if let Some(path) = delta.new_file().path().and_then(|p| p.to_str()) {
+                    // Build a patch for this single file
+                    let old_id = delta.old_file().id();
+                    let new_id = delta.new_file().id();
+                    let mut opts = git2::DiffOptions::new();
+                    opts.context_lines(10);
+
+                    let old_blob = if !old_id.is_zero() {
+                        Some(repo.find_blob(old_id).unwrap())
+                    } else {
+                        None
+                    };
+
+                    let new_blob = if !new_id.is_zero() {
+                        Some(repo.find_blob(new_id).unwrap())
+                    } else {
+                        None
+                    };
+
+                    let patch_result = match (&old_blob, &new_blob) {
+                        (Some(old_b), Some(new_b)) => git2::Patch::from_blobs(
+                            old_b,
+                            Some(Path::new(path)),
+                            new_b,
+                            Some(Path::new(path)),
+                            Some(&mut opts),
+                        ),
+                        (None, Some(new_b)) => git2::Patch::from_buffers(
+                            &[],
+                            None,
+                            new_b.content(),
+                            Some(Path::new(path)),
+                            Some(&mut opts),
+                        ),
+                        (Some(old_b), None) => git2::Patch::from_blob_and_buffer(
+                            old_b,
+                            Some(Path::new(path)),
+                            &[],
+                            None,
+                            Some(&mut opts),
+                        ),
+                        (None, None) => unreachable!(),
+                    };
+
+                    if let Ok(patch) = patch_result {
+                        // Special-case add/delete with no textual body
+                        let chunks = if patch.num_hunks() == 0 {
+                            vec![DiffChunk {
+                                chunk_type: if delta.status() == git2::Delta::Added {
+                                    DiffChunkType::Insert
+                                } else {
+                                    DiffChunkType::Delete
+                                },
+                                content: format!(
+                                    "{} file",
+                                    if delta.status() == git2::Delta::Added {
+                                        "Added"
+                                    } else {
+                                        "Deleted"
+                                    }
+                                ),
+                            }]
+                        } else {
+                            Self::patch_to_chunks(&patch)
+                        };
+
+                        files.push(FileDiff {
+                            path: path.to_owned(),
+                            chunks,
+                        });
+                    }
+                }
+                true
+            },
+            None,
+            None,
+            None,
+        )?;
+
+        Ok(files)
+    }
+
+    /// Generic diff engine that handles all types of comparisons
+    fn run_diff(
+        repo: &Repository,
+        left: Snapshot<'_>,
+        right: Snapshot<'_>,
+    ) -> Result<Vec<FileDiff>, GitServiceError> {
+        let mut opts = git2::DiffOptions::new();
+        opts.context_lines(10);
+        opts.interhunk_lines(0);
+
+        let diff = match (left, right) {
+            (Snapshot::Tree(a), Snapshot::Tree(b)) => repo.diff_tree_to_tree(
+                Some(&repo.find_tree(a)?),
+                Some(&repo.find_tree(b)?),
+                Some(&mut opts),
+            )?,
+            (Snapshot::Tree(base), Snapshot::WorkdirAgainst(_, _))
+            | (Snapshot::WorkdirAgainst(_, _), Snapshot::Tree(base)) => {
+                opts.include_untracked(true);
+                repo.diff_tree_to_workdir_with_index(Some(&repo.find_tree(base)?), Some(&mut opts))?
+            }
+            (Snapshot::WorkdirAgainst(_, _), Snapshot::WorkdirAgainst(_, _)) => {
+                unreachable!("work-dir vs work-dir makes no sense here")
+            }
+        };
+
+        Self::diff_to_file_diffs(&diff, repo)
+    }
+
+    /// Diff for an already-merged squash commit
+    pub fn diff_for_merge_commit(
+        &self,
+        repo_path: &Path,
+        merge_commit: git2::Oid,
+    ) -> Result<WorktreeDiff, GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        let mc = repo.find_commit(merge_commit)?;
+        let base = mc
+            .parent(0)
+            .map(|p| p.tree().unwrap().id())
+            .unwrap_or_else(|_| {
+                // For the initial commit, use an empty tree
+                repo.treebuilder(None).unwrap().write().unwrap()
+            });
+
+        let files = Self::run_diff(&repo, Snapshot::Tree(base), Snapshot::Tree(mc.tree()?.id()))?;
+        Ok(WorktreeDiff { files })
+    }
+
+    /// Diff for a work-tree that has not been merged yet
+    pub fn diff_for_worktree(
+        &self,
+        worktree_path: &Path,
+        base_branch_commit: git2::Oid,
+    ) -> Result<WorktreeDiff, GitServiceError> {
+        let repo = Repository::open(worktree_path)?;
+        let base_tree = repo.find_commit(base_branch_commit)?.tree()?.id();
+        let files = Self::run_diff(
+            &repo,
+            Snapshot::Tree(base_tree),
+            Snapshot::WorkdirAgainst(base_branch_commit, worktree_path),
+        )?;
+        Ok(WorktreeDiff { files })
     }
 
     /// Open the repository
@@ -565,458 +732,21 @@ impl GitService {
         merge_commit_id: Option<&str>,
         base_branch: &str,
     ) -> Result<WorktreeDiff, GitServiceError> {
-        let mut files = Vec::new();
-
         if let Some(merge_commit_id) = merge_commit_id {
             // Task attempt has been merged - show the diff from the merge commit
-            self.get_merged_diff(repo_path, merge_commit_id, &mut files)?;
+            let commit_oid = git2::Oid::from_str(merge_commit_id)
+                .map_err(|_| GitServiceError::InvalidRepository("Invalid commit ID".to_string()))?;
+            self.diff_for_merge_commit(repo_path, commit_oid)
         } else {
             // Task attempt not yet merged - get worktree diff
-            self.get_worktree_diff(repo_path, worktree_path, base_branch, &mut files)?;
+            let main_repo = self.open_repo(repo_path)?;
+            let base_branch_ref = main_repo
+                .find_branch(base_branch, BranchType::Local)
+                .map_err(|_| GitServiceError::BranchNotFound(base_branch.to_string()))?;
+            let base_branch_commit = base_branch_ref.get().peel_to_commit()?.id();
+
+            self.diff_for_worktree(worktree_path, base_branch_commit)
         }
-
-        Ok(WorktreeDiff { files })
-    }
-
-    /// Get diff from a merge commit
-    fn get_merged_diff(
-        &self,
-        repo_path: &Path,
-        merge_commit_id: &str,
-        files: &mut Vec<FileDiff>,
-    ) -> Result<(), GitServiceError> {
-        let main_repo = self.open_repo(repo_path)?;
-        let merge_commit = main_repo.find_commit(git2::Oid::from_str(merge_commit_id)?)?;
-
-        // A merge commit has multiple parents - first parent is the main branch before merge,
-        // second parent is the branch that was merged
-        let parents: Vec<_> = merge_commit.parents().collect();
-
-        // Create diff options with more context
-        let mut diff_opts = DiffOptions::new();
-        diff_opts.context_lines(10);
-        diff_opts.interhunk_lines(0);
-
-        let diff = if parents.len() >= 2 {
-            let base_tree = parents[0].tree()?;
-            let merged_tree = parents[1].tree()?;
-            main_repo.diff_tree_to_tree(
-                Some(&base_tree),
-                Some(&merged_tree),
-                Some(&mut diff_opts),
-            )?
-        } else {
-            // Fast-forward merge or single parent
-            let base_tree = if !parents.is_empty() {
-                parents[0].tree()?
-            } else {
-                main_repo.find_tree(git2::Oid::zero())?
-            };
-            let merged_tree = merge_commit.tree()?;
-            main_repo.diff_tree_to_tree(
-                Some(&base_tree),
-                Some(&merged_tree),
-                Some(&mut diff_opts),
-            )?
-        };
-
-        // Process each diff delta
-        diff.foreach(
-            &mut |delta, _progress| {
-                if let Some(path_str) = delta.new_file().path().and_then(|p| p.to_str()) {
-                    let old_file = delta.old_file();
-                    let new_file = delta.new_file();
-
-                    if let Ok(diff_chunks) =
-                        self.generate_git_diff_chunks(&main_repo, &old_file, &new_file, path_str)
-                    {
-                        if !diff_chunks.is_empty() {
-                            files.push(FileDiff {
-                                path: path_str.to_string(),
-                                chunks: diff_chunks,
-                            });
-                        } else if delta.status() == git2::Delta::Added
-                            || delta.status() == git2::Delta::Deleted
-                        {
-                            files.push(FileDiff {
-                                path: path_str.to_string(),
-                                chunks: vec![DiffChunk {
-                                    chunk_type: if delta.status() == git2::Delta::Added {
-                                        DiffChunkType::Insert
-                                    } else {
-                                        DiffChunkType::Delete
-                                    },
-                                    content: format!(
-                                        "{} file",
-                                        if delta.status() == git2::Delta::Added {
-                                            "Added"
-                                        } else {
-                                            "Deleted"
-                                        }
-                                    ),
-                                }],
-                            });
-                        }
-                    }
-                }
-                true
-            },
-            None,
-            None,
-            None,
-        )?;
-
-        Ok(())
-    }
-
-    /// Get diff for a worktree (before merge)
-    fn get_worktree_diff(
-        &self,
-        repo_path: &Path,
-        worktree_path: &Path,
-        base_branch: &str,
-        files: &mut Vec<FileDiff>,
-    ) -> Result<(), GitServiceError> {
-        let worktree_repo = Repository::open(worktree_path)?;
-        let main_repo = self.open_repo(repo_path)?;
-
-        // Get the base branch commit
-        let base_branch_ref = main_repo
-            .find_branch(base_branch, BranchType::Local)
-            .map_err(|_| GitServiceError::BranchNotFound(base_branch.to_string()))?;
-        let base_branch_oid = base_branch_ref.get().peel_to_commit()?.id();
-
-        // Get the current worktree HEAD commit
-        let worktree_head = worktree_repo.head()?;
-        let worktree_head_oid = worktree_head.peel_to_commit()?.id();
-
-        // Find the merge base (common ancestor) between the base branch and worktree head
-        let base_oid = worktree_repo.merge_base(base_branch_oid, worktree_head_oid)?;
-        let base_commit = worktree_repo.find_commit(base_oid)?;
-        let base_tree = base_commit.tree()?;
-
-        // Get the current tree from the worktree HEAD commit
-        let current_commit = worktree_repo.find_commit(worktree_head_oid)?;
-        let current_tree = current_commit.tree()?;
-
-        // Create a diff between the base tree and current tree
-        let mut diff_opts = DiffOptions::new();
-        diff_opts.context_lines(10);
-        diff_opts.interhunk_lines(0);
-
-        let diff = worktree_repo.diff_tree_to_tree(
-            Some(&base_tree),
-            Some(&current_tree),
-            Some(&mut diff_opts),
-        )?;
-
-        // Process committed changes
-        diff.foreach(
-            &mut |delta, _progress| {
-                if let Some(path_str) = delta.new_file().path().and_then(|p| p.to_str()) {
-                    let old_file = delta.old_file();
-                    let new_file = delta.new_file();
-
-                    if let Ok(diff_chunks) = self.generate_git_diff_chunks(
-                        &worktree_repo,
-                        &old_file,
-                        &new_file,
-                        path_str,
-                    ) {
-                        if !diff_chunks.is_empty() {
-                            files.push(FileDiff {
-                                path: path_str.to_string(),
-                                chunks: diff_chunks,
-                            });
-                        } else if delta.status() == git2::Delta::Added
-                            || delta.status() == git2::Delta::Deleted
-                        {
-                            files.push(FileDiff {
-                                path: path_str.to_string(),
-                                chunks: vec![DiffChunk {
-                                    chunk_type: if delta.status() == git2::Delta::Added {
-                                        DiffChunkType::Insert
-                                    } else {
-                                        DiffChunkType::Delete
-                                    },
-                                    content: format!(
-                                        "{} file",
-                                        if delta.status() == git2::Delta::Added {
-                                            "Added"
-                                        } else {
-                                            "Deleted"
-                                        }
-                                    ),
-                                }],
-                            });
-                        }
-                    }
-                }
-                true
-            },
-            None,
-            None,
-            None,
-        )?;
-
-        // Also get unstaged changes (working directory changes)
-        let current_tree = worktree_repo.head()?.peel_to_tree()?;
-
-        let mut unstaged_diff_opts = DiffOptions::new();
-        unstaged_diff_opts.context_lines(10);
-        unstaged_diff_opts.interhunk_lines(0);
-        unstaged_diff_opts.include_untracked(true);
-
-        let unstaged_diff = worktree_repo
-            .diff_tree_to_workdir_with_index(Some(&current_tree), Some(&mut unstaged_diff_opts))?;
-
-        // Process unstaged changes
-        unstaged_diff.foreach(
-            &mut |delta, _progress| {
-                if let Some(path_str) = delta.new_file().path().and_then(|p| p.to_str()) {
-                    if let Err(e) = self.process_unstaged_file(
-                        files,
-                        &worktree_repo,
-                        base_oid,
-                        worktree_path,
-                        path_str,
-                        &delta,
-                    ) {
-                        tracing::warn!("Error processing unstaged file {}: {:?}", path_str, e);
-                    }
-                }
-                true
-            },
-            None,
-            None,
-            None,
-        )?;
-
-        Ok(())
-    }
-
-    /// Generate diff chunks using Git's native diff algorithm
-    fn generate_git_diff_chunks(
-        &self,
-        repo: &Repository,
-        old_file: &git2::DiffFile,
-        new_file: &git2::DiffFile,
-        file_path: &str,
-    ) -> Result<Vec<DiffChunk>, GitServiceError> {
-        let mut chunks = Vec::new();
-
-        // Create a patch for the single file using Git's native diff
-        let old_blob = if !old_file.id().is_zero() {
-            Some(repo.find_blob(old_file.id())?)
-        } else {
-            None
-        };
-
-        let new_blob = if !new_file.id().is_zero() {
-            Some(repo.find_blob(new_file.id())?)
-        } else {
-            None
-        };
-
-        // Generate patch using Git's diff algorithm
-        let mut diff_opts = DiffOptions::new();
-        diff_opts.context_lines(10);
-        diff_opts.interhunk_lines(0);
-
-        let patch = match (old_blob.as_ref(), new_blob.as_ref()) {
-            (Some(old_b), Some(new_b)) => git2::Patch::from_blobs(
-                old_b,
-                Some(Path::new(file_path)),
-                new_b,
-                Some(Path::new(file_path)),
-                Some(&mut diff_opts),
-            )?,
-            (None, Some(new_b)) => git2::Patch::from_buffers(
-                &[],
-                Some(Path::new(file_path)),
-                new_b.content(),
-                Some(Path::new(file_path)),
-                Some(&mut diff_opts),
-            )?,
-            (Some(old_b), None) => git2::Patch::from_blob_and_buffer(
-                old_b,
-                Some(Path::new(file_path)),
-                &[],
-                Some(Path::new(file_path)),
-                Some(&mut diff_opts),
-            )?,
-            (None, None) => {
-                return Ok(chunks);
-            }
-        };
-
-        // Process the patch hunks
-        for hunk_idx in 0..patch.num_hunks() {
-            let (_hunk, hunk_lines) = patch.hunk(hunk_idx)?;
-
-            for line_idx in 0..hunk_lines {
-                let line = patch.line_in_hunk(hunk_idx, line_idx)?;
-                let content = String::from_utf8_lossy(line.content()).to_string();
-
-                let chunk_type = match line.origin() {
-                    ' ' => DiffChunkType::Equal,
-                    '+' => DiffChunkType::Insert,
-                    '-' => DiffChunkType::Delete,
-                    _ => continue,
-                };
-
-                chunks.push(DiffChunk {
-                    chunk_type,
-                    content,
-                });
-            }
-        }
-
-        Ok(chunks)
-    }
-
-    /// Process unstaged file changes
-    fn process_unstaged_file(
-        &self,
-        files: &mut Vec<FileDiff>,
-        worktree_repo: &Repository,
-        base_oid: git2::Oid,
-        worktree_path: &Path,
-        path_str: &str,
-        delta: &git2::DiffDelta,
-    ) -> Result<(), GitServiceError> {
-        // Check if we already have a diff for this file from committed changes
-        if let Some(existing_file) = files.iter_mut().find(|f| f.path == path_str) {
-            // File already has committed changes, create a combined diff
-            let base_content = self.get_base_file_content(worktree_repo, base_oid, path_str)?;
-            let working_content = self.get_working_file_content(worktree_path, path_str, delta)?;
-
-            if base_content != working_content {
-                if let Ok(combined_chunks) =
-                    self.create_combined_diff_chunks(&base_content, &working_content, path_str)
-                {
-                    existing_file.chunks = combined_chunks;
-                }
-            }
-        } else {
-            // File only has unstaged changes
-            let base_content = self.get_base_file_content(worktree_repo, base_oid, path_str)?;
-            let working_content = self.get_working_file_content(worktree_path, path_str, delta)?;
-
-            if base_content != working_content || delta.status() != git2::Delta::Modified {
-                if let Ok(chunks) =
-                    self.create_combined_diff_chunks(&base_content, &working_content, path_str)
-                {
-                    if !chunks.is_empty() {
-                        files.push(FileDiff {
-                            path: path_str.to_string(),
-                            chunks,
-                        });
-                    }
-                } else if delta.status() != git2::Delta::Modified {
-                    // Fallback for added/deleted files
-                    files.push(FileDiff {
-                        path: path_str.to_string(),
-                        chunks: vec![DiffChunk {
-                            chunk_type: if delta.status() == git2::Delta::Added {
-                                DiffChunkType::Insert
-                            } else {
-                                DiffChunkType::Delete
-                            },
-                            content: format!(
-                                "{} file",
-                                if delta.status() == git2::Delta::Added {
-                                    "Added"
-                                } else {
-                                    "Deleted"
-                                }
-                            ),
-                        }],
-                    });
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Get the content of a file at the base commit
-    fn get_base_file_content(
-        &self,
-        repo: &Repository,
-        base_oid: git2::Oid,
-        path_str: &str,
-    ) -> Result<String, GitServiceError> {
-        if let Ok(base_commit) = repo.find_commit(base_oid) {
-            if let Ok(base_tree) = base_commit.tree() {
-                if let Ok(entry) = base_tree.get_path(Path::new(path_str)) {
-                    if let Ok(blob) = repo.find_blob(entry.id()) {
-                        return Ok(String::from_utf8_lossy(blob.content()).to_string());
-                    }
-                }
-            }
-        }
-        Ok(String::new())
-    }
-
-    /// Get the content of a file in the working directory
-    fn get_working_file_content(
-        &self,
-        worktree_path: &Path,
-        path_str: &str,
-        delta: &git2::DiffDelta,
-    ) -> Result<String, GitServiceError> {
-        if delta.status() != git2::Delta::Deleted {
-            let file_path = worktree_path.join(path_str);
-            std::fs::read_to_string(&file_path).map_err(GitServiceError::from)
-        } else {
-            Ok(String::new())
-        }
-    }
-
-    /// Create diff chunks from two text contents
-    fn create_combined_diff_chunks(
-        &self,
-        old_content: &str,
-        new_content: &str,
-        path_str: &str,
-    ) -> Result<Vec<DiffChunk>, GitServiceError> {
-        let mut diff_opts = DiffOptions::new();
-        diff_opts.context_lines(10);
-        diff_opts.interhunk_lines(0);
-
-        let patch = git2::Patch::from_buffers(
-            old_content.as_bytes(),
-            Some(Path::new(path_str)),
-            new_content.as_bytes(),
-            Some(Path::new(path_str)),
-            Some(&mut diff_opts),
-        )?;
-
-        let mut chunks = Vec::new();
-
-        for hunk_idx in 0..patch.num_hunks() {
-            let (_hunk, hunk_lines) = patch.hunk(hunk_idx)?;
-
-            for line_idx in 0..hunk_lines {
-                let line = patch.line_in_hunk(hunk_idx, line_idx)?;
-                let content = String::from_utf8_lossy(line.content()).to_string();
-
-                let chunk_type = match line.origin() {
-                    ' ' => DiffChunkType::Equal,
-                    '+' => DiffChunkType::Insert,
-                    '-' => DiffChunkType::Delete,
-                    _ => continue,
-                };
-
-                chunks.push(DiffChunk {
-                    chunk_type,
-                    content,
-                });
-            }
-        }
-
-        Ok(chunks)
     }
 
     /// Delete a file from the repository and commit the change
