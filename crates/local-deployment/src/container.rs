@@ -1,6 +1,13 @@
-use std::{collections::{HashMap, HashSet}, path::PathBuf, sync::Arc, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    io,
+    path::PathBuf,
+    sync::Arc,
+    time::Duration,
+};
 
 use anyhow::anyhow;
+use async_stream::try_stream;
 use async_trait::async_trait;
 use axum::response::sse::Event;
 use command_group::AsyncGroupChild;
@@ -12,16 +19,19 @@ use db::{
     },
 };
 use deployment::DeploymentError;
-use executors::actions::{ExecutorAction, ExecutorActions};
+use executors::{
+    actions::{ExecutorAction, ExecutorActions},
+    logs::utils::ConversationPatch,
+};
 use futures::{
     StreamExt, TryStreamExt,
     stream::{BoxStream, select},
 };
-
 use services::services::{
     config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
     filesystem_watcher,
+    git::GitService,
     notification::NotificationService,
     worktree_manager::WorktreeManager,
 };
@@ -42,6 +52,7 @@ pub struct LocalContainerService {
     child_store: Arc<RwLock<HashMap<Uuid, Arc<RwLock<AsyncGroupChild>>>>>,
     msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
     config: Arc<RwLock<Config>>,
+    git: GitService,
 }
 
 impl LocalContainerService {
@@ -49,6 +60,7 @@ impl LocalContainerService {
         db: DBService,
         msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
         config: Arc<RwLock<Config>>,
+        git: GitService,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
 
@@ -57,6 +69,7 @@ impl LocalContainerService {
             child_store,
             msg_stores,
             config,
+            git,
         }
     }
 
@@ -352,6 +365,10 @@ impl ContainerService for LocalContainerService {
         &self.db
     }
 
+    fn git(&self) -> &GitService {
+        &self.git
+    }
+
     fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf {
         PathBuf::from(task_attempt.container_ref.clone().unwrap_or_default())
     }
@@ -494,62 +511,99 @@ impl ContainerService for LocalContainerService {
 
     async fn get_diff(
         &self,
-        container_ref: &ContainerRef,
-    ) -> Option<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>> {
-        use std::io;
+        task_attempt: &TaskAttempt,
+    ) -> Result<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>, ContainerError>
+    {
+        let container_ref = task_attempt
+            .container_ref
+            .as_ref()
+            .ok_or(ContainerError::Other(anyhow!(
+                "Container reference not found"
+            )))?;
 
-        use async_stream::try_stream;
-
-        let directory_to_watch = PathBuf::from(container_ref);
+        let worktree_dir = PathBuf::from(&container_ref);
 
         // Return None if directory doesn't exist
-        if !directory_to_watch.exists() {
-            return None;
+        if !worktree_dir.exists() {
+            return Err(ContainerError::Other(anyhow!(
+                "Worktree directory not found"
+            )));
         }
 
-        // Helper function to convert errors to io::Error
-        fn to_io<E: std::fmt::Display>(e: E) -> io::Error {
-            io::Error::new(io::ErrorKind::Other, e.to_string())
-        }
+        let project_git_repo_path = task_attempt
+            .parent_task(&self.db().pool)
+            .await?
+            .ok_or(ContainerError::Other(anyhow!("Parent task not found")))?
+            .parent_project(&self.db().pool)
+            .await?
+            .ok_or(ContainerError::Other(anyhow!("Parent project not found")))?
+            .git_repo_path;
 
-        let stream = try_stream! {
-            // Create filesystem watcher
-            let (_debouncer, mut rx, _canonical_path) = filesystem_watcher::async_watcher(directory_to_watch.clone()).map_err(to_io)?;
-            
-            // The debouncer is already watching the directory
-
-            // Process events from the watcher
-            while let Some(res) = rx.next().await {
-                match res {
-                    Ok(events) => {
-                        // Convert Vec<DebouncedEvent> to JSON for SSE
-                        // Collect unique paths to avoid duplicates from multiple event types
-                        let mut unique_paths = HashSet::<PathBuf>::new();
-                        for event in &events {
-                            for path in &event.paths {
-                                unique_paths.insert(path.clone());
-                            }
-                        }
-                        
-                        // Convert to sorted vector for stable output
-                        let mut paths_vec: Vec<_> = unique_paths.into_iter().collect();
-                        paths_vec.sort();
-                        
-                        let data = serde_json::to_string(&paths_vec).unwrap_or_default();
-                        yield Event::default().data(data);
-                    },
-                    Err(errors) => {
-                        // Convert Vec<notify::Error> to a single error message
-                        let error_msg = errors.iter()
-                            .map(|e| e.to_string())
-                            .collect::<Vec<_>>()
-                            .join("; ");
-                        Err(to_io(error_msg))?
-                    },
-                }
-            }
+        let existing_diff = if let Some(merge_commit_id) = &task_attempt.merge_commit {
+            // Task attempt has been merged - show the diff from the merge commit
+            self.git().get_enhanced_diff(
+                &project_git_repo_path,
+                std::path::Path::new(""),
+                Some(merge_commit_id.as_str()),
+                &task_attempt.base_branch,
+            )?
+        } else {
+            GitService::new().get_enhanced_diff(
+                &project_git_repo_path,
+                &worktree_dir,
+                None,
+                &task_attempt.base_branch,
+            )?
         };
 
-        Some(Box::pin(stream) as BoxStream<_>)
+        // Direct stream from parsed messages converted to JSON patches
+        let stream = futures::stream::iter(existing_diff.files.into_iter().map(|file_diff| {
+            let patch = ConversationPatch::add_file_diff(file_diff);
+            let event = LogMsg::JsonPatch(patch).to_sse_event();
+            Ok::<_, std::io::Error>(event)
+        }))
+        .boxed();
+
+        Ok(stream)
+
+        // let stream = try_stream! {
+        //     // Create filesystem watcher
+        //     let (_debouncer, mut rx, _canonical_path) = filesystem_watcher::async_watcher(worktree_dir.clone()).map_err(
+        //         |e| io::Error::new(io::ErrorKind::Other, e.to_string())
+        //     )?;
+
+        //     // Process events from the watcher
+        //     while let Some(res) = rx.next().await {
+        //         match res {
+        //             Ok(events) => {
+        //                 // Convert Vec<DebouncedEvent> to JSON for SSE
+        //                 // Collect unique paths to avoid duplicates from multiple event types
+        //                 let mut unique_paths = HashSet::<PathBuf>::new();
+        //                 for event in &events {
+        //                     for path in &event.paths {
+        //                         unique_paths.insert(path.clone());
+        //                     }
+        //                 }
+
+        //                 // Convert to sorted vector for stable output
+        //                 let mut paths_vec: Vec<_> = unique_paths.into_iter().collect();
+        //                 paths_vec.sort();
+
+        //                 let data = serde_json::to_string(&paths_vec).unwrap_or_default();
+        //                 yield Event::default().data(data);
+        //             },
+        //             Err(errors) => {
+        //                 // Convert Vec<notify::Error> to a single error message
+        //                 let error_msg = errors.iter()
+        //                     .map(|e| e.to_string())
+        //                     .collect::<Vec<_>>()
+        //                     .join("; ");
+        //                 Err(io::Error::new(io::ErrorKind::Other, error_msg))?
+        //             },
+        //         }
+        //     }
+        // };
+
+        // Some(Box::pin(stream) as BoxStream<_>)
     }
 }

@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::{debug, info};
 use ts_rs::TS;
+use utils::diff::{DiffChunk, DiffChunkType, FileDiff, WorktreeDiff};
 
 use crate::services::worktree_manager::WorktreeManager;
 
@@ -39,34 +40,6 @@ pub enum GitServiceError {
 /// Service for managing Git operations in task execution workflows
 #[derive(Clone)]
 pub struct GitService {}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct WorktreeDiff {
-    pub files: Vec<FileDiff>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct FileDiff {
-    pub path: String,
-    pub chunks: Vec<DiffChunk>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct DiffChunk {
-    pub chunk_type: DiffChunkType,
-    pub content: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub enum DiffChunkType {
-    Equal,
-    Insert,
-    Delete,
-}
 
 #[derive(Debug, Serialize, TS)]
 #[ts(export)]

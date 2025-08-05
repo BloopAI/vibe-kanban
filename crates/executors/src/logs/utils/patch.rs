@@ -2,6 +2,7 @@ use json_patch::Patch;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_value, json};
 use ts_rs::TS;
+use utils::diff::FileDiff;
 
 use crate::logs::NormalizedEntry;
 
@@ -18,6 +19,7 @@ pub enum PatchType {
     NormalizedEntry(NormalizedEntry),
     Stdout(String),
     Stderr(String),
+    FileDiff(FileDiff),
 }
 
 #[derive(Serialize)]
@@ -59,6 +61,17 @@ impl ConversationPatch {
             op: PatchOperation::Add,
             path: format!("/entries/{}", entry_index),
             value: PatchType::Stderr(entry),
+        };
+
+        from_value(json!([patch_entry])).unwrap()
+    }
+
+    /// Create an ADD patch for a new file diff at the given index
+    pub fn add_file_diff(file_diff: FileDiff) -> Patch {
+        let patch_entry = PatchEntry {
+            op: PatchOperation::Add,
+            path: format!("/entries/{}", file_diff.path),
+            value: PatchType::FileDiff(file_diff),
         };
 
         from_value(json!([patch_entry])).unwrap()

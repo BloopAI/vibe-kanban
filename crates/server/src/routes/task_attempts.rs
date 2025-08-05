@@ -27,7 +27,7 @@ use serde::{Deserialize, Serialize};
 use services::services::{
     config::{Config, EditorConfig, EditorType},
     container::{ContainerRef, ContainerService},
-    git::{BranchStatus, GitService, GitServiceError, WorktreeDiff},
+    git::{BranchStatus, GitService, GitServiceError},
     github_service::{CreatePrRequest, GitHubRepoInfo, GitHubService, GitHubServiceError},
 };
 use sqlx::Error as SqlxError;
@@ -398,15 +398,6 @@ pub async fn get_task_attempt_diff(
     // ) -> Result<ResponseJson<ApiResponse<WorktreeDiff>>, ApiError> {
 ) -> Result<Sse<impl futures_util::Stream<Item = Result<Event, BoxError>>>, axum::http::StatusCode>
 {
-    let pool = &deployment.db().pool;
-    let task = task_attempt
-        .parent_task(pool)
-        .await
-        .map_err(|e| StatusCode::INTERNAL_SERVER_ERROR)?
-        .ok_or(StatusCode::NOT_FOUND)?;
-
-    let container_id = task_attempt.container_ref.ok_or(StatusCode::NOT_FOUND)?;
-
     // let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
 
     // if let Some(merge_commit_id) = &ctx.task_attempt.merge_commit {
@@ -436,9 +427,9 @@ pub async fn get_task_attempt_diff(
 
     let stream = deployment
         .container()
-        .get_diff(&container_id)
+        .get_diff(&task_attempt)
         .await
-        .ok_or(axum::http::StatusCode::NOT_FOUND)?;
+        .map_err(|e| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(Sse::new(stream.map_err(|e| -> BoxError { e.into() })).keep_alive(KeepAlive::default()))
 }

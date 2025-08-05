@@ -69,7 +69,8 @@ impl Deployment for LocalDeployment {
             DBService::new_with_after_connect(hook).await?
         };
 
-        let container = LocalContainerService::new(db.clone(), msg_stores.clone(), config.clone());
+        let container =
+            LocalContainerService::new(db.clone(), msg_stores.clone(), config.clone(), git.clone());
         container.spawn_worktree_cleanup().await;
 
         let events = EventService::new(db.clone(), events_msg_store, events_entry_count);

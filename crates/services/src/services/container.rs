@@ -31,7 +31,10 @@ use tokio::{sync::RwLock, task::JoinHandle};
 use utils::{log_msg::LogMsg, msg_store::MsgStore};
 use uuid::Uuid;
 
-use crate::services::{git::GitServiceError, worktree_manager::WorktreeError};
+use crate::services::{
+    git::{GitService, GitServiceError},
+    worktree_manager::WorktreeError,
+};
 pub type ContainerRef = String;
 
 #[derive(Debug, Error)]
@@ -58,6 +61,8 @@ pub trait ContainerService {
 
     fn db(&self) -> &DBService;
 
+    fn git(&self) -> &GitService;
+
     fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf;
 
     async fn create(&self, task_attempt: &TaskAttempt) -> Result<ContainerRef, ContainerError>;
@@ -81,8 +86,8 @@ pub trait ContainerService {
 
     async fn get_diff(
         &self,
-        container_ref: &ContainerRef,
-    ) -> Option<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>>;
+        task_attempt: &TaskAttempt,
+    ) -> Result<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>, ContainerError>;
 
     /// Fetch the MsgStore for a given execution ID, panicking if missing.
     async fn get_msg_store_by_id(&self, uuid: &Uuid) -> Option<Arc<MsgStore>> {
