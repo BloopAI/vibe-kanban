@@ -42,6 +42,7 @@ function TabNavigation({ activeTab, setActiveTab }: Props) {
             }`}
         >
           <GitCompare className="h-4 w-4 mr-2" />
+          Diffs
         </button>
         <button
           onClick={() => {
