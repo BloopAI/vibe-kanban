@@ -385,7 +385,7 @@ export const attemptsApi = {
     }
   ): Promise<string> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/create-pr`,
+      `/api/task-attempts/${attemptId}/pr`,
       {
         method: 'POST',
         body: JSON.stringify(data),
