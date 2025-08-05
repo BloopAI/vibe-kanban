@@ -102,11 +102,14 @@ fn debounced_should_forward(event: &DebouncedEvent, gi: &Gitignore, canonical_ro
 
 pub fn async_watcher(
     root: PathBuf,
-) -> Result<(
-    Debouncer<RecommendedWatcher, RecommendedCache>,
-    Receiver<DebounceEventResult>,
-    PathBuf,
-), FilesystemWatcherError> {
+) -> Result<
+    (
+        Debouncer<RecommendedWatcher, RecommendedCache>,
+        Receiver<DebounceEventResult>,
+        PathBuf,
+    ),
+    FilesystemWatcherError,
+> {
     let canonical_root = canonicalize_lossy(&root);
     let gi_set = Arc::new(build_gitignore_set(&canonical_root)?);
     let (mut tx, rx) = channel(64); // Increased capacity for error bursts

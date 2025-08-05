@@ -20,7 +20,7 @@ use db::{
 };
 use deployment::DeploymentError;
 use executors::{
-    actions::{Executable, ExecutorAction, ExecutorActions},
+    actions::{Executable, ExecutorAction},
     logs::utils::ConversationPatch,
 };
 use futures::{StreamExt, TryStreamExt, stream::select};
