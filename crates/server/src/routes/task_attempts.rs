@@ -245,7 +245,7 @@ pub async fn get_task_attempt(
 #[ts(export)]
 pub struct CreateTaskAttemptBody {
     pub task_id: Uuid,
-    pub executor: Option<String>,
+    pub profile: Option<String>,
     pub base_branch: String,
 }
 
@@ -254,23 +254,23 @@ pub async fn create_task_attempt(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateTaskAttemptBody>,
 ) -> Result<ResponseJson<ApiResponse<TaskAttempt>>, ApiError> {
-    let executor = payload
-        .executor
-        .unwrap_or(deployment.config().read().await.executor.to_string());
+    let profile_label = payload
+        .profile
+        .unwrap_or(deployment.config().read().await.profile.to_string());
 
-    let executor_action_type = executors::command::AgentProfiles::get_cached()
-        .get_profile(&executor)
-        .map(|profile| profile.agent.to_string());
-
-    if executor_action_type.is_none() {
-        tracing::warn!("No profile found for executor: {}", executor);
-    }
+    let profile = executors::command::AgentProfiles::get_cached()
+        .get_profile(&profile_label)
+        .ok_or_else(|| {
+            ApiError::TaskAttempt(TaskAttemptError::ValidationError(format!(
+                "Profile not found: {}",
+                profile_label
+            )))
+        })?;
 
     let task_attempt = TaskAttempt::create(
         &deployment.db().pool,
         &CreateTaskAttempt {
-            executor: executor.clone(),
-            executor_action_type,
+            base_coding_agent: profile.agent.to_string(),
             base_branch: payload.base_branch,
         },
         payload.task_id,
@@ -309,7 +309,7 @@ pub async fn create_task_attempt(
             Some(Box::new(ExecutorAction::new(
                 ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                     prompt: task.to_prompt(),
-                    profile: executor,
+                    profile: profile_label,
                 }),
                 None,
             ))),
@@ -327,7 +327,7 @@ pub async fn create_task_attempt(
         let executor_action = ExecutorAction::new(
             ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                 prompt: task.to_prompt(),
-                profile: executor,
+                profile: profile_label,
             }),
             None,
         );

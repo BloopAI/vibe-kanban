@@ -7,7 +7,7 @@ use ts_rs::TS;
 
 use crate::{
     actions::Executable,
-    executors::{CodingAgentExecutors, ExecutorError, StandardCodingAgentExecutor},
+    executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
@@ -21,7 +21,7 @@ pub struct CodingAgentFollowUpRequest {
 #[async_trait]
 impl Executable for CodingAgentFollowUpRequest {
     async fn spawn(&self, current_dir: &PathBuf) -> Result<AsyncGroupChild, ExecutorError> {
-        let executor = CodingAgentExecutors::from_profile_str(&self.profile)?;
+        let executor = CodingAgent::from_profile_str(&self.profile)?;
         executor
             .spawn_follow_up(current_dir, &self.prompt, &self.session_id)
             .await

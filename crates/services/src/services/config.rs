@@ -1,7 +1,6 @@
 use std::{path::PathBuf, str::FromStr};
 
 use anyhow::Error;
-use executors::executors::CodingAgentExecutorType;
 use serde::{Deserialize, Serialize};
 use strum_macros::EnumString;
 use ts_rs::TS;
@@ -20,7 +19,7 @@ pub struct EnvironmentInfo {
 #[ts(export)]
 pub struct Config {
     pub theme: ThemeMode,
-    pub executor: CodingAgentExecutorType,
+    pub profile: String,
     pub disclaimer_acknowledged: bool,
     pub onboarding_acknowledged: bool,
     pub github_login_acknowledged: bool,
@@ -112,7 +111,7 @@ impl Default for Config {
         Self {
             theme: ThemeMode::System,
             // TODO: fix
-            executor: CodingAgentExecutorType::ClaudeCode,
+            profile: String::from("claude-code"),
             disclaimer_acknowledged: false,
             onboarding_acknowledged: false,
             github_login_acknowledged: false,

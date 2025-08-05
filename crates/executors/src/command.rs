@@ -7,7 +7,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::executors::CodingAgentExecutorType;
+use crate::executors::BaseCodingAgent;
 
 static PROFILES_CACHE: OnceLock<AgentProfiles> = OnceLock::new();
 
@@ -61,7 +61,7 @@ pub struct AgentProfile {
     /// Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
     pub label: String,
     /// The executor type this profile configures
-    pub agent: CodingAgentExecutorType,
+    pub agent: BaseCodingAgent,
     /// Command builder configuration
     pub command: CommandBuilder,
 }
@@ -70,7 +70,7 @@ impl AgentProfile {
     pub fn claude_code() -> Self {
         Self {
             label: "claude-code".to_string(),
-            agent: CodingAgentExecutorType::ClaudeCode,
+            agent: BaseCodingAgent::ClaudeCode,
             command: CommandBuilder::new("npx -y @anthropic-ai/claude-code@latest").params(vec![
                 "-p",
                 "--dangerously-skip-permissions",
@@ -83,7 +83,7 @@ impl AgentProfile {
     pub fn claude_code_plan() -> Self {
         Self {
             label: "claude-code-plan".to_string(),
-            agent: CodingAgentExecutorType::ClaudeCode,
+            agent: BaseCodingAgent::ClaudeCode,
             command: CommandBuilder::new("npx -y @anthropic-ai/claude-code@latest").params(vec![
                 "-p",
                 "--permission-mode=plan",
@@ -96,7 +96,7 @@ impl AgentProfile {
     pub fn amp() -> Self {
         Self {
             label: "amp".to_string(),
-            agent: CodingAgentExecutorType::Amp,
+            agent: BaseCodingAgent::Amp,
             command: CommandBuilder::new("npx @sourcegraph/amp@0.0.1752148945-gd8844f")
                 .params(vec!["--format=jsonl"]),
         }
@@ -105,7 +105,7 @@ impl AgentProfile {
     pub fn gemini() -> Self {
         Self {
             label: "gemini".to_string(),
-            agent: CodingAgentExecutorType::Gemini,
+            agent: BaseCodingAgent::Gemini,
             command: CommandBuilder::new("npx @google/gemini-cli@latest").params(vec!["--yolo"]),
         }
     }
@@ -187,7 +187,7 @@ impl AgentProfiles {
         self.profiles.iter().find(|p| p.label == label)
     }
 
-    pub fn get_profiles_for_agent(&self, agent: &CodingAgentExecutorType) -> Vec<&AgentProfile> {
+    pub fn get_profiles_for_agent(&self, agent: &BaseCodingAgent) -> Vec<&AgentProfile> {
         self.profiles.iter().filter(|p| &p.agent == agent).collect()
     }
 
@@ -219,7 +219,7 @@ mod tests {
         assert_eq!(profiles.profiles.len(), 4);
 
         let claude_profile = profiles.get_profile("claude-code").unwrap();
-        assert_eq!(claude_profile.agent, CodingAgentExecutorType::ClaudeCode);
+        assert_eq!(claude_profile.agent, BaseCodingAgent::ClaudeCode);
         assert!(
             claude_profile
                 .command
@@ -234,7 +234,7 @@ mod tests {
         );
 
         let amp_profile = profiles.get_profile("amp").unwrap();
-        assert_eq!(amp_profile.agent, CodingAgentExecutorType::Amp);
+        assert_eq!(amp_profile.agent, BaseCodingAgent::Amp);
         assert!(amp_profile.command.build_initial().contains("amp"));
         assert!(
             amp_profile
@@ -244,7 +244,7 @@ mod tests {
         );
 
         let gemini_profile = profiles.get_profile("gemini").unwrap();
-        assert_eq!(gemini_profile.agent, CodingAgentExecutorType::Gemini);
+        assert_eq!(gemini_profile.agent, BaseCodingAgent::Gemini);
         assert!(gemini_profile.command.build_initial().contains("gemini"));
         assert!(gemini_profile.command.build_initial().contains("--yolo"));
     }
@@ -253,10 +253,10 @@ mod tests {
     fn test_profiles_for_agent() {
         let profiles = AgentProfiles::from_defaults();
 
-        let claude_profiles = profiles.get_profiles_for_agent(&CodingAgentExecutorType::ClaudeCode);
+        let claude_profiles = profiles.get_profiles_for_agent(&BaseCodingAgent::ClaudeCode);
         assert_eq!(claude_profiles.len(), 2); // default and plan mode
 
-        let amp_profiles = profiles.get_profiles_for_agent(&CodingAgentExecutorType::Amp);
+        let amp_profiles = profiles.get_profiles_for_agent(&BaseCodingAgent::Amp);
         assert_eq!(amp_profiles.len(), 1);
     }
 }

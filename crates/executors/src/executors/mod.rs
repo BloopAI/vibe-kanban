@@ -41,13 +41,13 @@ fn unknown_executor_error(s: &str) -> ExecutorError {
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 #[strum(parse_err_ty = ExecutorError, parse_err_fn = unknown_executor_error)]
 #[strum_discriminants(
-    name(CodingAgentExecutorType),
+    name(BaseCodingAgent),
     derive(strum_macros::Display, Serialize, Deserialize, TS),
     strum(serialize_all = "SCREAMING_SNAKE_CASE"),
     ts(use_ts_enum),
     serde(rename_all = "SCREAMING_SNAKE_CASE")
 )]
-pub enum CodingAgentExecutors {
+pub enum CodingAgent {
     // Echo,
     #[serde(alias = "claude")]
     ClaudeCode,
@@ -63,29 +63,29 @@ pub enum CodingAgentExecutors {
     // Codex,
 }
 
-impl CodingAgentExecutors {
+impl CodingAgent {
     /// Create an executor from a profile string
     /// Handles both default profiles ("claude-code", "amp", "gemini") and custom profiles
     pub fn from_profile_str(profile: &str) -> Result<Self, ExecutorError> {
         match profile {
-            "claude-code" => Ok(CodingAgentExecutors::ClaudeCode(ClaudeCode::new())),
-            "claude-code-plan" => Ok(CodingAgentExecutors::ClaudeCode(ClaudeCode::new_plan_mode())),
-            "amp" => Ok(CodingAgentExecutors::Amp(Amp::new())),
-            "gemini" => Ok(CodingAgentExecutors::Gemini(Gemini::new())),
+            "claude-code" => Ok(CodingAgent::ClaudeCode(ClaudeCode::new())),
+            "claude-code-plan" => Ok(CodingAgent::ClaudeCode(ClaudeCode::new_plan_mode())),
+            "amp" => Ok(CodingAgent::Amp(Amp::new())),
+            "gemini" => Ok(CodingAgent::Gemini(Gemini::new())),
             _ => {
                 // Try to load from AgentProfiles
                 if let Some(agent_profile) = AgentProfiles::get_cached().get_profile(profile) {
                     match agent_profile.agent {
-                        CodingAgentExecutorType::ClaudeCode => Ok(
-                            CodingAgentExecutors::ClaudeCode(ClaudeCode::with_command_builder(
+                        BaseCodingAgent::ClaudeCode => {
+                            Ok(CodingAgent::ClaudeCode(ClaudeCode::with_command_builder(
                                 profile.to_string(),
                                 agent_profile.command.clone(),
-                            )),
-                        ),
-                        CodingAgentExecutorType::Amp => Ok(CodingAgentExecutors::Amp(
-                            Amp::with_command_builder(agent_profile.command.clone()),
-                        )),
-                        CodingAgentExecutorType::Gemini => Ok(CodingAgentExecutors::Gemini(
+                            )))
+                        }
+                        BaseCodingAgent::Amp => Ok(CodingAgent::Amp(Amp::with_command_builder(
+                            agent_profile.command.clone(),
+                        ))),
+                        BaseCodingAgent::Gemini => Ok(CodingAgent::Gemini(
                             Gemini::with_command_builder(agent_profile.command.clone()),
                         )),
                     }
@@ -100,7 +100,7 @@ impl CodingAgentExecutors {
     }
 }
 
-impl CodingAgentExecutorType {
+impl BaseCodingAgent {
     /// Get the JSON attribute path for MCP servers in the config file
     /// Returns None if the executor doesn't support MCP
     pub fn mcp_attribute_path(&self) -> Option<Vec<&'static str>> {
@@ -151,7 +151,7 @@ impl CodingAgentExecutorType {
 }
 
 #[async_trait]
-#[enum_dispatch(CodingAgentExecutors)]
+#[enum_dispatch(CodingAgent)]
 pub trait StandardCodingAgentExecutor {
     async fn spawn(
         &self,

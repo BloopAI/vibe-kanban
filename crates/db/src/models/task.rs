@@ -135,7 +135,7 @@ impl Task {
   ) IN ('failed','killed') THEN 1 ELSE 0 END
                                  AS "last_attempt_failed!: i64",
 
-  ( SELECT ta.executor
+  ( SELECT ta.base_coding_agent
       FROM task_attempts ta
      WHERE ta.task_id = t.id
      ORDER BY ta.created_at DESC

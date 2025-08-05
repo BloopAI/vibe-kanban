@@ -23,7 +23,7 @@ use db::{
 };
 use executors::{
     actions::{ExecutorAction, ExecutorActionType},
-    executors::{CodingAgentExecutors, ExecutorError, StandardCodingAgentExecutor},
+    executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
     logs::{NormalizedEntry, NormalizedEntryType, utils::patch::ConversationPatch},
 };
 use futures::{StreamExt, TryStreamExt, future};
@@ -254,7 +254,7 @@ pub trait ContainerService {
             // Spawn normalizer on populated store
             match process.executor_action().typ() {
                 ExecutorActionType::CodingAgentInitialRequest(request) => {
-                    if let Ok(executor) = CodingAgentExecutors::from_profile_str(&request.profile) {
+                    if let Ok(executor) = CodingAgent::from_profile_str(&request.profile) {
                         executor.normalize_logs(temp_store.clone(), &current_dir);
                     } else {
                         tracing::error!(
@@ -264,7 +264,7 @@ pub trait ContainerService {
                     }
                 }
                 ExecutorActionType::CodingAgentFollowUpRequest(request) => {
-                    if let Ok(executor) = CodingAgentExecutors::from_profile_str(&request.profile) {
+                    if let Ok(executor) = CodingAgent::from_profile_str(&request.profile) {
                         executor.normalize_logs(temp_store.clone(), &current_dir);
                     } else {
                         tracing::error!(
@@ -413,7 +413,7 @@ pub trait ContainerService {
         match executor_action.typ() {
             ExecutorActionType::CodingAgentInitialRequest(request) => {
                 if let Some(msg_store) = self.get_msg_store_by_id(&execution_process.id).await {
-                    if let Ok(executor) = CodingAgentExecutors::from_profile_str(&request.profile) {
+                    if let Ok(executor) = CodingAgent::from_profile_str(&request.profile) {
                         executor.normalize_logs(
                             msg_store,
                             &self.task_attempt_to_current_dir(task_attempt),
@@ -428,7 +428,7 @@ pub trait ContainerService {
             }
             ExecutorActionType::CodingAgentFollowUpRequest(request) => {
                 if let Some(msg_store) = self.get_msg_store_by_id(&execution_process.id).await {
-                    if let Ok(executor) = CodingAgentExecutors::from_profile_str(&request.profile) {
+                    if let Ok(executor) = CodingAgent::from_profile_str(&request.profile) {
                         executor.normalize_logs(
                             msg_store,
                             &self.task_attempt_to_current_dir(task_attempt),

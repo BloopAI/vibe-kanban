@@ -45,7 +45,7 @@ fn generate_types_content() -> String {
         utils::diff::DiffChunk::decl(),
         utils::diff::DiffChunkType::decl(),
         services::services::github_service::RepositoryInfo::decl(),
-        executors::executors::CodingAgentExecutorType::decl(),
+        executors::executors::BaseCodingAgent::decl(),
         executors::command::CommandBuilder::decl(),
         executors::command::AgentProfile::decl(),
         executors::command::AgentProfiles::decl(),
