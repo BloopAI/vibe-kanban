@@ -13,10 +13,15 @@ use db::{
 };
 use deployment::DeploymentError;
 use executors::actions::{ExecutorAction, ExecutorActions};
-use futures::{TryStreamExt, stream::select};
+use futures::{
+    StreamExt, TryStreamExt,
+    stream::{BoxStream, select},
+};
+use notify::{RecursiveMode, Watcher};
 use services::services::{
     config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
+    filesystem_watcher,
     notification::NotificationService,
     worktree_manager::WorktreeManager,
 };
@@ -489,7 +494,44 @@ impl ContainerService for LocalContainerService {
 
     async fn get_diff(
         &self,
+        container_ref: &ContainerRef,
     ) -> Option<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>> {
-        todo!()
+        use std::io;
+
+        use async_stream::try_stream;
+
+        let directory_to_watch = PathBuf::from(container_ref);
+
+        // Return None if directory doesn't exist
+        if !directory_to_watch.exists() {
+            return None;
+        }
+
+        // Helper function to convert errors to io::Error
+        fn to_io<E: std::fmt::Display>(e: E) -> io::Error {
+            io::Error::new(io::ErrorKind::Other, e.to_string())
+        }
+
+        let stream = try_stream! {
+            // Create filesystem watcher
+            let (mut watcher, mut rx) = filesystem_watcher::async_watcher().map_err(to_io)?;
+            
+            // Start watching the directory recursively
+            watcher.watch(&directory_to_watch, RecursiveMode::Recursive).map_err(to_io)?;
+
+            // Process events from the watcher
+            while let Some(res) = rx.next().await {
+                match res {
+                    Ok(event) => {
+                        // Convert notify::Event to JSON for SSE
+                        let data = serde_json::to_string(&event.paths).unwrap_or_default();
+                        yield Event::default().data(data);
+                    },
+                    Err(err) => Err(to_io(err))?,
+                }
+            }
+        };
+
+        Some(Box::pin(stream) as BoxStream<_>)
     }
 }

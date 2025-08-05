@@ -6,7 +6,7 @@ use futures::{
 };
 use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
 
-fn async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::Result<Event>>)> {
+pub fn async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::Result<Event>>)> {
     let (mut tx, rx) = channel(1);
 
     // Automatically select the best implementation for your platform.

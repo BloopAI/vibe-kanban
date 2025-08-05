@@ -405,6 +405,8 @@ pub async fn get_task_attempt_diff(
         .map_err(|e| StatusCode::INTERNAL_SERVER_ERROR)?
         .ok_or(StatusCode::NOT_FOUND)?;
 
+    let container_id = task_attempt.container_ref.ok_or(StatusCode::NOT_FOUND)?;
+
     // let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
 
     // if let Some(merge_commit_id) = &ctx.task_attempt.merge_commit {
@@ -434,7 +436,7 @@ pub async fn get_task_attempt_diff(
 
     let stream = deployment
         .container()
-        .get_diff()
+        .get_diff(&container_id)
         .await
         .ok_or(axum::http::StatusCode::NOT_FOUND)?;
 
