@@ -16,12 +16,27 @@ use notify::{RecommendedWatcher, RecursiveMode};
 use notify_debouncer_full::{
     DebounceEventResult, DebouncedEvent, Debouncer, RecommendedCache, new_debouncer,
 };
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum FilesystemWatcherError {
+    #[error(transparent)]
+    Notify(#[from] notify::Error),
+    #[error(transparent)]
+    Ignore(#[from] ignore::Error),
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
+    #[error("Failed to build gitignore: {0}")]
+    GitignoreBuilder(String),
+    #[error("Invalid path: {0}")]
+    InvalidPath(String),
+}
 
 fn canonicalize_lossy(path: &Path) -> PathBuf {
     dunce::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
 }
 
-fn build_gitignore_set(root: &Path) -> Result<Gitignore, ignore::Error> {
+fn build_gitignore_set(root: &Path) -> Result<Gitignore, FilesystemWatcherError> {
     let mut builder = GitignoreBuilder::new(root);
 
     // Walk once to collect all .gitignore files under root
@@ -87,16 +102,13 @@ fn debounced_should_forward(event: &DebouncedEvent, gi: &Gitignore, canonical_ro
 
 pub fn async_watcher(
     root: PathBuf,
-) -> notify::Result<(
+) -> Result<(
     Debouncer<RecommendedWatcher, RecommendedCache>,
     Receiver<DebounceEventResult>,
     PathBuf,
-)> {
+), FilesystemWatcherError> {
     let canonical_root = canonicalize_lossy(&root);
-    let gi_set = Arc::new(
-        build_gitignore_set(&canonical_root)
-            .map_err(|e| notify::Error::generic(&format!("Failed to build gitignore: {}", e)))?,
-    );
+    let gi_set = Arc::new(build_gitignore_set(&canonical_root)?);
     let (mut tx, rx) = channel(64); // Increased capacity for error bursts
 
     let gi_clone = gi_set.clone();
@@ -137,7 +149,7 @@ pub fn async_watcher(
     Ok((debouncer, rx, canonical_root))
 }
 
-async fn async_watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
+async fn async_watch<P: AsRef<Path>>(path: P) -> Result<(), FilesystemWatcherError> {
     let (_debouncer, mut rx, _canonical_path) = async_watcher(path.as_ref().to_path_buf())?;
 
     // The debouncer is already watching the path, no need to call watch() again

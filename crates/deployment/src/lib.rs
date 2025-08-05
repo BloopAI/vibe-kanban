@@ -22,6 +22,7 @@ use services::services::{
     container::{ContainerError, ContainerService},
     events::{EventError, EventService},
     filesystem::{FilesystemError, FilesystemService},
+    filesystem_watcher::FilesystemWatcherError,
     git::{GitService, GitServiceError},
     pr_monitor::PrMonitorService,
     sentry::SentryService,
@@ -42,6 +43,8 @@ pub enum DeploymentError {
     Git2(#[from] Git2Error),
     #[error(transparent)]
     GitServiceError(#[from] GitServiceError),
+    #[error(transparent)]
+    FilesystemWatcherError(#[from] FilesystemWatcherError),
     #[error(transparent)]
     TaskAttempt(#[from] TaskAttemptError),
     #[error(transparent)]
