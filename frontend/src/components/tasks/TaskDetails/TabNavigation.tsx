@@ -6,7 +6,6 @@ import {
 import { useContext } from 'react';
 import {
   TaskAttemptDataContext,
-  TaskDiffContext,
 } from '@/components/context/taskDetailsContext.ts';
 import type { TabType } from '@/types/tabs';
 
@@ -16,7 +15,6 @@ type Props = {
 };
 
 function TabNavigation({ activeTab, setActiveTab }: Props) {
-  const { diff } = useContext(TaskDiffContext);
   const { attemptData } = useContext(TaskAttemptDataContext);
   return (
     <div className="border-b bg-muted/30">
@@ -44,12 +42,6 @@ function TabNavigation({ activeTab, setActiveTab }: Props) {
             }`}
         >
           <GitCompare className="h-4 w-4 mr-2" />
-          Diffs
-          {diff && diff.files.length > 0 && (
-            <span className="ml-2 px-1.5 py-0.5 text-xs bg-primary/10 text-primary rounded-full">
-              {diff.files.length}
-            </span>
-          )}
         </button>
         <button
           onClick={() => {

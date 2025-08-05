@@ -1,5 +1,4 @@
-import { useContext, useMemo, useState } from 'react';
-import { DiffCard } from './DiffCard'
+import { useState } from 'react';
 import MarkdownRenderer from '@/components/ui/markdown-renderer.tsx';
 import {
     AlertCircle,
@@ -19,10 +18,8 @@ import {
 } from 'lucide-react';
 import {
     NormalizedEntry,
-    type NormalizedEntryType,
-    type WorktreeDiff,
+    type NormalizedEntryType
 } from 'shared/types.ts';
-import { TaskDiffContext } from '@/components/context/taskDetailsContext.ts';
 
 type Props = {
     entry: NormalizedEntry;
@@ -123,116 +120,6 @@ const getContentClassName = (entryType: NormalizedEntryType) => {
     return baseClasses;
 };
 
-// Parse file path from content (handles various formats)
-const parseFilePathFromContent = (content: string): string | null => {
-    // Try to extract path from backticks: `path/to/file.ext`
-    const backtickMatch = content.match(/`([^`]+)`/);
-    if (backtickMatch) {
-        return backtickMatch[1];
-    }
-
-    // Try to extract from common patterns like "Edit file: path" or "Write file: path"
-    const actionMatch = content.match(
-        /(?:Edit|Write|Create)\s+file:\s*([^\s\n]+)/i
-    );
-    if (actionMatch) {
-        return actionMatch[1];
-    }
-
-    return null;
-};
-
-// Helper function to determine if a tool call modifies files
-const isFileModificationToolCall = (
-    entryType: NormalizedEntryType
-): boolean => {
-    if (entryType.type !== 'tool_use') {
-        return false;
-    }
-
-    // Check for direct file write action
-    if (entryType.action_type.action === 'file_write') {
-        return true;
-    }
-
-    // Check for "other" actions that are file modification tools
-    if (entryType.action_type.action === 'other') {
-        const fileModificationTools = [
-            'edit',
-            'write',
-            'create_file',
-            'multiedit',
-            'edit_file',
-        ];
-        return fileModificationTools.includes(
-            entryType.tool_name?.toLowerCase() || ''
-        );
-    }
-
-    return false;
-};
-
-// Extract file path from tool call
-const extractFilePathFromToolCall = (entry: NormalizedEntry): string | null => {
-    if (entry.entry_type.type !== 'tool_use') {
-        return null;
-    }
-
-    const { action_type, tool_name } = entry.entry_type;
-
-    // Direct path extraction from action_type
-    if (action_type.action === 'file_write') {
-        return action_type.path || null;
-    }
-
-    // For "other" actions, check if it's a known file modification tool
-    if (action_type.action === 'other') {
-        const fileModificationTools = [
-            'edit',
-            'write',
-            'create_file',
-            'multiedit',
-            'edit_file',
-        ];
-
-        if (fileModificationTools.includes(tool_name.toLowerCase())) {
-            // Parse file path from content field
-            return parseFilePathFromContent(entry.content);
-        }
-    }
-
-    return null;
-};
-
-// Create filtered diff showing only specific files
-const createIncrementalDiff = (
-    fullDiff: WorktreeDiff | null,
-    targetFilePaths: string[]
-): WorktreeDiff | null => {
-    if (!fullDiff || targetFilePaths.length === 0) {
-        return null;
-    }
-
-    // Filter files to only include the target file paths
-    const filteredFiles = fullDiff.files.filter((file) =>
-        targetFilePaths.some(
-            (targetPath) =>
-                file.path === targetPath ||
-                file.path.endsWith('/' + targetPath) ||
-                targetPath.endsWith('/' + file.path)
-        )
-    );
-
-    if (filteredFiles.length === 0) {
-        return null;
-    }
-
-    return {
-        ...fullDiff,
-        files: filteredFiles,
-    };
-};
-
 // Helper function to determine if content should be rendered as markdown
 const shouldRenderMarkdown = (entryType: NormalizedEntryType) => {
     // Render markdown for assistant messages, plan presentations, and tool outputs that contain backticks
@@ -266,9 +153,7 @@ const shouldRenderMarkdown = (entryType: NormalizedEntryType) => {
     );
 };
 
-function DisplayConversationEntry({ entry, index, diffDeletable }: Props) {
-    const diffContext = useContext(TaskDiffContext);
-    const diff = diffContext?.diff || null;
+function DisplayConversationEntry({ entry, index }: Props) {
     const [expandedErrors, setExpandedErrors] = useState<Set<number>>(new Set());
 
     const toggleErrorExpansion = (index: number) => {
@@ -286,29 +171,6 @@ function DisplayConversationEntry({ entry, index, diffDeletable }: Props) {
     const isErrorMessage = entry.entry_type.type === 'error_message';
     const isExpanded = expandedErrors.has(index);
     const hasMultipleLines = isErrorMessage && entry.content.includes('\n');
-    const isFileModification = useMemo(
-        () => isFileModificationToolCall(entry.entry_type),
-        [entry.entry_type]
-    );
-
-    // Extract file path from this specific tool call
-    const modifiedFilePath = useMemo(
-        () => (isFileModification ? extractFilePathFromToolCall(entry) : null),
-        [isFileModification, entry]
-    );
-
-    // Create incremental diff showing only the files modified by this specific tool call
-    const incrementalDiff = useMemo(
-        () =>
-            modifiedFilePath && diff
-                ? createIncrementalDiff(diff, [modifiedFilePath])
-                : null,
-        [modifiedFilePath, diff]
-    );
-
-    // Show incremental diff for this specific file modification
-    const shouldShowDiff =
-        isFileModification && incrementalDiff && incrementalDiff.files.length > 0;
 
     return (
         <div key={index} className="px-4 py-1">
@@ -375,17 +237,6 @@ function DisplayConversationEntry({ entry, index, diffDeletable }: Props) {
                     )}
                 </div>
             </div>
-
-            {/* Render incremental diff card inline after file modification entries */}
-            {shouldShowDiff && incrementalDiff && (
-                <div className="mt-4 mb-2">
-                    <DiffCard
-                        diff={incrementalDiff}
-                        deletable={diffDeletable}
-                        compact={true}
-                    />
-                </div>
-            )}
         </div>
     );
 }

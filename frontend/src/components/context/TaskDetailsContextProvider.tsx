@@ -8,17 +8,15 @@ import {
   useMemo,
   useState,
 } from 'react';
-import type { ExecutionProcess, ExecutionProcessSummary, WorktreeDiff } from 'shared/types';
+import type { ExecutionProcess, ExecutionProcessSummary } from 'shared/types';
 import type { EditorType, TaskAttempt, TaskAttemptState, TaskWithAttemptStatus } from 'shared/types';
 import { attemptsApi, executionProcessesApi } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,
   TaskAttemptLoadingContext,
   TaskAttemptStoppingContext,
-  TaskBackgroundRefreshContext,
   TaskDeletingFilesContext,
   TaskDetailsContext,
-  TaskDiffContext,
   TaskExecutionStateContext,
   TaskSelectedAttemptContext,
 } from './taskDetailsContext.ts';
@@ -45,12 +43,6 @@ const TaskDetailsProvider: FC<{
     const [deletingFiles, setDeletingFiles] = useState<Set<string>>(new Set());
     const [fileToDelete, setFileToDelete] = useState<string | null>(null);
 
-    // Diff-related state
-    const [diff, setDiff] = useState<WorktreeDiff | null>(null);
-    const [diffLoading, setDiffLoading] = useState(true);
-    const [diffError, setDiffError] = useState<string | null>(null);
-    const [isBackgroundRefreshing, setIsBackgroundRefreshing] = useState(false);
-
     const [executionState, setExecutionState] = useState<TaskAttemptState | null>(
       null
     );
@@ -59,41 +51,6 @@ const TaskDetailsProvider: FC<{
       processes: [],
       runningProcessDetails: {},
     });
-
-    const fetchDiff = useCallback(
-      async (isBackgroundRefresh = false) => {
-        if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) {
-          setDiff(null);
-          setDiffLoading(false);
-          return;
-        }
-
-        if (isBackgroundRefresh) {
-          setIsBackgroundRefreshing(true);
-        } else {
-          setDiffLoading(true);
-        }
-        setDiffError(null);
-
-        try {
-          const result = await attemptsApi.getDiff(selectedAttempt.id);
-
-          if (result !== undefined) {
-            setDiff(result);
-          }
-        } catch (err) {
-          console.error('Failed to load diff:', err);
-          setDiffError('Failed to load diff');
-        } finally {
-          if (isBackgroundRefresh) {
-            setIsBackgroundRefreshing(false);
-          } else {
-            setDiffLoading(false);
-          }
-        }
-      },
-      [projectId, selectedAttempt?.id, selectedAttempt?.task_id]
-    );
 
     const fetchExecutionState = useCallback(
       async (attemptId: string) => {
@@ -233,40 +190,6 @@ const TaskDetailsProvider: FC<{
       fetchExecutionState,
     ]);
 
-    // Refresh diff when coding agent is running and making changes
-    useEffect(() => {
-      if (!executionState || !selectedAttempt) return;
-
-      const isCodingAgentRunning =
-        executionState.execution_state === 'CodingAgentRunning';
-
-      if (isCodingAgentRunning) {
-        // Immediately refresh diff when coding agent starts running
-        fetchDiff(true);
-
-        // Then refresh diff every 2 seconds while coding agent is active
-        const interval = setInterval(() => {
-          fetchDiff(true);
-        }, 2000);
-
-        return () => {
-          clearInterval(interval);
-        };
-      }
-    }, [executionState, selectedAttempt, fetchDiff]);
-
-    // Refresh diff when coding agent completes or changes state
-    useEffect(() => {
-      if (!executionState?.execution_state || !selectedAttempt) return;
-
-      fetchDiff();
-    }, [
-      executionState?.execution_state,
-      executionState?.has_changes,
-      selectedAttempt,
-      fetchDiff,
-    ]);
-
     const value = useMemo(
       () => ({
         task,
@@ -302,26 +225,6 @@ const TaskDetailsProvider: FC<{
       [deletingFiles, fileToDelete]
     );
 
-    const diffValue = useMemo(
-      () => ({
-        setDiffError,
-        fetchDiff,
-        diff,
-        diffError,
-        diffLoading,
-        setDiff,
-        setDiffLoading,
-      }),
-      [fetchDiff, diff, diffError, diffLoading]
-    );
-
-    const backgroundRefreshingValue = useMemo(
-      () => ({
-        isBackgroundRefreshing,
-      }),
-      [isBackgroundRefreshing]
-    );
-
     const attemptDataValue = useMemo(
       () => ({
         attemptData,
@@ -346,19 +249,13 @@ const TaskDetailsProvider: FC<{
           <TaskSelectedAttemptContext.Provider value={selectedAttemptValue}>
             <TaskAttemptStoppingContext.Provider value={attemptStoppingValue}>
               <TaskDeletingFilesContext.Provider value={deletingFilesValue}>
-                <TaskDiffContext.Provider value={diffValue}>
-                  <TaskAttemptDataContext.Provider value={attemptDataValue}>
-                    <TaskExecutionStateContext.Provider
-                      value={executionStateValue}
-                    >
-                      <TaskBackgroundRefreshContext.Provider
-                        value={backgroundRefreshingValue}
-                      >
-                        {children}
-                      </TaskBackgroundRefreshContext.Provider>
-                    </TaskExecutionStateContext.Provider>
-                  </TaskAttemptDataContext.Provider>
-                </TaskDiffContext.Provider>
+                <TaskAttemptDataContext.Provider value={attemptDataValue}>
+                  <TaskExecutionStateContext.Provider
+                    value={executionStateValue}
+                  >
+                    {children}
+                  </TaskExecutionStateContext.Provider>
+                </TaskAttemptDataContext.Provider>
               </TaskDeletingFilesContext.Provider>
             </TaskAttemptStoppingContext.Provider>
           </TaskSelectedAttemptContext.Provider>
