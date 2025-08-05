@@ -284,8 +284,6 @@ function CurrentAttempt({
     try {
       setMerging(true);
       await attemptsApi.merge(
-        projectId,
-        selectedAttempt.task_id,
         selectedAttempt.id
       );
       // Refetch branch status to show updated state

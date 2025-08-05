@@ -338,12 +338,10 @@ export const attemptsApi = {
   },
 
   merge: async (
-    projectId: string,
-    taskId: string,
     attemptId: string
   ): Promise<void> => {
     const response = await makeRequest(
-      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/merge`,
+      `/api/task-attempts/${attemptId}/merge`,
       {
         method: 'POST',
       }
