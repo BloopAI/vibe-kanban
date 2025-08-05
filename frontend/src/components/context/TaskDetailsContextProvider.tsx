@@ -78,8 +78,6 @@ const TaskDetailsProvider: FC<{
 
         try {
           const result = await attemptsApi.openEditor(
-            projectId,
-            selectedAttempt.task_id,
             selectedAttempt.id,
             editorType
           );

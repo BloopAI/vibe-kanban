@@ -53,8 +53,6 @@ export function TaskFollowUpSection() {
       setIsSendingFollowUp(true);
       setFollowUpError(null);
       await attemptsApi.followUp(
-        projectId!,
-        selectedAttempt.task_id,
         selectedAttempt.id,
         {
           prompt: followUpMessage.trim(),
