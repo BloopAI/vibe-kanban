@@ -1,10 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    io,
-    path::PathBuf,
-    sync::Arc,
-    time::Duration,
-};
+use std::{collections::HashMap, io, path::PathBuf, sync::Arc, time::Duration};
 
 use anyhow::anyhow;
 use async_stream::try_stream;
@@ -23,10 +17,7 @@ use executors::{
     actions::{ExecutorAction, ExecutorActions},
     logs::utils::ConversationPatch,
 };
-use futures::{
-    StreamExt, TryStreamExt,
-    stream::{BoxStream, select},
-};
+use futures::{StreamExt, TryStreamExt, stream::select};
 use services::services::{
     config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
@@ -523,7 +514,7 @@ impl ContainerService for LocalContainerService {
 
         let worktree_dir = PathBuf::from(&container_ref);
 
-        // Return None if directory doesn't exist
+        // Return error if directory doesn't exist
         if !worktree_dir.exists() {
             return Err(ContainerError::Other(anyhow!(
                 "Worktree directory not found"
@@ -539,73 +530,103 @@ impl ContainerService for LocalContainerService {
             .ok_or(ContainerError::Other(anyhow!("Parent project not found")))?
             .git_repo_path;
 
-        let existing_diff = if let Some(merge_commit_id) = &task_attempt.merge_commit {
-            // Task attempt has been merged - show the diff from the merge commit
-            self.git().get_enhanced_diff(
+        // Fast-exit for merged attempts - they never change
+        if let Some(merge_commit_id) = &task_attempt.merge_commit {
+            let existing_diff = self.git().get_enhanced_diff(
                 &project_git_repo_path,
                 std::path::Path::new(""),
                 Some(merge_commit_id.as_str()),
                 &task_attempt.base_branch,
-                None::<&[&str]>, // No file filtering for now
-            )?
-        } else {
-            GitService::new().get_enhanced_diff(
-                &project_git_repo_path,
-                &worktree_dir,
-                None,
-                &task_attempt.base_branch,
-                None::<&[&str]>, // No file filtering for now
-            )?
+                None::<&[&str]>,
+            )?;
+
+            let stream = futures::stream::iter(existing_diff.files.into_iter().map(|file_diff| {
+                let patch = ConversationPatch::add_file_diff(file_diff);
+                let event = LogMsg::JsonPatch(patch).to_sse_event();
+                Ok::<_, std::io::Error>(event)
+            }))
+            .boxed();
+
+            return Ok(stream);
+        }
+
+        // Get initial diff
+        let initial_diff = self.git().get_enhanced_diff(
+            &project_git_repo_path,
+            &worktree_dir,
+            None,
+            &task_attempt.base_branch,
+            None::<&[&str]>,
+        )?;
+
+        // Create initial stream
+        let initial_stream =
+            futures::stream::iter(initial_diff.files.into_iter().map(|file_diff| {
+                let patch = ConversationPatch::add_file_diff(file_diff);
+                let event = LogMsg::JsonPatch(patch).to_sse_event();
+                Ok::<_, std::io::Error>(event)
+            }));
+
+        // Create live diff stream for ongoing changes
+        let git_service = self.git().clone();
+        let project_repo_path = project_git_repo_path.clone();
+        let base_branch = task_attempt.base_branch.clone();
+        let worktree_path = worktree_dir.clone();
+
+        let live_stream = try_stream! {
+            // Create filesystem watcher
+            let (_debouncer, mut rx, canonical_worktree_path) = filesystem_watcher::async_watcher(worktree_path.clone())
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+
+            while let Some(res) = rx.next().await {
+                match res {
+                    Ok(events) => {
+                        // Extract changed file paths relative to worktree
+                        let changed_paths: Vec<String> = events
+                            .iter()
+                            .flat_map(|event| &event.paths)
+                            .filter_map(|path| {
+                                // Try canonical first, fall back to original for non-macOS paths
+                                path.strip_prefix(&canonical_worktree_path)
+                                    .or_else(|_| path.strip_prefix(&worktree_path))
+                                    .ok()
+                                    .map(|p| p.to_string_lossy().replace('\\', "/"))
+                            })
+                            .collect();
+
+                        if !changed_paths.is_empty() {
+                            // Generate diff for only the changed files
+                            let diff = git_service.get_enhanced_diff(
+                                &project_repo_path,
+                                &worktree_path,
+                                None,
+                                &base_branch,
+                                Some(&changed_paths),
+                            ).map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+
+                            // Yield diff events for each changed file
+                            for file_diff in diff.files {
+                                let patch = ConversationPatch::add_file_diff(file_diff);
+                                let event = LogMsg::JsonPatch(patch).to_sse_event();
+                                yield event;
+                            }
+                        }
+                    }
+                    Err(errors) => {
+                        // Convert filesystem watcher errors to io::Error
+                        let error_msg = errors
+                            .iter()
+                            .map(|e| e.to_string())
+                            .collect::<Vec<_>>()
+                            .join("; ");
+                        Err(io::Error::new(io::ErrorKind::Other, error_msg))?;
+                    }
+                }
+            }
         };
 
-        // Direct stream from parsed messages converted to JSON patches
-        let stream = futures::stream::iter(existing_diff.files.into_iter().map(|file_diff| {
-            let patch = ConversationPatch::add_file_diff(file_diff);
-            let event = LogMsg::JsonPatch(patch).to_sse_event();
-            Ok::<_, std::io::Error>(event)
-        }))
-        .boxed();
-
-        Ok(stream)
-
-        // let stream = try_stream! {
-        //     // Create filesystem watcher
-        //     let (_debouncer, mut rx, _canonical_path) = filesystem_watcher::async_watcher(worktree_dir.clone()).map_err(
-        //         |e| io::Error::new(io::ErrorKind::Other, e.to_string())
-        //     )?;
-
-        //     // Process events from the watcher
-        //     while let Some(res) = rx.next().await {
-        //         match res {
-        //             Ok(events) => {
-        //                 // Convert Vec<DebouncedEvent> to JSON for SSE
-        //                 // Collect unique paths to avoid duplicates from multiple event types
-        //                 let mut unique_paths = HashSet::<PathBuf>::new();
-        //                 for event in &events {
-        //                     for path in &event.paths {
-        //                         unique_paths.insert(path.clone());
-        //                     }
-        //                 }
-
-        //                 // Convert to sorted vector for stable output
-        //                 let mut paths_vec: Vec<_> = unique_paths.into_iter().collect();
-        //                 paths_vec.sort();
-
-        //                 let data = serde_json::to_string(&paths_vec).unwrap_or_default();
-        //                 yield Event::default().data(data);
-        //             },
-        //             Err(errors) => {
-        //                 // Convert Vec<notify::Error> to a single error message
-        //                 let error_msg = errors.iter()
-        //                     .map(|e| e.to_string())
-        //                     .collect::<Vec<_>>()
-        //                     .join("; ");
-        //                 Err(io::Error::new(io::ErrorKind::Other, error_msg))?
-        //             },
-        //         }
-        //     }
-        // };
-
-        // Some(Box::pin(stream) as BoxStream<_>)
+        // Combine initial snapshot with live updates
+        let combined_stream = select(initial_stream, live_stream);
+        Ok(combined_stream.boxed())
     }
 }
