@@ -1,6 +1,7 @@
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
+    time::Duration,
 };
 
 use futures::{
@@ -11,7 +12,8 @@ use ignore::{
     WalkBuilder,
     gitignore::{Gitignore, GitignoreBuilder},
 };
-use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{RecommendedWatcher, RecursiveMode};
+use notify_debouncer_full::{new_debouncer, Debouncer, DebouncedEvent, DebounceEventResult, RecommendedCache};
 
 fn canonicalize_lossy(path: &Path) -> PathBuf {
     dunce::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
@@ -52,63 +54,84 @@ fn build_gitignore_set(root: &Path) -> Result<Gitignore, ignore::Error> {
     Ok(builder.build()?)
 }
 
-fn should_forward(event: &Event, gi: &Gitignore, canonical_root: &Path) -> bool {
-    event.paths.iter().all(|orig_path| {
-        let canonical_path = canonicalize_lossy(orig_path);
+fn path_allowed(path: &PathBuf, gi: &Gitignore, canonical_root: &Path) -> bool {
+    let canonical_path = canonicalize_lossy(path);
 
-        // Convert absolute path to relative path from the gitignore root
-        let relative_path = match canonical_path.strip_prefix(canonical_root) {
-            Ok(rel_path) => rel_path,
-            Err(_) => {
-                // Path is outside the watched root, don't ignore it
-                return true;
-            }
-        };
+    // Convert absolute path to relative path from the gitignore root
+    let relative_path = match canonical_path.strip_prefix(canonical_root) {
+        Ok(rel_path) => rel_path,
+        Err(_) => {
+            // Path is outside the watched root, don't ignore it
+            return true;
+        }
+    };
 
-        // Heuristic: assume paths without extensions are directories
-        // This works for most cases and avoids filesystem syscalls
-        let is_dir = relative_path.extension().is_none();
-        let matched = gi.matched_path_or_any_parents(&relative_path, is_dir);
+    // Heuristic: assume paths without extensions are directories
+    // This works for most cases and avoids filesystem syscalls
+    let is_dir = relative_path.extension().is_none();
+    let matched = gi.matched_path_or_any_parents(&relative_path, is_dir);
 
-        !matched.is_ignore()
-    })
+    !matched.is_ignore()
+}
+
+fn debounced_should_forward(event: &DebouncedEvent, gi: &Gitignore, canonical_root: &Path) -> bool {
+    // DebouncedEvent is a struct that wraps the underlying notify::Event
+    // We can check its paths field to determine if the event should be forwarded
+    event.paths.iter().all(|path| path_allowed(path, gi, canonical_root))
 }
 
 pub fn async_watcher(
     root: PathBuf,
-) -> notify::Result<(RecommendedWatcher, Receiver<notify::Result<Event>>, PathBuf)> {
+) -> notify::Result<(Debouncer<RecommendedWatcher, RecommendedCache>, Receiver<DebounceEventResult>, PathBuf)> {
     let canonical_root = canonicalize_lossy(&root);
     let gi_set = Arc::new(
         build_gitignore_set(&canonical_root)
             .map_err(|e| notify::Error::generic(&format!("Failed to build gitignore: {}", e)))?,
     );
-    let (mut tx, rx) = channel(1);
+    let (mut tx, rx) = channel(64); // Increased capacity for error bursts
 
     let gi_clone = gi_set.clone();
     let root_clone = canonical_root.clone();
-    let watcher = RecommendedWatcher::new(
-        move |res| {
-            if let Ok(ref ev) = res {
-                if !should_forward(ev, &gi_clone, &root_clone) {
-                    return;
+
+    let mut debouncer = new_debouncer(
+        Duration::from_millis(50),
+        None, // Use default config
+        move |res: DebounceEventResult| {
+            match res {
+                Ok(events) => {
+                    // Filter events and only send allowed ones
+                    let filtered_events: Vec<DebouncedEvent> = events
+                        .into_iter()
+                        .filter(|ev| debounced_should_forward(ev, &gi_clone, &root_clone))
+                        .collect();
+                    
+                    if !filtered_events.is_empty() {
+                        let filtered_result = Ok(filtered_events);
+                        futures::executor::block_on(async {
+                            tx.send(filtered_result).await.ok();
+                        });
+                    }
+                }
+                Err(errors) => {
+                    // Always forward errors
+                    futures::executor::block_on(async {
+                        tx.send(Err(errors)).await.ok();
+                    });
                 }
             }
-            futures::executor::block_on(async {
-                tx.send(res).await.ok();
-            })
         },
-        Config::default(),
     )?;
 
-    Ok((watcher, rx, canonical_root))
+    // Start watching the root directory
+    debouncer.watch(&canonical_root, RecursiveMode::Recursive)?;
+
+    Ok((debouncer, rx, canonical_root))
 }
 
 async fn async_watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
-    let (mut watcher, mut rx, canonical_path) = async_watcher(path.as_ref().to_path_buf())?;
+    let (_debouncer, mut rx, _canonical_path) = async_watcher(path.as_ref().to_path_buf())?;
 
-    // Add a path to be watched. All files and directories at that path and
-    // below will be monitored for changes.
-    watcher.watch(&canonical_path, RecursiveMode::Recursive)?;
+    // The debouncer is already watching the path, no need to call watch() again
 
     while let Some(res) = rx.next().await {
         match res {

@@ -17,7 +17,7 @@ use futures::{
     StreamExt, TryStreamExt,
     stream::{BoxStream, select},
 };
-use notify::{RecursiveMode, Watcher};
+
 use services::services::{
     config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
@@ -514,20 +514,30 @@ impl ContainerService for LocalContainerService {
 
         let stream = try_stream! {
             // Create filesystem watcher
-            let (mut watcher, mut rx, canonical_path) = filesystem_watcher::async_watcher(directory_to_watch.clone()).map_err(to_io)?;
+            let (_debouncer, mut rx, _canonical_path) = filesystem_watcher::async_watcher(directory_to_watch.clone()).map_err(to_io)?;
             
-            // Start watching the directory recursively
-            watcher.watch(&canonical_path, RecursiveMode::Recursive).map_err(to_io)?;
+            // The debouncer is already watching the directory
 
             // Process events from the watcher
             while let Some(res) = rx.next().await {
                 match res {
-                    Ok(event) => {
-                        // Convert notify::Event to JSON for SSE
-                        let data = serde_json::to_string(&event.paths).unwrap_or_default();
+                    Ok(events) => {
+                        // Convert Vec<DebouncedEvent> to JSON for SSE
+                        // Extract all paths from all events
+                        let all_paths: Vec<_> = events.iter()
+                            .flat_map(|event| &event.paths)
+                            .collect();
+                        let data = serde_json::to_string(&all_paths).unwrap_or_default();
                         yield Event::default().data(data);
                     },
-                    Err(err) => Err(to_io(err))?,
+                    Err(errors) => {
+                        // Convert Vec<notify::Error> to a single error message
+                        let error_msg = errors.iter()
+                            .map(|e| e.to_string())
+                            .collect::<Vec<_>>()
+                            .join("; ");
+                        Err(to_io(error_msg))?
+                    },
                 }
             }
         };
