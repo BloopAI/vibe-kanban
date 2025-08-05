@@ -6,6 +6,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{task::Task, task_attempt::TaskAttempt};
+use crate::models::execution_process_logs::ExecutionProcessLogs;
 
 #[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
 #[sqlx(type_name = "execution_process_status", rename_all = "lowercase")]
@@ -342,19 +343,29 @@ impl ExecutionProcess {
         Ok(())
     }
 
-    /// Delete execution processes for a task attempt (cleanup)
-    #[allow(dead_code)]
+    async fn delete(pool: &SqlitePool, id: Uuid) -> Result<(), sqlx::Error> {
+        // Delete logs first
+        if let Err(e) = ExecutionProcessLogs::delete_by_execution_id(pool, id).await {
+            tracing::error!("Failed to delete execution process logs: {:?}", e);
+        }
+        // Then delete the execution process itself
+        sqlx::query!("DELETE FROM execution_processes WHERE id = $1", id)
+            .execute(pool)
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn delete_by_task_attempt_id(
         pool: &SqlitePool,
         task_attempt_id: Uuid,
     ) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            "DELETE FROM execution_processes WHERE task_attempt_id = $1",
-            task_attempt_id
-        )
-        .execute(pool)
-        .await?;
-
+        let processes = Self::find_by_task_attempt_id(pool, task_attempt_id).await?;
+        for ep in processes {
+            Self::delete(pool, ep.id).await.unwrap_or_else(|e| {
+                tracing::error!("Failed to delete execution process {}: {}", ep.id, e);
+            });
+        }
         Ok(())
     }
 

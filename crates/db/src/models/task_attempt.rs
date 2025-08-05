@@ -1,11 +1,12 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, QueryBuilder, SqlitePool, Type};
+use sqlx::{FromRow, SqlitePool, Type};
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{project::Project, task::Task};
+use crate::models::{execution_process::ExecutionProcess, executor_session::ExecutorSession};
 
 #[derive(Debug)]
 pub struct PrInfo {
@@ -162,37 +163,56 @@ impl TaskAttempt {
         pool: &SqlitePool,
         task_id: Option<Uuid>,
     ) -> Result<Vec<Self>, TaskAttemptError> {
-        let mut qb = QueryBuilder::new(
-            "SELECT \
-                id, \
-                task_id, \
-                container_ref, \
-                branch, \
-                base_branch, \
-                merge_commit, \
-                base_coding_agent, \
-                pr_url, \
-                pr_number, \
-                pr_status, \
-                pr_merged_at, \
-                worktree_deleted, \
-                setup_completed_at, \
-                created_at, \
-                updated_at \
-            FROM task_attempts",
-        );
-
-        if let Some(tid) = task_id {
-            qb.push(" WHERE task_id = ").push_bind(tid);
-        }
-
-        qb.push(" ORDER BY created_at DESC");
-
-        let attempts = qb
-            .build_query_as::<TaskAttempt>() // uses FromRow
+        let attempts = match task_id {
+            Some(tid) => sqlx::query_as!(
+                TaskAttempt,
+                r#"SELECT id AS "id!: Uuid",
+                              task_id AS "task_id!: Uuid",
+                              container_ref,
+                              branch,
+                              base_branch,
+                              merge_commit,
+                              base_coding_agent AS "base_coding_agent!",
+                              pr_url,
+                              pr_number,
+                              pr_status,
+                              pr_merged_at AS "pr_merged_at: DateTime<Utc>",
+                              worktree_deleted AS "worktree_deleted!: bool",
+                              setup_completed_at AS "setup_completed_at: DateTime<Utc>",
+                              created_at AS "created_at!: DateTime<Utc>",
+                              updated_at AS "updated_at!: DateTime<Utc>"
+                       FROM task_attempts
+                       WHERE task_id = $1
+                       ORDER BY created_at DESC"#,
+                tid
+            )
             .fetch_all(pool)
             .await
-            .map_err(TaskAttemptError::Database)?;
+            .map_err(TaskAttemptError::Database)?,
+            None => sqlx::query_as!(
+                TaskAttempt,
+                r#"SELECT id AS "id!: Uuid",
+                              task_id AS "task_id!: Uuid",
+                              container_ref,
+                              branch,
+                              base_branch,
+                              merge_commit,
+                              base_coding_agent AS "base_coding_agent!",
+                              pr_url,
+                              pr_number,
+                              pr_status,
+                              pr_merged_at AS "pr_merged_at: DateTime<Utc>",
+                              worktree_deleted AS "worktree_deleted!: bool",
+                              setup_completed_at AS "setup_completed_at: DateTime<Utc>",
+                              created_at AS "created_at!: DateTime<Utc>",
+                              updated_at AS "updated_at!: DateTime<Utc>"
+                       FROM task_attempts
+                       ORDER BY created_at DESC"#
+            )
+            .fetch_all(pool)
+            .await
+            .map_err(TaskAttemptError::Database)?,
+        };
 
         Ok(attempts)
     }
@@ -350,7 +370,6 @@ impl TaskAttempt {
         .fetch_optional(pool)
         .await
     }
-
     // pub async fn find_by_task_id(
     //     pool: &SqlitePool,
     //     task_id: Uuid,
@@ -488,12 +507,6 @@ impl TaskAttempt {
     ) -> Result<Self, TaskAttemptError> {
         let attempt_id = Uuid::new_v4();
         // let prefixed_id = format!("vibe-kanban-{}", attempt_id);
-
-        // First, get the task to get the project_id
-        let task = Task::find_by_id(pool, task_id)
-            .await?
-            .ok_or(TaskAttemptError::TaskNotFound)?;
-
         // Insert the record into the database
         Ok(sqlx::query_as!(
             TaskAttempt,
@@ -516,6 +529,23 @@ impl TaskAttempt {
         )
         .fetch_one(pool)
         .await?)
+    }
+
+    pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<(), sqlx::Error> {
+        ExecutionProcess::delete_by_task_attempt_id(pool, id)
+            .await
+            .unwrap_or_else(|e| {
+                tracing::error!("Failed to delete execution processes for task attempt {id}: {e}");
+            });
+        ExecutorSession::delete_by_task_attempt_id(pool, id)
+            .await
+            .unwrap_or_else(|e| {
+                tracing::error!("Failed to delete executor sessions for task attempt {id}: {e}",);
+            });
+        sqlx::query!("DELETE FROM task_attempts WHERE id = ?", id)
+            .execute(pool)
+            .await?;
+        Ok(())
     }
 
     // pub async fn create(

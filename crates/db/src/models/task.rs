@@ -5,6 +5,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use super::project::Project;
+use crate::models::task_attempt::CreateTaskAttempt;
 
 #[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
 #[sqlx(type_name = "task_status", rename_all = "lowercase")]
@@ -45,7 +46,7 @@ pub struct TaskWithAttemptStatus {
     pub has_in_progress_attempt: bool,
     pub has_merged_attempt: bool,
     pub last_attempt_failed: bool,
-    pub latest_attempt_executor: Option<String>,
+    pub base_coding_agent: String,
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -55,16 +56,6 @@ pub struct CreateTask {
     pub title: String,
     pub description: Option<String>,
     pub parent_task_attempt: Option<Uuid>,
-}
-
-#[derive(Debug, Deserialize, TS)]
-#[ts(export)]
-pub struct CreateTaskAndStart {
-    pub project_id: Uuid,
-    pub title: String,
-    pub description: Option<String>,
-    pub parent_task_attempt: Option<Uuid>,
-    // pub executor: Option<ExecutorConfig>,
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -137,10 +128,10 @@ impl Task {
 
   ( SELECT ta.base_coding_agent
       FROM task_attempts ta
-     WHERE ta.task_id = t.id
+      WHERE ta.task_id = t.id
      ORDER BY ta.created_at DESC
-     LIMIT 1
-  )                               AS "latest_attempt_executor"
+      LIMIT 1
+    )                               AS "base_coding_agent!: String"
 
 FROM tasks t
 WHERE t.project_id = $1
@@ -164,7 +155,7 @@ ORDER BY t.created_at DESC"#,
                 has_in_progress_attempt: rec.has_in_progress_attempt != 0,
                 has_merged_attempt: rec.has_merged_attempt != 0,
                 last_attempt_failed: rec.last_attempt_failed != 0,
-                latest_attempt_executor: rec.latest_attempt_executor,
+                base_coding_agent: rec.base_coding_agent,
             })
             .collect();
 

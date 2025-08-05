@@ -39,7 +39,7 @@ import type {
   TaskTemplate,
 } from 'shared/types';
 import type {
-  CreateTaskAndStart,
+  CreateTask,
 } from 'shared/types';
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 
@@ -194,7 +194,7 @@ export function ProjectTasks() {
   const handleCreateAndStartTask = useCallback(
     async (title: string, description: string) => {
       try {
-        const payload: CreateTaskAndStart = {
+        const payload: CreateTask = {
           project_id: projectId!,
           title,
           description: description || null,

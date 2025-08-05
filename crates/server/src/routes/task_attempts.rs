@@ -10,15 +10,14 @@ use axum::{
     BoxError, Extension, Json, Router,
 };
 use db::models::{
-    execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
+    execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     executor_session::ExecutorSession,
     task::{Task, TaskStatus},
-    task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptContext, TaskAttemptError},
+    task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptError},
 };
 use deployment::Deployment;
 use executors::actions::{
     coding_agent_follow_up::CodingAgentFollowUpRequest,
-    coding_agent_initial::CodingAgentInitialRequest,
     script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     ExecutorAction, ExecutorActionKind, ExecutorActionType,
 };
@@ -277,70 +276,22 @@ pub async fn create_task_attempt(
     )
     .await?;
 
-    // Create container
-    deployment.container().create(&task_attempt).await?;
+    let execution_process = deployment
+        .container()
+        .start_attempt(&task_attempt, profile_label.clone())
+        .await?;
 
-    // Get parent task
-    let task = task_attempt
-        .parent_task(&deployment.db().pool)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-
-    // Get parent project
-    let project = task
-        .parent_project(&deployment.db().pool)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-
-    // Get latest version of task attempt
-    let task_attempt = TaskAttempt::find_by_id(&deployment.db().pool, task_attempt.id)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-
-    // Choose whether to execute the setup_script or coding agent first
-    let execution_process = if let Some(setup_script) = project.setup_script {
-        let executor_action = ExecutorAction::new(
-            ExecutorActionType::ScriptRequest(ScriptRequest {
-                script: setup_script,
-                language: ScriptRequestLanguage::Bash,
-                context: ScriptContext::SetupScript,
+    deployment
+        .track_if_analytics_allowed(
+            "task_attempt_started",
+            serde_json::json!({
+                "task_id": task_attempt.task_id.to_string(),
+                "profile": &profile_label,
+                "base_coding_agent": profile.agent.to_string(),
+                "attempt_id": task_attempt.id.to_string(),
             }),
-            // once the setup script is done, run the initial coding agent request
-            Some(Box::new(ExecutorAction::new(
-                ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
-                    prompt: task.to_prompt(),
-                    profile: profile_label,
-                }),
-                None,
-            ))),
-        );
-
-        deployment
-            .container()
-            .start_execution(
-                &task_attempt,
-                &executor_action,
-                &ExecutionProcessRunReason::SetupScript,
-            )
-            .await?
-    } else {
-        let executor_action = ExecutorAction::new(
-            ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
-                prompt: task.to_prompt(),
-                profile: profile_label,
-            }),
-            None,
-        );
-
-        deployment
-            .container()
-            .start_execution(
-                &task_attempt,
-                &executor_action,
-                &ExecutionProcessRunReason::CodingAgent,
-            )
-            .await?
-    };
+        )
+        .await;
 
     tracing::info!("Started execution process {}", execution_process.id);
 
