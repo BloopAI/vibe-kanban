@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                run_reason as \"run_reason!: ExecutionProcessRunReason\",\n                executor_action as \"executor_action!: sqlx::types::Json<ExecutorActions>\",\n                status as \"status!: ExecutionProcessStatus\",\n                exit_code,\n                started_at as \"started_at!: DateTime<Utc>\",\n                completed_at as \"completed_at?: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes \n               WHERE status = 'running' \n               ORDER BY created_at ASC",
+  "query": "SELECT \n                ep.id as \"id!: Uuid\", \n                ep.task_attempt_id as \"task_attempt_id!: Uuid\", \n                ep.run_reason as \"run_reason!: ExecutionProcessRunReason\",\n                ep.executor_action as \"executor_action!: sqlx::types::Json<ExecutorAction>\",\n                ep.status as \"status!: ExecutionProcessStatus\",\n                ep.exit_code,\n                ep.started_at as \"started_at!: DateTime<Utc>\",\n                ep.completed_at as \"completed_at?: DateTime<Utc>\",\n                ep.created_at as \"created_at!: DateTime<Utc>\", \n                ep.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes ep\n               JOIN task_attempts ta ON ep.task_attempt_id = ta.id\n               JOIN tasks t ON ta.task_id = t.id\n               WHERE ep.status = 'running' \n               AND ep.run_reason = 'devserver'\n               AND t.project_id = $1\n               ORDER BY ep.created_at ASC",
   "describe": {
     "columns": [
       {
@@ -19,7 +19,7 @@
         "type_info": "Text"
       },
       {
-        "name": "executor_action!: sqlx::types::Json<ExecutorActions>",
+        "name": "executor_action!: sqlx::types::Json<ExecutorAction>",
         "ordinal": 3,
         "type_info": "Text"
       },
@@ -55,7 +55,7 @@
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       true,
@@ -70,5 +70,5 @@
       false
     ]
   },
-  "hash": "6bdaac4644b35d8a0bb99ccde442a14942f9b43ecb411cf417fa1dea9dff90aa"
+  "hash": "357ba8cf3cabf37fc13dad3aa0d3e1908709d77e756eb9b61f3b77bb878f050c"
 }

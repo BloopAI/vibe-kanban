@@ -23,25 +23,60 @@ pub mod script;
 #[serde(tag = "type")]
 #[ts(export)]
 #[strum_discriminants(name(ExecutorActionKind), derive(Display))]
-pub enum ExecutorActions {
+pub enum ExecutorActionType {
     CodingAgentInitialRequest,
     CodingAgentFollowUpRequest,
     ScriptRequest,
 }
 
-impl ExecutorActions {
+impl ExecutorActionType {
     /// Get the action type as a string (matches the JSON "type" field)
     pub fn action_type(&self) -> &'static str {
         match self {
-            ExecutorActions::CodingAgentInitialRequest(_) => "CodingAgentInitialRequest",
-            ExecutorActions::CodingAgentFollowUpRequest(_) => "CodingAgentFollowUpRequest",
-            ExecutorActions::ScriptRequest(_) => "ScriptRequest",
+            ExecutorActionType::CodingAgentInitialRequest(_) => "CodingAgentInitialRequest",
+            ExecutorActionType::CodingAgentFollowUpRequest(_) => "CodingAgentFollowUpRequest",
+            ExecutorActionType::ScriptRequest(_) => "ScriptRequest",
         }
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ExecutorAction {
+    pub typ: ExecutorActionType,
+    pub next_action: Option<Box<ExecutorAction>>,
+}
+
+impl ExecutorAction {
+    pub fn new(type_: ExecutorActionType, next_action: Option<Box<ExecutorAction>>) -> Self {
+        Self {
+            typ: type_,
+            next_action,
+        }
+    }
+
+    pub fn typ(&self) -> &ExecutorActionType {
+        &self.typ
+    }
+
+    pub fn next_action(&self) -> Option<&Box<ExecutorAction>> {
+        self.next_action.as_ref()
+    }
+
+    pub fn action_type(&self) -> &'static str {
+        self.typ.action_type()
+    }
+}
+
 #[async_trait]
-#[enum_dispatch(ExecutorActions)]
-pub trait ExecutorAction {
+#[enum_dispatch(ExecutorActionType)]
+pub trait Executable {
     async fn spawn(&self, current_dir: &PathBuf) -> Result<AsyncGroupChild, ExecutorError>;
+}
+
+#[async_trait]
+impl Executable for ExecutorAction {
+    async fn spawn(&self, current_dir: &PathBuf) -> Result<AsyncGroupChild, ExecutorError> {
+        self.typ.spawn(current_dir).await
+    }
 }

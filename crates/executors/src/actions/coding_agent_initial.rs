@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::{
-    actions::ExecutorAction,
+    actions::Executable,
     executors::{CodingAgentExecutors, ExecutorError, StandardCodingAgentExecutor},
 };
 
@@ -18,7 +18,7 @@ pub struct CodingAgentInitialRequest {
 }
 
 #[async_trait]
-impl ExecutorAction for CodingAgentInitialRequest {
+impl Executable for CodingAgentInitialRequest {
     async fn spawn(&self, current_dir: &PathBuf) -> Result<AsyncGroupChild, ExecutorError> {
         let executor = CodingAgentExecutors::from_profile_str(&self.profile)?;
         executor.spawn(current_dir, &self.prompt).await

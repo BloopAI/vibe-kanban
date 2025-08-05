@@ -1,13 +1,12 @@
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 
 use async_trait::async_trait;
 use command_group::AsyncGroupChild;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
-use utils::msg_store::MsgStore;
 
 use crate::{
-    actions::ExecutorAction,
+    actions::Executable,
     executors::{CodingAgentExecutors, ExecutorError, StandardCodingAgentExecutor},
 };
 
@@ -20,7 +19,7 @@ pub struct CodingAgentFollowUpRequest {
 }
 
 #[async_trait]
-impl ExecutorAction for CodingAgentFollowUpRequest {
+impl Executable for CodingAgentFollowUpRequest {
     async fn spawn(&self, current_dir: &PathBuf) -> Result<AsyncGroupChild, ExecutorError> {
         let executor = CodingAgentExecutors::from_profile_str(&self.profile)?;
         executor

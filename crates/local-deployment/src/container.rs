@@ -1,4 +1,10 @@
-use std::{collections::{HashMap, HashSet}, io, path::PathBuf, sync::Arc, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    io,
+    path::PathBuf,
+    sync::Arc,
+    time::Duration,
+};
 
 use anyhow::anyhow;
 use async_stream::try_stream;
@@ -14,7 +20,7 @@ use db::{
 };
 use deployment::DeploymentError;
 use executors::{
-    actions::{ExecutorAction, ExecutorActions},
+    actions::{Executable, ExecutorAction, ExecutorActions},
     logs::utils::ConversationPatch,
 };
 use futures::{StreamExt, TryStreamExt, stream::select};
@@ -460,7 +466,7 @@ impl ContainerService for LocalContainerService {
         &self,
         task_attempt: &TaskAttempt,
         execution_process: &ExecutionProcess,
-        executor_action: &ExecutorActions,
+        executor_action: &ExecutorAction,
     ) -> Result<(), ContainerError> {
         // Get the worktree path
         let container_ref = task_attempt

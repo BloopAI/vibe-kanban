@@ -229,14 +229,12 @@ impl StandardCodingAgentExecutor for Amp {
 }
 
 impl Amp {
-    /// Create a new Amp executor with default settings
     pub fn new() -> Self {
         Self {
             command_builder: DefaultCommandBuilders::amp(),
         }
     }
 
-    /// Create a new Amp executor with custom command builder
     pub fn with_command_builder(command_builder: CommandBuilder) -> Self {
         Self { command_builder }
     }

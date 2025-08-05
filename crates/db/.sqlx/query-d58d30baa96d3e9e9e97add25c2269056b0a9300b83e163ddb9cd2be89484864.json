@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                run_reason as \"run_reason!: ExecutionProcessRunReason\",\n                executor_action as \"executor_action!: sqlx::types::Json<ExecutorActions>\",\n                status as \"status!: ExecutionProcessStatus\",\n                exit_code,\n                started_at as \"started_at!: DateTime<Utc>\",\n                completed_at as \"completed_at?: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes \n               WHERE id = $1",
+  "query": "SELECT \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                run_reason as \"run_reason!: ExecutionProcessRunReason\",\n                executor_action as \"executor_action!: sqlx::types::Json<ExecutorAction>\",\n                status as \"status!: ExecutionProcessStatus\",\n                exit_code,\n                started_at as \"started_at!: DateTime<Utc>\",\n                completed_at as \"completed_at?: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes \n               WHERE task_attempt_id = $1 \n               ORDER BY created_at ASC",
   "describe": {
     "columns": [
       {
@@ -19,7 +19,7 @@
         "type_info": "Text"
       },
       {
-        "name": "executor_action!: sqlx::types::Json<ExecutorActions>",
+        "name": "executor_action!: sqlx::types::Json<ExecutorAction>",
         "ordinal": 3,
         "type_info": "Text"
       },
@@ -70,5 +70,5 @@
       false
     ]
   },
-  "hash": "fa84623b945233f31668992491d00b2c1950679b1e3d5ab520a2924847254300"
+  "hash": "d58d30baa96d3e9e9e97add25c2269056b0a9300b83e163ddb9cd2be89484864"
 }

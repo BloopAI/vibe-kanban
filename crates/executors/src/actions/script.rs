@@ -7,10 +7,7 @@ use tokio::process::Command;
 use ts_rs::TS;
 use utils::shell::get_shell_command;
 
-use crate::{
-    actions::{ExecutorAction, ExecutorActions},
-    executors::ExecutorError,
-};
+use crate::{actions::Executable, executors::ExecutorError};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 #[ts(export)]
@@ -32,12 +29,10 @@ pub struct ScriptRequest {
     pub script: String,
     pub language: ScriptRequestLanguage,
     pub context: ScriptContext,
-    /// Action to execute once the script has completed
-    pub next_action: Option<Box<ExecutorActions>>,
 }
 
 #[async_trait]
-impl ExecutorAction for ScriptRequest {
+impl Executable for ScriptRequest {
     async fn spawn(&self, current_dir: &PathBuf) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let mut command = Command::new(shell_cmd);

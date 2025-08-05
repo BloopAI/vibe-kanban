@@ -20,7 +20,7 @@ use executors::actions::{
     coding_agent_follow_up::CodingAgentFollowUpRequest,
     coding_agent_initial::CodingAgentInitialRequest,
     script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
-    ExecutorActionKind, ExecutorActions,
+    ExecutorAction, ExecutorActionKind, ExecutorActionType,
 };
 use futures_util::TryStreamExt;
 use serde::{Deserialize, Serialize};
@@ -291,18 +291,21 @@ pub async fn create_task_attempt(
 
     // Choose whether to execute the setup_script or coding agent first
     let execution_process = if let Some(setup_script) = project.setup_script {
-        let executor_action = ExecutorActions::ScriptRequest(ScriptRequest {
-            script: setup_script,
-            language: ScriptRequestLanguage::Bash,
-            context: ScriptContext::SetupScript,
+        let executor_action = ExecutorAction::new(
+            ExecutorActionType::ScriptRequest(ScriptRequest {
+                script: setup_script,
+                language: ScriptRequestLanguage::Bash,
+                context: ScriptContext::SetupScript,
+            }),
             // once the setup script is done, run the initial coding agent request
-            next_action: Some(Box::new(ExecutorActions::CodingAgentInitialRequest(
-                CodingAgentInitialRequest {
+            Some(Box::new(ExecutorAction::new(
+                ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                     prompt: task.to_prompt(),
                     profile: executor,
-                },
+                }),
+                None,
             ))),
-        });
+        );
 
         deployment
             .container()
@@ -313,11 +316,13 @@ pub async fn create_task_attempt(
             )
             .await?
     } else {
-        let executor_action =
-            ExecutorActions::CodingAgentInitialRequest(CodingAgentInitialRequest {
+        let executor_action = ExecutorAction::new(
+            ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                 prompt: task.to_prompt(),
                 profile: executor,
-            });
+            }),
+            None,
+        );
 
         deployment
             .container()
@@ -372,19 +377,21 @@ pub async fn follow_up(
         "This executor session doesn't have a session_id".to_string(),
     )))?;
 
-    let profile = match initial_execution_process.executor_actions() {
-        ExecutorActions::CodingAgentInitialRequest(request) => Ok(request.profile.clone()),
+    let profile = match &initial_execution_process.executor_action.0.typ {
+        ExecutorActionType::CodingAgentInitialRequest(request) => Ok(request.profile.clone()),
         _ => Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
             "Couldn't find profile from initial request".to_string(),
         ))),
     }?;
 
-    let follow_up_action =
-        ExecutorActions::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
+    let follow_up_action = ExecutorAction::new(
+        ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
             prompt: payload.prompt,
             session_id,
             profile,
-        });
+        }),
+        None,
+    );
 
     let execution_process = deployment
         .container()
@@ -979,12 +986,14 @@ pub async fn start_dev_server(
 
     if let Some(dev_server) = project.dev_script {
         // TODO: Derive script language from system config
-        let executor_action = ExecutorActions::ScriptRequest(ScriptRequest {
-            script: dev_server,
-            language: ScriptRequestLanguage::Bash,
-            context: ScriptContext::DevServer,
-            next_action: None,
-        });
+        let executor_action = ExecutorAction::new(
+            ExecutorActionType::ScriptRequest(ScriptRequest {
+                script: dev_server,
+                language: ScriptRequestLanguage::Bash,
+                context: ScriptContext::DevServer,
+            }),
+            None,
+        );
 
         deployment
             .container()

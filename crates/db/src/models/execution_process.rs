@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use executors::actions::{ExecutorActionKind, ExecutorActions};
+use executors::actions::{ExecutorAction, ExecutorActionKind};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool, Type};
 use ts_rs::TS;
@@ -35,7 +35,7 @@ pub struct ExecutionProcess {
     pub task_attempt_id: Uuid,
     pub run_reason: ExecutionProcessRunReason,
     #[ts(skip)]
-    pub executor_action: sqlx::types::Json<ExecutorActions>,
+    pub executor_action: sqlx::types::Json<ExecutorAction>,
     pub status: ExecutionProcessStatus,
     pub exit_code: Option<i64>,
     pub started_at: DateTime<Utc>,
@@ -48,7 +48,7 @@ pub struct ExecutionProcess {
 #[ts(export)]
 pub struct CreateExecutionProcess {
     pub task_attempt_id: Uuid,
-    pub executor_action: ExecutorActions,
+    pub executor_action: ExecutorAction,
     pub run_reason: ExecutionProcessRunReason,
 }
 
@@ -68,7 +68,7 @@ pub struct ExecutionProcessSummary {
     pub task_attempt_id: Uuid,
     pub run_reason: ExecutionProcessRunReason,
     #[ts(skip)]
-    pub executor_action: sqlx::types::Json<ExecutorActions>,
+    pub executor_action: sqlx::types::Json<ExecutorAction>,
     pub status: ExecutionProcessStatus,
     pub exit_code: Option<i64>,
     pub started_at: DateTime<Utc>,
@@ -93,7 +93,7 @@ impl ExecutionProcess {
                 id as "id!: Uuid", 
                 task_attempt_id as "task_attempt_id!: Uuid", 
                 run_reason as "run_reason!: ExecutionProcessRunReason",
-                executor_action as "executor_action!: sqlx::types::Json<ExecutorActions>",
+                executor_action as "executor_action!: sqlx::types::Json<ExecutorAction>",
                 status as "status!: ExecutionProcessStatus",
                 exit_code,
                 started_at as "started_at!: DateTime<Utc>",
@@ -116,7 +116,7 @@ impl ExecutionProcess {
                 id as "id!: Uuid", 
                 task_attempt_id as "task_attempt_id!: Uuid", 
                 run_reason as "run_reason!: ExecutionProcessRunReason",
-                executor_action as "executor_action!: sqlx::types::Json<ExecutorActions>",
+                executor_action as "executor_action!: sqlx::types::Json<ExecutorAction>",
                 status as "status!: ExecutionProcessStatus",
                 exit_code,
                 started_at as "started_at!: DateTime<Utc>",
@@ -142,7 +142,7 @@ impl ExecutionProcess {
                 id as "id!: Uuid", 
                 task_attempt_id as "task_attempt_id!: Uuid", 
                 run_reason as "run_reason!: ExecutionProcessRunReason",
-                executor_action as "executor_action!: sqlx::types::Json<ExecutorActions>",
+                executor_action as "executor_action!: sqlx::types::Json<ExecutorAction>",
                 status as "status!: ExecutionProcessStatus",
                 exit_code,
                 started_at as "started_at!: DateTime<Utc>",
@@ -169,7 +169,7 @@ impl ExecutionProcess {
                 id as "id!: Uuid", 
                 task_attempt_id as "task_attempt_id!: Uuid", 
                 run_reason as "run_reason!: ExecutionProcessRunReason",
-                executor_action as "executor_action!: sqlx::types::Json<ExecutorActions>",
+                executor_action as "executor_action!: sqlx::types::Json<ExecutorAction>",
                 status as "status!: ExecutionProcessStatus",
                 exit_code,
                 started_at as "started_at!: DateTime<Utc>",
@@ -193,7 +193,7 @@ impl ExecutionProcess {
                 id as "id!: Uuid", 
                 task_attempt_id as "task_attempt_id!: Uuid", 
                 run_reason as "run_reason!: ExecutionProcessRunReason",
-                executor_action as "executor_action!: sqlx::types::Json<ExecutorActions>",
+                executor_action as "executor_action!: sqlx::types::Json<ExecutorAction>",
                 status as "status!: ExecutionProcessStatus",
                 exit_code,
                 started_at as "started_at!: DateTime<Utc>",
@@ -219,7 +219,7 @@ impl ExecutionProcess {
                 ep.id as "id!: Uuid", 
                 ep.task_attempt_id as "task_attempt_id!: Uuid", 
                 ep.run_reason as "run_reason!: ExecutionProcessRunReason",
-                ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorActions>",
+                ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorAction>",
                 ep.status as "status!: ExecutionProcessStatus",
                 ep.exit_code,
                 ep.started_at as "started_at!: DateTime<Utc>",
@@ -252,7 +252,7 @@ impl ExecutionProcess {
                 id as "id!: Uuid", 
                 task_attempt_id as "task_attempt_id!: Uuid", 
                 run_reason as "run_reason!: ExecutionProcessRunReason",
-                executor_action as "executor_action!: sqlx::types::Json<ExecutorActions>",
+                executor_action as "executor_action!: sqlx::types::Json<ExecutorAction>",
                 status as "status!: ExecutionProcessStatus",
                 exit_code,
                 started_at as "started_at!: DateTime<Utc>",
@@ -292,7 +292,7 @@ impl ExecutionProcess {
                 id as "id!: Uuid", 
                 task_attempt_id as "task_attempt_id!: Uuid", 
                 run_reason as "run_reason!: ExecutionProcessRunReason",
-                executor_action as "executor_action!: sqlx::types::Json<ExecutorActions>",
+                executor_action as "executor_action!: sqlx::types::Json<ExecutorAction>",
                 status as "status!: ExecutionProcessStatus",
                 exit_code,
                 started_at as "started_at!: DateTime<Utc>",
@@ -358,7 +358,7 @@ impl ExecutionProcess {
         Ok(())
     }
 
-    pub fn executor_actions(&self) -> &ExecutorActions {
+    pub fn executor_action(&self) -> &ExecutorAction {
         &self.executor_action
     }
 

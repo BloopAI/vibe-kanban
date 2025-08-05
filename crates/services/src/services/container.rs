@@ -22,7 +22,7 @@ use db::{
     },
 };
 use executors::{
-    actions::ExecutorActions,
+    actions::{ExecutorAction, ExecutorActionType},
     executors::{CodingAgentExecutors, ExecutorError, StandardCodingAgentExecutor},
     logs::{NormalizedEntry, NormalizedEntryType, utils::patch::ConversationPatch},
 };
@@ -78,7 +78,7 @@ pub trait ContainerService {
         &self,
         task_attempt: &TaskAttempt,
         execution_process: &ExecutionProcess,
-        executor_action: &ExecutorActions,
+        executor_action: &ExecutorAction,
     ) -> Result<(), ContainerError>;
 
     async fn stop_execution(
@@ -252,8 +252,8 @@ pub trait ContainerService {
             let current_dir = self.task_attempt_to_current_dir(&task_attempt);
 
             // Spawn normalizer on populated store
-            match process.executor_actions() {
-                ExecutorActions::CodingAgentInitialRequest(request) => {
+            match process.executor_action().typ() {
+                ExecutorActionType::CodingAgentInitialRequest(request) => {
                     if let Ok(executor) = CodingAgentExecutors::from_profile_str(&request.profile) {
                         executor.normalize_logs(temp_store.clone(), &current_dir);
                     } else {
@@ -263,7 +263,7 @@ pub trait ContainerService {
                         );
                     }
                 }
-                ExecutorActions::CodingAgentFollowUpRequest(request) => {
+                ExecutorActionType::CodingAgentFollowUpRequest(request) => {
                     if let Ok(executor) = CodingAgentExecutors::from_profile_str(&request.profile) {
                         executor.normalize_logs(temp_store.clone(), &current_dir);
                     } else {
@@ -276,7 +276,7 @@ pub trait ContainerService {
                 _ => {
                     tracing::debug!(
                         "Executor action doesn't support log normalization: {:?}",
-                        process.executor_actions()
+                        process.executor_action()
                     );
                     return None;
                 }
@@ -372,7 +372,7 @@ pub trait ContainerService {
     async fn start_execution(
         &self,
         task_attempt: &TaskAttempt,
-        executor_action: &ExecutorActions,
+        executor_action: &ExecutorAction,
         run_reason: &ExecutionProcessRunReason,
     ) -> Result<ExecutionProcess, ContainerError> {
         // Create new execution process record
@@ -386,7 +386,9 @@ pub trait ContainerService {
             ExecutionProcess::create(&self.db().pool, &create_execution_process, Uuid::new_v4())
                 .await?;
 
-        if let ExecutorActions::CodingAgentInitialRequest(coding_agent_request) = executor_action {
+        if let ExecutorActionType::CodingAgentInitialRequest(coding_agent_request) =
+            executor_action.typ()
+        {
             let create_executor_data = CreateExecutorSession {
                 task_attempt_id: task_attempt.id,
                 execution_process_id: execution_process.id,
@@ -408,8 +410,8 @@ pub trait ContainerService {
             .await?;
 
         // Start processing normalised logs for executor requests and follow ups
-        match executor_action {
-            ExecutorActions::CodingAgentInitialRequest(request) => {
+        match executor_action.typ() {
+            ExecutorActionType::CodingAgentInitialRequest(request) => {
                 if let Some(msg_store) = self.get_msg_store_by_id(&execution_process.id).await {
                     if let Ok(executor) = CodingAgentExecutors::from_profile_str(&request.profile) {
                         executor.normalize_logs(
@@ -424,7 +426,7 @@ pub trait ContainerService {
                     }
                 }
             }
-            ExecutorActions::CodingAgentFollowUpRequest(request) => {
+            ExecutorActionType::CodingAgentFollowUpRequest(request) => {
                 if let Some(msg_store) = self.get_msg_store_by_id(&execution_process.id).await {
                     if let Ok(executor) = CodingAgentExecutors::from_profile_str(&request.profile) {
                         executor.normalize_logs(
@@ -447,9 +449,10 @@ pub trait ContainerService {
     }
 
     async fn start_after_setup(&self, ctx: &ExecutionContext) -> Result<(), ContainerError> {
-        let next_action = match ctx.execution_process.executor_actions() {
-            ExecutorActions::ScriptRequest(request) => {
-                request
+        let action = ctx.execution_process.executor_action();
+        let next_action = match action.typ() {
+            ExecutorActionType::ScriptRequest(_) => {
+                action
                     .next_action
                     .as_ref()
                     .ok_or(ContainerError::Other(anyhow::anyhow!(

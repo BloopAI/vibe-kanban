@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                run_reason as \"run_reason!: ExecutionProcessRunReason\",\n                executor_action as \"executor_action!: sqlx::types::Json<ExecutorActions>\",\n                status as \"status!: ExecutionProcessStatus\",\n                exit_code,\n                started_at as \"started_at!: DateTime<Utc>\",\n                completed_at as \"completed_at?: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes \n               WHERE rowid = $1",
+  "query": "SELECT \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                run_reason as \"run_reason!: ExecutionProcessRunReason\",\n                executor_action as \"executor_action!: sqlx::types::Json<ExecutorAction>\",\n                status as \"status!: ExecutionProcessStatus\",\n                exit_code,\n                started_at as \"started_at!: DateTime<Utc>\",\n                completed_at as \"completed_at?: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes \n               WHERE task_attempt_id = $1 \n               AND executor_action_type = $2\n               ORDER BY created_at DESC \n               LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -19,7 +19,7 @@
         "type_info": "Text"
       },
       {
-        "name": "executor_action!: sqlx::types::Json<ExecutorActions>",
+        "name": "executor_action!: sqlx::types::Json<ExecutorAction>",
         "ordinal": 3,
         "type_info": "Text"
       },
@@ -55,7 +55,7 @@
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 2
     },
     "nullable": [
       true,
@@ -70,5 +70,5 @@
       false
     ]
   },
-  "hash": "e1b180dea94cf518343340556f1fa0f392cbdecda631a15d499cb443ca8d9395"
+  "hash": "fc6a403330d37e1962020b39872e88c724bbb1b212d2cee3c1d6b5264a7fbd49"
 }
