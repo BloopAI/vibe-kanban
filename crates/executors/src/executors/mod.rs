@@ -23,12 +23,14 @@ pub mod opencode;
 
 #[derive(Debug, Error)]
 pub enum ExecutorError {
-    #[error("Follow-up is not supported")]
-    FollowUpNotSupported,
+    #[error("Follow-up is not supported: {0}")]
+    FollowUpNotSupported(String),
     #[error(transparent)]
     SpawnError(#[from] FuturesIoError),
     #[error("Unknown executor type: {0}")]
     UnknownExecutorType(String),
+    #[error("I/O error: {0}")]
+    Io(std::io::Error),
 }
 
 fn unknown_executor_error(s: &str) -> ExecutorError {

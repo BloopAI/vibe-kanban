@@ -2,9 +2,13 @@ use std::{path::PathBuf, process::Stdio, sync::Arc};
 
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
-use futures::StreamExt;
+use futures::{Stream, StreamExt, stream::BoxStream};
 use serde::{Deserialize, Serialize};
-use tokio::{io::AsyncWriteExt, process::Command};
+use tokio::{
+    fs::{self, OpenOptions},
+    io::{AsyncReadExt, AsyncWriteExt},
+    process::Command,
+};
 use ts_rs::TS;
 use utils::{msg_store::MsgStore, shell::get_shell_command};
 
@@ -15,6 +19,7 @@ use crate::{
         NormalizedEntry, NormalizedEntryType, plain_text_processor::PlainTextLogProcessor,
         stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider,
     },
+    stdout_dup,
 };
 
 /// An executor that uses Gemini to process tasks
@@ -60,17 +65,60 @@ impl StandardCodingAgentExecutor for Gemini {
             stdin.shutdown().await?;
         }
 
+        // Duplicate stdout for session logging
+        let duplicate_stdout = stdout_dup::duplicate_stdout(&mut child)?;
+        tokio::spawn(Self::record_session(
+            duplicate_stdout,
+            current_dir.clone(),
+            prompt.to_string(),
+            false,
+        ));
+
         Ok(child)
     }
 
     async fn spawn_follow_up(
         &self,
-        _current_dir: &PathBuf,
-        _prompt: &str,
+        current_dir: &PathBuf,
+        prompt: &str,
         _session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
-        // TODO:
-        Err(ExecutorError::FollowUpNotSupported)
+        // Build comprehensive prompt with session context
+        let followup_prompt = Self::build_followup_prompt(current_dir, prompt).await?;
+
+        let (shell_cmd, shell_arg) = get_shell_command();
+        let gemini_command = self.command_builder.build_follow_up(&[]);
+
+        let mut command = Command::new(shell_cmd);
+
+        command
+            .kill_on_drop(true)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .current_dir(current_dir)
+            .arg(shell_arg)
+            .arg(gemini_command)
+            .env("NODE_NO_WARNINGS", "1");
+
+        let mut child = command.group_spawn()?;
+
+        // Write comprehensive prompt to stdin
+        if let Some(mut stdin) = child.inner().stdin.take() {
+            stdin.write_all(followup_prompt.as_bytes()).await?;
+            stdin.shutdown().await?;
+        }
+
+        // Duplicate stdout for session logging (resume existing session)
+        let duplicate_stdout = stdout_dup::duplicate_stdout(&mut child)?;
+        tokio::spawn(Self::record_session(
+            duplicate_stdout,
+            current_dir.clone(),
+            prompt.to_string(),
+            true,
+        ));
+
+        Ok(child)
     }
 
     /// Parses both stderr and stdout logs for Gemini executor using PlainTextLogProcessor.
@@ -91,9 +139,20 @@ impl StandardCodingAgentExecutor for Gemini {
     /// Sets up log normalization for the Gemini executor:
     /// - stderr via [`normalize_stderr_logs`]
     /// - stdout via [`PlainTextLogProcessor`] with Gemini-specific formatting and default heuristics
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, _worktree_path: &PathBuf) {
+    fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &PathBuf) {
         let entry_index_counter = EntryIndexProvider::new();
         normalize_stderr_logs(msg_store.clone(), entry_index_counter.clone());
+
+        // Send session ID to msg_store to enable follow-ups
+        msg_store.push_session_id(
+            worktree_path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string(),
+        );
+
+        // Normalize Agent logs
         tokio::spawn(async move {
             let mut stdout = msg_store.stdout_chunked_stream();
 
@@ -155,6 +214,106 @@ impl Gemini {
         }
 
         result
+    }
+
+    async fn record_session(
+        mut stdout_stream: BoxStream<'static, std::io::Result<String>>,
+        current_dir: PathBuf,
+        prompt: String,
+        resume_session: bool,
+    ) {
+        let file_path =
+            Self::get_sessions_base_dir().join(current_dir.file_name().unwrap_or_default());
+
+        // Ensure the directory exists
+        if let Some(parent) = file_path.parent() {
+            let _ = fs::create_dir_all(parent).await;
+        }
+
+        // If not resuming session, delete the file first
+        if !resume_session {
+            let _ = fs::remove_file(&file_path).await;
+        }
+
+        // Always append from here on
+        let mut file = match OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&file_path)
+            .await
+        {
+            Ok(file) => file,
+            Err(_) => {
+                tracing::error!("Failed to open session file: {:?}", file_path);
+                return;
+            }
+        };
+
+        // Write user message as normalized entry
+        let mut user_message_json = serde_json::to_string(&NormalizedEntry {
+            timestamp: None,
+            entry_type: NormalizedEntryType::UserMessage,
+            content: prompt,
+            metadata: None,
+        })
+        .unwrap_or_default();
+        user_message_json.push('\n');
+        let _ = file.write_all(user_message_json.as_bytes()).await;
+
+        // Read stdout incrementally and append assistant message
+        let mut stdout_content = String::new();
+
+        // Read stdout until the process finishes
+        while let Some(Ok(chunk)) = stdout_stream.next().await {
+            stdout_content.push_str(&chunk);
+        }
+
+        let mut assistant_message_json = serde_json::to_string(&NormalizedEntry {
+            timestamp: None,
+            entry_type: NormalizedEntryType::AssistantMessage,
+            content: stdout_content,
+            metadata: None,
+        })
+        .unwrap_or_default();
+        assistant_message_json.push('\n');
+        let _ = file.write_all(assistant_message_json.as_bytes()).await;
+    }
+
+    /// Build comprehensive prompt with session context for follow-up execution
+    async fn build_followup_prompt(
+        current_dir: &PathBuf,
+        prompt: &str,
+    ) -> Result<String, ExecutorError> {
+        let session_file_path =
+            Self::get_sessions_base_dir().join(current_dir.file_name().unwrap_or_default());
+
+        // Read existing session context
+        let session_context = fs::read_to_string(&session_file_path).await.map_err(|e| {
+            ExecutorError::FollowUpNotSupported(format!(
+                "No existing Gemini session found for this worktree. Session file not found at {:?}: {}",
+                session_file_path, e
+            ))
+        })?;
+
+        Ok(format!(
+            r#"RESUME CONTEXT FOR CONTINUING TASK
+
+=== EXECUTION HISTORY ===
+The following is the conversation history from this session:
+{}
+
+=== CURRENT REQUEST ===
+{}
+
+=== INSTRUCTIONS ===
+You are continuing work on the above task. The execution history shows the previous conversation in this session. Please continue from where the previous execution left off, taking into account all the context provided above.
+"#,
+            session_context, prompt
+        ))
+    }
+
+    fn get_sessions_base_dir() -> PathBuf {
+        utils::path::get_vibe_kanban_temp_dir().join("gemini_sessions")
     }
 }
 

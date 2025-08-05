@@ -633,21 +633,6 @@ impl WorktreeManager {
 
     /// Get the base directory for vibe-kanban worktrees
     pub fn get_worktree_base_dir() -> std::path::PathBuf {
-        let dir_name = if cfg!(debug_assertions) {
-            "vibe-kanban-dev"
-        } else {
-            "vibe-kanban"
-        };
-
-        if cfg!(target_os = "macos") {
-            // macOS already uses /var/folders/... which is persistent storage
-            std::env::temp_dir().join(dir_name)
-        } else if cfg!(target_os = "linux") {
-            // Linux: use /var/tmp instead of /tmp to avoid RAM usage
-            std::path::PathBuf::from("/var/tmp").join(dir_name)
-        } else {
-            // Windows and other platforms: use temp dir with vibe-kanban subdirectory
-            std::env::temp_dir().join(dir_name)
-        }
+        utils::path::get_vibe_kanban_temp_dir().join("worktrees")
     }
 }
