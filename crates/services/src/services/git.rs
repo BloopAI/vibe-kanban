@@ -35,6 +35,8 @@ pub enum GitServiceError {
     InvalidPath(String),
     #[error("Worktree has uncommitted changes: {0}")]
     WorktreeDirty(String),
+    #[error("Invalid file paths: {0}")]
+    InvalidFilePaths(String),
 }
 
 /// Service for managing Git operations in task execution workflows
@@ -77,6 +79,90 @@ impl GitService {
         Self {}
     }
 
+    /// Normalize a path to be repo-relative and use POSIX separators
+    fn normalize_to_repo_relative(
+        repo: &Repository,
+        path: &Path,
+    ) -> Result<String, GitServiceError> {
+        // Get the repository's working directory
+        let repo_workdir = repo.workdir().ok_or_else(|| {
+            GitServiceError::InvalidRepository("Repository has no working directory".to_string())
+        })?;
+
+        // Try to strip the repo prefix if path is absolute
+        let relative_path = if path.is_absolute() {
+            path.strip_prefix(repo_workdir).map_err(|_| {
+                GitServiceError::InvalidFilePaths(format!(
+                    "Path '{}' is outside repository root '{}'",
+                    path.display(),
+                    repo_workdir.display()
+                ))
+            })?
+        } else {
+            path
+        };
+
+        // Convert to string and normalize separators to forward slashes
+        let path_str = relative_path.to_string_lossy();
+        let normalized = path_str.replace('\\', "/");
+
+        // Remove leading "./" if present
+        let normalized = normalized.strip_prefix("./").unwrap_or(&normalized);
+
+        // Security check: prevent path traversal attacks
+        if normalized.contains("../") || normalized.starts_with("../") {
+            return Err(GitServiceError::InvalidFilePaths(format!(
+                "Path traversal not allowed: '{}'",
+                normalized
+            )));
+        }
+
+        Ok(normalized.to_string())
+    }
+
+    /// Validate and normalize file paths for use with git pathspec
+    fn validate_and_normalize_paths<P: AsRef<Path>>(
+        repo: &Repository,
+        file_paths: Option<&[P]>,
+    ) -> Result<Option<Vec<String>>, GitServiceError> {
+        if let Some(paths) = file_paths {
+            let mut normalized_paths = Vec::with_capacity(paths.len());
+
+            for path in paths {
+                let normalized = Self::normalize_to_repo_relative(repo, path.as_ref())?;
+                normalized_paths.push(normalized);
+            }
+
+            // Quick validation: check if any of the paths exist in the repo
+            if !normalized_paths.is_empty() {
+                let index = repo.index().map_err(GitServiceError::from)?;
+                let any_exists = normalized_paths
+                    .iter()
+                    .any(|path| index.get_path(Path::new(path), 0).is_some());
+
+                // Also check workdir for untracked files
+                let workdir_exists = if let Some(workdir) = repo.workdir() {
+                    normalized_paths
+                        .iter()
+                        .any(|path| workdir.join(path).exists())
+                } else {
+                    false
+                };
+
+                if !any_exists && !workdir_exists {
+                    debug!(
+                        "None of the specified paths exist in repository or workdir: {:?}",
+                        normalized_paths
+                    );
+                }
+            }
+
+            Ok(Some(normalized_paths))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Converts a Patch into our "render friendly" representation
     fn patch_to_chunks(patch: &git2::Patch) -> Vec<DiffChunk> {
         let mut chunks = Vec::new();
@@ -101,7 +187,10 @@ impl GitService {
 
     /// Builds FileDiffs from a generic git2::Diff
     fn diff_to_file_diffs(diff: &git2::Diff) -> Result<Vec<FileDiff>, GitServiceError> {
-        info!("Processing diff with {} deltas", diff.stats()?.files_changed());
+        info!(
+            "Processing diff with {} deltas",
+            diff.stats()?.files_changed()
+        );
         let mut files = Vec::new();
 
         for idx in 0..diff.deltas().len() {
@@ -147,14 +236,23 @@ impl GitService {
     }
 
     /// Generic diff engine that handles all types of comparisons
-    fn run_diff(
+    fn run_diff<P: AsRef<Path>>(
         repo: &Repository,
         left: Snapshot<'_>,
         right: Snapshot<'_>,
+        file_paths: Option<&[P]>,
     ) -> Result<Vec<FileDiff>, GitServiceError> {
         let mut opts = git2::DiffOptions::new();
         opts.context_lines(10);
         opts.interhunk_lines(0);
+
+        // Apply pathspec filtering if file paths are provided
+        if let Some(normalized_paths) = Self::validate_and_normalize_paths(repo, file_paths)? {
+            // Add each path as a pathspec entry
+            for path in &normalized_paths {
+                opts.pathspec(path);
+            }
+        }
 
         let diff = match (left, right) {
             (Snapshot::Tree(a), Snapshot::Tree(b)) => repo.diff_tree_to_tree(
@@ -176,10 +274,11 @@ impl GitService {
     }
 
     /// Diff for an already-merged squash commit
-    pub fn diff_for_merge_commit(
+    pub fn diff_for_merge_commit<P: AsRef<Path>>(
         &self,
         repo_path: &Path,
         merge_commit: git2::Oid,
+        file_paths: Option<&[P]>,
     ) -> Result<WorktreeDiff, GitServiceError> {
         let repo = self.open_repo(repo_path)?;
         let mc = repo.find_commit(merge_commit)?;
@@ -191,15 +290,21 @@ impl GitService {
                 repo.treebuilder(None).unwrap().write().unwrap()
             });
 
-        let files = Self::run_diff(&repo, Snapshot::Tree(base), Snapshot::Tree(mc.tree()?.id()))?;
+        let files = Self::run_diff(
+            &repo,
+            Snapshot::Tree(base),
+            Snapshot::Tree(mc.tree()?.id()),
+            file_paths,
+        )?;
         Ok(WorktreeDiff { files })
     }
 
     /// Diff for a work-tree that has not been merged yet
-    pub fn diff_for_worktree(
+    pub fn diff_for_worktree<P: AsRef<Path>>(
         &self,
         worktree_path: &Path,
         base_branch_commit: git2::Oid,
+        file_paths: Option<&[P]>,
     ) -> Result<WorktreeDiff, GitServiceError> {
         let repo = Repository::open(worktree_path)?;
         let base_tree = repo.find_commit(base_branch_commit)?.tree()?.id();
@@ -207,6 +312,7 @@ impl GitService {
             &repo,
             Snapshot::Tree(base_tree),
             Snapshot::WorkdirAgainst(base_branch_commit, worktree_path),
+            file_paths,
         )?;
         Ok(WorktreeDiff { files })
     }
@@ -654,18 +760,19 @@ impl GitService {
     }
 
     /// Get enhanced diff for task attempts (from merge commit or worktree)
-    pub fn get_enhanced_diff(
+    pub fn get_enhanced_diff<P: AsRef<Path>>(
         &self,
         repo_path: &Path,
         worktree_path: &Path,
         merge_commit_id: Option<&str>,
         base_branch: &str,
+        file_paths: Option<&[P]>,
     ) -> Result<WorktreeDiff, GitServiceError> {
         if let Some(merge_commit_id) = merge_commit_id {
             // Task attempt has been merged - show the diff from the merge commit
             let commit_oid = git2::Oid::from_str(merge_commit_id)
                 .map_err(|_| GitServiceError::InvalidRepository("Invalid commit ID".to_string()))?;
-            self.diff_for_merge_commit(repo_path, commit_oid)
+            self.diff_for_merge_commit(repo_path, commit_oid, file_paths)
         } else {
             // Task attempt not yet merged - get worktree diff
             let main_repo = self.open_repo(repo_path)?;
@@ -674,7 +781,7 @@ impl GitService {
                 .map_err(|_| GitServiceError::BranchNotFound(base_branch.to_string()))?;
             let base_branch_commit = base_branch_ref.get().peel_to_commit()?.id();
 
-            self.diff_for_worktree(worktree_path, base_branch_commit)
+            self.diff_for_worktree(worktree_path, base_branch_commit, file_paths)
         }
     }
 

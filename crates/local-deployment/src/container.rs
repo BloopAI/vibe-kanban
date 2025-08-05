@@ -546,6 +546,7 @@ impl ContainerService for LocalContainerService {
                 std::path::Path::new(""),
                 Some(merge_commit_id.as_str()),
                 &task_attempt.base_branch,
+                None::<&[&str]>, // No file filtering for now
             )?
         } else {
             GitService::new().get_enhanced_diff(
@@ -553,6 +554,7 @@ impl ContainerService for LocalContainerService {
                 &worktree_dir,
                 None,
                 &task_attempt.base_branch,
+                None::<&[&str]>, // No file filtering for now
             )?
         };
 
