@@ -8,12 +8,11 @@ import {
   TaskAttemptDataContext,
   TaskDiffContext,
 } from '@/components/context/taskDetailsContext.ts';
+import type { TabType } from '@/types/tabs';
 
 type Props = {
-  activeTab: 'logs' | 'diffs' | 'processes';
-  setActiveTab: (
-    tab: 'logs' | 'diffs' | 'processes'
-  ) => void;
+  activeTab: TabType;
+  setActiveTab: (tab: TabType) => void;
 };
 
 function TabNavigation({ activeTab, setActiveTab }: Props) {
