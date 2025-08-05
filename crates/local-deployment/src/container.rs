@@ -2,6 +2,7 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 
 use anyhow::anyhow;
 use async_trait::async_trait;
+use axum::response::sse::Event;
 use command_group::AsyncGroupChild;
 use db::{
     DBService,
@@ -484,5 +485,11 @@ impl ContainerService for LocalContainerService {
         .await?;
 
         Ok(())
+    }
+
+    async fn get_diff(
+        &self,
+    ) -> Option<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>> {
+        todo!()
     }
 }

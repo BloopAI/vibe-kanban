@@ -79,6 +79,10 @@ pub trait ContainerService {
         execution_process: &ExecutionProcess,
     ) -> Result<(), ContainerError>;
 
+    async fn get_diff(
+        &self,
+    ) -> Option<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>>;
+
     /// Fetch the MsgStore for a given execution ID, panicking if missing.
     async fn get_msg_store_by_id(&self, uuid: &Uuid) -> Option<Arc<MsgStore>> {
         let map = self.msg_stores().read().await;

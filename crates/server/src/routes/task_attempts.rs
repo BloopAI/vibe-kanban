@@ -22,6 +22,7 @@ use executors::actions::{
     script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     ExecutorActionKind, ExecutorActions,
 };
+use futures_util::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use services::services::{
     config::{Config, EditorConfig, EditorType},
@@ -394,38 +395,50 @@ pub async fn follow_up(
 pub async fn get_task_attempt_diff(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<WorktreeDiff>>, ApiError> {
+    // ) -> Result<ResponseJson<ApiResponse<WorktreeDiff>>, ApiError> {
+) -> Result<Sse<impl futures_util::Stream<Item = Result<Event, BoxError>>>, axum::http::StatusCode>
+{
     let pool = &deployment.db().pool;
     let task = task_attempt
         .parent_task(pool)
-        .await?
-        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
-    let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
+        .await
+        .map_err(|e| StatusCode::INTERNAL_SERVER_ERROR)?
+        .ok_or(StatusCode::NOT_FOUND)?;
 
-    if let Some(merge_commit_id) = &ctx.task_attempt.merge_commit {
-        // Task attempt has been merged - show the diff from the merge commit
-        let diff = GitService::new().get_enhanced_diff(
-            &ctx.project.git_repo_path,
-            std::path::Path::new(""),
-            Some(merge_commit_id),
-            &ctx.task_attempt.base_branch,
-        )?;
-        Ok(ResponseJson(ApiResponse::success(diff)))
-    } else {
-        let container_ref = deployment
-            .container()
-            .ensure_container_exists(&task_attempt)
-            .await?;
-        let worktree_path = std::path::Path::new(&container_ref);
+    // let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
 
-        let diff = GitService::new().get_enhanced_diff(
-            &ctx.project.git_repo_path,
-            &worktree_path,
-            None,
-            &ctx.task_attempt.base_branch,
-        )?;
-        Ok(ResponseJson(ApiResponse::success(diff)))
-    }
+    // if let Some(merge_commit_id) = &ctx.task_attempt.merge_commit {
+    //     // Task attempt has been merged - show the diff from the merge commit
+    //     let diff = GitService::new().get_enhanced_diff(
+    //         &ctx.project.git_repo_path,
+    //         std::path::Path::new(""),
+    //         Some(merge_commit_id),
+    //         &ctx.task_attempt.base_branch,
+    //     )?;
+    //     Ok(ResponseJson(ApiResponse::success(diff)))
+    // } else {
+    //     let container_ref = deployment
+    //         .container()
+    //         .ensure_container_exists(&task_attempt)
+    //         .await?;
+    //     let worktree_path = std::path::Path::new(&container_ref);
+
+    //     let diff = GitService::new().get_enhanced_diff(
+    //         &ctx.project.git_repo_path,
+    //         &worktree_path,
+    //         None,
+    //         &ctx.task_attempt.base_branch,
+    //     )?;
+    //     Ok(ResponseJson(ApiResponse::success(diff)))
+    // }
+
+    let stream = deployment
+        .container()
+        .get_diff()
+        .await
+        .ok_or(axum::http::StatusCode::NOT_FOUND)?;
+
+    Ok(Sse::new(stream.map_err(|e| -> BoxError { e.into() })).keep_alive(KeepAlive::default()))
 }
 
 #[axum::debug_handler]
