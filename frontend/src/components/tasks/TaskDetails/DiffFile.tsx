@@ -5,12 +5,9 @@ import { FileDiff } from 'shared/types';
 import {
   Dispatch,
   SetStateAction,
-  useCallback,
-  useContext,
   useMemo,
   useState,
 } from 'react';
-import { TaskDeletingFilesContext } from '@/components/context/taskDetailsContext.ts';
 import { ProcessedLine, ProcessedSection } from '@/lib/types.ts';
 
 type Props = {
@@ -30,18 +27,8 @@ function DiffFile({
   fileIndex,
   setCollapsedFiles,
 }: Props) {
-  const { deletingFiles, setFileToDelete } = useContext(
-    TaskDeletingFilesContext
-  );
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set()
-  );
-
-  const onDeleteFile = useCallback(
-    (filePath: string) => {
-      setFileToDelete(filePath);
-    },
-    [setFileToDelete]
   );
 
   const toggleFileCollapse = (filePath: string) => {
@@ -259,17 +246,11 @@ function DiffFile({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onDeleteFile(file.path)}
-            disabled={deletingFiles.has(file.path)}
+            disabled={true}
             className="text-red-600 hover:text-red-800 hover:bg-red-50 h-6 px-2 gap-1"
             title={`Delete ${file.path}`}
           >
             <Trash2 className="h-3 w-3" />
-            {!compact && (
-              <span className="text-xs">
-                {deletingFiles.has(file.path) ? 'Deleting...' : 'Delete'}
-              </span>
-            )}
           </Button>
         )}
       </div>
