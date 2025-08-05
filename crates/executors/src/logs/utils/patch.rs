@@ -7,10 +7,12 @@ use utils::diff::FileDiff;
 use crate::logs::NormalizedEntry;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, TS)]
+#[ts(export)]
 #[serde(rename_all = "lowercase")]
 enum PatchOperation {
     Add,
     Replace,
+    Remove,
 }
 
 #[derive(Serialize, TS)]
@@ -27,6 +29,10 @@ struct PatchEntry {
     op: PatchOperation,
     path: String,
     value: PatchType,
+}
+
+fn escape_json_pointer_segment(s: &str) -> String {
+    s.replace('~', "~0").replace('/', "~1")
 }
 
 /// Helper functions to create JSON patches for conversation entries
@@ -70,7 +76,7 @@ impl ConversationPatch {
     pub fn add_file_diff(file_diff: FileDiff) -> Patch {
         let patch_entry = PatchEntry {
             op: PatchOperation::Add,
-            path: format!("/entries/{}", file_diff.path),
+            path: format!("/entries/{}", escape_json_pointer_segment(&file_diff.path)),
             value: PatchType::FileDiff(file_diff),
         };
 
@@ -81,11 +87,20 @@ impl ConversationPatch {
     pub fn replace_file_diff(file_diff: FileDiff) -> Patch {
         let patch_entry = PatchEntry {
             op: PatchOperation::Replace,
-            path: format!("/entries/{}", file_diff.path),
+            path: format!("/entries/{}", escape_json_pointer_segment(&file_diff.path)),
             value: PatchType::FileDiff(file_diff),
         };
 
         from_value(json!([patch_entry])).unwrap()
+    }
+
+    /// Create a REMOVE patch for removing a file diff
+    pub fn remove_file_diff(path: &str) -> Patch {
+        from_value(json!([{
+            "op": PatchOperation::Remove,
+            "path": format!("/entries/{}", escape_json_pointer_segment(path))
+        }]))
+        .unwrap()
     }
 
     /// Create a REPLACE patch for updating an existing conversation entry at the given index

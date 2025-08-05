@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io, path::PathBuf, sync::Arc, time::Duration};
+use std::{collections::{HashMap, HashSet}, io, path::PathBuf, sync::Arc, time::Duration};
 
 use anyhow::anyhow;
 use async_stream::try_stream;
@@ -604,11 +604,24 @@ impl ContainerService for LocalContainerService {
                                 Some(&changed_paths),
                             ).map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
 
-                            // Yield diff events for each changed file
+                            // Track which files still have diffs
+                            let mut still_dirty: HashSet<String> = HashSet::new();
+
+                            // Send ADD/REPLACE messages for files that still have diffs
                             for file_diff in diff.files {
+                                still_dirty.insert(file_diff.path.clone());
                                 let patch = ConversationPatch::add_file_diff(file_diff);
                                 let event = LogMsg::JsonPatch(patch).to_sse_event();
                                 yield event;
+                            }
+
+                            // Send REMOVE messages for files that changed but no longer have diffs
+                            for path in &changed_paths {
+                                if !still_dirty.contains(path) {
+                                    let patch = ConversationPatch::remove_file_diff(path);
+                                    let event = LogMsg::JsonPatch(patch).to_sse_event();
+                                    yield event;
+                                }
                             }
                         }
                     }
