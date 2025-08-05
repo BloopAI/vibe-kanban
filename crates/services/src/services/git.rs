@@ -8,7 +8,7 @@ use git2::{
 use regex;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tracing::{debug, info};
+use tracing::debug;
 use ts_rs::TS;
 use utils::diff::{DiffChunk, DiffChunkType, FileDiff, WorktreeDiff};
 
@@ -187,10 +187,6 @@ impl GitService {
 
     /// Builds FileDiffs from a generic git2::Diff
     fn diff_to_file_diffs(diff: &git2::Diff) -> Result<Vec<FileDiff>, GitServiceError> {
-        info!(
-            "Processing diff with {} deltas",
-            diff.stats()?.files_changed()
-        );
         let mut files = Vec::new();
 
         for idx in 0..diff.deltas().len() {
@@ -202,8 +198,6 @@ impl GitService {
                 .and_then(|p| p.to_str())
                 .unwrap_or("<unknown>")
                 .to_owned();
-
-            info!("Processing file: {} | status: {:?}", path, delta.status());
 
             // Build the in-memory patch that libgit2 has already computed
             if let Some(patch) = git2::Patch::from_diff(diff, idx)? {
@@ -348,7 +342,6 @@ impl GitService {
         // Set HEAD to point to main branch
         repo.set_head("refs/heads/main")?;
 
-        info!("Created initial commit for empty repository");
         Ok(())
     }
 
@@ -410,7 +403,6 @@ impl GitService {
             }
         }
 
-        info!("Created squash merge commit: {}", squash_commit_id);
         Ok(squash_commit_id.to_string())
     }
 
@@ -755,7 +747,6 @@ impl GitService {
         let final_head = worktree_repo.head()?;
         let final_commit = final_head.peel_to_commit()?;
 
-        info!("Rebase completed. New HEAD: {}", final_commit.id());
         Ok(final_commit.id().to_string())
     }
 
@@ -804,10 +795,6 @@ impl GitService {
                     file_path, e
                 )))
             })?;
-
-            debug!("Deleted file: {}", file_path);
-        } else {
-            info!("File {} does not exist, skipping deletion", file_path);
         }
 
         // Stage the deletion
@@ -833,8 +820,6 @@ impl GitService {
             &tree,
             &[&parent_commit],
         )?;
-
-        info!("File {} deleted and committed: {}", file_path, commit_id);
 
         Ok(commit_id.to_string())
     }
@@ -943,7 +928,6 @@ impl GitService {
         // Check push result
         push_result?;
 
-        info!("Pushed branch {} to GitHub using HTTPS", branch_name);
         Ok(())
     }
 
