@@ -43,6 +43,7 @@ fn unknown_executor_error(s: &str) -> ExecutorError {
 #[strum_discriminants(
     name(CodingAgentExecutorType),
     derive(strum_macros::Display, Serialize, Deserialize, TS),
+    strum(serialize_all = "SCREAMING_SNAKE_CASE"),
     ts(use_ts_enum),
     serde(rename_all = "SCREAMING_SNAKE_CASE")
 )]
@@ -68,6 +69,7 @@ impl CodingAgentExecutors {
     pub fn from_profile_str(profile: &str) -> Result<Self, ExecutorError> {
         match profile {
             "claude-code" => Ok(CodingAgentExecutors::ClaudeCode(ClaudeCode::new())),
+            "claude-code-plan" => Ok(CodingAgentExecutors::ClaudeCode(ClaudeCode::new_plan_mode())),
             "amp" => Ok(CodingAgentExecutors::Amp(Amp::new())),
             "gemini" => Ok(CodingAgentExecutors::Gemini(Gemini::new())),
             _ => {

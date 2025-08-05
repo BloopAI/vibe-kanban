@@ -157,6 +157,7 @@ impl AgentProfiles {
         }
 
         let content = fs::read_to_string(&profiles_path)?;
+
         let user_profiles: Self = serde_json::from_str(&content).map_err(|e| {
             std::io::Error::new(
                 std::io::ErrorKind::InvalidData,

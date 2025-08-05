@@ -77,12 +77,13 @@ pub struct TaskAttempt {
     pub branch: Option<String>,        // Git branch name for this task attempt
     pub base_branch: String,           // Base branch this attempt is based on
     pub merge_commit: Option<String>,
-    pub executor: Option<String>,  // Name of the executor to use
-    pub pr_url: Option<String>,    // GitHub PR URL
-    pub pr_number: Option<i64>,    // GitHub PR number
+    pub executor: Option<String>, // Name of the executor to use
+    pub executor_action_type: Option<String>, // The executor action type (stored as string in DB)
+    pub pr_url: Option<String>,   // GitHub PR URL
+    pub pr_number: Option<i64>,   // GitHub PR number
     pub pr_status: Option<String>, // open, closed, merged
     pub pr_merged_at: Option<DateTime<Utc>>, // When PR was merged
-    pub worktree_deleted: bool,    // Flag indicating if worktree has been cleaned up
+    pub worktree_deleted: bool,   // Flag indicating if worktree has been cleaned up
     pub setup_completed_at: Option<DateTime<Utc>>, // When setup script was last completed
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -148,6 +149,7 @@ pub struct TaskAttemptContext {
 #[ts(export)]
 pub struct CreateTaskAttempt {
     pub executor: String,
+    pub executor_action_type: Option<String>,
     pub base_branch: String,
 }
 
@@ -213,6 +215,7 @@ impl TaskAttempt {
                        ta.base_branch,
                        ta.merge_commit,
                        ta.executor,
+                       ta.executor_action_type,
                        ta.pr_url,
                        ta.pr_number,
                        ta.pr_status,
@@ -308,6 +311,7 @@ impl TaskAttempt {
                        merge_commit,
                        base_branch,
                        executor,
+                       executor_action_type,
                        pr_url,
                        pr_number,
                        pr_status,
@@ -334,6 +338,7 @@ impl TaskAttempt {
                        merge_commit,
                        base_branch,
                        executor,
+                       executor_action_type,
                        pr_url,
                        pr_number,
                        pr_status,
@@ -496,9 +501,9 @@ impl TaskAttempt {
         // Insert the record into the database
         Ok(sqlx::query_as!(
             TaskAttempt,
-            r#"INSERT INTO task_attempts (id, task_id, container_ref, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at, worktree_deleted, setup_completed_at)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, base_branch, merge_commit, executor, pr_url, pr_number, pr_status, pr_merged_at as "pr_merged_at: DateTime<Utc>", worktree_deleted as "worktree_deleted!: bool", setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO task_attempts (id, task_id, container_ref, branch, base_branch, merge_commit, executor, executor_action_type, pr_url, pr_number, pr_status, pr_merged_at, worktree_deleted, setup_completed_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, base_branch, merge_commit, executor, executor_action_type, pr_url, pr_number, pr_status, pr_merged_at as "pr_merged_at: DateTime<Utc>", worktree_deleted as "worktree_deleted!: bool", setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             attempt_id,
             task_id,
             Option::<String>::None, // Container isn't known yet
@@ -506,6 +511,7 @@ impl TaskAttempt {
             data.base_branch,
             Option::<String>::None, // merge_commit is always None during creation
             data.executor,
+            data.executor_action_type,
             Option::<String>::None, // pr_url is None during creation
             Option::<i64>::None, // pr_number is None during creation
             Option::<String>::None, // pr_status is None during creation

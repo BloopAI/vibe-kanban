@@ -258,10 +258,19 @@ pub async fn create_task_attempt(
         .executor
         .unwrap_or(deployment.config().read().await.executor.to_string());
 
+    let executor_action_type = executors::command::AgentProfiles::get_cached()
+        .get_profile(&executor)
+        .map(|profile| profile.agent.to_string());
+
+    if executor_action_type.is_none() {
+        tracing::warn!("No profile found for executor: {}", executor);
+    }
+
     let task_attempt = TaskAttempt::create(
         &deployment.db().pool,
         &CreateTaskAttempt {
             executor: executor.clone(),
+            executor_action_type,
             base_branch: payload.base_branch,
         },
         payload.task_id,
