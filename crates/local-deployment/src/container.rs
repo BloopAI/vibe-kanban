@@ -514,10 +514,10 @@ impl ContainerService for LocalContainerService {
 
         let stream = try_stream! {
             // Create filesystem watcher
-            let (mut watcher, mut rx) = filesystem_watcher::async_watcher().map_err(to_io)?;
+            let (mut watcher, mut rx, canonical_path) = filesystem_watcher::async_watcher(directory_to_watch.clone()).map_err(to_io)?;
             
             // Start watching the directory recursively
-            watcher.watch(&directory_to_watch, RecursiveMode::Recursive).map_err(to_io)?;
+            watcher.watch(&canonical_path, RecursiveMode::Recursive).map_err(to_io)?;
 
             // Process events from the watcher
             while let Some(res) = rx.next().await {
