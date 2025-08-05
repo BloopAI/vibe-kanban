@@ -11,7 +11,7 @@ use utils::{
 };
 
 use crate::{
-    command_builder::{CommandBuilder, DefaultCommandBuilders},
+    command::{AgentProfiles, CommandBuilder},
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
         ActionType, NormalizedEntry, NormalizedEntryType,
@@ -117,16 +117,20 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 impl ClaudeCode {
     /// Create a new Claude executor with default settings
     pub fn new() -> Self {
-        Self {
-            executor_type: "Claude Code".to_string(),
-            command_builder: DefaultCommandBuilders::claude_code(),
-        }
+        let profile = AgentProfiles::get_cached()
+            .get_profile("claude-code")
+            .expect("Default claude-code profile should exist");
+
+        Self::with_command_builder(profile.label.clone(), profile.command.clone())
     }
 
     /// Create a new Claude executor in plan mode with watchkill script
     pub fn new_plan_mode() -> Self {
-        let command_builder = DefaultCommandBuilders::claude_code_plan();
-        let base_command = command_builder.build_initial();
+        let profile = AgentProfiles::get_cached()
+            .get_profile("claude-code-plan")
+            .expect("Default claude-code-plan profile should exist");
+
+        let base_command = profile.command.build_initial();
         // Note: We'll need to update this to handle watchkill script properly
         // For now, we'll create a custom command builder
         let watchkill_command = create_watchkill_script(&base_command);

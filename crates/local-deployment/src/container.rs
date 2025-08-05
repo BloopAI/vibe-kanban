@@ -14,7 +14,7 @@ use command_group::AsyncGroupChild;
 use db::{
     DBService,
     models::{
-        execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
+        execution_process::{ExecutionProcess, ExecutionProcessStatus},
         task_attempt::TaskAttempt,
     },
 };
@@ -293,22 +293,21 @@ impl LocalContainerService {
                         tracing::error!("Failed to update execution process completion: {}", e);
                     }
 
+                    // If the process exited successfully, start the next action
                     if let Ok(ctx) = ExecutionProcess::load_context(&db.pool, exec_id).await {
                         if matches!(status, ExecutionProcessStatus::Completed)
                             && exit_code == Some(0)
                         {
-                            if matches!(
-                                ctx.execution_process.run_reason,
-                                ExecutionProcessRunReason::SetupScript
-                            ) {
-                                if let Err(e) = container.start_after_setup(&ctx).await {
-                                    tracing::error!("Failed to start after setup script: {}", e);
-                                } else {
-                                    tracing::debug!(
-                                        "Successfully started next action after setup script: {}",
-                                        ctx.task_attempt.id
-                                    );
-                                }
+                            if let Err(e) = container.try_start_next_action(&ctx).await {
+                                tracing::error!(
+                                    "Failed to start next action after completion: {}",
+                                    e
+                                );
+                            } else {
+                                tracing::debug!(
+                                    "Successfully started next action after completion: {}",
+                                    ctx.task_attempt.id
+                                );
                             }
                         }
 

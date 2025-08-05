@@ -21,7 +21,7 @@ use ts_rs::TS;
 use utils::{log_msg::LogMsg, msg_store::MsgStore, shell::get_shell_command};
 
 use crate::{
-    command_builder::{CommandBuilder, DefaultCommandBuilders},
+    command::{AgentProfiles, CommandBuilder},
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
         NormalizedEntry, NormalizedEntryType,
@@ -230,9 +230,11 @@ impl StandardCodingAgentExecutor for Amp {
 
 impl Amp {
     pub fn new() -> Self {
-        Self {
-            command_builder: DefaultCommandBuilders::amp(),
-        }
+        let profile = AgentProfiles::get_cached()
+            .get_profile("amp")
+            .expect("Default amp profile should exist");
+
+        Self::with_command_builder(profile.command.clone())
     }
 
     pub fn with_command_builder(command_builder: CommandBuilder) -> Self {

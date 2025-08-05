@@ -11,7 +11,7 @@ use ts_rs::TS;
 use utils::msg_store::MsgStore;
 
 use crate::{
-    command_builder::ProfileManager,
+    command::AgentProfiles,
     executors::{amp::Amp, claude::ClaudeCode, gemini::Gemini},
 };
 
@@ -64,15 +64,15 @@ pub enum CodingAgentExecutors {
 
 impl CodingAgentExecutors {
     /// Create an executor from a profile string
-    /// Handles both reserved profiles ("ClaudeCode", "Amp", "Gemini") and custom profiles
+    /// Handles both default profiles ("claude-code", "amp", "gemini") and custom profiles
     pub fn from_profile_str(profile: &str) -> Result<Self, ExecutorError> {
         match profile {
-            "ClaudeCode" => Ok(CodingAgentExecutors::ClaudeCode(ClaudeCode::new())),
-            "Amp" => Ok(CodingAgentExecutors::Amp(Amp::new())),
-            "Gemini" => Ok(CodingAgentExecutors::Gemini(Gemini::new())),
+            "claude-code" => Ok(CodingAgentExecutors::ClaudeCode(ClaudeCode::new())),
+            "amp" => Ok(CodingAgentExecutors::Amp(Amp::new())),
+            "gemini" => Ok(CodingAgentExecutors::Gemini(Gemini::new())),
             _ => {
-                // Try to load from ProfileManager
-                if let Some(agent_profile) = ProfileManager::get_profile(profile) {
+                // Try to load from AgentProfiles
+                if let Some(agent_profile) = AgentProfiles::get_cached().get_profile(profile) {
                     match agent_profile.agent {
                         CodingAgentExecutorType::ClaudeCode => Ok(
                             CodingAgentExecutors::ClaudeCode(ClaudeCode::with_command_builder(

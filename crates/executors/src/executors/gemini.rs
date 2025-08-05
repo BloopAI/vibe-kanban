@@ -9,7 +9,7 @@ use ts_rs::TS;
 use utils::{msg_store::MsgStore, shell::get_shell_command};
 
 use crate::{
-    command_builder::{CommandBuilder, DefaultCommandBuilders},
+    command::{AgentProfiles, CommandBuilder},
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
         NormalizedEntry, NormalizedEntryType, plain_text_processor::PlainTextLogProcessor,
@@ -161,9 +161,11 @@ impl Gemini {
 impl Gemini {
     /// Create a new Gemini executor with default settings
     pub fn new() -> Self {
-        Self {
-            command_builder: DefaultCommandBuilders::gemini(),
-        }
+        let profile = AgentProfiles::get_cached()
+            .get_profile("gemini")
+            .expect("Default gemini profile should exist");
+
+        Self::with_command_builder(profile.command.clone())
     }
 
     /// Create a new Gemini executor with custom command builder

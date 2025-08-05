@@ -25,14 +25,13 @@ use executors::actions::{
 use futures_util::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use services::services::{
-    config::{Config, EditorConfig, EditorType},
     container::{ContainerRef, ContainerService},
     git::{BranchStatus, GitService, GitServiceError},
     github_service::{CreatePrRequest, GitHubRepoInfo, GitHubService, GitHubServiceError},
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
-use utils::{assets::config_path, response::ApiResponse};
+use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{error::ApiError, middleware::load_task_attempt_middleware, DeploymentImpl};

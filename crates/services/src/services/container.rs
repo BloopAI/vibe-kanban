@@ -448,21 +448,18 @@ pub trait ContainerService {
         Ok(execution_process)
     }
 
-    async fn start_after_setup(&self, ctx: &ExecutionContext) -> Result<(), ContainerError> {
+    async fn try_start_next_action(&self, ctx: &ExecutionContext) -> Result<(), ContainerError> {
         let action = ctx.execution_process.executor_action();
-        let next_action = match action.typ() {
-            ExecutorActionType::ScriptRequest(_) => {
-                action
-                    .next_action
-                    .as_ref()
-                    .ok_or(ContainerError::Other(anyhow::anyhow!(
-                        "No next action configured for SetupScript"
-                    )))?
-            }
-            _ => {
+        let next_action = if let Some(next_action) = action.next_action() {
+            next_action
+        } else {
+            if matches!(action.typ(), ExecutorActionType::ScriptRequest(_)) {
                 return Err(ContainerError::Other(anyhow::anyhow!(
-                    "Excepted ScriptRequest for SetupScript execution"
+                    "No next action configured for SetupScript"
                 )));
+            } else {
+                tracing::debug!("No next action configured");
+                return Ok(());
             }
         };
 
@@ -473,7 +470,7 @@ pub trait ContainerService {
         )
         .await?;
 
-        tracing::debug!("Started next action after setup: {:?}", next_action);
+        tracing::debug!("Started next action: {:?}", next_action);
         Ok(())
     }
 }

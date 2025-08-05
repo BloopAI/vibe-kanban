@@ -48,11 +48,8 @@ pub struct ExecutorAction {
 }
 
 impl ExecutorAction {
-    pub fn new(type_: ExecutorActionType, next_action: Option<Box<ExecutorAction>>) -> Self {
-        Self {
-            typ: type_,
-            next_action,
-        }
+    pub fn new(typ: ExecutorActionType, next_action: Option<Box<ExecutorAction>>) -> Self {
+        Self { typ, next_action }
     }
 
     pub fn typ(&self) -> &ExecutorActionType {

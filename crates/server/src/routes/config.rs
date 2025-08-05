@@ -9,7 +9,7 @@ use axum::{
     Json, Router,
 };
 use deployment::{Deployment, DeploymentError};
-use executors::executors::CodingAgentExecutorType;
+use executors::{command::AgentProfiles, executors::CodingAgentExecutorType};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use services::services::config::{Config, SoundFile};
@@ -51,6 +51,7 @@ impl Environment {
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct UserSystemInfo {
     pub config: Config,
+    pub profiles: AgentProfiles,
     pub environment: Environment,
 }
 
@@ -63,6 +64,7 @@ async fn get_user_system_info(
 
     let user_system_info = UserSystemInfo {
         config: config.clone(),
+        profiles: AgentProfiles::get_cached().clone(),
         environment: Environment::new(),
     };
 
