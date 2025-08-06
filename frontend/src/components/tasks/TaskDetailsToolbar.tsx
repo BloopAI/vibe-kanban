@@ -2,7 +2,6 @@ import { useCallback, useContext, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useConfig } from '@/components/config-provider';
 import { attemptsApi, projectsApi } from '@/lib/api';
 import type { GitBranch } from 'shared/types';
 import type { TaskAttempt } from 'shared/types';
@@ -18,7 +17,7 @@ import {
 import CreatePRDialog from '@/components/tasks/Toolbar/CreatePRDialog.tsx';
 import CreateAttempt from '@/components/tasks/Toolbar/CreateAttempt.tsx';
 import CurrentAttempt from '@/components/tasks/Toolbar/CurrentAttempt.tsx';
-import { useSystemInfo } from '@/hooks/use-system-info';
+import { useUserSystem } from '@/components/config-provider';
 
 const availableExecutors = Object.values(CodingAgentExecutorType).map((id) => ({
   id,
@@ -40,25 +39,19 @@ function TaskDetailsToolbar() {
   const [taskAttempts, setTaskAttempts] = useState<TaskAttempt[]>([]);
   const location = useLocation();
 
-  const { config } = useConfig();
-
   const [branches, setBranches] = useState<GitBranch[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
 
-  const { systemInfo } = useSystemInfo();
+  const { system, profiles } = useUserSystem();
 
 
-  const [selectedExecutor, setSelectedExecutor] = useState<string>(
-    config?.executor || CodingAgentExecutorType.CLAUDE_CODE
-  );
+  const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
 
   // State for create attempt mode
   const [isInCreateAttemptMode, setIsInCreateAttemptMode] = useState(false);
   const [createAttemptBranch, setCreateAttemptBranch] = useState<string | null>(
     selectedBranch
   );
-  const [createAttemptExecutor, setCreateAttemptExecutor] =
-    useState<string>(selectedExecutor);
 
   // Branch status and git operations state
   const [creatingPR, setCreatingPR] = useState(false);
@@ -82,42 +75,15 @@ function TaskDetailsToolbar() {
 
   // Set default executor from config
   useEffect(() => {
-    if (config && config.executor !== selectedExecutor) {
-      setSelectedExecutor(config.executor);
+    if (system.config?.profile) {
+      setSelectedProfile(system.config.profile);
     }
-  }, [config, selectedExecutor]);
+  }, [system.config?.profile]);
 
   // Set create attempt mode when there are no attempts
   useEffect(() => {
     setIsInCreateAttemptMode(taskAttempts.length === 0);
   }, [taskAttempts.length]);
-
-  // Update default values from latest attempt when taskAttempts change
-  useEffect(() => {
-    if (taskAttempts.length > 0) {
-      const latestAttempt = taskAttempts.reduce((latest, current) =>
-        new Date(current.created_at) > new Date(latest.created_at)
-          ? current
-          : latest
-      );
-
-      // Only update if branch still exists in available branches
-      if (
-        latestAttempt.base_branch &&
-        branches.some((b: GitBranch) => b.name === latestAttempt.base_branch)
-      ) {
-        setCreateAttemptBranch(latestAttempt.base_branch);
-      }
-
-      // Only update executor if it's different from default and exists in available executors
-      if (
-        latestAttempt.executor &&
-        availableExecutors.some((e) => e.id === latestAttempt.executor)
-      ) {
-        setCreateAttemptExecutor(latestAttempt.executor);
-      }
-    }
-  }, [taskAttempts, branches, availableExecutors]);
 
   const fetchTaskAttempts = useCallback(async () => {
     if (!task) return;
@@ -206,22 +172,11 @@ function TaskDetailsToolbar() {
       } else {
         setCreateAttemptBranch(selectedBranch);
       }
-
-      // Use latest attempt's executor if it exists, otherwise use current selected executor
-      if (
-        latestAttempt.executor &&
-        availableExecutors.some((e) => e.id === latestAttempt.executor)
-      ) {
-        setCreateAttemptExecutor(latestAttempt.executor);
-      } else {
-        setCreateAttemptExecutor(selectedExecutor);
-      }
     } else {
       // Fallback to current selected values if no attempts exist
       setCreateAttemptBranch(selectedBranch);
-      setCreateAttemptExecutor(selectedExecutor);
     }
-  }, [taskAttempts, branches, selectedBranch, selectedExecutor]);
+  }, [taskAttempts, branches, selectedBranch]);
 
   return (
     <>
@@ -238,14 +193,13 @@ function TaskDetailsToolbar() {
             fetchTaskAttempts={fetchTaskAttempts}
             createAttemptBranch={createAttemptBranch}
             selectedBranch={selectedBranch}
-            createAttemptExecutor={createAttemptExecutor}
-            selectedExecutor={selectedExecutor}
+            selectedProfile={selectedProfile}
             taskAttempts={taskAttempts}
             branches={branches}
             setCreateAttemptBranch={setCreateAttemptBranch}
             setIsInCreateAttemptMode={setIsInCreateAttemptMode}
-            setCreateAttemptExecutor={setCreateAttemptExecutor}
-            availableExecutors={availableExecutors}
+            setSelectedProfile={setSelectedProfile}
+            availableProfiles={profiles}
           />
         ) : (
           <div className="space-y-3 p-3 bg-muted/20 rounded-lg border">

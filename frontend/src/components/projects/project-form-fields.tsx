@@ -3,11 +3,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Folder } from 'lucide-react';
-import { useUserSystem } from '@/components/config-provider';
 import {
   createScriptPlaceholderStrategy,
   ScriptPlaceholderContext,
 } from '@/utils/script-placeholders';
+import { useUserSystem } from '@/components/config-provider';
 
 interface ProjectFormFieldsProps {
   isEditing: boolean;

@@ -7,14 +7,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
-import type { GitBranch } from 'shared/types';
+import type { AgentProfile, GitBranch } from 'shared/types';
 import type { TaskAttempt } from 'shared/types';
 import { attemptsApi } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,
   TaskDetailsContext,
 } from '@/components/context/taskDetailsContext.ts';
-import { useConfig } from '@/components/config-provider.tsx';
 import BranchSelector from '@/components/tasks/BranchSelector.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
 import {
@@ -30,49 +29,41 @@ import { useState } from 'react';
 type Props = {
   branches: GitBranch[];
   taskAttempts: TaskAttempt[];
-  createAttemptExecutor: string;
   createAttemptBranch: string | null;
-  selectedExecutor: string;
+  selectedProfile: string | null;
   selectedBranch: string | null;
   fetchTaskAttempts: () => void;
   setIsInCreateAttemptMode: Dispatch<SetStateAction<boolean>>;
   setCreateAttemptBranch: Dispatch<SetStateAction<string | null>>;
-  setCreateAttemptExecutor: Dispatch<SetStateAction<string>>;
-  availableExecutors: {
-    id: string;
-    name: string;
-  }[];
+  setSelectedProfile: Dispatch<SetStateAction<string | null>>;
+  availableProfiles: AgentProfile[] | null;
 };
 
 function CreateAttempt({
   branches,
   taskAttempts,
-  createAttemptExecutor,
   createAttemptBranch,
-  selectedExecutor,
+  selectedProfile,
   selectedBranch,
   fetchTaskAttempts,
   setIsInCreateAttemptMode,
   setCreateAttemptBranch,
-  setCreateAttemptExecutor,
-  availableExecutors,
+  setSelectedProfile,
+  availableProfiles,
 }: Props) {
   const { task } = useContext(TaskDetailsContext);
   const { isAttemptRunning } = useContext(TaskAttemptDataContext);
-  const { config } = useConfig();
 
   const [showCreateAttemptConfirmation, setShowCreateAttemptConfirmation] =
     useState(false);
-  const [pendingExecutor, setPendingExecutor] = useState<string | undefined>(
-    undefined
-  );
+
   const [pendingBaseBranch, setPendingBaseBranch] = useState<
     string | undefined
   >(undefined);
 
   // Create attempt logic
   const actuallyCreateAttempt = useCallback(
-    async (executor?: string, baseBranch?: string) => {
+    async (profile: string, baseBranch?: string) => {
       const effectiveBaseBranch = baseBranch || selectedBranch;
 
       if (!effectiveBaseBranch) {
@@ -82,7 +73,7 @@ function CreateAttempt({
       try {
         await attemptsApi.create({
           task_id: task.id,
-          executor: executor || selectedExecutor,
+          profile: profile,
           base_branch: effectiveBaseBranch,
         });
         fetchTaskAttempts();
@@ -91,18 +82,18 @@ function CreateAttempt({
         throw error;
       }
     },
-    [task.id, selectedExecutor, selectedBranch, fetchTaskAttempts]
+    [task.id, selectedProfile, selectedBranch, fetchTaskAttempts]
   );
 
   // Handler for Enter key or Start button
   const onCreateNewAttempt = useCallback(
-    (executor?: string, baseBranch?: string, isKeyTriggered?: boolean) => {
+    (profile: string, baseBranch?: string, isKeyTriggered?: boolean) => {
       if (task.status === 'todo' && isKeyTriggered) {
-        setPendingExecutor(executor);
+        setSelectedProfile(profile);
         setPendingBaseBranch(baseBranch);
         setShowCreateAttemptConfirmation(true);
       } else {
-        actuallyCreateAttempt(executor, baseBranch);
+        actuallyCreateAttempt(profile, baseBranch);
         setShowCreateAttemptConfirmation(false);
         setIsInCreateAttemptMode(false);
       }
@@ -116,8 +107,11 @@ function CreateAttempt({
       if (showCreateAttemptConfirmation) {
         handleConfirmCreateAttempt();
       } else {
+        if (!selectedProfile) {
+          return;
+        }
         onCreateNewAttempt(
-          createAttemptExecutor,
+          selectedProfile,
           createAttemptBranch || undefined,
           true
         );
@@ -132,11 +126,17 @@ function CreateAttempt({
   };
 
   const handleCreateAttempt = () => {
-    onCreateNewAttempt(createAttemptExecutor, createAttemptBranch || undefined);
+    if (!selectedProfile) {
+      return;
+    }
+    onCreateNewAttempt(selectedProfile, createAttemptBranch || undefined);
   };
 
   const handleConfirmCreateAttempt = () => {
-    actuallyCreateAttempt(pendingExecutor, pendingBaseBranch);
+    if (!selectedProfile) {
+      return;
+    }
+    actuallyCreateAttempt(selectedProfile, pendingBaseBranch);
     setShowCreateAttemptConfirmation(false);
     setIsInCreateAttemptMode(false);
   };
@@ -180,46 +180,45 @@ function CreateAttempt({
             />
           </div>
 
-          {/* Step 2: Choose Coding Agent */}
+          {/* Step 2: Choose Profile */}
           <div className="space-y-1">
             <div className="flex items-center gap-1.5">
               <label className="text-xs font-medium text-muted-foreground">
-                Coding agent
+                Profile
               </label>
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-between text-xs"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <Settings2 className="h-3 w-3" />
-                    <span className="truncate">
-                      {availableExecutors.find(
-                        (e) => e.id === createAttemptExecutor
-                      )?.name || 'Select agent'}
-                    </span>
-                  </div>
-                  <ArrowDown className="h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-full">
-                {availableExecutors.map((executor) => (
-                  <DropdownMenuItem
-                    key={executor.id}
-                    onClick={() => setCreateAttemptExecutor(executor.id)}
-                    className={
-                      createAttemptExecutor === executor.id ? 'bg-accent' : ''
-                    }
+            {availableProfiles &&
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-between text-xs"
                   >
-                    {executor.name}
-                    {config?.executor === executor.id && ' (Default)'}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    <div className="flex items-center gap-1.5">
+                      <Settings2 className="h-3 w-3" />
+                      <span className="truncate">
+                        {selectedProfile || 'Select profile'}
+                      </span>
+                    </div>
+                    <ArrowDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-full">
+                  {availableProfiles.map((profile) => (
+                    <DropdownMenuItem
+                      key={profile.label}
+                      onClick={() => setSelectedProfile(profile.label)}
+                      className={
+                        selectedProfile === profile.label ? 'bg-accent' : ''
+                      }
+                    >
+                      {profile.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            }
           </div>
 
           {/* Step 3: Start Attempt */}
@@ -227,7 +226,7 @@ function CreateAttempt({
             <Button
               onClick={handleCreateAttempt}
               disabled={
-                !createAttemptExecutor ||
+                !selectedProfile ||
                 !createAttemptBranch ||
                 isAttemptRunning
               }
@@ -236,7 +235,7 @@ function CreateAttempt({
               title={
                 !createAttemptBranch
                   ? 'Base branch is required'
-                  : !createAttemptExecutor
+                  : !selectedProfile
                     ? 'Coding agent is required'
                     : undefined
               }
