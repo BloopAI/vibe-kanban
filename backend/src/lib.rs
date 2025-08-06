@@ -3,6 +3,7 @@ use sentry_tracing::{EventFilter, SentryLayer};
 use tracing::Level;
 
 pub mod app_state;
+pub mod auth;
 pub mod execution_monitor;
 pub mod executor;
 pub mod executors;

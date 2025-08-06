@@ -28,9 +28,33 @@ import {
   WorktreeDiff,
 } from 'shared/types';
 
+// Helper to get auth token from localStorage
+const getAuthToken = (): string | null => {
+  try {
+    return localStorage.getItem('automagik_auth_token');
+  } catch {
+    return null;
+  }
+};
+
 export const makeRequest = async (url: string, options: RequestInit = {}) => {
   const headers = {
     'Content-Type': 'application/json',
+    ...(options.headers || {}),
+  };
+
+  return fetch(url, {
+    ...options,
+    headers,
+  });
+};
+
+// Authenticated request helper for multiuser endpoints
+export const makeAuthenticatedRequest = async (url: string, options: RequestInit = {}) => {
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { Authorization: `Bearer ${token}` }),
     ...(options.headers || {}),
   };
 
@@ -335,7 +359,7 @@ export const attemptsApi = {
     fileToDelete: string
   ): Promise<void> => {
     const response = await makeRequest(
-      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/delete-filefile_path=${encodeURIComponent(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/delete-file?file_path=${encodeURIComponent(
         fileToDelete
       )}`,
       {
@@ -516,7 +540,7 @@ export const configApi = {
   },
 };
 
-// GitHub Device Auth APIs
+// GitHub Device Auth APIs (single-user/config-based)
 export const githubAuthApi = {
   checkGithubToken: async (): Promise<boolean | undefined> => {
     try {
@@ -544,6 +568,30 @@ export const githubAuthApi = {
       headers: { 'Content-Type': 'application/json' },
     });
     return handleApiResponse<string>(response);
+  },
+};
+
+// Multiuser Auth APIs (JWT-based)
+export const multiuserAuthApi = {
+  start: async (): Promise<DeviceStartResponse> => {
+    const response = await makeRequest('/api/auth/multiuser/github/device/start', {
+      method: 'POST',
+    });
+    return handleApiResponse<DeviceStartResponse>(response);
+  },
+  poll: async (device_code: string): Promise<string> => {
+    const response = await makeRequest('/api/auth/multiuser/github/device/poll', {
+      method: 'POST',
+      body: JSON.stringify({ device_code }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    // Backend returns LoginResponse with token + user, extract just the token
+    const loginResponse = await handleApiResponse<{token: string, user: any}>(response);
+    return loginResponse.token;
+  },
+  getUsers: async (): Promise<any[]> => {
+    const response = await makeAuthenticatedRequest('/api/auth/users');
+    return handleApiResponse<any[]>(response);
   },
 };
 

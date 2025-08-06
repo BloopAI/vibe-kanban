@@ -8,6 +8,7 @@ import {
   MessageCircleQuestion,
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
+import { UserMenu } from '@/components/UserMenu';
 
 export function Navbar() {
   const location = useLocation();
@@ -78,6 +79,7 @@ export function Navbar() {
                 Support
               </a>
             </Button>
+            <UserMenu />
           </div>
         </div>
       </div>

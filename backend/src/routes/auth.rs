@@ -8,13 +8,32 @@ use axum::{
 use ts_rs::TS;
 use utoipa::ToSchema;
 
-use crate::{app_state::AppState, models::ApiResponse};
+use crate::{
+    app_state::AppState,
+    models::{user::User, ApiResponse}
+};
+
+// Import auth functionality directly (temporary fix for import issues)
+use crate::auth::{
+    generate_jwt_token, is_user_whitelisted, AuthUser, LoginResponse, UserInfoResponse, get_auth_user
+};
 
 pub fn auth_router() -> Router<AppState> {
     Router::new()
+        // Legacy single-user routes (backward compatibility)
         .route("/auth/github/device/start", post(device_start))
         .route("/auth/github/device/poll", post(device_poll))
         .route("/auth/github/check", get(github_check_token))
+        .route("/auth/logout", post(logout))
+        // New multiuser routes (same handlers, different paths)
+        .route("/auth/multiuser/github/device/start", post(device_start))
+        .route("/auth/multiuser/github/device/poll", post(device_poll))
+}
+
+pub fn protected_auth_router() -> Router<AppState> {
+    Router::new()
+        .route("/auth/user/info", get(user_info))
+        .route("/auth/users", get(list_users))
 }
 
 #[derive(serde::Deserialize, ToSchema)]
@@ -35,13 +54,13 @@ pub struct DevicePollRequest {
     device_code: String,
 }
 
-/// POST /auth/github/device/start
+/// POST /auth/github/device/start OR /auth/multiuser/github/device/start
 #[utoipa::path(
     post,
     path = "/auth/github/device/start",
     tag = "auth",
     summary = "Start GitHub OAuth device flow",
-    description = "Initiates GitHub OAuth device authorization flow, returning device and user codes",
+    description = "Initiates GitHub OAuth device authorization flow, returning device and user codes. Available at both legacy and multiuser endpoints.",
     responses(
         (status = 200, description = "Device authorization flow started successfully", body = ApiResponse<DeviceStartResponse>),
         (status = 500, description = "Failed to contact GitHub or parse response", body = ApiResponse<String>)
@@ -99,23 +118,24 @@ pub async fn device_start() -> ResponseJson<ApiResponse<DeviceStartResponse>> {
     }
 }
 
-/// POST /auth/github/device/poll
+/// POST /auth/github/device/poll OR /auth/multiuser/github/device/poll
 #[utoipa::path(
     post,
     path = "/auth/github/device/poll",
     tag = "auth",
     summary = "Poll GitHub OAuth device flow",
-    description = "Polls GitHub for OAuth device flow completion and saves access token",
+    description = "Polls GitHub for OAuth device flow completion, creates/updates user, and returns JWT token. Available at both legacy and multiuser endpoints.",
     request_body = DevicePollRequest,
     responses(
-        (status = 200, description = "GitHub login successful or still pending", body = ApiResponse<String>),
-        (status = 400, description = "OAuth error or invalid device code", body = ApiResponse<String>)
+        (status = 200, description = "GitHub login successful with JWT token", body = ApiResponse<LoginResponse>),
+        (status = 400, description = "OAuth error, invalid device code, or user not whitelisted", body = ApiResponse<String>),
+        (status = 403, description = "User not whitelisted", body = ApiResponse<String>)
     )
 )]
 pub async fn device_poll(
     State(app_state): State<AppState>,
     Json(payload): Json<DevicePollRequest>,
-) -> ResponseJson<ApiResponse<String>> {
+) -> ResponseJson<ApiResponse<LoginResponse>> {
     let client_id = std::env::var("GITHUB_CLIENT_ID").unwrap_or_else(|_| "Ov23li2nd1KF5nCPbgoj".to_string());
 
     let params = [
@@ -150,6 +170,7 @@ pub async fn device_poll(
         // Not authorized yet, or other error
         return ResponseJson(ApiResponse::error(error));
     }
+    
     let access_token = json.get("access_token").and_then(|v| v.as_str());
     if let Some(access_token) = access_token {
         // Fetch user info
@@ -174,10 +195,22 @@ pub async fn device_poll(
                 )));
             }
         };
-        let username = user_json
-            .get("login")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
+        
+        let github_id = user_json.get("id").and_then(|v| v.as_i64());
+        let username = user_json.get("login").and_then(|v| v.as_str());
+        
+        if github_id.is_none() || username.is_none() {
+            return ResponseJson(ApiResponse::error("Invalid GitHub user data"));
+        }
+        
+        let github_id = github_id.unwrap();
+        let username = username.unwrap();
+        
+        // Check if user is whitelisted
+        if !is_user_whitelisted(username) {
+            return ResponseJson(ApiResponse::error("User not whitelisted for this application"));
+        }
+        
         // Fetch user emails
         let emails_res = client
             .get("https://api.github.com/user/emails")
@@ -200,6 +233,7 @@ pub async fn device_poll(
                 )));
             }
         };
+        
         let primary_email = emails_json
             .as_array()
             .and_then(|arr| {
@@ -212,42 +246,74 @@ pub async fn device_poll(
                     })
                     .and_then(|email| email.get("email").and_then(|v| v.as_str()))
             })
-            .map(|s| s.to_string());
-        // Save to config
+            .unwrap_or(username); // Fallback to username if no primary email found
+
+        // Create or update user in database
+        let user = match User::create_or_update_from_github(
+            &app_state.db_pool,
+            github_id,
+            username.to_string(),
+            primary_email.to_string(),
+            Some(access_token.to_string()),
+        ).await {
+            Ok(user) => user,
+            Err(e) => {
+                tracing::error!("Failed to create/update user: {}", e);
+                return ResponseJson(ApiResponse::error("Failed to create user"));
+            }
+        };
+
+        // Generate JWT token
+        let token = match generate_jwt_token(user.id, user.github_id, &user.username, &user.email) {
+            Ok(token) => token,
+            Err(e) => {
+                tracing::error!("Failed to generate JWT token: {}", e);
+                return ResponseJson(ApiResponse::error("Failed to generate authentication token"));
+            }
+        };
+
+        // Also save to config for backward compatibility
         {
             let mut config = app_state.get_config().write().await;
-            config.github.username = username.clone();
-            config.github.primary_email = primary_email.clone();
+            config.github.username = Some(user.username.clone());
+            config.github.primary_email = Some(user.email.clone());
             config.github.token = Some(access_token.to_string());
-            config.github_login_acknowledged = true; // Also acknowledge the GitHub login step
+            config.github_login_acknowledged = true;
             let config_path = crate::utils::config_path();
-            if config.save(&config_path).is_err() {
-                return ResponseJson(ApiResponse::error("Failed to save config"));
+            if let Err(e) = config.save(&config_path) {
+                tracing::warn!("Failed to save config: {}", e);
             }
         }
+        
         app_state.update_sentry_scope().await;
+        
         // Identify user in PostHog
         let mut props = serde_json::Map::new();
-        if let Some(ref username) = username {
-            props.insert(
-                "username".to_string(),
-                serde_json::Value::String(username.clone()),
-            );
-        }
-        if let Some(ref email) = primary_email {
-            props.insert(
-                "email".to_string(),
-                serde_json::Value::String(email.clone()),
-            );
-        }
+        props.insert("username".to_string(), serde_json::Value::String(user.username.clone()));
+        props.insert("email".to_string(), serde_json::Value::String(user.email.clone()));
+        props.insert("github_id".to_string(), serde_json::Value::Number(user.github_id.into()));
+        
         {
             let props = serde_json::Value::Object(props);
-            app_state
-                .track_analytics_event("$identify", Some(props))
-                .await;
+            app_state.track_analytics_event("$identify", Some(props)).await;
         }
 
-        ResponseJson(ApiResponse::success("GitHub login successful".to_string()))
+        // Track login event
+        app_state.track_analytics_event("user_login", None).await;
+
+        let auth_user = AuthUser {
+            id: user.id,
+            github_id: user.github_id,
+            username: user.username,
+            email: user.email,
+        };
+
+        let response = LoginResponse {
+            token,
+            user: auth_user,
+        };
+
+        ResponseJson(ApiResponse::success(response))
     } else {
         ResponseJson(ApiResponse::error("No access token yet"))
     }
@@ -284,6 +350,71 @@ pub async fn github_check_token(State(app_state): State<AppState>) -> ResponseJs
     } else {
         ResponseJson(ApiResponse::error("github_token_invalid"))
     }
+}
+
+/// GET /auth/user/info
+#[utoipa::path(
+    get,
+    path = "/auth/user/info",
+    tag = "auth",
+    summary = "Get current user information",
+    description = "Gets the current authenticated user's information from JWT token",
+    responses(
+        (status = 200, description = "User information retrieved successfully", body = ApiResponse<UserInfoResponse>),
+        (status = 401, description = "Unauthorized - invalid or missing JWT token", body = ApiResponse<String>)
+    )
+)]
+pub async fn user_info(req: Request) -> ResponseJson<ApiResponse<UserInfoResponse>> {
+    if let Some(auth_user) = get_auth_user(&req) {
+        let response = UserInfoResponse {
+            user: auth_user.clone(),
+        };
+        ResponseJson(ApiResponse::success(response))
+    } else {
+        ResponseJson(ApiResponse::error("Unauthorized"))
+    }
+}
+
+/// GET /auth/users
+#[utoipa::path(
+    get,
+    path = "/auth/users",
+    tag = "auth",
+    summary = "List all users",
+    description = "Retrieves a list of all registered users. Requires authentication.",
+    responses(
+        (status = 200, description = "Users retrieved successfully", body = ApiResponse<Vec<User>>),
+        (status = 401, description = "Unauthorized - invalid or missing JWT token", body = ApiResponse<String>),
+        (status = 500, description = "Internal server error", body = ApiResponse<String>)
+    )
+)]
+pub async fn list_users(State(state): State<AppState>, req: Request) -> ResponseJson<ApiResponse<Vec<User>>> {
+    // Check if user is authenticated
+    if get_auth_user(&req).is_none() {
+        return ResponseJson(ApiResponse::error("Unauthorized"));
+    }
+
+    match User::list_all(&state.db_pool).await {
+        Ok(users) => ResponseJson(ApiResponse::success(users)),
+        Err(e) => ResponseJson(ApiResponse::error(&format!("Failed to fetch users: {}", e))),
+    }
+}
+
+/// POST /auth/logout
+#[utoipa::path(
+    post,
+    path = "/auth/logout",
+    tag = "auth",
+    summary = "Logout user",
+    description = "Logs out the current user (client-side token removal)",
+    responses(
+        (status = 200, description = "Logout successful", body = ApiResponse<String>)
+    )
+)]
+pub async fn logout() -> ResponseJson<ApiResponse<String>> {
+    // Since we're using stateless JWT, logout is handled client-side by removing the token
+    // This endpoint exists for consistency and future stateful session management if needed
+    ResponseJson(ApiResponse::success("Logout successful".to_string()))
 }
 
 /// Middleware to set Sentry user context for every request

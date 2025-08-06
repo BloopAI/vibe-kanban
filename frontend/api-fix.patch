@@ -1,0 +1,13 @@
+--- a/frontend/src/lib/api.ts
++++ b/frontend/src/lib/api.ts
+@@ -585,7 +585,9 @@ export const multiuserAuthApi = {
+       body: JSON.stringify({ device_code }),
+       headers: { 'Content-Type': 'application/json' },
+     });
+-    return handleApiResponse<string>(response);
++    // Backend returns LoginResponse with token + user, extract just the token
++    const loginResponse = await handleApiResponse<{token: string, user: any}>(response);
++    return loginResponse.token;
+   },
+   getUsers: async (): Promise<any[]> => {
+     const response = await makeAuthenticatedRequest('/api/auth/users');

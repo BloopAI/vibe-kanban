@@ -24,6 +24,8 @@ import { useNavigate } from 'react-router-dom';
 import { projectsApi } from '@/lib/api.ts';
 import { Project } from 'shared/types.ts';
 import { useEffect, useRef } from 'react';
+// TODO: Import user components once they are needed
+// import { UserAvatar } from '@/components/user/UserAvatar';
 
 type Props = {
   project: Project;
@@ -143,9 +145,18 @@ function ProjectCard({
             </DropdownMenu>
           </div>
         </div>
-        <CardDescription className="flex items-center">
-          <Calendar className="mr-1 h-3 w-3" />
-          Created {new Date(project.created_at).toLocaleDateString()}
+        <CardDescription className="flex items-center justify-between">
+          <div className="flex items-center">
+            <Calendar className="mr-1 h-3 w-3" />
+            Created {new Date(project.created_at).toLocaleDateString()}
+          </div>
+          {/* TODO: Show project creator once backend provides user data */}
+          {/* project.created_by && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <User className="h-3 w-3" />
+              <UserAvatar user={project.created_by} size="sm" />
+            </div>
+          ) */}
         </CardDescription>
       </CardHeader>
     </Card>

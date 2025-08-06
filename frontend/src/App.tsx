@@ -9,17 +9,22 @@ import { McpServers } from '@/pages/McpServers';
 import { DisclaimerDialog } from '@/components/DisclaimerDialog';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { ConfigProvider, useConfig } from '@/components/config-provider';
+import { AuthProvider } from '@/components/auth-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 import type { EditorType, ExecutorConfig } from 'shared/types';
 import { configApi } from '@/lib/api';
 import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
-import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
+import { Button } from '@/components/ui/button';
+import { MultiuserGitHubLoginDialog } from '@/components/MultiuserGitHubLoginDialog';
+import { useAuth } from '@/components/auth-provider';
+import { Github } from 'lucide-react';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
   const { config, updateConfig, loading } = useConfig();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showGitHubLogin, setShowGitHubLogin] = useState(false);
@@ -30,14 +35,12 @@ function AppContent() {
       setShowDisclaimer(!config.disclaimer_acknowledged);
       if (config.disclaimer_acknowledged) {
         setShowOnboarding(!config.onboarding_acknowledged);
-        if (config.onboarding_acknowledged) {
-          if (!config.github_login_acknowledged) {
-            setShowGitHubLogin(true);
-          }
+        if (config.onboarding_acknowledged && !isAuthenticated) {
+          setShowGitHubLogin(true);
         }
       }
     }
-  }, [config]);
+  }, [config, isAuthenticated]);
 
   const handleDisclaimerAccept = async () => {
     if (!config) return;
@@ -76,31 +79,10 @@ function AppContent() {
     }
   };
 
-
-  const handleGitHubLoginComplete = async () => {
-    try {
-      // Refresh the config to get the latest GitHub authentication state
-      const latestConfig = await configApi.getConfig();
-      updateConfig(latestConfig);
-      setShowGitHubLogin(false);
-
-      // If user skipped (no GitHub token), we need to manually set the acknowledgment
-
-      const updatedConfig = {
-        ...latestConfig,
-        github_login_acknowledged: true,
-      };
-      updateConfig(updatedConfig);
-      await configApi.saveConfig(updatedConfig);
-    } catch (err) {
-      console.error('Error refreshing config:', err);
-    }
-  };
-
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader message="Loading..." size={32} />
+        <Loader message={loading ? "Loading..." : "Checking authentication..."} size={32} />
       </div>
     );
   }
@@ -108,9 +90,15 @@ function AppContent() {
   return (
     <ThemeProvider initialTheme={config?.theme || 'system'}>
       <div className="h-screen flex flex-col bg-background">
-        <GitHubLoginDialog
+        <MultiuserGitHubLoginDialog
           open={showGitHubLogin}
-          onOpenChange={handleGitHubLoginComplete}
+          onOpenChange={(open) => {
+            // Allow closing the dialog if user is authenticated or still in onboarding
+            if (isAuthenticated || showDisclaimer || showOnboarding) {
+              setShowGitHubLogin(open);
+            }
+            // If not authenticated and past onboarding, keep dialog open (required login)
+          }}
         />
         <DisclaimerDialog
           open={showDisclaimer}
@@ -120,25 +108,44 @@ function AppContent() {
           open={showOnboarding}
           onComplete={handleOnboardingComplete}
         />
-        {showNavbar && <Navbar />}
-        <div className="flex-1 overflow-y-scroll">
-          <SentryRoutes>
-            <Route path="/" element={<Projects />} />
-            <Route path="/projects" element={<Projects />} />
-            <Route path="/projects/:projectId" element={<Projects />} />
-            <Route
-              path="/projects/:projectId/tasks"
-              element={<ProjectTasks />}
-            />
-            <Route
-              path="/projects/:projectId/tasks/:taskId"
-              element={<ProjectTasks />}
-            />
+        {/* Only show main app content when authenticated */}
+        {isAuthenticated && (
+          <>
+            {showNavbar && <Navbar />}
+            <div className="flex-1 overflow-y-scroll">
+              <SentryRoutes>
+                <Route path="/" element={<Projects />} />
+                <Route path="/projects" element={<Projects />} />
+                <Route path="/projects/:projectId" element={<Projects />} />
+                <Route
+                  path="/projects/:projectId/tasks"
+                  element={<ProjectTasks />}
+                />
+                <Route
+                  path="/projects/:projectId/tasks/:taskId"
+                  element={<ProjectTasks />}
+                />
 
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/mcp-servers" element={<McpServers />} />
-          </SentryRoutes>
-        </div>
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/mcp-servers" element={<McpServers />} />
+              </SentryRoutes>
+            </div>
+          </>
+        )}
+        
+        {/* Show authentication required message when not authenticated */}
+        {!isAuthenticated && !showDisclaimer && !showOnboarding && !showGitHubLogin && (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <h2 className="text-xl font-semibold mb-2">Authentication Required</h2>
+              <p className="text-gray-600 mb-4">Please sign in with GitHub to access the application.</p>
+              <Button onClick={() => setShowGitHubLogin(true)}>
+                <Github className="h-4 w-4 mr-2" />
+                Sign in with GitHub
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </ThemeProvider>
   );
@@ -148,7 +155,9 @@ function App() {
   return (
     <BrowserRouter>
       <ConfigProvider>
-        <AppContent />
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
       </ConfigProvider>
     </BrowserRouter>
   );

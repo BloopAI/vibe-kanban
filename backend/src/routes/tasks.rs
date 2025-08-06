@@ -139,6 +139,8 @@ pub async fn create_task_and_start(
         description: payload.description.clone(),
         wish_id: payload.wish_id.clone(),
         parent_task_attempt: payload.parent_task_attempt,
+        assigned_to: payload.assigned_to,
+        created_by: payload.created_by,
     };
     let task = match Task::create(&app_state.db_pool, &create_task_payload, task_id).await {
         Ok(task) => task,
@@ -153,6 +155,7 @@ pub async fn create_task_and_start(
     let attempt_payload = CreateTaskAttempt {
         executor: executor_string.clone(),
         base_branch: None, // Not supported in task creation endpoint, only in task attempts
+        created_by: payload.created_by,
     };
 
     match TaskAttempt::create(&app_state.db_pool, &attempt_payload, task_id).await {
@@ -239,6 +242,7 @@ pub async fn update_task(
     let parent_task_attempt = payload
         .parent_task_attempt
         .or(existing_task.parent_task_attempt);
+    let assigned_to = payload.assigned_to.or(existing_task.assigned_to);
 
     match Task::update(
         &app_state.db_pool,
@@ -249,6 +253,7 @@ pub async fn update_task(
         status,
         wish_id,
         parent_task_attempt,
+        assigned_to,
     )
     .await
     {

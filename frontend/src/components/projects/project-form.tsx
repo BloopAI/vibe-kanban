@@ -115,6 +115,7 @@ export function ProjectForm({
           setup_script: setupScript.trim() || null,
           dev_script: devScript.trim() || null,
           cleanup_script: cleanupScript.trim() || null,
+          created_by: null, // Will be set by auth middleware when authentication is implemented
         };
 
         try {

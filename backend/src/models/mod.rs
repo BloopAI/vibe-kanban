@@ -5,8 +5,8 @@ pub mod executor_session;
 pub mod project;
 pub mod task;
 pub mod task_attempt;
-
 pub mod task_template;
+pub mod user;
 
 pub use api_response::ApiResponse;
 pub use config::Config;

@@ -26,11 +26,11 @@ export type ExecutorConfig = { "type": "echo" } | { "type": "claude" } | { "type
 
 export type ExecutorConstants = { executor_types: Array<ExecutorConfig>, executor_labels: Array<string>, };
 
-export type CreateProject = { name: string, git_repo_path: string, use_existing_repo: boolean, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, };
+export type CreateProject = { name: string, git_repo_path: string, use_existing_repo: boolean, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, created_by: string | null, };
 
-export type Project = { id: string, name: string, git_repo_path: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, created_at: Date, updated_at: Date, };
+export type Project = { id: string, name: string, git_repo_path: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, created_by: string | null, created_at: Date, updated_at: Date, };
 
-export type ProjectWithBranch = { id: string, name: string, git_repo_path: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, current_branch: string | null, created_at: Date, updated_at: Date, };
+export type ProjectWithBranch = { id: string, name: string, git_repo_path: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, created_by: string | null, current_branch: string | null, created_at: Date, updated_at: Date, };
 
 export type UpdateProject = { name: string | null, git_repo_path: string | null, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, };
 
@@ -42,17 +42,23 @@ export type GitBranch = { name: string, is_current: boolean, is_remote: boolean,
 
 export type CreateBranch = { name: string, base_branch: string | null, };
 
-export type CreateTask = { project_id: string, title: string, description: string | null, wish_id: string, parent_task_attempt: string | null, };
+export type User = { id: string, github_id: bigint, username: string, email: string, github_token: string | null, created_at: Date, };
 
-export type CreateTaskAndStart = { project_id: string, title: string, description: string | null, wish_id: string, parent_task_attempt: string | null, executor: ExecutorConfig | null, };
+export type CreateUser = { github_id: bigint, username: string, email: string, github_token: string | null, };
+
+export type UpdateUser = { username: string | null, email: string | null, github_token: string | null, };
+
+export type CreateTask = { project_id: string, title: string, description: string | null, wish_id: string, parent_task_attempt: string | null, assigned_to: string | null, created_by: string | null, };
+
+export type CreateTaskAndStart = { project_id: string, title: string, description: string | null, wish_id: string, parent_task_attempt: string | null, assigned_to: string | null, created_by: string | null, executor: ExecutorConfig | null, };
 
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
-export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, wish_id: string, parent_task_attempt: string | null, created_at: string, updated_at: string, };
+export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, wish_id: string, parent_task_attempt: string | null, assigned_to: string | null, created_by: string | null, created_at: string, updated_at: string, };
 
-export type TaskWithAttemptStatus = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, wish_id: string, parent_task_attempt: string | null, created_at: string, updated_at: string, has_in_progress_attempt: boolean, has_merged_attempt: boolean, last_attempt_failed: boolean, latest_attempt_executor: string | null, };
+export type TaskWithAttemptStatus = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, wish_id: string, parent_task_attempt: string | null, assigned_to: string | null, created_by: string | null, created_at: string, updated_at: string, has_in_progress_attempt: boolean, has_merged_attempt: boolean, last_attempt_failed: boolean, latest_attempt_executor: string | null, };
 
-export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, wish_id: string | null, parent_task_attempt: string | null, };
+export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, wish_id: string | null, parent_task_attempt: string | null, assigned_to: string | null, };
 
 export type TaskTemplate = { id: string, project_id: string | null, title: string, description: string | null, template_name: string, created_at: string, updated_at: string, };
 
@@ -62,9 +68,9 @@ export type UpdateTaskTemplate = { title: string | null, description: string | n
 
 export type TaskAttemptStatus = "setuprunning" | "setupcomplete" | "setupfailed" | "executorrunning" | "executorcomplete" | "executorfailed";
 
-export type TaskAttempt = { id: string, task_id: string, worktree_path: string, branch: string, base_branch: string, merge_commit: string | null, executor: string | null, pr_url: string | null, pr_number: bigint | null, pr_status: string | null, pr_merged_at: string | null, worktree_deleted: boolean, setup_completed_at: string | null, created_at: string, updated_at: string, };
+export type TaskAttempt = { id: string, task_id: string, worktree_path: string, branch: string, base_branch: string, merge_commit: string | null, executor: string | null, pr_url: string | null, pr_number: bigint | null, pr_status: string | null, pr_merged_at: string | null, worktree_deleted: boolean, setup_completed_at: string | null, created_by: string | null, created_at: string, updated_at: string, };
 
-export type CreateTaskAttempt = { executor: string | null, base_branch: string | null, };
+export type CreateTaskAttempt = { executor: string | null, base_branch: string | null, created_by: string | null, };
 
 export type UpdateTaskAttempt = Record<string, never>;
 

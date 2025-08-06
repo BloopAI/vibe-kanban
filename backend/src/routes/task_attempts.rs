@@ -1026,6 +1026,8 @@ pub async fn approve_plan(
         description: Some(plan_content),
         wish_id: current_task.wish_id.clone(),
         parent_task_attempt: Some(task_attempt.id),
+        assigned_to: None, // Could inherit from parent task
+        created_by: None, // Will be set by auth middleware in the future
     };
 
     let new_task = match Task::create(&app_state.db_pool, &create_task_data, new_task_id).await {

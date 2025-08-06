@@ -17,6 +17,7 @@ use tracing_subscriber::{filter::LevelFilter, prelude::*};
 use automagik_forge::{sentry_layer, Assets, ScriptAssets, SoundAssets};
 
 mod app_state;
+mod auth;
 mod execution_monitor;
 mod executor;
 mod executors;
@@ -35,7 +36,7 @@ use middleware::{
 };
 use models::{ApiResponse, Config};
 use routes::{
-    auth, config, filesystem, health, projects, stream, task_attempts, task_templates, tasks,
+    config, filesystem, health, projects, stream, task_attempts, task_templates, tasks,
 };
 use services::PrMonitorService;
 use utoipa::OpenApi;
@@ -218,13 +219,18 @@ fn main() -> anyhow::Result<()> {
                 .merge(stream::stream_router())
                 .merge(filesystem::filesystem_router())
                 .merge(config::config_router())
-                .merge(auth::auth_router())
+                .merge(routes::auth::auth_router())
                 .route("/sounds/:filename", get(serve_sound_file))
                 .merge(
                     Router::new()
                         .route("/execution-processes/:process_id", get(task_attempts::get_execution_process))
                         .route_layer(from_fn_with_state(app_state.clone(), load_execution_process_simple_middleware))
                 );
+
+            // Protected auth routes with auth middleware
+            let protected_auth_routes = Router::new()
+                .merge(routes::auth::protected_auth_router())
+                .layer(from_fn_with_state(app_state.clone(), crate::auth::auth_middleware));
 
             // Template routes with task template middleware applied selectively
             let template_routes = Router::new()
@@ -271,11 +277,12 @@ fn main() -> anyhow::Result<()> {
                     "/api",
                     Router::new()
                         .merge(base_routes)
+                        .merge(protected_auth_routes)
                         .merge(template_routes)
                         .merge(project_routes)
                         .merge(task_routes)
                         .merge(task_attempt_routes)
-                        .layer(from_fn_with_state(app_state.clone(), auth::sentry_user_context_middleware)),
+                        .layer(from_fn_with_state(app_state.clone(), routes::auth::sentry_user_context_middleware)),
                 );
 
             let app = Router::new()

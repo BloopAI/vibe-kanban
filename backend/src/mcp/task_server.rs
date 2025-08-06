@@ -278,6 +278,8 @@ impl TaskServer {
             description: Some(description.clone()),
             wish_id: wish_id.clone(),
             parent_task_attempt: None,
+            assigned_to: None, // MCP doesn't handle user assignment yet
+            created_by: None, // MCP doesn't handle user attribution yet
         };
 
         match Task::create(&self.pool, &create_task_data, task_id).await {
@@ -600,6 +602,7 @@ impl TaskServer {
         let new_status = status_enum.unwrap_or(current_task.status);
         let new_wish_id = wish_id.unwrap_or(current_task.wish_id);
         let new_parent_task_attempt = current_task.parent_task_attempt;
+        let new_assigned_to = current_task.assigned_to; // Keep existing assignment
 
         match Task::update(
             &self.pool,
@@ -610,6 +613,7 @@ impl TaskServer {
             new_status,
             new_wish_id,
             new_parent_task_attempt,
+            new_assigned_to,
         )
         .await
         {

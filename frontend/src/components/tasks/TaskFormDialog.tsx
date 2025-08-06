@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { useConfig } from '@/components/config-provider';
 import { templatesApi } from '@/lib/api';
+import { UserSelector } from '@/components/user/UserSelector';
 import type { TaskStatus, ExecutorConfig, TaskTemplate } from 'shared/types';
 
 interface Task {
@@ -29,6 +30,9 @@ interface Task {
   status: TaskStatus;
   created_at: string;
   updated_at: string;
+  // TODO: Add user fields once backend provides them
+  // assigned_to?: string;
+  // created_by?: string;
 }
 
 interface TaskFormDialogProps {
@@ -37,16 +41,18 @@ interface TaskFormDialogProps {
   task?: Task | null; // Optional for create mode
   projectId?: string; // For file search functionality
   initialTemplate?: TaskTemplate | null; // For pre-filling from template
-  onCreateTask?: (title: string, description: string) => Promise<void>;
+  onCreateTask?: (title: string, description: string, assignedTo?: string) => Promise<void>;
   onCreateAndStartTask?: (
     title: string,
     description: string,
-    executor?: ExecutorConfig
+    executor?: ExecutorConfig,
+    assignedTo?: string
   ) => Promise<void>;
   onUpdateTask?: (
     title: string,
     description: string,
-    status: TaskStatus
+    status: TaskStatus,
+    assignedTo?: string
   ) => Promise<void>;
 }
 
@@ -63,6 +69,7 @@ export function TaskFormDialog({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TaskStatus>('todo');
+  const [assignedTo, setAssignedTo] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittingAndStart, setIsSubmittingAndStart] = useState(false);
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
@@ -77,17 +84,21 @@ export function TaskFormDialog({
       setTitle(task.title);
       setDescription(task.description || '');
       setStatus(task.status);
+      // TODO: Set assignedTo once backend provides it
+      // setAssignedTo(task.assigned_to);
     } else if (initialTemplate) {
       // Create mode with template - pre-fill from template
       setTitle(initialTemplate.title);
       setDescription(initialTemplate.description || '');
       setStatus('todo');
+      setAssignedTo(undefined);
       setSelectedTemplate('');
     } else {
       // Create mode - reset to defaults
       setTitle('');
       setDescription('');
       setStatus('todo');
+      setAssignedTo(undefined);
       setSelectedTemplate('');
     }
   }, [task, initialTemplate, isOpen]);
@@ -130,9 +141,9 @@ export function TaskFormDialog({
     setIsSubmitting(true);
     try {
       if (isEditMode && onUpdateTask) {
-        await onUpdateTask(title, description, status);
+        await onUpdateTask(title, description, status, assignedTo);
       } else if (!isEditMode && onCreateTask) {
-        await onCreateTask(title, description);
+        await onCreateTask(title, description, assignedTo);
       }
 
       // Reset form on successful creation
@@ -140,6 +151,7 @@ export function TaskFormDialog({
         setTitle('');
         setDescription('');
         setStatus('todo');
+        setAssignedTo(undefined);
       }
 
       onOpenChange(false);
@@ -154,13 +166,14 @@ export function TaskFormDialog({
     setIsSubmittingAndStart(true);
     try {
       if (!isEditMode && onCreateAndStartTask) {
-        await onCreateAndStartTask(title, description, config?.executor);
+        await onCreateAndStartTask(title, description, config?.executor, assignedTo);
       }
 
       // Reset form on successful creation
       setTitle('');
       setDescription('');
       setStatus('todo');
+      setAssignedTo(undefined);
 
       onOpenChange(false);
     } finally {
@@ -169,6 +182,7 @@ export function TaskFormDialog({
   }, [
     title,
     description,
+    assignedTo,
     config?.executor,
     isEditMode,
     onCreateAndStartTask,
@@ -181,10 +195,13 @@ export function TaskFormDialog({
       setTitle(task.title);
       setDescription(task.description || '');
       setStatus(task.status);
+      // TODO: Reset assignedTo once backend provides it
+      // setAssignedTo(task.assigned_to);
     } else {
       setTitle('');
       setDescription('');
       setStatus('todo');
+      setAssignedTo(undefined);
       setSelectedTemplate('');
     }
     onOpenChange(false);
@@ -326,6 +343,21 @@ export function TaskFormDialog({
               </details>
             </div>
           )}
+
+          {/* User Assignment Section */}
+          <div className="pt-2">
+            <Label htmlFor="task-assigned-to" className="text-sm font-medium">
+              Assign to
+            </Label>
+            <UserSelector
+              value={assignedTo}
+              onValueChange={setAssignedTo}
+              placeholder="Select user to assign"
+              disabled={isSubmitting || isSubmittingAndStart}
+              allowUnassigned={true}
+              className="mt-1.5"
+            />
+          </div>
 
           {isEditMode && (
             <div className="pt-2">

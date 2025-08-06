@@ -1,6 +1,6 @@
 {
   "name": "automagik-forge",
-  "version": "0.2.3",
+  "version": "0.2.17",
   "scripts": {
     "check": "npm run frontend:check && npm run backend:check",
     "dev": "node scripts/load-env.js && export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && concurrently \"npm run backend:dev:watch\" \"npm run frontend:dev\" \"npm run mcp:sse\"",

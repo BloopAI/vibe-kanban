@@ -178,6 +178,8 @@ export function ProjectTasks() {
           description: description || null,
           wish_id: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
           parent_task_attempt: null,
+          assigned_to: null, // Will support user assignment when authentication is implemented
+          created_by: null, // Will be set by auth middleware when authentication is implemented
         });
         await fetchTasks();
         // Open the newly created task in the details panel
@@ -200,6 +202,8 @@ export function ProjectTasks() {
           description: description || null,
           wish_id: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
           parent_task_attempt: null,
+          assigned_to: null, // Will support user assignment when authentication is implemented
+          created_by: null, // Will be set by auth middleware when authentication is implemented
           executor: executor || null,
         };
         const result = await tasksApi.createAndStart(projectId!, payload);
@@ -224,6 +228,7 @@ export function ProjectTasks() {
           status,
           wish_id: editingTask.wish_id, // Keep existing wish_id
           parent_task_attempt: null,
+          assigned_to: editingTask.assigned_to, // Keep existing assignment
         });
         await fetchTasks();
         setEditingTask(null);
@@ -300,6 +305,7 @@ export function ProjectTasks() {
           status: newStatus,
           wish_id: task.wish_id, // Keep existing wish_id
           parent_task_attempt: task.parent_task_attempt,
+          assigned_to: task.assigned_to, // Keep existing assignment
         });
       } catch (err) {
         // Revert the optimistic update if the API call failed

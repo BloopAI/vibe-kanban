@@ -18,6 +18,9 @@ import {
 } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { is_planning_executor_type } from '@/lib/utils';
+// TODO: Import user components once they are needed
+// import { UserAvatar } from '@/components/user/UserAvatar';
+// import { UserBadge } from '@/components/user/UserBadge';
 
 type Task = TaskWithAttemptStatus;
 
@@ -148,6 +151,32 @@ export function TaskCard({
             </p>
           </div>
         )}
+        
+        {/* User assignment section - will be enabled once backend provides user data */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            {/* TODO: Replace with actual assigned_to user data once available */}
+            {/* task.assigned_to ? (
+              <div className="flex items-center gap-1">
+                <User className="h-3 w-3" />
+                <UserBadge user={task.assigned_to} size="sm" />
+              </div>
+            ) : (
+              <div className="flex items-center gap-1">
+                <User className="h-3 w-3" />
+                <span>Unassigned</span>
+              </div>
+            ) */}
+          </div>
+          
+          {/* TODO: Replace with actual created_by user data once available */}
+          {/* task.created_by && (
+            <div className="flex items-center gap-1">
+              <span>by</span>
+              <UserAvatar user={task.created_by} size="sm" />
+            </div>
+          ) */}
+        </div>
       </div>
     </KanbanCard>
   );

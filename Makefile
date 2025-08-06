@@ -4,7 +4,7 @@
 #   make build                 # Build the project
 #   make publish               # Build and publish to NPM
 
-.PHONY: help bump build publish clean check-version
+.PHONY: help bump build publish clean check-version version dev test
 
 # Default target
 help:
