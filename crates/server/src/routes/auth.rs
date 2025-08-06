@@ -8,7 +8,10 @@ use axum::{
 };
 use deployment::{Deployment, DeploymentError};
 use serde::{Deserialize, Serialize};
-use services::services::auth::{AuthError, DeviceFlowStartResponse};
+use services::services::{
+    auth::{AuthError, DeviceFlowStartResponse},
+    config::save_config_to_file,
+};
 use utils::response::ApiResponse;
 
 use crate::{error::ApiError, DeploymentImpl};
@@ -67,9 +70,7 @@ async fn device_poll(
         config.github.primary_email = user_info.primary_email.clone();
         config.github.oauth_token = Some(user_info.token.to_string());
         config.github_login_acknowledged = true; // Also acknowledge the GitHub login step
-        config
-            .save(&config_path)
-            .map_err(|e| DeploymentError::Other(e))?;
+        save_config_to_file(&config.clone(), &config_path).await?;
     }
     let _ = deployment.update_sentry_scope().await;
     let props = serde_json::json!({

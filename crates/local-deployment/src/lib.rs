@@ -6,7 +6,7 @@ use deployment::{Deployment, DeploymentError};
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsService, generate_user_id},
     auth::AuthService,
-    config::Config,
+    config::{Config, load_config_from_file},
     container::ContainerService,
     events::EventService,
     filesystem::FilesystemService,
@@ -45,7 +45,7 @@ pub struct LocalDeployment {
 #[async_trait]
 impl Deployment for LocalDeployment {
     async fn new() -> Result<Self, DeploymentError> {
-        let config = Arc::new(RwLock::new(Config::load(&config_path())?));
+        let config = Arc::new(RwLock::new(load_config_from_file(&config_path()).await));
         let sentry = SentryService::new();
         let user_id = generate_user_id();
         let analytics = AnalyticsConfig::new().map(AnalyticsService::new);

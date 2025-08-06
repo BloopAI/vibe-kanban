@@ -8,7 +8,7 @@ use deployment::DeploymentError;
 use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
 use services::services::{
-    auth::AuthError, container::ContainerError, git::GitServiceError,
+    auth::AuthError, config::ConfigError, container::ContainerError, git::GitServiceError,
     github_service::GitHubServiceError, worktree_manager::WorktreeError,
 };
 use thiserror::Error;
@@ -38,6 +38,8 @@ pub enum ApiError {
     Database(#[from] sqlx::Error),
     #[error(transparent)]
     Worktree(#[from] WorktreeError),
+    #[error(transparent)]
+    Config(#[from] ConfigError),
 }
 
 impl From<Git2Error> for ApiError {
@@ -59,6 +61,7 @@ impl IntoResponse for ApiError {
             ApiError::Executor(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ExecutorError"),
             ApiError::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DatabaseError"),
             ApiError::Worktree(_) => (StatusCode::INTERNAL_SERVER_ERROR, "WorktreeError"),
+            ApiError::Config(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ConfigError"),
         };
 
         let error_message = format!("{}: {}", error_type, self);

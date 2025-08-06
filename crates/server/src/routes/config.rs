@@ -12,7 +12,7 @@ use deployment::{Deployment, DeploymentError};
 use executors::{command::AgentProfiles, executors::BaseCodingAgent};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use services::services::config::{Config, SoundFile};
+use services::services::config::{save_config_to_file, Config, SoundFile};
 use tokio::fs;
 use ts_rs::TS;
 use utils::{assets::config_path, response::ApiResponse};
@@ -83,7 +83,7 @@ async fn update_config(
 ) -> ResponseJson<ApiResponse<Config>> {
     let config_path = config_path();
 
-    match new_config.save(&config_path) {
+    match save_config_to_file(&new_config, &config_path).await {
         Ok(_) => {
             let mut config = deployment.config().write().await;
             *config = new_config.clone();
