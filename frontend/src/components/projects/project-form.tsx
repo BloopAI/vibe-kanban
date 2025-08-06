@@ -313,7 +313,7 @@ export function ProjectForm({
                 </div>
               </>
             ) : (*/}
-              // Local mode: Show existing form
+
             <ProjectFormFields
               isEditing={isEditing}
               repoMode={repoMode}
