@@ -38,7 +38,7 @@ export type UpdateTask = { title: string | null, description: string | null, sta
 
 export type ApiResponse<T> = { success: boolean, data: T | null, message: string | null, };
 
-export type UserSystemInfo = { config: Config, profiles: AgentProfiles, environment: Environment, };
+export type UserSystemInfo = { config: Config, environment: Environment, profiles: Array<AgentProfile>, };
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
 

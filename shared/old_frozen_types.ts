@@ -18,3 +18,5 @@ export const MCP_SUPPORTED_EXECUTORS: string[] = [
     "charm-opencode",
     "claude-code-router"
 ];
+
+export enum CodingAgentExecutorType { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI = "GEMINI" }

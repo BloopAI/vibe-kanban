@@ -19,7 +19,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sparkles, Code } from 'lucide-react';
-import { EditorType, CodingAgentExecutorType } from 'shared/types';
+import { EditorType } from 'shared/types';
+import { CodingAgentExecutorType } from 'shared/old_frozen_types';
 
 import { toPrettyCase } from '@/utils/string';
 
@@ -51,7 +52,7 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
     (editorType === EditorType.CUSTOM && customCommand.trim() !== '');
 
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
+    <Dialog open={open} onOpenChange={() => { }}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <div className="flex items-center gap-3">

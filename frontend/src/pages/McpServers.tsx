@@ -21,7 +21,7 @@ import { Loader2 } from 'lucide-react';
 import {
   MCP_SUPPORTED_EXECUTORS,
 } from 'shared/old_frozen_types';
-import { CodingAgentExecutorType } from 'shared/types';
+import { CodingAgentExecutorType } from 'shared/old_frozen_types';
 import { useConfig } from '@/components/config-provider';
 import { mcpServersApi } from '../lib/api';
 
@@ -151,14 +151,14 @@ export function McpServers() {
       const vibeKanbanConfig =
         selectedMcpExecutor === 'sst-opencode'
           ? {
-              type: 'local',
-              command: ['npx', '-y', 'vibe-kanban', '--mcp'],
-              enabled: true,
-            }
+            type: 'local',
+            command: ['npx', '-y', 'vibe-kanban', '--mcp'],
+            enabled: true,
+          }
           : {
-              command: 'npx',
-              args: ['-y', 'vibe-kanban', '--mcp'],
-            };
+            command: 'npx',
+            args: ['-y', 'vibe-kanban', '--mcp'],
+          };
 
       // Add vibe_kanban to the existing configuration
       let updatedConfig;

@@ -51,6 +51,7 @@ impl Environment {
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct UserSystemInfo {
     pub config: Config,
+    #[serde(flatten)]
     pub profiles: AgentProfiles,
     pub environment: Environment,
 }
