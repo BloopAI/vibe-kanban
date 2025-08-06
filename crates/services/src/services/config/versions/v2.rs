@@ -1,18 +1,12 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
 
 use anyhow::Error;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use strum_macros::EnumString;
 use ts_rs::TS;
 use utils::{assets::SoundAssets, cache_dir};
 
 use crate::services::config::versions::v1;
-
-// Alias types that are the same as v1
-pub type ThemeMode = v1::ThemeMode;
-pub type EditorConfig = v1::EditorConfig;
-pub type SoundFile = v1::SoundFile;
-pub type EditorType = v1::EditorType;
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct Config {
@@ -32,7 +26,19 @@ pub struct Config {
 
 impl Config {
     pub fn from_previous_version(raw_config: &str) -> Result<Self, Error> {
-        let old_config = serde_json::from_str::<v1::Config>(raw_config)?;
+        // let old_config = serde_json::from_str::<v1::Config>(raw_config)?;
+        let old_config = match serde_json::from_str::<v1::Config>(raw_config) {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                // Display the human-readable error…
+                eprintln!("❌ Failed to parse config: {}", e);
+                // …and pinpoint line/column if it’s a syntax or data error:
+                eprintln!("   at line {}, column {}", e.line(), e.column());
+                // bubble it up, or handle however you like
+                return Err(e.into());
+            }
+        };
+
         let old_config_clone = old_config.clone();
 
         let mut onboarding_acknowledged = old_config.onboarding_acknowledged;
@@ -51,14 +57,14 @@ impl Config {
 
         Ok(Self {
             config_schema: "v2".to_string(),
-            theme: old_config.theme,
+            theme: ThemeMode::from(old_config.theme), // Now SCREAMING_SNAKE_CASE
             profile: profile.to_string(),
             disclaimer_acknowledged: old_config.disclaimer_acknowledged,
             onboarding_acknowledged: onboarding_acknowledged,
             github_login_acknowledged: old_config.github_login_acknowledged,
             telemetry_acknowledged: old_config.telemetry_acknowledged,
             notifications: NotificationConfig::from(old_config_clone),
-            editor: old_config.editor,
+            editor: EditorConfig::from(old_config.editor),
             github: GitHubConfig::from(old_config.github),
             analytics_enabled: None,
             workspace_dir: None,
@@ -68,9 +74,15 @@ impl Config {
 
 impl From<String> for Config {
     fn from(raw_config: String) -> Self {
-        let value_config: Value = serde_json::from_str(&raw_config).unwrap();
-        let config: Config = serde_json::from_value(value_config).unwrap();
-        config
+        if let Ok(config) = serde_json::from_str(&raw_config) {
+            config
+        } else if let Ok(config) = Self::from_previous_version(&raw_config) {
+            tracing::info!("Config upgraded from previous version");
+            config
+        } else {
+            tracing::warn!("Config reset to default");
+            Self::default()
+        }
     }
 }
 
@@ -126,7 +138,7 @@ impl From<v1::Config> for NotificationConfig {
         Self {
             sound_enabled: old.sound_alerts,
             push_enabled: old.push_notifications,
-            sound_file: old.sound_file,
+            sound_file: SoundFile::from(old.sound_file), // Now SCREAMING_SNAKE_CASE
         }
     }
 }
@@ -160,6 +172,20 @@ impl GitHubConfig {
             .or(self.oauth_token.as_deref())
             .map(|s| s.to_string())
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString)]
+#[ts(use_ts_enum)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
+pub enum SoundFile {
+    AbstractSound1,
+    AbstractSound2,
+    AbstractSound3,
+    AbstractSound4,
+    CowMooing,
+    PhoneVibration,
+    Rooster,
 }
 
 impl SoundFile {
@@ -224,5 +250,140 @@ impl SoundFile {
         drop(file); // Ensure file is closed
 
         Ok(cached_path)
+    }
+}
+
+impl From<v1::SoundFile> for SoundFile {
+    fn from(old: v1::SoundFile) -> Self {
+        match old {
+            v1::SoundFile::AbstractSound1 => SoundFile::AbstractSound1,
+            v1::SoundFile::AbstractSound2 => SoundFile::AbstractSound2,
+            v1::SoundFile::AbstractSound3 => SoundFile::AbstractSound3,
+            v1::SoundFile::AbstractSound4 => SoundFile::AbstractSound4,
+            v1::SoundFile::CowMooing => SoundFile::CowMooing,
+            v1::SoundFile::PhoneVibration => SoundFile::PhoneVibration,
+            v1::SoundFile::Rooster => SoundFile::Rooster,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct EditorConfig {
+    editor_type: EditorType,
+    custom_command: Option<String>,
+}
+
+impl From<v1::EditorConfig> for EditorConfig {
+    fn from(old: v1::EditorConfig) -> Self {
+        Self {
+            editor_type: EditorType::from(old.editor_type), // Now SCREAMING_SNAKE_CASE
+            custom_command: old.custom_command,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString)]
+#[ts(use_ts_enum)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
+pub enum EditorType {
+    VsCode,
+    Cursor,
+    Windsurf,
+    IntelliJ,
+    Zed,
+    Custom,
+}
+
+impl From<v1::EditorType> for EditorType {
+    fn from(old: v1::EditorType) -> Self {
+        match old {
+            v1::EditorType::VsCode => EditorType::VsCode,
+            v1::EditorType::Cursor => EditorType::Cursor,
+            v1::EditorType::Windsurf => EditorType::Windsurf,
+            v1::EditorType::IntelliJ => EditorType::IntelliJ,
+            v1::EditorType::Zed => EditorType::Zed,
+            v1::EditorType::Custom => EditorType::Custom,
+        }
+    }
+}
+
+impl Default for EditorConfig {
+    fn default() -> Self {
+        Self {
+            editor_type: EditorType::VsCode,
+            custom_command: None,
+        }
+    }
+}
+
+impl EditorConfig {
+    pub fn get_command(&self) -> Vec<String> {
+        match &self.editor_type {
+            EditorType::VsCode => vec!["code".to_string()],
+            EditorType::Cursor => vec!["cursor".to_string()],
+            EditorType::Windsurf => vec!["windsurf".to_string()],
+            EditorType::IntelliJ => vec!["idea".to_string()],
+            EditorType::Zed => vec!["zed".to_string()],
+            EditorType::Custom => {
+                if let Some(custom) = &self.custom_command {
+                    custom.split_whitespace().map(|s| s.to_string()).collect()
+                } else {
+                    vec!["code".to_string()] // fallback to VSCode
+                }
+            }
+        }
+    }
+
+    pub fn open_file(&self, path: &str) -> Result<(), std::io::Error> {
+        let command = self.get_command();
+        let mut cmd = std::process::Command::new(&command[0]);
+        for arg in &command[1..] {
+            cmd.arg(arg);
+        }
+        cmd.arg(path);
+        cmd.spawn()?;
+        Ok(())
+    }
+
+    pub fn with_override(&self, editor_type_str: Option<&str>) -> Self {
+        if let Some(editor_type_str) = editor_type_str {
+            let editor_type =
+                EditorType::from_str(editor_type_str).unwrap_or(self.editor_type.clone());
+            EditorConfig {
+                editor_type,
+                custom_command: self.custom_command.clone(),
+            }
+        } else {
+            self.clone()
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ThemeMode {
+    Light,
+    Dark,
+    System,
+    Purple,
+    Green,
+    Blue,
+    Orange,
+    Red,
+}
+
+impl From<v1::ThemeMode> for ThemeMode {
+    fn from(old: v1::ThemeMode) -> Self {
+        match old {
+            v1::ThemeMode::Light => ThemeMode::Light,
+            v1::ThemeMode::Dark => ThemeMode::Dark,
+            v1::ThemeMode::System => ThemeMode::System,
+            v1::ThemeMode::Purple => ThemeMode::Purple,
+            v1::ThemeMode::Green => ThemeMode::Green,
+            v1::ThemeMode::Blue => ThemeMode::Blue,
+            v1::ThemeMode::Orange => ThemeMode::Orange,
+            v1::ThemeMode::Red => ThemeMode::Red,
+        }
     }
 }
