@@ -18,7 +18,7 @@ pub(super) struct Config {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case")]
-pub(crate) enum ExecutorConfig {
+pub(super) enum ExecutorConfig {
     Echo,
     Claude,
     ClaudePlan,
@@ -37,7 +37,7 @@ pub(crate) enum ExecutorConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum ThemeMode {
+pub(super) enum ThemeMode {
     Light,
     Dark,
     System,
@@ -49,23 +49,23 @@ pub enum ThemeMode {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EditorConfig {
+pub(super) struct EditorConfig {
     pub editor_type: EditorType,
     pub custom_command: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(super) struct GitHubConfig {
-    pub(super) pat: Option<String>,
-    pub(super) token: Option<String>,
-    pub(super) username: Option<String>,
-    pub(super) primary_email: Option<String>,
-    pub(super) default_pr_base: Option<String>,
+    pub pat: Option<String>,
+    pub token: Option<String>,
+    pub username: Option<String>,
+    pub primary_email: Option<String>,
+    pub default_pr_base: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum EditorType {
+pub(super) enum EditorType {
     VsCode,
     Cursor,
     Windsurf,
@@ -76,7 +76,7 @@ pub enum EditorType {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum SoundFile {
+pub(super) enum SoundFile {
     AbstractSound1,
     AbstractSound2,
     AbstractSound3,
@@ -84,11 +84,4 @@ pub enum SoundFile {
     CowMooing,
     PhoneVibration,
     Rooster,
-}
-
-// Constants for frontend
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct EditorConstants {
-    editor_types: Vec<EditorType>,
-    editor_labels: Vec<String>,
 }
