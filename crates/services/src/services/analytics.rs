@@ -8,6 +8,12 @@ use os_info;
 use serde_json::{Value, json};
 
 #[derive(Debug, Clone)]
+pub struct AnalyticsContext {
+    pub user_id: String,
+    pub analytics_service: AnalyticsService,
+}
+
+#[derive(Debug, Clone)]
 pub struct AnalyticsConfig {
     pub posthog_api_key: String,
     pub posthog_api_endpoint: String,

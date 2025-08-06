@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use db::DBService;
 use deployment::{Deployment, DeploymentError};
 use services::services::{
-    analytics::{AnalyticsConfig, AnalyticsService, generate_user_id},
+    analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
     auth::AuthService,
     config::Config,
     container::ContainerService,
@@ -69,8 +69,19 @@ impl Deployment for LocalDeployment {
             DBService::new_with_after_connect(hook).await?
         };
 
-        let container =
-            LocalContainerService::new(db.clone(), msg_stores.clone(), config.clone(), git.clone());
+        // We need to make analytics accessible to the ContainerService
+        // TODO: Handle this more gracefully
+        let analytics_ctx = analytics.as_ref().map(|s| AnalyticsContext {
+            user_id: user_id.clone(),
+            analytics_service: s.clone(),
+        });
+        let container = LocalContainerService::new(
+            db.clone(),
+            msg_stores.clone(),
+            config.clone(),
+            git.clone(),
+            analytics_ctx,
+        );
         container.spawn_worktree_cleanup().await;
 
         let events = EventService::new(db.clone(), events_msg_store, events_entry_count);

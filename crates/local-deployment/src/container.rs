@@ -28,7 +28,9 @@ use executors::{
     logs::utils::ConversationPatch,
 };
 use futures::{StreamExt, TryStreamExt, stream::select};
+use serde_json::json;
 use services::services::{
+    analytics::AnalyticsContext,
     config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
     filesystem_watcher,
@@ -54,6 +56,7 @@ pub struct LocalContainerService {
     msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
     config: Arc<RwLock<Config>>,
     git: GitService,
+    analytics: Option<AnalyticsContext>,
 }
 
 impl LocalContainerService {
@@ -62,6 +65,7 @@ impl LocalContainerService {
         msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
         config: Arc<RwLock<Config>>,
         git: GitService,
+        analytics: Option<AnalyticsContext>,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
 
@@ -71,6 +75,7 @@ impl LocalContainerService {
             msg_stores,
             config,
             git,
+            analytics,
         }
     }
 
@@ -87,6 +92,24 @@ impl LocalContainerService {
     pub async fn remove_child_from_store(&self, id: &Uuid) {
         let mut map = self.child_store.write().await;
         map.remove(id);
+    }
+
+    /// Notifications are sent when:
+    /// - A CodingAgent completes without a next_action
+    /// - A CleanupScript completes
+    fn should_notify(ctx: &ExecutionContext) -> bool {
+        (matches!(
+            ctx.execution_process.run_reason,
+            ExecutionProcessRunReason::CodingAgent
+        ) && ctx
+            .execution_process
+            .executor_action()
+            .next_action
+            .is_none())
+            || matches!(
+                ctx.execution_process.run_reason,
+                ExecutionProcessRunReason::CleanupScript
+            )
     }
 
     /// Defensively check for externally deleted worktrees and mark them as deleted in the database
@@ -251,6 +274,7 @@ impl LocalContainerService {
         let db = self.db.clone();
         let config = self.config.clone();
         let container = self.clone();
+        let analytics = self.analytics.clone();
 
         tokio::spawn(async move {
             loop {
@@ -319,8 +343,26 @@ impl LocalContainerService {
                             }
                         }
 
-                        let notify_cfg = config.read().await.notifications.clone();
-                        NotificationService::notify_execution_halted(notify_cfg, &ctx).await;
+                        if Self::should_notify(&ctx) {
+                            let notify_cfg = config.read().await.notifications.clone();
+                            NotificationService::notify_execution_halted(notify_cfg, &ctx).await;
+                        }
+
+                        // Fire event when CodingAgent execution has finished
+                        if matches!(
+                            &ctx.execution_process.run_reason,
+                            ExecutionProcessRunReason::CodingAgent
+                        ) {
+                            if let Some(analytics) = &analytics {
+                                analytics.analytics_service.track_event(&analytics.user_id, "task_attempt_finished", Some(json!({
+                                    "task_id": ctx.task.id.to_string(),
+                                    "project_id": ctx.task.project_id.to_string(),
+                                    "attempt_id": ctx.task_attempt.id.to_string(),
+                                    "execution_success": matches!(ctx.execution_process.status, ExecutionProcessStatus::Completed),
+                                    "exit_code": ctx.execution_process.exit_code,
+                                })));
+                            }
+                        }
                     }
 
                     // Cleanup msg store

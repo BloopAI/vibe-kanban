@@ -11,8 +11,8 @@ pub mod path;
 pub mod response;
 pub mod sentry;
 pub mod shell;
-pub mod text;
 pub mod stream_lines;
+pub mod text;
 
 /// Cache for WSL2 detection result
 static WSL2_CACHE: OnceLock<bool> = OnceLock::new();
