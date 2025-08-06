@@ -115,6 +115,8 @@ pub trait ContainerService {
         execution_process: &ExecutionProcess,
     ) -> Result<(), ContainerError>;
 
+    async fn try_commit_changes(&self, ctx: &ExecutionContext) -> Result<(), ContainerError>;
+
     async fn get_diff(
         &self,
         task_attempt: &TaskAttempt,

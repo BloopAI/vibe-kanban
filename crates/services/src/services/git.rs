@@ -345,6 +345,52 @@ impl GitService {
         Ok(())
     }
 
+    pub fn commit(&self, path: &Path, message: &str) -> Result<(), GitServiceError> {
+        let repo = Repository::open(path)?;
+
+        // Check if there are any changes to commit
+        let status = repo.statuses(None)?;
+
+        let has_changes = status.iter().any(|entry| {
+            let flags = entry.status();
+            flags.contains(git2::Status::INDEX_NEW)
+                || flags.contains(git2::Status::INDEX_MODIFIED)
+                || flags.contains(git2::Status::INDEX_DELETED)
+                || flags.contains(git2::Status::WT_NEW)
+                || flags.contains(git2::Status::WT_MODIFIED)
+                || flags.contains(git2::Status::WT_DELETED)
+        });
+
+        if !has_changes {
+            tracing::debug!("No changes to commit!");
+            return Ok(());
+        }
+
+        // Get the current HEAD commit
+        let head = repo.head()?;
+        let parent_commit = head.peel_to_commit()?;
+
+        // Stage all has_changes
+        let mut index = repo.index()?;
+        index.add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)?;
+        index.write()?;
+
+        let tree_id = index.write_tree()?;
+        let tree = repo.find_tree(tree_id)?;
+
+        let signature = repo.signature()?;
+        repo.commit(
+            Some("HEAD"),
+            &signature,
+            &signature,
+            &message,
+            &tree,
+            &[&parent_commit],
+        )?;
+
+        Ok(())
+    }
+
     /// Merge changes from a worktree branch back to the main repository
     pub fn merge_changes(
         &self,

@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     io,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
     time::Duration,
 };
@@ -14,7 +14,10 @@ use command_group::AsyncGroupChild;
 use db::{
     DBService,
     models::{
-        execution_process::{ExecutionProcess, ExecutionProcessStatus},
+        execution_process::{
+            ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
+        },
+        executor_session::ExecutorSession,
         project::Project,
         task_attempt::TaskAttempt,
     },
@@ -294,11 +297,15 @@ impl LocalContainerService {
                         tracing::error!("Failed to update execution process completion: {}", e);
                     }
 
-                    // If the process exited successfully, start the next action
                     if let Ok(ctx) = ExecutionProcess::load_context(&db.pool, exec_id).await {
                         if matches!(status, ExecutionProcessStatus::Completed)
                             && exit_code == Some(0)
                         {
+                            if let Err(e) = container.try_commit_changes(&ctx).await {
+                                tracing::error!("Failed to commit changes after execution: {}", e);
+                            }
+
+                            // If the process exited successfully, start the next action
                             if let Err(e) = container.try_start_next_action(&ctx).await {
                                 tracing::error!(
                                     "Failed to start next action after completion: {}",
@@ -700,5 +707,72 @@ impl ContainerService for LocalContainerService {
         // Combine initial snapshot with live updates
         let combined_stream = select(initial_stream, live_stream);
         Ok(combined_stream.boxed())
+    }
+
+    async fn try_commit_changes(&self, ctx: &ExecutionContext) -> Result<(), ContainerError> {
+        if !matches!(
+            ctx.execution_process.run_reason,
+            ExecutionProcessRunReason::CodingAgent | ExecutionProcessRunReason::CleanupScript,
+        ) {
+            return Ok(());
+        }
+
+        let message = match ctx.execution_process.run_reason {
+            ExecutionProcessRunReason::CodingAgent => {
+                // Try to retrieve the task summary from the executor session
+                // otherwise fallback to default message
+                match ExecutorSession::find_by_execution_process_id(
+                    &self.db().pool,
+                    ctx.execution_process.id,
+                )
+                .await
+                {
+                    Ok(Some(session)) if session.summary.is_some() => session.summary.unwrap(),
+                    Ok(_) => {
+                        tracing::debug!(
+                            "No summary found for execution process {}, using default message",
+                            ctx.execution_process.id
+                        );
+                        format!(
+                            "Commit changes from coding agent for task attempt {}",
+                            ctx.task_attempt.id
+                        )
+                    }
+                    Err(e) => {
+                        tracing::debug!(
+                            "Failed to retrieve summary for execution process {}: {}",
+                            ctx.execution_process.id,
+                            e
+                        );
+                        format!(
+                            "Commit changes from coding agent for task attempt {}",
+                            ctx.task_attempt.id
+                        )
+                    }
+                }
+            }
+            ExecutionProcessRunReason::CleanupScript => {
+                format!(
+                    "Cleanup script changes for task attempt {}",
+                    ctx.task_attempt.id
+                )
+            }
+            _ => Err(ContainerError::Other(anyhow::anyhow!(
+                "Invalid run reason for commit"
+            )))?,
+        };
+
+        let container_ref = ctx.task_attempt.container_ref.as_ref().ok_or_else(|| {
+            ContainerError::Other(anyhow::anyhow!("Container reference not found"))
+        })?;
+
+        tracing::debug!(
+            "Committing changes for task attempt {} at path {:?}: '{}'",
+            ctx.task_attempt.id,
+            &container_ref,
+            message
+        );
+
+        Ok(self.git().commit(Path::new(container_ref), &message)?)
     }
 }
