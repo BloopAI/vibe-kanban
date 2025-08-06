@@ -30,11 +30,8 @@ impl Config {
         let old_config = match serde_json::from_str::<v1::Config>(raw_config) {
             Ok(cfg) => cfg,
             Err(e) => {
-                // Display the human-readable error…
-                eprintln!("❌ Failed to parse config: {}", e);
-                // …and pinpoint line/column if it’s a syntax or data error:
-                eprintln!("   at line {}, column {}", e.line(), e.column());
-                // bubble it up, or handle however you like
+                tracing::error!("❌ Failed to parse config: {}", e);
+                tracing::error!("   at line {}, column {}", e.line(), e.column());
                 return Err(e.into());
             }
         };
@@ -46,9 +43,11 @@ impl Config {
         // Map old executors to new profiles
         let profile: &str = match old_config.executor {
             v1::ExecutorConfig::Claude => "claude-code",
-            v1::ExecutorConfig::ClaudePlan => "claude-plan",
+            v1::ExecutorConfig::ClaudeCodeRouter => "claude-code",
+            v1::ExecutorConfig::ClaudePlan => "claude-code-plan",
             v1::ExecutorConfig::Amp => "amp",
             v1::ExecutorConfig::Gemini => "gemini",
+            v1::ExecutorConfig::SstOpencode => "opencode",
             _ => {
                 onboarding_acknowledged = false; // Reset the user's onboarding if executor is not supported
                 "claude-code"
