@@ -31,21 +31,13 @@ pub async fn kill_process_group(child: &mut AsyncGroupChild) -> Result<(), Conta
                     .map_err(|e| ContainerError::Io(e))?
                     .is_some()
                 {
-                    break; // gone!
+                    break;
                 }
             }
         }
     }
 
-    // final fallback – command_group already targets the group
-    child
-        .kill()
-        .await
-        .map_err(|e| ContainerError::KillFailed(e))?;
-    child
-        .wait()
-        .await
-        .map_err(|e| ContainerError::KillFailed(e))?; // reap
-
+    let _ = child.kill().await;
+    let _ = child.wait().await;
     Ok(())
 }

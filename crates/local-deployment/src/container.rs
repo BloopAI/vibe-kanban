@@ -504,7 +504,14 @@ impl ContainerService for LocalContainerService {
         // Kill the child process and remove from the store
         {
             let mut child_guard = child.write().await;
-            command::kill_process_group(&mut *child_guard).await?;
+            if let Err(e) = command::kill_process_group(&mut *child_guard).await {
+                tracing::error!(
+                    "Failed to stop execution process {}: {}",
+                    execution_process.id,
+                    e
+                );
+                return Err(e);
+            }
         }
         self.remove_child_from_store(&execution_process.id).await;
 
