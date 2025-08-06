@@ -20,7 +20,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Key, Loader2, Volume2 } from 'lucide-react';
 import type { ThemeMode } from 'shared/types';
-import { EditorType } from 'shared/types';
+import { EditorType, SoundFile } from 'shared/types';
 import { CodingAgentExecutorType } from 'shared/old_frozen_types';
 
 
@@ -195,11 +195,11 @@ export function Settings() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="executor">Default Executor</Label>
+                <Label htmlFor="executor">Default Profile</Label>
                 <Select
-                  value={config.executor}
-                  onValueChange={(value: CodingAgentExecutorType) =>
-                    updateConfig({ executor: value })
+                  value={config.profile}
+                  onValueChange={(value: string) =>
+                    updateConfig({ profile: value })
                   }
                 >
                   <SelectTrigger id="executor">
