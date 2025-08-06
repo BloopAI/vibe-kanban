@@ -47,8 +47,8 @@ echo "📦 Creating distribution package..."
 cp target/release/automagik-forge automagik-forge
 cp target/release/mcp_task_server automagik-forge-mcp
 
-zip automagik-forge.zip automagik-forge
-zip automagik-forge-mcp.zip automagik-forge-mcp
+node scripts/zip-helper.js automagik-forge.zip automagik-forge
+node scripts/zip-helper.js automagik-forge-mcp.zip automagik-forge-mcp
 
 rm automagik-forge automagik-forge-mcp
 

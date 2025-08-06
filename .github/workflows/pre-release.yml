@@ -277,7 +277,7 @@ jobs:
 
       - name: Package main binary (macOS)
         if: runner.os == 'macOS'
-        run: zip automagik-forge.zip automagik-forge
+        run: node scripts/zip-helper.js automagik-forge.zip automagik-forge
 
       - name: Notarize signed binary (macOS)
         if: runner.os == 'macOS'
@@ -302,7 +302,7 @@ jobs:
 
       - name: Package MCP binary (macOS)
         if: runner.os == 'macOS'
-        run: zip automagik-forge-mcp.zip automagik-forge-mcp
+        run: node scripts/zip-helper.js automagik-forge-mcp.zip automagik-forge-mcp
 
       - name: Notarize signed MCP binary (macOS)
         if: runner.os == 'macOS'
@@ -398,8 +398,8 @@ jobs:
           cp dist/automagik-forge-${{ matrix.name }}* automagik-forge-${{ matrix.name }}/${{ matrix.binary }}
           cp dist/automagik-forge-mcp-${{ matrix.name }}* automagik-forge-mcp-${{ matrix.name }}/${{ matrix.mcp_binary }}
 
-          zip -j npx-cli/dist/${{ matrix.name }}/automagik-forge.zip automagik-forge-${{ matrix.name }}/${{ matrix.binary }}
-          zip -j npx-cli/dist/${{ matrix.name }}/automagik-forge-mcp.zip automagik-forge-mcp-${{ matrix.name }}/${{ matrix.mcp_binary }}
+          node scripts/zip-helper.js npx-cli/dist/${{ matrix.name }}/automagik-forge.zip automagik-forge-${{ matrix.name }}/${{ matrix.binary }}
+          node scripts/zip-helper.js npx-cli/dist/${{ matrix.name }}/automagik-forge-mcp.zip automagik-forge-mcp-${{ matrix.name }}/${{ matrix.mcp_binary }}
 
       - name: Create platform package (macOS)
         if: matrix.name == 'macos-arm64' || matrix.name == 'macos-x64'
@@ -448,7 +448,7 @@ jobs:
         run: |
           mkdir automagik-forge-${{ needs.bump-version.outputs.new_tag }}
           mv frontend/dist automagik-forge-${{ needs.bump-version.outputs.new_tag }}
-          zip -r automagik-forge-${{ needs.bump-version.outputs.new_tag }}.zip automagik-forge-${{ needs.bump-version.outputs.new_tag }}
+          node scripts/zip-helper.js automagik-forge-${{ needs.bump-version.outputs.new_tag }}.zip automagik-forge-${{ needs.bump-version.outputs.new_tag }}
 
       - name: Setup Node for npm pack
         uses: ./.github/actions/setup-node

@@ -82,8 +82,8 @@ fi
 cp "$MAIN_BINARY_PATH" "$MAIN_BINARY"
 cp "$MCP_BINARY_PATH" "$MCP_BINARY"
 
-zip "automagik-forge.zip" "$MAIN_BINARY"
-zip "automagik-forge-mcp.zip" "$MCP_BINARY"
+node scripts/zip-helper.js "automagik-forge.zip" "$MAIN_BINARY"
+node scripts/zip-helper.js "automagik-forge-mcp.zip" "$MCP_BINARY"
 
 rm "$MAIN_BINARY" "$MCP_BINARY"
 
