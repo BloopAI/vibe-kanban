@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", wish_id, parent_task_attempt as \"parent_task_attempt: Uuid\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks \n               WHERE id = $1",
+  "query": "SELECT id as \"id!: Uuid\", name, git_repo_path, setup_script, dev_script, cleanup_script, created_by as \"created_by: Uuid\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\" FROM projects WHERE git_repo_path = $1",
   "describe": {
     "columns": [
       {
@@ -9,32 +9,32 @@
         "type_info": "Blob"
       },
       {
-        "name": "project_id!: Uuid",
+        "name": "name",
         "ordinal": 1,
-        "type_info": "Blob"
+        "type_info": "Text"
       },
       {
-        "name": "title",
+        "name": "git_repo_path",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "description",
+        "name": "setup_script",
         "ordinal": 3,
         "type_info": "Text"
       },
       {
-        "name": "status!: TaskStatus",
+        "name": "dev_script",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "wish_id",
+        "name": "cleanup_script",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "parent_task_attempt: Uuid",
+        "name": "created_by: Uuid",
         "ordinal": 6,
         "type_info": "Blob"
       },
@@ -57,12 +57,12 @@
       false,
       false,
       true,
-      false,
-      false,
+      true,
+      true,
       true,
       false,
       false
     ]
   },
-  "hash": "6ec414276994c4ccb2433eaa5b1b342168557d17ddf5a52dac84cb1b59b9de8f"
+  "hash": "493a9c03d0ef473efd76e5b62539e50dce6e67eff582a28c1752da8937ba773a"
 }

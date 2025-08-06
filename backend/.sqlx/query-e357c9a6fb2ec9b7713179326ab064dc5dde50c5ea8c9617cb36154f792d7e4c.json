@@ -1,0 +1,80 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT DISTINCT t.id as \"id!: Uuid\", t.project_id as \"project_id!: Uuid\", t.title, t.description, t.status as \"status!: TaskStatus\", t.wish_id, t.parent_task_attempt as \"parent_task_attempt: Uuid\", t.assigned_to as \"assigned_to: Uuid\", t.created_by as \"created_by: Uuid\", t.created_at as \"created_at!: DateTime<Utc>\", t.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks t\n               WHERE (\n                   -- Find children: tasks that have this attempt as parent\n                   t.parent_task_attempt = $1 AND t.project_id = $2\n               ) OR (\n                   -- Find parent: task that owns the parent attempt of current task\n                   EXISTS (\n                       SELECT 1 FROM tasks current_task \n                       JOIN task_attempts parent_attempt ON current_task.parent_task_attempt = parent_attempt.id\n                       WHERE parent_attempt.task_id = t.id \n                       AND parent_attempt.id = $1 \n                       AND current_task.project_id = $2\n                   )\n               )\n               -- Exclude the current task itself to prevent circular references\n               AND t.id != (SELECT task_id FROM task_attempts WHERE id = $1)\n               ORDER BY t.created_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "project_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "description",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "status!: TaskStatus",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "wish_id",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "parent_task_attempt: Uuid",
+        "ordinal": 6,
+        "type_info": "Blob"
+      },
+      {
+        "name": "assigned_to: Uuid",
+        "ordinal": 7,
+        "type_info": "Blob"
+      },
+      {
+        "name": "created_by: Uuid",
+        "ordinal": 8,
+        "type_info": "Blob"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 10,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "e357c9a6fb2ec9b7713179326ab064dc5dde50c5ea8c9617cb36154f792d7e4c"
+}

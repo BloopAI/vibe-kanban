@@ -38,8 +38,8 @@ echo "🔨 Building frontend..."
 (cd frontend && npm run build)
 
 echo "🔨 Building Rust binaries..."
-cargo build --release --manifest-path backend/Cargo.toml
-cargo build --release --bin mcp_task_server --manifest-path backend/Cargo.toml
+SQLX_OFFLINE=true cargo build --release --manifest-path backend/Cargo.toml
+SQLX_OFFLINE=true cargo build --release --bin mcp_task_server --manifest-path backend/Cargo.toml
 
 echo "📦 Creating distribution package..."
 

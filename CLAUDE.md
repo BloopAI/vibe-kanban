@@ -159,9 +159,24 @@ When working on any task that involves changes to the backend and the frontend, 
 
 # Testing your work
 
-`npm run check` - runs cargo and tsc checks
+- `npm run check` - runs cargo and tsc checks
+- `npm run prepare-db` - prepares database for SQLX compile-time verification (only needed after schema changes)
 
 # Backend data models
 
 SQLX queries should be located in backend/src/models/*
 Use getters and setters instead of raw SQL queries where possible.
+
+## Database & Environment Setup
+
+### Database (Zero Configuration Required)
+- **Runtime**: App automatically creates `~/.automagik-forge/db.sqlite` and runs migrations on startup
+- **Build time**: Uses SQLX offline mode with pre-generated query metadata in `backend/.sqlx/`
+- **Schema changes**: Run `npm run prepare-db` to regenerate query metadata after changing SQL queries or migrations
+- **No DATABASE_URL needed** - database path is handled automatically
+
+### Environment Variables
+- **Required**: Copy `.env.example` to `.env` and customize as needed
+- **Database**: No DATABASE_URL configuration required - handled automatically
+- **Development**: Default ports 3000 (frontend) and 3001 (backend)
+- **Authentication**: Configure GitHub OAuth for multiuser features (optional)
