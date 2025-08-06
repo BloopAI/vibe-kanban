@@ -15,6 +15,7 @@ use db::{
     models::{
         execution_process::{
             CreateExecutionProcess, ExecutionContext, ExecutionProcess, ExecutionProcessRunReason,
+            ExecutionProcessStatus,
         },
         execution_process_logs::ExecutionProcessLogs,
         executor_session::{CreateExecutorSession, ExecutorSession},
@@ -27,7 +28,6 @@ use executors::{
         coding_agent_initial::CodingAgentInitialRequest,
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
-    command::AgentProfile,
     executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
     logs::utils::patch::ConversationPatch,
 };
@@ -76,7 +76,27 @@ pub trait ContainerService {
 
     async fn create(&self, task_attempt: &TaskAttempt) -> Result<ContainerRef, ContainerError>;
 
-    async fn delete(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError>;
+    async fn delete(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError> {
+        // stop all execution processes for this attempt
+        if let Ok(processes) =
+            ExecutionProcess::find_by_task_attempt_id(&self.db().pool, task_attempt.id).await
+        {
+            for process in processes {
+                if process.status == ExecutionProcessStatus::Running {
+                    self.stop_execution(&process).await.unwrap_or_else(|e| {
+                        tracing::debug!(
+                            "Failed to stop execution process {} for task attempt {}: {}",
+                            process.id,
+                            task_attempt.id,
+                            e
+                        );
+                    });
+                }
+            }
+        }
+        self.delete_inner(task_attempt).await
+    }
+    async fn delete_inner(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError>;
 
     async fn ensure_container_exists(
         &self,

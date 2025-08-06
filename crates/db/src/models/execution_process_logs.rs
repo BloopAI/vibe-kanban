@@ -118,17 +118,4 @@ impl ExecutionProcessLogs {
 
         Ok(())
     }
-
-    pub async fn delete_by_execution_id(
-        pool: &SqlitePool,
-        execution_id: Uuid,
-    ) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            "DELETE FROM execution_process_logs WHERE execution_id = ?",
-            execution_id
-        )
-        .execute(pool)
-        .await?;
-        Ok(())
-    }
 }

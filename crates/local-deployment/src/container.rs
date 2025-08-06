@@ -427,22 +427,8 @@ impl ContainerService for LocalContainerService {
         Ok(worktree_path.to_string_lossy().to_string())
     }
 
-    async fn delete(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError> {
-        // stop all execution processes for this attempt
-        if let Ok(processes) =
-            ExecutionProcess::find_by_task_attempt_id(&self.db().pool, task_attempt.id).await
-        {
-            for process in processes {
-                self.stop_execution(&process).await.unwrap_or_else(|e| {
-                    tracing::debug!(
-                        "Failed to stop execution process {} for task attempt {}: {}",
-                        process.id,
-                        task_attempt.id,
-                        e
-                    );
-                });
-            }
-        }
+    async fn delete_inner(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError> {
+        // cleanup the container, here that means deleting the worktree
         let task = task_attempt
             .parent_task(&self.db.pool)
             .await?
@@ -467,7 +453,6 @@ impl ContainerService for LocalContainerService {
                 e
             );
         });
-        TaskAttempt::delete(&self.db.pool, task_attempt.id).await?;
         Ok(())
     }
 

@@ -6,7 +6,6 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{project::Project, task::Task};
-use crate::models::{execution_process::ExecutionProcess, executor_session::ExecutorSession};
 
 #[derive(Debug)]
 pub struct PrInfo {
@@ -370,6 +369,7 @@ impl TaskAttempt {
         .fetch_optional(pool)
         .await
     }
+
     // pub async fn find_by_task_id(
     //     pool: &SqlitePool,
     //     task_id: Uuid,
@@ -529,23 +529,6 @@ impl TaskAttempt {
         )
         .fetch_one(pool)
         .await?)
-    }
-
-    pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<(), sqlx::Error> {
-        ExecutionProcess::delete_by_task_attempt_id(pool, id)
-            .await
-            .unwrap_or_else(|e| {
-                tracing::error!("Failed to delete execution processes for task attempt {id}: {e}");
-            });
-        ExecutorSession::delete_by_task_attempt_id(pool, id)
-            .await
-            .unwrap_or_else(|e| {
-                tracing::error!("Failed to delete executor sessions for task attempt {id}: {e}",);
-            });
-        sqlx::query!("DELETE FROM task_attempts WHERE id = ?", id)
-            .execute(pool)
-            .await?;
-        Ok(())
     }
 
     // pub async fn create(
