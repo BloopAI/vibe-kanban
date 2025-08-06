@@ -40,7 +40,7 @@ export function Settings() {
   const [showGitHubLogin, setShowGitHubLogin] = useState(false);
 
   const playSound = async (soundFile: SoundFile) => {
-    const audio = new Audio(`/api/sounds/${soundFile}.wav`);
+    const audio = new Audio(`/api/sounds/${soundFile}`);
     try {
       await audio.play();
     } catch (err) {
