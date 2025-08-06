@@ -84,10 +84,6 @@ type Props = {
   taskAttempts: TaskAttempt[];
   creatingPR: boolean;
   handleEnterCreateAttemptMode: () => void;
-  availableExecutors: {
-    id: string;
-    name: string;
-  }[];
   branches: GitBranch[];
 };
 
@@ -99,7 +95,6 @@ function CurrentAttempt({
   taskAttempts,
   creatingPR,
   handleEnterCreateAttemptMode,
-  availableExecutors,
   branches,
 }: Props) {
   const { task, projectId, handleOpenInEditor, projectHasDevScript } =
@@ -409,11 +404,7 @@ function CurrentAttempt({
             Base Agent
           </div>
           <div className="text-sm font-medium">
-            {availableExecutors.find(
-              (e) => e.id === selectedAttempt.base_coding_agent,
-            )?.name ||
-              selectedAttempt.base_coding_agent ||
-              'Unknown'}
+            {selectedAttempt.base_coding_agent}
           </div>
         </div>
 

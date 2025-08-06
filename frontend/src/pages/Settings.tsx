@@ -21,8 +21,6 @@ import { Input } from '@/components/ui/input';
 import { Key, Loader2, Volume2 } from 'lucide-react';
 import type { ThemeMode } from 'shared/types';
 import { EditorType, SoundFile } from 'shared/types';
-import { CodingAgentExecutorType } from 'shared/old_frozen_types';
-
 
 import { toPrettyCase } from '@/utils/string';
 import { useTheme } from '@/components/theme-provider';

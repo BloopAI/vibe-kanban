@@ -6,7 +6,6 @@ import { attemptsApi, projectsApi } from '@/lib/api';
 import type { GitBranch } from 'shared/types';
 import type { TaskAttempt } from 'shared/types';
 
-import { CodingAgentExecutorType } from 'shared/old_frozen_types';
 import {
   TaskAttemptDataContext,
   TaskAttemptLoadingContext,
@@ -18,11 +17,6 @@ import CreatePRDialog from '@/components/tasks/Toolbar/CreatePRDialog.tsx';
 import CreateAttempt from '@/components/tasks/Toolbar/CreateAttempt.tsx';
 import CurrentAttempt from '@/components/tasks/Toolbar/CurrentAttempt.tsx';
 import { useUserSystem } from '@/components/config-provider';
-
-const availableExecutors = Object.values(CodingAgentExecutorType).map((id) => ({
-  id,
-  name: id,
-}));
 
 function TaskDetailsToolbar() {
   const { task, projectId } = useContext(TaskDetailsContext);
@@ -214,7 +208,6 @@ function TaskDetailsToolbar() {
                   setShowCreatePRDialog={setShowCreatePRDialog}
                   creatingPR={creatingPR}
                   handleEnterCreateAttemptMode={handleEnterCreateAttemptMode}
-                  availableExecutors={availableExecutors}
                   branches={branches}
                 />
               ) : (
