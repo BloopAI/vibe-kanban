@@ -1,14 +1,3 @@
-// use std::{
-//     path::{Path, PathBuf},
-//     process::Stdio,
-// };
-
-// use async_trait::async_trait;
-// use command_group::{AsyncCommandGroup, AsyncGroupChild};
-// use serde::{Deserialize, Serialize};
-// use tokio::{io::AsyncWriteExt, process::Command};
-
-// use crate::utils::shell::get_shell_command;
 use std::{collections::HashMap, path::PathBuf, process::Stdio, sync::Arc};
 
 use async_trait::async_trait;
@@ -18,13 +7,15 @@ use json_patch::Patch;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
-use utils::{log_msg::LogMsg, msg_store::MsgStore, shell::get_shell_command};
+use utils::{
+    log_msg::LogMsg, msg_store::MsgStore, path::make_path_relative, shell::get_shell_command,
+};
 
 use crate::{
     command::{AgentProfiles, CommandBuilder},
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
-        NormalizedEntry, NormalizedEntryType,
+        ActionType, NormalizedEntry, NormalizedEntryType,
         stderr_processor::normalize_stderr_logs,
         utils::{EntryIndexProvider, patch::ConversationPatch},
     },
@@ -294,32 +285,6 @@ impl AmpJson {
             _ => false,
         }
     }
-
-    // pub fn to_normalized_entries(&self, current_dir: &PathBuf) -> Vec<NormalizedEntry> {
-    //     match self {
-    //         AmpJson::Messages { messages, .. } => {
-    //             if self.has_streaming_content() {
-    //                 return vec![];
-    //             }
-
-    //             let mut entries = Vec::new();
-    //             for (_index, message) in messages {
-    //                 let role = &message.role;
-    //                 for content_item in &message.content {
-    //                     if let Some(entry) = content_item.to_normalized_entry(
-    //                         role,
-    //                         message,
-    //                         &current_dir.to_string_lossy(),
-    //                     ) {
-    //                         entries.push(entry);
-    //                     }
-    //                 }
-    //             }
-    //             entries
-    //         }
-    //         _ => vec![],
-    //     }
-    // }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -336,6 +301,108 @@ pub struct AmpMeta {
     pub sent_at: u64,
 }
 
+/// Tool data combining name and input
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(tag = "name", content = "input")]
+pub enum AmpToolData {
+    #[serde(alias = "read", alias = "read_file")]
+    Read {
+        #[serde(alias = "file_path")]
+        path: String,
+    },
+    #[serde(alias = "create_file")]
+    CreateFile {
+        #[serde(alias = "file_path")]
+        path: String,
+        #[serde(alias = "file_content")]
+        content: Option<String>,
+    },
+    #[serde(alias = "edit_file", alias = "edit", alias = "undo_edit")]
+    EditFile {
+        #[serde(alias = "file_path")]
+        path: String,
+        #[serde(default)]
+        old_str: Option<String>,
+        #[serde(default)]
+        new_str: Option<String>,
+    },
+    #[serde(alias = "bash")]
+    Bash {
+        #[serde(alias = "cmd")]
+        command: String,
+    },
+    #[serde(alias = "grep", alias = "codebase_search_agent", alias = "Grep")]
+    Search {
+        #[serde(alias = "query")]
+        pattern: String,
+        #[serde(default)]
+        include: Option<String>,
+        #[serde(default)]
+        path: Option<String>,
+    },
+    #[serde(alias = "read_web_page")]
+    ReadWebPage { url: String },
+    #[serde(alias = "web_search")]
+    WebSearch { query: String },
+    #[serde(alias = "task", alias = "Task")]
+    Task {
+        #[serde(alias = "prompt")]
+        description: String,
+    },
+    #[serde(alias = "glob")]
+    Glob {
+        pattern: String,
+        #[serde(default)]
+        path: Option<String>,
+    },
+    #[serde(alias = "ls", alias = "list_directory")]
+    List {
+        #[serde(default)]
+        path: Option<String>,
+    },
+    #[serde(alias = "todo_write", alias = "todo_read")]
+    Todo {
+        #[serde(default)]
+        todos: Option<Vec<TodoItem>>,
+    },
+    /// Generic fallback for unknown tools
+    #[serde(untagged)]
+    Unknown {
+        #[serde(flatten)]
+        data: std::collections::HashMap<String, serde_json::Value>,
+    },
+}
+
+impl AmpToolData {
+    pub fn get_name(&self) -> &str {
+        match self {
+            AmpToolData::Read { .. } => "read",
+            AmpToolData::CreateFile { .. } => "create_file",
+            AmpToolData::EditFile { .. } => "edit_file",
+            AmpToolData::Bash { .. } => "bash",
+            AmpToolData::Search { .. } => "search",
+            AmpToolData::ReadWebPage { .. } => "read_web_page",
+            AmpToolData::WebSearch { .. } => "web_search",
+            AmpToolData::Task { .. } => "task",
+            AmpToolData::Glob { .. } => "glob",
+            AmpToolData::List { .. } => "list",
+            AmpToolData::Todo { .. } => "todo",
+            AmpToolData::Unknown { data } => data
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown"),
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct TodoItem {
+    pub content: String,
+    pub status: String,
+    #[serde(default)]
+    pub priority: Option<String>,
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(tag = "type")]
 pub enum AmpContentItem {
@@ -346,8 +413,8 @@ pub enum AmpContentItem {
     #[serde(rename = "tool_use")]
     ToolUse {
         id: String,
-        name: String,
-        input: serde_json::Value,
+        #[serde(flatten)]
+        tool_data: AmpToolData,
     },
     #[serde(rename = "tool_result")]
     ToolResult {
@@ -388,24 +455,147 @@ impl AmpContentItem {
                 content: thinking.clone(),
                 metadata: Some(serde_json::to_value(self).unwrap_or(Value::Null)),
             }),
-            AmpContentItem::ToolUse { name, input, .. } => {
-                // TODO: needs refactoring as Executor was removed as param
-                // let action_type = executor.extract_action_type(name, input, worktree_path);
-                // let content =
-                //     executor.generate_concise_content(name, input, &action_type, worktree_path);
+            AmpContentItem::ToolUse { tool_data, .. } => {
+                let name = tool_data.get_name();
+                let input = tool_data;
+                let action_type = Self::extract_action_type(&name, &input, worktree_path);
+                let content =
+                    Self::generate_concise_content(&name, &input, &action_type, worktree_path);
 
-                // Some(NormalizedEntry {
-                //     timestamp,
-                //     entry_type: NormalizedEntryType::ToolUse {
-                //         tool_name: name.clone(),
-                //         action_type,
-                //     },
-                //     content,
-                //     metadata: Some(serde_json::to_value(self).unwrap_or(Value::Null)),
-                // })
-                None
+                Some(NormalizedEntry {
+                    timestamp,
+                    entry_type: NormalizedEntryType::ToolUse {
+                        tool_name: name.to_string(),
+                        action_type,
+                    },
+                    content,
+                    metadata: Some(serde_json::to_value(self).unwrap_or(Value::Null)),
+                })
             }
             AmpContentItem::ToolResult { .. } => None,
+        }
+    }
+
+    fn extract_action_type(
+        tool_name: &str,
+        input: &AmpToolData,
+        worktree_path: &str,
+    ) -> ActionType {
+        match input {
+            AmpToolData::Read { path, .. } => ActionType::FileRead {
+                path: make_path_relative(path, worktree_path),
+            },
+            AmpToolData::CreateFile { path, .. } => ActionType::FileWrite {
+                path: make_path_relative(path, worktree_path),
+            },
+            AmpToolData::EditFile { path, .. } => ActionType::FileWrite {
+                path: make_path_relative(path, worktree_path),
+            },
+            AmpToolData::Bash { command, .. } => ActionType::CommandRun {
+                command: command.clone(),
+            },
+            AmpToolData::Search { pattern, .. } => ActionType::Search {
+                query: pattern.clone(),
+            },
+            AmpToolData::ReadWebPage { url, .. } => ActionType::WebFetch { url: url.clone() },
+            AmpToolData::WebSearch { query, .. } => ActionType::WebFetch { url: query.clone() },
+            AmpToolData::Task { description, .. } => ActionType::TaskCreate {
+                description: description.clone(),
+            },
+            AmpToolData::Glob { .. } => ActionType::Other {
+                description: "File pattern search".to_string(),
+            },
+            AmpToolData::List { .. } => ActionType::Other {
+                description: "List directory".to_string(),
+            },
+            AmpToolData::Todo { .. } => ActionType::Other {
+                description: "Manage TODO list".to_string(),
+            },
+            AmpToolData::Unknown { .. } => ActionType::Other {
+                description: format!("Tool: {}", tool_name),
+            },
+        }
+    }
+
+    fn generate_concise_content(
+        tool_name: &str,
+        input: &AmpToolData,
+        action_type: &ActionType,
+        worktree_path: &str,
+    ) -> String {
+        match action_type {
+            ActionType::FileRead { path } => format!("`{}`", path),
+            ActionType::FileWrite { path } => format!("`{}`", path),
+            ActionType::CommandRun { command } => format!("`{}`", command),
+            ActionType::Search { query } => format!("`{}`", query),
+            ActionType::WebFetch { url } => format!("`{}`", url),
+            ActionType::PlanPresentation { plan } => format!("Plan Presentation: `{}`", plan),
+            ActionType::TaskCreate { description } => description.clone(),
+            ActionType::Other { description: _ } => {
+                // For other tools, try to extract key information or fall back to tool name
+                match input {
+                    AmpToolData::Todo { todos, .. } => {
+                        if let Some(todos) = todos {
+                            let mut todo_items = Vec::new();
+                            for todo in todos {
+                                let emoji = match todo.status.as_str() {
+                                    "completed" => "✅",
+                                    "in_progress" | "in-progress" => "🔄",
+                                    "pending" | "todo" => "⏳",
+                                    _ => "📝",
+                                };
+                                let priority = todo.priority.as_deref().unwrap_or("medium");
+                                todo_items
+                                    .push(format!("{} {} ({})", emoji, todo.content, priority));
+                            }
+                            if !todo_items.is_empty() {
+                                format!("TODO List:\n{}", todo_items.join("\n"))
+                            } else {
+                                "Managing TODO list".to_string()
+                            }
+                        } else {
+                            "Managing TODO list".to_string()
+                        }
+                    }
+                    AmpToolData::List { path, .. } => {
+                        if let Some(path) = path {
+                            let relative_path = make_path_relative(path, worktree_path);
+                            if relative_path.is_empty() {
+                                "List directory".to_string()
+                            } else {
+                                format!("List directory: `{}`", relative_path)
+                            }
+                        } else {
+                            "List directory".to_string()
+                        }
+                    }
+                    AmpToolData::Glob { pattern, path, .. } => {
+                        if let Some(path) = path {
+                            let relative_path = make_path_relative(path, worktree_path);
+                            format!("Find files: `{}` in `{}`", pattern, relative_path)
+                        } else {
+                            format!("Find files: `{}`", pattern)
+                        }
+                    }
+                    AmpToolData::Search {
+                        pattern,
+                        include,
+                        path,
+                        ..
+                    } => {
+                        let mut parts = vec![format!("Search: `{}`", pattern)];
+                        if let Some(include) = include {
+                            parts.push(format!("in `{}`", include));
+                        }
+                        if let Some(path) = path {
+                            let relative_path = make_path_relative(path, worktree_path);
+                            parts.push(format!("at `{}`", relative_path));
+                        }
+                        parts.join(" ")
+                    }
+                    _ => tool_name.to_string(),
+                }
+            }
         }
     }
 }
