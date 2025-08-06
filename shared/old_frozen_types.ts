@@ -4,10 +4,6 @@
 
 export type DeviceStartResponse = { device_code: string, user_code: string, verification_uri: string, expires_in: number, interval: number, };
 
-export type RepositoryInfo = { id: bigint, name: string, full_name: string, owner: string, description: string | null, clone_url: string, ssh_url: string, default_branch: string, private: boolean, };
-
-export type ActionType = { "action": "file_read", path: string, } | { "action": "file_write", path: string, } | { "action": "command_run", command: string, } | { "action": "search", query: string, } | { "action": "web_fetch", url: string, } | { "action": "task_create", description: string, } | { "action": "plan_presentation", plan: string, } | { "action": "other", description: string, };
-
 export const MCP_SUPPORTED_EXECUTORS: string[] = [
     "claude",
     "amp",
