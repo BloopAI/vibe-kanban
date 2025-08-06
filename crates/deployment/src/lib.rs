@@ -18,7 +18,7 @@ use serde_json::Value;
 use services::services::{
     analytics::AnalyticsService,
     auth::{AuthError, AuthService},
-    config::Config,
+    config::{Config, ConfigError},
     container::{ContainerError, ContainerService},
     events::{EventError, EventService},
     filesystem::{FilesystemError, FilesystemService},
@@ -59,6 +59,8 @@ pub enum DeploymentError {
     Worktree(#[from] WorktreeError),
     #[error(transparent)]
     Event(#[from] EventError),
+    #[error(transparent)]
+    Config(#[from] ConfigError),
     #[error(transparent)]
     Other(#[from] AnyhowError),
 }
