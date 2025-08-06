@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useConfig } from '@/components/config-provider';
+import { useUserSystem } from '@/components/config-provider';
 import { templatesApi } from '@/lib/api';
 import type { TaskStatus, TaskTemplate } from 'shared/types';
 
@@ -67,7 +67,7 @@ export function TaskFormDialog({
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
 
-  const { config } = useConfig();
+  const { config } = useUserSystem();
   const isEditMode = Boolean(task);
 
   useEffect(() => {
@@ -168,7 +168,7 @@ export function TaskFormDialog({
   }, [
     title,
     description,
-    config?.executor,
+    config?.profile,
     isEditMode,
     onCreateAndStartTask,
     onOpenChange,

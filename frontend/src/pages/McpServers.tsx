@@ -37,15 +37,15 @@ export function McpServers() {
 
   // Initialize selected MCP executor when config loads
   useEffect(() => {
-    if (config?.executor && !selectedMcpExecutor) {
+    if (config?.profile && !selectedMcpExecutor) {
       // If current executor supports MCP, use it; otherwise use first available MCP executor
-      if (MCP_SUPPORTED_EXECUTORS.includes(config.executor)) {
-        setSelectedMcpExecutor(config.executor);
+      if (MCP_SUPPORTED_EXECUTORS.includes(config.profile)) {
+        setSelectedMcpExecutor(config.profile);
       } else {
         setSelectedMcpExecutor(MCP_SUPPORTED_EXECUTORS[0] || 'claude');
       }
     }
-  }, [config?.executor, selectedMcpExecutor]);
+  }, [config?.profile, selectedMcpExecutor]);
 
   // Load existing MCP configuration when selected executor changes
   useEffect(() => {

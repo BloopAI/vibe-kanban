@@ -406,12 +406,13 @@ function CurrentAttempt({
 
         <div>
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-            Agent
+            Base Agent
           </div>
           <div className="text-sm font-medium">
-            {availableExecutors.find((e) => e.id === selectedAttempt.executor)
-              ?.name ||
-              selectedAttempt.executor ||
+            {availableExecutors.find(
+              (e) => e.id === selectedAttempt.base_coding_agent,
+            )?.name ||
+              selectedAttempt.base_coding_agent ||
               'Unknown'}
           </div>
         </div>
@@ -605,7 +606,7 @@ function CurrentAttempt({
                         {new Date(attempt.created_at).toLocaleTimeString()}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {attempt.executor || 'executor'}
+                        {attempt.base_coding_agent || 'Base Agent'}
                       </span>
                     </div>
                   </DropdownMenuItem>

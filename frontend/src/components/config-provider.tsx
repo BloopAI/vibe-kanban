@@ -157,11 +157,13 @@ export function useUserSystem() {
   return context;
 }
 
+// TODO: delete
 // Backward compatibility hook - maintains existing API
 export function useConfig() {
   const { config, updateConfig, saveConfig, updateAndSaveConfig, loading, githubTokenInvalid } = useUserSystem();
   return { config, updateConfig, saveConfig, updateAndSaveConfig, loading, githubTokenInvalid };
 }
 
+// TODO: delete
 // Backward compatibility export - allows gradual migration
 export const ConfigProvider = UserSystemProvider;
