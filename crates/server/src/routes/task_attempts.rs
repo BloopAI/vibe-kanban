@@ -343,13 +343,38 @@ pub async fn follow_up(
         ))),
     }?;
 
+    // Get parent task
+    let task = task_attempt
+        .parent_task(&deployment.db().pool)
+        .await?
+        .ok_or(SqlxError::RowNotFound)?;
+
+    // Get parent project
+    let project = task
+        .parent_project(&deployment.db().pool)
+        .await?
+        .ok_or(SqlxError::RowNotFound)?;
+
+    let cleanup_action = if let Some(script) = project.cleanup_script {
+        Some(Box::new(ExecutorAction::new(
+            ExecutorActionType::ScriptRequest(ScriptRequest {
+                script,
+                language: ScriptRequestLanguage::Bash,
+                context: ScriptContext::CleanupScript,
+            }),
+            None,
+        )))
+    } else {
+        None
+    };
+
     let follow_up_action = ExecutorAction::new(
         ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
             prompt: payload.prompt,
             session_id,
             profile,
         }),
-        None,
+        cleanup_action,
     );
 
     let execution_process = deployment

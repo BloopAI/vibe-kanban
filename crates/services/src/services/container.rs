@@ -422,6 +422,19 @@ pub trait ContainerService {
             .await?
             .ok_or(SqlxError::RowNotFound)?;
 
+        let cleanup_action = if let Some(script) = project.cleanup_script {
+            Some(Box::new(ExecutorAction::new(
+                ExecutorActionType::ScriptRequest(ScriptRequest {
+                    script,
+                    language: ScriptRequestLanguage::Bash,
+                    context: ScriptContext::CleanupScript,
+                }),
+                None,
+            )))
+        } else {
+            None
+        };
+
         // Choose whether to execute the setup_script or coding agent first
         let execution_process = if let Some(setup_script) = project.setup_script {
             let executor_action = ExecutorAction::new(
@@ -436,7 +449,7 @@ pub trait ContainerService {
                         prompt: task.to_prompt(),
                         profile: profile_label,
                     }),
-                    None,
+                    cleanup_action,
                 ))),
             );
 
@@ -452,7 +465,7 @@ pub trait ContainerService {
                     prompt: task.to_prompt(),
                     profile: profile_label,
                 }),
-                None,
+                cleanup_action,
             );
 
             self.start_execution(
@@ -549,7 +562,10 @@ pub trait ContainerService {
         let next_action = if let Some(next_action) = action.next_action() {
             next_action
         } else {
-            if matches!(action.typ(), ExecutorActionType::ScriptRequest(_)) {
+            if matches!(
+                ctx.execution_process.run_reason,
+                ExecutionProcessRunReason::SetupScript
+            ) {
                 return Err(ContainerError::Other(anyhow::anyhow!(
                     "No next action configured for SetupScript"
                 )));
