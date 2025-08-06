@@ -103,14 +103,14 @@ function AppContent() {
   const handleGitHubLoginComplete = async () => {
     try {
       // Refresh the config to get the latest GitHub authentication state
-      const latestConfig = await configApi.getConfig();
-      updateConfig(latestConfig);
+      const latestUserSystem = await configApi.getConfig();
+      updateConfig(latestUserSystem.config);
       setShowGitHubLogin(false);
 
       // If user skipped (no GitHub token), we need to manually set the acknowledgment
 
       const updatedConfig = {
-        ...latestConfig,
+        ...latestUserSystem.config,
         github_login_acknowledged: true,
       };
       updateConfig(updatedConfig);

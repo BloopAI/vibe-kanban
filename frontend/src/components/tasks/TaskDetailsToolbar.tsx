@@ -18,6 +18,7 @@ import {
 import CreatePRDialog from '@/components/tasks/Toolbar/CreatePRDialog.tsx';
 import CreateAttempt from '@/components/tasks/Toolbar/CreateAttempt.tsx';
 import CurrentAttempt from '@/components/tasks/Toolbar/CurrentAttempt.tsx';
+import { useSystemInfo } from '@/hooks/use-system-info';
 
 const availableExecutors = Object.values(CodingAgentExecutorType).map((id) => ({
   id,
@@ -43,6 +44,9 @@ function TaskDetailsToolbar() {
 
   const [branches, setBranches] = useState<GitBranch[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+
+  const { systemInfo } = useSystemInfo();
+
 
   const [selectedExecutor, setSelectedExecutor] = useState<string>(
     config?.executor || CodingAgentExecutorType.CLAUDE_CODE

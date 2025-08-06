@@ -4,44 +4,68 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
-import type { Config } from 'shared/types';
+import type { Config, Environment, AgentProfile, UserSystemInfo } from 'shared/types';
 import { configApi, githubAuthApi } from '../lib/api';
 
-interface ConfigContextType {
+interface UserSystemState {
+  config: Config | null;
+  environment: Environment | null;
+  profiles: AgentProfile[] | null;
+}
+
+interface UserSystemContextType {
+  // Full system state
+  system: UserSystemState;
+
+  // Hot path - config helpers (most frequently used)
   config: Config | null;
   updateConfig: (updates: Partial<Config>) => void;
-  updateAndSaveConfig: (updates: Partial<Config>) => void;
+  updateAndSaveConfig: (updates: Partial<Config>) => Promise<boolean>;
   saveConfig: () => Promise<boolean>;
+
+  // System data access
+  environment: Environment | null;
+  profiles: AgentProfile[] | null;
+  setEnvironment: (env: Environment | null) => void;
+  setProfiles: (profiles: AgentProfile[] | null) => void;
+
+  // State
   loading: boolean;
   githubTokenInvalid: boolean;
 }
 
-const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
+const UserSystemContext = createContext<UserSystemContextType | undefined>(undefined);
 
-interface ConfigProviderProps {
+interface UserSystemProviderProps {
   children: ReactNode;
 }
 
-export function ConfigProvider({ children }: ConfigProviderProps) {
+export function UserSystemProvider({ children }: UserSystemProviderProps) {
+  // Split state for performance - independent re-renders
   const [config, setConfig] = useState<Config | null>(null);
+  const [environment, setEnvironment] = useState<Environment | null>(null);
+  const [profiles, setProfiles] = useState<AgentProfile[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [githubTokenInvalid, setGithubTokenInvalid] = useState(false);
 
   useEffect(() => {
-    const loadConfig = async () => {
+    const loadUserSystem = async () => {
       try {
-        const config = await configApi.getConfig();
-        setConfig(config);
+        const userSystemInfo: UserSystemInfo = await configApi.getConfig();
+        setConfig(userSystemInfo.config);
+        setEnvironment(userSystemInfo.environment);
+        setProfiles(userSystemInfo.profiles);
       } catch (err) {
-        console.error('Error loading config:', err);
+        console.error('Error loading user system:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    loadConfig();
+    loadUserSystem();
   }, []);
 
   // Check GitHub token validity after config loads
@@ -74,7 +98,7 @@ export function ConfigProvider({ children }: ConfigProviderProps) {
   }, [config]);
 
   const updateAndSaveConfig = useCallback(
-    async (updates: Partial<Config>) => {
+    async (updates: Partial<Config>): Promise<boolean> => {
       setLoading(true);
       const newConfig: Config | null = config
         ? { ...config, ...updates }
@@ -94,26 +118,50 @@ export function ConfigProvider({ children }: ConfigProviderProps) {
     [config]
   );
 
+  // Memoize context value to prevent unnecessary re-renders
+  const value = useMemo<UserSystemContextType>(() => ({
+    system: { config, environment, profiles },
+    config,
+    environment,
+    profiles,
+    updateConfig,
+    saveConfig,
+    updateAndSaveConfig,
+    setEnvironment,
+    setProfiles,
+    loading,
+    githubTokenInvalid,
+  }), [
+    config,
+    environment,
+    profiles,
+    updateConfig,
+    saveConfig,
+    updateAndSaveConfig,
+    loading,
+    githubTokenInvalid,
+  ]);
+
   return (
-    <ConfigContext.Provider
-      value={{
-        config,
-        updateConfig,
-        saveConfig,
-        loading,
-        updateAndSaveConfig,
-        githubTokenInvalid,
-      }}
-    >
+    <UserSystemContext.Provider value={value}>
       {children}
-    </ConfigContext.Provider>
+    </UserSystemContext.Provider>
   );
 }
 
-export function useConfig() {
-  const context = useContext(ConfigContext);
+export function useUserSystem() {
+  const context = useContext(UserSystemContext);
   if (context === undefined) {
-    throw new Error('useConfig must be used within a ConfigProvider');
+    throw new Error('useUserSystem must be used within a UserSystemProvider');
   }
   return context;
 }
+
+// Backward compatibility hook - maintains existing API
+export function useConfig() {
+  const { config, updateConfig, saveConfig, updateAndSaveConfig, loading, githubTokenInvalid } = useUserSystem();
+  return { config, updateConfig, saveConfig, updateAndSaveConfig, loading, githubTokenInvalid };
+}
+
+// Backward compatibility export - allows gradual migration
+export const ConfigProvider = UserSystemProvider;

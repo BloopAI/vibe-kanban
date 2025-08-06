@@ -455,9 +455,9 @@ export const systemApi = {
 
 // Config APIs (backwards compatible)
 export const configApi = {
-  getConfig: async (): Promise<Config> => {
-    const { config } = await systemApi.getInfo();
-    return config;
+  getConfig: async (): Promise<UserSystemInfo> => {
+    const response = await makeRequest('/api/info');
+    return handleApiResponse<UserSystemInfo>(response);
   },
   saveConfig: async (config: Config): Promise<Config> => {
     const response = await makeRequest('/api/config', {

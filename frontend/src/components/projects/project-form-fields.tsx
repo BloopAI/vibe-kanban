@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Folder } from 'lucide-react';
-import { useSystemInfo } from '@/hooks/use-system-info';
+import { useUserSystem } from '@/components/config-provider';
 import {
   createScriptPlaceholderStrategy,
   ScriptPlaceholderContext,
@@ -52,19 +52,19 @@ export function ProjectFormFields({
   setCleanupScript,
   error,
 }: ProjectFormFieldsProps) {
-  const { systemInfo } = useSystemInfo();
+  const { system } = useUserSystem();
 
   // Create strategy-based placeholders
-  const placeholders = systemInfo
+  const placeholders = system.environment
     ? new ScriptPlaceholderContext(
-        createScriptPlaceholderStrategy(systemInfo.os_type)
-      ).getPlaceholders()
+      createScriptPlaceholderStrategy(system.environment.os_type)
+    ).getPlaceholders()
     : {
-        setup: '#!/bin/bash\nnpm install\n# Add any setup commands here...',
-        dev: '#!/bin/bash\nnpm run dev\n# Add dev server start command here...',
-        cleanup:
-          '#!/bin/bash\n# Add cleanup commands here...\n# This runs after coding agent execution',
-      };
+      setup: '#!/bin/bash\nnpm install\n# Add any setup commands here...',
+      dev: '#!/bin/bash\nnpm run dev\n# Add dev server start command here...',
+      cleanup:
+        '#!/bin/bash\n# Add cleanup commands here...\n# This runs after coding agent execution',
+    };
 
   return (
     <>
