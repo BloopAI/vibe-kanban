@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import type { ThemeMode } from 'shared/types';
+import { ThemeMode } from 'shared/types';
 
 type ThemeProviderProps = {
   children: React.ReactNode;
@@ -12,7 +12,7 @@ type ThemeProviderState = {
 };
 
 const initialState: ThemeProviderState = {
-  theme: 'SYSTEM',
+  theme: ThemeMode.SYSTEM,
   setTheme: () => null,
 };
 
@@ -20,7 +20,7 @@ const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 
 export function ThemeProvider({
   children,
-  initialTheme = 'SYSTEM',
+  initialTheme = ThemeMode.SYSTEM,
   ...props
 }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<ThemeMode>(initialTheme);
@@ -43,7 +43,7 @@ export function ThemeProvider({
       'red'
     );
 
-    if (theme === 'SYSTEM') {
+    if (theme === ThemeMode.SYSTEM) {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
         .matches
         ? 'dark'
@@ -53,7 +53,7 @@ export function ThemeProvider({
       return;
     }
 
-    root.classList.add(theme);
+    root.classList.add(theme.toLowerCase());
   }, [theme]);
 
   const setTheme = (newTheme: ThemeMode) => {

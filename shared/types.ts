@@ -48,7 +48,7 @@ export type Config = { config_schema: string, theme: ThemeMode, profile: string,
 
 export type NotificationConfig = { sound_enabled: boolean, push_enabled: boolean, sound_file: SoundFile, };
 
-export type ThemeMode = "LIGHT" | "DARK" | "SYSTEM" | "PURPLE" | "GREEN" | "BLUE" | "ORANGE" | "RED";
+export enum ThemeMode { LIGHT = "LIGHT", DARK = "DARK", SYSTEM = "SYSTEM", PURPLE = "PURPLE", GREEN = "GREEN", BLUE = "BLUE", ORANGE = "ORANGE", RED = "RED" }
 
 export type EditorConfig = { editor_type: EditorType, custom_command: string | null, };
 
