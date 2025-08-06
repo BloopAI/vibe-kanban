@@ -12,7 +12,6 @@ import { PrivacyOptInDialog } from '@/components/PrivacyOptInDialog';
 import { ConfigProvider, useConfig } from '@/components/config-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 import type { EditorType } from 'shared/types';
-import type { CodingAgentExecutorType } from 'shared/old_frozen_types';
 import { configApi } from '@/lib/api';
 import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
@@ -59,7 +58,7 @@ function AppContent() {
   };
 
   const handleOnboardingComplete = async (onboardingConfig: {
-    executor: CodingAgentExecutorType;
+    profile: string;
     editor: { editor_type: EditorType; custom_command: string | null };
   }) => {
     if (!config) return;
@@ -67,7 +66,7 @@ function AppContent() {
     const updatedConfig = {
       ...config,
       onboarding_acknowledged: true,
-      executor: onboardingConfig.executor,
+      profile: onboardingConfig.profile,
       editor: onboardingConfig.editor,
     };
 

@@ -20,26 +20,28 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sparkles, Code } from 'lucide-react';
 import { EditorType } from 'shared/types';
-import { CodingAgentExecutorType } from 'shared/old_frozen_types';
+import { useUserSystem } from '@/components/config-provider';
 
 import { toPrettyCase } from '@/utils/string';
 
 interface OnboardingDialogProps {
   open: boolean;
   onComplete: (config: {
-    executor: CodingAgentExecutorType;
+    profile: string;
     editor: { editor_type: EditorType; custom_command: string | null };
   }) => void;
 }
 
 export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
-  const [executor, setExecutor] = useState<CodingAgentExecutorType>(CodingAgentExecutorType.CLAUDE_CODE);
+  const [profile, setProfile] = useState<string>("claude-code")
   const [editorType, setEditorType] = useState<EditorType>(EditorType.VS_CODE);
   const [customCommand, setCustomCommand] = useState<string>('');
 
+  const { profiles } = useUserSystem();
+
   const handleComplete = () => {
     onComplete({
-      executor,
+      profile,
       editor: {
         editor_type: editorType,
         custom_command: editorType === EditorType.CUSTOM ? customCommand || null : null,
@@ -75,27 +77,22 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="executor">Default Executor</Label>
+                <Label htmlFor="profile">Default Profile</Label>
                 <Select
-                  value={executor}
-                  onValueChange={(value) => setExecutor(value as CodingAgentExecutorType)}
+                  value={profile}
+                  onValueChange={(value) => setProfile(value)}
                 >
-                  <SelectTrigger id="executor">
+                  <SelectTrigger id="profile">
                     <SelectValue placeholder="Select your preferred coding agent" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.values(CodingAgentExecutorType).map((executorType) => (
-                      <SelectItem key={executorType} value={executorType}>
-                        {toPrettyCase(executorType)}
+                    {profiles?.map((profile) => (
+                      <SelectItem key={profile.label} value={profile.label}>
+                        {profile.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-sm text-muted-foreground">
-                  {executor === CodingAgentExecutorType.CLAUDE_CODE && 'Claude Code from Anthropic'}
-                  {executor === CodingAgentExecutorType.AMP && 'From Sourcegraph'}
-                  {executor === CodingAgentExecutorType.GEMINI && 'Google Gemini'}
-                </p>
               </div>
             </CardContent>
           </Card>
