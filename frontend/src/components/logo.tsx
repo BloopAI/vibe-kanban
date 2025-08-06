@@ -7,9 +7,9 @@ export function Logo({ className = '' }: { className?: string }) {
 
   useEffect(() => {
     const updateTheme = () => {
-      if (theme === 'light') {
+      if (theme === 'LIGHT') {
         setIsDark(false);
-      } else if (theme === 'system') {
+      } else if (theme === 'SYSTEM') {
         // System theme
         setIsDark(window.matchMedia('(prefers-color-scheme: dark)').matches);
       } else {
@@ -21,7 +21,7 @@ export function Logo({ className = '' }: { className?: string }) {
     updateTheme();
 
     // Listen for system theme changes when using system theme
-    if (theme === 'system') {
+    if (theme === 'SYSTEM') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       mediaQuery.addEventListener('change', updateTheme);
       return () => mediaQuery.removeEventListener('change', updateTheme);

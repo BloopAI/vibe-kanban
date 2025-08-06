@@ -132,7 +132,7 @@ function AppContent() {
   }
 
   return (
-    <ThemeProvider initialTheme={config?.theme || 'system'}>
+    <ThemeProvider initialTheme={config?.theme || 'SYSTEM'}>
       <div className="h-screen flex flex-col bg-background">
         <GitHubLoginDialog
           open={showGitHubLogin}

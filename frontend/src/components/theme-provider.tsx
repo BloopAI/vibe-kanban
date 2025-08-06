@@ -12,7 +12,7 @@ type ThemeProviderState = {
 };
 
 const initialState: ThemeProviderState = {
-  theme: 'system',
+  theme: 'SYSTEM',
   setTheme: () => null,
 };
 
@@ -20,7 +20,7 @@ const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 
 export function ThemeProvider({
   children,
-  initialTheme = 'system',
+  initialTheme = 'SYSTEM',
   ...props
 }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<ThemeMode>(initialTheme);
@@ -43,7 +43,7 @@ export function ThemeProvider({
       'red'
     );
 
-    if (theme === 'system') {
+    if (theme === 'SYSTEM') {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
         .matches
         ? 'dark'

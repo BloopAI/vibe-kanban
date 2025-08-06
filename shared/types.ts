@@ -48,7 +48,7 @@ export type Config = { config_schema: string, theme: ThemeMode, profile: string,
 
 export type NotificationConfig = { sound_enabled: boolean, push_enabled: boolean, sound_file: SoundFile, };
 
-export type ThemeMode = "light" | "dark" | "system" | "purple" | "green" | "blue" | "orange" | "red";
+export type ThemeMode = "LIGHT" | "DARK" | "SYSTEM" | "PURPLE" | "GREEN" | "BLUE" | "ORANGE" | "RED";
 
 export type EditorConfig = { editor_type: EditorType, custom_command: string | null, };
 
@@ -72,7 +72,7 @@ export type DiffChunkType = "Equal" | "Insert" | "Delete";
 
 export type RepositoryInfo = { id: bigint, name: string, full_name: string, owner: string, description: string | null, clone_url: string, ssh_url: string, default_branch: string, private: boolean, };
 
-export enum BaseCodingAgent { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI = "GEMINI" }
+export enum BaseCodingAgent { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI = "GEMINI", CODEX = "CODEX", OPENCODE = "OPENCODE" }
 
 export type CommandBuilder = { 
 /**
