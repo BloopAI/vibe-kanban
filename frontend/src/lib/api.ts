@@ -1,6 +1,5 @@
 // Import all necessary types from shared types
 import {
-  CreateFollowUpAttempt,
   DeviceStartResponse,
 } from 'shared/old_frozen_types';
 
@@ -30,6 +29,7 @@ import {
   UpdateTaskTemplate,
   UserSystemInfo,
   WorktreeDiff,
+  CreateFollowUpAttempt
 } from 'shared/types';
 
 // Re-export types for convenience

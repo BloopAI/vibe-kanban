@@ -28,6 +28,7 @@ fn generate_types_content() -> String {
         utils::response::ApiResponse::<()>::decl(),
         server::routes::config::UserSystemInfo::decl(),
         server::routes::config::Environment::decl(),
+        server::routes::task_attempts::CreateFollowUpAttempt::decl(),
         services::services::config::Config::decl(),
         services::services::config::EnvironmentInfo::decl(),
         services::services::config::NotificationConfig::decl(),
