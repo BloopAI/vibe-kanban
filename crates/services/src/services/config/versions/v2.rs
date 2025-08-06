@@ -26,7 +26,6 @@ pub struct Config {
 
 impl Config {
     pub fn from_previous_version(raw_config: &str) -> Result<Self, Error> {
-        // let old_config = serde_json::from_str::<v1::Config>(raw_config)?;
         let old_config = match serde_json::from_str::<v1::Config>(raw_config) {
             Ok(cfg) => cfg,
             Err(e) => {
