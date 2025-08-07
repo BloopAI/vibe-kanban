@@ -10,7 +10,7 @@ use axum::{
     BoxError, Extension, Json, Router,
 };
 use db::models::{
-    execution_process::{ExecutionProcess, ExecutionProcessRunReason},
+    execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
     executor_session::ExecutorSession,
     task::{Task, TaskStatus},
     task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptError},
@@ -1156,6 +1156,25 @@ pub async fn get_task_attempt_children(
     }
 }
 
+pub async fn stop_task_attempt(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    // Get all execution processes
+    let execution_processes =
+        ExecutionProcess::find_by_task_attempt_id(&deployment.db().pool, task_attempt.id).await?;
+
+    for execution_process in execution_processes {
+        if execution_process.status == ExecutionProcessStatus::Running {
+            deployment
+                .container()
+                .stop_execution(&execution_process)
+                .await?;
+        }
+    }
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
 // pub fn task_attempts_list_router(_state: AppState) -> Router<AppState> {
 //     Router::new().route(
 //         "/projects/:project_id/tasks/:task_id/attempts",
@@ -1258,6 +1277,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/open-editor", post(open_task_attempt_in_editor))
         .route("/delete-file", post(delete_task_attempt_file))
         .route("/children", get(get_task_attempt_children))
+        .route("/stop", post(stop_task_attempt))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_task_attempt_middleware,
