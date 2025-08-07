@@ -5,7 +5,6 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use super::project::Project;
-use crate::models::task_attempt::CreateTaskAttempt;
 
 #[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
 #[sqlx(type_name = "task_status", rename_all = "lowercase")]
@@ -233,7 +232,6 @@ ORDER BY t.created_at DESC"#,
         status: TaskStatus,
         parent_task_attempt: Option<Uuid>,
     ) -> Result<Self, sqlx::Error> {
-        let status_value = status as TaskStatus;
         sqlx::query_as!(
             Task,
             r#"UPDATE tasks 
@@ -244,7 +242,7 @@ ORDER BY t.created_at DESC"#,
             project_id,
             title,
             description,
-            status_value,
+            status,
             parent_task_attempt
         )
         .fetch_one(pool)
@@ -256,11 +254,10 @@ ORDER BY t.created_at DESC"#,
         id: Uuid,
         status: TaskStatus,
     ) -> Result<(), sqlx::Error> {
-        let status_value = status as TaskStatus;
         sqlx::query!(
-            "UPDATE tasks SET status = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+            "UPDATE tasks SET status = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
             id,
-            status_value
+            status
         )
         .execute(pool)
         .await?;

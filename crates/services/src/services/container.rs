@@ -421,14 +421,6 @@ pub trait ContainerService {
             .await?
             .ok_or(SqlxError::RowNotFound)?;
 
-        // Update task status to InProgress when starting an attempt
-        Task::update_status(
-            &self.db().pool,
-            task.id,
-            TaskStatus::InProgress,
-        )
-        .await?;
-
         // Get parent project
         let project = task
             .parent_project(&self.db().pool)
@@ -502,6 +494,14 @@ pub trait ContainerService {
         executor_action: &ExecutorAction,
         run_reason: &ExecutionProcessRunReason,
     ) -> Result<ExecutionProcess, ContainerError> {
+        // Update task status to InProgress when starting an attempt
+        let task = task_attempt
+            .parent_task(&self.db().pool)
+            .await?
+            .ok_or(SqlxError::RowNotFound)?;
+        if task.status != TaskStatus::InProgress {
+            Task::update_status(&self.db().pool, task.id, TaskStatus::InProgress).await?;
+        }
         // Create new execution process record
         let create_execution_process = CreateExecutionProcess {
             task_attempt_id: task_attempt.id,

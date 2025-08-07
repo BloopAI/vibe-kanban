@@ -344,32 +344,27 @@ impl LocalContainerService {
                             let notify_cfg = config.read().await.notifications.clone();
                             NotificationService::notify_execution_halted(notify_cfg, &ctx).await;
                         }
+                        // After the last action is completed, update task status to InReview
+                        if ctx
+                            .execution_process
+                            .executor_action()
+                            .unwrap()
+                            .next_action()
+                            .is_none()
+                        {
+                            if let Err(e) =
+                                Task::update_status(&db.pool, ctx.task.id, TaskStatus::InReview)
+                                    .await
+                            {
+                                tracing::error!("Failed to update task status to InReview: {e}");
+                            }
+                        }
 
                         // Fire event when CodingAgent execution has finished
                         if matches!(
                             &ctx.execution_process.run_reason,
                             ExecutionProcessRunReason::CodingAgent
                         ) {
-                            // Update task status to InReview when the coding agent finishes
-                            if let Err(e) = Task::update_status(
-                                &db.pool,
-                                ctx.task.id,
-                                TaskStatus::InReview,
-                            )
-                            .await
-                            {
-                                tracing::error!(
-                                    "Failed to update task status to InReview for task {}: {}",
-                                    ctx.task.id,
-                                    e
-                                );
-                            } else {
-                                tracing::info!(
-                                    "Updated task {} status to InReview after execution finished",
-                                    ctx.task.id
-                                );
-                            }
-
                             if let Some(analytics) = &analytics {
                                 analytics.analytics_service.track_event(&analytics.user_id, "task_attempt_finished", Some(json!({
                                     "task_id": ctx.task.id.to_string(),
@@ -630,23 +625,10 @@ impl ContainerService for LocalContainerService {
                 ctx.execution_process.run_reason,
                 ExecutionProcessRunReason::CodingAgent
             ) {
-                if let Err(e) = Task::update_status(
-                    &self.db.pool,
-                    ctx.task.id,
-                    TaskStatus::InReview,
-                )
-                .await
+                if let Err(e) =
+                    Task::update_status(&self.db.pool, ctx.task.id, TaskStatus::InReview).await
                 {
-                    tracing::error!(
-                        "Failed to update task status to InReview for task {}: {}",
-                        ctx.task.id,
-                        e
-                    );
-                } else {
-                    tracing::info!(
-                        "Updated task {} status to InReview after execution was stopped",
-                        ctx.task.id
-                    );
+                    tracing::error!("Failed to update task status to InReview: {e}");
                 }
             }
         }
