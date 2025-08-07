@@ -1,5 +1,9 @@
-use std::future::Future;
+use std::{future::Future, path::PathBuf};
 
+use db::models::{
+    project::Project,
+    task::{CreateTask, Task, TaskStatus},
+};
 use rmcp::{
     handler::server::tool::{Parameters, ToolRouter},
     model::{
@@ -11,11 +15,6 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use sqlx::SqlitePool;
 use uuid::Uuid;
-
-use crate::models::{
-    project::Project,
-    task::{CreateTask, Task, TaskStatus},
-};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CreateTaskRequest {
@@ -41,13 +40,13 @@ pub struct ProjectSummary {
     #[schemars(description = "The name of the project")]
     pub name: String,
     #[schemars(description = "The path to the git repository")]
-    pub git_repo_path: String,
+    pub git_repo_path: PathBuf,
     #[schemars(description = "Optional setup script for the project")]
     pub setup_script: Option<String>,
+    #[schemars(description = "Optional cleanup script for the project")]
+    pub cleanup_script: Option<String>,
     #[schemars(description = "Optional development script for the project")]
     pub dev_script: Option<String>,
-    #[schemars(description = "Current git branch (if available)")]
-    pub current_branch: Option<String>,
     #[schemars(description = "When the project was created")]
     pub created_at: String,
     #[schemars(description = "When the project was last updated")]
@@ -307,18 +306,15 @@ impl TaskServer {
                 let count = projects.len();
                 let project_summaries: Vec<ProjectSummary> = projects
                     .into_iter()
-                    .map(|project| {
-                        let project_with_branch = project.with_branch_info();
-                        ProjectSummary {
-                            id: project_with_branch.id.to_string(),
-                            name: project_with_branch.name,
-                            git_repo_path: project_with_branch.git_repo_path,
-                            setup_script: project_with_branch.setup_script,
-                            dev_script: project_with_branch.dev_script,
-                            current_branch: project_with_branch.current_branch,
-                            created_at: project_with_branch.created_at.to_rfc3339(),
-                            updated_at: project_with_branch.updated_at.to_rfc3339(),
-                        }
+                    .map(|project| ProjectSummary {
+                        id: project.id.to_string(),
+                        name: project.name,
+                        git_repo_path: project.git_repo_path,
+                        setup_script: project.setup_script,
+                        cleanup_script: project.cleanup_script,
+                        dev_script: project.dev_script,
+                        created_at: project.created_at.to_rfc3339(),
+                        updated_at: project.updated_at.to_rfc3339(),
                     })
                     .collect();
 
@@ -662,7 +658,7 @@ impl TaskServer {
         match Task::exists(&self.pool, task_uuid, project_uuid).await {
             Ok(true) => {
                 // Delete the task
-                match Task::delete(&self.pool, task_uuid, project_uuid).await {
+                match Task::delete(&self.pool, task_uuid).await {
                     Ok(rows_affected) => {
                         if rows_affected > 0 {
                             let response = DeleteTaskResponse {

@@ -1,9 +1,10 @@
 use std::str::FromStr;
 
 use rmcp::{transport::stdio, ServiceExt};
+use server::mcp::task_server::TaskServer;
 use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
 use tracing_subscriber::{prelude::*, EnvFilter};
-use vibe_kanban::{mcp::task_server::TaskServer, sentry_layer, utils::asset_dir};
+use utils::{assets::asset_dir, sentry::sentry_layer};
 
 fn main() -> anyhow::Result<()> {
     let environment = if cfg!(debug_assertions) {

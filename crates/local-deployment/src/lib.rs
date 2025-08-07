@@ -11,7 +11,6 @@ use services::services::{
     events::EventService,
     filesystem::FilesystemService,
     git::GitService,
-    process_service::ProcessService,
     sentry::SentryService,
 };
 use tokio::sync::RwLock;
@@ -36,7 +35,6 @@ pub struct LocalDeployment {
     msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
     container: LocalContainerService,
     git: GitService,
-    process: ProcessService,
     auth: AuthService,
     filesystem: FilesystemService,
     events: EventService,
@@ -55,7 +53,6 @@ impl Deployment for LocalDeployment {
         let analytics = AnalyticsConfig::new().map(AnalyticsService::new);
         let git = GitService::new();
         let msg_stores = Arc::new(RwLock::new(HashMap::new()));
-        let process = ProcessService::new();
         let auth = AuthService::new();
         let filesystem = FilesystemService::new();
 
@@ -99,7 +96,6 @@ impl Deployment for LocalDeployment {
             msg_stores,
             container,
             git,
-            process,
             auth,
             filesystem,
             events,

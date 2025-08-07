@@ -367,7 +367,7 @@ impl ExecutionProcess {
         match &self.executor_action.0 {
             ExecutorActionField::ExecutorAction(action) => Ok(action),
             ExecutorActionField::Other(_) => Err(anyhow::anyhow!(
-                "Executor action is a valid ExecutorAction JSON object"
+                "Executor action is not a valid ExecutorAction JSON object"
             )),
         }
     }

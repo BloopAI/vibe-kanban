@@ -10,12 +10,12 @@ services = { path = "../services" }
 executors = { path = "../executors" }
 async-trait = "0.1"
 thiserror = { workspace = true } 
-anyhow.workspace = true
-tokio.workspace = true
+anyhow = { workspace = true }
+tokio = { workspace = true }
 sqlx = "0.8.6"
-serde_json.workspace = true
+serde_json = { workspace = true }
 tracing = { workspace = true }
 git2 = "^0.18.1"
 futures = "0.3.31"
-axum.workspace = true
+axum = { workspace = true }
 

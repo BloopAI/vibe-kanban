@@ -1,13 +1,12 @@
 use std::{str::FromStr, sync::Arc};
 
-use anyhow::{Error as AnyhowError, anyhow};
+use anyhow::Error as AnyhowError;
 use db::{
     DBService,
     models::{execution_process::ExecutionProcess, task::Task, task_attempt::TaskAttempt},
 };
-use json_patch::{Patch, PatchOperation};
 use serde::Serialize;
-use serde_json::{Value, json};
+use serde_json::json;
 use sqlx::{Error as SqlxError, sqlite::SqliteOperation};
 use strum_macros::{Display, EnumString};
 use thiserror::Error;

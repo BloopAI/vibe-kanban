@@ -9,6 +9,5 @@ pub mod git;
 pub mod github_service;
 pub mod notification;
 pub mod pr_monitor;
-pub mod process_service;
 pub mod sentry;
 pub mod worktree_manager;
