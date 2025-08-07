@@ -504,7 +504,9 @@ pub trait ContainerService {
             .parent_task(&self.db().pool)
             .await?
             .ok_or(SqlxError::RowNotFound)?;
-        if task.status != TaskStatus::InProgress {
+        if task.status != TaskStatus::InProgress
+            && run_reason != &ExecutionProcessRunReason::DevServer
+        {
             Task::update_status(&self.db().pool, task.id, TaskStatus::InProgress).await?;
         }
         // Create new execution process record

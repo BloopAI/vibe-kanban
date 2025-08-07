@@ -95,13 +95,19 @@ impl LocalContainerService {
         map.remove(id);
     }
 
-    /// A context is finalized when there are no more actions to execute.
+    /// A context is finalized when
+    /// - The next action is None (no follow-up actions)
+    /// - The run reason is not DevServer
     fn should_finalize(ctx: &ExecutionContext) -> bool {
         ctx.execution_process
             .executor_action()
             .unwrap()
             .next_action
             .is_none()
+            && (!matches!(
+                ctx.execution_process.run_reason,
+                ExecutionProcessRunReason::DevServer
+            ))
     }
 
     /// Defensively check for externally deleted worktrees and mark them as deleted in the database
@@ -302,20 +308,24 @@ impl LocalContainerService {
                         Err(_) => (None, ExecutionProcessStatus::Failed),
                     };
 
-                    if let Err(e) = ExecutionProcess::update_completion(
-                        &db.pool,
-                        exec_id,
-                        status.clone(),
-                        exit_code,
-                    )
-                    .await
-                    {
-                        tracing::error!("Failed to update execution process completion: {}", e);
+                    if !ExecutionProcess::was_killed(&db.pool, exec_id).await {
+                        if let Err(e) = ExecutionProcess::update_completion(
+                            &db.pool,
+                            exec_id,
+                            status.clone(),
+                            exit_code,
+                        )
+                        .await
+                        {
+                            tracing::error!("Failed to update execution process completion: {}", e);
+                        }
                     }
 
                     if let Ok(ctx) = ExecutionProcess::load_context(&db.pool, exec_id).await {
-                        if matches!(status, ExecutionProcessStatus::Completed)
-                            && exit_code == Some(0)
+                        if matches!(
+                            ctx.execution_process.status,
+                            ExecutionProcessStatus::Completed
+                        ) && exit_code == Some(0)
                         {
                             if let Err(e) = container.try_commit_changes(&ctx).await {
                                 tracing::error!("Failed to commit changes after execution: {}", e);
@@ -572,6 +582,13 @@ impl ContainerService for LocalContainerService {
             .ok_or_else(|| {
                 ContainerError::Other(anyhow!("Child process not found for execution"))
             })?;
+        ExecutionProcess::update_completion(
+            &self.db.pool,
+            execution_process.id,
+            ExecutionProcessStatus::Killed,
+            None,
+        )
+        .await?;
 
         // Kill the child process and remove from the store
         {
@@ -592,19 +609,11 @@ impl ContainerService for LocalContainerService {
             msg.push_finished();
         }
 
-        ExecutionProcess::update_completion(
-            &self.db.pool,
-            execution_process.id,
-            ExecutionProcessStatus::Killed,
-            None,
-        )
-        .await?;
-
         // Update task status to InReview when execution is stopped
         if let Ok(ctx) = ExecutionProcess::load_context(&self.db.pool, execution_process.id).await {
-            if matches!(
+            if !matches!(
                 ctx.execution_process.run_reason,
-                ExecutionProcessRunReason::CodingAgent
+                ExecutionProcessRunReason::DevServer
             ) {
                 if let Err(e) =
                     Task::update_status(&self.db.pool, ctx.task.id, TaskStatus::InReview).await
