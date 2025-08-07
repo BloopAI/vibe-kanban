@@ -70,6 +70,7 @@ backend/bindings
 build-npm-package-codesign.sh
 
 npx-cli/dist
+npx-cli/vibe-kanban-*
 backend/db.sqlite
 
 # Development ports file

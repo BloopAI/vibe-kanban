@@ -22,9 +22,13 @@ pub type GitHubConfig = versions::v2::GitHubConfig;
 
 /// Will always return config, trying old schemas or eventually returning default
 pub async fn load_config_from_file(config_path: &PathBuf) -> Config {
-    let raw_config = std::fs::read_to_string(config_path).unwrap();
-    let config = Config::from(raw_config);
-    config
+    match std::fs::read_to_string(config_path) {
+        Ok(raw_config) => Config::from(raw_config),
+        Err(_) => {
+            tracing::info!("No config file found, creating one");
+            Config::default()
+        }
+    }
 }
 
 /// Saves the config to the given path

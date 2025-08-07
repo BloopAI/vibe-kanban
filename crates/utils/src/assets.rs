@@ -7,7 +7,7 @@ pub fn asset_dir() -> std::path::PathBuf {
     let path = if cfg!(debug_assertions) {
         std::path::PathBuf::from(PROJECT_ROOT).join("../../dev_assets")
     } else {
-        ProjectDirs::from("ai", "bloop", env!("CARGO_PKG_NAME"))
+        ProjectDirs::from("ai", "bloop", "vibe-kanban")
             .expect("OS didn't give us a home directory")
             .data_dir()
             .to_path_buf()
