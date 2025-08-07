@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf, process::Stdio, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, process::Stdio, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
@@ -114,6 +114,7 @@ impl StandardCodingAgentExecutor for Amp {
             // 1 amp message id = multiple patch entry ids
             let mut seen_amp_message_ids: HashMap<usize, Vec<usize>> = HashMap::new();
             while let Some(Ok(m)) = s.next().await {
+                tracing::info!("Received message: {:?}", m);
                 let chunk = match m {
                     LogMsg::Stdout(x) => x,
                     LogMsg::JsonPatch(_) | LogMsg::SessionId(_) | LogMsg::Stderr(_) => {
@@ -181,6 +182,8 @@ impl StandardCodingAgentExecutor for Amp {
                                                 };
 
                                                 raw_logs_msg_store.push_patch(patch);
+                                                // TODO: debug this race condition
+                                                tokio::time::sleep(Duration::from_millis(1)).await;
                                             }
                                         }
                                     }
@@ -206,6 +209,8 @@ impl StandardCodingAgentExecutor for Amp {
                                 let new_id = entry_index_provider.next();
                                 let patch = ConversationPatch::add_normalized_entry(new_id, entry);
                                 raw_logs_msg_store.push_patch(patch);
+                                // TODO: debug this race condition
+                                tokio::time::sleep(Duration::from_millis(1)).await;
                             }
                         }
                     };
