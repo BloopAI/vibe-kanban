@@ -12,6 +12,7 @@ function LogsTab() {
   const { attemptData } = useContext(TaskAttemptDataContext);
   const [autoScroll, setAutoScroll] = useState(true);
   const listRef = useRef<VariableSizeList>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
   const [containerRef, bounds] = useMeasure();
 
   const { entries } = useProcessesLogs(
@@ -41,7 +42,7 @@ function LogsTab() {
   // Handle scroll events to detect user scrolling
   const onScroll = useCallback(({ scrollOffset, scrollUpdateWasRequested }: any) => {
     if (!scrollUpdateWasRequested && bounds.height) {
-      const atBottom = bounds.height - (scrollOffset + bounds.height) < 50;
+      const atBottom = innerRef.current ? innerRef.current.offsetHeight - scrollOffset - bounds.height < 20 : false;
       setAutoScroll(atBottom);
     }
   }, [bounds.height]);
@@ -62,6 +63,7 @@ function LogsTab() {
       {bounds.height && bounds.width &&
         <VariableSizeList
           ref={listRef}
+          innerRef={innerRef}
           height={bounds.height}
           width={bounds.width}
           itemCount={entries.length}
