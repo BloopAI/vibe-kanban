@@ -32,7 +32,7 @@ import {
   UpdateTaskTemplate,
   UserSystemInfo,
   WorktreeDiff,
-  GitHubServiceError
+  GitHubServiceError,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -98,7 +98,7 @@ const handleApiResponseAsResult = async <T, E>(
     return {
       success: false,
       error: undefined,
-      message: errorMessage
+      message: errorMessage,
     };
   }
 
@@ -108,7 +108,7 @@ const handleApiResponseAsResult = async <T, E>(
     return {
       success: false,
       error: result.error_data || undefined,
-      message: result.message || undefined
+      message: result.message || undefined,
     };
   }
 
@@ -168,7 +168,11 @@ const handleApiResponse = async <T, E = T>(response: Response): Promise<T> => {
       endpoint: response.url,
       timestamp: new Date().toISOString(),
     });
-    throw new ApiError<E>(result.message || 'API request failed', response.status, response);
+    throw new ApiError<E>(
+      result.message || 'API request failed',
+      response.status,
+      response
+    );
   }
 
   return result.data as T;
@@ -185,8 +189,6 @@ export const projectsApi = {
     const response = await makeRequest(`/api/projects/${id}`);
     return handleApiResponse<Project>(response);
   },
-
-
 
   create: async (data: CreateProject): Promise<Project> => {
     const response = await makeRequest('/api/projects', {
@@ -224,10 +226,7 @@ export const projectsApi = {
     return handleApiResponse<GitBranch[]>(response);
   },
 
-  searchFiles: async (
-    id: string,
-    query: string
-  ): Promise<SearchResult[]> => {
+  searchFiles: async (id: string, query: string): Promise<SearchResult[]> => {
     const response = await makeRequest(
       `/api/projects/${id}/search?q=${encodeURIComponent(query)}`
     );
@@ -255,23 +254,15 @@ export const tasksApi = {
     return handleApiResponse<Task>(response);
   },
 
-  createAndStart: async (
-    data: CreateTask
-  ): Promise<TaskWithAttemptStatus> => {
-    const response = await makeRequest(
-      `/api/tasks/create-and-start`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
-    );
+  createAndStart: async (data: CreateTask): Promise<TaskWithAttemptStatus> => {
+    const response = await makeRequest(`/api/tasks/create-and-start`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
     return handleApiResponse<TaskWithAttemptStatus>(response);
   },
 
-  update: async (
-    taskId: string,
-    data: UpdateTask
-  ): Promise<Task> => {
+  update: async (taskId: string, data: UpdateTask): Promise<Task> => {
     const response = await makeRequest(`/api/tasks/${taskId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -286,9 +277,7 @@ export const tasksApi = {
     return handleApiResponse<void>(response);
   },
 
-  getChildren: async (
-    attemptId: string
-  ): Promise<Task[]> => {
+  getChildren: async (attemptId: string): Promise<Task[]> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/children`
     );
@@ -299,43 +288,27 @@ export const tasksApi = {
 // Task Attempts APIs
 export const attemptsApi = {
   getAll: async (taskId: string): Promise<TaskAttempt[]> => {
-    const response = await makeRequest(
-      `/api/task-attempts?task_id=${taskId}`
-    );
+    const response = await makeRequest(`/api/task-attempts?task_id=${taskId}`);
     return handleApiResponse<TaskAttempt[]>(response);
   },
 
-  create: async (
-    data: CreateTaskAttemptBody
-  ): Promise<TaskAttempt> => {
-    const response = await makeRequest(
-      `/api/task-attempts`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
-    );
+  create: async (data: CreateTaskAttemptBody): Promise<TaskAttempt> => {
+    const response = await makeRequest(`/api/task-attempts`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
     return handleApiResponse<TaskAttempt>(response);
   },
 
-  getState: async (
-    attemptId: string
-  ): Promise<TaskAttemptState> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}`
-    );
+  getState: async (attemptId: string): Promise<TaskAttemptState> => {
+    const response = await makeRequest(`/api/task-attempts/${attemptId}`);
     return handleApiResponse<TaskAttemptState>(response);
   },
 
-  stop: async (
-    attemptId: string
-  ): Promise<void> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/stop`,
-      {
-        method: 'POST',
-      }
-    );
+  stop: async (attemptId: string): Promise<void> => {
+    const response = await makeRequest(`/api/task-attempts/${attemptId}/stop`, {
+      method: 'POST',
+    });
     return handleApiResponse<void>(response);
   },
 
@@ -353,12 +326,8 @@ export const attemptsApi = {
     return handleApiResponse<void>(response);
   },
 
-  getDiff: async (
-    attemptId: string
-  ): Promise<WorktreeDiff> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/diff`
-    );
+  getDiff: async (attemptId: string): Promise<WorktreeDiff> => {
+    const response = await makeRequest(`/api/task-attempts/${attemptId}/diff`);
     return handleApiResponse<WorktreeDiff>(response);
   },
 
@@ -391,18 +360,14 @@ export const attemptsApi = {
     return handleApiResponse<void>(response);
   },
 
-  getBranchStatus: async (
-    attemptId: string
-  ): Promise<BranchStatus> => {
+  getBranchStatus: async (attemptId: string): Promise<BranchStatus> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/branch-status`
     );
     return handleApiResponse<BranchStatus>(response);
   },
 
-  merge: async (
-    attemptId: string
-  ): Promise<void> => {
+  merge: async (attemptId: string): Promise<void> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/merge`,
       {
@@ -430,19 +395,14 @@ export const attemptsApi = {
     attemptId: string,
     data: CreateGitHubPrRequest
   ): Promise<Result<string, GitHubServiceError>> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/pr`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
-    );
+    const response = await makeRequest(`/api/task-attempts/${attemptId}/pr`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
     return handleApiResponseAsResult<string, GitHubServiceError>(response);
   },
 
-  startDevServer: async (
-    attemptId: string
-  ): Promise<void> => {
+  startDevServer: async (attemptId: string): Promise<void> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/start-dev-server`,
       {
@@ -483,14 +443,15 @@ export const executionProcessesApi = {
     );
     return handleApiResponse<void>(response);
   },
-
 };
 
 // File System APIs
 export const fileSystemApi = {
   list: async (path?: string): Promise<DirectoryListResponse> => {
     const queryParam = path ? `?path=${encodeURIComponent(path)}` : '';
-    const response = await makeRequest(`/api/filesystem/directory${queryParam}`);
+    const response = await makeRequest(
+      `/api/filesystem/directory${queryParam}`
+    );
     return handleApiResponse<DirectoryListResponse>(response);
   },
 };
@@ -571,7 +532,9 @@ export const templatesApi = {
   },
 
   listByProject: async (projectId: string): Promise<TaskTemplate[]> => {
-    const response = await makeRequest(`/api/templates?project_id=${projectId}`);
+    const response = await makeRequest(
+      `/api/templates?project_id=${projectId}`
+    );
     return handleApiResponse<TaskTemplate[]>(response);
   },
 
@@ -611,13 +574,13 @@ export const templatesApi = {
 export const mcpServersApi = {
   load: async (executor: string): Promise<any> => {
     const response = await makeRequest(
-      `/api/mcp-servers?executor=${encodeURIComponent(executor)}`
+      `/api/mcp-config?base_coding_agent=${encodeURIComponent(executor)}`
     );
     return handleApiResponse<any>(response);
   },
   save: async (executor: string, serversConfig: any): Promise<void> => {
     const response = await makeRequest(
-      `/api/mcp-servers?executor=${encodeURIComponent(executor)}`,
+      `/api/mcp-config?base_coding_agent=${encodeURIComponent(executor)}`,
       {
         method: 'POST',
         body: JSON.stringify(serversConfig),

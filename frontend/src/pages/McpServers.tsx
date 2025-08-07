@@ -18,9 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
-import {
-  MCP_SUPPORTED_EXECUTORS,
-} from 'shared/old_frozen_types';
+import { BaseCodingAgent, AgentProfile } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
 import { mcpServersApi } from '../lib/api';
 
@@ -29,54 +27,58 @@ export function McpServers() {
   const [mcpServers, setMcpServers] = useState('{}');
   const [mcpError, setMcpError] = useState<string | null>(null);
   const [mcpLoading, setMcpLoading] = useState(true);
-  const [selectedMcpExecutor, setSelectedMcpExecutor] = useState<string>('');
+  const [selectedProfile, setSelectedProfile] = useState<AgentProfile | null>(
+    null
+  );
   const [mcpApplying, setMcpApplying] = useState(false);
   const [mcpConfigPath, setMcpConfigPath] = useState<string>('');
   const [success, setSuccess] = useState(false);
 
-  // Initialize selected MCP executor when config loads
+  // Initialize selected profile when config loads
   useEffect(() => {
-    if (config?.profile && !selectedMcpExecutor) {
-      // If current executor supports MCP, use it; otherwise use first available MCP executor
-      if (MCP_SUPPORTED_EXECUTORS.includes(config.profile)) {
-        setSelectedMcpExecutor(config.profile);
-      } else {
-        setSelectedMcpExecutor(MCP_SUPPORTED_EXECUTORS[0] || 'claude');
+    if (config?.profile && profiles && !selectedProfile) {
+      // Find the current profile
+      const currentProfile = profiles.find((p) => p.label === config.profile);
+      if (currentProfile) {
+        setSelectedProfile(currentProfile);
+      } else if (profiles.length > 0) {
+        // Default to first profile if current profile not found
+        setSelectedProfile(profiles[0]);
       }
     }
-  }, [config?.profile, selectedMcpExecutor]);
+  }, [config?.profile, profiles, selectedProfile]);
 
-  // Load existing MCP configuration when selected executor changes
+  // Load existing MCP configuration when selected profile changes
   useEffect(() => {
-    const loadMcpServersForExecutor = async (executorType: string) => {
+    const loadMcpServersForProfile = async (profile: AgentProfile) => {
       // Reset state when loading
       setMcpLoading(true);
       setMcpError(null);
 
-      // Set default empty config based on executor type
+      // Set default empty config based on agent type
       const defaultConfig =
-        executorType === 'amp'
+        profile.agent === BaseCodingAgent.AMP
           ? '{\n  "amp.mcpServers": {\n  }\n}'
-          : executorType === 'sst-opencode'
+          : profile.agent === BaseCodingAgent.OPENCODE
             ? '{\n  "mcp": {\n  }, "$schema": "https://opencode.ai/config.json"\n}'
             : '{\n  "mcpServers": {\n  }\n}';
       setMcpServers(defaultConfig);
       setMcpConfigPath('');
 
       try {
-        // Load MCP servers for the selected executor
-        const result = await mcpServersApi.load(executorType);
+        // Load MCP servers for the selected profile's base agent
+        const result = await mcpServersApi.load(profile.agent);
         // Handle new response format with servers and config_path
         const data = result || {};
         const servers = data.servers || {};
         const configPath = data.config_path || '';
 
-        // Create the full configuration structure based on executor type
+        // Create the full configuration structure based on agent type
         let fullConfig;
-        if (executorType === 'amp') {
+        if (profile.agent === BaseCodingAgent.AMP) {
           // For AMP, use the amp.mcpServers structure
           fullConfig = { 'amp.mcpServers': servers };
-        } else if (executorType === 'sst-opencode') {
+        } else if (profile.agent === BaseCodingAgent.OPENCODE) {
           fullConfig = {
             mcp: servers,
             $schema: 'https://opencode.ai/config.json',
@@ -100,22 +102,22 @@ export function McpServers() {
       }
     };
 
-    // Load MCP servers for the selected MCP executor
-    if (selectedMcpExecutor) {
-      loadMcpServersForExecutor(selectedMcpExecutor);
+    // Load MCP servers for the selected profile
+    if (selectedProfile) {
+      loadMcpServersForProfile(selectedProfile);
     }
-  }, [selectedMcpExecutor]);
+  }, [selectedProfile]);
 
   const handleMcpServersChange = (value: string) => {
     setMcpServers(value);
     setMcpError(null);
 
     // Validate JSON on change
-    if (value.trim()) {
+    if (value.trim() && selectedProfile) {
       try {
         const config = JSON.parse(value);
-        // Validate that the config has the expected structure based on executor type
-        if (selectedMcpExecutor === 'amp') {
+        // Validate that the config has the expected structure based on agent type
+        if (selectedProfile.agent === BaseCodingAgent.AMP) {
           if (
             !config['amp.mcpServers'] ||
             typeof config['amp.mcpServers'] !== 'object'
@@ -124,7 +126,7 @@ export function McpServers() {
               'AMP configuration must contain an "amp.mcpServers" object'
             );
           }
-        } else if (selectedMcpExecutor === 'sst-opencode') {
+        } else if (selectedProfile.agent === BaseCodingAgent.OPENCODE) {
           if (!config.mcp || typeof config.mcp !== 'object') {
             setMcpError('Configuration must contain an "mcp" object');
           }
@@ -140,7 +142,7 @@ export function McpServers() {
   };
 
   const handleConfigureVibeKanban = async () => {
-    if (!selectedMcpExecutor) return;
+    if (!selectedProfile) return;
 
     try {
       // Parse existing configuration
@@ -148,20 +150,20 @@ export function McpServers() {
 
       // Always use production MCP installation instructions
       const vibeKanbanConfig =
-        selectedMcpExecutor === 'sst-opencode'
+        selectedProfile.agent === BaseCodingAgent.OPENCODE
           ? {
-            type: 'local',
-            command: ['npx', '-y', 'vibe-kanban', '--mcp'],
-            enabled: true,
-          }
+              type: 'local',
+              command: ['npx', '-y', 'vibe-kanban', '--mcp'],
+              enabled: true,
+            }
           : {
-            command: 'npx',
-            args: ['-y', 'vibe-kanban', '--mcp'],
-          };
+              command: 'npx',
+              args: ['-y', 'vibe-kanban', '--mcp'],
+            };
 
       // Add vibe_kanban to the existing configuration
       let updatedConfig;
-      if (selectedMcpExecutor === 'amp') {
+      if (selectedProfile.agent === BaseCodingAgent.AMP) {
         updatedConfig = {
           ...existingConfig,
           'amp.mcpServers': {
@@ -169,7 +171,7 @@ export function McpServers() {
             vibe_kanban: vibeKanbanConfig,
           },
         };
-      } else if (selectedMcpExecutor === 'sst-opencode') {
+      } else if (selectedProfile.agent === BaseCodingAgent.OPENCODE) {
         updatedConfig = {
           ...existingConfig,
           mcp: {
@@ -198,7 +200,7 @@ export function McpServers() {
   };
 
   const handleApplyMcpServers = async () => {
-    if (!selectedMcpExecutor) return;
+    if (!selectedProfile) return;
 
     setMcpApplying(true);
     setMcpError(null);
@@ -209,9 +211,9 @@ export function McpServers() {
         try {
           const fullConfig = JSON.parse(mcpServers);
 
-          // Validate that the config has the expected structure based on executor type
+          // Validate that the config has the expected structure based on agent type
           let mcpServersConfig;
-          if (selectedMcpExecutor === 'amp') {
+          if (selectedProfile.agent === BaseCodingAgent.AMP) {
             if (
               !fullConfig['amp.mcpServers'] ||
               typeof fullConfig['amp.mcpServers'] !== 'object'
@@ -222,7 +224,7 @@ export function McpServers() {
             }
             // Extract just the inner servers object for the API - backend will handle nesting
             mcpServersConfig = fullConfig['amp.mcpServers'];
-          } else if (selectedMcpExecutor === 'sst-opencode') {
+          } else if (selectedProfile.agent === BaseCodingAgent.OPENCODE) {
             if (!fullConfig.mcp || typeof fullConfig.mcp !== 'object') {
               throw new Error('Configuration must contain an "mcp" object');
             }
@@ -241,7 +243,7 @@ export function McpServers() {
             mcpServersConfig = fullConfig.mcpServers;
           }
 
-          await mcpServersApi.save(selectedMcpExecutor, mcpServersConfig);
+          await mcpServersApi.save(selectedProfile.agent, mcpServersConfig);
 
           // Show success feedback
           setSuccess(true);
@@ -282,7 +284,7 @@ export function McpServers() {
         <div>
           <h1 className="text-3xl font-bold">MCP Servers</h1>
           <p className="text-muted-foreground">
-            Configure MCP servers to extend executor capabilities.
+            Configure MCP servers to extend coding agent capabilities.
           </p>
         </div>
 
@@ -306,16 +308,19 @@ export function McpServers() {
           <CardHeader>
             <CardTitle>Configuration</CardTitle>
             <CardDescription>
-              Configure MCP servers for different executors to extend their
+              Configure MCP servers for different coding agents to extend their
               capabilities with custom tools and resources.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="mcp-executor">Executor</Label>
+              <Label htmlFor="mcp-executor">Profile</Label>
               <Select
-                value={selectedMcpExecutor}
-                onValueChange={(value: string) => setSelectedMcpExecutor(value)}
+                value={selectedProfile?.label || ''}
+                onValueChange={(value: string) => {
+                  const profile = profiles?.find((p) => p.label === value);
+                  if (profile) setSelectedProfile(profile);
+                }}
               >
                 <SelectTrigger id="mcp-executor">
                   <SelectValue placeholder="Select executor" />
@@ -329,7 +334,7 @@ export function McpServers() {
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">
-                Choose which executor to configure MCP servers for.
+                Choose which profile to configure MCP servers for.
               </p>
             </div>
 
@@ -343,7 +348,7 @@ export function McpServers() {
                     <div className="mt-2 text-sm text-amber-700 dark:text-amber-300">
                       <p>{mcpError}</p>
                       <p className="mt-1">
-                        To use MCP servers, please select a different executor
+                        To use MCP servers, please select a different profile
                         (Claude, Amp, or Gemini) above.
                       </p>
                     </div>
@@ -388,7 +393,7 @@ export function McpServers() {
                 <div className="pt-4">
                   <Button
                     onClick={handleConfigureVibeKanban}
-                    disabled={mcpApplying || mcpLoading || !selectedMcpExecutor}
+                    disabled={mcpApplying || mcpLoading || !selectedProfile}
                     className="w-64"
                   >
                     Add Vibe-Kanban MCP
