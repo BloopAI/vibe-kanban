@@ -95,23 +95,13 @@ impl LocalContainerService {
         map.remove(id);
     }
 
-    /// Notifications are sent when:
-    /// - A CodingAgent completes without a next_action
-    /// - A CleanupScript completes
-    fn should_notify(ctx: &ExecutionContext) -> bool {
-        (matches!(
-            ctx.execution_process.run_reason,
-            ExecutionProcessRunReason::CodingAgent
-        ) && ctx
-            .execution_process
+    /// A context is finalized when there are no more actions to execute.
+    fn should_finalize(ctx: &ExecutionContext) -> bool {
+        ctx.execution_process
             .executor_action()
             .unwrap()
             .next_action
-            .is_none())
-            || matches!(
-                ctx.execution_process.run_reason,
-                ExecutionProcessRunReason::CleanupScript
-            )
+            .is_none()
     }
 
     /// Defensively check for externally deleted worktrees and mark them as deleted in the database
@@ -340,24 +330,15 @@ impl LocalContainerService {
                             }
                         }
 
-                        if Self::should_notify(&ctx) {
-                            let notify_cfg = config.read().await.notifications.clone();
-                            NotificationService::notify_execution_halted(notify_cfg, &ctx).await;
-                        }
-                        // After the last action is completed, update task status to InReview
-                        if ctx
-                            .execution_process
-                            .executor_action()
-                            .unwrap()
-                            .next_action()
-                            .is_none()
-                        {
+                        if Self::should_finalize(&ctx) {
                             if let Err(e) =
                                 Task::update_status(&db.pool, ctx.task.id, TaskStatus::InReview)
                                     .await
                             {
                                 tracing::error!("Failed to update task status to InReview: {e}");
                             }
+                            let notify_cfg = config.read().await.notifications.clone();
+                            NotificationService::notify_execution_halted(notify_cfg, &ctx).await;
                         }
 
                         // Fire event when CodingAgent execution has finished
