@@ -71,6 +71,9 @@ impl CodingAgent {
         match profile {
             "claude-code" => Ok(CodingAgent::ClaudeCode(ClaudeCode::new())),
             "claude-code-plan" => Ok(CodingAgent::ClaudeCode(ClaudeCode::new_plan_mode())),
+            "claude-code-router" => {
+                Ok(CodingAgent::ClaudeCode(ClaudeCode::new_claude_code_router()))
+            }
             "amp" => Ok(CodingAgent::Amp(Amp::new())),
             "gemini" => Ok(CodingAgent::Gemini(Gemini::new())),
             "codex" => Ok(CodingAgent::Codex(Codex::new())),
@@ -120,7 +123,6 @@ impl BaseCodingAgent {
             //ExecutorConfig::ClaudePlan => None, // Claude Plan shares Claude config
             Self::Amp => Some(vec!["amp", "mcpServers"]), // Nested path for Amp
             Self::Gemini => Some(vec!["mcpServers"]),
-            //ExecutorConfig::ClaudeCodeRouter => Some(vec!["mcpServers"]),
             //ExecutorConfig::Aider => None, // Aider doesn't support MCP. https://github.com/Aider-AI/aider/issues/3314
             Self::Codex => None, // Codex uses TOML config, frontend doesn't handle TOML yet
         }
@@ -137,9 +139,6 @@ impl BaseCodingAgent {
             //}
             Self::ClaudeCode => dirs::home_dir().map(|home| home.join(".claude.json")),
             //ExecutorConfig::ClaudePlan => dirs::home_dir().map(|home| home.join(".claude.json")),
-            //ExecutorConfig::ClaudeCodeRouter => {
-            //dirs::home_dir().map(|home| home.join(".claude.json"))
-            //}
             Self::Opencode => {
                 #[cfg(unix)]
                 {

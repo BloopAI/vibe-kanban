@@ -140,6 +140,15 @@ impl ClaudeCode {
         }
     }
 
+    /// Create a new Claude executor using claude-code-router
+    pub fn new_claude_code_router() -> Self {
+        let profile = AgentProfiles::get_cached()
+            .get_profile("claude-code-router")
+            .expect("Default claude-code-router profile should exist");
+
+        Self::with_command_builder(profile.label.clone(), profile.command.clone())
+    }
+
     /// Create a new Claude executor with custom command builder
     pub fn with_command_builder(executor_type: String, command_builder: CommandBuilder) -> Self {
         Self {
@@ -174,9 +183,15 @@ exit "$exit_code"
 }
 
 /// Handles log processing and interpretation for Claude executor
-struct ClaudeLogProcessor;
+struct ClaudeLogProcessor {
+    model_name: Option<String>,
+}
 
 impl ClaudeLogProcessor {
+    fn new() -> Self {
+        Self { model_name: None }
+    }
+
     /// Process raw logs and convert them to normalized entries with patches
     fn process_logs(
         _executor: &ClaudeCode,
@@ -190,6 +205,7 @@ impl ClaudeLogProcessor {
             let mut buffer = String::new();
             let worktree_path = current_dir_clone.to_string_lossy().to_string();
             let mut session_id_extracted = false;
+            let mut processor = Self::new();
 
             while let Some(Ok(msg)) = stream.next().await {
                 let chunk = match msg {
@@ -212,6 +228,14 @@ impl ClaudeLogProcessor {
                         continue;
                     }
 
+                    // Filter out claude-code-router service messages
+                    if trimmed.starts_with("Service not running, starting service")
+                        || trimmed
+                            .contains("claude code router service has been successfully stopped")
+                    {
+                        continue;
+                    }
+
                     match serde_json::from_str::<ClaudeJson>(trimmed) {
                         Ok(claude_json) => {
                             // Extract session ID if present
@@ -223,7 +247,9 @@ impl ClaudeLogProcessor {
                             }
 
                             // Convert to normalized entries and create patches
-                            for entry in Self::to_normalized_entries(&claude_json, &worktree_path) {
+                            for entry in
+                                processor.to_normalized_entries(&claude_json, &worktree_path)
+                            {
                                 let patch_id = entry_index_provider.next();
                                 let patch =
                                     ConversationPatch::add_normalized_entry(patch_id, entry);
@@ -284,18 +310,20 @@ impl ClaudeLogProcessor {
 
     /// Convert Claude JSON to normalized entries
     fn to_normalized_entries(
+        &mut self,
         claude_json: &ClaudeJson,
         worktree_path: &str,
     ) -> Vec<NormalizedEntry> {
         match claude_json {
-            ClaudeJson::System { subtype, model, .. } => {
-                let content = match (subtype.as_deref(), model.as_deref()) {
-                    (Some("init"), Some(model)) => {
-                        format!("System initialized with model: {}", model)
+            ClaudeJson::System { subtype, .. } => {
+                let content = match subtype.as_deref() {
+                    Some("init") => {
+                        // Skip system init messages because it doesn't contain the actual model that will be used in assistant messages in case of claude-code-router.
+                        // We'll send system initialized message with first assistant message that has a model field.
+                        return vec![];
                     }
-                    (Some(subtype), _) => format!("System: {}", subtype),
-                    (None, Some(model)) => format!("System using model: {}", model),
-                    _ => "System message".to_string(),
+                    Some(subtype) => format!("System: {}", subtype),
+                    None => "System message".to_string(),
                 };
 
                 vec![NormalizedEntry {
@@ -309,6 +337,19 @@ impl ClaudeLogProcessor {
             }
             ClaudeJson::Assistant { message, .. } => {
                 let mut entries = Vec::new();
+
+                if self.model_name.is_none() {
+                    if let Some(model) = message.model.as_ref() {
+                        self.model_name = Some(model.clone());
+                        entries.push(NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::SystemMessage,
+                            content: format!("System initialized with model: {model}"),
+                            metadata: None,
+                        });
+                    }
+                }
+
                 for content_item in &message.content {
                     if let Some(entry) = Self::content_item_to_normalized_entry(
                         content_item,
@@ -701,12 +742,23 @@ mod tests {
             Some("abc123".to_string())
         );
 
-        let entries = ClaudeLogProcessor::to_normalized_entries(&parsed, "");
-        assert_eq!(entries.len(), 1);
+        let entries = ClaudeLogProcessor::new().to_normalized_entries(&parsed, "");
+        assert_eq!(entries.len(), 0);
+
+        let assistant_json = r#"
+        {"type":"assistant","message":{"type":"message","role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"text","text":"Hi! I'm Claude Code."}]}}"#;
+        let parsed: ClaudeJson = serde_json::from_str(assistant_json).unwrap();
+        let entries = ClaudeLogProcessor::new().to_normalized_entries(&parsed, "");
+
+        assert_eq!(entries.len(), 2);
         assert!(matches!(
             entries[0].entry_type,
             NormalizedEntryType::SystemMessage
         ));
+        assert_eq!(
+            entries[0].content,
+            "System initialized with model: claude-sonnet-4-20250514"
+        );
     }
 
     #[test]
@@ -714,7 +766,7 @@ mod tests {
         let assistant_json = r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Hello world"}]},"session_id":"abc123"}"#;
         let parsed: ClaudeJson = serde_json::from_str(assistant_json).unwrap();
 
-        let entries = ClaudeLogProcessor::to_normalized_entries(&parsed, "");
+        let entries = ClaudeLogProcessor::new().to_normalized_entries(&parsed, "");
         assert_eq!(entries.len(), 1);
         assert!(matches!(
             entries[0].entry_type,
@@ -728,7 +780,7 @@ mod tests {
         let result_json = r#"{"type":"result","subtype":"success","is_error":false,"duration_ms":6059,"result":"Final result"}"#;
         let parsed: ClaudeJson = serde_json::from_str(result_json).unwrap();
 
-        let entries = ClaudeLogProcessor::to_normalized_entries(&parsed, "");
+        let entries = ClaudeLogProcessor::new().to_normalized_entries(&parsed, "");
         assert_eq!(entries.len(), 0); // Should be ignored like in old implementation
     }
 
@@ -737,7 +789,7 @@ mod tests {
         let thinking_json = r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"thinking","thinking":"Let me think about this..."}]}}"#;
         let parsed: ClaudeJson = serde_json::from_str(thinking_json).unwrap();
 
-        let entries = ClaudeLogProcessor::to_normalized_entries(&parsed, "");
+        let entries = ClaudeLogProcessor::new().to_normalized_entries(&parsed, "");
         assert_eq!(entries.len(), 1);
         assert!(matches!(
             entries[0].entry_type,
@@ -969,7 +1021,7 @@ mod tests {
         );
 
         // ToolResult messages should be ignored (produce no entries) until proper support is added
-        let entries = ClaudeLogProcessor::to_normalized_entries(&parsed, "");
+        let entries = ClaudeLogProcessor::new().to_normalized_entries(&parsed, "");
         assert_eq!(entries.len(), 0);
     }
 
@@ -979,7 +1031,7 @@ mod tests {
         let parsed: ClaudeJson = serde_json::from_str(assistant_with_tool_result).unwrap();
 
         // ToolResult content items should be ignored (produce no entries) until proper support is added
-        let entries = ClaudeLogProcessor::to_normalized_entries(&parsed, "");
+        let entries = ClaudeLogProcessor::new().to_normalized_entries(&parsed, "");
         assert_eq!(entries.len(), 0);
     }
 
@@ -988,7 +1040,7 @@ mod tests {
         let complex_assistant_json = r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"thinking","thinking":"I need to read the file first"},{"type":"text","text":"I'll help you with that"},{"type":"tool_result","tool_use_id":"tool_789","content":"Success","is_error":false}]}}"#;
         let parsed: ClaudeJson = serde_json::from_str(complex_assistant_json).unwrap();
 
-        let entries = ClaudeLogProcessor::to_normalized_entries(&parsed, "");
+        let entries = ClaudeLogProcessor::new().to_normalized_entries(&parsed, "");
         // Only thinking and text entries should be processed, tool_result ignored
         assert_eq!(entries.len(), 2);
 

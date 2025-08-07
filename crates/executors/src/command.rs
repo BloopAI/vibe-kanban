@@ -93,6 +93,21 @@ impl AgentProfile {
         }
     }
 
+    pub fn claude_code_router() -> Self {
+        Self {
+            label: "claude-code-router".to_string(),
+            agent: BaseCodingAgent::ClaudeCode,
+            command: CommandBuilder::new("npx -y @musistudio/claude-code-router code").params(
+                vec![
+                    "-p",
+                    "--dangerously-skip-permissions",
+                    "--verbose",
+                    "--output-format=stream-json",
+                ],
+            ),
+        }
+    }
+
     pub fn amp() -> Self {
         Self {
             label: "amp".to_string(),
@@ -162,6 +177,7 @@ impl AgentProfiles {
             profiles: vec![
                 AgentProfile::claude_code(),
                 AgentProfile::claude_code_plan(),
+                AgentProfile::claude_code_router(),
                 AgentProfile::amp(),
                 AgentProfile::gemini(),
                 AgentProfile::codex(),
@@ -239,7 +255,7 @@ mod tests {
     #[test]
     fn test_default_profiles() {
         let profiles = AgentProfiles::from_defaults();
-        assert!(profiles.profiles.len() == 6);
+        assert!(profiles.profiles.len() == 7);
 
         let claude_profile = profiles.get_profile("claude-code").unwrap();
         assert_eq!(claude_profile.agent, BaseCodingAgent::ClaudeCode);
@@ -291,6 +307,24 @@ mod tests {
                 .build_initial()
                 .contains("--print-logs")
         );
+
+        let claude_code_router_profile = profiles.get_profile("claude-code-router").unwrap();
+        assert_eq!(
+            claude_code_router_profile.agent,
+            BaseCodingAgent::ClaudeCode
+        );
+        assert!(
+            claude_code_router_profile
+                .command
+                .build_initial()
+                .contains("@musistudio/claude-code-router")
+        );
+        assert!(
+            claude_code_router_profile
+                .command
+                .build_initial()
+                .contains("--dangerously-skip-permissions")
+        );
     }
 
     #[test]
@@ -298,7 +332,7 @@ mod tests {
         let profiles = AgentProfiles::from_defaults();
 
         let claude_profiles = profiles.get_profiles_for_agent(&BaseCodingAgent::ClaudeCode);
-        assert_eq!(claude_profiles.len(), 2); // default and plan mode
+        assert_eq!(claude_profiles.len(), 3); // default, plan mode, and claude-code-router
 
         let amp_profiles = profiles.get_profiles_for_agent(&BaseCodingAgent::Amp);
         assert_eq!(amp_profiles.len(), 1);
