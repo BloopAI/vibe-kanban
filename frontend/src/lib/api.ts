@@ -328,12 +328,10 @@ export const attemptsApi = {
   },
 
   stop: async (
-    projectId: string,
-    taskId: string,
     attemptId: string
   ): Promise<void> => {
     const response = await makeRequest(
-      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/stop`,
+      `/api/task-attempts/${attemptId}/stop`,
       {
         method: 'POST',
       }
@@ -443,12 +441,10 @@ export const attemptsApi = {
   },
 
   startDevServer: async (
-    projectId: string,
-    taskId: string,
     attemptId: string
   ): Promise<void> => {
     const response = await makeRequest(
-      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/start-dev-server`,
+      `/api/task-attempts/${attemptId}/start-dev-server`,
       {
         method: 'POST',
       }
@@ -465,18 +461,6 @@ export const attemptsApi = {
     return handleApiResponse<ExecutionProcessSummary[]>(response);
   },
 
-  stopExecutionProcess: async (
-    processId: string
-  ): Promise<void> => {
-    const response = await makeRequest(
-      `/api/execution-processes/${processId}/stop`,
-      {
-        method: 'POST',
-      }
-    );
-    return handleApiResponse<void>(response);
-  },
-
   getDetails: async (attemptId: string): Promise<TaskAttempt> => {
     const response = await makeRequest(`/api/attempts/${attemptId}/details`);
     return handleApiResponse<TaskAttempt>(response);
@@ -489,6 +473,17 @@ export const executionProcessesApi = {
     const response = await makeRequest(`/api/execution-processes/${processId}`);
     return handleApiResponse<ExecutionProcess>(response);
   },
+
+  stopExecutionProcess: async (processId: string): Promise<void> => {
+    const response = await makeRequest(
+      `/api/execution-processes/${processId}/stop`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
+
 };
 
 // File System APIs

@@ -166,8 +166,6 @@ function CurrentAttempt({
 
     try {
       await attemptsApi.startDevServer(
-        projectId,
-        selectedAttempt.task_id,
         selectedAttempt.id
       );
       fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
@@ -184,7 +182,7 @@ function CurrentAttempt({
     setIsStartingDevServer(true);
 
     try {
-      await attemptsApi.stopExecutionProcess(runningDevServer.id);
+      await executionProcessesApi.stopExecutionProcess(runningDevServer.id);
       fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
     } catch (err) {
       console.error('Failed to stop dev server:', err);
@@ -199,8 +197,6 @@ function CurrentAttempt({
     try {
       setIsStopping(true);
       await attemptsApi.stop(
-        projectId,
-        selectedAttempt.task_id,
         selectedAttempt.id
       );
       await fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);

@@ -72,21 +72,15 @@ pub async fn stream_normalized_logs(
 }
 
 pub async fn stop_execution_process(
+    Extension(execution_process): Extension<ExecutionProcess>,
     State(deployment): State<DeploymentImpl>,
-    Path(exec_id): Path<Uuid>,
-) -> Result<(), axum::http::StatusCode> {
-    let execution_process = ExecutionProcess::find_by_id(&deployment.db().pool, exec_id)
-        .await
-        .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?
-        .ok_or(axum::http::StatusCode::NOT_FOUND)?;
-
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     deployment
         .container()
         .stop_execution(&execution_process)
-        .await
-        .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+        .await?;
 
-    Ok(())
+    Ok(ResponseJson(ApiResponse::success(())))
 }
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
