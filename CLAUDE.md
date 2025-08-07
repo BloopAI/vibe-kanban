@@ -2,116 +2,128 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Development Commands
+## Essential Commands
 
-### Core Development
-- `pnpm run dev` - Start both frontend (port 3000) and backend (port 3001) with live reload
-- `pnpm run check` - Run cargo check and TypeScript type checking - **always run this before committing**
-- `pnpm run generate-types` - Generate TypeScript types from Rust structs (run after modifying Rust types)
+### Development
+```bash
+# Start development servers with hot reload (frontend + backend)
+pnpm run dev
 
-### Testing and Validation
-- `pnpm run frontend:dev` - Start frontend development server only
-- `pnpm run backend:dev` - Start Rust backend only
-- `cargo test` - Run Rust unit tests from backend directory
-- `cargo fmt` - Format Rust code
-- `cargo clippy` - Run Rust linter
+# Individual dev servers
+npm run frontend:dev    # Frontend only (port 3000)
+npm run backend:dev     # Backend only (port auto-assigned)
 
-### Building
-- `./build-npm-package.sh` - Build production package for distribution
-- `cargo build --release` - Build optimized Rust binary
+# Build production version
+./build-npm-package.sh
+```
+
+### Testing & Validation
+```bash
+# Run all checks (frontend + backend)
+npm run check
+
+# Frontend specific
+cd frontend && npm run lint          # Lint TypeScript/React code
+cd frontend && npm run format:check  # Check formatting
+cd frontend && npx tsc --noEmit     # TypeScript type checking
+
+# Backend specific  
+cargo test --workspace               # Run all Rust tests
+cargo test -p <crate_name>          # Test specific crate
+cargo test test_name                # Run specific test
+cargo fmt --all -- --check          # Check Rust formatting
+cargo clippy --all --all-targets --all-features -- -D warnings  # Linting
+
+# Type generation (after modifying Rust types)
+npm run generate-types               # Regenerate TypeScript types from Rust
+npm run generate-types:check        # Verify types are up to date
+```
+
+### Database Operations
+```bash
+# SQLx migrations
+sqlx migrate run                     # Apply migrations
+sqlx database create                 # Create database
+
+# Database is auto-copied from dev_assets_seed/ on dev server start
+```
 
 ## Architecture Overview
 
 ### Tech Stack
-- **Backend**: Rust with Axum web framework, SQLite + SQLX, Tokio async runtime
-- **Frontend**: React 18 + TypeScript, Vite, Tailwind CSS, Radix UI
-- **Package Management**: pnpm workspace monorepo
-- **Type Sharing**: Rust types exported to TypeScript via `ts-rs`
+- **Backend**: Rust with Axum web framework, Tokio async runtime, SQLx for database
+- **Frontend**: React 18 + TypeScript + Vite, Tailwind CSS, shadcn/ui components  
+- **Database**: SQLite with SQLx migrations
+- **Type Sharing**: ts-rs generates TypeScript types from Rust structs
+- **MCP Server**: Built-in Model Context Protocol server for AI agent integration
 
-### Core Concepts
+### Project Structure
+```
+crates/
+├── server/         # Axum HTTP server, API routes, MCP server
+├── db/            # Database models, migrations, SQLx queries
+├── executors/     # AI coding agent integrations (Claude, Gemini, etc.)
+├── services/      # Business logic, GitHub, auth, git operations
+├── local-deployment/  # Local deployment logic
+└── utils/         # Shared utilities
 
-**Vibe Kanban** is an AI coding agent orchestration platform that manages multiple coding agents (Claude Code, Gemini CLI, Amp, etc.) through a unified interface.
+frontend/          # React application
+├── src/
+│   ├── components/  # React components (TaskCard, ProjectCard, etc.)
+│   ├── pages/      # Route pages
+│   ├── hooks/      # Custom React hooks (useEventSourceManager, etc.)
+│   └── lib/        # API client, utilities
 
-**Project Structure**:
-- `/backend/src/` - Rust backend with API endpoints, database, and agent executors
-- `/frontend/src/` - React frontend with task management UI
-- `/backend/migrations/` - SQLite database schema migrations
-- `/shared-types/` - Generated TypeScript types from Rust structs
+shared/types.ts    # Auto-generated TypeScript types from Rust
+```
 
-**Executor System**: Each AI agent is implemented as an executor in `/backend/src/executors/`:
-- `claude.rs` - Claude Code integration
-- `gemini.rs` - Google Gemini CLI
-- `amp.rs` - Amp coding agent  
-- `dev_server.rs` - Development server management
-- `echo.rs` - Test/debug executor
+### Key Architectural Patterns
 
-**Key Backend Modules**:
-- `/backend/src/api/` - REST API endpoints
-- `/backend/src/db/` - Database models and queries
-- `/backend/src/github/` - GitHub OAuth and API integration
-- `/backend/src/git/` - Git operations and worktree management
-- `/backend/src/mcp/` - Model Context Protocol server implementation
+1. **Event Streaming**: Server-Sent Events (SSE) for real-time updates
+   - Process logs stream to frontend via `/api/events/processes/:id/logs`
+   - Task diffs stream via `/api/events/task-attempts/:id/diff`
 
-### Database Schema
-SQLite database with core entities:
-- `projects` - Coding projects with GitHub repo integration
-- `tasks` - Individual tasks assigned to executors
-- `processes` - Execution processes with streaming logs
-- `github_users`, `github_repos` - GitHub integration data
+2. **Git Worktree Management**: Each task execution gets isolated git worktree
+   - Managed by `WorktreeManager` service
+   - Automatic cleanup of orphaned worktrees
 
-### API Architecture
-- RESTful endpoints at `/api/` prefix
-- WebSocket streaming for real-time task updates at `/api/stream/:process_id`
-- GitHub OAuth flow with PKCE
-- MCP server exposed for external tool integration
+3. **Executor Pattern**: Pluggable AI agent executors
+   - Each executor (Claude, Gemini, etc.) implements common interface
+   - Actions: `coding_agent_initial`, `coding_agent_follow_up`, `script`
 
-## Development Guidelines
+4. **MCP Integration**: Vibe Kanban acts as MCP server
+   - Tools: `list_projects`, `list_tasks`, `create_task`, `update_task`, etc.
+   - AI agents can manage tasks via MCP protocol
 
-### Type management
-- First ensure that `src/bin/generate_types.rs` is up to date with the types in the project
-- **Always regenerate types after modifying Rust structs**: Run `pnpm run generate-types`
-- Backend-first development: Define data structures in Rust, export to frontend
-- Use `#[derive(Serialize, Deserialize, PartialEq, Debug, Clone, TS)]` for shared types
+### API Patterns
 
-### Code Style
-- **Rust**: Use rustfmt, follow snake_case naming, leverage tokio for async operations
-- **TypeScript**: Strict mode enabled, use `@/` path aliases for imports
-- **React**: Functional components with hooks, avoid class components
+- REST endpoints under `/api/*`
+- Frontend dev server proxies to backend (configured in vite.config.ts)
+- Authentication via GitHub OAuth (device flow)
+- All database queries in `crates/db/src/models/`
 
-### Git Integration Features
-- Automatic branch creation per task
-- Git worktree management for concurrent development
-- GitHub PR creation and monitoring
-- Commit streaming and real-time git status updates
+### Development Workflow
 
-### MCP Server Integration
-Built-in MCP server provides task management tools:
-- `create_task`, `update_task`, `delete_task`
-- `list_tasks`, `get_task`, `list_projects`
-- Requires `project_id` for most operations
+1. **Backend changes first**: When modifying both frontend and backend, start with backend
+2. **Type generation**: Run `npm run generate-types` after modifying Rust types
+3. **Database migrations**: Create in `crates/db/migrations/`, apply with `sqlx migrate run`
+4. **Component patterns**: Follow existing patterns in `frontend/src/components/`
 
-### Process Execution
-- All agent executions run as managed processes with streaming logs
-- Process lifecycle: queued → running → completed/failed
-- Real-time updates via WebSocket connections
-- Automatic cleanup of completed processes
+### Testing Strategy
 
-### Environment Configuration
-- Backend runs on port 3001, frontend proxies API calls in development
-- GitHub OAuth requires `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`
-- Optional PostHog analytics integration
-- Rust nightly toolchain required (version 2025-05-18 or later)
+- **Unit tests**: Colocated with code in each crate
+- **Integration tests**: In `tests/` directory of relevant crates  
+- **Frontend tests**: TypeScript compilation and linting only
+- **CI/CD**: GitHub Actions workflow in `.github/workflows/test.yml`
 
-## Testing Strategy
-- Run `pnpm run check` to validate both Rust and TypeScript code
-- Use `cargo test` for backend unit tests
-- Frontend testing focuses on component integration
-- Process execution testing via echo executor
+### Environment Variables
 
-## Key Dependencies
-- **axum** - Web framework and routing
-- **sqlx** - Database operations with compile-time query checking  
-- **octocrab** - GitHub API client
-- **rmcp** - MCP server implementation
-- **@dnd-kit** - Drag-and-drop task management
-- **react-router-dom** - Frontend routing
+Build-time (set when building):
+- `GITHUB_CLIENT_ID`: GitHub OAuth app ID (default: Bloop AI's app)
+- `POSTHOG_API_KEY`: Analytics key (optional)
+
+Runtime:
+- `BACKEND_PORT`: Backend server port (default: auto-assign)
+- `FRONTEND_PORT`: Frontend dev port (default: 3000)
+- `HOST`: Backend host (default: 127.0.0.1)
+- `DISABLE_WORKTREE_ORPHAN_CLEANUP`: Debug flag for worktrees
