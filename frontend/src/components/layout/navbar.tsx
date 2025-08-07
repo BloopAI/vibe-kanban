@@ -8,6 +8,7 @@ import {
   MessageCircleQuestion,
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
+import { AnimatedAnvil } from '@/components/animated-anvil';
 import { UserMenu } from '@/components/UserMenu';
 
 export function Navbar() {
@@ -18,7 +19,10 @@ export function Navbar() {
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-6">
-            <Logo />
+            <div className="flex items-center space-x-3">
+              <Logo />
+              <AnimatedAnvil className="ml-2" />
+            </div>
             <div className="flex items-center space-x-1">
               <Button
                 asChild

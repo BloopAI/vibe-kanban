@@ -180,6 +180,7 @@ export function Settings() {
                     <SelectItem value="blue">Blue</SelectItem>
                     <SelectItem value="orange">Orange</SelectItem>
                     <SelectItem value="red">Red</SelectItem>
+                    <SelectItem value="dracula">Dracula</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-muted-foreground">

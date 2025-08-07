@@ -172,6 +172,56 @@
     --ring: 0 80% 75%;
   }
 
+  .dracula {
+    --background: 231 15% 18%;
+    --foreground: 60 30% 96%;
+    --card: 231 15% 18%;
+    --card-foreground: 60 30% 96%;
+    --popover: 231 15% 18%;
+    --popover-foreground: 60 30% 96%;
+    --primary: 326 100% 74%;
+    --primary-foreground: 231 15% 18%;
+    --secondary: 232 14% 31%;
+    --secondary-foreground: 60 30% 96%;
+    --muted: 232 14% 31%;
+    --muted-foreground: 226 14% 63%;
+    --accent: 232 14% 31%;
+    --accent-foreground: 60 30% 96%;
+    --destructive: 0 100% 67%;
+    --destructive-foreground: 60 30% 96%;
+    --border: 232 14% 31%;
+    --input: 232 14% 31%;
+    --ring: 326 100% 74%;
+
+    /* Status colors - Dracula palette */
+    --success: 135 94% 65%;
+    --success-foreground: 231 15% 18%;
+    --warning: 65 92% 76%;
+    --warning-foreground: 231 15% 18%;
+    --info: 250 100% 80%;
+    --info-foreground: 231 15% 18%;
+    --neutral: 232 14% 31%;
+    --neutral-foreground: 60 30% 96%;
+
+    /* Status indicator colors */
+    --status-init: 232 14% 31%;
+    --status-init-foreground: 60 30% 96%;
+    --status-running: 250 100% 80%;
+    --status-running-foreground: 231 15% 18%;
+    --status-complete: 135 94% 65%;
+    --status-complete-foreground: 231 15% 18%;
+    --status-failed: 0 100% 67%;
+    --status-failed-foreground: 60 30% 96%;
+    --status-paused: 65 92% 76%;
+    --status-paused-foreground: 231 15% 18%;
+
+    /* Console/terminal colors */
+    --console-background: 231 15% 18%;
+    --console-foreground: 135 94% 65%;
+    --console-success: 135 94% 65%;
+    --console-error: 0 100% 67%;
+  }
+
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
