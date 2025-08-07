@@ -19,6 +19,7 @@ use db::{
         },
         executor_session::ExecutorSession,
         project::Project,
+        task::{Task, TaskStatus},
         task_attempt::TaskAttempt,
     },
 };
@@ -349,6 +350,26 @@ impl LocalContainerService {
                             &ctx.execution_process.run_reason,
                             ExecutionProcessRunReason::CodingAgent
                         ) {
+                            // Update task status to InReview when the coding agent finishes
+                            if let Err(e) = Task::update_status(
+                                &db.pool,
+                                ctx.task.id,
+                                TaskStatus::InReview,
+                            )
+                            .await
+                            {
+                                tracing::error!(
+                                    "Failed to update task status to InReview for task {}: {}",
+                                    ctx.task.id,
+                                    e
+                                );
+                            } else {
+                                tracing::info!(
+                                    "Updated task {} status to InReview after execution finished",
+                                    ctx.task.id
+                                );
+                            }
+
                             if let Some(analytics) = &analytics {
                                 analytics.analytics_service.track_event(&analytics.user_id, "task_attempt_finished", Some(json!({
                                     "task_id": ctx.task.id.to_string(),
@@ -602,6 +623,33 @@ impl ContainerService for LocalContainerService {
             None,
         )
         .await?;
+
+        // Update task status to InReview when execution is stopped
+        if let Ok(ctx) = ExecutionProcess::load_context(&self.db.pool, execution_process.id).await {
+            if matches!(
+                ctx.execution_process.run_reason,
+                ExecutionProcessRunReason::CodingAgent
+            ) {
+                if let Err(e) = Task::update_status(
+                    &self.db.pool,
+                    ctx.task.id,
+                    TaskStatus::InReview,
+                )
+                .await
+                {
+                    tracing::error!(
+                        "Failed to update task status to InReview for task {}: {}",
+                        ctx.task.id,
+                        e
+                    );
+                } else {
+                    tracing::info!(
+                        "Updated task {} status to InReview after execution was stopped",
+                        ctx.task.id
+                    );
+                }
+            }
+        }
 
         tracing::debug!(
             "Execution process {} stopped successfully",
