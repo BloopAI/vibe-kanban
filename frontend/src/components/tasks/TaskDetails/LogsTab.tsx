@@ -69,14 +69,19 @@ function LogsTab() {
           onScroll={onScroll}
           itemData={entries}
         >
-          {({ index, style, data }: { index: number; style: React.CSSProperties; data: UnifiedLogEntry[] }) => (
-            <LogEntryRow
+          {({ index, style, data }: { index: number; style: React.CSSProperties; data: UnifiedLogEntry[] }) => {
+            let style_with_padding = { ...style };
+            if (index === entries.length - 1) {
+              style_with_padding.paddingBottom = "50px";
+            }
+
+            return (<LogEntryRow
               entry={data[index]}
               index={index}
-              style={style}
+              style={style_with_padding}
               setRowHeight={setRowHeight}
-            />
-          )}
+            />)
+          }}
         </VariableSizeList>
       }
     </div>
