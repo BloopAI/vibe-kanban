@@ -19,6 +19,7 @@ use db::{
         },
         execution_process_logs::ExecutionProcessLogs,
         executor_session::{CreateExecutorSession, ExecutorSession},
+        task::{Task, TaskStatus},
         task_attempt::{TaskAttempt, TaskAttemptError},
     },
 };
@@ -419,6 +420,14 @@ pub trait ContainerService {
             .parent_task(&self.db().pool)
             .await?
             .ok_or(SqlxError::RowNotFound)?;
+
+        // Update task status to InProgress when starting an attempt
+        Task::update_status(
+            &self.db().pool,
+            task.id,
+            TaskStatus::InProgress,
+        )
+        .await?;
 
         // Get parent project
         let project = task

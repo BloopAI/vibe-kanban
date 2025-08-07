@@ -278,14 +278,6 @@ pub async fn create_task_attempt(
     )
     .await?;
 
-    // Update task status to InProgress when starting an attempt
-    Task::update_status(
-        &deployment.db().pool,
-        payload.task_id,
-        TaskStatus::InProgress,
-    )
-    .await?;
-
     let execution_process = deployment
         .container()
         .start_attempt(&task_attempt, profile_label.clone())
