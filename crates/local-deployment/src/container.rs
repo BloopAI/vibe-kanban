@@ -335,11 +335,6 @@ impl LocalContainerService {
                                     "Failed to start next action after completion: {}",
                                     e
                                 );
-                            } else {
-                                tracing::debug!(
-                                    "Successfully started next action after completion: {}",
-                                    ctx.task_attempt.id
-                                );
                             }
                         }
 
