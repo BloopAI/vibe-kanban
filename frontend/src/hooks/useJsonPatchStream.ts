@@ -51,19 +51,19 @@ export const useJsonPatchStream = <T>(
     // Initialize data
     if (!dataRef.current) {
       dataRef.current = initialData();
-      
+
       // Inject initial entry if provided
       if (options.injectInitialEntry) {
         options.injectInitialEntry(dataRef.current);
       }
-      
+
       setData({ ...dataRef.current });
     }
 
     // Create EventSource if it doesn't exist
     if (!eventSourceRef.current) {
       const eventSource = new EventSource(endpoint);
-      
+
       eventSource.onopen = () => {
         setError(null);
         setIsConnected(true);
@@ -72,16 +72,16 @@ export const useJsonPatchStream = <T>(
       eventSource.addEventListener('json_patch', (event) => {
         try {
           const patches: Operation[] = JSON.parse(event.data);
-          
+
           // Apply deduplication if provided
-          const filteredPatches = options.deduplicatePatches 
+          const filteredPatches = options.deduplicatePatches
             ? options.deduplicatePatches(patches)
             : patches;
-          
+
           // Only apply patches if there are any left after filtering
           if (filteredPatches.length > 0 && dataRef.current) {
             applyPatch(dataRef.current, filteredPatches);
-            
+
             // Trigger re-render with updated data
             setData({ ...dataRef.current });
           }
@@ -112,6 +112,8 @@ export const useJsonPatchStream = <T>(
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
+      dataRef.current = undefined;
+      setData(undefined);
     };
   }, [endpoint, enabled, initialData, options.injectInitialEntry, options.deduplicatePatches]);
 
