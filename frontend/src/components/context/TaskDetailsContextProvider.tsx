@@ -100,7 +100,7 @@ const TaskDetailsProvider: FC<{
         if (!task) return;
 
         try {
-          const processesResult = await attemptsApi.getExecutionProcesses(attemptId);
+          const processesResult = await executionProcessesApi.getExecutionProcesses(attemptId);
 
           if (processesResult !== undefined) {
             const runningProcesses = processesResult.filter(

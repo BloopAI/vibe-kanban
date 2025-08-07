@@ -78,6 +78,11 @@ pub trait ContainerService {
     async fn create(&self, task_attempt: &TaskAttempt) -> Result<ContainerRef, ContainerError>;
 
     async fn delete(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError> {
+        self.try_stop(task_attempt).await;
+        self.delete_inner(task_attempt).await
+    }
+
+    async fn try_stop(&self, task_attempt: &TaskAttempt) {
         // stop all execution processes for this attempt
         if let Ok(processes) =
             ExecutionProcess::find_by_task_attempt_id(&self.db().pool, task_attempt.id).await
@@ -95,8 +100,8 @@ pub trait ContainerService {
                 }
             }
         }
-        self.delete_inner(task_attempt).await
     }
+
     async fn delete_inner(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError>;
 
     async fn ensure_container_exists(

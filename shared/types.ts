@@ -84,31 +84,29 @@ export type RepositoryInfo = { id: bigint, name: string, full_name: string, owne
 
 export enum BaseCodingAgent { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI = "GEMINI", CODEX = "CODEX", OPENCODE = "OPENCODE" }
 
-export type CommandBuilder = {
-    /**
-     * Base executable command (e.g., "npx -y @anthropic-ai/claude-code@latest")
-     */
-    base: string,
-    /**
-     * Optional parameters to append to the base command
-     */
-    params: Array<string> | null,
-};
+export type CommandBuilder = { 
+/**
+ * Base executable command (e.g., "npx -y @anthropic-ai/claude-code@latest")
+ */
+base: string, 
+/**
+ * Optional parameters to append to the base command
+ */
+params: Array<string> | null, };
 
-export type AgentProfile = {
-    /**
-     * Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
-     */
-    label: string,
-    /**
-     * The executor type this profile configures
-     */
-    agent: BaseCodingAgent,
-    /**
-     * Command builder configuration
-     */
-    command: CommandBuilder,
-};
+export type AgentProfile = { 
+/**
+ * Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
+ */
+label: string, 
+/**
+ * The executor type this profile configures
+ */
+agent: BaseCodingAgent, 
+/**
+ * Command builder configuration
+ */
+command: CommandBuilder, };
 
 export type AgentProfiles = { profiles: Array<AgentProfile>, };
 

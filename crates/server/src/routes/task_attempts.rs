@@ -55,7 +55,6 @@ pub struct FollowUpResponse {
     pub actual_attempt_id: Uuid,
     pub created_new_attempt: bool,
 }
-
 // #[derive(Debug, Serialize, TS)]
 // #[ts(export)]
 // pub struct ProcessLogsResponse {
@@ -732,153 +731,6 @@ pub async fn rebase_task_attempt(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
-// pub async fn get_task_attempt_execution_processes(
-//     Extension(_project): Extension<Project>,
-//     Extension(_task): Extension<Task>,
-//     Extension(task_attempt): Extension<TaskAttempt>,
-//     State(app_state): State<AppState>,
-// ) -> Result<ResponseJson<ApiResponse<Vec<ExecutionProcessSummary>>>, StatusCode> {
-//     match ExecutionProcess::find_summaries_by_task_attempt_id(&app_state.db_pool, task_attempt.id)
-//         .await
-//     {
-//         Ok(processes) => Ok(ResponseJson(ApiResponse::success(processes))),
-//         Err(e) => {
-//             tracing::error!(
-//                 "Failed to fetch execution processes for attempt {}: {}",
-//                 task_attempt.id,
-//                 e
-//             );
-//             Err(StatusCode::INTERNAL_SERVER_ERROR)
-//         }
-//     }
-// }
-
-// pub async fn get_execution_process(
-//     Extension(execution_process): Extension<ExecutionProcess>,
-// ) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, StatusCode> {
-//     Ok(ResponseJson(ApiResponse::success(execution_process)))
-// }
-
-// #[axum::debug_handler]
-// pub async fn stop_all_execution_processes(
-//     Extension(_project): Extension<Project>,
-//     Extension(_task): Extension<Task>,
-//     Extension(task_attempt): Extension<TaskAttempt>,
-//     State(app_state): State<AppState>,
-// ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-//     // Get all execution processes for the task attempt
-//     let processes = match ExecutionProcess::find_by_task_attempt_id(
-//         &app_state.db_pool,
-//         task_attempt.id,
-//     )
-//     .await
-//     {
-//         Ok(processes) => processes,
-//         Err(e) => {
-//             tracing::error!(
-//                 "Failed to fetch execution processes for attempt {}: {}",
-//                 task_attempt.id,
-//                 e
-//             );
-//             return Err(StatusCode::INTERNAL_SERVER_ERROR);
-//         }
-//     };
-
-//     let mut stopped_count = 0;
-//     let mut errors = Vec::new();
-
-//     // Stop all running processes
-//     for process in processes {
-//         match app_state.stop_running_execution_by_id(process.id).await {
-//             Ok(true) => {
-//                 stopped_count += 1;
-
-//                 // Update the execution process status in the database
-//                 if let Err(e) = ExecutionProcess::update_completion(
-//                     &app_state.db_pool,
-//                     process.id,
-//                     crate::models::execution_process::ExecutionProcessStatus::Killed,
-//                     None,
-//                 )
-//                 .await
-//                 {
-//                     tracing::error!("Failed to update execution process status: {}", e);
-//                     errors.push(format!("Failed to update process {} status", process.id));
-//                 } else {
-//                     // Process stopped successfully
-//                 }
-//             }
-//             Ok(false) => {
-//                 // Process was not running, which is fine
-//             }
-//             Err(e) => {
-//                 tracing::error!("Failed to stop execution process {}: {}", process.id, e);
-//                 errors.push(format!("Failed to stop process {}: {}", process.id, e));
-//             }
-//         }
-//     }
-
-//     if !errors.is_empty() {
-//         return Ok(ResponseJson(ApiResponse::error(&format!(
-//             "Stopped {} processes, but encountered errors: {}",
-//             stopped_count,
-//             errors.join(", ")
-//         ))));
-//     }
-
-//     if stopped_count == 0 {
-//         return Ok(ResponseJson(ApiResponse::success(())));
-//     }
-
-//     Ok(ResponseJson(ApiResponse::success(())))
-// }
-
-// #[axum::debug_handler]
-// pub async fn stop_execution_process(
-//     Extension(_project): Extension<Project>,
-//     Extension(_task): Extension<Task>,
-//     Extension(_task_attempt): Extension<TaskAttempt>,
-//     Extension(execution_process): Extension<ExecutionProcess>,
-//     State(app_state): State<AppState>,
-// ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-//     // Stop the specific execution process
-//     let stopped = match app_state
-//         .stop_running_execution_by_id(execution_process.id)
-//         .await
-//     {
-//         Ok(stopped) => stopped,
-//         Err(e) => {
-//             tracing::error!(
-//                 "Failed to stop execution process {}: {}",
-//                 execution_process.id,
-//                 e
-//             );
-//             return Err(StatusCode::INTERNAL_SERVER_ERROR);
-//         }
-//     };
-
-//     if !stopped {
-//         return Ok(ResponseJson(ApiResponse::success(())));
-//     }
-
-//     // Update the execution process status in the database
-//     if let Err(e) = ExecutionProcess::update_completion(
-//         &app_state.db_pool,
-//         execution_process.id,
-//         crate::models::execution_process::ExecutionProcessStatus::Killed,
-//         None,
-//     )
-//     .await
-//     {
-//         tracing::error!("Failed to update execution process status: {}", e);
-//         return Err(StatusCode::INTERNAL_SERVER_ERROR);
-//     }
-
-//     // Process stopped successfully
-
-//     Ok(ResponseJson(ApiResponse::success(())))
-// }
-
 #[derive(serde::Deserialize)]
 pub struct DeleteFileQuery {
     file_path: String,
@@ -986,28 +838,6 @@ pub async fn start_dev_server(
 
     Ok(ResponseJson(ApiResponse::success(())))
 }
-
-// pub async fn get_task_attempt_execution_state(
-//     Extension(project): Extension<Project>,
-//     Extension(task): Extension<Task>,
-//     Extension(task_attempt): Extension<TaskAttempt>,
-//     State(app_state): State<AppState>,
-// ) -> Result<ResponseJson<ApiResponse<TaskAttemptState>>, StatusCode> {
-//     // Get the execution state
-//     match TaskAttempt::get_execution_state(&app_state.db_pool, task_attempt.id, task.id, project.id)
-//         .await
-//     {
-//         Ok(state) => Ok(ResponseJson(ApiResponse::success(state))),
-//         Err(e) => {
-//             tracing::error!(
-//                 "Failed to get execution state for task attempt {}: {}",
-//                 task_attempt.id,
-//                 e
-//             );
-//             Err(StatusCode::INTERNAL_SERVER_ERROR)
-//         }
-//     }
-// }
 
 // /// Find plan content with context by searching through multiple processes in the same attempt
 // async fn find_plan_content_with_context(
@@ -1133,12 +963,6 @@ pub async fn start_dev_server(
 //     })))
 // }
 
-// pub async fn get_task_attempt_details(
-//     Extension(task_attempt): Extension<TaskAttempt>,
-// ) -> Result<ResponseJson<ApiResponse<TaskAttempt>>, StatusCode> {
-//     Ok(ResponseJson(ApiResponse::success(task_attempt)))
-// }
-
 pub async fn get_task_attempt_children(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
@@ -1156,113 +980,27 @@ pub async fn get_task_attempt_children(
     }
 }
 
-pub async fn stop_task_attempt(
-    Extension(task_attempt): Extension<TaskAttempt>,
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    // Get all execution processes
-    let execution_processes =
-        ExecutionProcess::find_by_task_attempt_id(&deployment.db().pool, task_attempt.id).await?;
-
-    for execution_process in execution_processes {
-        if execution_process.status == ExecutionProcessStatus::Running {
-            deployment
-                .container()
-                .stop_execution(&execution_process)
-                .await?;
-        }
-    }
-    Ok(ResponseJson(ApiResponse::success(())))
-}
-
-// pub fn task_attempts_list_router(_state: AppState) -> Router<AppState> {
-//     Router::new().route(
-//         "/projects/:project_id/tasks/:task_id/attempts",
-//         get(get_task_attempts).post(create_task_attempt),
-//     )
-// }
-
 // pub fn task_attempts_with_id_router(_state: AppState) -> Router<AppState> {
 //     use axum::routing::post;
 
 //     Router::new()
 //         .route(
-//             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/diff",
-//             get(get_task_attempt_diff),
-//         )
-//         .route(
-//             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/merge",
-//             post(merge_task_attempt),
-//         )
-//         .route(
-//             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/branch-status",
-//             get(get_task_attempt_branch_status),
-//         )
-//         .route(
-//             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/rebase",
-//             post(rebase_task_attempt),
-//         )
-//         .route(
-//             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/open-editor",
-//             post(open_task_attempt_in_editor),
-//         )
-//         .route(
-//             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/delete-file",
-//             post(delete_task_attempt_file),
-//         )
-//         .route(
-//             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/create-pr",
-//             post(create_github_pr),
-//         )
-//         .route(
-//             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/execution-processes",
-//             get(get_task_attempt_execution_processes),
-//         )
-//         .route(
-//             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/stop",
-//             post(stop_all_execution_processes),
-//         )
-//         .merge(
-//             Router::new()
-//                 .route(
-//                     "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/execution-processes/:process_id/stop",
-//                     post(stop_execution_process),
-//                 )
-//                 .route_layer(from_fn_with_state(_state.clone(), load_execution_process_with_context_middleware))
-//         )
-//         .route(
-//             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/logs",
-//             get(get_task_attempt_all_logs),
-//         )
-//         .route(
-//             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/follow-up",
-//             post(create_followup_attempt),
-//         )
-//         .route(
-//             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/start-dev-server",
-//             post(start_dev_server),
-//         )
-//         .route(
-//             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id",
-//             get(get_task_attempt_execution_state),
-//         )
-//         .route(
 //             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/approve-plan",
 //             post(approve_plan),
 //         )
-//         .route(
-//             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/children",
-//             get(get_task_attempt_children),
-//         )
 //         .merge(
 //             Router::new()
-//                 .route(
-//                     "/attempts/:attempt_id/details",
-//                     get(get_task_attempt_details),
-//                 )
 //                 .route_layer(from_fn_with_state(_state.clone(), load_task_attempt_middleware))
 //         )
 // }
+
+pub async fn stop_task_attempt_execution(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    deployment.container().try_stop(&task_attempt).await;
+    Ok(ResponseJson(ApiResponse::success(())))
+}
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
@@ -1277,7 +1015,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/open-editor", post(open_task_attempt_in_editor))
         .route("/delete-file", post(delete_task_attempt_file))
         .route("/children", get(get_task_attempt_children))
-        .route("/stop", post(stop_task_attempt))
+        .route("/stop", post(stop_task_attempt_execution))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_task_attempt_middleware,

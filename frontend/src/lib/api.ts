@@ -276,17 +276,19 @@ export const tasksApi = {
     });
     return handleApiResponse<void>(response);
   },
+};
 
-  getChildren: async (attemptId: string): Promise<Task[]> => {
+// Task Attempts APIs
+export const attemptsApi = {
+  getChildren: async (
+    attemptId: string
+  ): Promise<Task[]> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/children`
     );
     return handleApiResponse<Task[]>(response);
   },
-};
 
-// Task Attempts APIs
-export const attemptsApi = {
   getAll: async (taskId: string): Promise<TaskAttempt[]> => {
     const response = await makeRequest(`/api/task-attempts?task_id=${taskId}`);
     return handleApiResponse<TaskAttempt[]>(response);
@@ -412,6 +414,11 @@ export const attemptsApi = {
     return handleApiResponse<void>(response);
   },
 
+
+};
+
+// Execution Process APIs
+export const executionProcessesApi = {
   getExecutionProcesses: async (
     attemptId: string
   ): Promise<ExecutionProcessSummary[]> => {
@@ -421,14 +428,6 @@ export const attemptsApi = {
     return handleApiResponse<ExecutionProcessSummary[]>(response);
   },
 
-  getDetails: async (attemptId: string): Promise<TaskAttempt> => {
-    const response = await makeRequest(`/api/attempts/${attemptId}/details`);
-    return handleApiResponse<TaskAttempt>(response);
-  },
-};
-
-// Execution Process APIs
-export const executionProcessesApi = {
   getDetails: async (processId: string): Promise<ExecutionProcess> => {
     const response = await makeRequest(`/api/execution-processes/${processId}`);
     return handleApiResponse<ExecutionProcess>(response);
@@ -453,14 +452,6 @@ export const fileSystemApi = {
       `/api/filesystem/directory${queryParam}`
     );
     return handleApiResponse<DirectoryListResponse>(response);
-  },
-};
-
-// System API (new)
-export const systemApi = {
-  getInfo: async (): Promise<UserSystemInfo> => {
-    const response = await makeRequest('/api/info');
-    return handleApiResponse<UserSystemInfo>(response);
   },
 };
 
@@ -494,7 +485,6 @@ export const githubAuthApi = {
   poll: async (): Promise<DevicePollStatus> => {
     const response = await makeRequest('/api/auth/github/device/poll', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
     });
     return handleApiResponse<DevicePollStatus>(response);
   },
