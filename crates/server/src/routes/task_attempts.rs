@@ -336,7 +336,11 @@ pub async fn follow_up(
         "This executor session doesn't have a session_id".to_string(),
     )))?;
 
-    let profile = match &initial_execution_process.executor_action.0.typ {
+    let profile = match &initial_execution_process
+        .executor_action()
+        .map_err(|e| ApiError::TaskAttempt(TaskAttemptError::ValidationError(e.to_string())))?
+        .typ
+    {
         ExecutorActionType::CodingAgentInitialRequest(request) => Ok(request.profile.clone()),
         _ => Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
             "Couldn't find profile from initial request".to_string(),

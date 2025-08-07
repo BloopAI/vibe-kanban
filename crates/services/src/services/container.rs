@@ -280,8 +280,18 @@ pub trait ContainerService {
 
             let current_dir = self.task_attempt_to_current_dir(&task_attempt);
 
+            let executor_action = if let Ok(executor_action) = process.executor_action() {
+                executor_action
+            } else {
+                tracing::error!(
+                    "Failed to parse executor action: {:?}",
+                    process.executor_action()
+                );
+                return None;
+            };
+
             // Spawn normalizer on populated store
-            match process.executor_action().typ() {
+            match executor_action.typ() {
                 ExecutorActionType::CodingAgentInitialRequest(request) => {
                     if let Ok(executor) = CodingAgent::from_profile_str(&request.profile) {
                         executor.normalize_logs(temp_store.clone(), &current_dir);
@@ -557,7 +567,7 @@ pub trait ContainerService {
     }
 
     async fn try_start_next_action(&self, ctx: &ExecutionContext) -> Result<(), ContainerError> {
-        let action = ctx.execution_process.executor_action();
+        let action = ctx.execution_process.executor_action()?;
         let next_action = if let Some(next_action) = action.next_action() {
             next_action
         } else {
