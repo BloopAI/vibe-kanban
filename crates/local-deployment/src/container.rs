@@ -578,12 +578,7 @@ impl ContainerService for LocalContainerService {
         task_attempt: &TaskAttempt,
     ) -> Result<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>, ContainerError>
     {
-        let container_ref = task_attempt
-            .container_ref
-            .as_ref()
-            .ok_or(ContainerError::Other(anyhow!(
-                "Container reference not found"
-            )))?;
+        let container_ref = self.ensure_container_exists(&task_attempt).await?;
 
         let worktree_dir = PathBuf::from(&container_ref);
 
