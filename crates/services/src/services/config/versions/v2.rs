@@ -10,7 +10,7 @@ use crate::services::config::versions::v1;
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct Config {
-    pub config_schema: String,
+    pub config_version: String,
     pub theme: ThemeMode,
     pub profile: String,
     pub disclaimer_acknowledged: bool,
@@ -54,7 +54,7 @@ impl Config {
         };
 
         Ok(Self {
-            config_schema: "v2".to_string(),
+            config_version: "v2".to_string(),
             theme: ThemeMode::from(old_config.theme), // Now SCREAMING_SNAKE_CASE
             profile: profile.to_string(),
             disclaimer_acknowledged: old_config.disclaimer_acknowledged,
@@ -87,7 +87,7 @@ impl From<String> for Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            config_schema: "v2".to_string(),
+            config_version: "v2".to_string(),
             theme: ThemeMode::System,
             profile: String::from("claude-code"),
             disclaimer_acknowledged: false,
