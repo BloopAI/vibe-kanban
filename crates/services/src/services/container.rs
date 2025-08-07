@@ -574,12 +574,21 @@ pub trait ContainerService {
             }
         };
 
-        self.start_execution(
-            &ctx.task_attempt,
-            next_action,
-            &ExecutionProcessRunReason::CodingAgent,
-        )
-        .await?;
+        // Determine the run reason of the next action
+        let next_run_reason = match ctx.execution_process.run_reason {
+            ExecutionProcessRunReason::SetupScript => ExecutionProcessRunReason::CodingAgent,
+            ExecutionProcessRunReason::CodingAgent => ExecutionProcessRunReason::CleanupScript,
+            _ => {
+                tracing::warn!(
+                    "Unexpected run reason: {:?}, defaulting to current reason",
+                    ctx.execution_process.run_reason
+                );
+                ctx.execution_process.run_reason.clone()
+            }
+        };
+
+        self.start_execution(&ctx.task_attempt, next_action, &next_run_reason)
+            .await?;
 
         tracing::debug!("Started next action: {:?}", next_action);
         Ok(())
