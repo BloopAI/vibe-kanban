@@ -15,7 +15,7 @@ use serde_json::Value;
 use services::services::config::{save_config_to_file, Config, SoundFile};
 use tokio::fs;
 use ts_rs::TS;
-use utils::{assets::config_path, response::ApiResponse};
+use utils::{assets::config_path, path::expand_tilde, response::ApiResponse};
 
 use crate::{
     error::ApiError,
@@ -115,6 +115,7 @@ async fn get_sound(Path(sound): Path<SoundFile>) -> Result<Response, ApiError> {
 #[derive(Debug, Deserialize)]
 struct McpServerQuery {
     base_coding_agent: Option<BaseCodingAgent>,
+    mcp_config_path: Option<String>,
 }
 
 async fn get_mcp_servers(
@@ -138,13 +139,17 @@ async fn get_mcp_servers(
         )));
     }
 
-    // Get the config file path for this executor
-    let config_path = match agent.config_path() {
-        Some(path) => path,
-        None => {
-            return Ok(ResponseJson(ApiResponse::error(
-                "Could not determine config file path",
-            )));
+    // Resolve supplied config path or agent default
+    let config_path = if let Some(path_str) = &query.mcp_config_path {
+        expand_tilde(path_str)
+    } else {
+        match agent.config_path() {
+            Some(path) => path,
+            None => {
+                return Ok(ResponseJson(ApiResponse::error(
+                    "Could not determine config file path",
+                )))
+            }
         }
     };
 
@@ -185,13 +190,17 @@ async fn update_mcp_servers(
         )));
     }
 
-    // Get the config file path for this executor
-    let config_path = match agent.config_path() {
-        Some(path) => path,
-        None => {
-            return Ok(ResponseJson(ApiResponse::error(
-                "Could not determine config file path",
-            )));
+    // Resolve supplied config path or agent default
+    let config_path = if let Some(path_str) = &query.mcp_config_path {
+        expand_tilde(path_str)
+    } else {
+        match agent.config_path() {
+            Some(path) => path,
+            None => {
+                return Ok(ResponseJson(ApiResponse::error(
+                    "Could not determine config file path",
+                )))
+            }
         }
     };
 

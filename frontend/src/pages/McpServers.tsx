@@ -63,8 +63,11 @@ export function McpServers() {
       setMcpConfigPath('');
 
       try {
-        // Load MCP servers for the selected profile's base agent
-        const result = await mcpServersApi.load(profile.agent);
+        // Load MCP servers for the selected profile/agent
+        const result = await mcpServersApi.load(
+          profile.agent,
+          profile.mcp_config_path || undefined
+        );
         // Handle new response format with servers and config_path
         const data = result || {};
         const servers = data.servers || {};
@@ -160,7 +163,11 @@ export function McpServers() {
           // Extract just the servers object for the API - backend will handle nesting/format
           const mcpServersConfig = strategy.extractServersForApi(fullConfig);
 
-          await mcpServersApi.save(selectedProfile.agent, mcpServersConfig);
+          await mcpServersApi.save(
+            selectedProfile.agent,
+            mcpConfigPath || undefined,
+            mcpServersConfig
+          );
 
           // Show success feedback
           setSuccess(true);
