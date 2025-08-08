@@ -267,6 +267,7 @@ pub async fn create_task_attempt(
         &deployment.db().pool,
         &CreateTaskAttempt {
             base_coding_agent: profile.agent.to_string(),
+            profile_label: profile_label.clone(),
             base_branch: payload.base_branch,
         },
         payload.task_id,

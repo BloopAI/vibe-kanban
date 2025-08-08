@@ -379,10 +379,10 @@ function CurrentAttempt({
 
         <div>
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-            Base Agent
+            Profile
           </div>
           <div className="text-sm font-medium">
-            {selectedAttempt.base_coding_agent}
+            {selectedAttempt.profile_label || selectedAttempt.base_coding_agent}
           </div>
         </div>
 
@@ -573,7 +573,9 @@ function CurrentAttempt({
                         {new Date(attempt.created_at).toLocaleTimeString()}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {attempt.base_coding_agent || 'Base Agent'}
+                        {attempt.profile_label ||
+                          attempt.base_coding_agent ||
+                          'Base Agent'}
                       </span>
                     </div>
                   </DropdownMenuItem>
