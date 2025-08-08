@@ -243,12 +243,11 @@ impl ExecutionProcess {
     }
 
     /// Find latest execution process by task attempt and executor action type
-    pub async fn find_latest_by_task_attempt_and_action_type(
+    pub async fn find_latest_by_task_attempt_and_run_reason(
         pool: &SqlitePool,
         task_attempt_id: Uuid,
-        executor_action: &ExecutorActionKind,
+        run_reason: &ExecutionProcessRunReason,
     ) -> Result<Option<Self>, sqlx::Error> {
-        let executor_action_kind = executor_action.to_string();
         sqlx::query_as!(
             ExecutionProcess,
             r#"SELECT 
@@ -264,11 +263,11 @@ impl ExecutionProcess {
                 updated_at as "updated_at!: DateTime<Utc>"
                FROM execution_processes 
                WHERE task_attempt_id = $1 
-               AND executor_action_type = $2
+               AND run_reason = $2
                ORDER BY created_at DESC 
                LIMIT 1"#,
             task_attempt_id,
-            executor_action_kind
+            run_reason
         )
         .fetch_optional(pool)
         .await

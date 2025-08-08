@@ -516,13 +516,19 @@ pub trait ContainerService {
             ExecutionProcess::create(&self.db().pool, &create_execution_process, Uuid::new_v4())
                 .await?;
 
-        if let ExecutorActionType::CodingAgentInitialRequest(coding_agent_request) =
-            executor_action.typ()
-        {
+        if let Some(prompt) = match executor_action.typ() {
+            ExecutorActionType::CodingAgentInitialRequest(coding_agent_request) => {
+                Some(coding_agent_request.prompt.clone())
+            }
+            ExecutorActionType::CodingAgentFollowUpRequest(follow_up_request) => {
+                Some(follow_up_request.prompt.clone())
+            }
+            _ => None,
+        } {
             let create_executor_data = CreateExecutorSession {
                 task_attempt_id: task_attempt.id,
                 execution_process_id: execution_process.id,
-                prompt: Some(coding_agent_request.prompt.clone()),
+                prompt: Some(prompt),
             };
 
             let executor_session_record_id = Uuid::new_v4();

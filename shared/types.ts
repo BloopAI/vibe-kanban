@@ -42,7 +42,7 @@ export type UserSystemInfo = { config: Config, environment: Environment, profile
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
 
-export type CreateFollowUpAttempt = { prompt: string, };
+export type CreateFollowUpAttempt = { prompt: string, profile: string | null, };
 
 export type CreateGitHubPrRequest = { title: string, body: string | null, base_branch: string | null, };
 

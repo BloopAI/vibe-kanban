@@ -47,6 +47,7 @@ export function TaskFollowUpSection() {
       setFollowUpError(null);
       await attemptsApi.followUp(selectedAttempt.id, {
         prompt: followUpMessage.trim(),
+        profile: null
       });
       setFollowUpMessage('');
       fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
