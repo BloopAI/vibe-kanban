@@ -7,8 +7,9 @@ import "@git-diff-view/react/styles/diff-view-pure.css";
 import { useDiffStream } from "@/hooks/useDiffStream";
 import { useMemo, useContext, useCallback } from "react";
 import { TaskSelectedAttemptContext } from "@/components/context/taskDetailsContext.ts";
-import { Diff } from "shared/types";
+import { Diff, ThemeMode } from "shared/types";
 import { getHighLightLanguageFromPath } from "@/utils/extToLanguage";
+import { useConfig } from "@/components/config-provider";
 
 function DiffTab() {
   const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
@@ -16,6 +17,14 @@ function DiffTab() {
     selectedAttempt?.id ?? null,
     true,
   );
+
+  const { config } = useConfig()
+
+  // git-diff-view takes light or dark 
+  let theme: "light" | "dark" | undefined = "light";
+  if (config?.theme === ThemeMode.DARK) {
+    theme = "dark";
+  }
 
   const createDiffFile = useCallback((diff: Diff) => {
     const oldFileName = diff.oldFile?.fileName || "old";
@@ -64,13 +73,14 @@ function DiffTab() {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto px-4">
         {diffFiles.map((diffFile, idx) => (
-          <div key={idx} className="my-4">
+          <div key={idx} className="my-4 border">
+            <p className="text-md font-mono px-4 py-2 bg-muted text-muted-foreground overflow-x-auto">{diffFile._newFileName} <span className="text-green-600">+{diffFile.additionLength}</span> <span className="text-red-500">-{diffFile.deletionLength}</span></p>
             <DiffView
               diffFile={diffFile}
               diffViewWrap={false}
-              diffViewTheme="light"
+              diffViewTheme={theme}
               diffViewHighlight
               diffViewMode={DiffModeEnum.Unified}
             />
