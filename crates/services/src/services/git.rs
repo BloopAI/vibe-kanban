@@ -2,18 +2,14 @@ use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
 use git2::{
-    BranchType, CherrypickOptions, Cred, Error as GitError, FetchOptions, RemoteCallbacks,
-    Repository, Status, StatusOptions, build::CheckoutBuilder,
+    BranchType, CherrypickOptions, Cred, Delta, DiffFindOptions, DiffOptions, Error as GitError,
+    FetchOptions, RemoteCallbacks, Repository, Status, StatusOptions, build::CheckoutBuilder,
 };
 use regex;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ts_rs::TS;
-
-// use crate::{
-//     models::task_attempt::{DiffChunk, DiffChunkType, FileDiff, WorktreeDiff},
-//     utils::worktree_manager::WorktreeManager,
-// };
+use utils::diff::{Diff, FileDiffDetails};
 
 #[derive(Debug, Error)]
 pub enum GitServiceError {
@@ -57,6 +53,22 @@ pub struct BranchStatus {
     pub merged: bool,
     pub has_uncommitted_changes: bool,
     pub base_branch_name: String,
+}
+
+/// Target for diff generation
+pub enum DiffTarget<'p> {
+    /// Work-in-progress branch checked out in this worktree
+    Worktree {
+        worktree_path: &'p Path,
+        branch_name: &'p str,
+        base_branch: &'p str,
+    },
+    /// Fully committed branch vs base branch
+    Branch {
+        repo_path: &'p Path,
+        branch_name: &'p str,
+        base_branch: &'p str,
+    },
 }
 
 impl Default for GitService {
@@ -149,6 +161,145 @@ impl GitService {
         )?;
 
         Ok(())
+    }
+
+    /// Get diffs between branches or worktree changes
+    pub fn get_diffs(&self, target: DiffTarget) -> Result<Vec<Diff>, GitServiceError> {
+        match target {
+            DiffTarget::Worktree {
+                worktree_path,
+                branch_name: _,
+                base_branch,
+            } => {
+                let repo = Repository::open(worktree_path)?;
+                let base_ref = repo
+                    .find_branch(base_branch, BranchType::Local)
+                    .map_err(|_| GitServiceError::BranchNotFound(base_branch.to_string()))?;
+                let base_tree = base_ref.get().peel_to_commit()?.tree()?;
+
+                let mut diff_opts = DiffOptions::new();
+                diff_opts
+                    .include_untracked(true)
+                    .include_typechange(true)
+                    .recurse_untracked_dirs(true);
+
+                let mut diff =
+                    repo.diff_tree_to_workdir_with_index(Some(&base_tree), Some(&mut diff_opts))?;
+
+                // Enable rename detection
+                let mut find_opts = DiffFindOptions::new();
+                diff.find_similar(Some(&mut find_opts))?;
+
+                self.convert_diff_to_file_diffs(diff, &repo)
+            }
+            DiffTarget::Branch {
+                repo_path,
+                branch_name,
+                base_branch,
+            } => {
+                let repo = self.open_repo(repo_path)?;
+                let base_tree = repo
+                    .find_branch(base_branch, BranchType::Local)
+                    .map_err(|_| GitServiceError::BranchNotFound(base_branch.to_string()))?
+                    .get()
+                    .peel_to_commit()?
+                    .tree()?;
+                let branch_tree = repo
+                    .find_branch(branch_name, BranchType::Local)
+                    .map_err(|_| GitServiceError::BranchNotFound(branch_name.to_string()))?
+                    .get()
+                    .peel_to_commit()?
+                    .tree()?;
+
+                let mut diff_opts = DiffOptions::new();
+                diff_opts.include_typechange(true);
+
+                let mut diff = repo.diff_tree_to_tree(
+                    Some(&base_tree),
+                    Some(&branch_tree),
+                    Some(&mut diff_opts),
+                )?;
+
+                // Enable rename detection
+                let mut find_opts = DiffFindOptions::new();
+                diff.find_similar(Some(&mut find_opts))?;
+
+                self.convert_diff_to_file_diffs(diff, &repo)
+            }
+        }
+    }
+
+    /// Convert git2::Diff to our Diff structs
+    fn convert_diff_to_file_diffs(
+        &self,
+        diff: git2::Diff,
+        repo: &Repository,
+    ) -> Result<Vec<Diff>, GitServiceError> {
+        let mut file_diffs = Vec::new();
+
+        diff.foreach(
+            &mut |delta, _progress| {
+                // Skip unreadable entries
+                if delta.status() == Delta::Unreadable {
+                    return true;
+                }
+
+                let old_file = if let Some(path) = delta.old_file().path() {
+                    Some(self.create_file_details(path, &delta.old_file().id(), repo))
+                } else {
+                    None
+                };
+
+                let new_file = if let Some(path) = delta.new_file().path() {
+                    Some(self.create_file_details(path, &delta.new_file().id(), repo))
+                } else {
+                    None
+                };
+
+                file_diffs.push(Diff {
+                    old_file,
+                    new_file,
+                    hunks: vec![], // Left empty as requested
+                });
+
+                true
+            },
+            None,
+            None,
+            None,
+        )?;
+
+        Ok(file_diffs)
+    }
+
+    /// Create FileDiffDetails from path and blob
+    fn create_file_details(
+        &self,
+        path: &Path,
+        blob_id: &git2::Oid,
+        repo: &Repository,
+    ) -> FileDiffDetails {
+        let file_name = path.to_string_lossy().to_string();
+
+        // Get file content if blob exists (not for deletions)
+        let content = if !blob_id.is_zero() {
+            repo.find_blob(*blob_id).ok().and_then(|blob| {
+                if blob.is_binary() {
+                    None // Skip binary files
+                } else {
+                    std::str::from_utf8(blob.content())
+                        .ok()
+                        .map(|s| s.to_string())
+                }
+            })
+        } else {
+            None
+        };
+
+        FileDiffDetails {
+            file_name: Some(file_name),
+            content,
+        }
     }
 
     /// Merge changes from a worktree branch back to the main repository
