@@ -17,7 +17,11 @@ use tokio::fs;
 use ts_rs::TS;
 use utils::{assets::config_path, response::ApiResponse};
 
-use crate::{error::ApiError, DeploymentImpl};
+use crate::{
+    error::ApiError,
+    mcp::agent_config::{read_agent_config, write_agent_config},
+    DeploymentImpl,
+};
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
@@ -210,11 +214,8 @@ async fn update_mcp_servers_in_config(
         fs::create_dir_all(parent).await?;
     }
 
-    // Read existing config file or create empty object if it doesn't exist
-    let file_content = fs::read_to_string(config_path)
-        .await
-        .unwrap_or_else(|_| "{}".to_string());
-    let mut config: Value = serde_json::from_str(&file_content)?;
+    // Read existing config (JSON or TOML depending on agent)
+    let mut config = read_agent_config(config_path, agent).await?;
 
     let mcp_path = agent.mcp_attribute_path().unwrap();
 
@@ -224,9 +225,8 @@ async fn update_mcp_servers_in_config(
     // Set the MCP servers using the correct attribute path
     set_mcp_servers_in_config_path(agent, &mut config, &mcp_path, &new_servers)?;
 
-    // Write the updated config back to file
-    let updated_content = serde_json::to_string_pretty(&config)?;
-    fs::write(config_path, updated_content).await?;
+    // Write the updated config back to file (JSON or TOML depending on agent)
+    write_agent_config(config_path, agent, &config).await?;
 
     let new_count = new_servers.len();
     let message = match (old_servers, new_count) {
@@ -246,10 +246,8 @@ async fn read_mcp_servers_from_config(
     config_path: &std::path::Path,
     agent: &BaseCodingAgent,
 ) -> Result<HashMap<String, Value>, Box<dyn std::error::Error + Send + Sync>> {
-    let file_content = fs::read_to_string(config_path)
-        .await
-        .unwrap_or_else(|_| "{}".to_string());
-    let raw_config: Value = serde_json::from_str(&file_content)?;
+    // Read config in appropriate format (JSON or TOML) and normalize to serde_json::Value
+    let raw_config = read_agent_config(config_path, agent).await?;
     let mcp_path = agent.mcp_attribute_path().unwrap();
     let servers = get_mcp_servers_from_config_path(agent, &raw_config, &mcp_path);
     Ok(servers)

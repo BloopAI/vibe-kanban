@@ -146,7 +146,8 @@ const shouldRenderMarkdown = (entryType: NormalizedEntryType) => {
         entryType.tool_name.toLowerCase() === 'search' ||
         entryType.tool_name.toLowerCase() === 'webfetch' ||
         entryType.tool_name.toLowerCase() === 'web_fetch' ||
-        entryType.tool_name.toLowerCase() === 'task'))
+        entryType.tool_name.toLowerCase() === 'task' ||
+        entryType.tool_name.toLowerCase().startsWith('mcp_')))
   );
 };
 

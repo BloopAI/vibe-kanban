@@ -123,7 +123,7 @@ impl BaseCodingAgent {
             Self::Amp => Some(vec!["amp", "mcpServers"]), // Nested path for Amp
             Self::Gemini => Some(vec!["mcpServers"]),
             //ExecutorConfig::Aider => None, // Aider doesn't support MCP. https://github.com/Aider-AI/aider/issues/3314
-            Self::Codex => None, // Codex uses TOML config, frontend doesn't handle TOML yet
+            Self::Codex => Some(vec!["mcp_servers"]), // Codex uses TOML with mcp_servers
         }
     }
 

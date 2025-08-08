@@ -33,6 +33,7 @@ openssl-sys = { workspace = true }
 rmcp = { version = "0.2.1", features = ["server", "transport-io"] }
 schemars = "0.8"
 regex = "1.11.1"
+toml = "0.8"
 sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debug-images"] }
 sentry-tracing = { version = "0.41.0", features = ["backtrace"] }
 reqwest = { version = "0.12", features = ["json"] }
