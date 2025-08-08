@@ -72,9 +72,9 @@ export type GitBranch = { name: string, is_current: boolean, is_remote: boolean,
 
 export type BranchStatus = { is_behind: boolean, commits_behind: number, commits_ahead: number, up_to_date: boolean, merged: boolean, has_uncommitted_changes: boolean, base_branch_name: string, };
 
-export type Diff = { old_file: FileDiffDetails | null, new_file: FileDiffDetails | null, hunks: Array<string>, };
+export type Diff = { oldFile: FileDiffDetails | null, newFile: FileDiffDetails | null, hunks: Array<string>, };
 
-export type FileDiffDetails = { file_name: string | null, content: string | null, };
+export type FileDiffDetails = { fileName: string | null, content: string | null, };
 
 export type RepositoryInfo = { id: bigint, name: string, full_name: string, owner: string, description: string | null, clone_url: string, ssh_url: string, default_branch: string, private: boolean, };
 

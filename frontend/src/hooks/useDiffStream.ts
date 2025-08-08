@@ -7,7 +7,7 @@ interface DiffState {
 }
 
 interface UseDiffStreamResult {
-  diffs: DiffState | undefined;
+  data: DiffState | undefined;
   isConnected: boolean;
   error: string | null;
 }
@@ -34,5 +34,5 @@ export const useDiffStream = (
     // No need for injectInitialEntry or deduplicatePatches for diffs
   );
 
-  return { diffs: data, isConnected, error };
+  return { data, isConnected, error };
 };

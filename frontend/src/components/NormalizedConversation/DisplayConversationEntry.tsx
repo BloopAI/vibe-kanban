@@ -7,7 +7,6 @@ import {
   CheckSquare,
   ChevronRight,
   ChevronUp,
-  Edit,
   Eye,
   Globe,
   Plus,
