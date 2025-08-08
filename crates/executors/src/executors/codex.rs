@@ -276,33 +276,97 @@ pub enum CodexJson {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+pub struct McpInvocation {
+    pub server: String,
+    pub tool: String,
+    #[serde(default)]
+    pub arguments: Option<serde_json::Value>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[serde(tag = "type")]
 pub enum CodexMsgContent {
     #[serde(rename = "agent_message")]
     AgentMessage { message: String },
+
     #[serde(rename = "agent_reasoning")]
     AgentReasoning { text: String },
+
+    #[serde(rename = "agent_reasoning_raw_content")]
+    AgentReasoningRawContent { text: String },
+
+    #[serde(rename = "agent_reasoning_raw_content_delta")]
+    AgentReasoningRawContentDelta { delta: String },
+
     #[serde(rename = "error")]
     Error { message: Option<String> },
+
+    #[serde(rename = "mcp_tool_call_begin")]
+    McpToolCallBegin {
+        call_id: String,
+        invocation: McpInvocation,
+    },
+
+    #[serde(rename = "mcp_tool_call_end")]
+    McpToolCallEnd {
+        call_id: String,
+        invocation: McpInvocation,
+        #[serde(default)]
+        duration: serde_json::Value,
+        result: serde_json::Value,
+    },
+
     #[serde(rename = "exec_command_begin")]
     ExecCommandBegin {
         call_id: Option<String>,
         command: Vec<String>,
         cwd: Option<String>,
     },
+
+    #[serde(rename = "exec_command_output_delta")]
+    ExecCommandOutputDelta {
+        call_id: Option<String>,
+        // "stdout" | "stderr" typically
+        stream: Option<String>,
+        // Could be bytes or string; keep flexible
+        chunk: Option<serde_json::Value>,
+    },
+
     #[serde(rename = "exec_command_end")]
     ExecCommandEnd {
         call_id: Option<String>,
         stdout: Option<String>,
         stderr: Option<String>,
+        // Codex protocol has exit_code + duration; CLI may provide success; keep optional
         success: Option<bool>,
     },
+
+    #[serde(rename = "exec_approval_request")]
+    ExecApprovalRequest {
+        call_id: Option<String>,
+        command: Vec<String>,
+        cwd: Option<String>,
+        reason: Option<String>,
+    },
+
+    #[serde(rename = "apply_patch_approval_request")]
+    ApplyPatchApprovalRequest {
+        call_id: Option<String>,
+        changes: std::collections::HashMap<String, serde_json::Value>,
+        reason: Option<String>,
+        grant_root: Option<String>,
+    },
+
+    #[serde(rename = "background_event")]
+    BackgroundEvent { message: String },
+
     #[serde(rename = "patch_apply_begin")]
     PatchApplyBegin {
         call_id: Option<String>,
         auto_approved: Option<bool>,
         changes: std::collections::HashMap<String, serde_json::Value>,
     },
+
     #[serde(rename = "patch_apply_end")]
     PatchApplyEnd {
         call_id: Option<String>,
@@ -310,18 +374,23 @@ pub enum CodexMsgContent {
         stderr: Option<String>,
         success: Option<bool>,
     },
-    #[serde(rename = "mcp_tool_call_begin")]
-    McpToolCallBegin {
-        call_id: String,
-        server: String,
-        tool: String,
-        arguments: serde_json::Value,
+
+    #[serde(rename = "turn_diff")]
+    TurnDiff { unified_diff: String },
+
+    #[serde(rename = "get_history_entry_response")]
+    GetHistoryEntryResponse {
+        offset: Option<usize>,
+        log_id: Option<u64>,
+        entry: Option<serde_json::Value>,
     },
-    #[serde(rename = "mcp_tool_call_end")]
-    McpToolCallEnd {
-        call_id: String,
-        result: serde_json::Value,
+
+    #[serde(rename = "plan_update")]
+    PlanUpdate {
+        #[serde(flatten)]
+        value: serde_json::Value,
     },
+
     #[serde(rename = "task_started")]
     TaskStarted,
     #[serde(rename = "task_complete")]
@@ -334,6 +403,7 @@ pub enum CodexMsgContent {
         reasoning_output_tokens: Option<u64>,
         total_tokens: Option<u64>,
     },
+
     // Catch-all for unknown message types
     #[serde(other)]
     Unknown,
@@ -422,34 +492,89 @@ impl CodexJson {
                         }
                         None
                     }
-                    CodexMsgContent::McpToolCallBegin {
-                        server,
-                        tool,
-                        call_id: _,
-                        ..
-                    } => {
-                        let tool_name = format!("mcp_{tool}");
-                        let content = tool.clone();
+                    CodexMsgContent::McpToolCallBegin { invocation, .. } => {
+                        let tool_name = format!("mcp_{}", invocation.tool);
+                        let content = invocation.tool.clone();
 
                         Some(vec![NormalizedEntry {
                             timestamp: None,
                             entry_type: NormalizedEntryType::ToolUse {
                                 tool_name,
                                 action_type: ActionType::Other {
-                                    description: format!("MCP tool call to {tool} from {server}"),
+                                    description: format!(
+                                        "MCP tool call to {} from {}",
+                                        invocation.tool, invocation.server
+                                    ),
                                 },
                             },
                             content,
                             metadata: Some(metadata),
                         }])
                     }
+                    CodexMsgContent::ExecApprovalRequest {
+                        command,
+                        cwd,
+                        reason,
+                        ..
+                    } => {
+                        let command_str = command.join(" ");
+                        let mut parts = vec![format!("command: `{}`", command_str)];
+                        if let Some(c) = cwd {
+                            parts.push(format!("cwd: {c}"));
+                        }
+                        if let Some(r) = reason {
+                            parts.push(format!("reason: {r}"));
+                        }
+                        let content =
+                            format!("Execution approval requested — {}", parts.join("  "));
+                        Some(vec![NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::SystemMessage,
+                            content,
+                            metadata: None,
+                        }])
+                    }
+                    CodexMsgContent::ApplyPatchApprovalRequest {
+                        changes,
+                        reason,
+                        grant_root,
+                        ..
+                    } => {
+                        let mut parts = vec![format!("files: {}", changes.len())];
+                        if let Some(root) = grant_root {
+                            parts.push(format!("grant_root: {root}"));
+                        }
+                        if let Some(r) = reason {
+                            parts.push(format!("reason: {r}"));
+                        }
+                        let content = format!("Patch approval requested — {}", parts.join("  "));
+                        Some(vec![NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::SystemMessage,
+                            content,
+                            metadata: None,
+                        }])
+                    }
+                    CodexMsgContent::PlanUpdate { value } => Some(vec![NormalizedEntry {
+                        timestamp: None,
+                        entry_type: NormalizedEntryType::SystemMessage,
+                        content: "Plan update".to_string(),
+                        metadata: Some(value.clone()),
+                    }]),
+
                     // Ignored message types
-                    CodexMsgContent::ExecCommandEnd { .. }
+                    CodexMsgContent::AgentReasoningRawContent { .. }
+                    | CodexMsgContent::AgentReasoningRawContentDelta { .. }
+                    | CodexMsgContent::ExecCommandOutputDelta { .. }
+                    | CodexMsgContent::GetHistoryEntryResponse { .. }
+                    | CodexMsgContent::ExecCommandEnd { .. }
                     | CodexMsgContent::PatchApplyEnd { .. }
                     | CodexMsgContent::McpToolCallEnd { .. }
                     | CodexMsgContent::TaskStarted
                     | CodexMsgContent::TaskComplete { .. }
                     | CodexMsgContent::TokenCount { .. }
+                    | CodexMsgContent::TurnDiff { .. }
+                    | CodexMsgContent::BackgroundEvent { .. }
                     | CodexMsgContent::Unknown => None,
                 }
             }
@@ -815,8 +940,8 @@ invalid json line here
 
     #[test]
     fn test_normalize_logs_mcp_tool_calls() {
-        let logs = r#"{"id":"1","msg":{"type":"mcp_tool_call_begin","call_id":"call_KHwEJyaUuL5D8sO7lPfImx7I","server":"vibe_kanban","tool":"list_projects","arguments":{}}}
-{"id":"1","msg":{"type":"mcp_tool_call_end","call_id":"call_KHwEJyaUuL5D8sO7lPfImx7I","result":{"Ok":{"content":[{"text":"Projects listed successfully"}],"isError":false}}}}
+        let logs = r#"{"id":"1","msg":{"type":"mcp_tool_call_begin","call_id":"call_KHwEJyaUuL5D8sO7lPfImx7I","invocation":{"server":"vibe_kanban","tool":"list_projects","arguments":{}}}}
+{"id":"1","msg":{"type":"mcp_tool_call_end","call_id":"call_KHwEJyaUuL5D8sO7lPfImx7I","invocation":{"server":"vibe_kanban","tool":"list_projects","arguments":{}},"result":{"Ok":{"content":[{"text":"Projects listed successfully"}],"isError":false}}}}
 {"id":"1","msg":{"type":"agent_message","message":"Here are your projects"}}"#;
 
         let entries = parse_test_json_lines(logs);
@@ -848,10 +973,10 @@ invalid json line here
 
     #[test]
     fn test_normalize_logs_mcp_tool_call_multiple() {
-        let logs = r#"{"id":"1","msg":{"type":"mcp_tool_call_begin","call_id":"call_1","server":"vibe_kanban","tool":"create_task","arguments":{"title":"Test task"}}}
-{"id":"1","msg":{"type":"mcp_tool_call_end","call_id":"call_1","result":{"Ok":{"content":[{"text":"Task created"}],"isError":false}}}}
-{"id":"1","msg":{"type":"mcp_tool_call_begin","call_id":"call_2","server":"vibe_kanban","tool":"list_tasks","arguments":{}}}
-{"id":"1","msg":{"type":"mcp_tool_call_end","call_id":"call_2","result":{"Ok":{"content":[{"text":"Tasks listed"}],"isError":false}}}}"#;
+        let logs = r#"{"id":"1","msg":{"type":"mcp_tool_call_begin","call_id":"call_1","invocation":{"server":"vibe_kanban","tool":"create_task","arguments":{"title":"Test task"}}}}
+{"id":"1","msg":{"type":"mcp_tool_call_end","call_id":"call_1","invocation":{"server":"vibe_kanban","tool":"create_task","arguments":{"title":"Test task"}},"result":{"Ok":{"content":[{"text":"Task created"}],"isError":false}}}}
+{"id":"1","msg":{"type":"mcp_tool_call_begin","call_id":"call_2","invocation":{"server":"vibe_kanban","tool":"list_tasks","arguments":{}}}}
+{"id":"1","msg":{"type":"mcp_tool_call_end","call_id":"call_2","invocation":{"server":"vibe_kanban","tool":"list_tasks","arguments":{}},"result":{"Ok":{"content":[{"text":"Tasks listed"}],"isError":false}}}}"#;
 
         let entries = parse_test_json_lines(logs);
 
