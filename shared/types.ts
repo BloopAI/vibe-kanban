@@ -106,7 +106,11 @@ agent: BaseCodingAgent,
 /**
  * Command builder configuration
  */
-command: CommandBuilder, };
+command: CommandBuilder, 
+/**
+ * Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
+ */
+mcp_config_path: string | null, };
 
 export type AgentProfiles = { profiles: Array<AgentProfile>, };
 

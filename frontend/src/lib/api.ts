@@ -552,20 +552,25 @@ export const templatesApi = {
 
 // MCP Servers APIs
 export const mcpServersApi = {
-  load: async (executor: string): Promise<any> => {
-    const response = await makeRequest(
-      `/api/mcp-config?base_coding_agent=${encodeURIComponent(executor)}`
-    );
+  load: async (executor: string, mcpConfigPath?: string): Promise<any> => {
+    const params = new URLSearchParams();
+    params.set('base_coding_agent', executor);
+    if (mcpConfigPath) params.set('mcp_config_path', mcpConfigPath);
+    const response = await makeRequest(`/api/mcp-config?${params.toString()}`);
     return handleApiResponse<any>(response);
   },
-  save: async (executor: string, serversConfig: any): Promise<void> => {
-    const response = await makeRequest(
-      `/api/mcp-config?base_coding_agent=${encodeURIComponent(executor)}`,
-      {
-        method: 'POST',
-        body: JSON.stringify(serversConfig),
-      }
-    );
+  save: async (
+    executor: string,
+    mcpConfigPath: string | undefined,
+    serversConfig: any
+  ): Promise<void> => {
+    const params = new URLSearchParams();
+    params.set('base_coding_agent', executor);
+    if (mcpConfigPath) params.set('mcp_config_path', mcpConfigPath);
+    const response = await makeRequest(`/api/mcp-config?${params.toString()}`, {
+      method: 'POST',
+      body: JSON.stringify(serversConfig),
+    });
     if (!response.ok) {
       const errorData = await response.json();
       console.error('[API Error] Failed to save MCP servers', {

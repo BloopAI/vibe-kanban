@@ -88,6 +88,11 @@ pub fn get_vibe_kanban_temp_dir() -> std::path::PathBuf {
     }
 }
 
+/// Expand leading ~ to user's home directory.
+pub fn expand_tilde(path_str: &str) -> std::path::PathBuf {
+    shellexpand::tilde(path_str).as_ref().into()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

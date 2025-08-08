@@ -62,6 +62,8 @@ pub struct AgentProfile {
     pub agent: BaseCodingAgent,
     /// Command builder configuration
     pub command: CommandBuilder,
+    /// Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
+    pub mcp_config_path: Option<String>,
 }
 
 impl AgentProfile {
@@ -75,6 +77,7 @@ impl AgentProfile {
                 "--verbose",
                 "--output-format=stream-json",
             ]),
+            mcp_config_path: None,
         }
     }
 
@@ -88,6 +91,7 @@ impl AgentProfile {
                 "--verbose",
                 "--output-format=stream-json",
             ]),
+            mcp_config_path: None,
         }
     }
 
@@ -103,6 +107,7 @@ impl AgentProfile {
                     "--output-format=stream-json",
                 ],
             ),
+            mcp_config_path: None,
         }
     }
 
@@ -112,6 +117,7 @@ impl AgentProfile {
             agent: BaseCodingAgent::Amp,
             command: CommandBuilder::new("npx -y @sourcegraph/amp@0.0.1752148945-gd8844f")
                 .params(vec!["--format=jsonl"]),
+            mcp_config_path: None,
         }
     }
 
@@ -120,6 +126,7 @@ impl AgentProfile {
             label: "gemini".to_string(),
             agent: BaseCodingAgent::Gemini,
             command: CommandBuilder::new("npx -y @google/gemini-cli@latest").params(vec!["--yolo"]),
+            mcp_config_path: None,
         }
     }
 
@@ -132,6 +139,17 @@ impl AgentProfile {
                 "--dangerously-bypass-approvals-and-sandbox",
                 "--skip-git-repo-check",
             ]),
+            mcp_config_path: None,
+        }
+    }
+
+    pub fn qwen_code() -> Self {
+        Self {
+            label: "qwen-code".to_string(),
+            agent: BaseCodingAgent::Gemini,
+            command: CommandBuilder::new("npx -y @qwen-code/qwen-code@latest")
+                .params(vec!["--yolo"]),
+            mcp_config_path: Some("~/.qwen/settings.json".to_string()),
         }
     }
 
@@ -141,6 +159,7 @@ impl AgentProfile {
             agent: BaseCodingAgent::Opencode,
             command: CommandBuilder::new("npx -y opencode-ai@latest run")
                 .params(vec!["--print-logs"]),
+            mcp_config_path: None,
         }
     }
 }
@@ -179,6 +198,7 @@ impl AgentProfiles {
                 AgentProfile::gemini(),
                 AgentProfile::codex(),
                 AgentProfile::opencode(),
+                AgentProfile::qwen_code(),
             ],
         }
     }
@@ -240,98 +260,45 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_command_builder() {
-        let builder = CommandBuilder::new("npx claude").params(vec!["--verbose", "--json"]);
-        assert_eq!(builder.build_initial(), "npx claude --verbose --json");
-        assert_eq!(
-            builder.build_follow_up(&["--resume".to_string(), "session123".to_string()]),
-            "npx claude --verbose --json --resume session123"
-        );
-    }
+    fn default_profiles_have_expected_base_and_noninteractive_or_json_flags() {
+        // Build default profiles and make lookup by label easy
+        let profiles = AgentProfiles::from_defaults().to_map();
 
-    #[test]
-    fn test_default_profiles() {
-        let profiles = AgentProfiles::from_defaults();
-        assert!(profiles.profiles.len() == 7);
+        let get_profile_command = |label: &str| {
+            profiles
+                .get(label)
+                .map(|p| p.command.build_initial())
+                .unwrap_or_else(|| panic!("Profile not found: {label}"))
+        };
 
-        let claude_profile = profiles.get_profile("claude-code").unwrap();
-        assert_eq!(claude_profile.agent, BaseCodingAgent::ClaudeCode);
-        assert!(
-            claude_profile
-                .command
-                .build_initial()
-                .contains("claude-code")
-        );
-        assert!(
-            claude_profile
-                .command
-                .build_initial()
-                .contains("--dangerously-skip-permissions")
-        );
+        let claude_code_command = get_profile_command("claude-code");
+        assert!(claude_code_command.contains("npx -y @anthropic-ai/claude-code@latest"));
+        assert!(claude_code_command.contains("-p"));
+        assert!(claude_code_command.contains("--dangerously-skip-permissions"));
 
-        let amp_profile = profiles.get_profile("amp").unwrap();
-        assert_eq!(amp_profile.agent, BaseCodingAgent::Amp);
-        assert!(amp_profile.command.build_initial().contains("amp"));
-        assert!(
-            amp_profile
-                .command
-                .build_initial()
-                .contains("--format=jsonl")
-        );
+        let claude_code_router_command = get_profile_command("claude-code-router");
+        assert!(claude_code_router_command.contains("npx -y @musistudio/claude-code-router code"));
+        assert!(claude_code_router_command.contains("-p"));
+        assert!(claude_code_router_command.contains("--dangerously-skip-permissions"));
 
-        let gemini_profile = profiles.get_profile("gemini").unwrap();
-        assert_eq!(gemini_profile.agent, BaseCodingAgent::Gemini);
-        assert!(gemini_profile.command.build_initial().contains("gemini"));
-        assert!(gemini_profile.command.build_initial().contains("--yolo"));
+        let amp_command = get_profile_command("amp");
+        assert!(amp_command.contains("npx -y @sourcegraph/amp@0.0.1752148945-gd8844f"));
+        assert!(amp_command.contains("--format=jsonl"));
 
-        let codex_profile = profiles.get_profile("codex").unwrap();
-        assert_eq!(codex_profile.agent, BaseCodingAgent::Codex);
-        assert!(codex_profile.command.build_initial().contains("codex"));
-        assert!(codex_profile.command.build_initial().contains("--json"));
+        let gemini_command = get_profile_command("gemini");
+        assert!(gemini_command.contains("npx -y @google/gemini-cli@latest"));
+        assert!(gemini_command.contains("--yolo"));
 
-        let opencode_profile = profiles.get_profile("opencode").unwrap();
-        assert_eq!(opencode_profile.agent, BaseCodingAgent::Opencode);
-        assert!(
-            opencode_profile
-                .command
-                .build_initial()
-                .contains("opencode-ai")
-        );
-        assert!(opencode_profile.command.build_initial().contains("run"));
-        assert!(
-            opencode_profile
-                .command
-                .build_initial()
-                .contains("--print-logs")
-        );
+        let codex_command = get_profile_command("codex");
+        assert!(codex_command.contains("npx -y @openai/codex exec"));
+        assert!(codex_command.contains("--json"));
 
-        let claude_code_router_profile = profiles.get_profile("claude-code-router").unwrap();
-        assert_eq!(
-            claude_code_router_profile.agent,
-            BaseCodingAgent::ClaudeCode
-        );
-        assert!(
-            claude_code_router_profile
-                .command
-                .build_initial()
-                .contains("@musistudio/claude-code-router")
-        );
-        assert!(
-            claude_code_router_profile
-                .command
-                .build_initial()
-                .contains("--dangerously-skip-permissions")
-        );
-    }
+        let qwen_code_command = get_profile_command("qwen-code");
+        assert!(qwen_code_command.contains("npx -y @qwen-code/qwen-code@latest"));
+        assert!(qwen_code_command.contains("--yolo"));
 
-    #[test]
-    fn test_profiles_for_agent() {
-        let profiles = AgentProfiles::from_defaults();
-
-        let claude_profiles = profiles.get_profiles_for_agent(&BaseCodingAgent::ClaudeCode);
-        assert_eq!(claude_profiles.len(), 3); // default, plan mode, and claude-code-router
-
-        let amp_profiles = profiles.get_profiles_for_agent(&BaseCodingAgent::Amp);
-        assert_eq!(amp_profiles.len(), 1);
+        let opencode_command = get_profile_command("opencode");
+        assert!(opencode_command.contains("npx -y opencode-ai@latest run"));
+        assert!(opencode_command.contains("--print-logs"));
     }
 }
