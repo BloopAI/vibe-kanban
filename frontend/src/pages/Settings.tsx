@@ -20,7 +20,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Key, Loader2, Volume2 } from 'lucide-react';
-import { ThemeMode, EditorType, SoundFile } from 'shared/types';
+import { ThemeMode, EditorType, SoundFile, ProfileVariant } from 'shared/types';
 
 import { toPrettyCase } from '@/utils/string';
 import { useTheme } from '@/components/theme-provider';
@@ -264,23 +264,81 @@ export function Settings() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="executor">Default Profile</Label>
-                <Select
-                  value={config.profile}
-                  onValueChange={(value: string) =>
-                    updateConfig({ profile: value })
-                  }
+                <div
+                  className={(() => {
+                    const selectedProfile = profiles?.find(
+                      (p) => p.label === config.profile?.profile
+                    );
+                    return selectedProfile &&
+                      selectedProfile.variants &&
+                      selectedProfile.variants.length > 0
+                      ? 'grid grid-cols-2 gap-2'
+                      : '';
+                  })()}
                 >
-                  <SelectTrigger id="executor">
-                    <SelectValue placeholder="Select executor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {profiles?.map((profile) => (
-                      <SelectItem key={profile.label} value={profile.label}>
-                        {profile.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <Select
+                    value={config.profile?.profile || ''}
+                    onValueChange={(value: string) => {
+                      const newProfile: ProfileVariant = {
+                        profile: value,
+                        variant: null,
+                      };
+                      updateConfig({ profile: newProfile });
+                    }}
+                  >
+                    <SelectTrigger id="executor">
+                      <SelectValue placeholder="Select profile" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {profiles?.map((profile) => (
+                        <SelectItem key={profile.label} value={profile.label}>
+                          {profile.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Show mode selector if selected profile has modes */}
+                  {(() => {
+                    const selectedProfile = profiles?.find(
+                      (p) => p.label === config.profile?.profile
+                    );
+                    if (
+                      selectedProfile &&
+                      selectedProfile.variants &&
+                      selectedProfile.variants.length > 0
+                    ) {
+                      return (
+                        <Select
+                          value={config.profile?.variant || '__default__'}
+                          onValueChange={(value: string) => {
+                            const newProfile: ProfileVariant = {
+                              profile: config.profile?.profile || '',
+                              variant: value === '__default__' ? null : value,
+                            };
+                            updateConfig({ profile: newProfile });
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select mode (optional)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__default__">Default</SelectItem>
+                            {selectedProfile.variants.map((variant) => (
+                              <SelectItem
+                                key={variant.label}
+                                value={variant.label}
+                              >
+                                {variant.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
                 <p className="text-sm text-muted-foreground">
                   Choose the default profile to use when creating a task
                   attempt.

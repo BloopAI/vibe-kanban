@@ -14,23 +14,25 @@
           ]
         },
         "plan": false
-      }
-    },
-    {
-      "label": "claude-code-plan",
-      "mcp_config_path": null,
-      "CLAUDE_CODE": {
-        "command": {
-          "base": "npx -y @anthropic-ai/claude-code@latest",
-          "params": [
-            "-p",
-            "--permission-mode=plan",
-            "--verbose",
-            "--output-format=stream-json"
-          ]
-        },
-        "plan": true
-      }
+      },
+      "variants": [
+        {
+          "label": "plan",
+          "mcp_config_path": null,
+          "CLAUDE_CODE": {
+            "command": {
+              "base": "npx -y @anthropic-ai/claude-code@latest",
+              "params": [
+                "-p",
+                "--permission-mode=plan",
+                "--verbose",
+                "--output-format=stream-json"
+              ]
+            },
+            "plan": true
+          }
+        }
+      ]
     },
     {
       "label": "claude-code-router",
@@ -46,7 +48,8 @@
           ]
         },
         "plan": false
-      }
+      },
+      "variants": []
     },
     {
       "label": "amp",
@@ -58,7 +61,8 @@
             "--format=jsonl"
           ]
         }
-      }
+      },
+      "variants": []
     },
     {
       "label": "gemini",
@@ -70,7 +74,8 @@
             "--yolo"
           ]
         }
-      }
+      },
+      "variants": []
     },
     {
       "label": "codex",
@@ -84,7 +89,8 @@
             "--skip-git-repo-check"
           ]
         }
-      }
+      },
+      "variants": []
     },
     {
       "label": "opencode",
@@ -96,7 +102,8 @@
             "--print-logs"
           ]
         }
-      }
+      },
+      "variants": []
     },
     {
       "label": "qwen-code",
@@ -108,7 +115,8 @@
             "--yolo"
           ]
         }
-      }
+      },
+      "variants": []
     },
     {
       "label": "cursor",
@@ -122,7 +130,8 @@
             "--force"
           ]
         }
-      }
+      },
+      "variants": []
     }
   ]
 }

@@ -42,13 +42,13 @@ export type UserSystemInfo = { config: Config, environment: Environment, profile
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
 
-export type CreateFollowUpAttempt = { prompt: string, };
+export type CreateFollowUpAttempt = { prompt: string, variant: string | null, };
 
 export type CreateGitHubPrRequest = { title: string, body: string | null, base_branch: string | null, };
 
 export enum GitHubServiceError { TOKEN_INVALID = "TOKEN_INVALID", INSUFFICIENT_PERMISSIONS = "INSUFFICIENT_PERMISSIONS", REPO_NOT_FOUND_OR_NO_ACCESS = "REPO_NOT_FOUND_OR_NO_ACCESS" }
 
-export type Config = { config_version: string, theme: ThemeMode, profile: string, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, github_login_acknowledged: boolean, telemetry_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean | null, workspace_dir: string | null, };
+export type Config = { config_version: string, theme: ThemeMode, profile: ProfileVariant, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, github_login_acknowledged: boolean, telemetry_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean | null, workspace_dir: string | null, };
 
 export type NotificationConfig = { sound_enabled: boolean, push_enabled: boolean, sound_file: SoundFile, };
 
@@ -80,33 +80,45 @@ export type RepositoryInfo = { id: bigint, name: string, full_name: string, owne
 
 export enum BaseCodingAgent { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI = "GEMINI", CODEX = "CODEX", OPENCODE = "OPENCODE", CURSOR = "CURSOR" }
 
-export type CommandBuilder = { 
-/**
- * Base executable command (e.g., "npx -y @anthropic-ai/claude-code@latest")
- */
-base: string, 
-/**
- * Optional parameters to append to the base command
- */
-params: Array<string> | null, };
+export type CommandBuilder = {
+    /**
+     * Base executable command (e.g., "npx -y @anthropic-ai/claude-code@latest")
+     */
+    base: string,
+    /**
+     * Optional parameters to append to the base command
+     */
+    params: Array<string> | null,
+};
 
-export type AgentProfile = { 
-/**
- * Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
- */
-label: string, 
-/**
- * Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
- */
-mcp_config_path: string | null, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor });
+export type AgentProfile = {
+    /**
+     * Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
+     */
+    label: string,
+    /**
+     * Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
+     */
+    mcp_config_path: string | null,
+} & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor });
 
 export type AgentProfiles = { profiles: Array<AgentProfile>, };
 
-export type CodingAgentInitialRequest = { prompt: string, profile: string, };
+export type ClaudeCode = { command: CommandBuilder, plan: boolean, };
 
-export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, profile: string, };
+export type Gemini = { command: CommandBuilder, };
 
-export type CreateTaskAttemptBody = { task_id: string, profile: string | null, base_branch: string, };
+export type Amp = { command: CommandBuilder, };
+
+export type Codex = { command: CommandBuilder, };
+
+export type Opencode = { command: CommandBuilder, };
+
+export type CodingAgentInitialRequest = { prompt: string, profile: ProfileVariant, };
+
+export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, profile: ProfileVariant, };
+
+export type CreateTaskAttemptBody = { task_id: string, profile: ProfileVariant | null, base_branch: string, };
 
 export type RebaseTaskAttemptRequest = { new_base_branch: string | null, };
 

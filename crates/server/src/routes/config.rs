@@ -5,11 +5,11 @@ use axum::{
     extract::{Path, Query, State},
     http,
     response::{Json as ResponseJson, Response},
-    routing::{get, post, put},
+    routing::{get, put},
     Json, Router,
 };
 use deployment::{Deployment, DeploymentError};
-use executors::{command::AgentProfiles, executors::BaseCodingAgent};
+use executors::command::AgentProfiles;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use services::services::config::{save_config_to_file, Config, SoundFile};
@@ -128,7 +128,7 @@ async fn get_mcp_servers(
         None => {
             let config = deployment.config().read().await;
             let profile = executors::command::AgentProfiles::get_cached()
-                .get_profile(&config.profile)
+                .get_profile(&config.profile.profile)
                 .expect("Corrupted config");
             profile.agent.clone().into()
         }
@@ -179,7 +179,7 @@ async fn update_mcp_servers(
         None => {
             let config = deployment.config().read().await;
             let profile = executors::command::AgentProfiles::get_cached()
-                .get_profile(&config.profile)
+                .get_profile(&config.profile.profile)
                 .expect("Corrupted config");
             profile.agent.clone().into()
         }

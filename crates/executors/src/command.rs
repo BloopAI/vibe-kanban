@@ -34,7 +34,6 @@ impl CommandBuilder {
         self.params = Some(params.into_iter().map(|p| p.into()).collect());
         self
     }
-
     pub fn build_initial(&self) -> String {
         let mut parts = vec![self.base.clone()];
         if let Some(ref params) = self.params {
@@ -54,6 +53,17 @@ impl CommandBuilder {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+pub struct AgentVariantProfile {
+    /// Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
+    pub label: String,
+    /// The coding agent this profile is associated with
+    #[serde(flatten)]
+    pub agent: CodingAgent,
+    /// Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
+    pub mcp_config_path: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct AgentProfile {
     /// Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
     pub label: String,
@@ -62,6 +72,35 @@ pub struct AgentProfile {
     pub agent: CodingAgent,
     /// Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
     pub mcp_config_path: Option<String>,
+    /// Supported modes for this profile, may be empty
+    pub variants: Vec<AgentVariantProfile>,
+}
+
+impl AgentProfile {
+    pub fn get_variant(&self, variant: &str) -> Option<&AgentVariantProfile> {
+        self.variants.iter().find(|m| m.label == variant)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+pub struct ProfileVariant {
+    pub profile: String,
+    pub variant: Option<String>,
+}
+
+impl ProfileVariant {
+    pub fn default(profile: String) -> Self {
+        Self {
+            profile,
+            variant: None,
+        }
+    }
+    pub fn with_variant(profile: String, mode: String) -> Self {
+        Self {
+            profile,
+            variant: Some(mode),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
@@ -99,8 +138,10 @@ impl AgentProfiles {
     }
 
     pub fn from_defaults() -> Self {
-        serde_json::from_str(DEFAULT_PROFILES_JSON)
-            .expect("Failed to parse embedded default_profiles.json")
+        serde_json::from_str(DEFAULT_PROFILES_JSON).unwrap_or_else(|e| {
+            tracing::error!("Failed to parse embedded default_profiles.json: {}", e);
+            panic!("Default profiles JSON is invalid")
+        })
     }
 
     pub fn extend_from_file(&mut self) -> Result<(), std::io::Error> {
@@ -154,7 +195,6 @@ impl AgentProfiles {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn default_profiles_have_expected_base_and_noninteractive_or_json_flags() {
         // Build default profiles and make lookup by label easy
@@ -176,6 +216,8 @@ mod tests {
                 })
                 .unwrap_or_else(|| panic!("Profile not found: {label}"))
         };
+        let profiles = AgentProfiles::from_defaults();
+        assert!(profiles.profiles.len() == 7);
 
         let claude_code_command = get_profile_command("claude-code");
         assert!(claude_code_command.contains("npx -y @anthropic-ai/claude-code@latest"));

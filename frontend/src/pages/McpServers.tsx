@@ -39,7 +39,9 @@ export function McpServers() {
   useEffect(() => {
     if (config?.profile && profiles && !selectedProfile) {
       // Find the current profile
-      const currentProfile = profiles.find((p) => p.label === config.profile);
+      const currentProfile = profiles.find(
+        (p) => p.label === config.profile.profile
+      );
       if (currentProfile) {
         setSelectedProfile(currentProfile);
       } else if (profiles.length > 0) {
@@ -57,7 +59,7 @@ export function McpServers() {
       setMcpError(null);
 
       // Set default empty config based on agent type using strategy
-      const strategy = getMcpStrategyByAgent(profile.agent);
+      const strategy = getMcpStrategyByAgent(profile);
       const defaultConfig = strategy.getDefaultConfig();
       setMcpServers(defaultConfig);
       setMcpConfigPath('');
@@ -65,7 +67,7 @@ export function McpServers() {
       try {
         // Load MCP servers for the selected profile/agent
         const result = await mcpServersApi.load(
-          profile.agent,
+          profile.label,
           profile.mcp_config_path || undefined
         );
         // Handle new response format with servers and config_path
@@ -74,7 +76,7 @@ export function McpServers() {
         const configPath = data.config_path || '';
 
         // Create the full configuration structure using strategy
-        const strategy = getMcpStrategyByAgent(profile.agent);
+        const strategy = getMcpStrategyByAgent(profile);
         const fullConfig = strategy.createFullConfig(servers);
         const configJson = JSON.stringify(fullConfig, null, 2);
         setMcpServers(configJson);
@@ -105,7 +107,7 @@ export function McpServers() {
       try {
         const config = JSON.parse(value);
         // Validate that the config has the expected structure using strategy
-        const strategy = getMcpStrategyByAgent(selectedProfile.agent);
+        const strategy = getMcpStrategyByAgent(selectedProfile);
         strategy.validateFullConfig(config);
       } catch (err) {
         if (err instanceof SyntaxError) {
@@ -125,7 +127,7 @@ export function McpServers() {
       const existingConfig = mcpServers.trim() ? JSON.parse(mcpServers) : {};
 
       // Use strategy to create vibe-kanban configuration
-      const strategy = getMcpStrategyByAgent(selectedProfile.agent);
+      const strategy = getMcpStrategyByAgent(selectedProfile);
       const vibeKanbanConfig = strategy.createVibeKanbanConfig();
 
       // Add vibe_kanban to the existing configuration using strategy
@@ -157,14 +159,14 @@ export function McpServers() {
           const fullConfig = JSON.parse(mcpServers);
 
           // Use strategy to validate and extract servers config
-          const strategy = getMcpStrategyByAgent(selectedProfile.agent);
+          const strategy = getMcpStrategyByAgent(selectedProfile);
           strategy.validateFullConfig(fullConfig);
 
           // Extract just the servers object for the API - backend will handle nesting/format
           const mcpServersConfig = strategy.extractServersForApi(fullConfig);
 
           await mcpServersApi.save(
-            selectedProfile.agent,
+            selectedProfile.label,
             mcpConfigPath || undefined,
             mcpServersConfig
           );

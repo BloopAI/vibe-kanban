@@ -19,7 +19,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sparkles, Code } from 'lucide-react';
-import { EditorType } from 'shared/types';
+import { EditorType, ProfileVariant } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
 
 import { toPrettyCase } from '@/utils/string';
@@ -27,13 +27,16 @@ import { toPrettyCase } from '@/utils/string';
 interface OnboardingDialogProps {
   open: boolean;
   onComplete: (config: {
-    profile: string;
+    profile: ProfileVariant;
     editor: { editor_type: EditorType; custom_command: string | null };
   }) => void;
 }
 
 export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
-  const [profile, setProfile] = useState<string>('claude-code');
+  const [profile, setProfile] = useState<ProfileVariant>({
+    profile: 'claude-code',
+    variant: null,
+  });
   const [editorType, setEditorType] = useState<EditorType>(EditorType.VS_CODE);
   const [customCommand, setCustomCommand] = useState<string>('');
 
@@ -80,8 +83,10 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
               <div className="space-y-2">
                 <Label htmlFor="profile">Default Profile</Label>
                 <Select
-                  value={profile}
-                  onValueChange={(value) => setProfile(value)}
+                  value={profile.profile}
+                  onValueChange={(value) =>
+                    setProfile({ profile: value, variant: null })
+                  }
                 >
                   <SelectTrigger id="profile">
                     <SelectValue placeholder="Select your preferred coding agent" />

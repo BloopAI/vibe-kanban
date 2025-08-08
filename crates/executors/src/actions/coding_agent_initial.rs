@@ -7,19 +7,20 @@ use ts_rs::TS;
 
 use crate::{
     actions::Executable,
+    command::ProfileVariant,
     executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct CodingAgentInitialRequest {
     pub prompt: String,
-    pub profile: String,
+    pub profile: ProfileVariant,
 }
 
 #[async_trait]
 impl Executable for CodingAgentInitialRequest {
     async fn spawn(&self, current_dir: &PathBuf) -> Result<AsyncGroupChild, ExecutorError> {
-        let executor = CodingAgent::from_profile_str(&self.profile)?;
+        let executor = CodingAgent::from_profile_variant(&self.profile)?;
         executor.spawn(current_dir, &self.prompt).await
     }
 }

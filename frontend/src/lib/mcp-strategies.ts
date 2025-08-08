@@ -1,7 +1,11 @@
 // Strategy pattern implementation for MCP server configuration handling
 // across different base coding agents (Claude, Amp, Gemini, Opencode, Codex)
 
-import { BaseCodingAgent } from 'shared/types';
+import {
+  AgentVariantProfile,
+  BaseCodingAgent,
+  AgentProfile,
+} from 'shared/types';
 
 export interface McpConfigStrategy {
   // Get the default empty configuration structure for this executor (as JSON string for textarea)
@@ -212,13 +216,27 @@ export class CodexMcpStrategy implements McpConfigStrategy {
   }
 }
 
+// Type guard approach - most type-safe
+type AgentUnion = AgentProfile | AgentVariantProfile;
+
+function getAgentType(agent: AgentUnion): BaseCodingAgent {
+  if (BaseCodingAgent.CLAUDE_CODE in agent) return BaseCodingAgent.CLAUDE_CODE;
+  if (BaseCodingAgent.AMP in agent) return BaseCodingAgent.AMP;
+  if (BaseCodingAgent.GEMINI in agent) return BaseCodingAgent.GEMINI;
+  if (BaseCodingAgent.CODEX in agent) return BaseCodingAgent.CODEX;
+  if (BaseCodingAgent.OPENCODE in agent) return BaseCodingAgent.OPENCODE;
+  agent satisfies never;
+  throw new Error(`Unknown agent type`);
+}
+
 /**
  * Factory to get the appropriate MCP strategy for a BaseCodingAgent
  */
 export function getMcpStrategyByAgent(
-  agent: BaseCodingAgent
+  agent: AgentProfile | AgentVariantProfile
 ): McpConfigStrategy {
-  switch (agent) {
+  const agentType = getAgentType(agent);
+  switch (agentType) {
     case BaseCodingAgent.AMP:
       return new AmpMcpStrategy();
     case BaseCodingAgent.OPENCODE:

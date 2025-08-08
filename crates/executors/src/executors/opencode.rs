@@ -12,7 +12,7 @@ use ts_rs::TS;
 use utils::{msg_store::MsgStore, path::make_path_relative, shell::get_shell_command};
 
 use crate::{
-    command::{AgentProfiles, CommandBuilder},
+    command::{AgentProfiles, CommandBuilder, ProfileVariant},
     executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
     logs::{
         ActionType, EditDiff, NormalizedEntry, NormalizedEntryType,

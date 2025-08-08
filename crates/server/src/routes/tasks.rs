@@ -90,18 +90,18 @@ pub async fn create_task_and_start(
         .await;
 
     // use the default executor profile and the current branch for the task attempt
-    let default_profile_label = deployment.config().read().await.profile.clone().to_string();
+    let default_profile_variant = deployment.config().read().await.profile.clone();
     let project = Project::find_by_id(&deployment.db().pool, payload.project_id)
         .await?
         .ok_or(ApiError::Database(SqlxError::RowNotFound))?;
     let branch = GitService::new().get_current_branch(&project.git_repo_path)?;
     let base_coding_agent = executors::command::AgentProfiles::get_cached()
-        .get_profile(&default_profile_label)
+        .get_profile(&default_profile_variant.profile)
         .map(|profile| profile.agent.to_string())
         .ok_or_else(|| {
             ApiError::TaskAttempt(TaskAttemptError::ValidationError(format!(
-                "Profile not found: {}",
-                default_profile_label
+                "Profile not found: {:?}",
+                default_profile_variant
             )))
         })?;
 
@@ -116,7 +116,7 @@ pub async fn create_task_and_start(
     .await?;
     let execution_process = deployment
         .container()
-        .start_attempt(&task_attempt, default_profile_label.clone())
+        .start_attempt(&task_attempt, default_profile_variant.clone())
         .await?;
     deployment
         .track_if_analytics_allowed(
@@ -124,7 +124,7 @@ pub async fn create_task_and_start(
             serde_json::json!({
                 "task_id": task.id.to_string(),
                 "base_coding_agent": &base_coding_agent,
-                "profile": &default_profile_label,
+                "profile": &default_profile_variant,
                 "attempt_id": task_attempt.id.to_string(),
             }),
         )

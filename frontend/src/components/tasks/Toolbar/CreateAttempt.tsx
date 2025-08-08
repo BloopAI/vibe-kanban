@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
-import type { AgentProfile, GitBranch } from 'shared/types';
+import type { AgentProfile, GitBranch, ProfileVariant } from 'shared/types';
 import type { TaskAttempt } from 'shared/types';
 import { attemptsApi } from '@/lib/api.ts';
 import {
@@ -30,12 +30,12 @@ type Props = {
   branches: GitBranch[];
   taskAttempts: TaskAttempt[];
   createAttemptBranch: string | null;
-  selectedProfile: string | null;
+  selectedProfile: ProfileVariant | null;
   selectedBranch: string | null;
   fetchTaskAttempts: () => void;
   setIsInCreateAttemptMode: Dispatch<SetStateAction<boolean>>;
   setCreateAttemptBranch: Dispatch<SetStateAction<string | null>>;
-  setSelectedProfile: Dispatch<SetStateAction<string | null>>;
+  setSelectedProfile: Dispatch<SetStateAction<ProfileVariant | null>>;
   availableProfiles: AgentProfile[] | null;
 };
 
@@ -63,7 +63,7 @@ function CreateAttempt({
 
   // Create attempt logic
   const actuallyCreateAttempt = useCallback(
-    async (profile: string, baseBranch?: string) => {
+    async (profile: ProfileVariant, baseBranch?: string) => {
       const effectiveBaseBranch = baseBranch || selectedBranch;
 
       if (!effectiveBaseBranch) {
@@ -82,7 +82,11 @@ function CreateAttempt({
 
   // Handler for Enter key or Start button
   const onCreateNewAttempt = useCallback(
-    (profile: string, baseBranch?: string, isKeyTriggered?: boolean) => {
+    (
+      profile: ProfileVariant,
+      baseBranch?: string,
+      isKeyTriggered?: boolean
+    ) => {
       if (task.status === 'todo' && isKeyTriggered) {
         setSelectedProfile(profile);
         setPendingBaseBranch(baseBranch);
@@ -175,45 +179,121 @@ function CreateAttempt({
             />
           </div>
 
-          {/* Step 2: Choose Profile */}
+          {/* Step 2: Choose Profile and Mode */}
           <div className="space-y-1">
             <div className="flex items-center gap-1.5">
               <label className="text-xs font-medium text-muted-foreground">
                 Profile
               </label>
             </div>
-            {availableProfiles && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-between text-xs"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <Settings2 className="h-3 w-3" />
-                      <span className="truncate">
-                        {selectedProfile || 'Select profile'}
-                      </span>
-                    </div>
-                    <ArrowDown className="h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-full">
-                  {availableProfiles.map((profile) => (
-                    <DropdownMenuItem
-                      key={profile.label}
-                      onClick={() => setSelectedProfile(profile.label)}
-                      className={
-                        selectedProfile === profile.label ? 'bg-accent' : ''
-                      }
+            <div className="flex gap-2">
+              {availableProfiles && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 justify-between text-xs"
                     >
-                      {profile.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                      <div className="flex items-center gap-1.5">
+                        <Settings2 className="h-3 w-3" />
+                        <span className="truncate">
+                          {selectedProfile?.profile || 'Select profile'}
+                        </span>
+                      </div>
+                      <ArrowDown className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-full">
+                    {availableProfiles.map((profile) => (
+                      <DropdownMenuItem
+                        key={profile.label}
+                        onClick={() => {
+                          setSelectedProfile({
+                            profile: profile.label,
+                            variant: null,
+                          });
+                        }}
+                        className={
+                          selectedProfile?.profile === profile.label
+                            ? 'bg-accent'
+                            : ''
+                        }
+                      >
+                        {profile.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+
+              {/* Show mode dropdown if selected profile has modes */}
+              {(() => {
+                const currentProfile = availableProfiles?.find(
+                  (p) => p.label === selectedProfile?.profile
+                );
+                if (
+                  currentProfile &&
+                  currentProfile.variants &&
+                  currentProfile.variants.length > 0
+                ) {
+                  return (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-24 justify-between text-xs"
+                        >
+                          <span className="truncate">
+                            {selectedProfile?.variant || 'Variant'}
+                          </span>
+                          <ArrowDown className="h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            if (selectedProfile) {
+                              setSelectedProfile({
+                                ...selectedProfile,
+                                variant: null,
+                              });
+                            }
+                          }}
+                          className={
+                            !selectedProfile?.variant ? 'bg-accent' : ''
+                          }
+                        >
+                          Default
+                        </DropdownMenuItem>
+                        {currentProfile.variants.map((variant) => (
+                          <DropdownMenuItem
+                            key={variant.label}
+                            onClick={() => {
+                              if (selectedProfile) {
+                                setSelectedProfile({
+                                  ...selectedProfile,
+                                  variant: variant.label,
+                                });
+                              }
+                            }}
+                            className={
+                              selectedProfile?.variant === variant.label
+                                ? 'bg-accent'
+                                : ''
+                            }
+                          >
+                            {variant.label}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  );
+                }
+                return null;
+              })()}
+            </div>
           </div>
 
           {/* Step 3: Start Attempt */}

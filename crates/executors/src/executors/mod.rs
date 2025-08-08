@@ -12,7 +12,7 @@ use ts_rs::TS;
 use utils::msg_store::MsgStore;
 
 use crate::{
-    command::AgentProfiles,
+    command::{AgentProfiles, ProfileVariant},
     executors::{
         amp::Amp, claude::ClaudeCode, codex::Codex, cursor::Cursor, gemini::Gemini,
         opencode::Opencode,
@@ -55,6 +55,7 @@ fn unknown_executor_error(s: &str) -> ExecutorError {
     strum_macros::EnumIter,
 )]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum(parse_err_ty = ExecutorError, parse_err_fn = unknown_executor_error)]
 #[strum_discriminants(
     name(BaseCodingAgent),
@@ -70,18 +71,11 @@ fn unknown_executor_error(s: &str) -> ExecutorError {
     serde(rename_all = "SCREAMING_SNAKE_CASE")
 )]
 pub enum CodingAgent {
-    #[serde(rename = "CLAUDE_CODE", alias = "claude")]
-    ClaudeCode(ClaudeCode),
-    #[serde(rename = "AMP")]
-    Amp(Amp),
-    #[serde(rename = "GEMINI")]
-    Gemini(Gemini),
-    #[serde(rename = "CODEX")]
-    Codex(Codex),
-    #[serde(rename = "OPENCODE")]
-    Opencode(Opencode),
-    #[serde(rename = "CURSOR")]
-    Cursor(Cursor),
+    ClaudeCode,
+    Amp,
+    Gemini,
+    Codex,
+    Opencode,
 }
 
 impl std::fmt::Display for CodingAgent {
@@ -101,14 +95,26 @@ impl CodingAgent {
         BaseCodingAgent::iter()
     }
 
-    /// Create an executor from a profile string
+    /// Create an executor from a profile variant
     /// Loads profile from AgentProfiles (both default and custom profiles)
-    pub fn from_profile_str(profile: &str) -> Result<Self, ExecutorError> {
-        if let Some(agent_profile) = AgentProfiles::get_cached().get_profile(profile) {
-            Ok(agent_profile.agent.clone())
+    pub fn from_profile_variant(profile: &ProfileVariant) -> Result<Self, ExecutorError> {
+        if let Some(agent_profile) = AgentProfiles::get_cached().get_profile(&profile.profile) {
+            if let Some(variant_name) = &profile.variant {
+                if let Some(variant) = agent_profile.get_variant(&variant_name) {
+                    Ok(variant.agent.clone())
+                } else {
+                    Err(ExecutorError::UnknownExecutorType(format!(
+                        "Unknown mode: {}",
+                        variant_name
+                    )))
+                }
+            } else {
+                Ok(agent_profile.agent.clone())
+            }
         } else {
             Err(ExecutorError::UnknownExecutorType(format!(
-                "Unknown profile: {profile}"
+                "Unknown profile: {}",
+                profile.profile
             )))
         }
     }
