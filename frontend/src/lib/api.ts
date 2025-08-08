@@ -24,7 +24,6 @@ import {
   SearchResult,
   Task,
   TaskAttempt,
-  TaskAttemptState,
   TaskTemplate,
   TaskWithAttemptStatus,
   UpdateProject,
@@ -298,11 +297,6 @@ export const attemptsApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<TaskAttempt>(response);
-  },
-
-  getState: async (attemptId: string): Promise<TaskAttemptState> => {
-    const response = await makeRequest(`/api/task-attempts/${attemptId}`);
-    return handleApiResponse<TaskAttemptState>(response);
   },
 
   stop: async (attemptId: string): Promise<void> => {

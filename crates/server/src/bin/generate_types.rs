@@ -57,8 +57,6 @@ fn generate_types_content() -> String {
         server::routes::task_attempts::CreateTaskAttemptBody::decl(),
         server::routes::task_attempts::RebaseTaskAttemptRequest::decl(),
         db::models::task_attempt::TaskAttempt::decl(),
-        db::models::task_attempt::TaskAttemptState::decl(),
-        db::models::task_attempt::ExecutionState::decl(),
         db::models::execution_process::ExecutionProcess::decl(),
         db::models::execution_process::ExecutionProcessSummary::decl(),
         db::models::execution_process::ExecutionProcessStatus::decl(),
