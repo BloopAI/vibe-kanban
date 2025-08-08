@@ -37,7 +37,7 @@ impl LogMsg {
                 Event::default().event(EV_JSON_PATCH).data(data)
             }
             LogMsg::SessionId(s) => Event::default().event(EV_SESSION_ID).data(s.clone()),
-            LogMsg::Finished => Event::default().event(EV_FINISHED),
+            LogMsg::Finished => Event::default().event(EV_FINISHED).data(""),
         }
     }
 

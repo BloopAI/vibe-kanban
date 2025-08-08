@@ -667,6 +667,9 @@ impl ContainerService for LocalContainerService {
                 let event = LogMsg::JsonPatch(patch).to_sse_event();
                 Ok::<_, std::io::Error>(event)
             }))
+            .chain(futures::stream::once(async {
+                Ok::<_, std::io::Error>(LogMsg::Finished.to_sse_event())
+            }))
             .boxed();
 
             return Ok(stream);
