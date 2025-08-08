@@ -48,12 +48,7 @@ function DiffTab() {
 
       {/* Diff content */}
       <div className="flex-1 min-h-0">
-        <DiffCard
-          diff={worktreeDiff}
-          deletable={false}
-          compact={false}
-          className="h-full"
-        />
+        <DiffCard diff={worktreeDiff} deletable={false} className="h-full" />
       </div>
     </div>
   );

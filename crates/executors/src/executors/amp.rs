@@ -15,7 +15,7 @@ use crate::{
     command::{AgentProfiles, CommandBuilder},
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
-        ActionType, NormalizedEntry, NormalizedEntryType,
+        ActionType, EditDiff, NormalizedEntry, NormalizedEntryType,
         stderr_processor::normalize_stderr_logs,
         utils::{EntryIndexProvider, patch::ConversationPatch},
     },
@@ -488,12 +488,39 @@ impl AmpContentItem {
             AmpToolData::Read { path, .. } => ActionType::FileRead {
                 path: make_path_relative(path, worktree_path),
             },
-            AmpToolData::CreateFile { path, .. } => ActionType::FileWrite {
-                path: make_path_relative(path, worktree_path),
-            },
-            AmpToolData::EditFile { path, .. } => ActionType::FileWrite {
-                path: make_path_relative(path, worktree_path),
-            },
+            AmpToolData::CreateFile { path, content, .. } => {
+                let diffs = content
+                    .as_ref()
+                    .map(|content| EditDiff::Replace {
+                        old: String::new(),
+                        new: content.clone(),
+                    })
+                    .into_iter()
+                    .collect();
+                ActionType::FileEdit {
+                    path: make_path_relative(path, worktree_path),
+                    diffs,
+                }
+            }
+            AmpToolData::EditFile {
+                path,
+                old_str,
+                new_str,
+                ..
+            } => {
+                let diffs = if old_str.is_some() || new_str.is_some() {
+                    vec![EditDiff::Replace {
+                        old: old_str.clone().unwrap_or_default(),
+                        new: new_str.clone().unwrap_or_default(),
+                    }]
+                } else {
+                    vec![]
+                };
+                ActionType::FileEdit {
+                    path: make_path_relative(path, worktree_path),
+                    diffs,
+                }
+            }
             AmpToolData::Bash { command, .. } => ActionType::CommandRun {
                 command: command.clone(),
             },
@@ -528,7 +555,7 @@ impl AmpContentItem {
     ) -> String {
         match action_type {
             ActionType::FileRead { path } => format!("`{path}`"),
-            ActionType::FileWrite { path } => format!("`{path}`"),
+            ActionType::FileEdit { path, .. } => format!("`{path}`"),
             ActionType::CommandRun { command } => format!("`{command}`"),
             ActionType::Search { query } => format!("`{query}`"),
             ActionType::WebFetch { url } => format!("`{url}`"),

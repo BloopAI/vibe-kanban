@@ -15,7 +15,7 @@ use crate::{
     command::{AgentProfiles, CommandBuilder},
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
-        ActionType, NormalizedEntry, NormalizedEntryType,
+        ActionType, EditDiff, NormalizedEntry, NormalizedEntryType,
         plain_text_processor::{MessageBoundary, PlainTextLogProcessor},
         utils::EntryIndexProvider,
     },
@@ -593,9 +593,33 @@ impl ToolUtils {
             Tool::Read { file_path, .. } => ActionType::FileRead {
                 path: make_path_relative(file_path, worktree_path),
             },
-            Tool::Write { file_path, .. } | Tool::Edit { file_path, .. } => ActionType::FileWrite {
-                path: make_path_relative(file_path, worktree_path),
-            },
+            Tool::Write {
+                file_path, content, ..
+            } => {
+                let diffs = vec![EditDiff::Replace {
+                    old: String::new(),
+                    new: content.clone(),
+                }];
+                ActionType::FileEdit {
+                    path: make_path_relative(file_path, worktree_path),
+                    diffs,
+                }
+            }
+            Tool::Edit {
+                file_path,
+                old_string,
+                new_string,
+                ..
+            } => {
+                let diffs = vec![EditDiff::Replace {
+                    old: old_string.clone(),
+                    new: new_string.clone(),
+                }];
+                ActionType::FileEdit {
+                    path: make_path_relative(file_path, worktree_path),
+                    diffs,
+                }
+            }
             Tool::Bash { command, .. } => ActionType::CommandRun {
                 command: command.clone(),
             },

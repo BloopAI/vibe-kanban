@@ -1,30 +1,25 @@
 import { Button } from '@/components/ui/button.tsx';
 import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
-import DiffChunkSection from '@/components/tasks/TaskDetails/DiffChunkSection.tsx';
 import { FileDiff } from 'shared/types';
-import { Dispatch, SetStateAction, useMemo, useState } from 'react';
-import { ProcessedLine, ProcessedSection } from '@/lib/types.ts';
+import { Dispatch, SetStateAction, useMemo } from 'react';
+import ReactDiffViewer, { DiffMethod } from 'react-diff-viewer-continued';
 
 type Props = {
   collapsedFiles: Set<string>;
-  compact: boolean;
   deletable: boolean;
   file: FileDiff;
-  fileIndex: number;
   setCollapsedFiles: Dispatch<SetStateAction<Set<string>>>;
+  stateKey?: string; // Optional key for state management, defaults to file.path
 };
 
 function DiffFile({
   collapsedFiles,
   file,
   deletable,
-  compact,
-  fileIndex,
   setCollapsedFiles,
+  stateKey,
 }: Props) {
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    new Set()
-  );
+  const fileStateKey = stateKey || file.path;
 
   const toggleFileCollapse = (filePath: string) => {
     setCollapsedFiles((prev) => {
@@ -38,176 +33,54 @@ function DiffFile({
     });
   };
 
-  const processedFileChunks = useMemo(() => {
-    const CONTEXT_LINES = compact ? 2 : 3;
-    const lines: ProcessedLine[] = [];
-    let oldLineNumber = 1;
-    let newLineNumber = 1;
+  const { oldValue, newValue } = useMemo(() => {
+    let oldLines: string[] = [];
+    let newLines: string[] = [];
 
-    // Convert chunks to lines with line numbers
     file.chunks.forEach((chunk) => {
-      const chunkLines = chunk.content.split('\n');
-      chunkLines.forEach((line, index) => {
-        if (index < chunkLines.length - 1 || line !== '') {
-          const processedLine: ProcessedLine = {
-            content: line,
-            chunkType: chunk.chunk_type,
-            oldLineNumber: undefined,
-            newLineNumber: undefined,
-          };
-
-          switch (chunk.chunk_type) {
-            case 'Equal':
-              processedLine.oldLineNumber = oldLineNumber++;
-              processedLine.newLineNumber = newLineNumber++;
-              break;
-            case 'Delete':
-              processedLine.oldLineNumber = oldLineNumber++;
-              break;
-            case 'Insert':
-              processedLine.newLineNumber = newLineNumber++;
-              break;
+      const lines = chunk.content.split('\n');
+      lines.forEach((line, index) => {
+        if (index < lines.length - 1 || line !== '') {
+          if (chunk.chunk_type !== 'Insert') {
+            oldLines.push(line);
           }
-
-          lines.push(processedLine);
+          if (chunk.chunk_type !== 'Delete') {
+            newLines.push(line);
+          }
         }
       });
     });
 
-    const sections: ProcessedSection[] = [];
-    let i = 0;
-
-    while (i < lines.length) {
-      const line = lines[i];
-
-      if (line.chunkType === 'Equal') {
-        let nextChangeIndex = i + 1;
-        while (
-          nextChangeIndex < lines.length &&
-          lines[nextChangeIndex].chunkType === 'Equal'
-        ) {
-          nextChangeIndex++;
-        }
-
-        const contextLength = nextChangeIndex - i;
-        const hasNextChange = nextChangeIndex < lines.length;
-        const hasPrevChange =
-          sections.length > 0 &&
-          sections[sections.length - 1].type === 'change';
-
-        if (
-          contextLength <= CONTEXT_LINES * 2 ||
-          (!hasPrevChange && !hasNextChange)
-        ) {
-          sections.push({
-            type: 'context',
-            lines: lines.slice(i, nextChangeIndex),
-            expandKey: undefined,
-            expandedAbove: undefined,
-            expandedBelow: undefined,
-          });
-        } else {
-          if (hasPrevChange) {
-            sections.push({
-              type: 'context',
-              lines: lines.slice(i, i + CONTEXT_LINES),
-              expandKey: undefined,
-              expandedAbove: undefined,
-              expandedBelow: undefined,
-            });
-            i += CONTEXT_LINES;
-          }
-
-          if (hasNextChange) {
-            const expandStart = hasPrevChange ? i : i + CONTEXT_LINES;
-            const expandEnd = nextChangeIndex - CONTEXT_LINES;
-
-            if (expandEnd > expandStart) {
-              const expandKey = `${fileIndex}-${expandStart}-${expandEnd}`;
-              const isExpanded = expandedSections.has(expandKey);
-
-              if (isExpanded) {
-                sections.push({
-                  type: 'expanded',
-                  lines: lines.slice(expandStart, expandEnd),
-                  expandKey,
-                  expandedAbove: undefined,
-                  expandedBelow: undefined,
-                });
-              } else {
-                sections.push({
-                  type: 'context',
-                  lines: [],
-                  expandKey,
-                  expandedAbove: undefined,
-                  expandedBelow: undefined,
-                });
-              }
-            }
-
-            sections.push({
-              type: 'context',
-              lines: lines.slice(
-                nextChangeIndex - CONTEXT_LINES,
-                nextChangeIndex
-              ),
-              expandKey: undefined,
-              expandedAbove: undefined,
-              expandedBelow: undefined,
-            });
-          } else if (!hasPrevChange) {
-            sections.push({
-              type: 'context',
-              lines: lines.slice(i, i + CONTEXT_LINES),
-              expandKey: undefined,
-              expandedAbove: undefined,
-              expandedBelow: undefined,
-            });
-          }
-        }
-
-        i = nextChangeIndex;
-      } else {
-        const changeStart = i;
-        while (i < lines.length && lines[i].chunkType !== 'Equal') {
-          i++;
-        }
-
-        sections.push({
-          type: 'change',
-          lines: lines.slice(changeStart, i),
-          expandKey: undefined,
-          expandedAbove: undefined,
-          expandedBelow: undefined,
-        });
-      }
-    }
-
-    return sections;
-  }, [file.chunks, expandedSections, compact, fileIndex]);
+    return {
+      oldValue: oldLines.join('\n'),
+      newValue: newLines.join('\n'),
+    };
+  }, [file.chunks]);
 
   return (
     <div
-      className={`border rounded-lg overflow-hidden ${
-        collapsedFiles.has(file.path) ? 'border-muted' : 'border-border'
+      className={`border rounded-lg ${
+        collapsedFiles.has(fileStateKey)
+          ? 'border-muted overflow-hidden'
+          : 'border-border'
       }`}
     >
       <div
         className={`bg-muted px-3 py-1.5 flex items-center justify-between ${
-          !collapsedFiles.has(file.path) ? 'border-b' : ''
+          !collapsedFiles.has(fileStateKey) ? 'border-b' : ''
         }`}
       >
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => toggleFileCollapse(file.path)}
+            onClick={() => toggleFileCollapse(fileStateKey)}
             className="h-5 w-5 p-0 hover:bg-muted-foreground/10"
             title={
-              collapsedFiles.has(file.path) ? 'Expand diff' : 'Collapse diff'
+              collapsedFiles.has(fileStateKey) ? 'Expand diff' : 'Collapse diff'
             }
           >
-            {collapsedFiles.has(file.path) ? (
+            {collapsedFiles.has(fileStateKey) ? (
               <ChevronDown className="h-3 w-3" />
             ) : (
               <ChevronUp className="h-3 w-3" />
@@ -216,26 +89,30 @@ function DiffFile({
           <p className="text-xs font-medium text-muted-foreground font-mono">
             {file.path}
           </p>
-          {collapsedFiles.has(file.path) && (
+          {collapsedFiles.has(fileStateKey) && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground ml-2">
-              <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 px-1 py-0.5 rounded text-xs">
-                +
-                {file.chunks
-                  .filter((c) => c.chunk_type === 'Insert')
-                  .reduce(
-                    (acc, c) => acc + c.content.split('\n').length - 1,
-                    0
-                  )}
-              </span>
-              <span className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 px-1 py-0.5 rounded text-xs">
-                -
-                {file.chunks
-                  .filter((c) => c.chunk_type === 'Delete')
-                  .reduce(
-                    (acc, c) => acc + c.content.split('\n').length - 1,
-                    0
-                  )}
-              </span>
+              {(() => {
+                const insertCount = file.chunks.filter(
+                  (c) => c.chunk_type === 'Insert'
+                ).length;
+                const deleteCount = file.chunks.filter(
+                  (c) => c.chunk_type === 'Delete'
+                ).length;
+                return (
+                  <>
+                    {insertCount > 0 && (
+                      <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 px-1 py-0.5 rounded text-xs">
+                        +{insertCount}
+                      </span>
+                    )}
+                    {deleteCount > 0 && (
+                      <span className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 px-1 py-0.5 rounded text-xs">
+                        -{deleteCount}
+                      </span>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
         </div>
@@ -251,18 +128,36 @@ function DiffFile({
           </Button>
         )}
       </div>
-      {!collapsedFiles.has(file.path) && (
+      {!collapsedFiles.has(fileStateKey) && (
         <div className="overflow-x-auto">
-          <div className="inline-block min-w-full">
-            {processedFileChunks.map((section, sectionIndex) => (
-              <DiffChunkSection
-                key={`expand-${sectionIndex}`}
-                section={section}
-                sectionIndex={sectionIndex}
-                setExpandedSections={setExpandedSections}
-              />
-            ))}
-          </div>
+          <ReactDiffViewer
+            oldValue={oldValue}
+            newValue={newValue}
+            compareMethod={DiffMethod.WORDS}
+            splitView={true}
+            hideLineNumbers={false}
+            styles={{
+              variables: {
+                dark: {
+                  addedBackground: '#22c55e20',
+                  removedBackground: '#ef444420',
+                  wordAddedBackground: '#22c55e40',
+                  wordRemovedBackground: '#ef444440',
+                },
+                light: {
+                  addedBackground: '#22c55e20',
+                  removedBackground: '#ef444420',
+                  wordAddedBackground: '#22c55e40',
+                  wordRemovedBackground: '#ef444440',
+                },
+              },
+              line: {
+                fontSize: '0.75rem',
+                fontFamily:
+                  'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+              },
+            }}
+          />
         </div>
       )}
     </div>

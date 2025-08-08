@@ -6,6 +6,14 @@ pub mod stderr_processor;
 pub mod utils;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+#[serde(tag = "format", rename_all = "snake_case")]
+pub enum EditDiff {
+    Unified { unified_diff: String },
+    Replace { old: String, new: String },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct NormalizedConversation {
     pub entries: Vec<NormalizedEntry>,
     pub session_id: Option<String>,
@@ -42,7 +50,10 @@ pub struct NormalizedEntry {
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum ActionType {
     FileRead { path: String },
-    FileWrite { path: String },
+    FileEdit {
+        path: String,
+        diffs: Vec<EditDiff>,
+    },
     CommandRun { command: String },
     Search { query: String },
     WebFetch { url: String },
