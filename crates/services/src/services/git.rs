@@ -69,6 +69,12 @@ pub enum DiffTarget<'p> {
         branch_name: &'p str,
         base_branch: &'p str,
     },
+    /// Specific commit vs base branch
+    Commit {
+        repo_path: &'p Path,
+        commit_sha: &'p str,
+        base_branch: &'p str,
+    },
 }
 
 impl Default for GitService {
@@ -164,7 +170,11 @@ impl GitService {
     }
 
     /// Get diffs between branches or worktree changes
-    pub fn get_diffs(&self, target: DiffTarget) -> Result<Vec<Diff>, GitServiceError> {
+    pub fn get_diffs(
+        &self,
+        target: DiffTarget,
+        path_filter: Option<&[&str]>,
+    ) -> Result<Vec<Diff>, GitServiceError> {
         match target {
             DiffTarget::Worktree {
                 worktree_path,
@@ -182,6 +192,13 @@ impl GitService {
                     .include_untracked(true)
                     .include_typechange(true)
                     .recurse_untracked_dirs(true);
+
+                // Add path filtering if specified
+                if let Some(paths) = path_filter {
+                    for path in paths {
+                        diff_opts.pathspec(*path);
+                    }
+                }
 
                 let mut diff =
                     repo.diff_tree_to_workdir_with_index(Some(&base_tree), Some(&mut diff_opts))?;
@@ -214,9 +231,59 @@ impl GitService {
                 let mut diff_opts = DiffOptions::new();
                 diff_opts.include_typechange(true);
 
+                // Add path filtering if specified
+                if let Some(paths) = path_filter {
+                    for path in paths {
+                        diff_opts.pathspec(*path);
+                    }
+                }
+
                 let mut diff = repo.diff_tree_to_tree(
                     Some(&base_tree),
                     Some(&branch_tree),
+                    Some(&mut diff_opts),
+                )?;
+
+                // Enable rename detection
+                let mut find_opts = DiffFindOptions::new();
+                diff.find_similar(Some(&mut find_opts))?;
+
+                self.convert_diff_to_file_diffs(diff, &repo)
+            }
+            DiffTarget::Commit {
+                repo_path,
+                commit_sha,
+                base_branch,
+            } => {
+                let repo = self.open_repo(repo_path)?;
+                let base_tree = repo
+                    .find_branch(base_branch, BranchType::Local)
+                    .map_err(|_| GitServiceError::BranchNotFound(base_branch.to_string()))?
+                    .get()
+                    .peel_to_commit()?
+                    .tree()?;
+
+                let commit_oid = git2::Oid::from_str(commit_sha).map_err(|_| {
+                    GitServiceError::InvalidRepository(format!(
+                        "Invalid commit SHA: {}",
+                        commit_sha
+                    ))
+                })?;
+                let commit_tree = repo.find_commit(commit_oid)?.tree()?;
+
+                let mut diff_opts = DiffOptions::new();
+                diff_opts.include_typechange(true);
+
+                // Add path filtering if specified
+                if let Some(paths) = path_filter {
+                    for path in paths {
+                        diff_opts.pathspec(*path);
+                    }
+                }
+
+                let mut diff = repo.diff_tree_to_tree(
+                    Some(&base_tree),
+                    Some(&commit_tree),
                     Some(&mut diff_opts),
                 )?;
 
@@ -270,6 +337,15 @@ impl GitService {
         )?;
 
         Ok(file_diffs)
+    }
+
+    /// Extract file path from a Diff (for indexing and ConversationPatch)
+    pub fn diff_path(diff: &Diff) -> String {
+        diff.new_file
+            .as_ref()
+            .and_then(|f| f.file_name.clone())
+            .or_else(|| diff.old_file.as_ref().and_then(|f| f.file_name.clone()))
+            .unwrap_or_default()
     }
 
     /// Create FileDiffDetails from path and blob
