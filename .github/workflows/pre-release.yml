@@ -95,7 +95,7 @@ jobs:
           npm version $new_version --no-git-tag-version --allow-same-version
           cd ..
 
-          cd crates/server && cargo set-version "$new_version"
+          cargo set-version --workspace "$new_version"
 
           echo "New version: $new_version"
           echo "new_version=$new_version" >> $GITHUB_OUTPUT
