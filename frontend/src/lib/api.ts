@@ -30,7 +30,6 @@ import {
   UpdateTask,
   UpdateTaskTemplate,
   UserSystemInfo,
-  WorktreeDiff,
   GitHubServiceError,
 } from 'shared/types';
 
@@ -318,11 +317,6 @@ export const attemptsApi = {
       }
     );
     return handleApiResponse<void>(response);
-  },
-
-  getDiff: async (attemptId: string): Promise<WorktreeDiff> => {
-    const response = await makeRequest(`/api/task-attempts/${attemptId}/diff`);
-    return handleApiResponse<WorktreeDiff>(response);
   },
 
   deleteFile: async (

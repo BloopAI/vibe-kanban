@@ -85,9 +85,10 @@ const getEntryIcon = (entryType: NormalizedEntryType) => {
     if (action_type.action === 'file_read') {
       return <Eye className="h-4 w-4 text-orange-600" />;
     }
-    if (action_type.action === 'file_write') {
-      return <Edit className="h-4 w-4 text-red-600" />;
-    }
+    // TODO: DIFF
+    // if (action_type.action === 'file_write') {
+    //   return <Edit className="h-4 w-4 text-red-600" />;
+    // }
     if (action_type.action === 'command_run') {
       return <Terminal className="h-4 w-4 text-yellow-600" />;
     }

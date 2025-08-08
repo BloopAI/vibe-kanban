@@ -1,30 +1,14 @@
-import { DiffCard } from '@/components/NormalizedConversation/DiffCard.tsx';
 import { useDiffStream } from '@/hooks/useDiffStream';
-import type { WorktreeDiff, FileDiff } from 'shared/types';
 import { useMemo, useContext } from 'react';
 import { TaskSelectedAttemptContext } from '@/components/context/taskDetailsContext.ts';
+import { Diff } from 'shared/types';
 
 function DiffTab() {
   const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
-  const { diff, isConnected, error } = useDiffStream(
+  const { diffs, isConnected, error } = useDiffStream(
     selectedAttempt?.id || null,
     true
   );
-
-  const worktreeDiff = useMemo((): WorktreeDiff | null => {
-    if (!diff) return null;
-
-    return {
-      files: Object.values(diff.entries).map((entry: any) => {
-        // Handle PatchType wrapper properly
-        if (entry && typeof entry === 'object' && entry.type === 'FILE_DIFF') {
-          return entry.content as FileDiff;
-        }
-        // In case it's already unwrapped or a different format
-        return entry as FileDiff;
-      }),
-    };
-  }, [diff]);
 
   if (error) {
     return (
@@ -33,6 +17,8 @@ function DiffTab() {
       </div>
     );
   }
+
+  console.log(JSON.stringify(diffs));
 
   return (
     <div className="h-full flex flex-col">
@@ -48,7 +34,7 @@ function DiffTab() {
 
       {/* Diff content */}
       <div className="flex-1 min-h-0">
-        <DiffCard diff={worktreeDiff} deletable={false} className="h-full" />
+
       </div>
     </div>
   );

@@ -26,7 +26,7 @@ use db::{
 use deployment::DeploymentError;
 use executors::{
     actions::{Executable, ExecutorAction},
-    logs::utils::ConversationPatch,
+    logs::utils::{ConversationPatch, patch::escape_json_pointer_segment},
 };
 use futures::{StreamExt, TryStreamExt, stream::select};
 use notify_debouncer_full::DebouncedEvent;
@@ -477,7 +477,8 @@ impl LocalContainerService {
 
         let stream = futures::stream::iter(diffs.into_iter().map(|diff| {
             let entry_index = GitService::diff_path(&diff);
-            let patch = ConversationPatch::add_diff(entry_index, diff);
+            let patch =
+                ConversationPatch::add_diff(escape_json_pointer_segment(&entry_index), diff);
             let event = LogMsg::JsonPatch(patch).to_sse_event();
             Ok::<_, std::io::Error>(event)
         }))
@@ -508,7 +509,8 @@ impl LocalContainerService {
 
         let initial_stream = futures::stream::iter(initial_diffs.into_iter().map(|diff| {
             let entry_index = GitService::diff_path(&diff);
-            let patch = ConversationPatch::add_diff(entry_index, diff);
+            let patch =
+                ConversationPatch::add_diff(escape_json_pointer_segment(&entry_index), diff);
             let event = LogMsg::JsonPatch(patch).to_sse_event();
             Ok::<_, std::io::Error>(event)
         }))
@@ -607,7 +609,7 @@ impl LocalContainerService {
             let file_path = GitService::diff_path(&diff);
             files_with_diffs.insert(file_path.clone());
 
-            let patch = ConversationPatch::add_diff(file_path, diff);
+            let patch = ConversationPatch::add_diff(escape_json_pointer_segment(&file_path), diff);
             let event = LogMsg::JsonPatch(patch).to_sse_event();
             events.push(event);
         }
@@ -615,7 +617,10 @@ impl LocalContainerService {
         // Remove files that changed but no longer have diffs
         for changed_path in changed_paths {
             if !files_with_diffs.contains(changed_path) {
-                let patch = ConversationPatch::remove_diff(changed_path.clone(), changed_path);
+                let patch = ConversationPatch::remove_diff(
+                    escape_json_pointer_segment(changed_path),
+                    changed_path,
+                );
                 let event = LogMsg::JsonPatch(patch).to_sse_event();
                 events.push(event);
             }

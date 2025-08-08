@@ -30,7 +30,7 @@ struct PatchEntry {
     value: PatchType,
 }
 
-fn escape_json_pointer_segment(s: &str) -> String {
+pub fn escape_json_pointer_segment(s: &str) -> String {
     s.replace('~', "~0").replace('/', "~1")
 }
 
