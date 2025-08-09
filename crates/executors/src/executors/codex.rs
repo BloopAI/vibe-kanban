@@ -13,7 +13,7 @@ use crate::{
     command::{AgentProfiles, CommandBuilder},
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
-        ActionType, NormalizedEntry, NormalizedEntryType,
+        ActionType, EditDiff, NormalizedEntry, NormalizedEntryType,
         utils::{EntryIndexProvider, patch::ConversationPatch},
     },
 };
@@ -364,7 +364,7 @@ pub enum CodexMsgContent {
     PatchApplyBegin {
         call_id: Option<String>,
         auto_approved: Option<bool>,
-        changes: std::collections::HashMap<String, serde_json::Value>,
+        changes: std::collections::HashMap<String, FileChange>,
     },
 
     #[serde(rename = "patch_apply_end")]
@@ -409,6 +409,19 @@ pub enum CodexMsgContent {
     Unknown,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum FileChange {
+    Add {
+        content: String,
+    },
+    Delete,
+    Update {
+        unified_diff: String,
+        move_path: Option<PathBuf>,
+    },
+}
+
 impl CodexJson {
     /// Convert to normalized entries
     pub fn to_normalized_entries(&self, current_dir: &PathBuf) -> Option<Vec<NormalizedEntry>> {
@@ -424,20 +437,19 @@ impl CodexJson {
             CodexJson::Prompt { .. } => None, // Skip prompt messages
             CodexJson::StructuredMessage { msg, .. } => {
                 let this = &msg;
-                let metadata = serde_json::to_value(self).unwrap_or(serde_json::Value::Null);
 
                 match this {
                     CodexMsgContent::AgentMessage { message } => Some(vec![NormalizedEntry {
                         timestamp: None,
                         entry_type: NormalizedEntryType::AssistantMessage,
                         content: message.clone(),
-                        metadata: Some(metadata),
+                        metadata: None,
                     }]),
                     CodexMsgContent::AgentReasoning { text } => Some(vec![NormalizedEntry {
                         timestamp: None,
                         entry_type: NormalizedEntryType::Thinking,
                         content: text.clone(),
-                        metadata: Some(metadata),
+                        metadata: None,
                     }]),
                     CodexMsgContent::Error { message } => {
                         let error_message = message
@@ -447,7 +459,7 @@ impl CodexJson {
                             timestamp: None,
                             entry_type: NormalizedEntryType::ErrorMessage,
                             content: error_message,
-                            metadata: Some(metadata),
+                            metadata: None,
                         }])
                     }
                     CodexMsgContent::ExecCommandBegin { command, .. } => {
@@ -469,28 +481,55 @@ impl CodexJson {
                                 },
                             },
                             content: format!("`{command_str}`"),
-                            metadata: Some(metadata),
+                            metadata: None,
                         }])
                     }
                     CodexMsgContent::PatchApplyBegin { changes, .. } => {
-                        if let Some((file_path, _change_data)) = changes.iter().next() {
+                        let mut entries = Vec::new();
+
+                        for (file_path, change_data) in changes {
                             // Make path relative to current directory
                             let relative_path =
                                 make_path_relative(file_path, &current_dir.to_string_lossy());
 
-                            return Some(vec![NormalizedEntry {
+                            // Try to extract unified diff from change data
+                            let mut diffs = vec![];
+
+                            match change_data {
+                                FileChange::Update { unified_diff, .. } => {
+                                    if !unified_diff.is_empty() {
+                                        diffs.push(EditDiff::Unified {
+                                            unified_diff: unified_diff.clone(),
+                                        });
+                                    }
+                                }
+                                FileChange::Add { content } => {
+                                    // For new files, we could show the content as a diff
+                                    diffs.push(EditDiff::Replace {
+                                        old: String::new(),
+                                        new: content.clone(),
+                                    });
+                                }
+                                FileChange::Delete => {
+                                    // For deletions, we don't have old content to show
+                                }
+                            };
+
+                            entries.push(NormalizedEntry {
                                 timestamp: None,
                                 entry_type: NormalizedEntryType::ToolUse {
                                     tool_name: "edit".to_string(),
-                                    action_type: ActionType::FileWrite {
+                                    action_type: ActionType::FileEdit {
                                         path: relative_path.clone(),
+                                        diffs,
                                     },
                                 },
                                 content: relative_path,
-                                metadata: Some(metadata),
-                            }]);
+                                metadata: None,
+                            });
                         }
-                        None
+
+                        Some(entries)
                     }
                     CodexMsgContent::McpToolCallBegin { invocation, .. } => {
                         let tool_name = format!("mcp_{}", invocation.tool);
@@ -508,7 +547,7 @@ impl CodexJson {
                                 },
                             },
                             content,
-                            metadata: Some(metadata),
+                            metadata: None,
                         }])
                     }
                     CodexMsgContent::ExecApprovalRequest {
@@ -914,7 +953,7 @@ invalid json line here
         } = &entries[0].entry_type
         {
             assert_eq!(tool_name, "edit");
-            assert!(matches!(action_type, ActionType::FileWrite { .. }));
+            assert!(matches!(action_type, ActionType::FileEdit { .. }));
         }
         assert!(entries[0].content.contains("README.md"));
     }

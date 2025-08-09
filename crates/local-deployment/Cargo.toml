@@ -31,6 +31,7 @@ openssl-sys = { workspace = true }
 regex = "1.11.1"
 notify-rust = "4.11"
 notify = "8.2.0"
+notify-debouncer-full = "0.5.0"
 sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debug-images"] }
 sentry-tracing = { version = "0.41.0", features = ["backtrace"] }
 reqwest = { version = "0.12", features = ["json"] }

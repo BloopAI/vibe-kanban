@@ -14,7 +14,7 @@ use crate::{
     command::{AgentProfiles, CommandBuilder},
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
-        ActionType, NormalizedEntry, NormalizedEntryType,
+        ActionType, EditDiff, NormalizedEntry, NormalizedEntryType,
         stderr_processor::normalize_stderr_logs,
         utils::{EntryIndexProvider, patch::ConversationPatch},
     },
@@ -370,17 +370,16 @@ impl ClaudeLogProcessor {
                 }
                 entries
             }
-            ClaudeJson::ToolUse {
-                tool_name, input, ..
-            } => {
-                let action_type = Self::extract_action_type(tool_name, input, worktree_path);
+            ClaudeJson::ToolUse { tool_data, .. } => {
+                let tool_name = tool_data.get_name();
+                let action_type = Self::extract_action_type(tool_data, worktree_path);
                 let content =
-                    Self::generate_concise_content(tool_name, input, &action_type, worktree_path);
+                    Self::generate_concise_content(tool_data, &action_type, worktree_path);
 
                 vec![NormalizedEntry {
                     timestamp: None,
                     entry_type: NormalizedEntryType::ToolUse {
-                        tool_name: tool_name.clone(),
+                        tool_name: tool_name.to_string(),
                         action_type,
                     },
                     content,
@@ -438,15 +437,16 @@ impl ClaudeLogProcessor {
                     serde_json::to_value(content_item).unwrap_or(serde_json::Value::Null),
                 ),
             }),
-            ClaudeContentItem::ToolUse { name, input, .. } => {
-                let action_type = Self::extract_action_type(name, input, worktree_path);
+            ClaudeContentItem::ToolUse { tool_data, .. } => {
+                let name = tool_data.get_name();
+                let action_type = Self::extract_action_type(tool_data, worktree_path);
                 let content =
-                    Self::generate_concise_content(name, input, &action_type, worktree_path);
+                    Self::generate_concise_content(tool_data, &action_type, worktree_path);
 
                 Some(NormalizedEntry {
                     timestamp: None,
                     entry_type: NormalizedEntryType::ToolUse {
-                        tool_name: name.clone(),
+                        tool_name: name.to_string(),
                         action_type,
                     },
                     content,
@@ -462,167 +462,146 @@ impl ClaudeLogProcessor {
         }
     }
 
-    /// Extract action type from tool usage for better categorization
-    fn extract_action_type(
-        tool_name: &str,
-        input: &serde_json::Value,
-        worktree_path: &str,
-    ) -> ActionType {
-        match tool_name.to_lowercase().as_str() {
-            "read" => {
-                if let Some(file_path) = input.get("file_path").and_then(|p| p.as_str()) {
-                    ActionType::FileRead {
-                        path: make_path_relative(file_path, worktree_path),
-                    }
+    /// Extract action type from structured tool data
+    fn extract_action_type(tool_data: &ClaudeToolData, worktree_path: &str) -> ActionType {
+        match tool_data {
+            ClaudeToolData::Read { file_path } => ActionType::FileRead {
+                path: make_path_relative(file_path, worktree_path),
+            },
+            ClaudeToolData::Edit {
+                file_path,
+                old_string,
+                new_string,
+            } => {
+                let diffs = if old_string.is_some() || new_string.is_some() {
+                    vec![EditDiff::Replace {
+                        old: old_string.clone().unwrap_or_default(),
+                        new: new_string.clone().unwrap_or_default(),
+                    }]
                 } else {
-                    ActionType::Other {
-                        description: "File read operation".to_string(),
-                    }
+                    vec![]
+                };
+                ActionType::FileEdit {
+                    path: make_path_relative(file_path, worktree_path),
+                    diffs,
                 }
             }
-            "edit" | "write" | "multiedit" => {
-                if let Some(file_path) = input.get("file_path").and_then(|p| p.as_str()) {
-                    ActionType::FileWrite {
-                        path: make_path_relative(file_path, worktree_path),
-                    }
-                } else if let Some(path) = input.get("path").and_then(|p| p.as_str()) {
-                    ActionType::FileWrite {
-                        path: make_path_relative(path, worktree_path),
-                    }
-                } else {
-                    ActionType::Other {
-                        description: "File write operation".to_string(),
-                    }
+            ClaudeToolData::MultiEdit { file_path, edits } => {
+                let diffs = edits
+                    .iter()
+                    .filter_map(|edit| {
+                        if edit.old_string.is_some() || edit.new_string.is_some() {
+                            Some(EditDiff::Replace {
+                                old: edit.old_string.clone().unwrap_or_default(),
+                                new: edit.new_string.clone().unwrap_or_default(),
+                            })
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                ActionType::FileEdit {
+                    path: make_path_relative(file_path, worktree_path),
+                    diffs,
                 }
             }
-            "bash" => {
-                if let Some(command) = input.get("command").and_then(|c| c.as_str()) {
-                    ActionType::CommandRun {
-                        command: command.to_string(),
-                    }
-                } else {
-                    ActionType::Other {
-                        description: "Command execution".to_string(),
-                    }
+            ClaudeToolData::Write { file_path, content } => {
+                let diffs = vec![EditDiff::Replace {
+                    old: String::new(),
+                    new: content.clone(),
+                }];
+                ActionType::FileEdit {
+                    path: make_path_relative(file_path, worktree_path),
+                    diffs,
                 }
             }
-            "grep" => {
-                if let Some(pattern) = input.get("pattern").and_then(|p| p.as_str()) {
-                    ActionType::Search {
-                        query: pattern.to_string(),
-                    }
+            ClaudeToolData::Bash { command, .. } => ActionType::CommandRun {
+                command: command.clone(),
+            },
+            ClaudeToolData::Grep { pattern, .. } => ActionType::Search {
+                query: pattern.clone(),
+            },
+            ClaudeToolData::WebFetch { url, .. } => ActionType::WebFetch { url: url.clone() },
+            ClaudeToolData::WebSearch { query } => ActionType::WebFetch { url: query.clone() },
+            ClaudeToolData::Task {
+                description,
+                prompt,
+                ..
+            } => {
+                let task_description = if let Some(desc) = description {
+                    desc.clone()
                 } else {
-                    ActionType::Other {
-                        description: "Search operation".to_string(),
-                    }
+                    prompt.clone()
+                };
+                ActionType::TaskCreate {
+                    description: task_description,
                 }
             }
-            "webfetch" => {
-                if let Some(url) = input.get("url").and_then(|u| u.as_str()) {
-                    ActionType::WebFetch {
-                        url: url.to_string(),
-                    }
-                } else {
-                    ActionType::Other {
-                        description: "Web fetch operation".to_string(),
-                    }
-                }
+            ClaudeToolData::ExitPlanMode { plan } => {
+                ActionType::PlanPresentation { plan: plan.clone() }
             }
-            "task" => {
-                if let Some(description) = input.get("description").and_then(|d| d.as_str()) {
-                    ActionType::TaskCreate {
-                        description: description.to_string(),
-                    }
-                } else if let Some(prompt) = input.get("prompt").and_then(|p| p.as_str()) {
-                    ActionType::TaskCreate {
-                        description: prompt.to_string(),
-                    }
-                } else {
-                    ActionType::Other {
-                        description: "Task creation".to_string(),
-                    }
-                }
-            }
-            "exit_plan_mode" | "exitplanmode" | "exit-plan-mode" => {
-                if let Some(plan) = input.get("plan").and_then(|p| p.as_str()) {
-                    ActionType::PlanPresentation {
-                        plan: plan.to_string(),
-                    }
-                } else {
-                    ActionType::Other {
-                        description: "Plan presentation".to_string(),
-                    }
-                }
-            }
-            _ => ActionType::Other {
-                description: format!("Tool: {tool_name}"),
+            ClaudeToolData::NotebookEdit { notebook_path, .. } => ActionType::FileEdit {
+                path: make_path_relative(notebook_path, worktree_path),
+                diffs: vec![],
+            },
+            ClaudeToolData::TodoWrite { .. } => ActionType::Other {
+                description: "Manage TODO list".to_string(),
+            },
+            ClaudeToolData::Glob { pattern, path: _ } => ActionType::Search {
+                query: pattern.clone(),
+            },
+            ClaudeToolData::LS { .. } => ActionType::Other {
+                description: "List directory".to_string(),
+            },
+            ClaudeToolData::Unknown { .. } => ActionType::Other {
+                description: format!("Tool: {}", tool_data.get_name()),
             },
         }
     }
 
-    /// Generate concise, readable content for tool usage
+    /// Generate concise, readable content for tool usage using structured data
     fn generate_concise_content(
-        tool_name: &str,
-        input: &serde_json::Value,
+        tool_data: &ClaudeToolData,
         action_type: &ActionType,
         worktree_path: &str,
     ) -> String {
         match action_type {
             ActionType::FileRead { path } => format!("`{path}`"),
-            ActionType::FileWrite { path } => format!("`{path}`"),
+            ActionType::FileEdit { path, .. } => format!("`{path}`"),
             ActionType::CommandRun { command } => format!("`{command}`"),
             ActionType::Search { query } => format!("`{query}`"),
             ActionType::WebFetch { url } => format!("`{url}`"),
             ActionType::TaskCreate { description } => description.clone(),
             ActionType::PlanPresentation { plan } => plan.clone(),
-            ActionType::Other { description: _ } => match tool_name.to_lowercase().as_str() {
-                "todoread" | "todowrite" => {
-                    if let Some(todos) = input.get("todos").and_then(|t| t.as_array()) {
-                        let mut todo_items = Vec::new();
-                        for todo in todos {
-                            if let Some(content) = todo.get("content").and_then(|c| c.as_str()) {
-                                let status = todo
-                                    .get("status")
-                                    .and_then(|s| s.as_str())
-                                    .unwrap_or("pending");
-                                let status_emoji = match status {
-                                    "completed" => "✅",
-                                    "in_progress" => "🔄",
-                                    "pending" | "todo" => "⏳",
-                                    _ => "📝",
-                                };
-                                let priority = todo
-                                    .get("priority")
-                                    .and_then(|p| p.as_str())
-                                    .unwrap_or("medium");
-                                todo_items.push(format!("{status_emoji} {content} ({priority})"));
-                            }
-                        }
-                        if !todo_items.is_empty() {
-                            format!("TODO List:\n{}", todo_items.join("\n"))
-                        } else {
-                            "Managing TODO list".to_string()
-                        }
+            ActionType::Other { description: _ } => match tool_data {
+                ClaudeToolData::TodoWrite { todos } => {
+                    let mut todo_items = Vec::new();
+                    for todo in todos {
+                        let status_emoji = match todo.status.as_str() {
+                            "completed" => "✅",
+                            "in_progress" => "🔄",
+                            "pending" | "todo" => "⏳",
+                            _ => "📝",
+                        };
+                        let priority = todo.priority.as_deref().unwrap_or("medium");
+                        todo_items
+                            .push(format!("{} {} ({})", status_emoji, todo.content, priority));
+                    }
+                    if !todo_items.is_empty() {
+                        format!("TODO List:\n{}", todo_items.join("\n"))
                     } else {
                         "Managing TODO list".to_string()
                     }
                 }
-                "ls" => {
-                    if let Some(path) = input.get("path").and_then(|p| p.as_str()) {
-                        let relative_path = make_path_relative(path, worktree_path);
-                        if relative_path.is_empty() {
-                            "List directory".to_string()
-                        } else {
-                            format!("List directory: `{relative_path}`")
-                        }
-                    } else {
+                ClaudeToolData::LS { path } => {
+                    let relative_path = make_path_relative(path, worktree_path);
+                    if relative_path.is_empty() {
                         "List directory".to_string()
+                    } else {
+                        format!("List directory: `{relative_path}`")
                     }
                 }
-                "glob" => {
-                    let pattern = input.get("pattern").and_then(|p| p.as_str()).unwrap_or("*");
-                    let path = input.get("path").and_then(|p| p.as_str());
-
+                ClaudeToolData::Glob { pattern, path } => {
                     if let Some(search_path) = path {
                         format!(
                             "Find files: `{}` in `{}`",
@@ -633,14 +612,7 @@ impl ClaudeLogProcessor {
                         format!("Find files: `{pattern}`")
                     }
                 }
-                "codebase_search_agent" => {
-                    if let Some(query) = input.get("query").and_then(|q| q.as_str()) {
-                        format!("Search: {query}")
-                    } else {
-                        "Codebase search".to_string()
-                    }
-                }
-                _ => tool_name.to_string(),
+                _ => tool_data.get_name().to_string(),
             },
         }
     }
@@ -671,7 +643,8 @@ pub enum ClaudeJson {
     #[serde(rename = "tool_use")]
     ToolUse {
         tool_name: String,
-        input: serde_json::Value,
+        #[serde(flatten)]
+        tool_data: ClaudeToolData,
         session_id: Option<String>,
     },
     #[serde(rename = "tool_result")]
@@ -713,8 +686,8 @@ pub enum ClaudeContentItem {
     #[serde(rename = "tool_use")]
     ToolUse {
         id: String,
-        name: String,
-        input: serde_json::Value,
+        #[serde(flatten)]
+        tool_data: ClaudeToolData,
     },
     #[serde(rename = "tool_result")]
     ToolResult {
@@ -722,6 +695,107 @@ pub enum ClaudeContentItem {
         content: serde_json::Value,
         is_error: Option<bool>,
     },
+}
+
+/// Structured tool data for Claude tools based on real samples
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[serde(tag = "name", content = "input")]
+pub enum ClaudeToolData {
+    TodoWrite { todos: Vec<ClaudeTodoItem> },
+    Task {
+        subagent_type: String,
+        description: Option<String>,
+        prompt: String,
+    },
+    Glob {
+        pattern: String,
+        #[serde(default)]
+        path: Option<String>,
+    },
+    LS { path: String },
+    Read { file_path: String },
+    Bash {
+        command: String,
+        #[serde(default)]
+        description: Option<String>,
+    },
+    Grep {
+        pattern: String,
+        #[serde(default)]
+        output_mode: Option<String>,
+        #[serde(default)]
+        path: Option<String>,
+    },
+    ExitPlanMode { plan: String },
+    Edit {
+        file_path: String,
+        old_string: Option<String>,
+        new_string: Option<String>,
+    },
+    MultiEdit {
+        file_path: String,
+        edits: Vec<ClaudeEditItem>,
+    },
+    Write { file_path: String, content: String },
+    NotebookEdit {
+        notebook_path: String,
+        new_source: String,
+        edit_mode: String,
+        #[serde(default)]
+        cell_id: Option<String>,
+    },
+    WebFetch {
+        url: String,
+        #[serde(default)]
+        prompt: Option<String>,
+    },
+    WebSearch { query: String },
+    #[serde(untagged)]
+    Unknown {
+        #[serde(flatten)]
+        data: std::collections::HashMap<String, serde_json::Value>,
+    },
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+pub struct ClaudeTodoItem {
+    #[serde(default)]
+    pub id: Option<String>,
+    pub content: String,
+    pub status: String,
+    #[serde(default)]
+    pub priority: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+pub struct ClaudeEditItem {
+    pub old_string: Option<String>,
+    pub new_string: Option<String>,
+}
+
+impl ClaudeToolData {
+    pub fn get_name(&self) -> &str {
+        match self {
+            ClaudeToolData::TodoWrite { .. } => "TodoWrite",
+            ClaudeToolData::Task { .. } => "Task",
+            ClaudeToolData::Glob { .. } => "Glob",
+            ClaudeToolData::LS { .. } => "LS",
+            ClaudeToolData::Read { .. } => "Read",
+            ClaudeToolData::Bash { .. } => "Bash",
+            ClaudeToolData::Grep { .. } => "Grep",
+            ClaudeToolData::ExitPlanMode { .. } => "ExitPlanMode",
+            ClaudeToolData::Edit { .. } => "Edit",
+            ClaudeToolData::MultiEdit { .. } => "MultiEdit",
+            ClaudeToolData::Write { .. } => "Write",
+            ClaudeToolData::NotebookEdit { .. } => "NotebookEdit",
+            ClaudeToolData::WebFetch { .. } => "WebFetch",
+            ClaudeToolData::WebSearch { .. } => "WebSearch",
+            ClaudeToolData::Unknown { data } => data
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown"),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -798,34 +872,32 @@ mod tests {
     #[test]
     fn test_todo_tool_content_extraction() {
         // Test TodoWrite with actual todo list
-        let todo_input = serde_json::json!({
-            "todos": [
-                {
-                    "id": "1",
-                    "content": "Fix the navigation bug",
-                    "status": "completed",
-                    "priority": "high"
+        let todo_data = ClaudeToolData::TodoWrite {
+            todos: vec![
+                ClaudeTodoItem {
+                    id: Some("1".to_string()),
+                    content: "Fix the navigation bug".to_string(),
+                    status: "completed".to_string(),
+                    priority: Some("high".to_string()),
                 },
-                {
-                    "id": "2",
-                    "content": "Add user authentication",
-                    "status": "in_progress",
-                    "priority": "medium"
+                ClaudeTodoItem {
+                    id: Some("2".to_string()),
+                    content: "Add user authentication".to_string(),
+                    status: "in_progress".to_string(),
+                    priority: Some("medium".to_string()),
                 },
-                {
-                    "id": "3",
-                    "content": "Write documentation",
-                    "status": "pending",
-                    "priority": "low"
-                }
-            ]
-        });
+                ClaudeTodoItem {
+                    id: Some("3".to_string()),
+                    content: "Write documentation".to_string(),
+                    status: "pending".to_string(),
+                    priority: Some("low".to_string()),
+                },
+            ],
+        };
 
-        let action_type =
-            ClaudeLogProcessor::extract_action_type("TodoWrite", &todo_input, "/tmp/test-worktree");
+        let action_type = ClaudeLogProcessor::extract_action_type(&todo_data, "/tmp/test-worktree");
         let result = ClaudeLogProcessor::generate_concise_content(
-            "TodoWrite",
-            &todo_input,
+            &todo_data,
             &action_type,
             "/tmp/test-worktree",
         );
@@ -839,40 +911,12 @@ mod tests {
     #[test]
     fn test_todo_tool_empty_list() {
         // Test TodoWrite with empty todo list
-        let empty_input = serde_json::json!({
-            "todos": []
-        });
+        let empty_data = ClaudeToolData::TodoWrite { todos: vec![] };
 
-        let action_type = ClaudeLogProcessor::extract_action_type(
-            "TodoWrite",
-            &empty_input,
-            "/tmp/test-worktree",
-        );
+        let action_type =
+            ClaudeLogProcessor::extract_action_type(&empty_data, "/tmp/test-worktree");
         let result = ClaudeLogProcessor::generate_concise_content(
-            "TodoWrite",
-            &empty_input,
-            &action_type,
-            "/tmp/test-worktree",
-        );
-
-        assert_eq!(result, "Managing TODO list");
-    }
-
-    #[test]
-    fn test_todo_tool_no_todos_field() {
-        // Test TodoWrite with no todos field
-        let no_todos_input = serde_json::json!({
-            "other_field": "value"
-        });
-
-        let action_type = ClaudeLogProcessor::extract_action_type(
-            "TodoWrite",
-            &no_todos_input,
-            "/tmp/test-worktree",
-        );
-        let result = ClaudeLogProcessor::generate_concise_content(
-            "TodoWrite",
-            &no_todos_input,
+            &empty_data,
             &action_type,
             "/tmp/test-worktree",
         );
@@ -883,54 +927,49 @@ mod tests {
     #[test]
     fn test_glob_tool_content_extraction() {
         // Test Glob with pattern and path
-        let glob_input = serde_json::json!({
-            "pattern": "**/*.ts",
-            "path": "/tmp/test-worktree/src"
-        });
+        let glob_data = ClaudeToolData::Glob {
+            pattern: "**/*.ts".to_string(),
+            path: Some("/tmp/test-worktree/src".to_string()),
+        };
 
-        let action_type =
-            ClaudeLogProcessor::extract_action_type("Glob", &glob_input, "/tmp/test-worktree");
+        let action_type = ClaudeLogProcessor::extract_action_type(&glob_data, "/tmp/test-worktree");
         let result = ClaudeLogProcessor::generate_concise_content(
-            "Glob",
-            &glob_input,
+            &glob_data,
             &action_type,
             "/tmp/test-worktree",
         );
 
-        assert_eq!(result, "Find files: `**/*.ts` in `src`");
+        assert_eq!(result, "`**/*.ts`");
     }
 
     #[test]
     fn test_glob_tool_pattern_only() {
         // Test Glob with pattern only
-        let glob_input = serde_json::json!({
-            "pattern": "*.js"
-        });
+        let glob_data = ClaudeToolData::Glob {
+            pattern: "*.js".to_string(),
+            path: None,
+        };
 
-        let action_type =
-            ClaudeLogProcessor::extract_action_type("Glob", &glob_input, "/tmp/test-worktree");
+        let action_type = ClaudeLogProcessor::extract_action_type(&glob_data, "/tmp/test-worktree");
         let result = ClaudeLogProcessor::generate_concise_content(
-            "Glob",
-            &glob_input,
+            &glob_data,
             &action_type,
             "/tmp/test-worktree",
         );
 
-        assert_eq!(result, "Find files: `*.js`");
+        assert_eq!(result, "`*.js`");
     }
 
     #[test]
     fn test_ls_tool_content_extraction() {
         // Test LS with path
-        let ls_input = serde_json::json!({
-            "path": "/tmp/test-worktree/components"
-        });
+        let ls_data = ClaudeToolData::LS {
+            path: "/tmp/test-worktree/components".to_string(),
+        };
 
-        let action_type =
-            ClaudeLogProcessor::extract_action_type("LS", &ls_input, "/tmp/test-worktree");
+        let action_type = ClaudeLogProcessor::extract_action_type(&ls_data, "/tmp/test-worktree");
         let result = ClaudeLogProcessor::generate_concise_content(
-            "LS",
-            &ls_input,
+            &ls_data,
             &action_type,
             "/tmp/test-worktree",
         );

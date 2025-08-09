@@ -72,13 +72,9 @@ export type GitBranch = { name: string, is_current: boolean, is_remote: boolean,
 
 export type BranchStatus = { is_behind: boolean, commits_behind: number, commits_ahead: number, up_to_date: boolean, merged: boolean, has_uncommitted_changes: boolean, base_branch_name: string, };
 
-export type WorktreeDiff = { files: Array<FileDiff>, };
+export type Diff = { oldFile: FileDiffDetails | null, newFile: FileDiffDetails | null, hunks: Array<string>, };
 
-export type FileDiff = { path: string, chunks: Array<DiffChunk>, };
-
-export type DiffChunk = { chunk_type: DiffChunkType, content: string, };
-
-export type DiffChunkType = "Equal" | "Insert" | "Delete";
+export type FileDiffDetails = { fileName: string | null, content: string | null, };
 
 export type RepositoryInfo = { id: bigint, name: string, full_name: string, owner: string, description: string | null, clone_url: string, ssh_url: string, default_branch: string, private: boolean, };
 
@@ -140,6 +136,8 @@ export type NormalizedEntry = { timestamp: string | null, entry_type: Normalized
 
 export type NormalizedEntryType = { "type": "user_message" } | { "type": "assistant_message" } | { "type": "tool_use", tool_name: string, action_type: ActionType, } | { "type": "system_message" } | { "type": "error_message" } | { "type": "thinking" };
 
-export type ActionType = { "action": "file_read", path: string, } | { "action": "file_write", path: string, } | { "action": "command_run", command: string, } | { "action": "search", query: string, } | { "action": "web_fetch", url: string, } | { "action": "task_create", description: string, } | { "action": "plan_presentation", plan: string, } | { "action": "other", description: string, };
+export type EditDiff = { "format": "unified", unified_diff: string, } | { "format": "replace", old: string, new: string, };
 
-export type PatchType = { "type": "NORMALIZED_ENTRY", "content": NormalizedEntry } | { "type": "STDOUT", "content": string } | { "type": "STDERR", "content": string } | { "type": "FILE_DIFF", "content": FileDiff };
+export type ActionType = { "action": "file_read", path: string, } | { "action": "file_edit", path: string, diffs: Array<EditDiff>, } | { "action": "command_run", command: string, } | { "action": "search", query: string, } | { "action": "web_fetch", url: string, } | { "action": "task_create", description: string, } | { "action": "plan_presentation", plan: string, } | { "action": "other", description: string, };
+
+export type PatchType = { "type": "NORMALIZED_ENTRY", "content": NormalizedEntry } | { "type": "STDOUT", "content": string } | { "type": "STDERR", "content": string } | { "type": "DIFF", "content": Diff };

@@ -2,7 +2,7 @@ use json_patch::Patch;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_value, json};
 use ts_rs::TS;
-use utils::diff::FileDiff;
+use utils::diff::Diff;
 
 use crate::logs::NormalizedEntry;
 
@@ -20,7 +20,7 @@ pub enum PatchType {
     NormalizedEntry(NormalizedEntry),
     Stdout(String),
     Stderr(String),
-    FileDiff(FileDiff),
+    Diff(Diff),
 }
 
 #[derive(Serialize)]
@@ -30,7 +30,7 @@ struct PatchEntry {
     value: PatchType,
 }
 
-fn escape_json_pointer_segment(s: &str) -> String {
+pub fn escape_json_pointer_segment(s: &str) -> String {
     s.replace('~', "~0").replace('/', "~1")
 }
 
@@ -71,33 +71,33 @@ impl ConversationPatch {
         from_value(json!([patch_entry])).unwrap()
     }
 
-    /// Create an ADD patch for a new file diff at the given index
-    pub fn add_file_diff(file_diff: FileDiff) -> Patch {
+    /// Create an ADD patch for a new diff at the given index
+    pub fn add_diff(entry_index: String, diff: Diff) -> Patch {
         let patch_entry = PatchEntry {
             op: PatchOperation::Add,
-            path: format!("/entries/{}", escape_json_pointer_segment(&file_diff.path)),
-            value: PatchType::FileDiff(file_diff),
+            path: format!("/entries/{entry_index}"),
+            value: PatchType::Diff(diff),
         };
 
         from_value(json!([patch_entry])).unwrap()
     }
 
-    /// Create an ADD patch for a new file diff at the given index
-    pub fn replace_file_diff(file_diff: FileDiff) -> Patch {
+    /// Create an ADD patch for a new diff at the given index
+    pub fn replace_diff(entry_index: String, diff: Diff) -> Patch {
         let patch_entry = PatchEntry {
             op: PatchOperation::Replace,
-            path: format!("/entries/{}", escape_json_pointer_segment(&file_diff.path)),
-            value: PatchType::FileDiff(file_diff),
+            path: format!("/entries/{entry_index}"),
+            value: PatchType::Diff(diff),
         };
 
         from_value(json!([patch_entry])).unwrap()
     }
 
-    /// Create a REMOVE patch for removing a file diff
-    pub fn remove_file_diff(path: &str) -> Patch {
+    /// Create a REMOVE patch for removing a diff
+    pub fn remove_diff(entry_index: String, path: &str) -> Patch {
         from_value(json!([{
             "op": PatchOperation::Remove,
-            "path": format!("/entries/{}", escape_json_pointer_segment(path))
+            path: format!("/entries/{entry_index}"),
         }]))
         .unwrap()
     }

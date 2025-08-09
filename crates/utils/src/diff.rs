@@ -1,26 +1,19 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+// Structs compatable with props: https://github.com/MrWangJustToDo/git-diff-view
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct WorktreeDiff {
-    pub files: Vec<FileDiff>,
+#[serde(rename_all = "camelCase")]
+pub struct FileDiffDetails {
+    pub file_name: Option<String>,
+    pub content: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct FileDiff {
-    pub path: String,
-    pub chunks: Vec<DiffChunk>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct DiffChunk {
-    pub chunk_type: DiffChunkType,
-    pub content: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub enum DiffChunkType {
-    Equal,
-    Insert,
-    Delete,
+#[serde(rename_all = "camelCase")]
+pub struct Diff {
+    pub old_file: Option<FileDiffDetails>,
+    pub new_file: Option<FileDiffDetails>,
+    pub hunks: Vec<String>,
 }

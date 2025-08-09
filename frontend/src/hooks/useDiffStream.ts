@@ -1,13 +1,13 @@
 import { useCallback } from 'react';
-import type { FileDiff } from 'shared/types';
+import type { Diff } from 'shared/types';
 import { useJsonPatchStream } from './useJsonPatchStream';
 
 interface DiffState {
-  entries: Record<string, FileDiff>;
+  entries: Record<string, Diff>;
 }
 
 interface UseDiffStreamResult {
-  diff: DiffState | undefined;
+  data: DiffState | undefined;
   isConnected: boolean;
   error: string | null;
 }
@@ -34,5 +34,5 @@ export const useDiffStream = (
     // No need for injectInitialEntry or deduplicatePatches for diffs
   );
 
-  return { diff: data, isConnected, error };
+  return { data, isConnected, error };
 };

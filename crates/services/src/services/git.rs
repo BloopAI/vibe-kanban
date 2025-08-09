@@ -2,20 +2,14 @@ use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
 use git2::{
-    BranchType, CherrypickOptions, Cred, Error as GitError, FetchOptions, RemoteCallbacks,
-    Repository, Status, StatusOptions, build::CheckoutBuilder,
+    BranchType, CherrypickOptions, Cred, Delta, DiffFindOptions, DiffOptions, Error as GitError,
+    FetchOptions, RemoteCallbacks, Repository, Status, StatusOptions, build::CheckoutBuilder,
 };
 use regex;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tracing::debug;
 use ts_rs::TS;
-use utils::diff::{DiffChunk, DiffChunkType, FileDiff, WorktreeDiff};
-
-// use crate::{
-//     models::task_attempt::{DiffChunk, DiffChunkType, FileDiff, WorktreeDiff},
-//     utils::worktree_manager::WorktreeManager,
-// };
+use utils::diff::{Diff, FileDiffDetails};
 
 #[derive(Debug, Error)]
 pub enum GitServiceError {
@@ -61,12 +55,26 @@ pub struct BranchStatus {
     pub base_branch_name: String,
 }
 
-/// Represents a snapshot for diff comparison
-enum Snapshot<'a> {
-    /// Any git tree object
-    Tree(git2::Oid),
-    /// The work-dir / index as it is *now*, compared to the given base tree
-    WorkdirAgainst(git2::Oid, &'a Path),
+/// Target for diff generation
+pub enum DiffTarget<'p> {
+    /// Work-in-progress branch checked out in this worktree
+    Worktree {
+        worktree_path: &'p Path,
+        branch_name: &'p str,
+        base_branch: &'p str,
+    },
+    /// Fully committed branch vs base branch
+    Branch {
+        repo_path: &'p Path,
+        branch_name: &'p str,
+        base_branch: &'p str,
+    },
+    /// Specific commit vs base branch
+    Commit {
+        repo_path: &'p Path,
+        commit_sha: &'p str,
+        base_branch: &'p str,
+    },
 }
 
 impl Default for GitService {
@@ -79,237 +87,6 @@ impl GitService {
     /// Create a new GitService for the given repository path
     pub fn new() -> Self {
         Self {}
-    }
-
-    /// Normalize a path to be repo-relative and use POSIX separators
-    fn normalize_to_repo_relative(
-        repo: &Repository,
-        path: &Path,
-    ) -> Result<String, GitServiceError> {
-        // Get the repository's working directory
-        let repo_workdir = repo.workdir().ok_or_else(|| {
-            GitServiceError::InvalidRepository("Repository has no working directory".to_string())
-        })?;
-
-        // Try to strip the repo prefix if path is absolute
-        let relative_path = if path.is_absolute() {
-            path.strip_prefix(repo_workdir).map_err(|_| {
-                GitServiceError::InvalidFilePaths(format!(
-                    "Path '{}' is outside repository root '{}'",
-                    path.display(),
-                    repo_workdir.display()
-                ))
-            })?
-        } else {
-            path
-        };
-
-        // Convert to string and normalize separators to forward slashes
-        let path_str = relative_path.to_string_lossy();
-        let normalized = path_str.replace('\\', "/");
-
-        // Remove leading "./" if present
-        let normalized = normalized.strip_prefix("./").unwrap_or(&normalized);
-
-        // Security check: prevent path traversal attacks
-        if normalized.contains("../") || normalized.starts_with("../") {
-            return Err(GitServiceError::InvalidFilePaths(format!(
-                "Path traversal not allowed: '{normalized}'"
-            )));
-        }
-
-        Ok(normalized.to_string())
-    }
-
-    /// Validate and normalize file paths for use with git pathspec
-    fn validate_and_normalize_paths<P: AsRef<Path>>(
-        repo: &Repository,
-        file_paths: Option<&[P]>,
-    ) -> Result<Option<Vec<String>>, GitServiceError> {
-        if let Some(paths) = file_paths {
-            let mut normalized_paths = Vec::with_capacity(paths.len());
-
-            for path in paths {
-                let normalized = Self::normalize_to_repo_relative(repo, path.as_ref())?;
-                normalized_paths.push(normalized);
-            }
-
-            // Quick validation: check if any of the paths exist in the repo
-            if !normalized_paths.is_empty() {
-                let index = repo.index().map_err(GitServiceError::from)?;
-                let any_exists = normalized_paths
-                    .iter()
-                    .any(|path| index.get_path(Path::new(path), 0).is_some());
-
-                // Also check workdir for untracked files
-                let workdir_exists = if let Some(workdir) = repo.workdir() {
-                    normalized_paths
-                        .iter()
-                        .any(|path| workdir.join(path).exists())
-                } else {
-                    false
-                };
-
-                if !any_exists && !workdir_exists {
-                    debug!(
-                        "None of the specified paths exist in repository or workdir: {:?}",
-                        normalized_paths
-                    );
-                }
-            }
-
-            Ok(Some(normalized_paths))
-        } else {
-            Ok(None)
-        }
-    }
-
-    /// Converts a Patch into our "render friendly" representation
-    fn patch_to_chunks(patch: &git2::Patch) -> Vec<DiffChunk> {
-        let mut chunks = Vec::new();
-        for hunk_idx in 0..patch.num_hunks() {
-            let (_, hunk_lines) = patch.hunk(hunk_idx).unwrap();
-            for line_idx in 0..hunk_lines {
-                let l = patch.line_in_hunk(hunk_idx, line_idx).unwrap();
-                let kind = match l.origin() {
-                    ' ' => DiffChunkType::Equal,
-                    '+' => DiffChunkType::Insert,
-                    '-' => DiffChunkType::Delete,
-                    _ => continue,
-                };
-                chunks.push(DiffChunk {
-                    chunk_type: kind,
-                    content: String::from_utf8_lossy(l.content()).into_owned(),
-                });
-            }
-        }
-        chunks
-    }
-
-    /// Builds FileDiffs from a generic git2::Diff
-    fn diff_to_file_diffs(diff: &git2::Diff) -> Result<Vec<FileDiff>, GitServiceError> {
-        let mut files = Vec::new();
-
-        for idx in 0..diff.deltas().len() {
-            let delta = diff.get_delta(idx).unwrap();
-            let path = delta
-                .new_file()
-                .path()
-                .or_else(|| delta.old_file().path())
-                .and_then(|p| p.to_str())
-                .unwrap_or("<unknown>")
-                .to_owned();
-
-            // Build the in-memory patch that libgit2 has already computed
-            if let Some(patch) = git2::Patch::from_diff(diff, idx)? {
-                // Special-case pure add/delete with no hunks
-                let chunks = if patch.num_hunks() == 0 {
-                    vec![DiffChunk {
-                        chunk_type: match delta.status() {
-                            git2::Delta::Added => DiffChunkType::Insert,
-                            git2::Delta::Deleted => DiffChunkType::Delete,
-                            _ => DiffChunkType::Equal,
-                        },
-                        content: format!(
-                            "{} file",
-                            if delta.status() == git2::Delta::Added {
-                                "Added"
-                            } else {
-                                "Deleted"
-                            }
-                        ),
-                    }]
-                } else {
-                    Self::patch_to_chunks(&patch)
-                };
-
-                files.push(FileDiff { path, chunks });
-            }
-        }
-
-        Ok(files)
-    }
-
-    /// Generic diff engine that handles all types of comparisons
-    fn run_diff<P: AsRef<Path>>(
-        repo: &Repository,
-        left: Snapshot<'_>,
-        right: Snapshot<'_>,
-        file_paths: Option<&[P]>,
-    ) -> Result<Vec<FileDiff>, GitServiceError> {
-        let mut opts = git2::DiffOptions::new();
-        opts.context_lines(10);
-        opts.interhunk_lines(0);
-
-        // Apply pathspec filtering if file paths are provided
-        if let Some(normalized_paths) = Self::validate_and_normalize_paths(repo, file_paths)? {
-            // Add each path as a pathspec entry
-            for path in &normalized_paths {
-                opts.pathspec(path);
-            }
-        }
-
-        let diff = match (left, right) {
-            (Snapshot::Tree(a), Snapshot::Tree(b)) => repo.diff_tree_to_tree(
-                Some(&repo.find_tree(a)?),
-                Some(&repo.find_tree(b)?),
-                Some(&mut opts),
-            )?,
-            (Snapshot::Tree(base), Snapshot::WorkdirAgainst(_, _))
-            | (Snapshot::WorkdirAgainst(_, _), Snapshot::Tree(base)) => {
-                opts.include_untracked(true);
-                repo.diff_tree_to_workdir_with_index(Some(&repo.find_tree(base)?), Some(&mut opts))?
-            }
-            (Snapshot::WorkdirAgainst(_, _), Snapshot::WorkdirAgainst(_, _)) => {
-                unreachable!("work-dir vs work-dir makes no sense here")
-            }
-        };
-
-        Self::diff_to_file_diffs(&diff)
-    }
-
-    /// Diff for an already-merged squash commit
-    pub fn diff_for_merge_commit<P: AsRef<Path>>(
-        &self,
-        repo_path: &Path,
-        merge_commit: git2::Oid,
-        file_paths: Option<&[P]>,
-    ) -> Result<WorktreeDiff, GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let mc = repo.find_commit(merge_commit)?;
-        let base = mc
-            .parent(0)
-            .map(|p| p.tree().unwrap().id())
-            .unwrap_or_else(|_| {
-                // For the initial commit, use an empty tree
-                repo.treebuilder(None).unwrap().write().unwrap()
-            });
-
-        let files = Self::run_diff(
-            &repo,
-            Snapshot::Tree(base),
-            Snapshot::Tree(mc.tree()?.id()),
-            file_paths,
-        )?;
-        Ok(WorktreeDiff { files })
-    }
-
-    /// Diff for a work-tree that has not been merged yet
-    pub fn diff_for_worktree<P: AsRef<Path>>(
-        &self,
-        worktree_path: &Path,
-        base_branch_commit: git2::Oid,
-        file_paths: Option<&[P]>,
-    ) -> Result<WorktreeDiff, GitServiceError> {
-        let repo = Repository::open(worktree_path)?;
-        let base_tree = repo.find_commit(base_branch_commit)?.tree()?.id();
-        let files = Self::run_diff(
-            &repo,
-            Snapshot::Tree(base_tree),
-            Snapshot::WorkdirAgainst(base_branch_commit, worktree_path),
-            file_paths,
-        )?;
-        Ok(WorktreeDiff { files })
     }
 
     /// Open the repository
@@ -390,6 +167,215 @@ impl GitService {
         )?;
 
         Ok(())
+    }
+
+    /// Get diffs between branches or worktree changes
+    pub fn get_diffs(
+        &self,
+        target: DiffTarget,
+        path_filter: Option<&[&str]>,
+    ) -> Result<Vec<Diff>, GitServiceError> {
+        match target {
+            DiffTarget::Worktree {
+                worktree_path,
+                branch_name: _,
+                base_branch,
+            } => {
+                let repo = Repository::open(worktree_path)?;
+                let base_ref = repo
+                    .find_branch(base_branch, BranchType::Local)
+                    .map_err(|_| GitServiceError::BranchNotFound(base_branch.to_string()))?;
+                let base_tree = base_ref.get().peel_to_commit()?.tree()?;
+
+                let mut diff_opts = DiffOptions::new();
+                diff_opts
+                    .include_untracked(true)
+                    .include_typechange(true)
+                    .recurse_untracked_dirs(true);
+
+                // Add path filtering if specified
+                if let Some(paths) = path_filter {
+                    for path in paths {
+                        diff_opts.pathspec(*path);
+                    }
+                }
+
+                let mut diff =
+                    repo.diff_tree_to_workdir_with_index(Some(&base_tree), Some(&mut diff_opts))?;
+
+                // Enable rename detection
+                let mut find_opts = DiffFindOptions::new();
+                diff.find_similar(Some(&mut find_opts))?;
+
+                self.convert_diff_to_file_diffs(diff, &repo)
+            }
+            DiffTarget::Branch {
+                repo_path,
+                branch_name,
+                base_branch,
+            } => {
+                let repo = self.open_repo(repo_path)?;
+                let base_tree = repo
+                    .find_branch(base_branch, BranchType::Local)
+                    .map_err(|_| GitServiceError::BranchNotFound(base_branch.to_string()))?
+                    .get()
+                    .peel_to_commit()?
+                    .tree()?;
+                let branch_tree = repo
+                    .find_branch(branch_name, BranchType::Local)
+                    .map_err(|_| GitServiceError::BranchNotFound(branch_name.to_string()))?
+                    .get()
+                    .peel_to_commit()?
+                    .tree()?;
+
+                let mut diff_opts = DiffOptions::new();
+                diff_opts.include_typechange(true);
+
+                // Add path filtering if specified
+                if let Some(paths) = path_filter {
+                    for path in paths {
+                        diff_opts.pathspec(*path);
+                    }
+                }
+
+                let mut diff = repo.diff_tree_to_tree(
+                    Some(&base_tree),
+                    Some(&branch_tree),
+                    Some(&mut diff_opts),
+                )?;
+
+                // Enable rename detection
+                let mut find_opts = DiffFindOptions::new();
+                diff.find_similar(Some(&mut find_opts))?;
+
+                self.convert_diff_to_file_diffs(diff, &repo)
+            }
+            DiffTarget::Commit {
+                repo_path,
+                commit_sha,
+                base_branch,
+            } => {
+                let repo = self.open_repo(repo_path)?;
+                let base_tree = repo
+                    .find_branch(base_branch, BranchType::Local)
+                    .map_err(|_| GitServiceError::BranchNotFound(base_branch.to_string()))?
+                    .get()
+                    .peel_to_commit()?
+                    .tree()?;
+
+                let commit_oid = git2::Oid::from_str(commit_sha).map_err(|_| {
+                    GitServiceError::InvalidRepository(format!(
+                        "Invalid commit SHA: {}",
+                        commit_sha
+                    ))
+                })?;
+                let commit_tree = repo.find_commit(commit_oid)?.tree()?;
+
+                let mut diff_opts = DiffOptions::new();
+                diff_opts.include_typechange(true);
+
+                // Add path filtering if specified
+                if let Some(paths) = path_filter {
+                    for path in paths {
+                        diff_opts.pathspec(*path);
+                    }
+                }
+
+                let mut diff = repo.diff_tree_to_tree(
+                    Some(&base_tree),
+                    Some(&commit_tree),
+                    Some(&mut diff_opts),
+                )?;
+
+                // Enable rename detection
+                let mut find_opts = DiffFindOptions::new();
+                diff.find_similar(Some(&mut find_opts))?;
+
+                self.convert_diff_to_file_diffs(diff, &repo)
+            }
+        }
+    }
+
+    /// Convert git2::Diff to our Diff structs
+    fn convert_diff_to_file_diffs(
+        &self,
+        diff: git2::Diff,
+        repo: &Repository,
+    ) -> Result<Vec<Diff>, GitServiceError> {
+        let mut file_diffs = Vec::new();
+
+        diff.foreach(
+            &mut |delta, _progress| {
+                // Skip unreadable entries
+                if delta.status() == Delta::Unreadable {
+                    return true;
+                }
+
+                let old_file = if let Some(path) = delta.old_file().path() {
+                    Some(self.create_file_details(path, &delta.old_file().id(), repo))
+                } else {
+                    None
+                };
+
+                let new_file = if let Some(path) = delta.new_file().path() {
+                    Some(self.create_file_details(path, &delta.new_file().id(), repo))
+                } else {
+                    None
+                };
+
+                file_diffs.push(Diff {
+                    old_file,
+                    new_file,
+                    hunks: vec![], // Left empty as requested
+                });
+
+                true
+            },
+            None,
+            None,
+            None,
+        )?;
+
+        Ok(file_diffs)
+    }
+
+    /// Extract file path from a Diff (for indexing and ConversationPatch)
+    pub fn diff_path(diff: &Diff) -> String {
+        diff.new_file
+            .as_ref()
+            .and_then(|f| f.file_name.clone())
+            .or_else(|| diff.old_file.as_ref().and_then(|f| f.file_name.clone()))
+            .unwrap_or_default()
+    }
+
+    /// Create FileDiffDetails from path and blob
+    fn create_file_details(
+        &self,
+        path: &Path,
+        blob_id: &git2::Oid,
+        repo: &Repository,
+    ) -> FileDiffDetails {
+        let file_name = path.to_string_lossy().to_string();
+
+        // Get file content if blob exists (not for deletions)
+        let content = if !blob_id.is_zero() {
+            repo.find_blob(*blob_id).ok().and_then(|blob| {
+                if blob.is_binary() {
+                    None // Skip binary files
+                } else {
+                    std::str::from_utf8(blob.content())
+                        .ok()
+                        .map(|s| s.to_string())
+                }
+            })
+        } else {
+            None
+        };
+
+        FileDiffDetails {
+            file_name: Some(file_name),
+            content,
+        }
     }
 
     /// Merge changes from a worktree branch back to the main repository
@@ -791,32 +777,6 @@ impl GitService {
         let final_commit = final_head.peel_to_commit()?;
 
         Ok(final_commit.id().to_string())
-    }
-
-    /// Get enhanced diff for task attempts (from merge commit or worktree)
-    pub fn get_enhanced_diff<P: AsRef<Path>>(
-        &self,
-        repo_path: &Path,
-        worktree_path: &Path,
-        merge_commit_id: Option<&str>,
-        base_branch: &str,
-        file_paths: Option<&[P]>,
-    ) -> Result<WorktreeDiff, GitServiceError> {
-        if let Some(merge_commit_id) = merge_commit_id {
-            // Task attempt has been merged - show the diff from the merge commit
-            let commit_oid = git2::Oid::from_str(merge_commit_id)
-                .map_err(|_| GitServiceError::InvalidRepository("Invalid commit ID".to_string()))?;
-            self.diff_for_merge_commit(repo_path, commit_oid, file_paths)
-        } else {
-            // Task attempt not yet merged - get worktree diff
-            let main_repo = self.open_repo(repo_path)?;
-            let base_branch_ref = main_repo
-                .find_branch(base_branch, BranchType::Local)
-                .map_err(|_| GitServiceError::BranchNotFound(base_branch.to_string()))?;
-            let base_branch_commit = base_branch_ref.get().peel_to_commit()?.id();
-
-            self.diff_for_worktree(worktree_path, base_branch_commit, file_paths)
-        }
     }
 
     /// Delete a file from the repository and commit the change

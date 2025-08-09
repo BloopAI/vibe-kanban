@@ -1,52 +1,27 @@
-import { useContext, useState, useRef, useEffect, useCallback } from 'react';
-import { VariableSizeList } from 'react-window';
+import { useContext, useState, useRef, useCallback } from 'react';
+import { Virtuoso } from 'react-virtuoso';
 import { Cog } from 'lucide-react';
-import useMeasure from 'react-use-measure';
 import { TaskAttemptDataContext } from '@/components/context/taskDetailsContext.ts';
 import { useProcessesLogs } from '@/hooks/useProcessesLogs';
 import LogEntryRow from '@/components/logs/LogEntryRow';
-import type { UnifiedLogEntry } from '@/types/logs';
 
 function LogsTab() {
   const { attemptData } = useContext(TaskAttemptDataContext);
-  const [autoScroll, setAutoScroll] = useState(true);
-  const listRef = useRef<VariableSizeList>(null);
-  const innerRef = useRef<HTMLDivElement>(null);
-  const [containerRef, bounds] = useMeasure();
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const virtuosoRef = useRef<any>(null);
 
   const { entries } = useProcessesLogs(attemptData.processes || [], true);
 
-  const rowHeights = useRef<Record<number, number>>({});
-
-  const getRowHeight = useCallback((index: number): number => {
-    const h = rowHeights.current[index];
-    return h !== undefined ? h : 100;
-  }, []);
-
-  const setRowHeight = useCallback((index: number, size: number) => {
-    listRef.current?.resetAfterIndex(0);
-    rowHeights.current = { ...rowHeights.current, [index]: size };
-  }, []);
-
-  // Auto-scroll to bottom when new entries arrive
-  useEffect(() => {
-    if (autoScroll && entries.length > 0 && listRef.current) {
-      listRef.current.scrollToItem(entries.length - 1, 'end');
-    }
-  }, [entries.length, autoScroll]);
-
-  // Handle scroll events to detect user scrolling
-  const onScroll = useCallback(
-    ({ scrollOffset, scrollUpdateWasRequested }: any) => {
-      if (!scrollUpdateWasRequested && bounds.height) {
-        const atBottom = innerRef.current
-          ? innerRef.current.offsetHeight - scrollOffset - bounds.height < 20
-          : false;
-        setAutoScroll(atBottom);
-      }
-    },
-    [bounds.height]
+  // Memoized item content to prevent flickering
+  const itemContent = useCallback(
+    (index: number, entry: any) => <LogEntryRow entry={entry} index={index} />,
+    []
   );
+
+  // Handle when user manually scrolls away from bottom
+  const handleAtBottomStateChange = useCallback((atBottom: boolean) => {
+    setIsAtBottom(atBottom);
+  }, []);
 
   if (!attemptData.processes || attemptData.processes.length === 0) {
     return (
@@ -60,43 +35,20 @@ function LogsTab() {
   }
 
   return (
-    <div ref={containerRef} className="w-full h-full">
-      {bounds.height && bounds.width && (
-        <VariableSizeList
-          ref={listRef}
-          innerRef={innerRef}
-          height={bounds.height}
-          width={bounds.width}
-          itemCount={entries.length}
-          itemSize={getRowHeight}
-          onScroll={onScroll}
-          itemData={entries}
-        >
-          {({
-            index,
-            style,
-            data,
-          }: {
-            index: number;
-            style: React.CSSProperties;
-            data: UnifiedLogEntry[];
-          }) => {
-            const style_with_padding = { ...style };
-            if (index === entries.length - 1) {
-              style_with_padding.paddingBottom = '50px';
-            }
-
-            return (
-              <LogEntryRow
-                entry={data[index]}
-                index={index}
-                style={style_with_padding}
-                setRowHeight={setRowHeight}
-              />
-            );
-          }}
-        </VariableSizeList>
-      )}
+    <div className="w-full h-full">
+      <Virtuoso
+        ref={virtuosoRef}
+        style={{ height: '100%' }}
+        data={entries}
+        itemContent={itemContent}
+        followOutput={isAtBottom ? 'smooth' : false}
+        atBottomStateChange={handleAtBottomStateChange}
+        increaseViewportBy={200}
+        overscan={5}
+        components={{
+          Footer: () => <div style={{ height: '50px' }} />,
+        }}
+      />
     </div>
   );
 }
