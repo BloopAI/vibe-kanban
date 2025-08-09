@@ -5,18 +5,26 @@ import {
 import { generateDiffFile } from "@git-diff-view/file";
 import "@git-diff-view/react/styles/diff-view-pure.css";
 import { useDiffStream } from "@/hooks/useDiffStream";
-import { useMemo, useContext, useCallback } from "react";
+import { useMemo, useContext, useCallback, useState, useEffect } from "react";
 import { TaskSelectedAttemptContext } from "@/components/context/taskDetailsContext.ts";
 import { Diff, ThemeMode } from "shared/types";
 import { getHighLightLanguageFromPath } from "@/utils/extToLanguage";
 import { useConfig } from "@/components/config-provider";
+import { Loader } from "@/components/ui/loader";
 
 function DiffTab() {
   const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
+  const [loading, setLoading] = useState(true);
   const { data, isConnected, error } = useDiffStream(
     selectedAttempt?.id ?? null,
     true,
   );
+
+  useEffect(() => {
+    if (data && Object.keys(data?.entries).length > 0 && loading) {
+      setLoading(false);
+    }
+  }, [data]);
 
   const { config } = useConfig()
 
@@ -53,7 +61,7 @@ function DiffTab() {
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4 m-4">
         <div className="text-red-800 text-sm">
           Failed to load diff: {error}
         </div>
@@ -61,18 +69,16 @@ function DiffTab() {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader />
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col">
-      {selectedAttempt && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-b text-xs text-muted-foreground">
-          <div
-            className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500" : "bg-gray-400"
-              }`}
-          />
-          {isConnected ? "Live" : "Disconnected"}
-        </div>
-      )}
-
       <div className="flex-1 overflow-y-auto px-4">
         {diffFiles.map((diffFile, idx) => (
           <div key={idx} className="my-4 border">
