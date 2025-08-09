@@ -3,7 +3,8 @@ import {
   DiffModeEnum,
 } from "@git-diff-view/react";
 import { generateDiffFile } from "@git-diff-view/file";
-import "@git-diff-view/react/styles/diff-view-pure.css";
+// import "@git-diff-view/react/styles/diff-view-pure.css";
+import "./diff-style-overrides.css";
 import { useDiffStream } from "@/hooks/useDiffStream";
 import { useMemo, useContext, useCallback, useState, useEffect } from "react";
 import { TaskSelectedAttemptContext } from "@/components/context/taskDetailsContext.ts";
@@ -82,13 +83,14 @@ function DiffTab() {
       <div className="flex-1 overflow-y-auto px-4">
         {diffFiles.map((diffFile, idx) => (
           <div key={idx} className="my-4 border">
-            <p className="text-md font-mono px-4 py-2 bg-muted text-muted-foreground overflow-x-auto">{diffFile._newFileName} <span className="text-green-600">+{diffFile.additionLength}</span> <span className="text-red-500">-{diffFile.deletionLength}</span></p>
+            <p className="text-xs font-mono px-4 py-2 overflow-x-auto" style={{ color: "hsl(var(--muted-foreground) / 0.7)" }}>{diffFile._newFileName} <span style={{ color: "hsl(var(--console-success))" }}>+{diffFile.additionLength}</span> <span style={{ color: "hsl(var(--console-error))" }}>-{diffFile.deletionLength}</span></p>
             <DiffView
               diffFile={diffFile}
               diffViewWrap={false}
               diffViewTheme={theme}
               diffViewHighlight
               diffViewMode={DiffModeEnum.Unified}
+              diffViewFontSize={12}
             />
           </div>
         ))}
