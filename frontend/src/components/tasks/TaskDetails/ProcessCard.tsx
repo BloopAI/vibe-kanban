@@ -40,12 +40,6 @@ function ProcessCard({ process }: ProcessCardProps) {
   const isConnected = isCodingAgent ? normalizedConnected : rawConnected;
   const error = isCodingAgent ? normalizedError : rawError;
 
-  // Auto-scroll to bottom when new logs/entries arrive
-  useEffect(() => {
-    if (logEndRef.current) {
-      logEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [logs, entries]);
   const getStatusIcon = (status: ExecutionProcessStatus) => {
     switch (status) {
       case 'running':
