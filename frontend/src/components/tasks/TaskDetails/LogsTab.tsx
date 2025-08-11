@@ -30,8 +30,6 @@ function addAll<T>(set: Set<T>, items: T[]): Set<T> {
   return set;
 }
 
-
-
 // State management types
 type LogsState = {
   userCollapsed: Set<string>;
@@ -94,7 +92,7 @@ function reducer(state: LogsState, action: LogsAction): LogsState {
 
     case 'AUTO_EXPAND': {
       const newAutoCollapsed = new Set(state.autoCollapsed);
-      action.ids.forEach(id => newAutoCollapsed.delete(id));
+      action.ids.forEach((id) => newAutoCollapsed.delete(id));
       return {
         ...state,
         autoCollapsed: newAutoCollapsed,
@@ -147,12 +145,9 @@ function LogsTab() {
   }, [state.autoCollapsed, state.userCollapsed]);
 
   // Toggle collapsed state for a process (user action)
-  const toggleProcessCollapse = useCallback(
-    (processId: string) => {
-      dispatch({ type: 'TOGGLE_USER', id: processId });
-    },
-    []
-  );
+  const toggleProcessCollapse = useCallback((processId: string) => {
+    dispatch({ type: 'TOGGLE_USER', id: processId });
+  }, []);
 
   // Effect #1: Reset state when attempt changes
   useEffect(() => {
@@ -171,7 +166,8 @@ function LogsTab() {
 
         // Auto-collapse completed setup/cleanup scripts
         const shouldAutoCollapse =
-          (prevStatus === PROCESS_STATUSES.RUNNING || prevStatus === undefined) &&
+          (prevStatus === PROCESS_STATUSES.RUNNING ||
+            prevStatus === undefined) &&
           isProcessCompleted(currentStatus) &&
           !state.userCollapsed.has(process.id) &&
           !state.autoCollapsed.has(process.id);
@@ -192,7 +188,11 @@ function LogsTab() {
         }
 
         // Update status tracking
-        dispatch({ type: 'UPDATE_STATUS', id: process.id, status: currentStatus });
+        dispatch({
+          type: 'UPDATE_STATUS',
+          id: process.id,
+          status: currentStatus,
+        });
       }
     });
 
@@ -203,7 +203,12 @@ function LogsTab() {
     if (toExpand.length > 0) {
       dispatch({ type: 'AUTO_EXPAND', ids: toExpand });
     }
-  }, [filteredProcesses, state.userCollapsed, state.autoCollapsed, state.prevStatus]);
+  }, [
+    filteredProcesses,
+    state.userCollapsed,
+    state.autoCollapsed,
+    state.prevStatus,
+  ]);
 
   // Effect #3: Handle coding agent succession logic
   useEffect(() => {
@@ -229,7 +234,12 @@ function LogsTab() {
 
       dispatch({ type: 'NEW_RUNNING_AGENT', id: latestCodingAgentId });
     }
-  }, [filteredProcesses, state.prevLatestAgent, state.userCollapsed, state.autoCollapsed]);
+  }, [
+    filteredProcesses,
+    state.prevLatestAgent,
+    state.userCollapsed,
+    state.autoCollapsed,
+  ]);
 
   // Filter entries to hide logs from collapsed processes
   const visibleEntries = useMemo(() => {
