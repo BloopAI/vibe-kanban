@@ -50,10 +50,7 @@ pub struct NormalizedEntry {
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum ActionType {
     FileRead { path: String },
-    FileEdit {
-        path: String,
-        diffs: Vec<EditDiff>,
-    },
+    FileEdit { path: String, diffs: Vec<EditDiff> },
     CommandRun { command: String },
     Search { query: String },
     WebFetch { url: String },

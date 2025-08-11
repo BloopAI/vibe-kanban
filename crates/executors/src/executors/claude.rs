@@ -701,7 +701,9 @@ pub enum ClaudeContentItem {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[serde(tag = "name", content = "input")]
 pub enum ClaudeToolData {
-    TodoWrite { todos: Vec<ClaudeTodoItem> },
+    TodoWrite {
+        todos: Vec<ClaudeTodoItem>,
+    },
     Task {
         subagent_type: String,
         description: Option<String>,
@@ -712,8 +714,12 @@ pub enum ClaudeToolData {
         #[serde(default)]
         path: Option<String>,
     },
-    LS { path: String },
-    Read { file_path: String },
+    LS {
+        path: String,
+    },
+    Read {
+        file_path: String,
+    },
     Bash {
         command: String,
         #[serde(default)]
@@ -726,7 +732,9 @@ pub enum ClaudeToolData {
         #[serde(default)]
         path: Option<String>,
     },
-    ExitPlanMode { plan: String },
+    ExitPlanMode {
+        plan: String,
+    },
     Edit {
         file_path: String,
         old_string: Option<String>,
@@ -736,7 +744,10 @@ pub enum ClaudeToolData {
         file_path: String,
         edits: Vec<ClaudeEditItem>,
     },
-    Write { file_path: String, content: String },
+    Write {
+        file_path: String,
+        content: String,
+    },
     NotebookEdit {
         notebook_path: String,
         new_source: String,
@@ -749,7 +760,9 @@ pub enum ClaudeToolData {
         #[serde(default)]
         prompt: Option<String>,
     },
-    WebSearch { query: String },
+    WebSearch {
+        query: String,
+    },
     #[serde(untagged)]
     Unknown {
         #[serde(flatten)]

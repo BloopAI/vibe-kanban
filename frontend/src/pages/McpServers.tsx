@@ -18,9 +18,10 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
-import { BaseCodingAgent, AgentProfile } from 'shared/types';
+import { AgentProfile } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
 import { mcpServersApi } from '../lib/api';
+import { getMcpStrategyByAgent } from '../lib/mcp-strategies';
 
 export function McpServers() {
   const { config, profiles } = useUserSystem();
@@ -55,13 +56,9 @@ export function McpServers() {
       setMcpLoading(true);
       setMcpError(null);
 
-      // Set default empty config based on agent type
-      const defaultConfig =
-        profile.agent === BaseCodingAgent.AMP
-          ? '{\n  "amp.mcpServers": {\n  }\n}'
-          : profile.agent === BaseCodingAgent.OPENCODE
-            ? '{\n  "mcp": {\n  }, "$schema": "https://opencode.ai/config.json"\n}'
-            : '{\n  "mcpServers": {\n  }\n}';
+      // Set default empty config based on agent type using strategy
+      const strategy = getMcpStrategyByAgent(profile.agent);
+      const defaultConfig = strategy.getDefaultConfig();
       setMcpServers(defaultConfig);
       setMcpConfigPath('');
 
@@ -73,21 +70,9 @@ export function McpServers() {
         const servers = data.servers || {};
         const configPath = data.config_path || '';
 
-        // Create the full configuration structure based on agent type
-        let fullConfig;
-        if (profile.agent === BaseCodingAgent.AMP) {
-          // For AMP, use the amp.mcpServers structure
-          fullConfig = { 'amp.mcpServers': servers };
-        } else if (profile.agent === BaseCodingAgent.OPENCODE) {
-          fullConfig = {
-            mcp: servers,
-            $schema: 'https://opencode.ai/config.json',
-          };
-        } else {
-          // For other executors, use the standard mcpServers structure
-          fullConfig = { mcpServers: servers };
-        }
-
+        // Create the full configuration structure using strategy
+        const strategy = getMcpStrategyByAgent(profile.agent);
+        const fullConfig = strategy.createFullConfig(servers);
         const configJson = JSON.stringify(fullConfig, null, 2);
         setMcpServers(configJson);
         setMcpConfigPath(configPath);
@@ -116,27 +101,15 @@ export function McpServers() {
     if (value.trim() && selectedProfile) {
       try {
         const config = JSON.parse(value);
-        // Validate that the config has the expected structure based on agent type
-        if (selectedProfile.agent === BaseCodingAgent.AMP) {
-          if (
-            !config['amp.mcpServers'] ||
-            typeof config['amp.mcpServers'] !== 'object'
-          ) {
-            setMcpError(
-              'AMP configuration must contain an "amp.mcpServers" object'
-            );
-          }
-        } else if (selectedProfile.agent === BaseCodingAgent.OPENCODE) {
-          if (!config.mcp || typeof config.mcp !== 'object') {
-            setMcpError('Configuration must contain an "mcp" object');
-          }
-        } else {
-          if (!config.mcpServers || typeof config.mcpServers !== 'object') {
-            setMcpError('Configuration must contain an "mcpServers" object');
-          }
-        }
+        // Validate that the config has the expected structure using strategy
+        const strategy = getMcpStrategyByAgent(selectedProfile.agent);
+        strategy.validateFullConfig(config);
       } catch (err) {
-        setMcpError('Invalid JSON format');
+        if (err instanceof SyntaxError) {
+          setMcpError('Invalid JSON format');
+        } else {
+          setMcpError(err instanceof Error ? err.message : 'Validation error');
+        }
       }
     }
   };
@@ -148,46 +121,15 @@ export function McpServers() {
       // Parse existing configuration
       const existingConfig = mcpServers.trim() ? JSON.parse(mcpServers) : {};
 
-      // Always use production MCP installation instructions
-      const vibeKanbanConfig =
-        selectedProfile.agent === BaseCodingAgent.OPENCODE
-          ? {
-              type: 'local',
-              command: ['npx', '-y', 'vibe-kanban', '--mcp'],
-              enabled: true,
-            }
-          : {
-              command: 'npx',
-              args: ['-y', 'vibe-kanban', '--mcp'],
-            };
+      // Use strategy to create vibe-kanban configuration
+      const strategy = getMcpStrategyByAgent(selectedProfile.agent);
+      const vibeKanbanConfig = strategy.createVibeKanbanConfig();
 
-      // Add vibe_kanban to the existing configuration
-      let updatedConfig;
-      if (selectedProfile.agent === BaseCodingAgent.AMP) {
-        updatedConfig = {
-          ...existingConfig,
-          'amp.mcpServers': {
-            ...(existingConfig['amp.mcpServers'] || {}),
-            vibe_kanban: vibeKanbanConfig,
-          },
-        };
-      } else if (selectedProfile.agent === BaseCodingAgent.OPENCODE) {
-        updatedConfig = {
-          ...existingConfig,
-          mcp: {
-            ...(existingConfig.mcp || {}),
-            vibe_kanban: vibeKanbanConfig,
-          },
-        };
-      } else {
-        updatedConfig = {
-          ...existingConfig,
-          mcpServers: {
-            ...(existingConfig.mcpServers || {}),
-            vibe_kanban: vibeKanbanConfig,
-          },
-        };
-      }
+      // Add vibe_kanban to the existing configuration using strategy
+      const updatedConfig = strategy.addVibeKanbanToConfig(
+        existingConfig,
+        vibeKanbanConfig
+      );
 
       // Update the textarea with the new configuration
       const configJson = JSON.stringify(updatedConfig, null, 2);
@@ -211,37 +153,12 @@ export function McpServers() {
         try {
           const fullConfig = JSON.parse(mcpServers);
 
-          // Validate that the config has the expected structure based on agent type
-          let mcpServersConfig;
-          if (selectedProfile.agent === BaseCodingAgent.AMP) {
-            if (
-              !fullConfig['amp.mcpServers'] ||
-              typeof fullConfig['amp.mcpServers'] !== 'object'
-            ) {
-              throw new Error(
-                'AMP configuration must contain an "amp.mcpServers" object'
-              );
-            }
-            // Extract just the inner servers object for the API - backend will handle nesting
-            mcpServersConfig = fullConfig['amp.mcpServers'];
-          } else if (selectedProfile.agent === BaseCodingAgent.OPENCODE) {
-            if (!fullConfig.mcp || typeof fullConfig.mcp !== 'object') {
-              throw new Error('Configuration must contain an "mcp" object');
-            }
-            // Extract just the mcp part for the API
-            mcpServersConfig = fullConfig.mcp;
-          } else {
-            if (
-              !fullConfig.mcpServers ||
-              typeof fullConfig.mcpServers !== 'object'
-            ) {
-              throw new Error(
-                'Configuration must contain an "mcpServers" object'
-              );
-            }
-            // Extract just the mcpServers part for the API
-            mcpServersConfig = fullConfig.mcpServers;
-          }
+          // Use strategy to validate and extract servers config
+          const strategy = getMcpStrategyByAgent(selectedProfile.agent);
+          strategy.validateFullConfig(fullConfig);
+
+          // Extract just the servers object for the API - backend will handle nesting/format
+          const mcpServersConfig = strategy.extractServersForApi(fullConfig);
 
           await mcpServersApi.save(selectedProfile.agent, mcpServersConfig);
 
@@ -349,7 +266,8 @@ export function McpServers() {
                       <p>{mcpError}</p>
                       <p className="mt-1">
                         To use MCP servers, please select a different profile
-                        (Claude, Amp, or Gemini) above.
+                        that supports MCP (Claude, Amp, Gemini, Codex, or
+                        Opencode) above.
                       </p>
                     </div>
                   </div>

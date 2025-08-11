@@ -356,16 +356,17 @@ impl LocalContainerService {
                             && matches!(
                                 &ctx.execution_process.run_reason,
                                 ExecutionProcessRunReason::CodingAgent
-                            ) && let Some(analytics) = &analytics
-                            {
-                                analytics.analytics_service.track_event(&analytics.user_id, "task_attempt_finished", Some(json!({
+                            )
+                            && let Some(analytics) = &analytics
+                        {
+                            analytics.analytics_service.track_event(&analytics.user_id, "task_attempt_finished", Some(json!({
                                     "task_id": ctx.task.id.to_string(),
                                     "project_id": ctx.task.project_id.to_string(),
                                     "attempt_id": ctx.task_attempt.id.to_string(),
                                     "execution_success": matches!(ctx.execution_process.status, ExecutionProcessStatus::Completed),
                                     "exit_code": ctx.execution_process.exit_code,
                                 })));
-                            }
+                        }
                     }
 
                     // Cleanup msg store
