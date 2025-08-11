@@ -24,23 +24,29 @@ function DiffTab() {
     const oldContent = diff.oldFile?.content || '';
     const newContent = diff.newFile?.content || '';
 
-    const instance = generateDiffFile(
-      oldFileName,
-      oldContent,
-      newFileName,
-      newContent,
-      getHighLightLanguageFromPath(oldFileName) || 'plaintext',
-      getHighLightLanguageFromPath(newFileName) || 'plaintext'
-    );
-    instance.initRaw();
-    return instance;
+    try {
+      const instance = generateDiffFile(
+        oldFileName,
+        oldContent,
+        newFileName,
+        newContent,
+        getHighLightLanguageFromPath(oldFileName) || 'plaintext',
+        getHighLightLanguageFromPath(newFileName) || 'plaintext'
+      );
+      instance.initRaw();
+      return instance;
+    } catch (error) {
+      console.error('Failed to parse diff:', error);
+      return null;
+    }
   }, []);
 
   const diffFiles = useMemo(() => {
     if (!data) return [];
     return Object.values(data.entries)
       .filter((e: any) => e?.type === 'DIFF')
-      .map((e: any) => createDiffFile(e.content as Diff));
+      .map((e: any) => createDiffFile(e.content as Diff))
+      .filter((diffFile) => diffFile !== null);
   }, [data, createDiffFile]);
 
   if (error) {
