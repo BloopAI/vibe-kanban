@@ -8,7 +8,11 @@ interface ProcessStartCardProps {
   onToggle: (processId: string) => void;
 }
 
-function ProcessStartCard({ payload, isCollapsed, onToggle }: ProcessStartCardProps) {
+function ProcessStartCard({
+  payload,
+  isCollapsed,
+  onToggle,
+}: ProcessStartCardProps) {
   const getProcessIcon = (runReason: string) => {
     switch (runReason) {
       case 'setupscript':

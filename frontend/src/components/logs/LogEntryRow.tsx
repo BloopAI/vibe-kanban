@@ -15,7 +15,14 @@ interface LogEntryRowProps {
   onToggleCollapse?: (processId: string) => void;
 }
 
-function LogEntryRow({ entry, index, style, setRowHeight, isCollapsed, onToggleCollapse }: LogEntryRowProps) {
+function LogEntryRow({
+  entry,
+  index,
+  style,
+  setRowHeight,
+  isCollapsed,
+  onToggleCollapse,
+}: LogEntryRowProps) {
   const rowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
