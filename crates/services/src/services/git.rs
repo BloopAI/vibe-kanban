@@ -93,6 +93,39 @@ impl GitService {
         Repository::open(repo_path).map_err(GitServiceError::from)
     }
 
+    /// Initialize a new git repository with a main branch and initial commit
+    pub fn initialize_repo_with_main_branch(&self, repo_path: &Path) -> Result<(), GitServiceError> {
+        // Create directory if it doesn't exist
+        if !repo_path.exists() {
+            std::fs::create_dir_all(repo_path)?;
+        }
+
+        // Initialize git repository with main branch
+        let repo = Repository::init_opts(
+            repo_path,
+            git2::RepositoryInitOptions::new()
+                .initial_head("main")
+                .mkdir(true)
+        )?;
+
+        // Create initial commit
+        self.create_initial_commit(&repo)?;
+
+        Ok(())
+    }
+
+    /// Ensure an existing repository has a main branch (for empty repos)
+    pub fn ensure_main_branch_exists(&self, repo_path: &Path) -> Result<(), GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        
+        // Only create initial commit if repository is empty
+        if repo.is_empty()? {
+            self.create_initial_commit(&repo)?;
+        }
+
+        Ok(())
+    }
+
     pub fn create_initial_commit(&self, repo: &Repository) -> Result<(), GitServiceError> {
         let signature = repo.signature().unwrap_or_else(|_| {
             // Fallback if no Git config is set
