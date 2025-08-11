@@ -265,8 +265,7 @@ impl GitService {
 
                 let commit_oid = git2::Oid::from_str(commit_sha).map_err(|_| {
                     GitServiceError::InvalidRepository(format!(
-                        "Invalid commit SHA: {}",
-                        commit_sha
+                        "Invalid commit SHA: {commit_sha}"
                     ))
                 })?;
                 let commit_tree = repo.find_commit(commit_oid)?.tree()?;
@@ -311,17 +310,9 @@ impl GitService {
                     return true;
                 }
 
-                let old_file = if let Some(path) = delta.old_file().path() {
-                    Some(self.create_file_details(path, &delta.old_file().id(), repo))
-                } else {
-                    None
-                };
+                let old_file = delta.old_file().path().map(|path| self.create_file_details(path, &delta.old_file().id(), repo));
 
-                let new_file = if let Some(path) = delta.new_file().path() {
-                    Some(self.create_file_details(path, &delta.new_file().id(), repo))
-                } else {
-                    None
-                };
+                let new_file = delta.new_file().path().map(|path| self.create_file_details(path, &delta.new_file().id(), repo));
 
                 file_diffs.push(Diff {
                     old_file,

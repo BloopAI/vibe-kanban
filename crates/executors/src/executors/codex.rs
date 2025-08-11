@@ -560,7 +560,7 @@ mod tests {
                 entries.push(NormalizedEntry {
                     timestamp: None,
                     entry_type: NormalizedEntryType::SystemMessage,
-                    content: format!("Raw output: {}", trimmed),
+                    content: format!("Raw output: {trimmed}"),
                     metadata: None,
                 });
             }

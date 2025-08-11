@@ -43,7 +43,6 @@ use services::services::{
 use tokio::{sync::RwLock, task::JoinHandle};
 use tokio_util::io::ReaderStream;
 use utils::{
-    diff::Diff,
     log_msg::LogMsg,
     msg_store::MsgStore,
     text::{git_branch_id, short_uuid},
@@ -353,8 +352,8 @@ impl LocalContainerService {
                         }
 
                         // Fire event when CodingAgent execution has finished
-                        if let Some(true) = config.read().await.analytics_enabled {
-                            if matches!(
+                        if let Some(true) = config.read().await.analytics_enabled
+                            && matches!(
                                 &ctx.execution_process.run_reason,
                                 ExecutionProcessRunReason::CodingAgent
                             ) && let Some(analytics) = &analytics
@@ -367,7 +366,6 @@ impl LocalContainerService {
                                     "exit_code": ctx.execution_process.exit_code,
                                 })));
                             }
-                        }
                     }
 
                     // Cleanup msg store
@@ -455,7 +453,7 @@ impl LocalContainerService {
             .ok_or(ContainerError::Other(anyhow!("Parent project not found")))?
             .git_repo_path;
 
-        Ok(PathBuf::from(project_repo_path))
+        Ok(project_repo_path)
     }
 
     /// Create a diff stream for merged attempts (never changes)

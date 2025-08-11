@@ -102,7 +102,7 @@ mod tests {
 
         // Test with absolute path (should become relative if possible)
         let test_worktree = "/tmp/test-worktree";
-        let absolute_path = format!("{}/src/main.rs", test_worktree);
+        let absolute_path = format!("{test_worktree}/src/main.rs");
         let result = make_path_relative(&absolute_path, test_worktree);
         assert_eq!(result, "src/main.rs");
 
