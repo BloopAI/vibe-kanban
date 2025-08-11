@@ -18,6 +18,8 @@ import {
   shouldShowInLogs,
   isAutoCollapsibleProcess,
   isProcessCompleted,
+  isCodingAgent,
+  getLatestCodingAgent,
   PROCESS_STATUSES,
 } from '@/constants/processes';
 import type { ExecutionProcessStatus } from 'shared/types';
@@ -38,6 +40,11 @@ function LogsTab() {
   const prevStatusRef = useRef<Map<string, ExecutionProcessStatus>>(new Map());
   const autoCollapsedOnceRef = useRef<Set<string>>(new Set());
   const currentAttemptIdRef = useRef<string | null>(null);
+  
+  // Refs for coding agent auto-collapse tracking
+  const prevLatestAgentIdRef = useRef<string | null>(null);
+  const seenRunningRef = useRef<Set<string>>(new Set());
+  const initialAgentsCollapsedRef = useRef<boolean>(false);
 
   // Filter out dev server processes before passing to useProcessesLogs
   const filteredProcesses = useMemo(
@@ -99,13 +106,37 @@ function LogsTab() {
       setAutoCollapsedProcesses(new Set());
       prevStatusRef.current.clear();
       autoCollapsedOnceRef.current.clear();
+      prevLatestAgentIdRef.current = null;
+      seenRunningRef.current.clear();
+      initialAgentsCollapsedRef.current = false;
       currentAttemptIdRef.current = selectedAttempt?.id || null;
     }
   }, [selectedAttempt?.id]);
 
   // Auto-collapse setup/cleanup scripts when they complete OR on initial load
+  // Also handle coding agent auto-collapse logic
   useEffect(() => {
+    // One-shot initial collapse of non-latest coding agents
+    if (!initialAgentsCollapsedRef.current) {
+      const latestCodingAgentId = getLatestCodingAgent(filteredProcesses);
+      if (latestCodingAgentId) {
+        const toCollapse = filteredProcesses
+          .filter(p => isCodingAgent(p.run_reason) && p.id !== latestCodingAgentId)
+          .map(p => p.id)
+          .filter(id => !userCollapsedProcesses.has(id));
+        
+        if (toCollapse.length > 0) {
+          setAutoCollapsedProcesses(prev => new Set([...prev, ...toCollapse]));
+          toCollapse.forEach(id => autoCollapsedOnceRef.current.add(id));
+        }
+        
+        prevLatestAgentIdRef.current = latestCodingAgentId;
+      }
+      initialAgentsCollapsedRef.current = true;
+    }
+
     filteredProcesses.forEach((process) => {
+      // Handle setup/cleanup script auto-collapse
       if (isAutoCollapsibleProcess(process.run_reason)) {
         const prevStatus = prevStatusRef.current.get(process.id);
         const currentStatus = process.status;
@@ -155,8 +186,37 @@ function LogsTab() {
         // Update previous status
         prevStatusRef.current.set(process.id, currentStatus);
       }
+
+      // Handle coding agent follow-up detection and auto-collapse
+      if (isCodingAgent(process.run_reason) && process.status === PROCESS_STATUSES.RUNNING) {
+        if (!seenRunningRef.current.has(process.id)) {
+          // New coding agent started running - collapse the previous latest
+          const prevLatest = prevLatestAgentIdRef.current;
+          if (prevLatest && 
+              prevLatest !== process.id &&
+              !userCollapsedProcesses.has(prevLatest) &&
+              !autoCollapsedProcesses.has(prevLatest)) {
+            setAutoCollapsedProcesses(prev => new Set([...prev, prevLatest]));
+            autoCollapsedOnceRef.current.add(prevLatest);
+            
+            // Scroll to bottom if user was at bottom
+            if (isAtBottom) {
+              setTimeout(() => {
+                virtuosoRef.current?.scrollToIndex({
+                  index: 'LAST',
+                  align: 'end',
+                  behavior: 'auto',
+                });
+              }, 0);
+            }
+          }
+          
+          prevLatestAgentIdRef.current = process.id;
+          seenRunningRef.current.add(process.id);
+        }
+      }
     });
-  }, [filteredProcesses, userCollapsedProcesses, isAtBottom]);
+  }, [filteredProcesses, userCollapsedProcesses, autoCollapsedProcesses, isAtBottom]);
 
   // Filter entries to hide logs from collapsed processes
   const visibleEntries = useMemo(() => {
