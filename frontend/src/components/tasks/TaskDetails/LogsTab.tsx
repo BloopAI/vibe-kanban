@@ -8,7 +8,10 @@ import {
 } from 'react';
 import { Virtuoso } from 'react-virtuoso';
 import { Cog } from 'lucide-react';
-import { TaskAttemptDataContext, TaskSelectedAttemptContext } from '@/components/context/taskDetailsContext.ts';
+import {
+  TaskAttemptDataContext,
+  TaskSelectedAttemptContext,
+} from '@/components/context/taskDetailsContext.ts';
 import { useProcessesLogs } from '@/hooks/useProcessesLogs';
 import LogEntryRow from '@/components/logs/LogEntryRow';
 import {
@@ -50,7 +53,7 @@ function LogsTab() {
   // Combined collapsed processes (auto + user)
   const allCollapsedProcesses = useMemo(() => {
     const combined = new Set(autoCollapsedProcesses);
-    userCollapsedProcesses.forEach(id => combined.add(id));
+    userCollapsedProcesses.forEach((id) => combined.add(id));
     return combined;
   }, [autoCollapsedProcesses, userCollapsedProcesses]);
 
@@ -111,10 +114,8 @@ function LogsTab() {
         // 1. Just completed (transition from running to completed/failed)
         // 2. Initial load of already completed process (prevStatus undefined)
         const shouldAutoCollapse =
-          (
-            prevStatus === PROCESS_STATUSES.RUNNING ||  // saw transition
-            prevStatus === undefined                    // initial load
-          ) &&
+          (prevStatus === PROCESS_STATUSES.RUNNING || // saw transition
+            prevStatus === undefined) && // initial load
           isProcessCompleted(currentStatus) &&
           !autoCollapsedOnceRef.current.has(process.id) &&
           !userCollapsedProcesses.has(process.id);
@@ -137,12 +138,13 @@ function LogsTab() {
         }
 
         // Auto-expand scripts that restart after completion
-        const becameRunningAgain = 
-          prevStatus && isProcessCompleted(prevStatus) &&
+        const becameRunningAgain =
+          prevStatus &&
+          isProcessCompleted(prevStatus) &&
           currentStatus === PROCESS_STATUSES.RUNNING;
 
         if (becameRunningAgain) {
-          setAutoCollapsedProcesses(prev => {
+          setAutoCollapsedProcesses((prev) => {
             const next = new Set(prev);
             next.delete(process.id);
             return next;
