@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use axum::{
     body::Body,
@@ -29,6 +29,7 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/config", put(update_config))
         .route("/sounds/{sound}", get(get_sound))
         .route("/mcp-config", get(get_mcp_servers).post(update_mcp_servers))
+        .route("/profiles", get(get_profiles).put(update_profiles))
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -343,4 +344,73 @@ fn set_mcp_servers_in_config_path(
         .insert(final_attr.to_string(), serde_json::to_value(servers)?);
 
     Ok(())
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ProfilesContent {
+    pub content: String,
+    pub path: String,
+}
+
+async fn get_profiles(
+    State(_deployment): State<DeploymentImpl>,
+) -> ResponseJson<ApiResponse<ProfilesContent>> {
+    let profiles_path = utils::assets::profiles_path();
+
+    let content = std::fs::read_to_string(&profiles_path).unwrap_or_else(|e| {
+        tracing::warn!("Failed to read profiles.json: {}", e);
+        AgentProfiles::default_example_json()
+    });
+
+    ResponseJson(ApiResponse::success(ProfilesContent {
+        content,
+        path: profiles_path.display().to_string(),
+    }))
+}
+
+async fn update_profiles(
+    State(_deployment): State<DeploymentImpl>,
+    body: String,
+) -> ResponseJson<ApiResponse<String>> {
+    let profiles: AgentProfiles = match serde_json::from_str(&body) {
+        Ok(p) => p,
+        Err(e) => {
+            return ResponseJson(ApiResponse::error(&format!(
+                "Invalid profiles format: {}",
+                e
+            )))
+        }
+    };
+
+    let default_labels: HashSet<_> = AgentProfiles::from_defaults()
+        .profiles
+        .iter()
+        .map(|p| &p.label)
+        .cloned()
+        .collect();
+
+    for profile in &profiles.profiles {
+        if default_labels.contains(&profile.label) {
+            return ResponseJson(ApiResponse::error(&format!(
+                "Profile label '{}' conflicts with a built-in profile",
+                profile.label
+            )));
+        }
+    }
+
+    let profiles_path = utils::assets::profiles_path();
+
+    let formatted = serde_json::to_string_pretty(&profiles).unwrap();
+    match fs::write(&profiles_path, formatted).await {
+        Ok(_) => {
+            tracing::info!("Profiles updated successfully at {:?}", profiles_path);
+            ResponseJson(ApiResponse::success(
+                "Profiles updated successfully".to_string(),
+            ))
+        }
+        Err(e) => ResponseJson(ApiResponse::error(&format!(
+            "Failed to save profiles: {}",
+            e
+        ))),
+    }
 }

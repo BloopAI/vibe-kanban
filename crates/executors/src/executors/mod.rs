@@ -5,6 +5,7 @@ use command_group::AsyncGroupChild;
 use enum_dispatch::enum_dispatch;
 use futures_io::Error as FuturesIoError;
 use serde::{Deserialize, Serialize};
+use strum::IntoEnumIterator;
 use strum_macros::EnumDiscriminants;
 use thiserror::Error;
 use ts_rs::TS;
@@ -43,14 +44,28 @@ fn unknown_executor_error(s: &str) -> ExecutorError {
 
 #[enum_dispatch]
 #[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, TS, EnumDiscriminants, strum_macros::EnumString,
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    TS,
+    EnumDiscriminants,
+    strum_macros::EnumString,
+    strum_macros::EnumIter,
 )]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 #[strum(parse_err_ty = ExecutorError, parse_err_fn = unknown_executor_error)]
 #[strum_discriminants(
     name(BaseCodingAgent),
-    derive(strum_macros::Display, Serialize, Deserialize, TS),
+    derive(
+        strum_macros::Display,
+        strum_macros::EnumIter,
+        Serialize,
+        Deserialize,
+        TS
+    ),
     strum(serialize_all = "SCREAMING_SNAKE_CASE"),
     ts(use_ts_enum),
     serde(rename_all = "SCREAMING_SNAKE_CASE")
@@ -70,6 +85,16 @@ pub enum CodingAgent {
 }
 
 impl CodingAgent {
+    pub fn all_variants_screaming_snake() -> Vec<String> {
+        BaseCodingAgent::iter()
+            .map(|variant| variant.to_string())
+            .collect()
+    }
+
+    pub fn iter_discriminants() -> impl Iterator<Item = BaseCodingAgent> {
+        BaseCodingAgent::iter()
+    }
+
     /// Create an executor from a profile string
     /// Handles both default profiles ("claude-code", "amp", "gemini") and custom profiles
     pub fn from_profile_str(profile: &str) -> Result<Self, ExecutorError> {

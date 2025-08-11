@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -18,7 +18,8 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Key, Loader2, Volume2 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Key, Loader2, Volume2, Code2 } from 'lucide-react';
 import { ThemeMode, EditorType, SoundFile } from 'shared/types';
 
 import { toPrettyCase } from '@/utils/string';
@@ -26,6 +27,7 @@ import { useTheme } from '@/components/theme-provider';
 import { useUserSystem } from '@/components/config-provider';
 import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
+import { profilesApi } from '@/lib/api';
 
 export function Settings() {
   const {
@@ -42,12 +44,76 @@ export function Settings() {
   const { setTheme } = useTheme();
   const [showGitHubLogin, setShowGitHubLogin] = useState(false);
 
+  // Profiles editor state
+  const [profilesContent, setProfilesContent] = useState('');
+  const [profilesPath, setProfilesPath] = useState('');
+  const [profilesError, setProfilesError] = useState<string | null>(null);
+  const [profilesLoading, setProfilesLoading] = useState(false);
+  const [profilesSaving, setProfilesSaving] = useState(false);
+  const [profilesSuccess, setProfilesSuccess] = useState(false);
+
+  // Load profiles content on mount
+  useEffect(() => {
+    const loadProfiles = async () => {
+      setProfilesLoading(true);
+      try {
+        const result = await profilesApi.load();
+        setProfilesContent(result.content);
+        setProfilesPath(result.path);
+      } catch (err) {
+        console.error('Failed to load profiles:', err);
+        setProfilesError('Failed to load profiles');
+      } finally {
+        setProfilesLoading(false);
+      }
+    };
+    loadProfiles();
+  }, []);
+
   const playSound = async (soundFile: SoundFile) => {
     const audio = new Audio(`/api/sounds/${soundFile}`);
     try {
       await audio.play();
     } catch (err) {
       console.error('Failed to play sound:', err);
+    }
+  };
+
+  const handleProfilesChange = (value: string) => {
+    setProfilesContent(value);
+    setProfilesError(null);
+
+    // Validate JSON on change
+    if (value.trim()) {
+      try {
+        const parsed = JSON.parse(value);
+        // Basic structure validation
+        if (!parsed.profiles || !Array.isArray(parsed.profiles)) {
+          setProfilesError('Invalid structure: must have a "profiles" array');
+        }
+      } catch (err) {
+        if (err instanceof SyntaxError) {
+          setProfilesError('Invalid JSON format');
+        } else {
+          setProfilesError('Validation error');
+        }
+      }
+    }
+  };
+
+  const handleSaveProfiles = async () => {
+    setProfilesSaving(true);
+    setProfilesError(null);
+    setProfilesSuccess(false);
+
+    try {
+      await profilesApi.save(profilesContent);
+      setProfilesSuccess(true);
+      setTimeout(() => setProfilesSuccess(false), 3000);
+    } catch (err: any) {
+      setProfilesError(err.message || 'Failed to save profiles');
+    } finally {
+      setProfilesSaving(false);
     }
   };
 
@@ -514,6 +580,82 @@ export function Settings() {
             </CardHeader>
             <CardContent>
               <TaskTemplateManager isGlobal={true} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Code2 className="h-5 w-5" />
+                Agent Profiles
+              </CardTitle>
+              <CardDescription>
+                Configure custom agent profiles with specific command-line
+                parameters.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {profilesError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{profilesError}</AlertDescription>
+                </Alert>
+              )}
+
+              {profilesSuccess && (
+                <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
+                  <AlertDescription className="font-medium">
+                    ✓ Profiles saved successfully!
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="profiles-editor">Profiles Configuration</Label>
+                <Textarea
+                  id="profiles-editor"
+                  placeholder={
+                    profilesLoading
+                      ? 'Loading profiles...'
+                      : '{\n  "profiles": [\n    {\n      "label": "my-custom-profile",\n      "agent": "ClaudeCode",\n      "command": {...}\n    }\n  ]\n}'
+                  }
+                  value={profilesLoading ? 'Loading...' : profilesContent}
+                  onChange={(e) => handleProfilesChange(e.target.value)}
+                  disabled={profilesLoading}
+                  className="font-mono text-sm min-h-[300px]"
+                />
+                {!profilesError && profilesPath && (
+                  <p className="text-sm text-muted-foreground">
+                    Configuration file:{' '}
+                    <span className="font-mono text-xs">{profilesPath}</span>
+                  </p>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  Add custom profiles that will appear alongside built-in
+                  profiles. Each profile needs a unique label, agent type, and
+                  command configuration.
+                </p>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleSaveProfiles}
+                  disabled={
+                    profilesSaving ||
+                    profilesLoading ||
+                    !!profilesError ||
+                    profilesSuccess
+                  }
+                  className={
+                    profilesSuccess ? 'bg-green-600 hover:bg-green-700' : ''
+                  }
+                >
+                  {profilesSaving && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  {profilesSuccess && <span className="mr-2">✓</span>}
+                  {profilesSuccess ? 'Profiles Saved!' : 'Save Profiles'}
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
