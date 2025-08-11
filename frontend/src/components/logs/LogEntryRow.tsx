@@ -11,9 +11,11 @@ interface LogEntryRowProps {
   index: number;
   style?: React.CSSProperties;
   setRowHeight?: (index: number, height: number) => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: (processId: string) => void;
 }
 
-function LogEntryRow({ entry, index, style, setRowHeight }: LogEntryRowProps) {
+function LogEntryRow({ entry, index, style, setRowHeight, isCollapsed, onToggleCollapse }: LogEntryRowProps) {
   const rowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,6 +44,8 @@ function LogEntryRow({ entry, index, style, setRowHeight }: LogEntryRowProps) {
             return (
               <ProcessStartCard
                 payload={entry.payload as ProcessStartPayload}
+                isCollapsed={isCollapsed || false}
+                onToggle={onToggleCollapse || (() => {})}
               />
             );
           default:

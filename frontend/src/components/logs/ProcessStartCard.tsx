@@ -1,11 +1,14 @@
-import { Clock, Cog, Play, Terminal, Code } from 'lucide-react';
+import { Clock, Cog, Play, Terminal, Code, ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { ProcessStartPayload } from '@/types/logs';
 
 interface ProcessStartCardProps {
   payload: ProcessStartPayload;
+  isCollapsed: boolean;
+  onToggle: (processId: string) => void;
 }
 
-function ProcessStartCard({ payload }: ProcessStartCardProps) {
+function ProcessStartCard({ payload, isCollapsed, onToggle }: ProcessStartCardProps) {
   const getProcessIcon = (runReason: string) => {
     switch (runReason) {
       case 'setupscript':
@@ -40,9 +43,26 @@ function ProcessStartCard({ payload }: ProcessStartCardProps) {
     return new Date(dateString).toLocaleTimeString();
   };
 
+  const handleClick = () => {
+    onToggle(payload.processId);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onToggle(payload.processId);
+    }
+  };
+
   return (
     <div className="px-4 pt-4 pb-2">
-      <div className="bg-muted/50 border border-border rounded-lg p-2">
+      <div
+        className="bg-muted/50 border border-border rounded-lg p-2 cursor-pointer select-none hover:bg-muted/70 transition-colors"
+        role="button"
+        tabIndex={0}
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+      >
         <div className="flex items-center gap-2 text-sm">
           <div className="flex items-center gap-2 text-foreground">
             {getProcessIcon(payload.runReason)}
@@ -67,6 +87,12 @@ function ProcessStartCard({ payload }: ProcessStartCardProps) {
           >
             {payload.status}
           </div>
+          <ChevronDown
+            className={cn(
+              'h-4 w-4 text-muted-foreground transition-transform',
+              isCollapsed && '-rotate-90'
+            )}
+          />
         </div>
       </div>
     </div>
