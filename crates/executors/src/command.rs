@@ -5,6 +5,7 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
+use strum::IntoEnumIterator;
 use ts_rs::TS;
 
 use crate::executors::BaseCodingAgent;
@@ -266,6 +267,38 @@ impl AgentProfiles {
             .iter()
             .map(|p| (p.label.clone(), p.clone()))
             .collect()
+    }
+
+    pub fn default_example_json() -> String {
+        let example_profile = AgentProfile {
+            label: "my-claude-opus".to_string(),
+            agent: BaseCodingAgent::ClaudeCode,
+            command: CommandBuilder::new("npx -y @anthropic-ai/claude-code@latest").params(vec![
+                "-p",
+                "--dangerously-skip-permissions",
+                "--verbose",
+                "--output-format=stream-json",
+                "--model=opus",
+            ]),
+        };
+
+        let example_profiles = Self {
+            profiles: vec![example_profile],
+        };
+
+        let base_agents = BaseCodingAgent::iter()
+            .map(|agent| agent.to_string())
+            .collect::<Vec<_>>();
+
+        let mut json = serde_json::to_value(&example_profiles).unwrap();
+        if let Some(obj) = json.as_object_mut() {
+            obj.insert(
+                "_documentation".to_string(),
+                serde_json::json!(format!("Custom agent profiles. Each profile needs: a unique label, a valid agent argument (one of: {}), and command (base + optional params array).", base_agents.join(", "))),
+            );
+        }
+
+        serde_json::to_string_pretty(&json).unwrap()
     }
 }
 
