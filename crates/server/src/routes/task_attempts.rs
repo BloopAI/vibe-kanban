@@ -592,6 +592,7 @@ pub async fn create_github_pr(
 #[derive(serde::Deserialize)]
 pub struct OpenEditorRequest {
     editor_type: Option<String>,
+    file_path: Option<String>,
 }
 
 pub async fn open_task_attempt_in_editor(
@@ -601,7 +602,7 @@ pub async fn open_task_attempt_in_editor(
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     // Get the task attempt to access the worktree path
     let attempt = &task_attempt;
-    let path = attempt.container_ref.as_ref().ok_or_else(|| {
+    let base_path = attempt.container_ref.as_ref().ok_or_else(|| {
         tracing::error!(
             "No container ref found for task attempt {}",
             task_attempt.id
@@ -611,18 +612,25 @@ pub async fn open_task_attempt_in_editor(
         ))
     })?;
 
+    // If a specific file path is provided, use it; otherwise use the base path
+    let path = if let Some(file_path) = payload.as_ref().and_then(|req| req.file_path.as_ref()) {
+        std::path::Path::new(base_path).join(file_path)
+    } else {
+        std::path::PathBuf::from(base_path)
+    };
+
     let editor_config = {
         let config = deployment.config().read().await;
         let editor_type_str = payload.as_ref().and_then(|req| req.editor_type.as_deref());
         config.editor.with_override(editor_type_str)
     };
 
-    match editor_config.open_file(path) {
+    match editor_config.open_file(&path.to_string_lossy()) {
         Ok(_) => {
             tracing::info!(
                 "Opened editor for task attempt {} at path: {}",
                 task_attempt.id,
-                path
+                path.display()
             );
             Ok(ResponseJson(ApiResponse::success(())))
         }

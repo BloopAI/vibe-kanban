@@ -336,13 +336,18 @@ export const attemptsApi = {
 
   openEditor: async (
     attemptId: string,
-    editorType?: EditorType
+    editorType?: EditorType,
+    filePath?: string
   ): Promise<void> => {
+    const requestBody: any = {};
+    if (editorType) requestBody.editor_type = editorType;
+    if (filePath) requestBody.file_path = filePath;
+    
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/open-editor`,
       {
         method: 'POST',
-        body: JSON.stringify(editorType ? { editor_type: editorType } : null),
+        body: JSON.stringify(Object.keys(requestBody).length > 0 ? requestBody : null),
       }
     );
     return handleApiResponse<void>(response);
