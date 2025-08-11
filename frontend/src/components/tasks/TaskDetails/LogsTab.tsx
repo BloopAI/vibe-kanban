@@ -119,6 +119,8 @@ function LogsTab() {
     // One-shot initial collapse of non-latest coding agents
     if (!initialAgentsCollapsedRef.current) {
       const latestCodingAgentId = getLatestCodingAgent(filteredProcesses);
+      
+      // Only proceed if we have coding agents (wait for real data)
       if (latestCodingAgentId) {
         const toCollapse = filteredProcesses
           .filter(
@@ -135,8 +137,10 @@ function LogsTab() {
         }
 
         prevLatestAgentIdRef.current = latestCodingAgentId;
+        
+        // Mark as done only after we've processed real data
+        initialAgentsCollapsedRef.current = true;
       }
-      initialAgentsCollapsedRef.current = true;
     }
 
     filteredProcesses.forEach((process) => {
