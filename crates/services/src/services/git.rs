@@ -347,7 +347,58 @@ impl GitService {
             .unwrap_or_default()
     }
 
-    /// Create FileDiffDetails from path and blob
+    /// Helper function to convert blob to string content
+    fn blob_to_string(blob: &git2::Blob) -> Option<String> {
+        if blob.is_binary() {
+            None // Skip binary files
+        } else {
+            std::str::from_utf8(blob.content())
+                .ok()
+                .map(|s| s.to_string())
+        }
+    }
+
+    /// Helper function to read file content from filesystem with safety guards
+    fn read_file_to_string(repo: &Repository, rel_path: &Path) -> Option<String> {
+        let workdir = repo.workdir()?;
+        let abs_path = workdir.join(rel_path);
+
+        // Read file from filesystem
+        let bytes = match std::fs::read(&abs_path) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                tracing::debug!("Failed to read file from filesystem: {:?}: {}", abs_path, e);
+                return None;
+            }
+        };
+
+        // Size guard - skip files larger than 1MB
+        if bytes.len() > 1_048_576 {
+            tracing::debug!(
+                "Skipping large file ({}MB): {:?}",
+                bytes.len() / 1_048_576,
+                abs_path
+            );
+            return None;
+        }
+
+        // Binary guard - skip files containing null bytes
+        if bytes.iter().any(|&b| b == 0) {
+            tracing::debug!("Skipping binary file: {:?}", abs_path);
+            return None;
+        }
+
+        // UTF-8 validation
+        match String::from_utf8(bytes) {
+            Ok(content) => Some(content),
+            Err(e) => {
+                tracing::debug!("File is not valid UTF-8: {:?}: {}", abs_path, e);
+                None
+            }
+        }
+    }
+
+    /// Create FileDiffDetails from path and blob with filesystem fallback
     fn create_file_details(
         &self,
         path: &Path,
@@ -356,19 +407,22 @@ impl GitService {
     ) -> FileDiffDetails {
         let file_name = path.to_string_lossy().to_string();
 
-        // Get file content if blob exists (not for deletions)
+        // Try to get content from blob first (for non-zero OIDs)
         let content = if !blob_id.is_zero() {
-            repo.find_blob(*blob_id).ok().and_then(|blob| {
-                if blob.is_binary() {
-                    None // Skip binary files
-                } else {
-                    std::str::from_utf8(blob.content())
-                        .ok()
-                        .map(|s| s.to_string())
-                }
-            })
+            repo.find_blob(*blob_id)
+                .ok()
+                .and_then(|blob| Self::blob_to_string(&blob))
+                .or_else(|| {
+                    // Fallback to filesystem for unstaged changes
+                    tracing::debug!(
+                        "Blob not found for non-zero OID, reading from filesystem: {}",
+                        file_name
+                    );
+                    Self::read_file_to_string(repo, path)
+                })
         } else {
-            None
+            // For zero OIDs, check filesystem directly (covers new/untracked files)
+            Self::read_file_to_string(repo, path)
         };
 
         FileDiffDetails {
