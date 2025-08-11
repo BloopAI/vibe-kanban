@@ -383,7 +383,7 @@ impl GitService {
         }
 
         // Binary guard - skip files containing null bytes
-        if bytes.iter().any(|&b| b == 0) {
+        if bytes.contains(&0) {
             tracing::debug!("Skipping binary file: {:?}", abs_path);
             return None;
         }
