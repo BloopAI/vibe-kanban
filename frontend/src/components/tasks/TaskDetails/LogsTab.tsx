@@ -8,7 +8,7 @@ import {
 } from 'react';
 import { Virtuoso } from 'react-virtuoso';
 import { Cog } from 'lucide-react';
-import { TaskAttemptDataContext } from '@/components/context/taskDetailsContext.ts';
+import { TaskAttemptDataContext, TaskSelectedAttemptContext } from '@/components/context/taskDetailsContext.ts';
 import { useProcessesLogs } from '@/hooks/useProcessesLogs';
 import LogEntryRow from '@/components/logs/LogEntryRow';
 import {
@@ -21,6 +21,7 @@ import type { ExecutionProcessStatus } from 'shared/types';
 
 function LogsTab() {
   const { attemptData } = useContext(TaskAttemptDataContext);
+  const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [userCollapsedProcesses, setUserCollapsedProcesses] = useState<
     Set<string>
@@ -48,16 +49,8 @@ function LogsTab() {
 
   // Combined collapsed processes (auto + user)
   const allCollapsedProcesses = useMemo(() => {
-    const combined = new Set([...autoCollapsedProcesses]);
-    userCollapsedProcesses.forEach((id) => {
-      if (userCollapsedProcesses.has(id)) {
-        // User manually collapsed
-        combined.add(id);
-      } else {
-        // User manually expanded, remove from auto-collapsed
-        combined.delete(id);
-      }
-    });
+    const combined = new Set(autoCollapsedProcesses);
+    userCollapsedProcesses.forEach(id => combined.add(id));
     return combined;
   }, [autoCollapsedProcesses, userCollapsedProcesses]);
 
@@ -98,29 +91,35 @@ function LogsTab() {
 
   // Reset state when attempt changes
   useEffect(() => {
-    if (currentAttemptIdRef.current !== attemptData.id) {
+    if (currentAttemptIdRef.current !== selectedAttempt?.id) {
       setUserCollapsedProcesses(new Set());
       setAutoCollapsedProcesses(new Set());
       prevStatusRef.current.clear();
       autoCollapsedOnceRef.current.clear();
-      currentAttemptIdRef.current = attemptData.id;
+      currentAttemptIdRef.current = selectedAttempt?.id || null;
     }
-  }, [attemptData.id]);
+  }, [selectedAttempt?.id]);
 
-  // Auto-collapse setup/cleanup scripts when they complete
+  // Auto-collapse setup/cleanup scripts when they complete OR on initial load
   useEffect(() => {
     filteredProcesses.forEach((process) => {
       if (isAutoCollapsibleProcess(process.run_reason)) {
         const prevStatus = prevStatusRef.current.get(process.id);
         const currentStatus = process.status;
 
-        // Check if process just completed and hasn't been auto-collapsed before
-        const justCompleted =
-          prevStatus === PROCESS_STATUSES.RUNNING &&
+        // Check if process should be auto-collapsed:
+        // 1. Just completed (transition from running to completed/failed)
+        // 2. Initial load of already completed process (prevStatus undefined)
+        const shouldAutoCollapse =
+          (
+            prevStatus === PROCESS_STATUSES.RUNNING ||  // saw transition
+            prevStatus === undefined                    // initial load
+          ) &&
           isProcessCompleted(currentStatus) &&
-          !autoCollapsedOnceRef.current.has(process.id);
+          !autoCollapsedOnceRef.current.has(process.id) &&
+          !userCollapsedProcesses.has(process.id);
 
-        if (justCompleted && !userCollapsedProcesses.has(process.id)) {
+        if (shouldAutoCollapse) {
           // Auto-collapse the process
           setAutoCollapsedProcesses((prev) => new Set([...prev, process.id]));
           autoCollapsedOnceRef.current.add(process.id);
@@ -135,6 +134,20 @@ function LogsTab() {
               });
             }, 0);
           }
+        }
+
+        // Auto-expand scripts that restart after completion
+        const becameRunningAgain = 
+          prevStatus && isProcessCompleted(prevStatus) &&
+          currentStatus === PROCESS_STATUSES.RUNNING;
+
+        if (becameRunningAgain) {
+          setAutoCollapsedProcesses(prev => {
+            const next = new Set(prev);
+            next.delete(process.id);
+            return next;
+          });
+          autoCollapsedOnceRef.current.delete(process.id);
         }
 
         // Update previous status
