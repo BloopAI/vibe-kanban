@@ -73,7 +73,6 @@ pub enum DiffTarget<'p> {
     Commit {
         repo_path: &'p Path,
         commit_sha: &'p str,
-        base_branch: &'p str,
     },
 }
 
@@ -253,39 +252,44 @@ impl GitService {
             DiffTarget::Commit {
                 repo_path,
                 commit_sha,
-                base_branch,
             } => {
                 let repo = self.open_repo(repo_path)?;
-                let base_tree = repo
-                    .find_branch(base_branch, BranchType::Local)
-                    .map_err(|_| GitServiceError::BranchNotFound(base_branch.to_string()))?
-                    .get()
-                    .peel_to_commit()?
-                    .tree()?;
 
+                // Resolve commit and its baseline (the parent before the squash landed)
                 let commit_oid = git2::Oid::from_str(commit_sha).map_err(|_| {
                     GitServiceError::InvalidRepository(format!("Invalid commit SHA: {commit_sha}"))
                 })?;
-                let commit_tree = repo.find_commit(commit_oid)?.tree()?;
+                let commit = repo.find_commit(commit_oid)?;
+                let parent = commit.parent(0).map_err(|_| {
+                    GitServiceError::InvalidRepository(
+                        "Commit has no parent; cannot diff a squash merge without a baseline"
+                            .into(),
+                    )
+                })?;
 
-                let mut diff_opts = DiffOptions::new();
+                let parent_tree = parent.tree()?;
+                let commit_tree = commit.tree()?;
+
+                // Diff options
+                let mut diff_opts = git2::DiffOptions::new();
                 diff_opts.include_typechange(true);
 
-                // Add path filtering if specified
+                // Optional path filtering
                 if let Some(paths) = path_filter {
                     for path in paths {
                         diff_opts.pathspec(*path);
                     }
                 }
 
+                // Compute the diff parent -> commit
                 let mut diff = repo.diff_tree_to_tree(
-                    Some(&base_tree),
+                    Some(&parent_tree),
                     Some(&commit_tree),
                     Some(&mut diff_opts),
                 )?;
 
                 // Enable rename detection
-                let mut find_opts = DiffFindOptions::new();
+                let mut find_opts = git2::DiffFindOptions::new();
                 diff.find_similar(Some(&mut find_opts))?;
 
                 self.convert_diff_to_file_diffs(diff, &repo)

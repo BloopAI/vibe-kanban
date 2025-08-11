@@ -462,14 +462,12 @@ impl LocalContainerService {
         &self,
         project_repo_path: &Path,
         merge_commit_id: &str,
-        base_branch: &str,
     ) -> Result<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>, ContainerError>
     {
         let diffs = self.git().get_diffs(
             DiffTarget::Commit {
                 repo_path: project_repo_path,
                 commit_sha: merge_commit_id,
-                base_branch,
             },
             None,
         )?;
@@ -480,6 +478,9 @@ impl LocalContainerService {
                 ConversationPatch::add_diff(escape_json_pointer_segment(&entry_index), diff);
             let event = LogMsg::JsonPatch(patch).to_sse_event();
             Ok::<_, std::io::Error>(event)
+        }))
+        .chain(futures::stream::once(async {
+            Ok::<_, std::io::Error>(LogMsg::Finished.to_sse_event())
         }))
         .boxed();
 
@@ -847,11 +848,7 @@ impl ContainerService for LocalContainerService {
 
         // Handle merged attempts (static diff)
         if let Some(merge_commit_id) = &task_attempt.merge_commit {
-            return self.create_merged_diff_stream(
-                &project_repo_path,
-                merge_commit_id,
-                &task_attempt.base_branch,
-            );
+            return self.create_merged_diff_stream(&project_repo_path, merge_commit_id);
         }
 
         let task_branch = task_attempt
