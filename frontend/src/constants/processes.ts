@@ -30,7 +30,9 @@ export const isAutoCollapsibleProcess = (
   );
 };
 
-export const isCodingAgent = (runReason: ExecutionProcessRunReason): boolean => {
+export const isCodingAgent = (
+  runReason: ExecutionProcessRunReason
+): boolean => {
   return runReason === PROCESS_RUN_REASONS.CODING_AGENT;
 };
 
@@ -46,14 +48,15 @@ export const shouldShowInLogs = (
   return runReason !== PROCESS_RUN_REASONS.DEV_SERVER;
 };
 
-export const getLatestCodingAgent = (processes: ExecutionProcessSummary[]): string | null => {
-  const codingAgents = processes.filter(p => isCodingAgent(p.run_reason));
+export const getLatestCodingAgent = (
+  processes: ExecutionProcessSummary[]
+): string | null => {
+  const codingAgents = processes.filter((p) => isCodingAgent(p.run_reason));
   if (codingAgents.length === 0) return null;
-  
-  return codingAgents
-    .sort((a, b) => 
-      a.started_at === b.started_at
-        ? a.id.localeCompare(b.id)  // tie-break for same timestamp
-        : new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
-    )[0].id;
+
+  return codingAgents.sort((a, b) =>
+    a.started_at === b.started_at
+      ? a.id.localeCompare(b.id) // tie-break for same timestamp
+      : new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
+  )[0].id;
 };

@@ -40,7 +40,7 @@ function LogsTab() {
   const prevStatusRef = useRef<Map<string, ExecutionProcessStatus>>(new Map());
   const autoCollapsedOnceRef = useRef<Set<string>>(new Set());
   const currentAttemptIdRef = useRef<string | null>(null);
-  
+
   // Refs for coding agent auto-collapse tracking
   const prevLatestAgentIdRef = useRef<string | null>(null);
   const seenRunningRef = useRef<Set<string>>(new Set());
@@ -121,15 +121,19 @@ function LogsTab() {
       const latestCodingAgentId = getLatestCodingAgent(filteredProcesses);
       if (latestCodingAgentId) {
         const toCollapse = filteredProcesses
-          .filter(p => isCodingAgent(p.run_reason) && p.id !== latestCodingAgentId)
-          .map(p => p.id)
-          .filter(id => !userCollapsedProcesses.has(id));
-        
+          .filter(
+            (p) => isCodingAgent(p.run_reason) && p.id !== latestCodingAgentId
+          )
+          .map((p) => p.id)
+          .filter((id) => !userCollapsedProcesses.has(id));
+
         if (toCollapse.length > 0) {
-          setAutoCollapsedProcesses(prev => new Set([...prev, ...toCollapse]));
-          toCollapse.forEach(id => autoCollapsedOnceRef.current.add(id));
+          setAutoCollapsedProcesses(
+            (prev) => new Set([...prev, ...toCollapse])
+          );
+          toCollapse.forEach((id) => autoCollapsedOnceRef.current.add(id));
         }
-        
+
         prevLatestAgentIdRef.current = latestCodingAgentId;
       }
       initialAgentsCollapsedRef.current = true;
@@ -188,17 +192,22 @@ function LogsTab() {
       }
 
       // Handle coding agent follow-up detection and auto-collapse
-      if (isCodingAgent(process.run_reason) && process.status === PROCESS_STATUSES.RUNNING) {
+      if (
+        isCodingAgent(process.run_reason) &&
+        process.status === PROCESS_STATUSES.RUNNING
+      ) {
         if (!seenRunningRef.current.has(process.id)) {
           // New coding agent started running - collapse the previous latest
           const prevLatest = prevLatestAgentIdRef.current;
-          if (prevLatest && 
-              prevLatest !== process.id &&
-              !userCollapsedProcesses.has(prevLatest) &&
-              !autoCollapsedProcesses.has(prevLatest)) {
-            setAutoCollapsedProcesses(prev => new Set([...prev, prevLatest]));
+          if (
+            prevLatest &&
+            prevLatest !== process.id &&
+            !userCollapsedProcesses.has(prevLatest) &&
+            !autoCollapsedProcesses.has(prevLatest)
+          ) {
+            setAutoCollapsedProcesses((prev) => new Set([...prev, prevLatest]));
             autoCollapsedOnceRef.current.add(prevLatest);
-            
+
             // Scroll to bottom if user was at bottom
             if (isAtBottom) {
               setTimeout(() => {
@@ -210,13 +219,18 @@ function LogsTab() {
               }, 0);
             }
           }
-          
+
           prevLatestAgentIdRef.current = process.id;
           seenRunningRef.current.add(process.id);
         }
       }
     });
-  }, [filteredProcesses, userCollapsedProcesses, autoCollapsedProcesses, isAtBottom]);
+  }, [
+    filteredProcesses,
+    userCollapsedProcesses,
+    autoCollapsedProcesses,
+    isAtBottom,
+  ]);
 
   // Filter entries to hide logs from collapsed processes
   const visibleEntries = useMemo(() => {
