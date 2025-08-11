@@ -1,22 +1,16 @@
-import {
-  DiffView,
-  DiffModeEnum,
-} from "@git-diff-view/react";
 import { generateDiffFile } from "@git-diff-view/file";
-// import "@git-diff-view/react/styles/diff-view-pure.css";
-import "./diff-style-overrides.css";
 import { useDiffStream } from "@/hooks/useDiffStream";
 import { useMemo, useContext, useCallback, useState, useEffect } from "react";
 import { TaskSelectedAttemptContext } from "@/components/context/taskDetailsContext.ts";
-import { Diff, ThemeMode } from "shared/types";
+import { Diff } from "shared/types";
 import { getHighLightLanguageFromPath } from "@/utils/extToLanguage";
-import { useConfig } from "@/components/config-provider";
 import { Loader } from "@/components/ui/loader";
+import DiffCard from "@/components/DiffCard";
 
 function DiffTab() {
   const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
   const [loading, setLoading] = useState(true);
-  const { data, isConnected, error } = useDiffStream(
+  const { data, error } = useDiffStream(
     selectedAttempt?.id ?? null,
     true,
   );
@@ -26,14 +20,6 @@ function DiffTab() {
       setLoading(false);
     }
   }, [data]);
-
-  const { config } = useConfig()
-
-  // git-diff-view takes light or dark 
-  let theme: "light" | "dark" | undefined = "light";
-  if (config?.theme === ThemeMode.DARK) {
-    theme = "dark";
-  }
 
   const createDiffFile = useCallback((diff: Diff) => {
     const oldFileName = diff.oldFile?.fileName || "old";
@@ -82,17 +68,7 @@ function DiffTab() {
     <div className="h-full flex flex-col">
       <div className="flex-1 overflow-y-auto px-4">
         {diffFiles.map((diffFile, idx) => (
-          <div key={idx} className="my-4 border">
-            <p className="text-xs font-mono px-4 py-2 overflow-x-auto" style={{ color: "hsl(var(--muted-foreground) / 0.7)" }}>{diffFile._newFileName} <span style={{ color: "hsl(var(--console-success))" }}>+{diffFile.additionLength}</span> <span style={{ color: "hsl(var(--console-error))" }}>-{diffFile.deletionLength}</span></p>
-            <DiffView
-              diffFile={diffFile}
-              diffViewWrap={false}
-              diffViewTheme={theme}
-              diffViewHighlight
-              diffViewMode={DiffModeEnum.Unified}
-              diffViewFontSize={12}
-            />
-          </div>
+          <DiffCard key={idx} diffFile={diffFile} />
         ))}
       </div>
     </div>
