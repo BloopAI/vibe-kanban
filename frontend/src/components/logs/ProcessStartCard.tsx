@@ -1,6 +1,5 @@
 import { Clock, Cog, Play, Terminal, Code, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { PROCESS_RUN_REASONS } from '@/constants/processes';
 import type { ProcessStartPayload } from '@/types/logs';
 
 interface ProcessStartCardProps {

@@ -1,4 +1,7 @@
-import type { ExecutionProcessRunReason, ExecutionProcessStatus } from 'shared/types';
+import type {
+  ExecutionProcessRunReason,
+  ExecutionProcessStatus,
+} from 'shared/types';
 
 // Process run reasons
 export const PROCESS_RUN_REASONS = {
@@ -17,16 +20,23 @@ export const PROCESS_STATUSES = {
 } as const;
 
 // Helper functions
-export const isAutoCollapsibleProcess = (runReason: ExecutionProcessRunReason): boolean => {
-  return runReason === PROCESS_RUN_REASONS.SETUP_SCRIPT || 
-         runReason === PROCESS_RUN_REASONS.CLEANUP_SCRIPT;
+export const isAutoCollapsibleProcess = (
+  runReason: ExecutionProcessRunReason
+): boolean => {
+  return (
+    runReason === PROCESS_RUN_REASONS.SETUP_SCRIPT ||
+    runReason === PROCESS_RUN_REASONS.CLEANUP_SCRIPT
+  );
 };
 
 export const isProcessCompleted = (status: ExecutionProcessStatus): boolean => {
-  return status === PROCESS_STATUSES.COMPLETED || 
-         status === PROCESS_STATUSES.FAILED;
+  return (
+    status === PROCESS_STATUSES.COMPLETED || status === PROCESS_STATUSES.FAILED
+  );
 };
 
-export const shouldShowInLogs = (runReason: ExecutionProcessRunReason): boolean => {
+export const shouldShowInLogs = (
+  runReason: ExecutionProcessRunReason
+): boolean => {
   return runReason !== PROCESS_RUN_REASONS.DEV_SERVER;
 };

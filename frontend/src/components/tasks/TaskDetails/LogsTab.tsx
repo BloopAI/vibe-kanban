@@ -1,32 +1,46 @@
-import { useContext, useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import {
+  useContext,
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+  useEffect,
+} from 'react';
 import { Virtuoso } from 'react-virtuoso';
 import { Cog } from 'lucide-react';
 import { TaskAttemptDataContext } from '@/components/context/taskDetailsContext.ts';
 import { useProcessesLogs } from '@/hooks/useProcessesLogs';
 import LogEntryRow from '@/components/logs/LogEntryRow';
-import { 
-  shouldShowInLogs, 
-  isAutoCollapsibleProcess, 
+import {
+  shouldShowInLogs,
+  isAutoCollapsibleProcess,
   isProcessCompleted,
-  PROCESS_STATUSES 
+  PROCESS_STATUSES,
 } from '@/constants/processes';
 import type { ExecutionProcessStatus } from 'shared/types';
 
 function LogsTab() {
   const { attemptData } = useContext(TaskAttemptDataContext);
   const [isAtBottom, setIsAtBottom] = useState(true);
-  const [userCollapsedProcesses, setUserCollapsedProcesses] = useState<Set<string>>(new Set());
-  const [autoCollapsedProcesses, setAutoCollapsedProcesses] = useState<Set<string>>(new Set());
+  const [userCollapsedProcesses, setUserCollapsedProcesses] = useState<
+    Set<string>
+  >(new Set());
+  const [autoCollapsedProcesses, setAutoCollapsedProcesses] = useState<
+    Set<string>
+  >(new Set());
   const virtuosoRef = useRef<any>(null);
-  
+
   // Refs for efficient status tracking
   const prevStatusRef = useRef<Map<string, ExecutionProcessStatus>>(new Map());
   const autoCollapsedOnceRef = useRef<Set<string>>(new Set());
   const currentAttemptIdRef = useRef<string | null>(null);
 
   // Filter out dev server processes before passing to useProcessesLogs
-  const filteredProcesses = useMemo(() => 
-    (attemptData.processes || []).filter(process => shouldShowInLogs(process.run_reason)), 
+  const filteredProcesses = useMemo(
+    () =>
+      (attemptData.processes || []).filter((process) =>
+        shouldShowInLogs(process.run_reason)
+      ),
     [attemptData.processes]
   );
 
@@ -35,7 +49,7 @@ function LogsTab() {
   // Combined collapsed processes (auto + user)
   const allCollapsedProcesses = useMemo(() => {
     const combined = new Set([...autoCollapsedProcesses]);
-    userCollapsedProcesses.forEach(id => {
+    userCollapsedProcesses.forEach((id) => {
       if (userCollapsedProcesses.has(id)) {
         // User manually collapsed
         combined.add(id);
@@ -51,7 +65,7 @@ function LogsTab() {
   const toggleProcessCollapse = useCallback(
     (processId: string) => {
       const wasAtBottom = isAtBottom;
-      setUserCollapsedProcesses(prev => {
+      setUserCollapsedProcesses((prev) => {
         const next = new Set(prev);
         if (next.has(processId)) {
           next.delete(processId);
@@ -60,14 +74,14 @@ function LogsTab() {
         }
         return next;
       });
-      
+
       // Remove from auto-collapsed when user manually interacts
-      setAutoCollapsedProcesses(prev => {
+      setAutoCollapsedProcesses((prev) => {
         const next = new Set(prev);
         next.delete(processId);
         return next;
       });
-      
+
       // If user was at bottom, scroll to new bottom after state update
       if (wasAtBottom) {
         setTimeout(() => {
@@ -95,21 +109,22 @@ function LogsTab() {
 
   // Auto-collapse setup/cleanup scripts when they complete
   useEffect(() => {
-    filteredProcesses.forEach(process => {
+    filteredProcesses.forEach((process) => {
       if (isAutoCollapsibleProcess(process.run_reason)) {
         const prevStatus = prevStatusRef.current.get(process.id);
         const currentStatus = process.status;
-        
+
         // Check if process just completed and hasn't been auto-collapsed before
-        const justCompleted = prevStatus === PROCESS_STATUSES.RUNNING && 
-                             isProcessCompleted(currentStatus) &&
-                             !autoCollapsedOnceRef.current.has(process.id);
-        
+        const justCompleted =
+          prevStatus === PROCESS_STATUSES.RUNNING &&
+          isProcessCompleted(currentStatus) &&
+          !autoCollapsedOnceRef.current.has(process.id);
+
         if (justCompleted && !userCollapsedProcesses.has(process.id)) {
           // Auto-collapse the process
-          setAutoCollapsedProcesses(prev => new Set([...prev, process.id]));
+          setAutoCollapsedProcesses((prev) => new Set([...prev, process.id]));
           autoCollapsedOnceRef.current.add(process.id);
-          
+
           // Scroll to bottom if user was at bottom
           if (isAtBottom) {
             setTimeout(() => {
@@ -121,7 +136,7 @@ function LogsTab() {
             }, 0);
           }
         }
-        
+
         // Update previous status
         prevStatusRef.current.set(process.id, currentStatus);
       }
