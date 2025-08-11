@@ -342,12 +342,14 @@ export const attemptsApi = {
     const requestBody: any = {};
     if (editorType) requestBody.editor_type = editorType;
     if (filePath) requestBody.file_path = filePath;
-    
+
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/open-editor`,
       {
         method: 'POST',
-        body: JSON.stringify(Object.keys(requestBody).length > 0 ? requestBody : null),
+        body: JSON.stringify(
+          Object.keys(requestBody).length > 0 ? requestBody : null
+        ),
       }
     );
     return handleApiResponse<void>(response);

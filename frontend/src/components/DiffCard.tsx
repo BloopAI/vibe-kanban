@@ -25,7 +25,11 @@ const DiffCard = ({ diffFile, key }: Props) => {
   const handleOpenInIDE = async () => {
     if (!selectedAttempt?.id) return;
     try {
-      await attemptsApi.openEditor(selectedAttempt.id, undefined, diffFile._newFileName);
+      await attemptsApi.openEditor(
+        selectedAttempt.id,
+        undefined,
+        diffFile._newFileName
+      );
     } catch (error) {
       console.error('Failed to open file in IDE:', error);
     }
