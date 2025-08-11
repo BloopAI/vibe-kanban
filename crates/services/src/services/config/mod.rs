@@ -12,13 +12,13 @@ pub enum ConfigError {
     Json(#[from] serde_json::Error),
 }
 
-pub type Config = versions::v2::Config;
-pub type NotificationConfig = versions::v2::NotificationConfig;
-pub type EditorConfig = versions::v2::EditorConfig;
-pub type ThemeMode = versions::v2::ThemeMode;
-pub type SoundFile = versions::v2::SoundFile;
-pub type EditorType = versions::v2::EditorType;
-pub type GitHubConfig = versions::v2::GitHubConfig;
+pub type Config = versions::v3::Config;
+pub type NotificationConfig = versions::v3::NotificationConfig;
+pub type EditorConfig = versions::v3::EditorConfig;
+pub type ThemeMode = versions::v3::ThemeMode;
+pub type SoundFile = versions::v3::SoundFile;
+pub type EditorType = versions::v3::EditorType;
+pub type GitHubConfig = versions::v3::GitHubConfig;
 
 /// Will always return config, trying old schemas or eventually returning default
 pub async fn load_config_from_file(config_path: &PathBuf) -> Config {

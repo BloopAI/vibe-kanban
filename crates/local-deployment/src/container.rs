@@ -351,7 +351,7 @@ impl LocalContainerService {
                         }
 
                         // Fire event when CodingAgent execution has finished
-                        if let Some(true) = config.read().await.analytics_enabled
+                        if config.read().await.analytics_enabled == Some(true)
                             && matches!(
                                 &ctx.execution_process.run_reason,
                                 ExecutionProcessRunReason::CodingAgent
