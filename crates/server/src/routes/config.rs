@@ -348,6 +348,21 @@ fn set_mcp_servers_in_config_path(
     Ok(())
 }
 
+/// Helper function to create an initial MCP config with the correct structure for each agent
+fn create_initial_mcp_config(
+    agent: &BaseCodingAgent,
+) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+    let mut config = serde_json::json!({});
+
+    if let Some(path) = agent.mcp_attribute_path() {
+        let empty_servers: HashMap<String, Value> = HashMap::new();
+        let path_refs: Vec<&str> = path.into_iter().collect();
+        set_mcp_servers_in_config_path(agent, &mut config, &path_refs, &empty_servers)?;
+    }
+
+    Ok(config)
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProfilesContent {
     pub content: String,
@@ -465,13 +480,14 @@ async fn open_mcp_config_in_editor(
             }
         }
 
-        // Create initial config with empty MCP servers
-        let initial_config = if matches!(agent, BaseCodingAgent::ClaudeCode) {
-            serde_json::json!({
-                "mcpServers": {}
-            })
-        } else {
-            serde_json::json!({})
+        let initial_config = match create_initial_mcp_config(&agent) {
+            Ok(config) => config,
+            Err(e) => {
+                return ResponseJson(ApiResponse::error(&format!(
+                    "Failed to create initial config structure: {}",
+                    e
+                )));
+            }
         };
 
         if let Err(e) = write_agent_config(&config_path, &agent, &initial_config).await {
