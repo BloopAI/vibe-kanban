@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf, process::Stdio, sync::Arc, time::Duration};
+use std::{collections::HashMap, path::PathBuf, process::Stdio, sync::Arc};
 
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
 use utils::{
-    log_msg::LogMsg, msg_store::MsgStore, path::make_path_relative, shell::get_shell_command,
+    msg_store::MsgStore, path::make_path_relative, shell::get_shell_command,
 };
 
 use crate::{
