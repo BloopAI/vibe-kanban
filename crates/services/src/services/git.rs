@@ -342,26 +342,37 @@ impl GitService {
         let mut file_diffs = Vec::new();
 
         diff.foreach(
-            &mut |delta, _progress| {
-                // Skip unreadable entries
+            &mut |delta, _| {
                 if delta.status() == Delta::Unreadable {
                     return true;
                 }
 
-                let old_file = delta
-                    .old_file()
-                    .path()
-                    .map(|path| self.create_file_details(path, &delta.old_file().id(), repo));
+                let status = delta.status();
 
-                let new_file = delta
-                    .new_file()
-                    .path()
-                    .map(|path| self.create_file_details(path, &delta.new_file().id(), repo));
+                // Only build old_file for non-added entries
+                let old_file = if matches!(status, Delta::Added) {
+                    None
+                } else {
+                    delta
+                        .old_file()
+                        .path()
+                        .map(|p| self.create_file_details(p, &delta.old_file().id(), repo))
+                };
+
+                // Only build new_file for non-deleted entries
+                let new_file = if matches!(status, Delta::Deleted) {
+                    None
+                } else {
+                    delta
+                        .new_file()
+                        .path()
+                        .map(|p| self.create_file_details(p, &delta.new_file().id(), repo))
+                };
 
                 file_diffs.push(Diff {
                     old_file,
                     new_file,
-                    hunks: vec![], // Left empty as requested
+                    hunks: vec![], // still empty
                 });
 
                 true
