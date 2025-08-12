@@ -108,111 +108,84 @@ impl StandardCodingAgentExecutor for Amp {
         // Process stdout logs (Amp's JSON output)
         let current_dir = current_dir.clone();
         tokio::spawn(async move {
-            let mut s = raw_logs_msg_store.history_plus_stream();
-            let mut buf = String::new();
-            // 1 amp message id = multiple patch entry ids
+            let mut s = raw_logs_msg_store.stdout_lines_stream();
+
             let mut seen_amp_message_ids: HashMap<usize, Vec<usize>> = HashMap::new();
-            while let Some(Ok(m)) = s.next().await {
-                let chunk = match m {
-                    LogMsg::Stdout(x) => x,
-                    LogMsg::JsonPatch(_) | LogMsg::SessionId(_) | LogMsg::Stderr(_) => {
-                        continue;
-                    }
-                    LogMsg::Finished => break,
-                };
-                buf.push_str(&chunk);
+            while let Some(Ok(line)) = s.next().await {
+                let trimmed = line.trim();
+                match serde_json::from_str(trimmed) {
+                    Ok(amp_json) => match amp_json {
+                        AmpJson::Messages {
+                            messages,
+                            tool_results: _,
+                        } => {
+                            for (amp_message_id, message) in messages {
+                                let role = &message.role;
 
-                // Print complete lines; keep the trailing partial (if any)
-                for line in buf
-                    .split_inclusive('\n')
-                    .filter(|l| l.ends_with('\n'))
-                    .map(str::to_owned)
-                    .collect::<Vec<_>>()
-                {
-                    let trimmed = line.trim();
-                    match serde_json::from_str(trimmed) {
-                        Ok(amp_json) => {
-                            match amp_json {
-                                AmpJson::Messages {
-                                    messages,
-                                    tool_results: _,
-                                } => {
-                                    for (amp_message_id, message) in messages {
-                                        let role = &message.role;
+                                for (content_index, content_item) in
+                                    message.content.iter().enumerate()
+                                {
+                                    let mut has_patch_ids =
+                                        seen_amp_message_ids.get_mut(&amp_message_id);
 
-                                        for (content_index, content_item) in
-                                            message.content.iter().enumerate()
-                                        {
-                                            let mut has_patch_ids =
-                                                seen_amp_message_ids.get_mut(&amp_message_id);
-
-                                            if let Some(entry) = content_item.to_normalized_entry(
-                                                role,
-                                                &message,
-                                                &current_dir.to_string_lossy(),
-                                            ) {
-                                                let patch: Patch = match &mut has_patch_ids {
-                                                    None => {
-                                                        let new_id = entry_index_provider.next();
-                                                        seen_amp_message_ids
-                                                            .entry(amp_message_id)
-                                                            .or_default()
-                                                            .push(new_id);
-                                                        ConversationPatch::add_normalized_entry(
-                                                            new_id, entry,
-                                                        )
-                                                    }
-                                                    Some(patch_ids) => {
-                                                        match patch_ids.get(content_index) {
-                                                            Some(patch_id) => {
-                                                                ConversationPatch::replace(
-                                                                    *patch_id, entry,
-                                                                )
-                                                            }
-                                                            None => {
-                                                                let new_id =
-                                                                    entry_index_provider.next();
-                                                                patch_ids.push(new_id);
-                                                                ConversationPatch::add_normalized_entry(new_id, entry)
-                                                            }
-                                                        }
-                                                    }
-                                                };
-
-                                                raw_logs_msg_store.push_patch(patch);
+                                    if let Some(entry) = content_item.to_normalized_entry(
+                                        role,
+                                        &message,
+                                        &current_dir.to_string_lossy(),
+                                    ) {
+                                        let patch: Patch = match &mut has_patch_ids {
+                                            None => {
+                                                let new_id = entry_index_provider.next();
+                                                seen_amp_message_ids
+                                                    .entry(amp_message_id)
+                                                    .or_default()
+                                                    .push(new_id);
+                                                ConversationPatch::add_normalized_entry(
+                                                    new_id, entry,
+                                                )
                                             }
-                                        }
-                                    }
-                                }
-                                AmpJson::Initial { thread_id } => {
-                                    if let Some(thread_id) = thread_id {
-                                        raw_logs_msg_store.push_session_id(thread_id);
-                                    }
-                                }
-                                _ => {}
-                            }
-                        }
-                        Err(_) => {
-                            let trimmed = line.trim();
-                            if !trimmed.is_empty() {
-                                let entry = NormalizedEntry {
-                                    timestamp: None,
-                                    entry_type: NormalizedEntryType::SystemMessage,
-                                    content: format!("Raw output: {trimmed}"),
-                                    metadata: None,
-                                };
+                                            Some(patch_ids) => match patch_ids.get(content_index) {
+                                                Some(patch_id) => {
+                                                    ConversationPatch::replace(*patch_id, entry)
+                                                }
+                                                None => {
+                                                    let new_id = entry_index_provider.next();
+                                                    patch_ids.push(new_id);
+                                                    ConversationPatch::add_normalized_entry(
+                                                        new_id, entry,
+                                                    )
+                                                }
+                                            },
+                                        };
 
-                                let new_id = entry_index_provider.next();
-                                let patch = ConversationPatch::add_normalized_entry(new_id, entry);
-                                raw_logs_msg_store.push_patch(patch);
+                                        raw_logs_msg_store.push_patch(patch);
+                                    }
+                                }
                             }
                         }
-                    };
-                }
-                buf = buf.rsplit('\n').next().unwrap_or("").to_owned();
-            }
-            if !buf.is_empty() {
-                print!("{buf}");
+                        AmpJson::Initial { thread_id } => {
+                            if let Some(thread_id) = thread_id {
+                                raw_logs_msg_store.push_session_id(thread_id);
+                            }
+                        }
+                        _ => {}
+                    },
+                    Err(_) => {
+                        let trimmed = line.trim();
+                        if !trimmed.is_empty() {
+                            let entry = NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::SystemMessage,
+                                content: format!("Raw output: {trimmed}"),
+                                metadata: None,
+                            };
+
+                            let new_id = entry_index_provider.next();
+                            let patch = ConversationPatch::add_normalized_entry(new_id, entry);
+                            raw_logs_msg_store.push_patch(patch);
+                        }
+                    }
+                };
             }
         });
     }
