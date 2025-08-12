@@ -180,8 +180,6 @@ impl StandardCodingAgentExecutor for Amp {
                                                 };
 
                                                 raw_logs_msg_store.push_patch(patch);
-                                                // TODO: debug this race condition
-                                                tokio::time::sleep(Duration::from_millis(1)).await;
                                             }
                                         }
                                     }
@@ -207,8 +205,6 @@ impl StandardCodingAgentExecutor for Amp {
                                 let new_id = entry_index_provider.next();
                                 let patch = ConversationPatch::add_normalized_entry(new_id, entry);
                                 raw_logs_msg_store.push_patch(patch);
-                                // TODO: debug this race condition
-                                tokio::time::sleep(Duration::from_millis(1)).await;
                             }
                         }
                     };
