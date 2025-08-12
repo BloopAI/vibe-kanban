@@ -1,16 +1,14 @@
-use std::{
-    collections::{HashMap, HashSet},
-    fs,
-    sync::OnceLock,
-};
+use std::{collections::HashMap, fs, sync::OnceLock};
 
 use serde::{Deserialize, Serialize};
-use strum::IntoEnumIterator;
 use ts_rs::TS;
 
-use crate::executors::BaseCodingAgent;
+use crate::executors::CodingAgent;
 
 static PROFILES_CACHE: OnceLock<AgentProfiles> = OnceLock::new();
+
+// Default profiles embedded at compile time
+const DEFAULT_PROFILES_JSON: &str = include_str!("../default_profiles.json");
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct CommandBuilder {
@@ -59,123 +57,11 @@ impl CommandBuilder {
 pub struct AgentProfile {
     /// Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
     pub label: String,
-    /// The executor type this profile configures
-    pub agent: BaseCodingAgent,
-    /// Command builder configuration
-    pub command: CommandBuilder,
+    /// The coding agent this profile is associated with
+    #[serde(flatten)]
+    pub agent: CodingAgent,
     /// Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
     pub mcp_config_path: Option<String>,
-}
-
-impl AgentProfile {
-    pub fn claude_code() -> Self {
-        Self {
-            label: "claude-code".to_string(),
-            agent: BaseCodingAgent::ClaudeCode,
-            command: CommandBuilder::new("npx -y @anthropic-ai/claude-code@latest").params(vec![
-                "-p",
-                "--dangerously-skip-permissions",
-                "--verbose",
-                "--output-format=stream-json",
-            ]),
-            mcp_config_path: None,
-        }
-    }
-
-    pub fn claude_code_plan() -> Self {
-        Self {
-            label: "claude-code-plan".to_string(),
-            agent: BaseCodingAgent::ClaudeCode,
-            command: CommandBuilder::new("npx -y @anthropic-ai/claude-code@latest").params(vec![
-                "-p",
-                "--permission-mode=plan",
-                "--verbose",
-                "--output-format=stream-json",
-            ]),
-            mcp_config_path: None,
-        }
-    }
-
-    pub fn claude_code_router() -> Self {
-        Self {
-            label: "claude-code-router".to_string(),
-            agent: BaseCodingAgent::ClaudeCode,
-            command: CommandBuilder::new("npx -y @musistudio/claude-code-router code").params(
-                vec![
-                    "-p",
-                    "--dangerously-skip-permissions",
-                    "--verbose",
-                    "--output-format=stream-json",
-                ],
-            ),
-            mcp_config_path: None,
-        }
-    }
-
-    pub fn amp() -> Self {
-        Self {
-            label: "amp".to_string(),
-            agent: BaseCodingAgent::Amp,
-            command: CommandBuilder::new("npx -y @sourcegraph/amp@0.0.1752148945-gd8844f")
-                .params(vec!["--format=jsonl", "--dangerously-allow-all"]),
-            mcp_config_path: None,
-        }
-    }
-
-    pub fn gemini() -> Self {
-        Self {
-            label: "gemini".to_string(),
-            agent: BaseCodingAgent::Gemini,
-            command: CommandBuilder::new("npx -y @google/gemini-cli@latest").params(vec!["--yolo"]),
-            mcp_config_path: None,
-        }
-    }
-
-    pub fn cursor() -> Self {
-        Self {
-            label: "cursor".to_string(),
-            agent: BaseCodingAgent::Cursor,
-            command: CommandBuilder::new("cursor-agent").params(vec![
-                "-p",
-                "--output-format=stream-json",
-                "--force",
-            ]),
-            mcp_config_path: None,
-        }
-    }
-
-    pub fn codex() -> Self {
-        Self {
-            label: "codex".to_string(),
-            agent: BaseCodingAgent::Codex,
-            command: CommandBuilder::new("npx -y @openai/codex exec").params(vec![
-                "--json",
-                "--dangerously-bypass-approvals-and-sandbox",
-                "--skip-git-repo-check",
-            ]),
-            mcp_config_path: None,
-        }
-    }
-
-    pub fn qwen_code() -> Self {
-        Self {
-            label: "qwen-code".to_string(),
-            agent: BaseCodingAgent::Gemini,
-            command: CommandBuilder::new("npx -y @qwen-code/qwen-code@latest")
-                .params(vec!["--yolo"]),
-            mcp_config_path: Some("~/.qwen/settings.json".to_string()),
-        }
-    }
-
-    pub fn opencode() -> Self {
-        Self {
-            label: "opencode".to_string(),
-            agent: BaseCodingAgent::Opencode,
-            command: CommandBuilder::new("npx -y opencode-ai@latest run")
-                .params(vec!["--print-logs"]),
-            mcp_config_path: None,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
@@ -189,77 +75,36 @@ impl AgentProfiles {
     }
 
     fn load() -> Self {
-        let mut profiles = Self::from_defaults();
+        let profiles_path = utils::assets::profiles_path();
 
-        if let Err(e) = profiles.extend_from_file() {
-            if e.kind() != std::io::ErrorKind::NotFound {
-                tracing::warn!("Failed to load additional profiles: {}", e);
+        // load from profiles.json if it exists, otherwise use defaults
+        let content = match fs::read_to_string(&profiles_path) {
+            Ok(content) => content,
+            Err(e) => {
+                tracing::warn!("Failed to read profiles.json: {}, using defaults", e);
+                return Self::from_defaults();
             }
-        } else {
-            tracing::info!("Loaded additional profiles from profiles.json");
-        }
+        };
 
-        profiles
+        match serde_json::from_str::<Self>(&content) {
+            Ok(profiles) => {
+                tracing::info!("Loaded all profiles from profiles.json");
+                profiles
+            }
+            Err(e) => {
+                tracing::warn!("Failed to parse profiles.json: {}, using defaults", e);
+                Self::from_defaults()
+            }
+        }
     }
 
     pub fn from_defaults() -> Self {
-        Self {
-            profiles: vec![
-                AgentProfile::claude_code(),
-                AgentProfile::claude_code_plan(),
-                AgentProfile::claude_code_router(),
-                AgentProfile::amp(),
-                AgentProfile::gemini(),
-                AgentProfile::codex(),
-                AgentProfile::opencode(),
-                AgentProfile::qwen_code(),
-                AgentProfile::cursor(),
-            ],
-        }
-    }
-
-    pub fn extend_from_file(&mut self) -> Result<(), std::io::Error> {
-        let profiles_path = utils::assets::profiles_path();
-        if !profiles_path.exists() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!("Profiles file not found at {profiles_path:?}"),
-            ));
-        }
-
-        let content = fs::read_to_string(&profiles_path)?;
-
-        let user_profiles: Self = serde_json::from_str(&content).map_err(|e| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Failed to parse profiles.json: {e}"),
-            )
-        })?;
-
-        let default_labels: HashSet<String> =
-            self.profiles.iter().map(|p| p.label.clone()).collect();
-
-        // Only add user profiles with unique labels
-        for user_profile in user_profiles.profiles {
-            if !default_labels.contains(&user_profile.label) {
-                self.profiles.push(user_profile);
-            } else {
-                tracing::debug!(
-                    "Skipping user profile '{}' - default with same label exists",
-                    user_profile.label
-                );
-            }
-        }
-
-        Ok(())
+        serde_json::from_str(DEFAULT_PROFILES_JSON)
+            .expect("Failed to parse embedded default_profiles.json")
     }
 
     pub fn get_profile(&self, label: &str) -> Option<&AgentProfile> {
         self.profiles.iter().find(|p| p.label == label)
-    }
-
-    pub fn get_profiles_for_agent(&self, agent: &BaseCodingAgent) -> Vec<&AgentProfile> {
-        self.profiles.iter().filter(|p| &p.agent == agent).collect()
     }
 
     pub fn to_map(&self) -> HashMap<String, AgentProfile> {
@@ -267,38 +112,6 @@ impl AgentProfiles {
             .iter()
             .map(|p| (p.label.clone(), p.clone()))
             .collect()
-    }
-
-    pub fn default_example_json() -> String {
-        let example_profile = AgentProfile {
-            label: "my-claude-opus".to_string(),
-            agent: BaseCodingAgent::ClaudeCode,
-            command: CommandBuilder::new("npx -y @anthropic-ai/claude-code@latest").params(vec![
-                "-p",
-                "--dangerously-skip-permissions",
-                "--verbose",
-                "--output-format=stream-json",
-                "--model=opus",
-            ]),
-        };
-
-        let example_profiles = Self {
-            profiles: vec![example_profile],
-        };
-
-        let base_agents = BaseCodingAgent::iter()
-            .map(|agent| agent.to_string())
-            .collect::<Vec<_>>();
-
-        let mut json = serde_json::to_value(&example_profiles).unwrap();
-        if let Some(obj) = json.as_object_mut() {
-            obj.insert(
-                "_documentation".to_string(),
-                serde_json::json!(format!("Custom agent profiles. Each profile needs: a unique label, a valid agent argument (one of: {}), and command (base + optional params array).", base_agents.join(", "))),
-            );
-        }
-
-        serde_json::to_string_pretty(&json).unwrap()
     }
 }
 
@@ -314,7 +127,17 @@ mod tests {
         let get_profile_command = |label: &str| {
             profiles
                 .get(label)
-                .map(|p| p.command.build_initial())
+                .map(|p| {
+                    use crate::executors::CodingAgent;
+                    match &p.agent {
+                        CodingAgent::ClaudeCode(claude) => claude.command.build_initial(),
+                        CodingAgent::Amp(amp) => amp.command.build_initial(),
+                        CodingAgent::Gemini(gemini) => gemini.command.build_initial(),
+                        CodingAgent::Codex(codex) => codex.command.build_initial(),
+                        CodingAgent::Opencode(opencode) => opencode.command.build_initial(),
+                        CodingAgent::Cursor(cursor) => cursor.command.build_initial(),
+                    }
+                })
                 .unwrap_or_else(|| panic!("Profile not found: {label}"))
         };
 
@@ -352,5 +175,58 @@ mod tests {
         assert!(cursor_command.contains("cursor-agent"));
         assert!(cursor_command.contains("-p"));
         assert!(cursor_command.contains("--output-format=stream-json"));
+    }
+
+    #[test]
+    fn test_flattened_agent_deserialization() {
+        let test_json = r#"{
+            "profiles": [
+                {
+                    "label": "test-claude",
+                    "mcp_config_path": null,
+                    "CLAUDE_CODE": {
+                        "command": {
+                            "base": "npx claude",
+                            "params": ["--test"]
+                        },
+                        "plan": true
+                    }
+                },
+                {
+                    "label": "test-gemini",
+                    "mcp_config_path": null,
+                    "GEMINI": {
+                        "command": {
+                            "base": "npx gemini",
+                            "params": ["--test"]
+                        }
+                    }
+                }
+            ]
+        }"#;
+
+        let profiles: AgentProfiles = serde_json::from_str(test_json).expect("Should deserialize");
+        assert_eq!(profiles.profiles.len(), 2);
+
+        // Test Claude profile
+        let claude_profile = profiles.get_profile("test-claude").unwrap();
+        match &claude_profile.agent {
+            crate::executors::CodingAgent::ClaudeCode(claude) => {
+                assert_eq!(claude.command.base, "npx claude");
+                assert_eq!(claude.command.params.as_ref().unwrap()[0], "--test");
+                assert_eq!(claude.plan, true);
+            }
+            _ => panic!("Expected ClaudeCode agent"),
+        }
+
+        // Test Gemini profile
+        let gemini_profile = profiles.get_profile("test-gemini").unwrap();
+        match &gemini_profile.agent {
+            crate::executors::CodingAgent::Gemini(gemini) => {
+                assert_eq!(gemini.command.base, "npx gemini");
+                assert_eq!(gemini.command.params.as_ref().unwrap()[0], "--test");
+            }
+            _ => panic!("Expected Gemini agent"),
+        }
     }
 }

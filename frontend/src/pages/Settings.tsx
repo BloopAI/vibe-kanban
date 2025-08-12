@@ -19,7 +19,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Key, Loader2, Volume2, Code2 } from 'lucide-react';
+import { Key, Loader2, Volume2 } from 'lucide-react';
 import { ThemeMode, EditorType, SoundFile } from 'shared/types';
 
 import { toPrettyCase } from '@/utils/string';
@@ -586,11 +586,10 @@ export function Settings() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Code2 className="h-5 w-5" />
                 Agent Profiles
               </CardTitle>
               <CardDescription>
-                Configure custom agent profiles with specific command-line
+                Configure coding agent profiles with specific command-line
                 parameters.
               </CardDescription>
             </CardHeader>
@@ -609,52 +608,58 @@ export function Settings() {
                 </Alert>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="profiles-editor">Profiles Configuration</Label>
-                <Textarea
-                  id="profiles-editor"
-                  placeholder={
-                    profilesLoading
-                      ? 'Loading profiles...'
-                      : '{\n  "profiles": [\n    {\n      "label": "my-custom-profile",\n      "agent": "ClaudeCode",\n      "command": {...}\n    }\n  ]\n}'
-                  }
-                  value={profilesLoading ? 'Loading...' : profilesContent}
-                  onChange={(e) => handleProfilesChange(e.target.value)}
-                  disabled={profilesLoading}
-                  className="font-mono text-sm min-h-[300px]"
-                />
-                {!profilesError && profilesPath && (
-                  <p className="text-sm text-muted-foreground">
-                    Configuration file:{' '}
-                    <span className="font-mono text-xs">{profilesPath}</span>
-                  </p>
-                )}
-                <p className="text-sm text-muted-foreground">
-                  Add custom profiles that will appear alongside built-in
-                  profiles. Each profile needs a unique label, agent type, and
-                  command configuration.
-                </p>
-              </div>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="profiles-editor">
+                    Profiles Configuration
+                  </Label>
+                  <Textarea
+                    id="profiles-editor"
+                    placeholder={
+                      profilesLoading
+                        ? 'Loading profiles...'
+                        : '{\n  "profiles": [\n    {\n      "label": "my-custom-profile",\n      "agent": "ClaudeCode",\n      "command": {...}\n    }\n  ]\n}'
+                    }
+                    value={profilesLoading ? 'Loading...' : profilesContent}
+                    onChange={(e) => handleProfilesChange(e.target.value)}
+                    disabled={profilesLoading}
+                    className="font-mono text-sm min-h-[300px]"
+                  />
+                </div>
 
-              <div className="flex justify-end">
-                <Button
-                  onClick={handleSaveProfiles}
-                  disabled={
-                    profilesSaving ||
-                    profilesLoading ||
-                    !!profilesError ||
-                    profilesSuccess
-                  }
-                  className={
-                    profilesSuccess ? 'bg-green-600 hover:bg-green-700' : ''
-                  }
-                >
-                  {profilesSaving && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <div className="space-y-2">
+                  {!profilesError && profilesPath && (
+                    <p className="text-sm text-muted-foreground">
+                      <span className="font-medium">Configuration file:</span>{' '}
+                      <span className="font-mono text-xs">{profilesPath}</span>
+                    </p>
                   )}
-                  {profilesSuccess && <span className="mr-2">✓</span>}
-                  {profilesSuccess ? 'Profiles Saved!' : 'Save Profiles'}
-                </Button>
+                  <p className="text-sm text-muted-foreground">
+                    Edit coding agent profiles. Each profile needs a unique
+                    label, agent type, and command configuration.
+                  </p>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <Button
+                    onClick={handleSaveProfiles}
+                    disabled={
+                      profilesSaving ||
+                      profilesLoading ||
+                      !!profilesError ||
+                      profilesSuccess
+                    }
+                    className={
+                      profilesSuccess ? 'bg-green-600 hover:bg-green-700' : ''
+                    }
+                  >
+                    {profilesSaving && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    {profilesSuccess && <span className="mr-2">✓</span>}
+                    {profilesSuccess ? 'Profiles Saved!' : 'Save Profiles'}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

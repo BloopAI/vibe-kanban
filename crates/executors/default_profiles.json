@@ -1,0 +1,128 @@
+{
+  "profiles": [
+    {
+      "label": "claude-code",
+      "mcp_config_path": null,
+      "CLAUDE_CODE": {
+        "command": {
+          "base": "npx -y @anthropic-ai/claude-code@latest",
+          "params": [
+            "-p",
+            "--dangerously-skip-permissions",
+            "--verbose",
+            "--output-format=stream-json"
+          ]
+        },
+        "plan": false
+      }
+    },
+    {
+      "label": "claude-code-plan",
+      "mcp_config_path": null,
+      "CLAUDE_CODE": {
+        "command": {
+          "base": "npx -y @anthropic-ai/claude-code@latest",
+          "params": [
+            "-p",
+            "--permission-mode=plan",
+            "--verbose",
+            "--output-format=stream-json"
+          ]
+        },
+        "plan": true
+      }
+    },
+    {
+      "label": "claude-code-router",
+      "mcp_config_path": null,
+      "CLAUDE_CODE": {
+        "command": {
+          "base": "npx -y @musistudio/claude-code-router code",
+          "params": [
+            "-p",
+            "--dangerously-skip-permissions",
+            "--verbose",
+            "--output-format=stream-json"
+          ]
+        },
+        "plan": false
+      }
+    },
+    {
+      "label": "amp",
+      "mcp_config_path": null,
+      "AMP": {
+        "command": {
+          "base": "npx -y @sourcegraph/amp@0.0.1752148945-gd8844f",
+          "params": [
+            "--format=jsonl"
+          ]
+        }
+      }
+    },
+    {
+      "label": "gemini",
+      "mcp_config_path": null,
+      "GEMINI": {
+        "command": {
+          "base": "npx -y @google/gemini-cli@latest",
+          "params": [
+            "--yolo"
+          ]
+        }
+      }
+    },
+    {
+      "label": "codex",
+      "mcp_config_path": null,
+      "CODEX": {
+        "command": {
+          "base": "npx -y @openai/codex exec",
+          "params": [
+            "--json",
+            "--dangerously-bypass-approvals-and-sandbox",
+            "--skip-git-repo-check"
+          ]
+        }
+      }
+    },
+    {
+      "label": "opencode",
+      "mcp_config_path": null,
+      "OPENCODE": {
+        "command": {
+          "base": "npx -y opencode-ai@latest run",
+          "params": [
+            "--print-logs"
+          ]
+        }
+      }
+    },
+    {
+      "label": "qwen-code",
+      "mcp_config_path": "~/.qwen/settings.json",
+      "GEMINI": {
+        "command": {
+          "base": "npx -y @qwen-code/qwen-code@latest",
+          "params": [
+            "--yolo"
+          ]
+        }
+      }
+    },
+    {
+      "label": "cursor",
+      "mcp_config_path": null,
+      "CURSOR": {
+        "command": {
+          "base": "cursor-agent",
+          "params": [
+            "-p",
+            "--output-format=stream-json",
+            "--force"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -54,7 +54,6 @@ fn unknown_executor_error(s: &str) -> ExecutorError {
     strum_macros::EnumString,
     strum_macros::EnumIter,
 )]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 #[strum(parse_err_ty = ExecutorError, parse_err_fn = unknown_executor_error)]
 #[strum_discriminants(
@@ -71,17 +70,24 @@ fn unknown_executor_error(s: &str) -> ExecutorError {
     serde(rename_all = "SCREAMING_SNAKE_CASE")
 )]
 pub enum CodingAgent {
-    // Echo,
-    #[serde(alias = "claude")]
-    ClaudeCode,
-    // ClaudePlan,
-    Amp,
-    Gemini,
-    Codex,
-    Cursor,
-    // ClaudeCodeRouter,
-    Opencode,
-    // Aider,
+    #[serde(rename = "CLAUDE_CODE", alias = "claude")]
+    ClaudeCode(ClaudeCode),
+    #[serde(rename = "AMP")]
+    Amp(Amp),
+    #[serde(rename = "GEMINI")]
+    Gemini(Gemini),
+    #[serde(rename = "CODEX")]
+    Codex(Codex),
+    #[serde(rename = "OPENCODE")]
+    Opencode(Opencode),
+    #[serde(rename = "CURSOR")]
+    Cursor(Cursor),
+}
+
+impl std::fmt::Display for CodingAgent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        BaseCodingAgent::from(self).fmt(f)
+    }
 }
 
 impl CodingAgent {
@@ -96,51 +102,14 @@ impl CodingAgent {
     }
 
     /// Create an executor from a profile string
-    /// Handles both default profiles ("claude-code", "amp", "gemini") and custom profiles
+    /// Loads profile from AgentProfiles (both default and custom profiles)
     pub fn from_profile_str(profile: &str) -> Result<Self, ExecutorError> {
-        match profile {
-            "claude-code" => Ok(CodingAgent::ClaudeCode(ClaudeCode::new())),
-            "claude-code-plan" => Ok(CodingAgent::ClaudeCode(ClaudeCode::new_plan_mode())),
-            "claude-code-router" => {
-                Ok(CodingAgent::ClaudeCode(ClaudeCode::new_claude_code_router()))
-            }
-            "amp" => Ok(CodingAgent::Amp(Amp::new())),
-            "gemini" => Ok(CodingAgent::Gemini(Gemini::new())),
-            "codex" => Ok(CodingAgent::Codex(Codex::new())),
-            "cursor" => Ok(CodingAgent::Cursor(Cursor::new())),
-            "opencode" => Ok(CodingAgent::Opencode(Opencode::new())),
-            _ => {
-                // Try to load from AgentProfiles
-                if let Some(agent_profile) = AgentProfiles::get_cached().get_profile(profile) {
-                    match agent_profile.agent {
-                        BaseCodingAgent::ClaudeCode => {
-                            Ok(CodingAgent::ClaudeCode(ClaudeCode::with_command_builder(
-                                profile.to_string(),
-                                agent_profile.command.clone(),
-                            )))
-                        }
-                        BaseCodingAgent::Amp => Ok(CodingAgent::Amp(Amp::with_command_builder(
-                            agent_profile.command.clone(),
-                        ))),
-                        BaseCodingAgent::Gemini => Ok(CodingAgent::Gemini(
-                            Gemini::with_command_builder(agent_profile.command.clone()),
-                        )),
-                        BaseCodingAgent::Codex => Ok(CodingAgent::Codex(
-                            Codex::with_command_builder(agent_profile.command.clone()),
-                        )),
-                        BaseCodingAgent::Opencode => Ok(CodingAgent::Opencode(
-                            Opencode::with_command_builder(agent_profile.command.clone()),
-                        )),
-                        BaseCodingAgent::Cursor => Ok(CodingAgent::Cursor(
-                            Cursor::with_command_builder(agent_profile.command.clone()),
-                        )),
-                    }
-                } else {
-                    Err(ExecutorError::UnknownExecutorType(format!(
-                        "Unknown profile: {profile}"
-                    )))
-                }
-            }
+        if let Some(agent_profile) = AgentProfiles::get_cached().get_profile(profile) {
+            Ok(agent_profile.agent.clone())
+        } else {
+            Err(ExecutorError::UnknownExecutorType(format!(
+                "Unknown profile: {profile}"
+            )))
         }
     }
 }

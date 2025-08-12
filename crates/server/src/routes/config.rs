@@ -1,11 +1,11 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use axum::{
     body::Body,
     extract::{Path, Query, State},
     http,
     response::{Json as ResponseJson, Response},
-    routing::{get, put},
+    routing::{get, post, put},
     Json, Router,
 };
 use deployment::{Deployment, DeploymentError};
@@ -130,7 +130,7 @@ async fn get_mcp_servers(
             let profile = executors::command::AgentProfiles::get_cached()
                 .get_profile(&config.profile)
                 .expect("Corrupted config");
-            profile.agent
+            profile.agent.clone().into()
         }
     };
 
@@ -181,7 +181,7 @@ async fn update_mcp_servers(
             let profile = executors::command::AgentProfiles::get_cached()
                 .get_profile(&config.profile)
                 .expect("Corrupted config");
-            profile.agent
+            profile.agent.clone().into()
         }
     };
 
@@ -357,9 +357,33 @@ async fn get_profiles(
 ) -> ResponseJson<ApiResponse<ProfilesContent>> {
     let profiles_path = utils::assets::profiles_path();
 
-    let content = std::fs::read_to_string(&profiles_path).unwrap_or_else(|e| {
-        tracing::warn!("Failed to read profiles.json: {}", e);
-        AgentProfiles::default_example_json()
+    let mut profiles = AgentProfiles::from_defaults();
+    if let Ok(user_content) = std::fs::read_to_string(&profiles_path) {
+        match serde_json::from_str::<AgentProfiles>(&user_content) {
+            Ok(user_profiles) => {
+                // Override defaults with user profiles that have the same label
+                for user_profile in user_profiles.profiles {
+                    if let Some(default_profile) = profiles
+                        .profiles
+                        .iter_mut()
+                        .find(|p| p.label == user_profile.label)
+                    {
+                        *default_profile = user_profile;
+                    } else {
+                        profiles.profiles.push(user_profile);
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::error!("Failed to parse profiles.json: {}", e);
+            }
+        }
+    }
+
+    let content = serde_json::to_string_pretty(&profiles).unwrap_or_else(|e| {
+        tracing::error!("Failed to serialize profiles to JSON: {}", e);
+        serde_json::to_string_pretty(&AgentProfiles::from_defaults())
+            .unwrap_or_else(|_| "{}".to_string())
     });
 
     ResponseJson(ApiResponse::success(ProfilesContent {
@@ -382,28 +406,13 @@ async fn update_profiles(
         }
     };
 
-    let default_labels: HashSet<_> = AgentProfiles::from_defaults()
-        .profiles
-        .iter()
-        .map(|p| &p.label)
-        .cloned()
-        .collect();
-
-    for profile in &profiles.profiles {
-        if default_labels.contains(&profile.label) {
-            return ResponseJson(ApiResponse::error(&format!(
-                "Profile label '{}' conflicts with a built-in profile",
-                profile.label
-            )));
-        }
-    }
-
     let profiles_path = utils::assets::profiles_path();
 
+    // Simply save all profiles as provided by the user
     let formatted = serde_json::to_string_pretty(&profiles).unwrap();
     match fs::write(&profiles_path, formatted).await {
         Ok(_) => {
-            tracing::info!("Profiles updated successfully at {:?}", profiles_path);
+            tracing::info!("All profiles saved to {:?}", profiles_path);
             ResponseJson(ApiResponse::success(
                 "Profiles updated successfully".to_string(),
             ))
