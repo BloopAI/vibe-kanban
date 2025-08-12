@@ -265,4 +265,57 @@ mod tests {
             _ => panic!("Expected Gemini agent"),
         }
     }
+
+    #[test]
+    fn test_flattened_agent_deserialization() {
+        let test_json = r#"{
+            "profiles": [
+                {
+                    "label": "test-claude",
+                    "mcp_config_path": null,
+                    "CLAUDE_CODE": {
+                        "command": {
+                            "base": "npx claude",
+                            "params": ["--test"]
+                        },
+                        "plan": true
+                    }
+                },
+                {
+                    "label": "test-gemini",
+                    "mcp_config_path": null,
+                    "GEMINI": {
+                        "command_builder": {
+                            "base": "npx gemini",
+                            "params": ["--test"]
+                        }
+                    }
+                }
+            ]
+        }"#;
+
+        let profiles: AgentProfiles = serde_json::from_str(test_json).expect("Should deserialize");
+        assert_eq!(profiles.profiles.len(), 2);
+
+        // Test Claude profile
+        let claude_profile = profiles.get_profile("test-claude").unwrap();
+        match &claude_profile.agent {
+            crate::executors::CodingAgent::ClaudeCode(claude) => {
+                assert_eq!(claude.command.base, "npx claude");
+                assert_eq!(claude.command.params.as_ref().unwrap()[0], "--test");
+                assert_eq!(claude.plan, true);
+            }
+            _ => panic!("Expected ClaudeCode agent"),
+        }
+
+        // Test Gemini profile
+        let gemini_profile = profiles.get_profile("test-gemini").unwrap();
+        match &gemini_profile.agent {
+            crate::executors::CodingAgent::Gemini(gemini) => {
+                assert_eq!(gemini.command.base, "npx gemini");
+                assert_eq!(gemini.command.params.as_ref().unwrap()[0], "--test");
+            }
+            _ => panic!("Expected Gemini agent"),
+        }
+    }
 }
