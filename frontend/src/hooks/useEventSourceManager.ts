@@ -113,6 +113,9 @@ export const useEventSourceManager = ({
                 return false; // Already processed
               }
               processedSet.add(entryIndex);
+            } else if (match && patch.op === 'remove') {
+              const entryIndex = parseInt(match[1], 10);
+              processedSet.delete(entryIndex);
             }
             // Always allow replace operations and non-entry patches
             return true;
