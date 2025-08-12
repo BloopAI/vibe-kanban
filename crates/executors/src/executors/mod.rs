@@ -12,12 +12,16 @@ use utils::msg_store::MsgStore;
 
 use crate::{
     command::AgentProfiles,
-    executors::{amp::Amp, claude::ClaudeCode, codex::Codex, gemini::Gemini, opencode::Opencode},
+    executors::{
+        amp::Amp, claude::ClaudeCode, codex::Codex, cursor::Cursor, gemini::Gemini,
+        opencode::Opencode,
+    },
 };
 
 pub mod amp;
 pub mod claude;
 pub mod codex;
+pub mod cursor;
 pub mod gemini;
 pub mod opencode;
 
@@ -59,6 +63,7 @@ pub enum CodingAgent {
     Amp,
     Gemini,
     Codex,
+    Cursor,
     // ClaudeCodeRouter,
     Opencode,
     // Aider,
@@ -77,6 +82,7 @@ impl CodingAgent {
             "amp" => Ok(CodingAgent::Amp(Amp::new())),
             "gemini" => Ok(CodingAgent::Gemini(Gemini::new())),
             "codex" => Ok(CodingAgent::Codex(Codex::new())),
+            "cursor" => Ok(CodingAgent::Cursor(Cursor::new())),
             "opencode" => Ok(CodingAgent::Opencode(Opencode::new())),
             _ => {
                 // Try to load from AgentProfiles
@@ -99,6 +105,9 @@ impl CodingAgent {
                         )),
                         BaseCodingAgent::Opencode => Ok(CodingAgent::Opencode(
                             Opencode::with_command_builder(agent_profile.command.clone()),
+                        )),
+                        BaseCodingAgent::Cursor => Ok(CodingAgent::Cursor(
+                            Cursor::with_command_builder(agent_profile.command.clone()),
                         )),
                     }
                 } else {
@@ -124,6 +133,9 @@ impl BaseCodingAgent {
             Self::Gemini => Some(vec!["mcpServers"]),
             //ExecutorConfig::Aider => None, // Aider doesn't support MCP. https://github.com/Aider-AI/aider/issues/3314
             Self::Codex => Some(vec!["mcp_servers"]), // Codex uses TOML with mcp_servers
+            // Cursor CLI is supposed to be compatible with MCP server config according to the docs: https://docs.cursor.com/en/cli/using#mcp
+            // But it still doesn't seem to support it properly: https://forum.cursor.com/t/cursor-cli-not-actually-an-mcp-client/127000/5
+            Self::Cursor => Some(vec!["mcpServers"]),
         }
     }
 
@@ -152,6 +164,7 @@ impl BaseCodingAgent {
             Self::Codex => dirs::home_dir().map(|home| home.join(".codex").join("config.toml")),
             Self::Amp => dirs::config_dir().map(|config| config.join("amp").join("settings.json")),
             Self::Gemini => dirs::home_dir().map(|home| home.join(".gemini").join("settings.json")),
+            Self::Cursor => dirs::home_dir().map(|home| home.join(".cursor").join("mcp.json")),
         }
     }
 }

@@ -130,6 +130,19 @@ impl AgentProfile {
         }
     }
 
+    pub fn cursor() -> Self {
+        Self {
+            label: "cursor".to_string(),
+            agent: BaseCodingAgent::Cursor,
+            command: CommandBuilder::new("cursor-agent").params(vec![
+                "-p",
+                "--output-format=stream-json",
+                "--force",
+            ]),
+            mcp_config_path: None,
+        }
+    }
+
     pub fn codex() -> Self {
         Self {
             label: "codex".to_string(),
@@ -199,6 +212,7 @@ impl AgentProfiles {
                 AgentProfile::codex(),
                 AgentProfile::opencode(),
                 AgentProfile::qwen_code(),
+                AgentProfile::cursor(),
             ],
         }
     }
@@ -300,5 +314,10 @@ mod tests {
         let opencode_command = get_profile_command("opencode");
         assert!(opencode_command.contains("npx -y opencode-ai@latest run"));
         assert!(opencode_command.contains("--print-logs"));
+
+        let cursor_command = get_profile_command("cursor");
+        assert!(cursor_command.contains("cursor-agent"));
+        assert!(cursor_command.contains("-p"));
+        assert!(cursor_command.contains("--output-format=stream-json"));
     }
 }
