@@ -1,0 +1,106 @@
+{
+  "profiles": [
+    {
+      "label": "claude-code",
+      "agent": "CLAUDE_CODE",
+      "command": {
+        "base": "npx -y @anthropic-ai/claude-code@latest",
+        "params": [
+          "-p",
+          "--dangerously-skip-permissions",
+          "--verbose",
+          "--output-format=stream-json"
+        ]
+      }
+    },
+    {
+      "label": "claude-code-plan",
+      "agent": "CLAUDE_CODE",
+      "command": {
+        "base": "npx -y @anthropic-ai/claude-code@latest",
+        "params": [
+          "-p",
+          "--permission-mode=plan",
+          "--verbose",
+          "--output-format=stream-json"
+        ]
+      }
+    },
+    {
+      "label": "claude-code-router",
+      "agent": "CLAUDE_CODE",
+      "command": {
+        "base": "npx -y @musistudio/claude-code-router code",
+        "params": [
+          "-p",
+          "--dangerously-skip-permissions",
+          "--verbose",
+          "--output-format=stream-json"
+        ]
+      }
+    },
+    {
+      "label": "amp",
+      "agent": "AMP",
+      "command": {
+        "base": "npx -y @sourcegraph/amp@0.0.1752148945-gd8844f",
+        "params": [
+          "--format=jsonl"
+        ]
+      }
+    },
+    {
+      "label": "gemini",
+      "agent": "GEMINI",
+      "command": {
+        "base": "npx -y @google/gemini-cli@latest",
+        "params": [
+          "--yolo"
+        ]
+      }
+    },
+    {
+      "label": "codex",
+      "agent": "CODEX",
+      "command": {
+        "base": "npx -y @openai/codex exec",
+        "params": [
+          "--json",
+          "--dangerously-bypass-approvals-and-sandbox",
+          "--skip-git-repo-check"
+        ]
+      }
+    },
+    {
+      "label": "opencode",
+      "agent": "OPENCODE",
+      "command": {
+        "base": "npx -y opencode-ai@latest run",
+        "params": [
+          "--print-logs"
+        ]
+      }
+    },
+    {
+      "label": "qwen-code",
+      "agent": "GEMINI",
+      "command": {
+        "base": "npx -y @qwen-ai/qwen-code@latest",
+        "params": [
+          "--yolo"
+        ]
+      },
+      "mcp_config_path": "~/.qwen/settings.json"
+    },
+    {
+      "label": "cursor",
+      "agent": "CURSOR",
+      "command": {
+        "base": "cursor-agent",
+        "params": [
+          "-p", "--output-format=stream-json", "--force"
+        ]
+      },
+    }
+  ]
+}

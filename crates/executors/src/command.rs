@@ -12,6 +12,9 @@ use crate::executors::BaseCodingAgent;
 
 static PROFILES_CACHE: OnceLock<AgentProfiles> = OnceLock::new();
 
+// Default profiels embedded at compile time
+const DEFAULT_PROFILES_JSON: &str = include_str!("../default_profiles.json");
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct CommandBuilder {
     /// Base executable command (e.g., "npx -y @anthropic-ai/claude-code@latest")
@@ -67,117 +70,6 @@ pub struct AgentProfile {
     pub mcp_config_path: Option<String>,
 }
 
-impl AgentProfile {
-    pub fn claude_code() -> Self {
-        Self {
-            label: "claude-code".to_string(),
-            agent: BaseCodingAgent::ClaudeCode,
-            command: CommandBuilder::new("npx -y @anthropic-ai/claude-code@latest").params(vec![
-                "-p",
-                "--dangerously-skip-permissions",
-                "--verbose",
-                "--output-format=stream-json",
-            ]),
-            mcp_config_path: None,
-        }
-    }
-
-    pub fn claude_code_plan() -> Self {
-        Self {
-            label: "claude-code-plan".to_string(),
-            agent: BaseCodingAgent::ClaudeCode,
-            command: CommandBuilder::new("npx -y @anthropic-ai/claude-code@latest").params(vec![
-                "-p",
-                "--permission-mode=plan",
-                "--verbose",
-                "--output-format=stream-json",
-            ]),
-            mcp_config_path: None,
-        }
-    }
-
-    pub fn claude_code_router() -> Self {
-        Self {
-            label: "claude-code-router".to_string(),
-            agent: BaseCodingAgent::ClaudeCode,
-            command: CommandBuilder::new("npx -y @musistudio/claude-code-router code").params(
-                vec![
-                    "-p",
-                    "--dangerously-skip-permissions",
-                    "--verbose",
-                    "--output-format=stream-json",
-                ],
-            ),
-            mcp_config_path: None,
-        }
-    }
-
-    pub fn amp() -> Self {
-        Self {
-            label: "amp".to_string(),
-            agent: BaseCodingAgent::Amp,
-            command: CommandBuilder::new("npx -y @sourcegraph/amp@0.0.1752148945-gd8844f")
-                .params(vec!["--format=jsonl"]),
-            mcp_config_path: None,
-        }
-    }
-
-    pub fn gemini() -> Self {
-        Self {
-            label: "gemini".to_string(),
-            agent: BaseCodingAgent::Gemini,
-            command: CommandBuilder::new("npx -y @google/gemini-cli@latest").params(vec!["--yolo"]),
-            mcp_config_path: None,
-        }
-    }
-
-    pub fn cursor() -> Self {
-        Self {
-            label: "cursor".to_string(),
-            agent: BaseCodingAgent::Cursor,
-            command: CommandBuilder::new("cursor-agent").params(vec![
-                "-p",
-                "--output-format=stream-json",
-                "--force",
-            ]),
-            mcp_config_path: None,
-        }
-    }
-
-    pub fn codex() -> Self {
-        Self {
-            label: "codex".to_string(),
-            agent: BaseCodingAgent::Codex,
-            command: CommandBuilder::new("npx -y @openai/codex exec").params(vec![
-                "--json",
-                "--dangerously-bypass-approvals-and-sandbox",
-                "--skip-git-repo-check",
-            ]),
-            mcp_config_path: None,
-        }
-    }
-
-    pub fn qwen_code() -> Self {
-        Self {
-            label: "qwen-code".to_string(),
-            agent: BaseCodingAgent::Gemini,
-            command: CommandBuilder::new("npx -y @qwen-code/qwen-code@latest")
-                .params(vec!["--yolo"]),
-            mcp_config_path: Some("~/.qwen/settings.json".to_string()),
-        }
-    }
-
-    pub fn opencode() -> Self {
-        Self {
-            label: "opencode".to_string(),
-            agent: BaseCodingAgent::Opencode,
-            command: CommandBuilder::new("npx -y opencode-ai@latest run")
-                .params(vec!["--print-logs"]),
-            mcp_config_path: None,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct AgentProfiles {
     pub profiles: Vec<AgentProfile>,
@@ -203,19 +95,8 @@ impl AgentProfiles {
     }
 
     pub fn from_defaults() -> Self {
-        Self {
-            profiles: vec![
-                AgentProfile::claude_code(),
-                AgentProfile::claude_code_plan(),
-                AgentProfile::claude_code_router(),
-                AgentProfile::amp(),
-                AgentProfile::gemini(),
-                AgentProfile::codex(),
-                AgentProfile::opencode(),
-                AgentProfile::qwen_code(),
-                AgentProfile::cursor(),
-            ],
-        }
+        serde_json::from_str(DEFAULT_PROFILES_JSON)
+            .expect("Failed to parse embedded default_profiles.json")
     }
 
     pub fn extend_from_file(&mut self) -> Result<(), std::io::Error> {
