@@ -85,7 +85,7 @@
       "label": "qwen-code",
       "agent": "GEMINI",
       "command": {
-        "base": "npx -y @qwen-ai/qwen-code@latest",
+        "base": "npx -y @qwen-code/qwen-code@latest",
         "params": [
           "--yolo"
         ]
