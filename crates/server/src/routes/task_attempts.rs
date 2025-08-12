@@ -16,10 +16,13 @@ use db::models::{
     task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptError},
 };
 use deployment::Deployment;
-use executors::actions::{
-    coding_agent_follow_up::CodingAgentFollowUpRequest,
-    script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
-    ExecutorAction, ExecutorActionKind, ExecutorActionType,
+use executors::{
+    actions::{
+        coding_agent_follow_up::CodingAgentFollowUpRequest,
+        script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
+        ExecutorAction, ExecutorActionKind, ExecutorActionType,
+    },
+    executors::BaseCodingAgent,
 };
 use futures_util::TryStreamExt;
 use serde::{Deserialize, Serialize};

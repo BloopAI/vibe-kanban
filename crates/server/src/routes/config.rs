@@ -132,7 +132,7 @@ async fn get_mcp_servers(
             let profile = executors::command::AgentProfiles::get_cached()
                 .get_profile(&config.profile)
                 .expect("Corrupted config");
-            profile.agent
+            profile.agent.clone().into()
         }
     };
 
@@ -183,7 +183,7 @@ async fn update_mcp_servers(
             let profile = executors::command::AgentProfiles::get_cached()
                 .get_profile(&config.profile)
                 .expect("Corrupted config");
-            profile.agent
+            profile.agent.clone().into()
         }
     };
 
@@ -452,7 +452,7 @@ async fn open_mcp_config_in_editor(
             let profile = executors::command::AgentProfiles::get_cached()
                 .get_profile(&config.profile)
                 .expect("Corrupted config");
-            profile.agent
+            profile.agent.clone().into()
         }
     };
 

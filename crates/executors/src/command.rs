@@ -3,7 +3,7 @@ use std::{collections::HashMap, fs, sync::OnceLock};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::executors::BaseCodingAgent;
+use crate::executors::CodingAgent;
 
 static PROFILES_CACHE: OnceLock<AgentProfiles> = OnceLock::new();
 
@@ -57,10 +57,9 @@ impl CommandBuilder {
 pub struct AgentProfile {
     /// Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
     pub label: String,
-    /// The executor type this profile configures
-    pub agent: BaseCodingAgent,
-    /// Command builder configuration
-    pub command: CommandBuilder,
+    /// The coding agent this profile is associated with
+    #[serde(flatten)]
+    pub agent: CodingAgent,
     /// Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
     pub mcp_config_path: Option<String>,
 }
@@ -108,10 +107,6 @@ impl AgentProfiles {
         self.profiles.iter().find(|p| p.label == label)
     }
 
-    pub fn get_profiles_for_agent(&self, agent: &BaseCodingAgent) -> Vec<&AgentProfile> {
-        self.profiles.iter().filter(|p| &p.agent == agent).collect()
-    }
-
     pub fn to_map(&self) -> HashMap<String, AgentProfile> {
         self.profiles
             .iter()
@@ -132,7 +127,17 @@ mod tests {
         let get_profile_command = |label: &str| {
             profiles
                 .get(label)
-                .map(|p| p.command.build_initial())
+                .map(|p| {
+                    use crate::executors::CodingAgent;
+                    match &p.agent {
+                        CodingAgent::ClaudeCode(claude) => claude.command.build_initial(),
+                        CodingAgent::Amp(amp) => amp.command.build_initial(),
+                        CodingAgent::Gemini(gemini) => gemini.command.build_initial(),
+                        CodingAgent::Codex(codex) => codex.command.build_initial(),
+                        CodingAgent::Opencode(opencode) => opencode.command.build_initial(),
+                        CodingAgent::Cursor(cursor) => cursor.command.build_initial(),
+                    }
+                })
                 .unwrap_or_else(|| panic!("Profile not found: {label}"))
         };
 
@@ -170,5 +175,58 @@ mod tests {
         assert!(cursor_command.contains("cursor-agent"));
         assert!(cursor_command.contains("-p"));
         assert!(cursor_command.contains("--output-format=stream-json"));
+    }
+
+    #[test]
+    fn test_flattened_agent_deserialization() {
+        let test_json = r#"{
+            "profiles": [
+                {
+                    "label": "test-claude",
+                    "mcp_config_path": null,
+                    "CLAUDE_CODE": {
+                        "command": {
+                            "base": "npx claude",
+                            "params": ["--test"]
+                        },
+                        "plan": true
+                    }
+                },
+                {
+                    "label": "test-gemini",
+                    "mcp_config_path": null,
+                    "GEMINI": {
+                        "command": {
+                            "base": "npx gemini",
+                            "params": ["--test"]
+                        }
+                    }
+                }
+            ]
+        }"#;
+
+        let profiles: AgentProfiles = serde_json::from_str(test_json).expect("Should deserialize");
+        assert_eq!(profiles.profiles.len(), 2);
+
+        // Test Claude profile
+        let claude_profile = profiles.get_profile("test-claude").unwrap();
+        match &claude_profile.agent {
+            crate::executors::CodingAgent::ClaudeCode(claude) => {
+                assert_eq!(claude.command.base, "npx claude");
+                assert_eq!(claude.command.params.as_ref().unwrap()[0], "--test");
+                assert_eq!(claude.plan, true);
+            }
+            _ => panic!("Expected ClaudeCode agent"),
+        }
+
+        // Test Gemini profile
+        let gemini_profile = profiles.get_profile("test-gemini").unwrap();
+        match &gemini_profile.agent {
+            crate::executors::CodingAgent::Gemini(gemini) => {
+                assert_eq!(gemini.command.base, "npx gemini");
+                assert_eq!(gemini.command.params.as_ref().unwrap()[0], "--test");
+            }
+            _ => panic!("Expected Gemini agent"),
+        }
     }
 }

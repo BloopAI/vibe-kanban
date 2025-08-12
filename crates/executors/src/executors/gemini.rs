@@ -6,7 +6,7 @@ use futures::{StreamExt, stream::BoxStream};
 use serde::{Deserialize, Serialize};
 use tokio::{
     fs::{self, OpenOptions},
-    io::{AsyncReadExt, AsyncWriteExt},
+    io::AsyncWriteExt,
     process::Command,
 };
 use ts_rs::TS;
@@ -14,7 +14,7 @@ use utils::{msg_store::MsgStore, shell::get_shell_command};
 
 use crate::{
     command::{AgentProfiles, CommandBuilder},
-    executors::{ExecutorError, StandardCodingAgentExecutor},
+    executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
     logs::{
         NormalizedEntry, NormalizedEntryType, plain_text_processor::PlainTextLogProcessor,
         stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider,
@@ -25,7 +25,7 @@ use crate::{
 /// An executor that uses Gemini to process tasks
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Gemini {
-    command_builder: CommandBuilder,
+    pub command: CommandBuilder,
 }
 
 impl Default for Gemini {
@@ -42,7 +42,7 @@ impl StandardCodingAgentExecutor for Gemini {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let gemini_command = self.command_builder.build_initial();
+        let gemini_command = self.command.build_initial();
 
         let mut command = Command::new(shell_cmd);
 
@@ -86,7 +86,7 @@ impl StandardCodingAgentExecutor for Gemini {
         let followup_prompt = Self::build_followup_prompt(current_dir, prompt).await?;
 
         let (shell_cmd, shell_arg) = get_shell_command();
-        let gemini_command = self.command_builder.build_follow_up(&[]);
+        let gemini_command = self.command.build_follow_up(&[]);
 
         let mut command = Command::new(shell_cmd);
 
@@ -321,11 +321,9 @@ impl Gemini {
             .get_profile("gemini")
             .expect("Default gemini profile should exist");
 
-        Self::with_command_builder(profile.command.clone())
-    }
-
-    /// Create a new Gemini executor with custom command builder
-    pub fn with_command_builder(command_builder: CommandBuilder) -> Self {
-        Self { command_builder }
+        match &profile.agent {
+            CodingAgent::Gemini(gemini) => gemini.clone(),
+            _ => panic!("Expected Gemini agent in gemini profile"),
+        }
     }
 }

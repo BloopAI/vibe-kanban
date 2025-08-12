@@ -12,7 +12,7 @@ use utils::{
 
 use crate::{
     command::{AgentProfiles, CommandBuilder},
-    executors::{ExecutorError, StandardCodingAgentExecutor},
+    executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
     logs::{
         ActionType, EditDiff, NormalizedEntry, NormalizedEntryType,
         stderr_processor::normalize_stderr_logs,
@@ -23,8 +23,8 @@ use crate::{
 /// An executor that uses Claude CLI to process tasks
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct ClaudeCode {
-    executor_type: String,
-    command_builder: CommandBuilder,
+    pub command: CommandBuilder,
+    pub plan: bool,
 }
 
 impl Default for ClaudeCode {
@@ -41,7 +41,12 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let claude_command = self.command_builder.build_initial();
+        let claude_command = if self.plan {
+            let base_command = self.command.build_initial();
+            create_watchkill_script(&base_command)
+        } else {
+            self.command.build_initial()
+        };
 
         let mut command = Command::new(shell_cmd);
         command
@@ -72,9 +77,15 @@ impl StandardCodingAgentExecutor for ClaudeCode {
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         // Build follow-up command with --resume {session_id}
-        let claude_command = self
-            .command_builder
-            .build_follow_up(&["--resume".to_string(), session_id.to_string()]);
+        let claude_command = if self.plan {
+            let base_command = self
+                .command
+                .build_follow_up(&["--resume".to_string(), session_id.to_string()]);
+            create_watchkill_script(&base_command)
+        } else {
+            self.command
+                .build_follow_up(&["--resume".to_string(), session_id.to_string()])
+        };
 
         let mut command = Command::new(shell_cmd);
         command
@@ -120,39 +131,9 @@ impl ClaudeCode {
             .get_profile("claude-code")
             .expect("Default claude-code profile should exist");
 
-        Self::with_command_builder(profile.label.clone(), profile.command.clone())
-    }
-
-    /// Create a new Claude executor in plan mode with watchkill script
-    pub fn new_plan_mode() -> Self {
-        let profile = AgentProfiles::get_cached()
-            .get_profile("claude-code-plan")
-            .expect("Default claude-code-plan profile should exist");
-
-        let base_command = profile.command.build_initial();
-        // Note: We'll need to update this to handle watchkill script properly
-        // For now, we'll create a custom command builder
-        let watchkill_command = create_watchkill_script(&base_command);
-        Self {
-            executor_type: "ClaudePlan".to_string(),
-            command_builder: CommandBuilder::new(watchkill_command),
-        }
-    }
-
-    /// Create a new Claude executor using claude-code-router
-    pub fn new_claude_code_router() -> Self {
-        let profile = AgentProfiles::get_cached()
-            .get_profile("claude-code-router")
-            .expect("Default claude-code-router profile should exist");
-
-        Self::with_command_builder(profile.label.clone(), profile.command.clone())
-    }
-
-    /// Create a new Claude executor with custom command builder
-    pub fn with_command_builder(executor_type: String, command_builder: CommandBuilder) -> Self {
-        Self {
-            executor_type,
-            command_builder,
+        match &profile.agent {
+            CodingAgent::ClaudeCode(claude_code) => claude_code.clone(),
+            _ => panic!("Expected ClaudeCode agent in claude-code profile"),
         }
     }
 }
@@ -1114,7 +1095,7 @@ mod tests {
     fn test_claude_executor_command_building() {
         // Test default executor produces correct command
         let executor = ClaudeCode::new();
-        let command = executor.command_builder.build_initial();
+        let command = executor.command.build_initial();
         assert!(command.contains("npx -y @anthropic-ai/claude-code@latest"));
         assert!(command.contains("-p"));
         assert!(command.contains("--dangerously-skip-permissions"));
@@ -1123,7 +1104,7 @@ mod tests {
 
         // Test follow-up command
         let follow_up = executor
-            .command_builder
+            .command
             .build_follow_up(&["--resume".to_string(), "test-session-123".to_string()]);
         assert!(follow_up.contains("--resume test-session-123"));
         assert!(follow_up.contains("-p")); // Still contains base params
