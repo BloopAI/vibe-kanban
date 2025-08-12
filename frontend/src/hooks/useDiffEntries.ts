@@ -17,7 +17,9 @@ export const useDiffEntries = (
   const diffs = useMemo(() => {
     if (!data) return [];
     return Object.values(data.entries)
-      .filter((e): e is Extract<PatchType, { type: 'DIFF' }> => e?.type === 'DIFF')
+      .filter(
+        (e): e is Extract<PatchType, { type: 'DIFF' }> => e?.type === 'DIFF'
+      )
       .map((e) => e.content);
   }, [data]);
 
