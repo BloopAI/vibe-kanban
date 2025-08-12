@@ -592,6 +592,18 @@ export const mcpServersApi = {
       );
     }
   },
+  openInEditor: async (executor?: string): Promise<void> => {
+    const queryParam = executor
+      ? `?base_coding_agent=${encodeURIComponent(executor)}`
+      : '';
+    const response = await makeRequest(
+      `/api/mcp-config/open-editor${queryParam}`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
 };
 
 // Profiles API
@@ -609,5 +621,11 @@ export const profilesApi = {
       },
     });
     return handleApiResponse<string>(response);
+  },
+  openInEditor: async (): Promise<void> => {
+    const response = await makeRequest('/api/profiles/open-editor', {
+      method: 'POST',
+    });
+    return handleApiResponse<void>(response);
   },
 };

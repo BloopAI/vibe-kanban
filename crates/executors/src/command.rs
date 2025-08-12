@@ -1,18 +1,13 @@
-use std::{
-    collections::{HashMap, HashSet},
-    fs,
-    sync::OnceLock,
-};
+use std::{collections::HashMap, fs, sync::OnceLock};
 
 use serde::{Deserialize, Serialize};
-use strum::IntoEnumIterator;
 use ts_rs::TS;
 
 use crate::executors::BaseCodingAgent;
 
 static PROFILES_CACHE: OnceLock<AgentProfiles> = OnceLock::new();
 
-// Default profiels embedded at compile time
+// Default profiles embedded at compile time
 const DEFAULT_PROFILES_JSON: &str = include_str!("../default_profiles.json");
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
@@ -81,58 +76,32 @@ impl AgentProfiles {
     }
 
     fn load() -> Self {
-        let mut profiles = Self::from_defaults();
+        let profiles_path = utils::assets::profiles_path();
 
-        if let Err(e) = profiles.extend_from_file() {
-            if e.kind() != std::io::ErrorKind::NotFound {
-                tracing::warn!("Failed to load additional profiles: {}", e);
+        // load from profiles.json if it exists, otherwise use defaults
+        let content = match fs::read_to_string(&profiles_path) {
+            Ok(content) => content,
+            Err(e) => {
+                tracing::warn!("Failed to read profiles.json: {}, using defaults", e);
+                return Self::from_defaults();
             }
-        } else {
-            tracing::info!("Loaded additional profiles from profiles.json");
-        }
+        };
 
-        profiles
+        match serde_json::from_str::<Self>(&content) {
+            Ok(profiles) => {
+                tracing::info!("Loaded all profiles from profiles.json");
+                profiles
+            }
+            Err(e) => {
+                tracing::warn!("Failed to parse profiles.json: {}, using defaults", e);
+                Self::from_defaults()
+            }
+        }
     }
 
     pub fn from_defaults() -> Self {
         serde_json::from_str(DEFAULT_PROFILES_JSON)
             .expect("Failed to parse embedded default_profiles.json")
-    }
-
-    pub fn extend_from_file(&mut self) -> Result<(), std::io::Error> {
-        let profiles_path = utils::assets::profiles_path();
-        if !profiles_path.exists() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!("Profiles file not found at {profiles_path:?}"),
-            ));
-        }
-
-        let content = fs::read_to_string(&profiles_path)?;
-
-        let user_profiles: Self = serde_json::from_str(&content).map_err(|e| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Failed to parse profiles.json: {e}"),
-            )
-        })?;
-
-        let default_labels: HashSet<String> =
-            self.profiles.iter().map(|p| p.label.clone()).collect();
-
-        // Only add user profiles with unique labels
-        for user_profile in user_profiles.profiles {
-            if !default_labels.contains(&user_profile.label) {
-                self.profiles.push(user_profile);
-            } else {
-                tracing::debug!(
-                    "Skipping user profile '{}' - default with same label exists",
-                    user_profile.label
-                );
-            }
-        }
-
-        Ok(())
     }
 
     pub fn get_profile(&self, label: &str) -> Option<&AgentProfile> {
@@ -148,38 +117,6 @@ impl AgentProfiles {
             .iter()
             .map(|p| (p.label.clone(), p.clone()))
             .collect()
-    }
-
-    pub fn default_example_json() -> String {
-        let example_profile = AgentProfile {
-            label: "my-claude-opus".to_string(),
-            agent: BaseCodingAgent::ClaudeCode,
-            command: CommandBuilder::new("npx -y @anthropic-ai/claude-code@latest").params(vec![
-                "-p",
-                "--dangerously-skip-permissions",
-                "--verbose",
-                "--output-format=stream-json",
-                "--model=opus",
-            ]),
-        };
-
-        let example_profiles = Self {
-            profiles: vec![example_profile],
-        };
-
-        let base_agents = BaseCodingAgent::iter()
-            .map(|agent| agent.to_string())
-            .collect::<Vec<_>>();
-
-        let mut json = serde_json::to_value(&example_profiles).unwrap();
-        if let Some(obj) = json.as_object_mut() {
-            obj.insert(
-                "_documentation".to_string(),
-                serde_json::json!(format!("Custom agent profiles. Each profile needs: a unique label, a valid agent argument (one of: {}), and command (base + optional params array).", base_agents.join(", "))),
-            );
-        }
-
-        serde_json::to_string_pretty(&json).unwrap()
     }
 }
 

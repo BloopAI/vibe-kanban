@@ -19,7 +19,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Key, Loader2, Volume2, Code2 } from 'lucide-react';
+import { Key, Loader2, Volume2 } from 'lucide-react';
 import { ThemeMode, EditorType, SoundFile } from 'shared/types';
 
 import { toPrettyCase } from '@/utils/string';
@@ -586,11 +586,10 @@ export function Settings() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Code2 className="h-5 w-5" />
                 Agent Profiles
               </CardTitle>
               <CardDescription>
-                Configure custom agent profiles with specific command-line
+                Configure coding agent profiles with specific command-line
                 parameters.
               </CardDescription>
             </CardHeader>
@@ -625,18 +624,24 @@ export function Settings() {
                 />
                 {!profilesError && profilesPath && (
                   <p className="text-sm text-muted-foreground">
-                    Configuration file:{' '}
+                    Changes will be saved to:{' '}
                     <span className="font-mono text-xs">{profilesPath}</span>
                   </p>
                 )}
                 <p className="text-sm text-muted-foreground">
-                  Add custom profiles that will appear alongside built-in
-                  profiles. Each profile needs a unique label, agent type, and
-                  command configuration.
+                  Edit coding agent profiles. Each profile needs a unique label,
+                  agent type, and command configuration.
                 </p>
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex justify-between">
+                <Button
+                  variant="outline"
+                  onClick={() => profilesApi.openInEditor()}
+                  disabled={profilesLoading}
+                >
+                  Open in Editor
+                </Button>
                 <Button
                   onClick={handleSaveProfiles}
                   disabled={
