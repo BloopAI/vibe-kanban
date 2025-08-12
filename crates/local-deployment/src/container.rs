@@ -617,10 +617,8 @@ impl LocalContainerService {
         // Remove files that changed but no longer have diffs
         for changed_path in changed_paths {
             if !files_with_diffs.contains(changed_path) {
-                let patch = ConversationPatch::remove_diff(
-                    escape_json_pointer_segment(changed_path),
-                    changed_path,
-                );
+                let patch =
+                    ConversationPatch::remove_diff(escape_json_pointer_segment(changed_path));
                 let event = LogMsg::JsonPatch(patch).to_sse_event();
                 events.push(event);
             }

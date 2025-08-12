@@ -94,10 +94,10 @@ impl ConversationPatch {
     }
 
     /// Create a REMOVE patch for removing a diff
-    pub fn remove_diff(entry_index: String, path: &str) -> Patch {
+    pub fn remove_diff(entry_index: String) -> Patch {
         from_value(json!([{
             "op": PatchOperation::Remove,
-            path: format!("/entries/{entry_index}"),
+            "path": format!("/entries/{entry_index}"),
         }]))
         .unwrap()
     }

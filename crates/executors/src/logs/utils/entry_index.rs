@@ -24,6 +24,10 @@ impl EntryIndexProvider {
     pub fn current(&self) -> usize {
         self.0.load(Ordering::Relaxed)
     }
+
+    pub fn reset(&self) {
+        self.0.store(0, Ordering::Relaxed);
+    }
 }
 
 impl Default for EntryIndexProvider {

@@ -117,7 +117,7 @@ impl StandardCodingAgentExecutor for Amp {
                     Ok(amp_json) => match amp_json {
                         AmpJson::Messages {
                             messages,
-                            tool_results: _,
+                            tool_results,
                         } => {
                             for (amp_message_id, message) in messages {
                                 let role = &message.role;
@@ -133,6 +133,22 @@ impl StandardCodingAgentExecutor for Amp {
                                         &message,
                                         &current_dir.to_string_lossy(),
                                     ) {
+                                        // Text
+                                        if matches!(&content_item, AmpContentItem::Text { .. })
+                                            && role == "user"
+                                        {
+                                            // Remove all previous roles
+                                            for index_to_remove in 0..entry_index_provider.current()
+                                            {
+                                                raw_logs_msg_store.push_patch(
+                                                    ConversationPatch::remove_diff(
+                                                        index_to_remove.to_string(),
+                                                    ),
+                                                );
+                                            }
+                                            entry_index_provider.reset();
+                                        }
+
                                         let patch: Patch = match &mut has_patch_ids {
                                             None => {
                                                 let new_id = entry_index_provider.next();
