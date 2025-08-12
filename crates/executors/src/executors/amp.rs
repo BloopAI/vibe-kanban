@@ -7,9 +7,7 @@ use json_patch::Patch;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
-use utils::{
-    msg_store::MsgStore, path::make_path_relative, shell::get_shell_command,
-};
+use utils::{msg_store::MsgStore, path::make_path_relative, shell::get_shell_command};
 
 use crate::{
     command::{AgentProfiles, CommandBuilder},

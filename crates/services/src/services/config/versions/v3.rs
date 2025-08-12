@@ -52,9 +52,10 @@ impl Config {
 impl From<String> for Config {
     fn from(raw_config: String) -> Self {
         if let Ok(config) = serde_json::from_str::<Config>(&raw_config)
-            && config.config_version == "v3" {
-                return config;
-            }
+            && config.config_version == "v3"
+        {
+            return config;
+        }
 
         match Self::from_previous_version(&raw_config) {
             Ok(config) => {
