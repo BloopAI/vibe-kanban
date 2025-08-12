@@ -7,7 +7,7 @@ use crate::executors::CodingAgent;
 
 static PROFILES_CACHE: OnceLock<AgentProfiles> = OnceLock::new();
 
-// Default profiles embedded at compile time
+// Default profiels embedded at compile time
 const DEFAULT_PROFILES_JSON: &str = include_str!("../default_profiles.json");
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
@@ -101,6 +101,42 @@ impl AgentProfiles {
     pub fn from_defaults() -> Self {
         serde_json::from_str(DEFAULT_PROFILES_JSON)
             .expect("Failed to parse embedded default_profiles.json")
+    }
+
+    pub fn extend_from_file(&mut self) -> Result<(), std::io::Error> {
+        let profiles_path = utils::assets::profiles_path();
+        if !profiles_path.exists() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Profiles file not found at {profiles_path:?}"),
+            ));
+        }
+
+        let content = fs::read_to_string(&profiles_path)?;
+
+        let user_profiles: Self = serde_json::from_str(&content).map_err(|e| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("Failed to parse profiles.json: {e}"),
+            )
+        })?;
+
+        let default_labels: HashSet<String> =
+            self.profiles.iter().map(|p| p.label.clone()).collect();
+
+        // Only add user profiles with unique labels
+        for user_profile in user_profiles.profiles {
+            if !default_labels.contains(&user_profile.label) {
+                self.profiles.push(user_profile);
+            } else {
+                tracing::debug!(
+                    "Skipping user profile '{}' - default with same label exists",
+                    user_profile.label
+                );
+            }
+        }
+
+        Ok(())
     }
 
     pub fn get_profile(&self, label: &str) -> Option<&AgentProfile> {
