@@ -1,5 +1,5 @@
 import { generateDiffFile } from '@git-diff-view/file';
-import { useDiffStream } from '@/hooks/useDiffStream';
+import { useDiffEntries } from '@/hooks/useDiffEntries';
 import { useMemo, useContext, useCallback, useState, useEffect } from 'react';
 import { TaskSelectedAttemptContext } from '@/components/context/taskDetailsContext.ts';
 import { Diff } from 'shared/types';
@@ -10,13 +10,13 @@ import DiffCard from '@/components/DiffCard';
 function DiffTab() {
   const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
   const [loading, setLoading] = useState(true);
-  const { data, error } = useDiffStream(selectedAttempt?.id ?? null, true);
+  const { diffs, error } = useDiffEntries(selectedAttempt?.id ?? null, true);
 
   useEffect(() => {
-    if (data && Object.keys(data?.entries).length > 0 && loading) {
+    if (diffs.length > 0 && loading) {
       setLoading(false);
     }
-  }, [data]);
+  }, [diffs, loading]);
 
   const createDiffFile = useCallback((diff: Diff) => {
     const oldFileName = diff.oldFile?.fileName || 'old';
@@ -42,12 +42,10 @@ function DiffTab() {
   }, []);
 
   const diffFiles = useMemo(() => {
-    if (!data) return [];
-    return Object.values(data.entries)
-      .filter((e: any) => e?.type === 'DIFF')
-      .map((e: any) => createDiffFile(e.content as Diff))
+    return diffs
+      .map((diff) => createDiffFile(diff))
       .filter((diffFile) => diffFile !== null);
-  }, [data, createDiffFile]);
+  }, [diffs, createDiffFile]);
 
   if (error) {
     return (

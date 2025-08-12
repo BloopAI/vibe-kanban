@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
-import type { Diff } from 'shared/types';
+import type { PatchType } from 'shared/types';
 import { useJsonPatchStream } from './useJsonPatchStream';
 
 interface DiffState {
-  entries: Record<string, Diff>;
+  entries: Record<string, PatchType>;
 }
 
 interface UseDiffStreamResult {
