@@ -207,6 +207,9 @@ pub trait ContainerService {
                         Ok::<_, std::io::Error>(event)
                     }),
             )
+            .chain(futures::stream::once(async {
+                Ok::<_, std::io::Error>(LogMsg::Finished.to_sse_event())
+            }))
             .boxed();
 
             Some(stream)
@@ -331,6 +334,9 @@ pub trait ContainerService {
                     .history_plus_stream()
                     .filter(|msg| future::ready(matches!(msg, Ok(LogMsg::JsonPatch(..)))))
                     .map_ok(|m| m.to_sse_event())
+                    .chain(futures::stream::once(async {
+                        Ok::<_, std::io::Error>(LogMsg::Finished.to_sse_event())
+                    }))
                     .boxed(),
             )
         }
