@@ -1182,7 +1182,7 @@ impl GitService {
             let mut index = repo.index()?;
             if index.has_conflicts() {
                 return Err(GitServiceError::MergeConflicts(format!(
-                    "Cherry-pick failed due to conflicts on commit {commit_id}"
+                    "Cherry-pick failed due to conflicts on commit {commit_id}, please resolve conflicts manually"
                 )));
             }
 
