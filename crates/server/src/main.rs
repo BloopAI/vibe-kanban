@@ -65,11 +65,7 @@ async fn main() -> Result<(), VibeKanbanError> {
     let actual_port = listener.local_addr()?.port(); // get → 53427 (example)
 
     // Write port file for discovery
-    if let Err(e) = write_port_file(actual_port) {
-        tracing::warn!("Failed to write port file: {}", e);
-    } else {
-        tracing::info!("Port file written for discovery");
-    }
+    write_port_file(actual_port).await?;
 
     tracing::info!("Server running on http://{host}:{actual_port}");
 
