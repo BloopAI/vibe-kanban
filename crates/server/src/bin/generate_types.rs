@@ -80,7 +80,7 @@ fn generate_types_content() -> String {
         executors::logs::NormalizedConversation::decl(),
         executors::logs::NormalizedEntry::decl(),
         executors::logs::NormalizedEntryType::decl(),
-        executors::logs::EditDiff::decl(),
+        executors::logs::FileChange::decl(),
         executors::logs::ActionType::decl(),
         executors::logs::TodoItem::decl(),
         executors::logs::utils::patch::PatchType::decl(),

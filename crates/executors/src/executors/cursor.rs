@@ -7,13 +7,21 @@ use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
-use utils::{msg_store::MsgStore, path::make_path_relative, shell::get_shell_command};
+use utils::{
+    diff::{
+        concatenate_diff_hunks, create_unified_diff, create_unified_diff_hunk,
+        extract_unified_diff_hunks,
+    },
+    msg_store::MsgStore,
+    path::make_path_relative,
+    shell::get_shell_command,
+};
 
 use crate::{
     command::CommandBuilder,
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
-        ActionType, EditDiff, NormalizedEntry, NormalizedEntryType, TodoItem,
+        ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem,
         plain_text_processor::PlainTextLogProcessor,
         utils::{ConversationPatch, EntryIndexProvider},
     },
@@ -480,39 +488,50 @@ impl CursorToolCall {
                 (
                     ActionType::FileEdit {
                         path: path.clone(),
-                        diffs: vec![],
+                        changes: vec![],
                     },
                     format!("`{path}`"),
                 )
             }
             CursorToolCall::Edit { args, .. } => {
                 let path = make_path_relative(&args.path, worktree_path);
-                let mut diffs = vec![];
+                let mut changes = vec![];
 
-                if let Some(_apply_patch) = &args.apply_patch {
-                    // todo: handle v4a
+                if let Some(apply_patch) = &args.apply_patch {
+                    let hunks = extract_unified_diff_hunks(&apply_patch.patch_content);
+                    changes.push(FileChange::Edit {
+                        unified_diff: concatenate_diff_hunks(&path, &hunks),
+                        has_line_numbers: false,
+                    });
                 }
 
                 if let Some(str_replace) = &args.str_replace {
-                    diffs.push(EditDiff::Replace {
-                        old: str_replace.old_text.clone(),
-                        new: str_replace.new_text.clone(),
+                    changes.push(FileChange::Edit {
+                        unified_diff: create_unified_diff(
+                            &path,
+                            &str_replace.old_text,
+                            &str_replace.new_text,
+                        ),
+                        has_line_numbers: false,
                     });
                 }
 
                 if let Some(multi_str_replace) = &args.multi_str_replace {
-                    for edit in multi_str_replace.edits.iter() {
-                        diffs.push(EditDiff::Replace {
-                            old: edit.old_text.clone(),
-                            new: edit.new_text.clone(),
-                        });
-                    }
+                    let hunks: Vec<String> = multi_str_replace
+                        .edits
+                        .iter()
+                        .map(|edit| create_unified_diff_hunk(&edit.old_text, &edit.new_text))
+                        .collect();
+                    changes.push(FileChange::Edit {
+                        unified_diff: concatenate_diff_hunks(&path, &hunks),
+                        has_line_numbers: false,
+                    });
                 }
 
                 (
                     ActionType::FileEdit {
                         path: path.clone(),
-                        diffs,
+                        changes,
                     },
                     format!("`{path}`"),
                 )
@@ -522,7 +541,7 @@ impl CursorToolCall {
                 (
                     ActionType::FileEdit {
                         path: path.clone(),
-                        diffs: vec![],
+                        changes: vec![],
                     },
                     format!("`{path}`"),
                 )

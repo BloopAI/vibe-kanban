@@ -9,13 +9,16 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
-use utils::{msg_store::MsgStore, path::make_path_relative, shell::get_shell_command};
+use utils::{
+    diff::create_unified_diff, msg_store::MsgStore, path::make_path_relative,
+    shell::get_shell_command,
+};
 
 use crate::{
     command::CommandBuilder,
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
-        ActionType, EditDiff, NormalizedEntry, NormalizedEntryType, TodoItem,
+        ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem,
         plain_text_processor::{MessageBoundary, PlainTextLogProcessor},
         utils::EntryIndexProvider,
     },
@@ -679,16 +682,14 @@ impl ToolUtils {
             Tool::Write {
                 file_path, content, ..
             } => {
-                let diffs = match content {
-                    Some(content) => vec![EditDiff::Replace {
-                        old: String::new(),
-                        new: content.clone(),
-                    }],
-                    None => Vec::new(),
+                let changes = if let Some(content) = content.clone() {
+                    vec![FileChange::Write { content }]
+                } else {
+                    vec![]
                 };
                 ActionType::FileEdit {
                     path: make_path_relative(file_path, worktree_path),
-                    diffs,
+                    changes,
                 }
             }
             Tool::Edit {
@@ -697,16 +698,16 @@ impl ToolUtils {
                 new_string,
                 ..
             } => {
-                let diffs = match (old_string, new_string) {
-                    (Some(old), Some(new)) => vec![EditDiff::Replace {
-                        old: old.clone(),
-                        new: new.clone(),
+                let changes = match (old_string, new_string) {
+                    (Some(old), Some(new)) => vec![FileChange::Edit {
+                        unified_diff: create_unified_diff(file_path, old, new),
+                        has_line_numbers: false,
                     }],
                     _ => Vec::new(),
                 };
                 ActionType::FileEdit {
                     path: make_path_relative(file_path, worktree_path),
-                    diffs,
+                    changes,
                 }
             }
             Tool::Bash { command, .. } => ActionType::CommandRun {

@@ -7,13 +7,16 @@ use json_patch::Patch;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
-use utils::{msg_store::MsgStore, path::make_path_relative, shell::get_shell_command};
+use utils::{
+    diff::create_unified_diff, msg_store::MsgStore, path::make_path_relative,
+    shell::get_shell_command,
+};
 
 use crate::{
     command::CommandBuilder,
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
-        ActionType, EditDiff, NormalizedEntry, NormalizedEntryType, TodoItem as LogsTodoItem,
+        ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem as LogsTodoItem,
         stderr_processor::normalize_stderr_logs,
         utils::{EntryIndexProvider, patch::ConversationPatch},
     },
@@ -450,17 +453,16 @@ impl AmpContentItem {
                 path: make_path_relative(path, worktree_path),
             },
             AmpToolData::CreateFile { path, content, .. } => {
-                let diffs = content
+                let changes = content
                     .as_ref()
-                    .map(|content| EditDiff::Replace {
-                        old: String::new(),
-                        new: content.clone(),
+                    .map(|content| FileChange::Write {
+                        content: content.clone(),
                     })
                     .into_iter()
                     .collect();
                 ActionType::FileEdit {
                     path: make_path_relative(path, worktree_path),
-                    diffs,
+                    changes,
                 }
             }
             AmpToolData::EditFile {
@@ -469,17 +471,21 @@ impl AmpContentItem {
                 new_str,
                 ..
             } => {
-                let diffs = if old_str.is_some() || new_str.is_some() {
-                    vec![EditDiff::Replace {
-                        old: old_str.clone().unwrap_or_default(),
-                        new: new_str.clone().unwrap_or_default(),
+                let changes = if old_str.is_some() || new_str.is_some() {
+                    vec![FileChange::Edit {
+                        unified_diff: create_unified_diff(
+                            path,
+                            old_str.as_deref().unwrap_or(""),
+                            new_str.as_deref().unwrap_or(""),
+                        ),
+                        has_line_numbers: false,
                     }]
                 } else {
                     vec![]
                 };
                 ActionType::FileEdit {
                     path: make_path_relative(path, worktree_path),
-                    diffs,
+                    changes,
                 }
             }
             AmpToolData::Bash { command, .. } => ActionType::CommandRun {

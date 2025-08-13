@@ -7,7 +7,7 @@ import {
   CheckSquare,
   ChevronRight,
   ChevronUp,
-  // Edit,
+  Edit,
   Eye,
   Globe,
   Plus,
@@ -16,7 +16,12 @@ import {
   Terminal,
   User,
 } from 'lucide-react';
-import { NormalizedEntry, type NormalizedEntryType } from 'shared/types.ts';
+import {
+  NormalizedEntry,
+  type NormalizedEntryType,
+  type ActionType,
+} from 'shared/types.ts';
+import FileChangeRenderer from './FileChangeRenderer';
 
 type Props = {
   entry: NormalizedEntry;
@@ -58,8 +63,8 @@ const getEntryIcon = (entryType: NormalizedEntryType) => {
 
     if (action_type.action === 'file_read') {
       return <Eye className="h-4 w-4 text-orange-600" />;
-      // } else if (action_type.action === 'file_edit') {
-      //   return <Edit className="h-4 w-4 text-red-600" />;
+    } else if (action_type.action === 'file_edit') {
+      return <Edit className="h-4 w-4 text-red-600" />;
     } else if (action_type.action === 'command_run') {
       return <Terminal className="h-4 w-4 text-yellow-600" />;
     } else if (action_type.action === 'search') {
@@ -146,6 +151,15 @@ function DisplayConversationEntry({ entry, index }: Props) {
   const isExpanded = expandedErrors.has(index);
   const hasMultipleLines = isErrorMessage && entry.content.includes('\n');
 
+  const fileEdit =
+    entry.entry_type.type === 'tool_use' &&
+    entry.entry_type.action_type.action === 'file_edit'
+      ? (entry.entry_type.action_type as Extract<
+          ActionType,
+          { action: 'file_edit' }
+        >)
+      : null;
+
   return (
     <div key={index} className="px-4 py-1">
       <div className="flex items-start gap-3">
@@ -209,6 +223,16 @@ function DisplayConversationEntry({ entry, index }: Props) {
               )}
             </div>
           )}
+
+          {fileEdit &&
+            Array.isArray(fileEdit.changes) &&
+            fileEdit.changes.map((change, idx) => (
+              <FileChangeRenderer
+                key={idx}
+                path={fileEdit.path}
+                change={change}
+              />
+            ))}
         </div>
       </div>
     </div>

@@ -7,13 +7,18 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
-use utils::{msg_store::MsgStore, path::make_path_relative, shell::get_shell_command};
+use utils::{
+    diff::{concatenate_diff_hunks, extract_unified_diff_hunks},
+    msg_store::MsgStore,
+    path::make_path_relative,
+    shell::get_shell_command,
+};
 
 use crate::{
     command::CommandBuilder,
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
-        ActionType, EditDiff, NormalizedEntry, NormalizedEntryType,
+        ActionType, FileChange, NormalizedEntry, NormalizedEntryType,
         utils::{EntryIndexProvider, patch::ConversationPatch},
     },
 };
@@ -342,7 +347,7 @@ pub enum CodexMsgContent {
     PatchApplyBegin {
         call_id: Option<String>,
         auto_approved: Option<bool>,
-        changes: std::collections::HashMap<String, FileChange>,
+        changes: std::collections::HashMap<String, CodexFileChange>,
     },
 
     #[serde(rename = "patch_apply_end")]
@@ -389,7 +394,7 @@ pub enum CodexMsgContent {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
-pub enum FileChange {
+pub enum CodexFileChange {
     Add {
         content: String,
     },
@@ -471,25 +476,39 @@ impl CodexJson {
                                 make_path_relative(file_path, &current_dir.to_string_lossy());
 
                             // Try to extract unified diff from change data
-                            let mut diffs = vec![];
+                            let mut changes = vec![];
 
                             match change_data {
-                                FileChange::Update { unified_diff, .. } => {
+                                CodexFileChange::Update {
+                                    unified_diff,
+                                    move_path,
+                                } => {
+                                    let mut new_path = relative_path.clone();
+
+                                    if let Some(move_path) = move_path {
+                                        new_path = make_path_relative(
+                                            &move_path.to_string_lossy(),
+                                            &current_dir.to_string_lossy(),
+                                        );
+                                        changes.push(FileChange::Rename {
+                                            new_path: new_path.clone(),
+                                        });
+                                    }
                                     if !unified_diff.is_empty() {
-                                        diffs.push(EditDiff::Unified {
-                                            unified_diff: unified_diff.clone(),
+                                        let hunks = extract_unified_diff_hunks(unified_diff);
+                                        changes.push(FileChange::Edit {
+                                            unified_diff: concatenate_diff_hunks(&new_path, &hunks),
+                                            has_line_numbers: true,
                                         });
                                     }
                                 }
-                                FileChange::Add { content } => {
-                                    // For new files, we could show the content as a diff
-                                    diffs.push(EditDiff::Replace {
-                                        old: String::new(),
-                                        new: content.clone(),
+                                CodexFileChange::Add { content } => {
+                                    changes.push(FileChange::Write {
+                                        content: content.clone(),
                                     });
                                 }
-                                FileChange::Delete => {
-                                    // For deletions, we don't have old content to show
+                                CodexFileChange::Delete => {
+                                    changes.push(FileChange::Delete);
                                 }
                             };
 
@@ -499,7 +518,7 @@ impl CodexJson {
                                     tool_name: "edit".to_string(),
                                     action_type: ActionType::FileEdit {
                                         path: relative_path.clone(),
-                                        diffs,
+                                        changes,
                                     },
                                 },
                                 content: relative_path,

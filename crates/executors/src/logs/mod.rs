@@ -6,14 +6,6 @@ pub mod stderr_processor;
 pub mod utils;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-#[serde(tag = "format", rename_all = "snake_case")]
-pub enum EditDiff {
-    Unified { unified_diff: String },
-    Replace { old: String, new: String },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct NormalizedConversation {
     pub entries: Vec<NormalizedEntry>,
     pub session_id: Option<String>,
@@ -64,7 +56,7 @@ pub enum ActionType {
     },
     FileEdit {
         path: String,
-        diffs: Vec<EditDiff>,
+        changes: Vec<FileChange>,
     },
     CommandRun {
         command: String,
@@ -87,5 +79,23 @@ pub enum ActionType {
     },
     Other {
         description: String,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(tag = "action", rename_all = "snake_case")]
+pub enum FileChange {
+    /// Create a file if it doesn't exist, and overwrite its content.
+    Write { content: String },
+    /// Delete a file.
+    Delete,
+    /// Rename a file.
+    Rename { new_path: String },
+    /// Edit a file with a unified diff.
+    Edit {
+        /// Unified diff containing file header and hunks.
+        unified_diff: String,
+        /// Whether line number in the hunks are reliable.
+        has_line_numbers: bool,
     },
 }

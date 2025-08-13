@@ -7,14 +7,18 @@ use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
 use utils::{
-    log_msg::LogMsg, msg_store::MsgStore, path::make_path_relative, shell::get_shell_command,
+    diff::{concatenate_diff_hunks, create_unified_diff, create_unified_diff_hunk},
+    log_msg::LogMsg,
+    msg_store::MsgStore,
+    path::make_path_relative,
+    shell::get_shell_command,
 };
 
 use crate::{
     command::CommandBuilder,
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
-        ActionType, EditDiff, NormalizedEntry, NormalizedEntryType, TodoItem,
+        ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem,
         stderr_processor::normalize_stderr_logs,
         utils::{EntryIndexProvider, patch::ConversationPatch},
     },
@@ -434,28 +438,32 @@ impl ClaudeLogProcessor {
                 old_string,
                 new_string,
             } => {
-                let diffs = if old_string.is_some() || new_string.is_some() {
-                    vec![EditDiff::Replace {
-                        old: old_string.clone().unwrap_or_default(),
-                        new: new_string.clone().unwrap_or_default(),
+                let changes = if old_string.is_some() || new_string.is_some() {
+                    vec![FileChange::Edit {
+                        unified_diff: create_unified_diff(
+                            file_path,
+                            &old_string.clone().unwrap_or_default(),
+                            &new_string.clone().unwrap_or_default(),
+                        ),
+                        has_line_numbers: false,
                     }]
                 } else {
                     vec![]
                 };
                 ActionType::FileEdit {
                     path: make_path_relative(file_path, worktree_path),
-                    diffs,
+                    changes,
                 }
             }
             ClaudeToolData::MultiEdit { file_path, edits } => {
-                let diffs = edits
+                let hunks: Vec<String> = edits
                     .iter()
                     .filter_map(|edit| {
                         if edit.old_string.is_some() || edit.new_string.is_some() {
-                            Some(EditDiff::Replace {
-                                old: edit.old_string.clone().unwrap_or_default(),
-                                new: edit.new_string.clone().unwrap_or_default(),
-                            })
+                            Some(create_unified_diff_hunk(
+                                &edit.old_string.clone().unwrap_or_default(),
+                                &edit.new_string.clone().unwrap_or_default(),
+                            ))
                         } else {
                             None
                         }
@@ -463,17 +471,19 @@ impl ClaudeLogProcessor {
                     .collect();
                 ActionType::FileEdit {
                     path: make_path_relative(file_path, worktree_path),
-                    diffs,
+                    changes: vec![FileChange::Edit {
+                        unified_diff: concatenate_diff_hunks(file_path, &hunks),
+                        has_line_numbers: false,
+                    }],
                 }
             }
             ClaudeToolData::Write { file_path, content } => {
-                let diffs = vec![EditDiff::Replace {
-                    old: String::new(),
-                    new: content.clone(),
+                let diffs = vec![FileChange::Write {
+                    content: content.clone(),
                 }];
                 ActionType::FileEdit {
                     path: make_path_relative(file_path, worktree_path),
-                    diffs,
+                    changes: diffs,
                 }
             }
             ClaudeToolData::Bash { command, .. } => ActionType::CommandRun {
@@ -503,7 +513,7 @@ impl ClaudeLogProcessor {
             }
             ClaudeToolData::NotebookEdit { notebook_path, .. } => ActionType::FileEdit {
                 path: make_path_relative(notebook_path, worktree_path),
-                diffs: vec![],
+                changes: vec![],
             },
             ClaudeToolData::TodoWrite { todos } => ActionType::TodoManagement {
                 todos: todos

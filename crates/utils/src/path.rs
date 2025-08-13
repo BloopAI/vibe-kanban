@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Convert absolute paths to relative paths based on worktree path
 /// This is a robust implementation that handles symlinks and edge cases
@@ -13,68 +13,92 @@ pub fn make_path_relative(path: &str, worktree_path: &str) -> String {
         return path.to_string();
     }
 
-    // Try to make path relative to the worktree path
-    match path_obj.strip_prefix(worktree_path_obj) {
-        Ok(relative_path) => {
-            let result = relative_path.to_string_lossy().to_string();
-            tracing::debug!("Successfully made relative: '{}' -> '{}'", path, result);
-            if result.is_empty() {
-                ".".to_string()
-            } else {
-                result
-            }
+    let path_obj = normalize_macos_private_alias(path_obj);
+    let worktree_path_obj = normalize_macos_private_alias(worktree_path_obj);
+
+    if let Ok(relative_path) = path_obj.strip_prefix(&worktree_path_obj) {
+        let result = relative_path.to_string_lossy().to_string();
+        tracing::debug!("Successfully made relative: '{}' -> '{}'", path, result);
+        if result.is_empty() {
+            return ".".to_string();
         }
-        Err(_) => {
-            // Handle symlinks by resolving canonical paths
-            let canonical_path = std::fs::canonicalize(path);
-            let canonical_worktree = std::fs::canonicalize(worktree_path);
+        return result;
+    }
 
-            match (canonical_path, canonical_worktree) {
-                (Ok(canon_path), Ok(canon_worktree)) => {
+    if !path_obj.exists() || !worktree_path_obj.exists() {
+        return path.to_string();
+    }
+
+    // canonicalize may fail if paths don't exist
+    let canonical_path = std::fs::canonicalize(&path_obj);
+    let canonical_worktree = std::fs::canonicalize(&worktree_path_obj);
+
+    match (canonical_path, canonical_worktree) {
+        (Ok(canon_path), Ok(canon_worktree)) => {
+            tracing::debug!(
+                "Trying canonical path resolution: '{}' -> '{}', '{}' -> '{}'",
+                path,
+                canon_path.display(),
+                worktree_path,
+                canon_worktree.display()
+            );
+
+            match canon_path.strip_prefix(&canon_worktree) {
+                Ok(relative_path) => {
+                    let result = relative_path.to_string_lossy().to_string();
                     tracing::debug!(
-                        "Trying canonical path resolution: '{}' -> '{}', '{}' -> '{}'",
+                        "Successfully made relative with canonical paths: '{}' -> '{}'",
                         path,
-                        canon_path.display(),
-                        worktree_path,
-                        canon_worktree.display()
+                        result
                     );
-
-                    match canon_path.strip_prefix(&canon_worktree) {
-                        Ok(relative_path) => {
-                            let result = relative_path.to_string_lossy().to_string();
-                            tracing::debug!(
-                                "Successfully made relative with canonical paths: '{}' -> '{}'",
-                                path,
-                                result
-                            );
-                            if result.is_empty() {
-                                ".".to_string()
-                            } else {
-                                result
-                            }
-                        }
-                        Err(e) => {
-                            tracing::warn!(
-                                "Failed to make canonical path relative: '{}' relative to '{}', error: {}, returning original",
-                                canon_path.display(),
-                                canon_worktree.display(),
-                                e
-                            );
-                            path.to_string()
-                        }
+                    if result.is_empty() {
+                        return ".".to_string();
                     }
+                    result
                 }
-                _ => {
-                    tracing::debug!(
-                        "Could not canonicalize paths (paths may not exist): '{}', '{}', returning original",
-                        path,
-                        worktree_path
+                Err(e) => {
+                    tracing::warn!(
+                        "Failed to make canonical path relative: '{}' relative to '{}', error: {}, returning original",
+                        canon_path.display(),
+                        canon_worktree.display(),
+                        e
                     );
                     path.to_string()
                 }
             }
         }
+        _ => {
+            tracing::debug!(
+                "Could not canonicalize paths (paths may not exist): '{}', '{}', returning original",
+                path,
+                worktree_path
+            );
+            path.to_string()
+        }
     }
+}
+
+/// Normalize macOS prefix /private/var/ and /private/tmp/ to their public aliases without resolving paths.
+/// This allows prefix normalization to work when the full paths don't exist.
+fn normalize_macos_private_alias<P: AsRef<Path>>(p: P) -> PathBuf {
+    let p = p.as_ref();
+    if cfg!(target_os = "macos")
+        && let Some(s) = p.to_str()
+    {
+        if s == "/private/var" {
+            return PathBuf::from("/var");
+        }
+        if let Some(rest) = s.strip_prefix("/private/var/") {
+            return PathBuf::from(format!("/var/{rest}"));
+        }
+        if s == "/private/tmp" {
+            return PathBuf::from("/tmp");
+        }
+        if let Some(rest) = s.strip_prefix("/private/tmp/") {
+            return PathBuf::from(format!("/tmp/{rest}"));
+        }
+    }
+    p.to_path_buf()
 }
 
 pub fn get_vibe_kanban_temp_dir() -> std::path::PathBuf {
@@ -123,6 +147,29 @@ mod tests {
         assert_eq!(
             make_path_relative("/other/path/file.js", "/tmp/test-worktree"),
             "/other/path/file.js"
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_make_path_relative_macos_private_alias() {
+        // Simulate a worktree under /var with a path reported under /private/var
+        let worktree = "/var/folders/zz/abc123/T/vibe-kanban-dev/worktrees/vk-test";
+        let path_under_private = format!(
+            "/private/var{}/hello-world.txt",
+            worktree.strip_prefix("/var").unwrap()
+        );
+        assert_eq!(
+            make_path_relative(&path_under_private, worktree),
+            "hello-world.txt"
+        );
+
+        // Also handle the inverse: worktree under /private and path under /var
+        let worktree_private = format!("/private{}", worktree);
+        let path_under_var = format!("{}/hello-world.txt", worktree);
+        assert_eq!(
+            make_path_relative(&path_under_var, &worktree_private),
+            "hello-world.txt"
         );
     }
 }
