@@ -8,6 +8,7 @@ pub mod diff;
 pub mod log_msg;
 pub mod msg_store;
 pub mod path;
+pub mod port_file;
 pub mod response;
 pub mod sentry;
 pub mod shell;
