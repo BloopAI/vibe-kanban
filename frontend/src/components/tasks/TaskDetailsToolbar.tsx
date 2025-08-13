@@ -192,7 +192,7 @@ function TaskDetailsToolbar() {
         setSelectedAttempt((prev) => {
           if (JSON.stringify(prev) === JSON.stringify(selectedAttemptToUse))
             return prev;
-          
+
           // If we're setting a new selected attempt and no URL attempt ID is specified,
           // navigate to the new attempt URL
           if (!urlAttemptId && selectedAttemptToUse && task) {
@@ -201,7 +201,7 @@ function TaskDetailsToolbar() {
               { replace: true }
             );
           }
-          
+
           return selectedAttemptToUse;
         });
       } else {
