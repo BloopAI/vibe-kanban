@@ -207,7 +207,6 @@ function LogsTab() {
     filteredProcesses,
     state.userCollapsed,
     state.autoCollapsed,
-    state.prevStatus,
   ]);
 
   // Effect #3: Handle coding agent succession logic
