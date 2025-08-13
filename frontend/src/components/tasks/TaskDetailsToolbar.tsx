@@ -78,6 +78,7 @@ function TaskDetailsToolbar() {
   );
 
   const { isStopping } = useContext(TaskAttemptStoppingContext);
+  const location = useLocation();
   const { setAttemptData, isAttemptRunning } = useContext(
     TaskAttemptDataContext
   );
@@ -91,7 +92,6 @@ function TaskDetailsToolbar() {
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
 
-  const location = useLocation();
   const navigate = useNavigate();
   const { attemptId: urlAttemptId } = useParams<{ attemptId?: string }>();
   const { system, profiles } = useUserSystem();
@@ -162,10 +162,10 @@ function TaskDetailsToolbar() {
         const currentLatest =
           taskAttempts.length > 0
             ? taskAttempts.reduce((latest, current) =>
-                new Date(current.created_at) > new Date(latest.created_at)
-                  ? current
-                  : latest
-              )
+              new Date(current.created_at) > new Date(latest.created_at)
+                ? current
+                : latest
+            )
             : null;
 
         const newLatest = result.reduce((latest, current) =>
@@ -214,10 +214,11 @@ function TaskDetailsToolbar() {
             task &&
             (!urlAttemptId || urlAttemptId !== selectedAttemptToUse.id)
           ) {
-            navigate(
-              `/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttemptToUse.id}`,
-              { replace: true }
-            );
+            const isFullScreen = location.pathname.endsWith('/full');
+            const targetUrl = isFullScreen
+              ? `/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttemptToUse.id}/full`
+              : `/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttemptToUse.id}`;
+            navigate(targetUrl, { replace: true });
           }
 
           return selectedAttemptToUse;
@@ -259,13 +260,14 @@ function TaskDetailsToolbar() {
     (attempt: TaskAttempt | null) => {
       setSelectedAttempt(attempt);
       if (attempt && task) {
-        navigate(
-          `/projects/${projectId}/tasks/${task.id}/attempts/${attempt.id}`,
-          { replace: true }
-        );
+        const isFullScreen = location.pathname.endsWith('/full');
+        const targetUrl = isFullScreen
+          ? `/projects/${projectId}/tasks/${task.id}/attempts/${attempt.id}/full`
+          : `/projects/${projectId}/tasks/${task.id}/attempts/${attempt.id}`;
+        navigate(targetUrl, { replace: true });
       }
     },
-    [navigate, projectId, task, setSelectedAttempt]
+    [navigate, projectId, task, setSelectedAttempt, location.pathname]
   );
 
   // Stub handlers for backward compatibility with CreateAttempt
@@ -323,7 +325,7 @@ function TaskDetailsToolbar() {
 
   return (
     <>
-      <div className="px-4 pb-4 border-b">
+      <div className="p-4 border-b">
         {/* Error Display */}
         {ui.error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">

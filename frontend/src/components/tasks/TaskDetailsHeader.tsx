@@ -15,6 +15,7 @@ interface TaskDetailsHeaderProps {
   onClose: () => void;
   onEditTask?: (task: TaskWithAttemptStatus) => void;
   onDeleteTask?: (taskId: string) => void;
+  hideCloseButton?: boolean;
 }
 
 const statusLabels: Record<TaskStatus, string> = {
@@ -46,6 +47,7 @@ function TaskDetailsHeader({
   onClose,
   onEditTask,
   onDeleteTask,
+  hideCloseButton = false,
 }: TaskDetailsHeaderProps) {
   const { task } = useContext(TaskDetailsContext);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
@@ -102,18 +104,20 @@ function TaskDetailsHeader({
                 </Tooltip>
               </TooltipProvider>
             )}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" onClick={onClose}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Close panel</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {!hideCloseButton && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" onClick={onClose}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Close panel</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
         </div>
 

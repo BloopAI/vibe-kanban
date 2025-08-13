@@ -13,8 +13,8 @@ import LogsTab from '@/components/tasks/TaskDetails/LogsTab.tsx';
 import ProcessesTab from '@/components/tasks/TaskDetails/ProcessesTab.tsx';
 import DeleteFileConfirmationDialog from '@/components/tasks/DeleteFileConfirmationDialog.tsx';
 import TabNavigation from '@/components/tasks/TaskDetails/TabNavigation.tsx';
-import CollapsibleToolbar from '@/components/tasks/TaskDetails/CollapsibleToolbar.tsx';
 import TaskDetailsProvider from '../context/TaskDetailsContextProvider.tsx';
+import TaskDetailsToolbar from './TaskDetailsToolbar.tsx';
 
 interface TaskDetailsPanelProps {
   task: TaskWithAttemptStatus | null;
@@ -24,6 +24,9 @@ interface TaskDetailsPanelProps {
   onEditTask?: (task: TaskWithAttemptStatus) => void;
   onDeleteTask?: (taskId: string) => void;
   isDialogOpen?: boolean;
+  hideBackdrop?: boolean;
+  className?: string;
+  hideHeader?: boolean;
 }
 
 export function TaskDetailsPanel({
@@ -34,6 +37,9 @@ export function TaskDetailsPanel({
   onEditTask,
   onDeleteTask,
   isDialogOpen = false,
+  hideBackdrop = false,
+  className,
+  hideHeader = false,
 }: TaskDetailsPanelProps) {
   const [showEditorDialog, setShowEditorDialog] = useState(false);
 
@@ -74,18 +80,21 @@ export function TaskDetailsPanel({
           projectHasDevScript={projectHasDevScript}
         >
           {/* Backdrop - only on smaller screens (overlay mode) */}
-          <div className={getBackdropClasses()} onClick={onClose} />
+          {!hideBackdrop && <div className={getBackdropClasses()} onClick={onClose} />}
 
           {/* Panel */}
-          <div className={getTaskPanelClasses()}>
+          <div className={className || getTaskPanelClasses()}>
             <div className="flex flex-col h-full">
-              <TaskDetailsHeader
-                onClose={onClose}
-                onEditTask={onEditTask}
-                onDeleteTask={onDeleteTask}
-              />
+              {!hideHeader && (
+                <TaskDetailsHeader
+                  onClose={onClose}
+                  onEditTask={onEditTask}
+                  onDeleteTask={onDeleteTask}
+                  hideCloseButton={hideBackdrop}
+                />
+              )}
 
-              <CollapsibleToolbar />
+              <TaskDetailsToolbar />
 
               <TabNavigation
                 activeTab={activeTab}
