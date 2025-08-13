@@ -96,17 +96,9 @@ export type AgentProfile = {
  */
 label: string, 
 /**
- * The executor type this profile configures
- */
-agent: BaseCodingAgent, 
-/**
- * Command builder configuration
- */
-command: CommandBuilder, 
-/**
  * Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
  */
-mcp_config_path: string | null, };
+mcp_config_path: string | null, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode });
 
 export type AgentProfiles = { profiles: Array<AgentProfile>, };
 

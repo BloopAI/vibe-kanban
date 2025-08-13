@@ -281,56 +281,53 @@ export function McpServers() {
                 </div>
               </div>
             ) : (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="mcp-servers">MCP Server Configuration</Label>
-                  <Textarea
-                    id="mcp-servers"
-                    placeholder={
-                      mcpLoading
-                        ? 'Loading current configuration...'
-                        : '{\n  "server-name": {\n    "type": "stdio",\n    "command": "your-command",\n    "args": ["arg1", "arg2"]\n  }\n}'
-                    }
-                    value={mcpLoading ? 'Loading...' : mcpServers}
-                    onChange={(e) => handleMcpServersChange(e.target.value)}
-                    disabled={mcpLoading}
-                    className="font-mono text-sm min-h-[300px]"
-                  />
-                  {mcpError && !mcpError.includes('does not support MCP') && (
-                    <p className="text-sm text-red-600 dark:text-red-400">
-                      {mcpError}
-                    </p>
-                  )}
-                  {!mcpError && mcpConfigPath && (
-                    <p className="text-sm text-muted-foreground">
-                      Changes will be saved to:{' '}
-                      <span className="font-mono text-xs">{mcpConfigPath}</span>
-                    </p>
-                  )}
-                  <p className="text-sm text-muted-foreground">
-                    Edit MCP server configuration. Each server needs a unique
-                    name and command configuration.
+              <div className="space-y-2">
+                <Label htmlFor="mcp-servers">MCP Server Configuration</Label>
+                <Textarea
+                  id="mcp-servers"
+                  placeholder={
+                    mcpLoading
+                      ? 'Loading current configuration...'
+                      : '{\n  "server-name": {\n    "type": "stdio",\n    "command": "your-command",\n    "args": ["arg1", "arg2"]\n  }\n}'
+                  }
+                  value={mcpLoading ? 'Loading...' : mcpServers}
+                  onChange={(e) => handleMcpServersChange(e.target.value)}
+                  disabled={mcpLoading}
+                  className="font-mono text-sm min-h-[300px]"
+                />
+                {mcpError && !mcpError.includes('does not support MCP') && (
+                  <p className="text-sm text-red-600 dark:text-red-400">
+                    {mcpError}
                   </p>
+                )}
+                <div className="text-sm text-muted-foreground">
+                  {mcpLoading ? (
+                    'Loading current MCP server configuration...'
+                  ) : (
+                    <span>
+                      Changes will be saved to:
+                      {mcpConfigPath && (
+                        <span className="ml-2 font-mono text-xs">
+                          {mcpConfigPath}
+                        </span>
+                      )}
+                    </span>
+                  )}
                 </div>
 
-                <div className="flex justify-between">
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      mcpServersApi.openInEditor(selectedProfile?.agent)
-                    }
-                    disabled={mcpLoading || !selectedProfile}
-                  >
-                    Open in Editor
-                  </Button>
+                <div className="pt-4">
                   <Button
                     onClick={handleConfigureVibeKanban}
                     disabled={mcpApplying || mcpLoading || !selectedProfile}
+                    className="w-64"
                   >
                     Add Vibe-Kanban MCP
                   </Button>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Automatically adds the Vibe-Kanban MCP server.
+                  </p>
                 </div>
-              </>
+              </div>
             )}
           </CardContent>
         </Card>

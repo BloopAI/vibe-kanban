@@ -29,9 +29,7 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/config", put(update_config))
         .route("/sounds/{sound}", get(get_sound))
         .route("/mcp-config", get(get_mcp_servers).post(update_mcp_servers))
-        .route("/mcp-config/open-editor", post(open_mcp_config_in_editor))
         .route("/profiles", get(get_profiles).put(update_profiles))
-        .route("/profiles/open-editor", post(open_profiles_in_editor))
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -348,21 +346,6 @@ fn set_mcp_servers_in_config_path(
     Ok(())
 }
 
-/// Helper function to create an initial MCP config with the correct structure for each agent
-fn create_initial_mcp_config(
-    agent: &BaseCodingAgent,
-) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
-    let mut config = serde_json::json!({});
-
-    if let Some(path) = agent.mcp_attribute_path() {
-        let empty_servers: HashMap<String, Value> = HashMap::new();
-        let path_refs: Vec<&str> = path.into_iter().collect();
-        set_mcp_servers_in_config_path(agent, &mut config, &path_refs, &empty_servers)?;
-    }
-
-    Ok(config)
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProfilesContent {
     pub content: String,
@@ -438,117 +421,5 @@ async fn update_profiles(
             "Failed to save profiles: {}",
             e
         ))),
-    }
-}
-
-async fn open_mcp_config_in_editor(
-    State(deployment): State<DeploymentImpl>,
-    Query(query): Query<McpServerQuery>,
-) -> ResponseJson<ApiResponse<()>> {
-    let agent = match query.base_coding_agent {
-        Some(executor) => executor,
-        None => {
-            let config = deployment.config().read().await;
-            let profile = executors::command::AgentProfiles::get_cached()
-                .get_profile(&config.profile)
-                .expect("Corrupted config");
-            profile.agent.clone().into()
-        }
-    };
-
-    if !agent.supports_mcp() {
-        return ResponseJson(ApiResponse::error(
-            "This executor does not support MCP servers",
-        ));
-    }
-
-    let config_path = match agent.config_path() {
-        Some(path) => path,
-        None => {
-            return ResponseJson(ApiResponse::error("Could not determine config file path"));
-        }
-    };
-
-    // Ensure config file exists with proper structure
-    if !config_path.exists() {
-        if let Some(parent) = config_path.parent() {
-            if let Err(e) = fs::create_dir_all(parent).await {
-                return ResponseJson(ApiResponse::error(&format!(
-                    "Failed to create config directory: {}",
-                    e
-                )));
-            }
-        }
-
-        let initial_config = match create_initial_mcp_config(&agent) {
-            Ok(config) => config,
-            Err(e) => {
-                return ResponseJson(ApiResponse::error(&format!(
-                    "Failed to create initial config structure: {}",
-                    e
-                )));
-            }
-        };
-
-        if let Err(e) = write_agent_config(&config_path, &agent, &initial_config).await {
-            return ResponseJson(ApiResponse::error(&format!(
-                "Failed to create config file: {}",
-                e
-            )));
-        }
-    }
-
-    let editor_config = {
-        let config = deployment.config().read().await;
-        config.editor.clone()
-    };
-
-    match editor_config.open_file(&config_path.to_string_lossy()) {
-        Ok(_) => {
-            tracing::info!("Opened MCP config in editor at path: {:?}", config_path);
-            ResponseJson(ApiResponse::success(()))
-        }
-        Err(e) => {
-            tracing::error!("Failed to open MCP config in editor: {}", e);
-            ResponseJson(ApiResponse::error(&format!("Failed to open editor: {}", e)))
-        }
-    }
-}
-
-async fn open_profiles_in_editor(
-    State(deployment): State<DeploymentImpl>,
-) -> ResponseJson<ApiResponse<()>> {
-    let profiles_path = utils::assets::profiles_path();
-
-    // Ensure profiles.json exists with the full merged content
-    if !profiles_path.exists() {
-        // Create it with defaults if it doesn't exist
-        let defaults = AgentProfiles::from_defaults();
-        let formatted = serde_json::to_string_pretty(&defaults).unwrap();
-        if let Err(e) = std::fs::write(&profiles_path, formatted) {
-            return ResponseJson(ApiResponse::error(&format!(
-                "Failed to create profiles.json: {}",
-                e
-            )));
-        }
-    }
-
-    let editor_config = {
-        let config = deployment.config().read().await;
-        config.editor.clone()
-    };
-
-    match editor_config.open_file(&profiles_path.to_string_lossy()) {
-        Ok(_) => {
-            tracing::info!(
-                "Opened profiles.json in editor at path: {:?}",
-                profiles_path
-            );
-            ResponseJson(ApiResponse::success(()))
-        }
-        Err(e) => {
-            tracing::error!("Failed to open profiles.json in editor: {}", e);
-            ResponseJson(ApiResponse::error(&format!("Failed to open editor: {}", e)))
-        }
     }
 }

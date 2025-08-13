@@ -608,58 +608,56 @@ export function Settings() {
                 </Alert>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="profiles-editor">Profiles Configuration</Label>
-                <Textarea
-                  id="profiles-editor"
-                  placeholder={
-                    profilesLoading
-                      ? 'Loading profiles...'
-                      : '{\n  "profiles": [\n    {\n      "label": "my-custom-profile",\n      "agent": "ClaudeCode",\n      "command": {...}\n    }\n  ]\n}'
-                  }
-                  value={profilesLoading ? 'Loading...' : profilesContent}
-                  onChange={(e) => handleProfilesChange(e.target.value)}
-                  disabled={profilesLoading}
-                  className="font-mono text-sm min-h-[300px]"
-                />
-                {!profilesError && profilesPath && (
-                  <p className="text-sm text-muted-foreground">
-                    Changes will be saved to:{' '}
-                    <span className="font-mono text-xs">{profilesPath}</span>
-                  </p>
-                )}
-                <p className="text-sm text-muted-foreground">
-                  Edit coding agent profiles. Each profile needs a unique label,
-                  agent type, and command configuration.
-                </p>
-              </div>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="profiles-editor">Profiles Configuration</Label>
+                  <Textarea
+                    id="profiles-editor"
+                    placeholder={
+                      profilesLoading
+                        ? 'Loading profiles...'
+                        : '{\n  "profiles": [\n    {\n      "label": "my-custom-profile",\n      "agent": "ClaudeCode",\n      "command": {...}\n    }\n  ]\n}'
+                    }
+                    value={profilesLoading ? 'Loading...' : profilesContent}
+                    onChange={(e) => handleProfilesChange(e.target.value)}
+                    disabled={profilesLoading}
+                    className="font-mono text-sm min-h-[300px]"
+                  />
+                </div>
 
-              <div className="flex justify-between">
-                <Button
-                  variant="outline"
-                  onClick={() => profilesApi.openInEditor()}
-                  disabled={profilesLoading}
-                >
-                  Open in Editor
-                </Button>
-                <Button
-                  onClick={handleSaveProfiles}
-                  disabled={
-                    profilesSaving ||
-                    profilesLoading ||
-                    !!profilesError ||
-                    profilesSuccess
-                  }
-                  className={
-                    profilesSuccess ? 'bg-green-600 hover:bg-green-700' : ''
-                  }
-                >
-                  {profilesSaving && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <div className="space-y-2">
+                  {!profilesError && profilesPath && (
+                    <p className="text-sm text-muted-foreground">
+                      <span className="font-medium">Configuration file:</span>{' '}
+                      <span className="font-mono text-xs">{profilesPath}</span>
+                    </p>
                   )}
-                  {profilesSuccess && <span className="mr-2">✓</span>}
-                  {profilesSuccess ? 'Profiles Saved!' : 'Save Profiles'}
-                </Button>
+                  <p className="text-sm text-muted-foreground">
+                    Edit coding agent profiles. Each profile needs a unique label,
+                    agent type, and command configuration.
+                  </p>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <Button
+                    onClick={handleSaveProfiles}
+                    disabled={
+                      profilesSaving ||
+                      profilesLoading ||
+                      !!profilesError ||
+                      profilesSuccess
+                    }
+                    className={
+                      profilesSuccess ? 'bg-green-600 hover:bg-green-700' : ''
+                    }
+                  >
+                    {profilesSaving && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    {profilesSuccess && <span className="mr-2">✓</span>}
+                    {profilesSuccess ? 'Profiles Saved!' : 'Save Profiles'}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
