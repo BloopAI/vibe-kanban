@@ -27,9 +27,9 @@ export function TaskDetailsPage() {
     navigate(`/projects/${projectId}/tasks/${task.id}`);
   };
 
-  const handleDeleteTask = (_taskId: string) => {
+  const handleDeleteTask = () => {
     // Navigate back to main task page after deletion
-    navigate(`/projects/${projectId}/tasks`);
+    // navigate(`/projects/${projectId}/tasks`);
   };
 
   useEffect(() => {
