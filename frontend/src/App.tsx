@@ -162,6 +162,10 @@ function AppContent() {
               element={<ProjectTasks />}
             />
             <Route
+              path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
+              element={<ProjectTasks />}
+            />
+            <Route
               path="/projects/:projectId/tasks/:taskId"
               element={<ProjectTasks />}
             />

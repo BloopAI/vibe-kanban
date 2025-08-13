@@ -28,12 +28,14 @@ import type { AttemptData } from '@/lib/types.ts';
 const TaskDetailsProvider: FC<{
   task: TaskWithAttemptStatus;
   projectId: string;
+  attemptId?: string;
   children: ReactNode;
   setShowEditorDialog: Dispatch<SetStateAction<boolean>>;
   projectHasDevScript?: boolean;
 }> = ({
   task,
   projectId,
+  attemptId,
   children,
   setShowEditorDialog,
   projectHasDevScript,
