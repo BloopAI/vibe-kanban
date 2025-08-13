@@ -159,19 +159,25 @@ function TaskDetailsToolbar() {
 
       if (result.length > 0) {
         // Check if we have a new latest attempt (newly created)
-        const currentLatest = taskAttempts.length > 0 
-          ? taskAttempts.reduce((latest, current) =>
-              new Date(current.created_at) > new Date(latest.created_at) ? current : latest
-            )
-          : null;
+        const currentLatest =
+          taskAttempts.length > 0
+            ? taskAttempts.reduce((latest, current) =>
+                new Date(current.created_at) > new Date(latest.created_at)
+                  ? current
+                  : latest
+              )
+            : null;
 
         const newLatest = result.reduce((latest, current) =>
-          new Date(current.created_at) > new Date(latest.created_at) ? current : latest
+          new Date(current.created_at) > new Date(latest.created_at)
+            ? current
+            : latest
         );
 
         // If we have a new attempt that wasn't there before, navigate to it immediately
-        const hasNewAttempt = newLatest && (!currentLatest || newLatest.id !== currentLatest.id);
-        
+        const hasNewAttempt =
+          newLatest && (!currentLatest || newLatest.id !== currentLatest.id);
+
         if (hasNewAttempt) {
           // Always navigate to newly created attempts
           handleAttemptSelect(newLatest);
@@ -201,15 +207,19 @@ function TaskDetailsToolbar() {
         setSelectedAttempt((prev) => {
           if (JSON.stringify(prev) === JSON.stringify(selectedAttemptToUse))
             return prev;
-          
+
           // Only navigate if we're not already on the correct attempt URL
-          if (selectedAttemptToUse && task && (!urlAttemptId || urlAttemptId !== selectedAttemptToUse.id)) {
+          if (
+            selectedAttemptToUse &&
+            task &&
+            (!urlAttemptId || urlAttemptId !== selectedAttemptToUse.id)
+          ) {
             navigate(
               `/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttemptToUse.id}`,
               { replace: true }
             );
           }
-          
+
           return selectedAttemptToUse;
         });
       } else {
