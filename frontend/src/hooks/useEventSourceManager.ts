@@ -101,33 +101,11 @@ export const useEventSourceManager = ({
             processedEntriesRef.current.set(process.id, new Set());
           }
 
-          const processedSet = processedEntriesRef.current.get(process.id)!;
+          applyPatch(processDataRef.current[process.id], patches);
 
-          // Filter out patches we've already processed
-          const newPatches = patches.filter((patch: any) => {
-            // Extract entry index from path like "/entries/123"
-            const match = patch.path?.match(/^\/entries\/(\d+)$/);
-            if (match && patch.op === 'add') {
-              const entryIndex = parseInt(match[1], 10);
-              if (processedSet.has(entryIndex)) {
-                return false; // Already processed
-              }
-              processedSet.add(entryIndex);
-            } else if (match && patch.op === 'remove') {
-              const entryIndex = parseInt(match[1], 10);
-              processedSet.delete(entryIndex);
-            }
-            // Always allow replace operations and non-entry patches
-            return true;
-          });
+          // Trigger re-render with updated data
+          setProcessData({ ...processDataRef.current });
 
-          // Only apply new patches
-          if (newPatches.length > 0) {
-            applyPatch(processDataRef.current[process.id], newPatches);
-
-            // Trigger re-render with updated data
-            setProcessData({ ...processDataRef.current });
-          }
         } catch (err) {
           console.error('Failed to apply JSON patch:', err);
           setError('Failed to process log update');

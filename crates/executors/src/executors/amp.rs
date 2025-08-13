@@ -139,9 +139,7 @@ impl StandardCodingAgentExecutor for Amp {
                                             for index_to_remove in 0..entry_index_provider.current()
                                             {
                                                 raw_logs_msg_store.push_patch(
-                                                    ConversationPatch::remove_diff(
-                                                        index_to_remove.to_string(),
-                                                    ),
+                                                    ConversationPatch::remove_diff(0.to_string()), // Always 0 as we're removing each index
                                                 );
                                             }
                                             entry_index_provider.reset();
