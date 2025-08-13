@@ -572,7 +572,7 @@ impl TaskAttempt {
         .fetch_optional(pool)
         .await?
         .ok_or(sqlx::Error::RowNotFound)?;
-        
+
         Ok((result.attempt_id, result.task_id, result.project_id))
     }
 

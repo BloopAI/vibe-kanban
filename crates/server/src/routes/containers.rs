@@ -31,8 +31,8 @@ pub async fn get_container_info(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<ContainerInfo>>, ApiError> {
     let pool = &deployment.db().pool;
-    
-    let (attempt_id, task_id, project_id) = 
+
+    let (attempt_id, task_id, project_id) =
         TaskAttempt::resolve_container_ref(pool, &query.container_ref)
             .await
             .map_err(|e| match e {
