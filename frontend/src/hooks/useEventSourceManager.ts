@@ -105,7 +105,6 @@ export const useEventSourceManager = ({
 
           // Trigger re-render with updated data
           setProcessData({ ...processDataRef.current });
-
         } catch (err) {
           console.error('Failed to apply JSON patch:', err);
           setError('Failed to process log update');
