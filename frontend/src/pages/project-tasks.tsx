@@ -44,13 +44,10 @@ import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 type Task = TaskWithAttemptStatus;
 
 export function ProjectTasks() {
-  const { projectId, taskId, attemptId } = useParams<{
+  const { projectId, taskId } = useParams<{
     projectId: string;
     taskId?: string;
-    attemptId?: string;
   }>();
-  // attemptId is available for future use but not currently used directly in this component
-  void attemptId; // Suppress TS unused variable warning
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [project, setProject] = useState<Project | null>(null);

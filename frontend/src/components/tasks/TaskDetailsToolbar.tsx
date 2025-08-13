@@ -158,7 +158,27 @@ function TaskDetailsToolbar() {
       });
 
       if (result.length > 0) {
-        // Check URL parameter and fall back to query parameter for backwards compatibility
+        // Check if we have a new latest attempt (newly created)
+        const currentLatest = taskAttempts.length > 0 
+          ? taskAttempts.reduce((latest, current) =>
+              new Date(current.created_at) > new Date(latest.created_at) ? current : latest
+            )
+          : null;
+
+        const newLatest = result.reduce((latest, current) =>
+          new Date(current.created_at) > new Date(latest.created_at) ? current : latest
+        );
+
+        // If we have a new attempt that wasn't there before, navigate to it immediately
+        const hasNewAttempt = newLatest && (!currentLatest || newLatest.id !== currentLatest.id);
+        
+        if (hasNewAttempt) {
+          // Always navigate to newly created attempts
+          handleAttemptSelect(newLatest);
+          return;
+        }
+
+        // Otherwise, follow existing logic for URL-based attempt selection
         const urlParams = new URLSearchParams(location.search);
         const queryAttemptParam = urlParams.get('attempt');
         const attemptParam = urlAttemptId || queryAttemptParam;
@@ -166,42 +186,30 @@ function TaskDetailsToolbar() {
         let selectedAttemptToUse: TaskAttempt;
 
         if (attemptParam) {
-          // Try to find the specific attempt
           const specificAttempt = result.find(
             (attempt) => attempt.id === attemptParam
           );
           if (specificAttempt) {
             selectedAttemptToUse = specificAttempt;
           } else {
-            // Fall back to latest if specific attempt not found
-            selectedAttemptToUse = result.reduce((latest, current) =>
-              new Date(current.created_at) > new Date(latest.created_at)
-                ? current
-                : latest
-            );
+            selectedAttemptToUse = newLatest;
           }
         } else {
-          // Use latest attempt if no specific attempt requested
-          selectedAttemptToUse = result.reduce((latest, current) =>
-            new Date(current.created_at) > new Date(latest.created_at)
-              ? current
-              : latest
-          );
+          selectedAttemptToUse = newLatest;
         }
 
         setSelectedAttempt((prev) => {
           if (JSON.stringify(prev) === JSON.stringify(selectedAttemptToUse))
             return prev;
-
-          // If we're setting a new selected attempt and no URL attempt ID is specified,
-          // navigate to the new attempt URL
-          if (!urlAttemptId && selectedAttemptToUse && task) {
+          
+          // Only navigate if we're not already on the correct attempt URL
+          if (selectedAttemptToUse && task && (!urlAttemptId || urlAttemptId !== selectedAttemptToUse.id)) {
             navigate(
               `/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttemptToUse.id}`,
               { replace: true }
             );
           }
-
+          
           return selectedAttemptToUse;
         });
       } else {

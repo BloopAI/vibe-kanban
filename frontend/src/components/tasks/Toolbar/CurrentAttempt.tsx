@@ -98,7 +98,6 @@ function CurrentAttempt({
   const { task, projectId, handleOpenInEditor, projectHasDevScript } =
     useContext(TaskDetailsContext);
   const { config } = useConfig();
-  // const { setSelectedAttempt } = useContext(TaskSelectedAttemptContext); // Not needed - using handleAttemptSelect instead
   const { isStopping, setIsStopping } = useContext(TaskAttemptStoppingContext);
   const { attemptData, fetchAttemptData, isAttemptRunning } = useContext(
     TaskAttemptDataContext

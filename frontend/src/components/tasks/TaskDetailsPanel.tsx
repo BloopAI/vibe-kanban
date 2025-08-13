@@ -15,7 +15,6 @@ import DeleteFileConfirmationDialog from '@/components/tasks/DeleteFileConfirmat
 import TabNavigation from '@/components/tasks/TaskDetails/TabNavigation.tsx';
 import CollapsibleToolbar from '@/components/tasks/TaskDetails/CollapsibleToolbar.tsx';
 import TaskDetailsProvider from '../context/TaskDetailsContextProvider.tsx';
-import { useParams } from 'react-router-dom';
 
 interface TaskDetailsPanelProps {
   task: TaskWithAttemptStatus | null;
@@ -37,7 +36,6 @@ export function TaskDetailsPanel({
   isDialogOpen = false,
 }: TaskDetailsPanelProps) {
   const [showEditorDialog, setShowEditorDialog] = useState(false);
-  const { attemptId } = useParams<{ attemptId?: string }>();
 
   // Tab and collapsible state
   const [activeTab, setActiveTab] = useState<TabType>('logs');
@@ -72,7 +70,6 @@ export function TaskDetailsPanel({
           key={task.id}
           task={task}
           projectId={projectId}
-          attemptId={attemptId}
           setShowEditorDialog={setShowEditorDialog}
           projectHasDevScript={projectHasDevScript}
         >
