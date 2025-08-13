@@ -13,8 +13,7 @@ use crate::{
     command::CommandBuilder,
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
-        ActionType, EditDiff, NormalizedEntry, NormalizedEntryType, 
-        TodoItem as LogsTodoItem,
+        ActionType, EditDiff, NormalizedEntry, NormalizedEntryType, TodoItem as LogsTodoItem,
         stderr_processor::normalize_stderr_logs,
         utils::{EntryIndexProvider, patch::ConversationPatch},
     },
@@ -501,11 +500,19 @@ impl AmpContentItem {
                 description: "List directory".to_string(),
             },
             AmpToolData::Todo { todos } => ActionType::TodoManagement {
-                todos: todos.as_ref().map(|todos| todos.iter().map(|t| LogsTodoItem {
-                    content: t.content.clone(),
-                    status: t.status.clone(),
-                    priority: t.priority.clone(),
-                }).collect()).unwrap_or_default(),
+                todos: todos
+                    .as_ref()
+                    .map(|todos| {
+                        todos
+                            .iter()
+                            .map(|t| LogsTodoItem {
+                                content: t.content.clone(),
+                                status: t.status.clone(),
+                                priority: t.priority.clone(),
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default(),
                 operation: "write".to_string(),
             },
             AmpToolData::Unknown { .. } => ActionType::Other {
@@ -567,6 +574,19 @@ impl AmpContentItem {
                             parts.push(format!("at `{relative_path}`"));
                         }
                         parts.join(" ")
+                    }
+                    AmpToolData::Unknown { data } => {
+                        // Manually check if "name" is prefixed with "todo"
+                        // This is a hack to avoid flickering on the frontend
+                        let name = data
+                            .get("name")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or(tool_name);
+                        if name.starts_with("todo") {
+                            "TODO list updated".to_string()
+                        } else {
+                            tool_name.to_string()
+                        }
                     }
                     _ => tool_name.to_string(),
                 }

@@ -45,12 +45,13 @@ const getEntryIcon = (entryType: NormalizedEntryType) => {
 
     // Special handling for TODO tools
     if (
-      tool_name &&
-      (tool_name.toLowerCase() === 'todowrite' ||
-        tool_name.toLowerCase() === 'todoread' ||
-        tool_name.toLowerCase() === 'todo_write' ||
-        tool_name.toLowerCase() === 'todo_read' ||
-        tool_name.toLowerCase() === 'todo')
+      action_type.action === 'todo_management' ||
+      (tool_name &&
+        (tool_name.toLowerCase() === 'todowrite' ||
+          tool_name.toLowerCase() === 'todoread' ||
+          tool_name.toLowerCase() === 'todo_write' ||
+          tool_name.toLowerCase() === 'todo_read' ||
+          tool_name.toLowerCase() === 'todo'))
     ) {
       return <CheckSquare className="h-4 w-4 text-purple-600" />;
     }
@@ -92,12 +93,13 @@ const getContentClassName = (entryType: NormalizedEntryType) => {
   // Special styling for TODO lists
   if (
     entryType.type === 'tool_use' &&
-    entryType.tool_name &&
-    (entryType.tool_name.toLowerCase() === 'todowrite' ||
-      entryType.tool_name.toLowerCase() === 'todoread' ||
-      entryType.tool_name.toLowerCase() === 'todo_write' ||
-      entryType.tool_name.toLowerCase() === 'todo_read' ||
-      entryType.tool_name.toLowerCase() === 'todo')
+    (entryType.action_type.action === 'todo_management' ||
+      (entryType.tool_name &&
+        (entryType.tool_name.toLowerCase() === 'todowrite' ||
+          entryType.tool_name.toLowerCase() === 'todoread' ||
+          entryType.tool_name.toLowerCase() === 'todo_write' ||
+          entryType.tool_name.toLowerCase() === 'todo_read' ||
+          entryType.tool_name.toLowerCase() === 'todo')))
   ) {
     return `${baseClasses} font-mono text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/20 px-2 py-1 rounded`;
   }

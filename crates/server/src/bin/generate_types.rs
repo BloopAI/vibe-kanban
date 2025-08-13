@@ -82,6 +82,7 @@ fn generate_types_content() -> String {
         executors::logs::NormalizedEntryType::decl(),
         executors::logs::EditDiff::decl(),
         executors::logs::ActionType::decl(),
+        executors::logs::TodoItem::decl(),
         executors::logs::utils::patch::PatchType::decl(),
         serde_json::Value::decl(),
     ];

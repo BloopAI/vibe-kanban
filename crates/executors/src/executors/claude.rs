@@ -506,11 +506,14 @@ impl ClaudeLogProcessor {
                 diffs: vec![],
             },
             ClaudeToolData::TodoWrite { todos } => ActionType::TodoManagement {
-                todos: todos.iter().map(|t| TodoItem {
-                    content: t.content.clone(),
-                    status: t.status.clone(),
-                    priority: t.priority.clone(),
-                }).collect(),
+                todos: todos
+                    .iter()
+                    .map(|t| TodoItem {
+                        content: t.content.clone(),
+                        status: t.status.clone(),
+                        priority: t.priority.clone(),
+                    })
+                    .collect(),
                 operation: "write".to_string(),
             },
             ClaudeToolData::Glob { pattern, path: _ } => ActionType::Search {
@@ -831,45 +834,6 @@ mod tests {
     }
 
     #[test]
-    fn test_todo_tool_content_extraction() {
-        // Test TodoWrite with actual todo list
-        let todo_data = ClaudeToolData::TodoWrite {
-            todos: vec![
-                ClaudeTodoItem {
-                    id: Some("1".to_string()),
-                    content: "Fix the navigation bug".to_string(),
-                    status: "completed".to_string(),
-                    priority: Some("high".to_string()),
-                },
-                ClaudeTodoItem {
-                    id: Some("2".to_string()),
-                    content: "Add user authentication".to_string(),
-                    status: "in_progress".to_string(),
-                    priority: Some("medium".to_string()),
-                },
-                ClaudeTodoItem {
-                    id: Some("3".to_string()),
-                    content: "Write documentation".to_string(),
-                    status: "pending".to_string(),
-                    priority: Some("low".to_string()),
-                },
-            ],
-        };
-
-        let action_type = ClaudeLogProcessor::extract_action_type(&todo_data, "/tmp/test-worktree");
-        let result = ClaudeLogProcessor::generate_concise_content(
-            &todo_data,
-            &action_type,
-            "/tmp/test-worktree",
-        );
-
-        assert!(result.contains("TODO List:"));
-        assert!(result.contains("✅ Fix the navigation bug (high)"));
-        assert!(result.contains("🔄 Add user authentication (medium)"));
-        assert!(result.contains("⏳ Write documentation (low)"));
-    }
-
-    #[test]
     fn test_todo_tool_empty_list() {
         // Test TodoWrite with empty todo list
         let empty_data = ClaudeToolData::TodoWrite { todos: vec![] };
@@ -882,7 +846,7 @@ mod tests {
             "/tmp/test-worktree",
         );
 
-        assert_eq!(result, "Managing TODO list");
+        assert_eq!(result, "TODO list updated");
     }
 
     #[test]

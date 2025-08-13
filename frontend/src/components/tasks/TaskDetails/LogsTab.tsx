@@ -13,7 +13,9 @@ import {
   TaskSelectedAttemptContext,
 } from '@/components/context/taskDetailsContext.ts';
 import { useProcessesLogs } from '@/hooks/useProcessesLogs';
+import { usePinnedTodos } from '@/hooks/usePinnedTodos';
 import LogEntryRow from '@/components/logs/LogEntryRow';
+import { PinnedTodoBox } from '@/components/PinnedTodoBox';
 import {
   shouldShowInLogs,
   isAutoCollapsibleProcess,
@@ -136,6 +138,9 @@ function LogsTab() {
   );
 
   const { entries } = useProcessesLogs(filteredProcesses, true);
+
+  // Extract todos from entries using the usePinnedTodos hook
+  const { todos, lastUpdated } = usePinnedTodos(entries);
 
   // Combined collapsed processes (auto + user)
   const allCollapsedProcesses = useMemo(() => {
@@ -276,19 +281,22 @@ function LogsTab() {
   }
 
   return (
-    <div className="w-full h-full">
-      <Virtuoso
-        ref={virtuosoRef}
-        style={{ height: '100%' }}
-        data={visibleEntries}
-        itemContent={itemContent}
-        followOutput={true}
-        increaseViewportBy={200}
-        overscan={5}
-        components={{
-          Footer: () => <div style={{ height: '50px' }} />,
-        }}
-      />
+    <div className="w-full h-full flex flex-col">
+      <PinnedTodoBox todos={todos} lastUpdated={lastUpdated} />
+      <div className="flex-1">
+        <Virtuoso
+          ref={virtuosoRef}
+          style={{ height: '100%' }}
+          data={visibleEntries}
+          itemContent={itemContent}
+          followOutput={true}
+          increaseViewportBy={200}
+          overscan={5}
+          components={{
+            Footer: () => <div style={{ height: '50px' }} />,
+          }}
+        />
+      </div>
     </div>
   );
 }
