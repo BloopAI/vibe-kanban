@@ -49,6 +49,8 @@ export function ProjectTasks() {
     taskId?: string;
     attemptId?: string;
   }>();
+  // attemptId is available for future use but not currently used directly in this component
+  void attemptId; // Suppress TS unused variable warning
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [project, setProject] = useState<Project | null>(null);
@@ -254,7 +256,7 @@ export function ProjectTasks() {
       // setSelectedTask(task);
       // setIsPanelOpen(true);
       // Update URL to include task ID and optionally attempt ID
-      const targetUrl = attemptIdToShow 
+      const targetUrl = attemptIdToShow
         ? `/projects/${projectId}/tasks/${task.id}/attempts/${attemptIdToShow}`
         : `/projects/${projectId}/tasks/${task.id}`;
       navigate(targetUrl, { replace: true });

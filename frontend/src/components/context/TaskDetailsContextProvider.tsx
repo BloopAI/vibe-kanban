@@ -40,6 +40,8 @@ const TaskDetailsProvider: FC<{
   setShowEditorDialog,
   projectHasDevScript,
 }) => {
+  // attemptId is available for future use but not currently used in this component
+  void attemptId; // Suppress TS unused variable warning
   const [loading, setLoading] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
   const [selectedAttempt, setSelectedAttempt] = useState<TaskAttempt | null>(

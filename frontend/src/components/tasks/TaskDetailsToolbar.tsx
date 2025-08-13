@@ -192,6 +192,16 @@ function TaskDetailsToolbar() {
         setSelectedAttempt((prev) => {
           if (JSON.stringify(prev) === JSON.stringify(selectedAttemptToUse))
             return prev;
+          
+          // If we're setting a new selected attempt and no URL attempt ID is specified,
+          // navigate to the new attempt URL
+          if (!urlAttemptId && selectedAttemptToUse && task) {
+            navigate(
+              `/projects/${projectId}/tasks/${task.id}/attempts/${selectedAttemptToUse.id}`,
+              { replace: true }
+            );
+          }
+          
           return selectedAttemptToUse;
         });
       } else {
@@ -206,7 +216,16 @@ function TaskDetailsToolbar() {
     } finally {
       setLoading(false);
     }
-  }, [task, location.search, urlAttemptId, setLoading, setSelectedAttempt, setAttemptData]);
+  }, [
+    task,
+    location.search,
+    urlAttemptId,
+    navigate,
+    projectId,
+    setLoading,
+    setSelectedAttempt,
+    setAttemptData,
+  ]);
 
   useEffect(() => {
     fetchTaskAttempts();
@@ -320,6 +339,7 @@ function TaskDetailsToolbar() {
                   setShowCreatePRDialog={setShowCreatePRDialog}
                   creatingPR={ui.creatingPR}
                   handleEnterCreateAttemptMode={handleEnterCreateAttemptMode}
+                  handleAttemptSelect={handleAttemptSelect}
                   branches={branches}
                 />
               ) : (

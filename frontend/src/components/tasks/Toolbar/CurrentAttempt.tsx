@@ -48,7 +48,6 @@ import {
   TaskAttemptDataContext,
   TaskAttemptStoppingContext,
   TaskDetailsContext,
-  TaskSelectedAttemptContext,
 } from '@/components/context/taskDetailsContext.ts';
 import { useConfig } from '@/components/config-provider.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
@@ -81,6 +80,7 @@ type Props = {
   taskAttempts: TaskAttempt[];
   creatingPR: boolean;
   handleEnterCreateAttemptMode: () => void;
+  handleAttemptSelect: (attempt: TaskAttempt) => void;
   branches: GitBranch[];
 };
 
@@ -92,12 +92,13 @@ function CurrentAttempt({
   taskAttempts,
   creatingPR,
   handleEnterCreateAttemptMode,
+  handleAttemptSelect,
   branches,
 }: Props) {
   const { task, projectId, handleOpenInEditor, projectHasDevScript } =
     useContext(TaskDetailsContext);
   const { config } = useConfig();
-  const { setSelectedAttempt } = useContext(TaskSelectedAttemptContext);
+  // const { setSelectedAttempt } = useContext(TaskSelectedAttemptContext); // Not needed - using handleAttemptSelect instead
   const { isStopping, setIsStopping } = useContext(TaskAttemptStoppingContext);
   const { attemptData, fetchAttemptData, isAttemptRunning } = useContext(
     TaskAttemptDataContext
@@ -223,10 +224,10 @@ function CurrentAttempt({
 
   const handleAttemptChange = useCallback(
     (attempt: TaskAttempt) => {
-      setSelectedAttempt(attempt);
+      handleAttemptSelect(attempt);
       fetchAttemptData(attempt.id, attempt.task_id);
     },
-    [fetchAttemptData, setSelectedAttempt]
+    [fetchAttemptData, handleAttemptSelect]
   );
 
   const handleMergeClick = async () => {
