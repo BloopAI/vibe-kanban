@@ -45,8 +45,19 @@ pub struct NormalizedEntry {
     pub metadata: Option<serde_json::Value>,
 }
 
+/// Represents a single todo item
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct TodoItem {
+    pub content: String,
+    pub status: String,
+    #[serde(default)]
+    pub priority: Option<String>,
+}
+
 /// Types of tool actions that can be performed
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum ActionType {
     FileRead { path: String },
@@ -56,5 +67,9 @@ pub enum ActionType {
     WebFetch { url: String },
     TaskCreate { description: String },
     PlanPresentation { plan: String },
+    TodoManagement { 
+        todos: Vec<TodoItem>,
+        operation: String,
+    },
     Other { description: String },
 }

@@ -176,7 +176,7 @@ export type NormalizedEntryType = { "type": "user_message" } | { "type": "assist
 
 export type EditDiff = { "format": "unified", unified_diff: string, } | { "format": "replace", old: string, new: string, };
 
-export type ActionType = { "action": "file_read", path: string, } | { "action": "file_edit", path: string, diffs: Array<EditDiff>, } | { "action": "command_run", command: string, } | { "action": "search", query: string, } | { "action": "web_fetch", url: string, } | { "action": "task_create", description: string, } | { "action": "plan_presentation", plan: string, } | { "action": "other", description: string, };
+export type ActionType = { "action": "file_read", path: string, } | { "action": "file_edit", path: string, diffs: Array<EditDiff>, } | { "action": "command_run", command: string, } | { "action": "search", query: string, } | { "action": "web_fetch", url: string, } | { "action": "task_create", description: string, } | { "action": "plan_presentation", plan: string, } | { "action": "todo_management", todos: Array<TodoItem>, operation: string, } | { "action": "other", description: string, };
 
 export type PatchType = { "type": "NORMALIZED_ENTRY", "content": NormalizedEntry } | { "type": "STDOUT", "content": string } | { "type": "STDERR", "content": string } | { "type": "DIFF", "content": Diff };
 

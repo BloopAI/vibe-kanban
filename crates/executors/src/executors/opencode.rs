@@ -15,7 +15,7 @@ use crate::{
     command::CommandBuilder,
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
-        ActionType, EditDiff, NormalizedEntry, NormalizedEntryType,
+        ActionType, EditDiff, NormalizedEntry, NormalizedEntryType, TodoItem,
         plain_text_processor::{MessageBoundary, PlainTextLogProcessor},
         utils::EntryIndexProvider,
     },
@@ -724,8 +724,20 @@ impl ToolUtils {
             Tool::WebFetch { url, .. } => ActionType::Other {
                 description: format!("Web fetch: {url}"),
             },
-            Tool::TodoWrite { .. } | Tool::TodoRead => ActionType::Other {
-                description: "TODO list management".to_string(),
+            Tool::TodoWrite { todos } => ActionType::TodoManagement {
+                todos: todos
+                    .iter()
+                    .map(|t| TodoItem {
+                        content: t.content.clone(),
+                        status: t.status.clone(),
+                        priority: t.priority.clone(),
+                    })
+                    .collect(),
+                operation: "write".to_string(),
+            },
+            Tool::TodoRead => ActionType::TodoManagement {
+                todos: vec![],
+                operation: "read".to_string(),
             },
             Tool::Task { description } => ActionType::Other {
                 description: format!("Task: {description}"),
@@ -787,11 +799,11 @@ impl ToolUtils {
             Tool::WebFetch { url, .. } => {
                 format!("fetch `{url}`")
             }
-            Tool::TodoWrite { todos } => Self::generate_todo_content(todos),
-            Tool::TodoRead => "Managing TODO list".to_string(),
             Tool::Task { description } => {
                 format!("Task: `{description}`")
             }
+            Tool::TodoWrite { .. } => "TODO list updated".to_string(),
+            Tool::TodoRead => "TODO list read".to_string(),
             Tool::Other { tool_name, .. } => {
                 // Handle MCP tools (format: client_name_tool_name)
                 if tool_name.contains('_') {
@@ -801,26 +813,6 @@ impl ToolUtils {
                 }
             }
         }
-    }
-
-    /// Generate formatted content for TODO tools from TodoInfo struct
-    fn generate_todo_content(todos: &[TodoInfo]) -> String {
-        if todos.is_empty() {
-            return "Managing TODO list".to_string();
-        }
-
-        let mut todo_items = Vec::new();
-        for todo in todos {
-            let status_emoji = match todo.status.as_str() {
-                "completed" => "✅",
-                "in_progress" => "🔄",
-                "pending" | "todo" => "⏳",
-                _ => "📝",
-            };
-            let priority = todo.priority.as_deref().unwrap_or("medium");
-            todo_items.push(format!("{} {} ({})", status_emoji, todo.content, priority));
-        }
-        format!("TODO List:\n{}", todo_items.join("\n"))
     }
 }
 
