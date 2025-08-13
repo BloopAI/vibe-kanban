@@ -10,10 +10,9 @@ import {
 } from 'lucide-react';
 import { TaskAttemptDataContext } from '@/components/context/taskDetailsContext.ts';
 import { executionProcessesApi } from '@/lib/api.ts';
-import type {
-  ExecutionProcessStatus,
-  ExecutionProcessSummary,
-} from 'shared/types';
+import { ProfileVariantBadge } from '@/components/common/ProfileVariantBadge.tsx';
+import { extractProfileVariant } from '@/lib/utils.ts';
+import type { ExecutionProcessStatus, ExecutionProcess } from 'shared/types';
 
 function ProcessesTab() {
   const { attemptData, setAttemptData } = useContext(TaskAttemptDataContext);
@@ -69,6 +68,10 @@ function ProcessesTab() {
             ...prev.runningProcessDetails,
             [processId]: result,
           },
+          processProfiles: {
+            ...prev.processProfiles,
+            [processId]: extractProfileVariant(result.executor_action),
+          },
         }));
       }
     } catch (err) {
@@ -78,7 +81,7 @@ function ProcessesTab() {
     }
   };
 
-  const handleProcessClick = async (process: ExecutionProcessSummary) => {
+  const handleProcessClick = async (process: ExecutionProcess) => {
     setSelectedProcessId(process.id);
 
     // If we don't have details for this process, fetch them
@@ -127,6 +130,16 @@ function ProcessesTab() {
                       <p className="text-sm text-muted-foreground mt-1">
                         Process ID: {process.id}
                       </p>
+                      {attemptData.processProfiles[process.id] && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Profile:{' '}
+                          <ProfileVariantBadge
+                            profileVariant={
+                              attemptData.processProfiles[process.id]
+                            }
+                          />
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="text-right">
@@ -189,6 +202,16 @@ function ProcessesTab() {
                         <span className="font-medium">Exit Code:</span>{' '}
                         {selectedProcess.exit_code?.toString() ?? 'N/A'}
                       </p>
+                      {attemptData.processProfiles[selectedProcessId] && (
+                        <p>
+                          <span className="font-medium">Profile:</span>{' '}
+                          <ProfileVariantBadge
+                            profileVariant={
+                              attemptData.processProfiles[selectedProcessId]
+                            }
+                          />
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div>

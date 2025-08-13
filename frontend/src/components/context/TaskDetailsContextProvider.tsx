@@ -8,7 +8,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import type { ExecutionProcess, ExecutionProcessSummary } from 'shared/types';
+import type { ExecutionProcess, ProfileVariant } from 'shared/types';
 import type {
   EditorType,
   TaskAttempt,
@@ -24,6 +24,8 @@ import {
   TaskSelectedAttemptContext,
 } from './taskDetailsContext.ts';
 import type { AttemptData } from '@/lib/types.ts';
+import { extractProfileVariant } from '@/lib/utils.ts';
+import { useUserSystem } from '@/components/config-provider';
 
 const TaskDetailsProvider: FC<{
   task: TaskWithAttemptStatus;
@@ -38,6 +40,7 @@ const TaskDetailsProvider: FC<{
   setShowEditorDialog,
   projectHasDevScript,
 }) => {
+  const { profiles } = useUserSystem();
   const [loading, setLoading] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
   const [selectedAttempt, setSelectedAttempt] = useState<TaskAttempt | null>(
@@ -49,6 +52,7 @@ const TaskDetailsProvider: FC<{
   const [attemptData, setAttemptData] = useState<AttemptData>({
     processes: [],
     runningProcessDetails: {},
+    processProfiles: {},
   });
 
   const handleOpenInEditor = useCallback(
@@ -88,6 +92,7 @@ const TaskDetailsProvider: FC<{
           );
 
           const runningProcessDetails: Record<string, ExecutionProcess> = {};
+          const processProfiles: Record<string, ProfileVariant | null> = {};
 
           // Fetch details for running processes
           for (const process of runningProcesses) {
@@ -95,6 +100,10 @@ const TaskDetailsProvider: FC<{
 
             if (result !== undefined) {
               runningProcessDetails[process.id] = result;
+              // Extract ProfileVariant from the executor_action
+              processProfiles[process.id] = extractProfileVariant(
+                result.executor_action
+              );
             }
           }
 
@@ -109,6 +118,20 @@ const TaskDetailsProvider: FC<{
 
             if (result !== undefined) {
               runningProcessDetails[setupProcess.id] = result;
+              // Extract ProfileVariant from the executor_action
+              processProfiles[setupProcess.id] = extractProfileVariant(
+                result.executor_action
+              );
+            }
+          }
+
+          // Extract ProfileVariant for all processes (not just running/setup)
+          for (const process of processesResult) {
+            if (!processProfiles[process.id]) {
+              // Extract ProfileVariant from the summary's executor_action
+              processProfiles[process.id] = extractProfileVariant(
+                process.executor_action
+              );
             }
           }
 
@@ -116,6 +139,7 @@ const TaskDetailsProvider: FC<{
             const newData = {
               processes: processesResult,
               runningProcessDetails,
+              processProfiles,
             };
             if (JSON.stringify(prev) === JSON.stringify(newData)) return prev;
             return newData;
@@ -140,13 +164,43 @@ const TaskDetailsProvider: FC<{
     }
 
     return attemptData.processes.some(
-      (process: ExecutionProcessSummary) =>
+      (process: ExecutionProcess) =>
         (process.run_reason === 'codingagent' ||
           process.run_reason === 'setupscript' ||
           process.run_reason === 'cleanupscript') &&
         process.status === 'running'
     );
   }, [selectedAttempt, attemptData.processes, isStopping]);
+
+  const defaultFollowUpVariant = useMemo(() => {
+    // Find most recent coding agent process with variant
+    const codingAgentProcesses = attemptData.processes.filter(
+      (p) => p.run_reason === 'codingagent'
+    );
+
+    if (codingAgentProcesses.length > 0) {
+      // Iterate in reverse (most recent first, since ordered ASC)
+      for (let i = codingAgentProcesses.length - 1; i >= 0; i--) {
+        const profileVariant =
+          attemptData.processProfiles[codingAgentProcesses[i].id];
+        if (profileVariant) {
+          return profileVariant?.variant;
+        }
+      }
+    } else if (selectedAttempt?.profile && profiles) {
+      // No processes yet, check if profile has default variant
+      const profile = profiles.find((p) => p.label === selectedAttempt.profile);
+      if (profile?.variants && profile.variants.length > 0) {
+        return profile.variants[0].label;
+      }
+    }
+    return null;
+  }, [
+    attemptData.processes,
+    attemptData.processProfiles,
+    selectedAttempt?.profile,
+    profiles,
+  ]);
 
   useEffect(() => {
     if (!isAttemptRunning || !task) return;
@@ -201,8 +255,9 @@ const TaskDetailsProvider: FC<{
       setAttemptData,
       fetchAttemptData,
       isAttemptRunning,
+      defaultFollowUpVariant,
     }),
-    [attemptData, fetchAttemptData, isAttemptRunning]
+    [attemptData, fetchAttemptData, isAttemptRunning, defaultFollowUpVariant]
   );
 
   return (

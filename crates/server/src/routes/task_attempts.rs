@@ -20,10 +20,9 @@ use executors::{
     actions::{
         coding_agent_follow_up::CodingAgentFollowUpRequest,
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
-        ExecutorAction, ExecutorActionKind, ExecutorActionType,
+        ExecutorAction, ExecutorActionType,
     },
     command::ProfileVariant,
-    executors::BaseCodingAgent,
 };
 use futures_util::TryStreamExt;
 use serde::{Deserialize, Serialize};
@@ -270,7 +269,7 @@ pub async fn create_task_attempt(
     let task_attempt = TaskAttempt::create(
         &deployment.db().pool,
         &CreateTaskAttempt {
-            base_coding_agent: profile.agent.to_string(),
+            profile: profile.label.clone(),
             base_branch: payload.base_branch,
         },
         payload.task_id,
@@ -287,8 +286,8 @@ pub async fn create_task_attempt(
             "task_attempt_started",
             serde_json::json!({
                 "task_id": task_attempt.task_id.to_string(),
-                "profile": &profile_variant,
-                "base_coding_agent": profile.agent.to_string(),
+                "variant": &profile_variant,
+                "profile": profile.label,
                 "attempt_id": task_attempt.id.to_string(),
             }),
         )

@@ -227,28 +227,28 @@ function CreateAttempt({
                 </DropdownMenu>
               )}
 
-              {/* Show mode dropdown if selected profile has modes */}
+              {/* Show variant dropdown or disabled button */}
               {(() => {
                 const currentProfile = availableProfiles?.find(
                   (p) => p.label === selectedProfile?.profile
                 );
-                if (
-                  currentProfile &&
-                  currentProfile.variants &&
-                  currentProfile.variants.length > 0
-                ) {
+                const hasVariants =
+                  currentProfile?.variants &&
+                  currentProfile.variants.length > 0;
+
+                if (hasVariants) {
                   return (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="w-24 justify-between text-xs"
+                          className="w-24 px-2 flex items-center justify-between text-xs"
                         >
-                          <span className="truncate">
-                            {selectedProfile?.variant || 'Variant'}
+                          <span className="truncate flex-1 text-left">
+                            {selectedProfile?.variant || 'Default'}
                           </span>
-                          <ArrowDown className="h-3 w-3" />
+                          <ArrowDown className="h-3 w-3 ml-1 flex-shrink-0" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
@@ -289,6 +289,18 @@ function CreateAttempt({
                         ))}
                       </DropdownMenuContent>
                     </DropdownMenu>
+                  );
+                } else if (currentProfile) {
+                  // Show disabled button when profile exists but has no variants
+                  return (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-24 px-2 flex items-center justify-between text-xs"
+                      disabled
+                    >
+                      <span className="truncate flex-1 text-left">Default</span>
+                    </Button>
                   );
                 }
                 return null;

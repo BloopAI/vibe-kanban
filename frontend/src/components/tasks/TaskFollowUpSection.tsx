@@ -2,7 +2,7 @@ import { AlertCircle, Send, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
-import { useContext, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { attemptsApi } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,
@@ -21,16 +21,23 @@ import {
 export function TaskFollowUpSection() {
   const { task, projectId } = useContext(TaskDetailsContext);
   const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
-  const { attemptData, fetchAttemptData, isAttemptRunning } = useContext(
-    TaskAttemptDataContext
-  );
+  const {
+    attemptData,
+    fetchAttemptData,
+    isAttemptRunning,
+    defaultFollowUpVariant,
+  } = useContext(TaskAttemptDataContext);
   const { profiles } = useUserSystem();
 
   const [followUpMessage, setFollowUpMessage] = useState('');
   const [isSendingFollowUp, setIsSendingFollowUp] = useState(false);
   const [followUpError, setFollowUpError] = useState<string | null>(null);
-  const [selectedProfile] = useState<string | null>(null);
-  const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<string | null>(
+    defaultFollowUpVariant
+  );
+
+  // Get the profile from the selected attempt
+  const selectedProfile = selectedAttempt?.profile || null;
 
   const canSendFollowUp = useMemo(() => {
     if (
@@ -53,14 +60,13 @@ export function TaskFollowUpSection() {
     return profiles.find((p) => p.label === selectedProfile);
   }, [selectedProfile, profiles]);
 
+  // Update selectedVariant when defaultFollowUpVariant changes
+  useEffect(() => {
+    setSelectedVariant(defaultFollowUpVariant);
+  }, [defaultFollowUpVariant]);
+
   const onSendFollowUp = async () => {
-    if (
-      !task ||
-      !selectedAttempt ||
-      !followUpMessage.trim() ||
-      !selectedProfile
-    )
-      return;
+    if (!task || !selectedAttempt || !followUpMessage.trim()) return;
 
     try {
       setIsSendingFollowUp(true);
@@ -70,7 +76,7 @@ export function TaskFollowUpSection() {
         variant: selectedVariant,
       });
       setFollowUpMessage('');
-      fetchAttemptData(selectedAttempt.id, selectedAttempt.task_id);
+      fetchAttemptData(selectedAttempt.id);
     } catch (error: unknown) {
       // @ts-expect-error it is type ApiError
       setFollowUpError(`Failed to start follow-up execution: ${error.message}`);
@@ -104,8 +110,7 @@ export function TaskFollowUpSection() {
                     if (
                       canSendFollowUp &&
                       followUpMessage.trim() &&
-                      !isSendingFollowUp &&
-                      selectedProfile
+                      !isSendingFollowUp
                     ) {
                       onSendFollowUp();
                     }
@@ -118,25 +123,25 @@ export function TaskFollowUpSection() {
                 maxRows={6}
               />
 
-              {/* Mode selector if available */}
+              {/* Variant selector */}
               {(() => {
-                if (
-                  currentProfile &&
-                  currentProfile.variants &&
-                  currentProfile.variants.length > 0
-                ) {
+                const hasVariants =
+                  currentProfile?.variants &&
+                  currentProfile.variants.length > 0;
+
+                if (hasVariants) {
                   return (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-10 px-3"
+                          className="h-10 w-24 px-2 flex items-center justify-between"
                         >
-                          <span className="text-xs">
+                          <span className="text-xs truncate flex-1 text-left">
                             {selectedVariant || 'Default'}
                           </span>
-                          <ChevronDown className="h-3 w-3 ml-1" />
+                          <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
@@ -162,6 +167,20 @@ export function TaskFollowUpSection() {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   );
+                } else if (currentProfile) {
+                  // Show disabled button when profile exists but has no variants
+                  return (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-10 w-24 px-2 flex items-center justify-between"
+                      disabled
+                    >
+                      <span className="text-xs truncate flex-1 text-left">
+                        Default
+                      </span>
+                    </Button>
+                  );
                 }
                 return null;
               })()}
@@ -171,11 +190,9 @@ export function TaskFollowUpSection() {
                 disabled={
                   !canSendFollowUp ||
                   !followUpMessage.trim() ||
-                  isSendingFollowUp ||
-                  !selectedProfile
+                  isSendingFollowUp
                 }
                 size="sm"
-                title={!selectedProfile ? 'Please select a profile' : undefined}
               >
                 {isSendingFollowUp ? (
                   <Loader size={16} className="mr-2" />

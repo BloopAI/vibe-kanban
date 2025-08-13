@@ -14,12 +14,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Key, Loader2, Volume2 } from 'lucide-react';
+import { ChevronDown, Key, Loader2, Volume2 } from 'lucide-react';
 import { ThemeMode, EditorType, SoundFile, ProfileVariant } from 'shared/types';
 
 import { toPrettyCase } from '@/utils/string';
@@ -264,18 +270,7 @@ export function Settings() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="executor">Default Profile</Label>
-                <div
-                  className={(() => {
-                    const selectedProfile = profiles?.find(
-                      (p) => p.label === config.profile?.profile
-                    );
-                    return selectedProfile &&
-                      selectedProfile.variants &&
-                      selectedProfile.variants.length > 0
-                      ? 'grid grid-cols-2 gap-2'
-                      : '';
-                  })()}
-                >
+                <div className="grid grid-cols-2 gap-2">
                   <Select
                     value={config.profile?.profile || ''}
                     onValueChange={(value: string) => {
@@ -298,42 +293,78 @@ export function Settings() {
                     </SelectContent>
                   </Select>
 
-                  {/* Show mode selector if selected profile has modes */}
+                  {/* Show variant selector if selected profile has variants */}
                   {(() => {
                     const selectedProfile = profiles?.find(
                       (p) => p.label === config.profile?.profile
                     );
-                    if (
-                      selectedProfile &&
-                      selectedProfile.variants &&
-                      selectedProfile.variants.length > 0
-                    ) {
+                    const hasVariants =
+                      selectedProfile?.variants &&
+                      selectedProfile.variants.length > 0;
+
+                    if (hasVariants) {
                       return (
-                        <Select
-                          value={config.profile?.variant || '__default__'}
-                          onValueChange={(value: string) => {
-                            const newProfile: ProfileVariant = {
-                              profile: config.profile?.profile || '',
-                              variant: value === '__default__' ? null : value,
-                            };
-                            updateConfig({ profile: newProfile });
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select mode (optional)" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__default__">Default</SelectItem>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-full h-10 px-2 flex items-center justify-between"
+                            >
+                              <span className="text-sm truncate flex-1 text-left">
+                                {config.profile?.variant || 'Default'}
+                              </span>
+                              <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                const newProfile: ProfileVariant = {
+                                  profile: config.profile?.profile || '',
+                                  variant: null,
+                                };
+                                updateConfig({ profile: newProfile });
+                              }}
+                              className={
+                                !config.profile?.variant ? 'bg-accent' : ''
+                              }
+                            >
+                              Default
+                            </DropdownMenuItem>
                             {selectedProfile.variants.map((variant) => (
-                              <SelectItem
+                              <DropdownMenuItem
                                 key={variant.label}
-                                value={variant.label}
+                                onClick={() => {
+                                  const newProfile: ProfileVariant = {
+                                    profile: config.profile?.profile || '',
+                                    variant: variant.label,
+                                  };
+                                  updateConfig({ profile: newProfile });
+                                }}
+                                className={
+                                  config.profile?.variant === variant.label
+                                    ? 'bg-accent'
+                                    : ''
+                                }
                               >
                                 {variant.label}
-                              </SelectItem>
+                              </DropdownMenuItem>
                             ))}
-                          </SelectContent>
-                        </Select>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      );
+                    } else if (selectedProfile) {
+                      // Show disabled button when profile exists but has no variants
+                      return (
+                        <Button
+                          variant="outline"
+                          className="w-full h-10 px-2 flex items-center justify-between"
+                          disabled
+                        >
+                          <span className="text-sm truncate flex-1 text-left">
+                            Default
+                          </span>
+                        </Button>
                       );
                     }
                     return null;

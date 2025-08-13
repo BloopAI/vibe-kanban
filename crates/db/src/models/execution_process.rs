@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use executors::actions::{ExecutorAction, ExecutorActionKind};
+use executors::actions::ExecutorAction;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{FromRow, SqlitePool, Type};
@@ -33,7 +33,7 @@ pub struct ExecutionProcess {
     pub id: Uuid,
     pub task_attempt_id: Uuid,
     pub run_reason: ExecutionProcessRunReason,
-    #[ts(skip)]
+    #[ts(type = "ExecutorAction")]
     pub executor_action: sqlx::types::Json<ExecutorActionField>,
     pub status: ExecutionProcessStatus,
     pub exit_code: Option<i64>,
@@ -56,21 +56,6 @@ pub struct UpdateExecutionProcess {
     pub status: Option<ExecutionProcessStatus>,
     pub exit_code: Option<i64>,
     pub completed_at: Option<DateTime<Utc>>,
-}
-
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
-pub struct ExecutionProcessSummary {
-    pub id: Uuid,
-    pub task_attempt_id: Uuid,
-    pub run_reason: ExecutionProcessRunReason,
-    #[ts(skip)]
-    pub executor_action: sqlx::types::Json<ExecutorActionField>,
-    pub status: ExecutionProcessStatus,
-    pub exit_code: Option<i64>,
-    pub started_at: DateTime<Utc>,
-    pub completed_at: Option<DateTime<Utc>>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug)]
@@ -141,33 +126,6 @@ impl ExecutionProcess {
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             ExecutionProcess,
-            r#"SELECT 
-                id as "id!: Uuid", 
-                task_attempt_id as "task_attempt_id!: Uuid", 
-                run_reason as "run_reason!: ExecutionProcessRunReason",
-                executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>",
-                status as "status!: ExecutionProcessStatus",
-                exit_code,
-                started_at as "started_at!: DateTime<Utc>",
-                completed_at as "completed_at?: DateTime<Utc>",
-                created_at as "created_at!: DateTime<Utc>", 
-                updated_at as "updated_at!: DateTime<Utc>"
-               FROM execution_processes 
-               WHERE task_attempt_id = $1 
-               ORDER BY created_at ASC"#,
-            task_attempt_id
-        )
-        .fetch_all(pool)
-        .await
-    }
-
-    /// Find execution process summaries for a task attempt (excluding stdio)
-    pub async fn find_summaries_by_task_attempt_id(
-        pool: &SqlitePool,
-        task_attempt_id: Uuid,
-    ) -> Result<Vec<ExecutionProcessSummary>, sqlx::Error> {
-        sqlx::query_as!(
-            ExecutionProcessSummary,
             r#"SELECT 
                 id as "id!: Uuid", 
                 task_attempt_id as "task_attempt_id!: Uuid", 

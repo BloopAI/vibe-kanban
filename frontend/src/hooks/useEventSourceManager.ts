@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { applyPatch } from 'rfc6902';
-import type { ExecutionProcessSummary } from 'shared/types';
+import type { ExecutionProcess } from 'shared/types';
 import type { ProcessStartPayload } from '@/types/logs';
 
 interface ProcessData {
@@ -8,9 +8,9 @@ interface ProcessData {
 }
 
 interface UseEventSourceManagerParams {
-  processes: ExecutionProcessSummary[];
+  processes: ExecutionProcess[];
   enabled: boolean;
-  getEndpoint: (process: ExecutionProcessSummary) => string;
+  getEndpoint: (process: ExecutionProcess) => string;
   initialData?: any;
 }
 

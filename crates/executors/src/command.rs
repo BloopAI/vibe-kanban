@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, sync::OnceLock};
+use std::{collections::HashMap, fs, path::PathBuf, sync::OnceLock};
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -79,6 +79,13 @@ pub struct AgentProfile {
 impl AgentProfile {
     pub fn get_variant(&self, variant: &str) -> Option<&AgentVariantProfile> {
         self.variants.iter().find(|m| m.label == variant)
+    }
+
+    pub fn get_mcp_config_path(&self) -> Option<PathBuf> {
+        match self.mcp_config_path.as_ref() {
+            Some(path) => Some(PathBuf::from(path)),
+            None => self.agent.default_mcp_config_path(),
+        }
     }
 }
 

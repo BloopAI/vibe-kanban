@@ -15,7 +15,6 @@ import {
   DirectoryListResponse,
   EditorType,
   ExecutionProcess,
-  ExecutionProcessSummary,
   GitBranch,
   Project,
   CreateProject,
@@ -31,6 +30,9 @@ import {
   UpdateTaskTemplate,
   UserSystemInfo,
   GitHubServiceError,
+  McpServerQuery,
+  UpdateMcpServersBody,
+  GetMcpServerResponse,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -417,11 +419,11 @@ export const attemptsApi = {
 export const executionProcessesApi = {
   getExecutionProcesses: async (
     attemptId: string
-  ): Promise<ExecutionProcessSummary[]> => {
+  ): Promise<ExecutionProcess[]> => {
     const response = await makeRequest(
       `/api/execution-processes?task_attempt_id=${attemptId}`
     );
-    return handleApiResponse<ExecutionProcessSummary[]>(response);
+    return handleApiResponse<ExecutionProcess[]>(response);
   },
 
   getDetails: async (processId: string): Promise<ExecutionProcess> => {
@@ -558,24 +560,20 @@ export const templatesApi = {
 
 // MCP Servers APIs
 export const mcpServersApi = {
-  load: async (executor: string, mcpConfigPath?: string): Promise<any> => {
-    const params = new URLSearchParams();
-    params.set('base_coding_agent', executor);
-    if (mcpConfigPath) params.set('mcp_config_path', mcpConfigPath);
+  load: async (query: McpServerQuery): Promise<GetMcpServerResponse> => {
+    const params = new URLSearchParams(query);
     const response = await makeRequest(`/api/mcp-config?${params.toString()}`);
-    return handleApiResponse<any>(response);
+    return handleApiResponse<GetMcpServerResponse>(response);
   },
   save: async (
-    executor: string,
-    mcpConfigPath: string | undefined,
-    serversConfig: any
+    query: McpServerQuery,
+    data: UpdateMcpServersBody
   ): Promise<void> => {
-    const params = new URLSearchParams();
-    params.set('base_coding_agent', executor);
-    if (mcpConfigPath) params.set('mcp_config_path', mcpConfigPath);
+    const params = new URLSearchParams(query);
+    // params.set('profile', profile);
     const response = await makeRequest(`/api/mcp-config?${params.toString()}`, {
       method: 'POST',
-      body: JSON.stringify(serversConfig),
+      body: JSON.stringify(data),
     });
     if (!response.ok) {
       const errorData = await response.json();

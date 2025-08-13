@@ -10,6 +10,8 @@ pub enum ConfigError {
     Io(#[from] std::io::Error),
     #[error(transparent)]
     Json(#[from] serde_json::Error),
+    #[error("Validation error: {0}")]
+    ValidationError(String),
 }
 
 pub type Config = versions::v4::Config;

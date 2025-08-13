@@ -20,6 +20,18 @@ export type SearchResult = { path: string, is_file: boolean, match_type: SearchM
 
 export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
+export type ExecutorAction = { typ: ExecutorActionType, next_action: ExecutorAction | null, };
+
+export type McpConfig = { servers: { [key in string]?: JsonValue }, servers_path: Array<string>, template: JsonValue, vibe_kanban: JsonValue, is_toml_config: boolean, };
+
+export type ExecutorActionType = { "type": "CodingAgentInitialRequest" } & CodingAgentInitialRequest | { "type": "CodingAgentFollowUpRequest" } & CodingAgentFollowUpRequest | { "type": "ScriptRequest" } & ScriptRequest;
+
+export type ScriptContext = "SetupScript" | "CleanupScript" | "DevServer";
+
+export type ScriptRequest = { script: string, language: ScriptRequestLanguage, context: ScriptContext, };
+
+export type ScriptRequestLanguage = "Bash";
+
 export type TaskTemplate = { id: string, project_id: string | null, title: string, description: string | null, template_name: string, created_at: string, updated_at: string, };
 
 export type CreateTaskTemplate = { project_id: string | null, title: string, description: string | null, template_name: string, };
@@ -30,7 +42,7 @@ export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelle
 
 export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, created_at: string, updated_at: string, };
 
-export type TaskWithAttemptStatus = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, created_at: string, updated_at: string, has_in_progress_attempt: boolean, has_merged_attempt: boolean, last_attempt_failed: boolean, base_coding_agent: string, };
+export type TaskWithAttemptStatus = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, created_at: string, updated_at: string, has_in_progress_attempt: boolean, has_merged_attempt: boolean, last_attempt_failed: boolean, profile: string, };
 
 export type CreateTask = { project_id: string, title: string, description: string | null, parent_task_attempt: string | null, };
 
@@ -41,6 +53,12 @@ export type ApiResponse<T, E = T> = { success: boolean, data: T | null, error_da
 export type UserSystemInfo = { config: Config, environment: Environment, profiles: Array<AgentProfile>, };
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
+
+export type McpServerQuery = { profile: string, };
+
+export type UpdateMcpServersBody = { servers: { [key in string]?: JsonValue }, };
+
+export type GetMcpServerResponse = { mcp_config: McpConfig, config_path: string, };
 
 export type CreateFollowUpAttempt = { prompt: string, variant: string | null, };
 
@@ -122,11 +140,9 @@ export type CreateTaskAttemptBody = { task_id: string, profile: ProfileVariant |
 
 export type RebaseTaskAttemptRequest = { new_base_branch: string | null, };
 
-export type TaskAttempt = { id: string, task_id: string, container_ref: string | null, branch: string | null, base_branch: string, merge_commit: string | null, base_coding_agent: string, pr_url: string | null, pr_number: bigint | null, pr_status: string | null, pr_merged_at: string | null, worktree_deleted: boolean, setup_completed_at: string | null, created_at: string, updated_at: string, };
+export type TaskAttempt = { id: string, task_id: string, container_ref: string | null, branch: string | null, base_branch: string, merge_commit: string | null, profile: string, pr_url: string | null, pr_number: bigint | null, pr_status: string | null, pr_merged_at: string | null, worktree_deleted: boolean, setup_completed_at: string | null, created_at: string, updated_at: string, };
 
-export type ExecutionProcess = { id: string, task_attempt_id: string, run_reason: ExecutionProcessRunReason, status: ExecutionProcessStatus, exit_code: bigint | null, started_at: string, completed_at: string | null, created_at: string, updated_at: string, };
-
-export type ExecutionProcessSummary = { id: string, task_attempt_id: string, run_reason: ExecutionProcessRunReason, status: ExecutionProcessStatus, exit_code: bigint | null, started_at: string, completed_at: string | null, created_at: string, updated_at: string, };
+export type ExecutionProcess = { id: string, task_attempt_id: string, run_reason: ExecutionProcessRunReason, executor_action: ExecutorAction, status: ExecutionProcessStatus, exit_code: bigint | null, started_at: string, completed_at: string | null, created_at: string, updated_at: string, };
 
 export type ExecutionProcessStatus = "running" | "completed" | "failed" | "killed";
 
@@ -149,3 +165,5 @@ export type EditDiff = { "format": "unified", unified_diff: string, } | { "forma
 export type ActionType = { "action": "file_read", path: string, } | { "action": "file_edit", path: string, diffs: Array<EditDiff>, } | { "action": "command_run", command: string, } | { "action": "search", query: string, } | { "action": "web_fetch", url: string, } | { "action": "task_create", description: string, } | { "action": "plan_presentation", plan: string, } | { "action": "other", description: string, };
 
 export type PatchType = { "type": "NORMALIZED_ENTRY", "content": NormalizedEntry } | { "type": "STDOUT", "content": string } | { "type": "STDERR", "content": string } | { "type": "DIFF", "content": Diff };
+
+export type JsonValue = number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null;

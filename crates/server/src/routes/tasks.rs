@@ -95,9 +95,9 @@ pub async fn create_task_and_start(
         .await?
         .ok_or(ApiError::Database(SqlxError::RowNotFound))?;
     let branch = GitService::new().get_current_branch(&project.git_repo_path)?;
-    let base_coding_agent = executors::command::AgentProfiles::get_cached()
+    let profile_label = executors::command::AgentProfiles::get_cached()
         .get_profile(&default_profile_variant.profile)
-        .map(|profile| profile.agent.to_string())
+        .map(|profile| profile.label.clone())
         .ok_or_else(|| {
             ApiError::TaskAttempt(TaskAttemptError::ValidationError(format!(
                 "Profile not found: {:?}",
@@ -108,7 +108,7 @@ pub async fn create_task_and_start(
     let task_attempt = TaskAttempt::create(
         &deployment.db().pool,
         &CreateTaskAttempt {
-            base_coding_agent: base_coding_agent.clone(),
+            profile: profile_label.clone(),
             base_branch: branch,
         },
         task.id,
@@ -123,8 +123,8 @@ pub async fn create_task_and_start(
             "task_attempt_started",
             serde_json::json!({
                 "task_id": task.id.to_string(),
-                "base_coding_agent": &base_coding_agent,
-                "profile": &default_profile_variant,
+                "profile": &profile_label,
+                "variant": &default_profile_variant,
                 "attempt_id": task_attempt.id.to_string(),
             }),
         )
@@ -147,7 +147,7 @@ pub async fn create_task_and_start(
         has_in_progress_attempt: true,
         has_merged_attempt: false,
         last_attempt_failed: false,
-        base_coding_agent: task_attempt.base_coding_agent,
+        profile: task_attempt.profile,
     })))
 }
 
