@@ -556,6 +556,26 @@ impl TaskAttempt {
         Ok(())
     }
 
+    pub async fn resolve_container_ref(
+        pool: &SqlitePool,
+        container_ref: &str,
+    ) -> Result<(Uuid, Uuid, Uuid), sqlx::Error> {
+        let result = sqlx::query!(
+            r#"SELECT ta.id as "attempt_id!: Uuid",
+                      ta.task_id as "task_id!: Uuid",
+                      t.project_id as "project_id!: Uuid"
+               FROM task_attempts ta
+               JOIN tasks t ON ta.task_id = t.id
+               WHERE ta.container_ref = ?"#,
+            container_ref
+        )
+        .fetch_optional(pool)
+        .await?
+        .ok_or(sqlx::Error::RowNotFound)?;
+        
+        Ok((result.attempt_id, result.task_id, result.project_id))
+    }
+
     pub async fn get_open_prs(pool: &SqlitePool) -> Result<Vec<PrInfo>, sqlx::Error> {
         let rows = sqlx::query!(
             r#"SELECT 
