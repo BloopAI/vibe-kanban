@@ -80,7 +80,9 @@ export function TaskDetailsPanel({
           projectHasDevScript={projectHasDevScript}
         >
           {/* Backdrop - only on smaller screens (overlay mode) */}
-          {!hideBackdrop && <div className={getBackdropClasses()} onClick={onClose} />}
+          {!hideBackdrop && (
+            <div className={getBackdropClasses()} onClick={onClose} />
+          )}
 
           {/* Panel */}
           <div className={className || getTaskPanelClasses()}>

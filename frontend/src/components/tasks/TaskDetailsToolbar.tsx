@@ -162,10 +162,10 @@ function TaskDetailsToolbar() {
         const currentLatest =
           taskAttempts.length > 0
             ? taskAttempts.reduce((latest, current) =>
-              new Date(current.created_at) > new Date(latest.created_at)
-                ? current
-                : latest
-            )
+                new Date(current.created_at) > new Date(latest.created_at)
+                  ? current
+                  : latest
+              )
             : null;
 
         const newLatest = result.reduce((latest, current) =>

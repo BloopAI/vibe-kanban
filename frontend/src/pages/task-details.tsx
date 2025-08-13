@@ -12,7 +12,7 @@ export function TaskDetailsPage() {
     attemptId?: string;
   }>();
   const navigate = useNavigate();
-  
+
   const [task, setTask] = useState<TaskWithAttemptStatus | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,16 +42,16 @@ export function TaskDetailsPage() {
 
       try {
         setLoading(true);
-        
+
         // Fetch both project and tasks in parallel
         const [projectResult, tasksResult] = await Promise.all([
           projectsApi.getById(projectId),
-          tasksApi.getAll(projectId)
+          tasksApi.getAll(projectId),
         ]);
 
         // Find the specific task from the list (to get TaskWithAttemptStatus)
-        const foundTask = tasksResult.find(t => t.id === taskId);
-        
+        const foundTask = tasksResult.find((t) => t.id === taskId);
+
         if (!foundTask) {
           setError('Task not found');
           setLoading(false);
@@ -84,7 +84,7 @@ export function TaskDetailsPage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="text-destructive text-lg mb-4">{error}</div>
-          <button 
+          <button
             onClick={handleClose}
             className="text-primary hover:underline"
           >
@@ -99,8 +99,10 @@ export function TaskDetailsPage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="text-muted-foreground text-lg mb-4">Task not found</div>
-          <button 
+          <div className="text-muted-foreground text-lg mb-4">
+            Task not found
+          </div>
+          <button
             onClick={handleClose}
             className="text-primary hover:underline"
           >
