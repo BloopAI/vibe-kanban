@@ -21,11 +21,19 @@ import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
-// Simple style override types
-interface VibeStyleMessage {
-  type: 'VIBE_STYLE';
-  theme?: ThemeMode;
-  css?: Record<string, string>;
+interface VibeStyleOverrideMessage {
+  type: 'VIBE_STYLE_OVERRIDE';
+  payload: {
+    kind: "cssVars";
+    variables: Record<string, string>;
+  } | {
+    kind: "theme";
+    theme: ThemeMode;
+  };
+}
+
+interface VibeIframeReadyMessage {
+  type: 'VIBE_IFRAME_READY';
 }
 
 // Component that adds postMessage listener for style overrides
@@ -34,7 +42,9 @@ function AppWithStyleOverride({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     function handleStyleMessage(event: MessageEvent) {
-      if (event.data?.type !== 'VIBE_STYLE') return;
+      if (event.data?.type !== 'VIBE_STYLE_OVERRIDE') return;
+
+      console.log("DEBUG3", event.data);
 
       // Origin validation (only if VITE_PARENT_ORIGIN is configured)
       const allowedOrigin = import.meta.env.VITE_PARENT_ORIGIN;
@@ -46,26 +56,39 @@ function AppWithStyleOverride({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const message = event.data as VibeStyleMessage;
-
-      // Theme switching
-      if (message.theme && typeof message.theme === 'string') {
-        setTheme(message.theme as ThemeMode);
-      }
+      const message = event.data as VibeStyleOverrideMessage;
 
       // CSS variable overrides (only --vibe-* prefixed variables)
-      if (message.css && typeof message.css === 'object') {
-        Object.entries(message.css).forEach(([name, value]) => {
-          if (name.startsWith('--vibe-') && typeof value === 'string') {
+      if (message.payload.kind === "cssVars" && typeof message.payload.variables === 'object') {
+        Object.entries(message.payload.variables).forEach(([name, value]) => {
+          if (typeof value === 'string') {
             document.documentElement.style.setProperty(name, value);
           }
         });
+      } else if (message.payload.kind === "theme") {
+        setTheme(message.payload.theme);
       }
     }
 
     window.addEventListener('message', handleStyleMessage);
     return () => window.removeEventListener('message', handleStyleMessage);
   }, [setTheme]);
+
+  // Send ready message to parent when component mounts
+  useEffect(() => {
+    const allowedOrigin = import.meta.env.VITE_PARENT_ORIGIN;
+
+    // Only send if we're in an iframe and have a parent
+    if (window.parent && window.parent !== window) {
+      const readyMessage: VibeIframeReadyMessage = {
+        type: 'VIBE_IFRAME_READY'
+      };
+
+      // Send to specific origin if configured, otherwise send to any origin
+      const targetOrigin = allowedOrigin || '*';
+      window.parent.postMessage(readyMessage, targetOrigin);
+    }
+  }, []);
 
   return <>{children}</>;
 }
