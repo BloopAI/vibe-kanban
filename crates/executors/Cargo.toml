@@ -11,10 +11,11 @@ bytes = "1.0"
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }
+toml = "0.8"
 tracing-subscriber = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
-ts-rs = { workspace = true }
+ts-rs = { workspace = true, features = ["serde-json-impl"]}
 dirs = "5.0"
 xdg = "3.0"
 async-trait = "0.1"
@@ -25,13 +26,11 @@ regex = "1.11.1"
 sentry-tracing = { version = "0.41.0", features = ["backtrace"] }
 lazy_static = "1.4"
 json-patch = "2.0"
-strum_macros = "0.27.2"
 thiserror = { workspace = true }
 enum_dispatch = "0.3.13"
 futures-io = "0.3.31"
 tokio-stream = { version = "0.1.17", features = ["io-util"] }
 futures = "0.3.31"
-strum = "0.27.2"
 bon = "3.6"
 fork_stream = "0.1.0"
 os_pipe = "1.2"

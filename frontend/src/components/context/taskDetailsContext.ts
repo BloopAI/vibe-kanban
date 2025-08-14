@@ -30,8 +30,9 @@ export const TaskAttemptLoadingContext =
 interface TaskAttemptDataContextValue {
   attemptData: AttemptData;
   setAttemptData: Dispatch<SetStateAction<AttemptData>>;
-  fetchAttemptData: (attemptId: string, taskId: string) => Promise<void> | void;
+  fetchAttemptData: (attemptId: string) => Promise<void> | void;
   isAttemptRunning: boolean;
+  defaultFollowUpVariant: string | null;
 }
 
 export const TaskAttemptDataContext =

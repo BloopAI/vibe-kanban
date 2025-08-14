@@ -15,11 +15,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Sparkles, Code } from 'lucide-react';
-import { EditorType } from 'shared/types';
+import { Sparkles, Code, ChevronDown } from 'lucide-react';
+import { EditorType, ProfileVariantLabel } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
 
 import { toPrettyCase } from '@/utils/string';
@@ -27,13 +33,16 @@ import { toPrettyCase } from '@/utils/string';
 interface OnboardingDialogProps {
   open: boolean;
   onComplete: (config: {
-    profile: string;
+    profile: ProfileVariantLabel;
     editor: { editor_type: EditorType; custom_command: string | null };
   }) => void;
 }
 
 export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
-  const [profile, setProfile] = useState<string>('claude-code');
+  const [profile, setProfile] = useState<ProfileVariantLabel>({
+    profile: 'claude-code',
+    variant: null,
+  });
   const [editorType, setEditorType] = useState<EditorType>(EditorType.VS_CODE);
   const [customCommand, setCustomCommand] = useState<string>('');
 
@@ -79,21 +88,95 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="profile">Default Profile</Label>
-                <Select
-                  value={profile}
-                  onValueChange={(value) => setProfile(value)}
-                >
-                  <SelectTrigger id="profile">
-                    <SelectValue placeholder="Select your preferred coding agent" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {profiles?.map((profile) => (
-                      <SelectItem key={profile.label} value={profile.label}>
-                        {profile.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Select
+                    value={profile.profile}
+                    onValueChange={(value) =>
+                      setProfile({ profile: value, variant: null })
+                    }
+                  >
+                    <SelectTrigger id="profile" className="flex-1">
+                      <SelectValue placeholder="Select your preferred coding agent" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {profiles?.map((profile) => (
+                        <SelectItem key={profile.label} value={profile.label}>
+                          {profile.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Show variant selector if selected profile has variants */}
+                  {(() => {
+                    const selectedProfile = profiles?.find(
+                      (p) => p.label === profile.profile
+                    );
+                    const hasVariants =
+                      selectedProfile?.variants &&
+                      selectedProfile.variants.length > 0;
+
+                    if (hasVariants) {
+                      return (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-24 px-2 flex items-center justify-between"
+                            >
+                              <span className="text-xs truncate flex-1 text-left">
+                                {profile.variant || 'Default'}
+                              </span>
+                              <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                setProfile({ ...profile, variant: null })
+                              }
+                              className={!profile.variant ? 'bg-accent' : ''}
+                            >
+                              Default
+                            </DropdownMenuItem>
+                            {selectedProfile.variants.map((variant) => (
+                              <DropdownMenuItem
+                                key={variant.label}
+                                onClick={() =>
+                                  setProfile({
+                                    ...profile,
+                                    variant: variant.label,
+                                  })
+                                }
+                                className={
+                                  profile.variant === variant.label
+                                    ? 'bg-accent'
+                                    : ''
+                                }
+                              >
+                                {variant.label}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      );
+                    } else if (selectedProfile) {
+                      // Show disabled button when profile exists but has no variants
+                      return (
+                        <Button
+                          variant="outline"
+                          className="w-24 px-2 flex items-center justify-between"
+                          disabled
+                        >
+                          <span className="text-xs truncate flex-1 text-left">
+                            Default
+                          </span>
+                        </Button>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
               </div>
             </CardContent>
           </Card>

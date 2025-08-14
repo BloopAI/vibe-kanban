@@ -20,9 +20,9 @@ use executors::{
     actions::{
         coding_agent_follow_up::CodingAgentFollowUpRequest,
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
-        ExecutorAction, ExecutorActionKind, ExecutorActionType,
+        ExecutorAction, ExecutorActionType,
     },
-    executors::BaseCodingAgent,
+    profile::{AgentProfiles, ProfileVariantLabel},
 };
 use futures_util::TryStreamExt;
 use serde::{Deserialize, Serialize};
@@ -244,7 +244,7 @@ pub async fn get_task_attempt(
 #[derive(Debug, Deserialize, ts_rs::TS)]
 pub struct CreateTaskAttemptBody {
     pub task_id: Uuid,
-    pub profile: Option<String>,
+    pub profile: Option<ProfileVariantLabel>,
     pub base_branch: String,
 }
 
@@ -253,23 +253,24 @@ pub async fn create_task_attempt(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateTaskAttemptBody>,
 ) -> Result<ResponseJson<ApiResponse<TaskAttempt>>, ApiError> {
-    let profile_label = payload
+    let profile_variant = payload
         .profile
-        .unwrap_or(deployment.config().read().await.profile.to_string());
+        .unwrap_or(deployment.config().read().await.profile.clone());
 
-    let profile = executors::command::AgentProfiles::get_cached()
-        .get_profile(&profile_label)
+    let profiles = AgentProfiles::get_cached();
+    let profile = profiles
+        .get_profile(&profile_variant.profile)
         .ok_or_else(|| {
             ApiError::TaskAttempt(TaskAttemptError::ValidationError(format!(
                 "Profile not found: {}",
-                profile_label
+                profile_variant.profile
             )))
         })?;
 
     let task_attempt = TaskAttempt::create(
         &deployment.db().pool,
         &CreateTaskAttempt {
-            base_coding_agent: profile.agent.to_string(),
+            profile: profile.inner.label.clone(),
             base_branch: payload.base_branch,
         },
         payload.task_id,
@@ -278,7 +279,7 @@ pub async fn create_task_attempt(
 
     let execution_process = deployment
         .container()
-        .start_attempt(&task_attempt, profile_label.clone())
+        .start_attempt(&task_attempt, profile_variant.clone())
         .await?;
 
     deployment
@@ -286,8 +287,8 @@ pub async fn create_task_attempt(
             "task_attempt_started",
             serde_json::json!({
                 "task_id": task_attempt.task_id.to_string(),
-                "profile": &profile_label,
-                "base_coding_agent": profile.agent.to_string(),
+                "variant": &profile_variant,
+                "profile": profile.inner.label,
                 "attempt_id": task_attempt.id.to_string(),
             }),
         )
@@ -301,6 +302,7 @@ pub async fn create_task_attempt(
 #[derive(Debug, Deserialize, TS)]
 pub struct CreateFollowUpAttempt {
     pub prompt: String,
+    pub variant: Option<String>,
 }
 
 pub async fn follow_up(
@@ -311,10 +313,10 @@ pub async fn follow_up(
     tracing::info!("{:?}", task_attempt);
 
     // First, get the most recent execution process with executor action type = StandardCoding
-    let initial_execution_process = ExecutionProcess::find_latest_by_task_attempt_and_action_type(
+    let latest_execution_process = ExecutionProcess::find_latest_by_task_attempt_and_run_reason(
         &deployment.db().pool,
         task_attempt.id,
-        &ExecutorActionKind::CodingAgentInitialRequest,
+        &ExecutionProcessRunReason::CodingAgent,
     )
     .await?
     .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
@@ -324,7 +326,7 @@ pub async fn follow_up(
     // Get session_id
     let session_id = ExecutorSession::find_by_execution_process_id(
         &deployment.db().pool,
-        initial_execution_process.id,
+        latest_execution_process.id,
     )
     .await?
     .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
@@ -334,17 +336,22 @@ pub async fn follow_up(
     .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
         "This executor session doesn't have a session_id".to_string(),
     )))?;
-
-    let profile = match &initial_execution_process
+    let initial_profile = match &latest_execution_process
         .executor_action()
         .map_err(|e| ApiError::TaskAttempt(TaskAttemptError::ValidationError(e.to_string())))?
         .typ
     {
         ExecutorActionType::CodingAgentInitialRequest(request) => Ok(request.profile.clone()),
+        ExecutorActionType::CodingAgentFollowUpRequest(request) => Ok(request.profile.clone()),
         _ => Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
             "Couldn't find profile from initial request".to_string(),
         ))),
     }?;
+
+    let profile = ProfileVariantLabel {
+        profile: initial_profile.profile,
+        variant: payload.variant,
+    };
 
     // Get parent task
     let task = task_attempt

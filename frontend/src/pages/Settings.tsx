@@ -14,13 +14,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Key, Loader2, Volume2 } from 'lucide-react';
-import { ThemeMode, EditorType, SoundFile } from 'shared/types';
+import { ChevronDown, Key, Loader2, Volume2 } from 'lucide-react';
+import {
+  ThemeMode,
+  EditorType,
+  SoundFile,
+  ProfileVariantLabel,
+} from 'shared/types';
 
 import { toPrettyCase } from '@/utils/string';
 import { useTheme } from '@/components/theme-provider';
@@ -37,6 +48,7 @@ export function Settings() {
     loading,
     updateAndSaveConfig,
     profiles,
+    reloadSystem,
   } = useUserSystem();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,6 +120,8 @@ export function Settings() {
 
     try {
       await profilesApi.save(profilesContent);
+      // Reload the system to get the updated profiles
+      await reloadSystem();
       setProfilesSuccess(true);
       setTimeout(() => setProfilesSuccess(false), 3000);
     } catch (err: any) {
@@ -264,23 +278,106 @@ export function Settings() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="executor">Default Profile</Label>
-                <Select
-                  value={config.profile}
-                  onValueChange={(value: string) =>
-                    updateConfig({ profile: value })
-                  }
-                >
-                  <SelectTrigger id="executor">
-                    <SelectValue placeholder="Select executor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {profiles?.map((profile) => (
-                      <SelectItem key={profile.label} value={profile.label}>
-                        {profile.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="grid grid-cols-2 gap-2">
+                  <Select
+                    value={config.profile?.profile || ''}
+                    onValueChange={(value: string) => {
+                      const newProfile: ProfileVariantLabel = {
+                        profile: value,
+                        variant: null,
+                      };
+                      updateConfig({ profile: newProfile });
+                    }}
+                  >
+                    <SelectTrigger id="executor">
+                      <SelectValue placeholder="Select profile" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {profiles?.map((profile) => (
+                        <SelectItem key={profile.label} value={profile.label}>
+                          {profile.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Show variant selector if selected profile has variants */}
+                  {(() => {
+                    const selectedProfile = profiles?.find(
+                      (p) => p.label === config.profile?.profile
+                    );
+                    const hasVariants =
+                      selectedProfile?.variants &&
+                      selectedProfile.variants.length > 0;
+
+                    if (hasVariants) {
+                      return (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-full h-10 px-2 flex items-center justify-between"
+                            >
+                              <span className="text-sm truncate flex-1 text-left">
+                                {config.profile?.variant || 'Default'}
+                              </span>
+                              <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                const newProfile: ProfileVariantLabel = {
+                                  profile: config.profile?.profile || '',
+                                  variant: null,
+                                };
+                                updateConfig({ profile: newProfile });
+                              }}
+                              className={
+                                !config.profile?.variant ? 'bg-accent' : ''
+                              }
+                            >
+                              Default
+                            </DropdownMenuItem>
+                            {selectedProfile.variants.map((variant) => (
+                              <DropdownMenuItem
+                                key={variant.label}
+                                onClick={() => {
+                                  const newProfile: ProfileVariantLabel = {
+                                    profile: config.profile?.profile || '',
+                                    variant: variant.label,
+                                  };
+                                  updateConfig({ profile: newProfile });
+                                }}
+                                className={
+                                  config.profile?.variant === variant.label
+                                    ? 'bg-accent'
+                                    : ''
+                                }
+                              >
+                                {variant.label}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      );
+                    } else if (selectedProfile) {
+                      // Show disabled button when profile exists but has no variants
+                      return (
+                        <Button
+                          variant="outline"
+                          className="w-full h-10 px-2 flex items-center justify-between"
+                          disabled
+                        >
+                          <span className="text-sm truncate flex-1 text-left">
+                            Default
+                          </span>
+                        </Button>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
                 <p className="text-sm text-muted-foreground">
                   Choose the default profile to use when creating a task
                   attempt.

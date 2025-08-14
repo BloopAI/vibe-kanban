@@ -10,8 +10,8 @@ use ts_rs::TS;
 use utils::{msg_store::MsgStore, path::make_path_relative, shell::get_shell_command};
 
 use crate::{
-    command::{AgentProfiles, CommandBuilder},
-    executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
+    command::CommandBuilder,
+    executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
         ActionType, EditDiff, NormalizedEntry, NormalizedEntryType,
         utils::{EntryIndexProvider, patch::ConversationPatch},
@@ -103,26 +103,6 @@ impl SessionHandler {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Codex {
     pub command: CommandBuilder,
-}
-
-impl Default for Codex {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Codex {
-    /// Create a new Codex executor with default settings
-    pub fn new() -> Self {
-        let profile = AgentProfiles::get_cached()
-            .get_profile("codex")
-            .expect("Default codex profile should exist");
-
-        match &profile.agent {
-            CodingAgent::Codex(codex) => codex.clone(),
-            _ => panic!("Expected Codex agent in codex profile"),
-        }
-    }
 }
 
 #[async_trait]

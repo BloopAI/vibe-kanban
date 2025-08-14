@@ -90,25 +90,25 @@ pub async fn create_task_and_start(
         .await;
 
     // use the default executor profile and the current branch for the task attempt
-    let default_profile_label = deployment.config().read().await.profile.clone().to_string();
+    let default_profile_variant = deployment.config().read().await.profile.clone();
     let project = Project::find_by_id(&deployment.db().pool, payload.project_id)
         .await?
         .ok_or(ApiError::Database(SqlxError::RowNotFound))?;
     let branch = GitService::new().get_current_branch(&project.git_repo_path)?;
-    let base_coding_agent = executors::command::AgentProfiles::get_cached()
-        .get_profile(&default_profile_label)
-        .map(|profile| profile.agent.to_string())
+    let profile_label = executors::profile::AgentProfiles::get_cached()
+        .get_profile(&default_profile_variant.profile)
+        .map(|profile| profile.inner.label.clone())
         .ok_or_else(|| {
             ApiError::TaskAttempt(TaskAttemptError::ValidationError(format!(
-                "Profile not found: {}",
-                default_profile_label
+                "Profile not found: {:?}",
+                default_profile_variant
             )))
         })?;
 
     let task_attempt = TaskAttempt::create(
         &deployment.db().pool,
         &CreateTaskAttempt {
-            base_coding_agent: base_coding_agent.clone(),
+            profile: profile_label.clone(),
             base_branch: branch,
         },
         task.id,
@@ -116,15 +116,15 @@ pub async fn create_task_and_start(
     .await?;
     let execution_process = deployment
         .container()
-        .start_attempt(&task_attempt, default_profile_label.clone())
+        .start_attempt(&task_attempt, default_profile_variant.clone())
         .await?;
     deployment
         .track_if_analytics_allowed(
             "task_attempt_started",
             serde_json::json!({
                 "task_id": task.id.to_string(),
-                "base_coding_agent": &base_coding_agent,
-                "profile": &default_profile_label,
+                "profile": &profile_label,
+                "variant": &default_profile_variant,
                 "attempt_id": task_attempt.id.to_string(),
             }),
         )
@@ -147,7 +147,7 @@ pub async fn create_task_and_start(
         has_in_progress_attempt: true,
         has_merged_attempt: false,
         last_attempt_failed: false,
-        base_coding_agent: task_attempt.base_coding_agent,
+        profile: task_attempt.profile,
     })))
 }
 

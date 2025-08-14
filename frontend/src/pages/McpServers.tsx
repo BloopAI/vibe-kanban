@@ -18,14 +18,15 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
-import { AgentProfile } from 'shared/types';
+import { AgentProfile, McpConfig } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
 import { mcpServersApi } from '../lib/api';
-import { getMcpStrategyByAgent } from '../lib/mcp-strategies';
+import { McpConfigStrategyGeneral } from '../lib/mcp-strategies';
 
 export function McpServers() {
   const { config, profiles } = useUserSystem();
   const [mcpServers, setMcpServers] = useState('{}');
+  const [mcpConfig, setMcpConfig] = useState<McpConfig | null>(null);
   const [mcpError, setMcpError] = useState<string | null>(null);
   const [mcpLoading, setMcpLoading] = useState(true);
   const [selectedProfile, setSelectedProfile] = useState<AgentProfile | null>(
@@ -39,7 +40,9 @@ export function McpServers() {
   useEffect(() => {
     if (config?.profile && profiles && !selectedProfile) {
       // Find the current profile
-      const currentProfile = profiles.find((p) => p.label === config.profile);
+      const currentProfile = profiles.find(
+        (p) => p.label === config.profile.profile
+      );
       if (currentProfile) {
         setSelectedProfile(currentProfile);
       } else if (profiles.length > 0) {
@@ -55,30 +58,23 @@ export function McpServers() {
       // Reset state when loading
       setMcpLoading(true);
       setMcpError(null);
-
       // Set default empty config based on agent type using strategy
-      const strategy = getMcpStrategyByAgent(profile.agent);
-      const defaultConfig = strategy.getDefaultConfig();
-      setMcpServers(defaultConfig);
       setMcpConfigPath('');
 
       try {
         // Load MCP servers for the selected profile/agent
-        const result = await mcpServersApi.load(
-          profile.agent,
-          profile.mcp_config_path || undefined
+        const result = await mcpServersApi.load({
+          profile: profile.label,
+        });
+        // Store the McpConfig from backend
+        setMcpConfig(result.mcp_config);
+        // Create the full configuration structure using the schema
+        const fullConfig = McpConfigStrategyGeneral.createFullConfig(
+          result.mcp_config
         );
-        // Handle new response format with servers and config_path
-        const data = result || {};
-        const servers = data.servers || {};
-        const configPath = data.config_path || '';
-
-        // Create the full configuration structure using strategy
-        const strategy = getMcpStrategyByAgent(profile.agent);
-        const fullConfig = strategy.createFullConfig(servers);
         const configJson = JSON.stringify(fullConfig, null, 2);
         setMcpServers(configJson);
-        setMcpConfigPath(configPath);
+        setMcpConfigPath(result.config_path);
       } catch (err: any) {
         if (err?.message && err.message.includes('does not support MCP')) {
           setMcpError(err.message);
@@ -101,12 +97,11 @@ export function McpServers() {
     setMcpError(null);
 
     // Validate JSON on change
-    if (value.trim() && selectedProfile) {
+    if (value.trim() && mcpConfig) {
       try {
-        const config = JSON.parse(value);
-        // Validate that the config has the expected structure using strategy
-        const strategy = getMcpStrategyByAgent(selectedProfile.agent);
-        strategy.validateFullConfig(config);
+        const parsedConfig = JSON.parse(value);
+        // Validate using the schema path from backend
+        McpConfigStrategyGeneral.validateFullConfig(mcpConfig, parsedConfig);
       } catch (err) {
         if (err instanceof SyntaxError) {
           setMcpError('Invalid JSON format');
@@ -118,20 +113,16 @@ export function McpServers() {
   };
 
   const handleConfigureVibeKanban = async () => {
-    if (!selectedProfile) return;
+    if (!selectedProfile || !mcpConfig) return;
 
     try {
       // Parse existing configuration
       const existingConfig = mcpServers.trim() ? JSON.parse(mcpServers) : {};
 
-      // Use strategy to create vibe-kanban configuration
-      const strategy = getMcpStrategyByAgent(selectedProfile.agent);
-      const vibeKanbanConfig = strategy.createVibeKanbanConfig();
-
-      // Add vibe_kanban to the existing configuration using strategy
-      const updatedConfig = strategy.addVibeKanbanToConfig(
-        existingConfig,
-        vibeKanbanConfig
+      // Add vibe_kanban to the existing configuration using the schema
+      const updatedConfig = McpConfigStrategyGeneral.addVibeKanbanToConfig(
+        mcpConfig,
+        existingConfig
       );
 
       // Update the textarea with the new configuration
@@ -145,7 +136,7 @@ export function McpServers() {
   };
 
   const handleApplyMcpServers = async () => {
-    if (!selectedProfile) return;
+    if (!selectedProfile || !mcpConfig) return;
 
     setMcpApplying(true);
     setMcpError(null);
@@ -155,18 +146,18 @@ export function McpServers() {
       if (mcpServers.trim()) {
         try {
           const fullConfig = JSON.parse(mcpServers);
-
-          // Use strategy to validate and extract servers config
-          const strategy = getMcpStrategyByAgent(selectedProfile.agent);
-          strategy.validateFullConfig(fullConfig);
-
-          // Extract just the servers object for the API - backend will handle nesting/format
-          const mcpServersConfig = strategy.extractServersForApi(fullConfig);
+          McpConfigStrategyGeneral.validateFullConfig(mcpConfig, fullConfig);
+          const mcpServersConfig =
+            McpConfigStrategyGeneral.extractServersForApi(
+              mcpConfig,
+              fullConfig
+            );
 
           await mcpServersApi.save(
-            selectedProfile.agent,
-            mcpConfigPath || undefined,
-            mcpServersConfig
+            {
+              profile: selectedProfile.label,
+            },
+            { servers: mcpServersConfig }
           );
 
           // Show success feedback

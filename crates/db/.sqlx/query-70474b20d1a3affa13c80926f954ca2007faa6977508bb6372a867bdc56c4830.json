@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!: Uuid\",\n                              task_id AS \"task_id!: Uuid\",\n                              container_ref,\n                              branch,\n                              base_branch,\n                              merge_commit,\n                              base_coding_agent AS \"base_coding_agent!\",\n                              pr_url,\n                              pr_number,\n                              pr_status,\n                              pr_merged_at AS \"pr_merged_at: DateTime<Utc>\",\n                              worktree_deleted AS \"worktree_deleted!: bool\",\n                              setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                              created_at AS \"created_at!: DateTime<Utc>\",\n                              updated_at AS \"updated_at!: DateTime<Utc>\"\n                       FROM task_attempts\n                       ORDER BY created_at DESC",
+  "query": "SELECT id AS \"id!: Uuid\",\n                              task_id AS \"task_id!: Uuid\",\n                              container_ref,\n                              branch,\n                              base_branch,\n                              merge_commit,\n                              profile AS \"profile!\",\n                              pr_url,\n                              pr_number,\n                              pr_status,\n                              pr_merged_at AS \"pr_merged_at: DateTime<Utc>\",\n                              worktree_deleted AS \"worktree_deleted!: bool\",\n                              setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                              created_at AS \"created_at!: DateTime<Utc>\",\n                              updated_at AS \"updated_at!: DateTime<Utc>\"\n                       FROM task_attempts\n                       WHERE task_id = $1\n                       ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -34,7 +34,7 @@
         "type_info": "Text"
       },
       {
-        "name": "base_coding_agent!",
+        "name": "profile!",
         "ordinal": 6,
         "type_info": "Text"
       },
@@ -80,7 +80,7 @@
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       true,
@@ -100,5 +100,5 @@
       false
     ]
   },
-  "hash": "8f5d9d112659d04406c20c885f72c075b355e54836930226fc84390c5a4516f7"
+  "hash": "70474b20d1a3affa13c80926f954ca2007faa6977508bb6372a867bdc56c4830"
 }

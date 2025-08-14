@@ -11,8 +11,8 @@ use utils::{
 };
 
 use crate::{
-    command::{AgentProfiles, CommandBuilder},
-    executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
+    command::CommandBuilder,
+    executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
         ActionType, EditDiff, NormalizedEntry, NormalizedEntryType,
         stderr_processor::normalize_stderr_logs,
@@ -25,12 +25,6 @@ use crate::{
 pub struct ClaudeCode {
     pub command: CommandBuilder,
     pub plan: bool,
-}
-
-impl Default for ClaudeCode {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 #[async_trait]
@@ -121,20 +115,6 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 
         // Process stderr logs using the standard stderr processor
         normalize_stderr_logs(msg_store, entry_index_provider);
-    }
-}
-
-impl ClaudeCode {
-    /// Create a new Claude executor with default settings
-    pub fn new() -> Self {
-        let profile = AgentProfiles::get_cached()
-            .get_profile("claude-code")
-            .expect("Default claude-code profile should exist");
-
-        match &profile.agent {
-            CodingAgent::ClaudeCode(claude_code) => claude_code.clone(),
-            _ => panic!("Expected ClaudeCode agent in claude-code profile"),
-        }
     }
 }
 
@@ -990,7 +970,10 @@ mod tests {
 
         use utils::msg_store::MsgStore;
 
-        let executor = ClaudeCode::new();
+        let executor = ClaudeCode {
+            command: CommandBuilder::new(""),
+            plan: false,
+        };
         let msg_store = Arc::new(MsgStore::new());
         let current_dir = std::path::PathBuf::from("/tmp/test-worktree");
 
@@ -1089,24 +1072,5 @@ mod tests {
         assert_eq!(entries[1].content, "I'll help you with that");
 
         // ToolResult entry is ignored - no third entry
-    }
-
-    #[test]
-    fn test_claude_executor_command_building() {
-        // Test default executor produces correct command
-        let executor = ClaudeCode::new();
-        let command = executor.command.build_initial();
-        assert!(command.contains("npx -y @anthropic-ai/claude-code@latest"));
-        assert!(command.contains("-p"));
-        assert!(command.contains("--dangerously-skip-permissions"));
-        assert!(command.contains("--verbose"));
-        assert!(command.contains("--output-format=stream-json"));
-
-        // Test follow-up command
-        let follow_up = executor
-            .command
-            .build_follow_up(&["--resume".to_string(), "test-session-123".to_string()]);
-        assert!(follow_up.contains("--resume test-session-123"));
-        assert!(follow_up.contains("-p")); // Still contains base params
     }
 }

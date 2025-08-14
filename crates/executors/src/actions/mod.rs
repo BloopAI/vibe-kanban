@@ -4,7 +4,6 @@ use async_trait::async_trait;
 use command_group::AsyncGroupChild;
 use enum_dispatch::enum_dispatch;
 use serde::{Deserialize, Serialize};
-use strum_macros::{Display, EnumDiscriminants};
 use ts_rs::TS;
 
 use crate::{
@@ -19,24 +18,12 @@ pub mod coding_agent_initial;
 pub mod script;
 
 #[enum_dispatch]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, EnumDiscriminants, Display)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 #[serde(tag = "type")]
-#[strum_discriminants(name(ExecutorActionKind), derive(Display))]
 pub enum ExecutorActionType {
     CodingAgentInitialRequest,
     CodingAgentFollowUpRequest,
     ScriptRequest,
-}
-
-impl ExecutorActionType {
-    /// Get the action type as a string (matches the JSON "type" field)
-    pub fn action_type(&self) -> &'static str {
-        match self {
-            ExecutorActionType::CodingAgentInitialRequest(_) => "CodingAgentInitialRequest",
-            ExecutorActionType::CodingAgentFollowUpRequest(_) => "CodingAgentFollowUpRequest",
-            ExecutorActionType::ScriptRequest(_) => "ScriptRequest",
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -56,10 +43,6 @@ impl ExecutorAction {
 
     pub fn next_action(&self) -> Option<&Box<ExecutorAction>> {
         self.next_action.as_ref()
-    }
-
-    pub fn action_type(&self) -> &'static str {
-        self.typ.action_type()
     }
 }
 

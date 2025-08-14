@@ -10,8 +10,8 @@ use ts_rs::TS;
 use utils::{msg_store::MsgStore, path::make_path_relative, shell::get_shell_command};
 
 use crate::{
-    command::{AgentProfiles, CommandBuilder},
-    executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
+    command::CommandBuilder,
+    executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
         ActionType, EditDiff, NormalizedEntry, NormalizedEntryType,
         plain_text_processor::PlainTextLogProcessor,
@@ -23,26 +23,6 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Cursor {
     pub command: CommandBuilder,
-}
-
-impl Default for Cursor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Cursor {
-    /// Create a new Cursor executor with default profile
-    pub fn new() -> Self {
-        let profile = AgentProfiles::get_cached()
-            .get_profile("cursor")
-            .expect("Default cursor profile should exist");
-
-        match &profile.agent {
-            CodingAgent::Cursor(cursor) => cursor.clone(),
-            _ => panic!("Expected Cursor agent in profile"),
-        }
-    }
 }
 
 #[async_trait]
@@ -801,7 +781,9 @@ mod tests {
     #[tokio::test]
     async fn test_cursor_streaming_patch_generation() {
         // Avoid relying on feature flag in tests; construct with a dummy command
-        let executor = Cursor::new();
+        let executor = Cursor {
+            command: CommandBuilder::new(""),
+        };
         let msg_store = Arc::new(MsgStore::new());
         let current_dir = std::path::PathBuf::from("/tmp/test-worktree");
 

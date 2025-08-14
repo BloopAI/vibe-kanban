@@ -5,18 +5,17 @@ use command_group::AsyncGroupChild;
 use enum_dispatch::enum_dispatch;
 use futures_io::Error as FuturesIoError;
 use serde::{Deserialize, Serialize};
-use strum::IntoEnumIterator;
-use strum_macros::EnumDiscriminants;
 use thiserror::Error;
 use ts_rs::TS;
 use utils::msg_store::MsgStore;
 
 use crate::{
-    command::AgentProfiles,
     executors::{
         amp::Amp, claude::ClaudeCode, codex::Codex, cursor::Cursor, gemini::Gemini,
         opencode::Opencode,
     },
+    mcp_config::McpConfig,
+    profile::{AgentProfiles, ProfileVariantLabel},
 };
 
 pub mod amp;
@@ -36,115 +35,114 @@ pub enum ExecutorError {
     UnknownExecutorType(String),
     #[error("I/O error: {0}")]
     Io(std::io::Error),
-}
-
-fn unknown_executor_error(s: &str) -> ExecutorError {
-    ExecutorError::UnknownExecutorType(format!("Unknown executor type: {s}."))
+    #[error(transparent)]
+    Json(#[from] serde_json::Error),
+    #[error(transparent)]
+    TomlSerialize(#[from] toml::ser::Error),
+    #[error(transparent)]
+    TomlDeserialize(#[from] toml::de::Error),
 }
 
 #[enum_dispatch]
-#[derive(
-    Debug,
-    Clone,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    TS,
-    EnumDiscriminants,
-    strum_macros::EnumString,
-    strum_macros::EnumIter,
-)]
-#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
-#[strum(parse_err_ty = ExecutorError, parse_err_fn = unknown_executor_error)]
-#[strum_discriminants(
-    name(BaseCodingAgent),
-    derive(
-        strum_macros::Display,
-        strum_macros::EnumIter,
-        Serialize,
-        Deserialize,
-        TS
-    ),
-    strum(serialize_all = "SCREAMING_SNAKE_CASE"),
-    ts(use_ts_enum),
-    serde(rename_all = "SCREAMING_SNAKE_CASE")
-)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CodingAgent {
-    #[serde(rename = "CLAUDE_CODE", alias = "claude")]
-    ClaudeCode(ClaudeCode),
-    #[serde(rename = "AMP")]
-    Amp(Amp),
-    #[serde(rename = "GEMINI")]
-    Gemini(Gemini),
-    #[serde(rename = "CODEX")]
-    Codex(Codex),
-    #[serde(rename = "OPENCODE")]
-    Opencode(Opencode),
-    #[serde(rename = "CURSOR")]
-    Cursor(Cursor),
-}
-
-impl std::fmt::Display for CodingAgent {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        BaseCodingAgent::from(self).fmt(f)
-    }
+    ClaudeCode,
+    Amp,
+    Gemini,
+    Codex,
+    Opencode,
+    Cursor,
 }
 
 impl CodingAgent {
-    pub fn all_variants_screaming_snake() -> Vec<String> {
-        BaseCodingAgent::iter()
-            .map(|variant| variant.to_string())
-            .collect()
-    }
-
-    pub fn iter_discriminants() -> impl Iterator<Item = BaseCodingAgent> {
-        BaseCodingAgent::iter()
-    }
-
-    /// Create an executor from a profile string
+    /// Create a CodingAgent from a profile variant
     /// Loads profile from AgentProfiles (both default and custom profiles)
-    pub fn from_profile_str(profile: &str) -> Result<Self, ExecutorError> {
-        if let Some(agent_profile) = AgentProfiles::get_cached().get_profile(profile) {
-            Ok(agent_profile.agent.clone())
+    pub fn from_profile_variant(profile: &ProfileVariantLabel) -> Result<Self, ExecutorError> {
+        if let Some(agent_profile) = AgentProfiles::get_cached().get_profile(&profile.profile) {
+            if let Some(variant_name) = &profile.variant {
+                if let Some(variant) = agent_profile.get_variant(&variant_name) {
+                    Ok(variant.agent.clone())
+                } else {
+                    Err(ExecutorError::UnknownExecutorType(format!(
+                        "Unknown mode: {}",
+                        variant_name
+                    )))
+                }
+            } else {
+                Ok(agent_profile.inner.agent.clone())
+            }
         } else {
             Err(ExecutorError::UnknownExecutorType(format!(
-                "Unknown profile: {profile}"
+                "Unknown profile: {}",
+                profile.profile
             )))
-        }
-    }
-}
-
-impl BaseCodingAgent {
-    /// Get the JSON attribute path for MCP servers in the config file
-    /// Returns None if the executor doesn't support MCP
-    pub fn mcp_attribute_path(&self) -> Option<Vec<&'static str>> {
-        match self {
-            //ExecutorConfig::CharmOpencode => Some(vec!["mcpServers"]),
-            Self::Opencode => Some(vec!["mcp"]),
-            Self::ClaudeCode => Some(vec!["mcpServers"]),
-            //ExecutorConfig::ClaudePlan => None, // Claude Plan shares Claude config
-            Self::Amp => Some(vec!["amp", "mcpServers"]), // Nested path for Amp
-            Self::Gemini => Some(vec!["mcpServers"]),
-            //ExecutorConfig::Aider => None, // Aider doesn't support MCP. https://github.com/Aider-AI/aider/issues/3314
-            Self::Codex => Some(vec!["mcp_servers"]), // Codex uses TOML with mcp_servers
-            // Cursor CLI is supposed to be compatible with MCP server config according to the docs: https://docs.cursor.com/en/cli/using#mcp
-            // But it still doesn't seem to support it properly: https://forum.cursor.com/t/cursor-cli-not-actually-an-mcp-client/127000/5
-            Self::Cursor => Some(vec!["mcpServers"]),
         }
     }
 
     pub fn supports_mcp(&self) -> bool {
-        self.mcp_attribute_path().is_some()
+        self.default_mcp_config_path().is_some()
     }
 
-    pub fn config_path(&self) -> Option<PathBuf> {
+    pub fn get_mcp_config(&self) -> McpConfig {
+        match self {
+            Self::Codex(_) => McpConfig::new(
+                vec!["mcp_servers".to_string()],
+                serde_json::json!({
+                    "mcp_servers": {}
+                }),
+                serde_json::json!({
+                    "command": "npx",
+                    "args": ["-y", "vibe-kanban", "--mcp"],
+                }),
+                true,
+            ),
+            Self::Amp(_) => McpConfig::new(
+                vec!["amp.mcpServers".to_string()],
+                serde_json::json!({
+                    "amp.mcpServers": {}
+                }),
+                serde_json::json!({
+                    "command": "npx",
+                    "args": ["-y", "vibe-kanban", "--mcp"],
+                }),
+                false,
+            ),
+            Self::Opencode(_) => McpConfig::new(
+                vec!["mcp".to_string()],
+                serde_json::json!({
+                    "mcp": {},
+                    "$schema": "https://opencode.ai/config.json"
+                }),
+                serde_json::json!({
+                    "type": "local",
+                    "command": ["npx", "-y", "vibe-kanban", "--mcp"],
+                    "enabled": true
+                }),
+                false,
+            ),
+            _ => McpConfig::new(
+                vec!["mcpServers".to_string()],
+                serde_json::json!({
+                    "mcpServers": {}
+                }),
+                serde_json::json!({
+                    "command": "npx",
+                    "args": ["-y", "vibe-kanban", "--mcp"],
+                }),
+                false,
+            ),
+        }
+    }
+
+    pub fn default_mcp_config_path(&self) -> Option<PathBuf> {
         match self {
             //ExecutorConfig::CharmOpencode => {
             //dirs::home_dir().map(|home| home.join(".opencode.json"))
             //}
-            Self::ClaudeCode => dirs::home_dir().map(|home| home.join(".claude.json")),
+            Self::ClaudeCode(_) => dirs::home_dir().map(|home| home.join(".claude.json")),
             //ExecutorConfig::ClaudePlan => dirs::home_dir().map(|home| home.join(".claude.json")),
-            Self::Opencode => {
+            Self::Opencode(_) => {
                 #[cfg(unix)]
                 {
                     xdg::BaseDirectories::with_prefix("opencode").get_config_file("opencode.json")
@@ -155,10 +153,14 @@ impl BaseCodingAgent {
                 }
             }
             //ExecutorConfig::Aider => None,
-            Self::Codex => dirs::home_dir().map(|home| home.join(".codex").join("config.toml")),
-            Self::Amp => dirs::config_dir().map(|config| config.join("amp").join("settings.json")),
-            Self::Gemini => dirs::home_dir().map(|home| home.join(".gemini").join("settings.json")),
-            Self::Cursor => dirs::home_dir().map(|home| home.join(".cursor").join("mcp.json")),
+            Self::Codex(_) => dirs::home_dir().map(|home| home.join(".codex").join("config.toml")),
+            Self::Amp(_) => {
+                dirs::config_dir().map(|config| config.join("amp").join("settings.json"))
+            }
+            Self::Gemini(_) => {
+                dirs::home_dir().map(|home| home.join(".gemini").join("settings.json"))
+            }
+            Self::Cursor(_) => dirs::home_dir().map(|home| home.join(".cursor").join("mcp.json")),
         }
     }
 }

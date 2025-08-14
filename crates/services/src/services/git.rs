@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use chrono::{DateTime, Utc};
 use git2::{
@@ -927,7 +927,7 @@ impl GitService {
     }
 
     /// Get the default branch name for the repository
-    pub fn get_default_branch_name(&self, repo_path: &PathBuf) -> Result<String, GitServiceError> {
+    pub fn get_default_branch_name(&self, repo_path: &Path) -> Result<String, GitServiceError> {
         let repo = self.open_repo(repo_path)?;
 
         match repo.head() {
@@ -945,7 +945,7 @@ impl GitService {
     /// Extract GitHub owner and repo name from git repo path
     pub fn get_github_repo_info(
         &self,
-        repo_path: &PathBuf,
+        repo_path: &Path,
     ) -> Result<(String, String), GitServiceError> {
         let repo = self.open_repo(repo_path)?;
         let remote = repo.find_remote("origin").map_err(|_| {

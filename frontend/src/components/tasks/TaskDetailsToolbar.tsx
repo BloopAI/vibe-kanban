@@ -10,7 +10,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { attemptsApi, projectsApi } from '@/lib/api';
-import type { GitBranch } from 'shared/types';
+import type { GitBranch, ProfileVariantLabel } from 'shared/types';
 import type { TaskAttempt } from 'shared/types';
 
 import {
@@ -90,7 +90,8 @@ function TaskDetailsToolbar() {
   const [taskAttempts, setTaskAttempts] = useState<TaskAttempt[]>([]);
   const [branches, setBranches] = useState<GitBranch[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
-  const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
+  const [selectedProfile, setSelectedProfile] =
+    useState<ProfileVariantLabel | null>(null);
 
   const navigate = useNavigate();
   const { attemptId: urlAttemptId } = useParams<{ attemptId?: string }>();
@@ -228,6 +229,7 @@ function TaskDetailsToolbar() {
         setAttemptData({
           processes: [],
           runningProcessDetails: {},
+          processProfiles: {},
         });
       }
     } catch (error) {

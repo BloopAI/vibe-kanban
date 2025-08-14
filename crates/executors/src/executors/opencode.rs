@@ -12,8 +12,8 @@ use ts_rs::TS;
 use utils::{msg_store::MsgStore, path::make_path_relative, shell::get_shell_command};
 
 use crate::{
-    command::{AgentProfiles, CommandBuilder},
-    executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
+    command::CommandBuilder,
+    executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
         ActionType, EditDiff, NormalizedEntry, NormalizedEntryType,
         plain_text_processor::{MessageBoundary, PlainTextLogProcessor},
@@ -25,25 +25,6 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Opencode {
     pub command: CommandBuilder,
-}
-
-impl Default for Opencode {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Opencode {
-    pub fn new() -> Self {
-        let profile = AgentProfiles::get_cached()
-            .get_profile("opencode")
-            .expect("Default opencode profile should exist");
-
-        match &profile.agent {
-            CodingAgent::Opencode(opencode) => opencode.clone(),
-            _ => panic!("Expected Opencode agent in opencode profile"),
-        }
-    }
 }
 
 #[async_trait]

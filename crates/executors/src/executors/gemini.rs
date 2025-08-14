@@ -13,8 +13,8 @@ use ts_rs::TS;
 use utils::{msg_store::MsgStore, shell::get_shell_command};
 
 use crate::{
-    command::{AgentProfiles, CommandBuilder},
-    executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
+    command::CommandBuilder,
+    executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
         NormalizedEntry, NormalizedEntryType, plain_text_processor::PlainTextLogProcessor,
         stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider,
@@ -26,12 +26,6 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Gemini {
     pub command: CommandBuilder,
-}
-
-impl Default for Gemini {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 #[async_trait]
@@ -311,19 +305,5 @@ You are continuing work on the above task. The execution history shows the previ
 
     fn get_sessions_base_dir() -> PathBuf {
         utils::path::get_vibe_kanban_temp_dir().join("gemini_sessions")
-    }
-}
-
-impl Gemini {
-    /// Create a new Gemini executor with default settings
-    pub fn new() -> Self {
-        let profile = AgentProfiles::get_cached()
-            .get_profile("gemini")
-            .expect("Default gemini profile should exist");
-
-        match &profile.agent {
-            CodingAgent::Gemini(gemini) => gemini.clone(),
-            _ => panic!("Expected Gemini agent in gemini profile"),
-        }
     }
 }

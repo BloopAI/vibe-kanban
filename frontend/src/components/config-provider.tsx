@@ -38,6 +38,9 @@ interface UserSystemContextType {
   setEnvironment: (env: Environment | null) => void;
   setProfiles: (profiles: AgentProfile[] | null) => void;
 
+  // Reload system data
+  reloadSystem: () => Promise<void>;
+
   // State
   loading: boolean;
   githubTokenInvalid: boolean;
@@ -133,6 +136,20 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
     [config]
   );
 
+  const reloadSystem = useCallback(async () => {
+    setLoading(true);
+    try {
+      const userSystemInfo: UserSystemInfo = await configApi.getConfig();
+      setConfig(userSystemInfo.config);
+      setEnvironment(userSystemInfo.environment);
+      setProfiles(userSystemInfo.profiles);
+    } catch (err) {
+      console.error('Error reloading user system:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo<UserSystemContextType>(
     () => ({
@@ -145,6 +162,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       updateAndSaveConfig,
       setEnvironment,
       setProfiles,
+      reloadSystem,
       loading,
       githubTokenInvalid,
     }),
@@ -155,6 +173,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       updateConfig,
       saveConfig,
       updateAndSaveConfig,
+      reloadSystem,
       loading,
       githubTokenInvalid,
     ]

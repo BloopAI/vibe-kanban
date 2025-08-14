@@ -12,7 +12,7 @@ import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { PrivacyOptInDialog } from '@/components/PrivacyOptInDialog';
 import { ConfigProvider, useConfig } from '@/components/config-provider';
 import { ThemeProvider } from '@/components/theme-provider';
-import type { EditorType } from 'shared/types';
+import type { EditorType, ProfileVariantLabel } from 'shared/types';
 import { ThemeMode } from 'shared/types';
 import { configApi } from '@/lib/api';
 import * as Sentry from '@sentry/react';
@@ -61,7 +61,7 @@ function AppContent() {
   };
 
   const handleOnboardingComplete = async (onboardingConfig: {
-    profile: string;
+    profile: ProfileVariantLabel;
     editor: { editor_type: EditorType; custom_command: string | null };
   }) => {
     if (!config) return;

@@ -19,11 +19,11 @@ impl NotificationService {
         let message = match ctx.execution_process.status {
             ExecutionProcessStatus::Completed => format!(
                 "✅ '{}' completed successfully\nBranch: {:?}\nExecutor: {}",
-                ctx.task.title, ctx.task_attempt.branch, ctx.task_attempt.base_coding_agent
+                ctx.task.title, ctx.task_attempt.branch, ctx.task_attempt.profile
             ),
             ExecutionProcessStatus::Failed | ExecutionProcessStatus::Killed => format!(
                 "❌ '{}' execution failed\nBranch: {:?}\nExecutor: {}",
-                ctx.task.title, ctx.task_attempt.branch, ctx.task_attempt.base_coding_agent
+                ctx.task.title, ctx.task_attempt.branch, ctx.task_attempt.profile
             ),
             _ => {
                 tracing::warn!(

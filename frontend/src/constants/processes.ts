@@ -1,7 +1,7 @@
 import type {
   ExecutionProcessRunReason,
   ExecutionProcessStatus,
-  ExecutionProcessSummary,
+  ExecutionProcess,
 } from 'shared/types';
 
 // Process run reasons
@@ -49,7 +49,7 @@ export const shouldShowInLogs = (
 };
 
 export const getLatestCodingAgent = (
-  processes: ExecutionProcessSummary[]
+  processes: ExecutionProcess[]
 ): string | null => {
   const codingAgents = processes.filter((p) => isCodingAgent(p.run_reason));
   if (codingAgents.length === 0) return null;

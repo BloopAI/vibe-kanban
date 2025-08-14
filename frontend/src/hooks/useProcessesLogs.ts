@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import type {
-  ExecutionProcessSummary,
+  ExecutionProcess,
   NormalizedEntry,
   PatchType,
 } from 'shared/types';
@@ -16,10 +16,10 @@ interface UseProcessesLogsResult {
 const MAX_ENTRIES = 5000;
 
 export const useProcessesLogs = (
-  processes: ExecutionProcessSummary[],
+  processes: ExecutionProcess[],
   enabled: boolean
 ): UseProcessesLogsResult => {
-  const getEndpoint = useCallback((process: ExecutionProcessSummary) => {
+  const getEndpoint = useCallback((process: ExecutionProcess) => {
     // Coding agents use normalized logs endpoint, scripts use raw logs endpoint
     // Both endpoints now return PatchType objects via JSON patches
     const isCodingAgent = process.run_reason === 'codingagent';

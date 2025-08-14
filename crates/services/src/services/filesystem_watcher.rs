@@ -71,7 +71,7 @@ fn build_gitignore_set(root: &Path) -> Result<Gitignore, FilesystemWatcherError>
     Ok(builder.build()?)
 }
 
-fn path_allowed(path: &PathBuf, gi: &Gitignore, canonical_root: &Path) -> bool {
+fn path_allowed(path: &Path, gi: &Gitignore, canonical_root: &Path) -> bool {
     let canonical_path = canonicalize_lossy(path);
 
     // Convert absolute path to relative path from the gitignore root

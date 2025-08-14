@@ -10,8 +10,8 @@ use ts_rs::TS;
 use utils::{msg_store::MsgStore, path::make_path_relative, shell::get_shell_command};
 
 use crate::{
-    command::{AgentProfiles, CommandBuilder},
-    executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
+    command::CommandBuilder,
+    executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
         ActionType, EditDiff, NormalizedEntry, NormalizedEntryType,
         stderr_processor::normalize_stderr_logs,
@@ -23,12 +23,6 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Amp {
     pub command: CommandBuilder,
-}
-
-impl Default for Amp {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 #[async_trait]
@@ -200,19 +194,6 @@ impl StandardCodingAgentExecutor for Amp {
                 };
             }
         });
-    }
-}
-
-impl Amp {
-    pub fn new() -> Self {
-        let profile = AgentProfiles::get_cached()
-            .get_profile("amp")
-            .expect("Default amp profile should exist");
-
-        match &profile.agent {
-            CodingAgent::Amp(amp) => amp.clone(),
-            _ => panic!("Expected Amp agent in amp profile"),
-        }
     }
 }
 
