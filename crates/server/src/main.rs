@@ -67,9 +67,11 @@ async fn main() -> Result<(), VibeKanbanError> {
     let listener = tokio::net::TcpListener::bind(format!("{host}:{port}")).await?;
     let actual_port = listener.local_addr()?.port(); // get → 53427 (example)
 
-    // Write port file for discovery (dev builds always, release builds only if enabled)
-    if cfg!(debug_assertions) || std::env::var_os("ENABLE_PORT_FILE").is_some() {
-        write_port_file(actual_port).await?;
+    // Write port file for discovery if prod, warn on fail
+    if !cfg!(debug_assertions) {
+        if let Err(e) = write_port_file(actual_port).await {
+            tracing::warn!("Failed to write port file: {}", e);
+        }
     }
 
     tracing::info!("Server running on http://{host}:{actual_port}");
