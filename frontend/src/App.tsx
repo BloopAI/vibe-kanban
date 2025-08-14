@@ -11,8 +11,7 @@ import { DisclaimerDialog } from '@/components/DisclaimerDialog';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { PrivacyOptInDialog } from '@/components/PrivacyOptInDialog';
 import { ConfigProvider, useConfig } from '@/components/config-provider';
-import { ThemeProvider } from '@/components/theme-provider';
-import { StyleOverrideProvider } from '@/components/style-override-provider';
+import { ThemeProvider, useTheme } from '@/components/theme-provider';
 import type { EditorType } from 'shared/types';
 import { ThemeMode } from 'shared/types';
 import { configApi } from '@/lib/api';
@@ -21,6 +20,52 @@ import { Loader } from '@/components/ui/loader';
 import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
+
+// Simple style override types
+interface VibeStyleMessage {
+  type: 'VIBE_STYLE';
+  theme?: ThemeMode;
+  css?: Record<string, string>;
+}
+
+// Component that adds postMessage listener for style overrides
+function AppWithStyleOverride({ children }: { children: React.ReactNode }) {
+  const { setTheme } = useTheme();
+
+  useEffect(() => {
+    function handleStyleMessage(event: MessageEvent) {
+      if (event.data?.type !== 'VIBE_STYLE') return;
+
+      // Origin validation (only if VITE_PARENT_ORIGIN is configured)
+      const allowedOrigin = import.meta.env.VITE_PARENT_ORIGIN;
+      if (allowedOrigin && event.origin !== allowedOrigin) {
+        console.warn('[StyleOverride] Message from unauthorized origin:', event.origin);
+        return;
+      }
+
+      const message = event.data as VibeStyleMessage;
+
+      // Theme switching
+      if (message.theme && typeof message.theme === 'string') {
+        setTheme(message.theme as ThemeMode);
+      }
+
+      // CSS variable overrides (only --vibe-* prefixed variables)
+      if (message.css && typeof message.css === 'object') {
+        Object.entries(message.css).forEach(([name, value]) => {
+          if (name.startsWith('--vibe-') && typeof value === 'string') {
+            document.documentElement.style.setProperty(name, value);
+          }
+        });
+      }
+    }
+
+    window.addEventListener('message', handleStyleMessage);
+    return () => window.removeEventListener('message', handleStyleMessage);
+  }, [setTheme]);
+
+  return <>{children}</>;
+}
 
 function AppContent() {
   const { config, updateConfig, loading } = useConfig();
@@ -137,7 +182,7 @@ function AppContent() {
 
   return (
     <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
-      <StyleOverrideProvider>
+      <AppWithStyleOverride>
         <div className="h-screen flex flex-col bg-background">
           <GitHubLoginDialog
             open={showGitHubLogin}
@@ -187,7 +232,7 @@ function AppContent() {
             </SentryRoutes>
           </div>
         </div>
-      </StyleOverrideProvider>
+      </AppWithStyleOverride>
     </ThemeProvider>
   );
 }
