@@ -132,7 +132,7 @@ function LogsTab() {
       (attemptData.processes || []).filter((process) =>
         shouldShowInLogs(process.run_reason)
       ),
-    [attemptData.processes]
+    [attemptData.processes?.map(p => p.id).join(',')]
   );
 
   const { entries } = useProcessesLogs(filteredProcesses, true);
