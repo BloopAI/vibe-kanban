@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { AlertCircle } from 'lucide-react';
 import { useLogStream } from '@/hooks/useLogStream';
@@ -14,22 +14,61 @@ export default function ProcessLogsViewer({
   processId,
 }: ProcessLogsViewerProps) {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const didInitScroll = useRef(false);
+  const prevLenRef = useRef(0);
+  const [atBottom, setAtBottom] = useState(true);
+
   const { logs, error } = useLogStream(processId);
+
+  // 1) Initial jump to bottom once data appears.
+  useEffect(() => {
+    if (!didInitScroll.current && logs.length > 0) {
+      didInitScroll.current = true;
+      requestAnimationFrame(() => {
+        virtuosoRef.current?.scrollToIndex({
+          index: logs.length - 1,
+          align: 'end',
+        });
+      });
+    }
+  }, [logs.length]);
+
+  // 2) If there's a large append and we're at bottom, force-stick to the last item.
+  useEffect(() => {
+    const prev = prevLenRef.current;
+    const grewBy = logs.length - prev;
+    prevLenRef.current = logs.length;
+
+    // tweak threshold as you like; this handles "big bursts"
+    const LARGE_BURST = 10;
+    if (grewBy >= LARGE_BURST && atBottom && logs.length > 0) {
+      // defer so Virtuoso can re-measure before jumping
+      requestAnimationFrame(() => {
+        virtuosoRef.current?.scrollToIndex({
+          index: logs.length - 1,
+          align: 'end',
+        });
+      });
+    }
+  }, [logs.length, atBottom, logs]);
 
   const formatLogLine = (entry: LogEntry, index: number) => {
     let className = 'text-sm font-mono px-4 py-1 whitespace-pre-wrap';
-
-    if (entry.type === 'STDERR') {
-      className += ' text-destructive';
-    } else {
-      className += ' text-foreground';
-    }
+    className +=
+      entry.type === 'STDERR' ? ' text-destructive' : ' text-foreground';
 
     return (
       <div key={index} className={className}>
         {entry.content}
       </div>
     );
+  };
+
+  // Stable key helps Virtuoso preserve position across big updates
+  const computeItemKey = (index: number, entry: LogEntry) => {
+    // Prefer a real id/timestamp if you have one on the entry
+    const anyEntry = entry as any;
+    return anyEntry.id ?? anyEntry.timestamp ?? `${entry.type}-${index}`;
   };
 
   return (
@@ -49,12 +88,19 @@ export default function ProcessLogsViewer({
             {error}
           </div>
         ) : (
-          <Virtuoso
+          <Virtuoso<LogEntry>
             ref={virtuosoRef}
             className="flex-1 rounded-lg"
             data={logs}
-            itemContent={(index, entry) => formatLogLine(entry, index)}
-            followOutput={true}
+            itemContent={(index, entry) =>
+              formatLogLine(entry as LogEntry, index)
+            }
+            computeItemKey={computeItemKey}
+            // Keep pinned while user is at bottom; release when they scroll up
+            atBottomStateChange={setAtBottom}
+            followOutput={atBottom ? 'smooth' : false}
+            // Optional: a bit more overscan helps during bursts
+            increaseViewportBy={{ top: 0, bottom: 600 }}
           />
         )}
       </div>
