@@ -12,6 +12,7 @@ import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { PrivacyOptInDialog } from '@/components/PrivacyOptInDialog';
 import { ConfigProvider, useConfig } from '@/components/config-provider';
 import { ThemeProvider } from '@/components/theme-provider';
+import { StyleOverrideProvider } from '@/components/style-override-provider';
 import type { EditorType } from 'shared/types';
 import { ThemeMode } from 'shared/types';
 import { configApi } from '@/lib/api';
@@ -136,55 +137,57 @@ function AppContent() {
 
   return (
     <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
-      <div className="h-screen flex flex-col bg-background">
-        <GitHubLoginDialog
-          open={showGitHubLogin}
-          onOpenChange={handleGitHubLoginComplete}
-        />
-        <DisclaimerDialog
-          open={showDisclaimer}
-          onAccept={handleDisclaimerAccept}
-        />
-        <OnboardingDialog
-          open={showOnboarding}
-          onComplete={handleOnboardingComplete}
-        />
-        <PrivacyOptInDialog
-          open={showPrivacyOptIn}
-          onComplete={handlePrivacyOptInComplete}
-        />
-        {showNavbar && <Navbar />}
-        <div className="flex-1 overflow-y-scroll">
-          <SentryRoutes>
-            <Route path="/" element={<Projects />} />
-            <Route path="/projects" element={<Projects />} />
-            <Route path="/projects/:projectId" element={<Projects />} />
-            <Route
-              path="/projects/:projectId/tasks"
-              element={<ProjectTasks />}
-            />
-            <Route
-              path="/projects/:projectId/tasks/:taskId/full"
-              element={<TaskDetailsPage />}
-            />
-            <Route
-              path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
-              element={<TaskDetailsPage />}
-            />
-            <Route
-              path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
-              element={<ProjectTasks />}
-            />
-            <Route
-              path="/projects/:projectId/tasks/:taskId"
-              element={<ProjectTasks />}
-            />
+      <StyleOverrideProvider>
+        <div className="h-screen flex flex-col bg-background">
+          <GitHubLoginDialog
+            open={showGitHubLogin}
+            onOpenChange={handleGitHubLoginComplete}
+          />
+          <DisclaimerDialog
+            open={showDisclaimer}
+            onAccept={handleDisclaimerAccept}
+          />
+          <OnboardingDialog
+            open={showOnboarding}
+            onComplete={handleOnboardingComplete}
+          />
+          <PrivacyOptInDialog
+            open={showPrivacyOptIn}
+            onComplete={handlePrivacyOptInComplete}
+          />
+          {showNavbar && <Navbar />}
+          <div className="flex-1 overflow-y-scroll">
+            <SentryRoutes>
+              <Route path="/" element={<Projects />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/projects/:projectId" element={<Projects />} />
+              <Route
+                path="/projects/:projectId/tasks"
+                element={<ProjectTasks />}
+              />
+              <Route
+                path="/projects/:projectId/tasks/:taskId/full"
+                element={<TaskDetailsPage />}
+              />
+              <Route
+                path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
+                element={<TaskDetailsPage />}
+              />
+              <Route
+                path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
+                element={<ProjectTasks />}
+              />
+              <Route
+                path="/projects/:projectId/tasks/:taskId"
+                element={<ProjectTasks />}
+              />
 
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/mcp-servers" element={<McpServers />} />
-          </SentryRoutes>
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/mcp-servers" element={<McpServers />} />
+            </SentryRoutes>
+          </div>
         </div>
-      </div>
+      </StyleOverrideProvider>
     </ThemeProvider>
   );
 }
