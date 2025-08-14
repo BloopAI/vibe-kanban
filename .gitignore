@@ -65,7 +65,7 @@ coverage/
 
 .env
 frontend/dist
-backend/bindings
+crates/executors/bindings
 
 build-npm-package-codesign.sh
 

@@ -13,7 +13,7 @@ use crate::{
     command::CommandBuilder,
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
-        ActionType, EditDiff, NormalizedEntry, NormalizedEntryType,
+        ActionType, EditDiff, NormalizedEntry, NormalizedEntryType, TodoItem,
         plain_text_processor::PlainTextLogProcessor,
         utils::{ConversationPatch, EntryIndexProvider},
     },
@@ -579,16 +579,27 @@ impl CursorToolCall {
                 )
             }
             CursorToolCall::Todo { args, .. } => {
-                let content = if let Some(todos) = args.todos.as_ref() {
-                    format!("TODO List:\n{}", summarize_todos_typed(todos))
-                } else {
-                    "Managing TODO list".to_string()
-                };
+                let todos = args
+                    .todos
+                    .as_ref()
+                    .map(|todos| {
+                        todos
+                            .iter()
+                            .map(|t| TodoItem {
+                                content: t.content.clone(),
+                                status: t.status.clone(),
+                                priority: None, // CursorTodoItem doesn't have priority field
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default();
+
                 (
-                    ActionType::Other {
-                        description: "Manage TODO list".to_string(),
+                    ActionType::TodoManagement {
+                        todos,
+                        operation: "write".to_string(),
                     },
-                    content,
+                    "TODO list updated".to_string(),
                 )
             }
             CursorToolCall::Unknown { .. } => (
@@ -733,37 +744,6 @@ pub struct CursorTodoItem {
     pub updated_at: Option<String>,
     #[serde(default)]
     pub dependencies: Option<Vec<String>>,
-}
-
-/* ===========================
-Helpers
-=========================== */
-
-fn summarize_todos_typed(items: &[CursorTodoItem]) -> String {
-    let mut out: Vec<String> = Vec::new();
-    for todo in items {
-        let content = todo.content.as_str();
-        let status = todo.status.as_str();
-        let emoji = if status.eq_ignore_ascii_case("completed")
-            || status.contains("COMPLETED")
-            || status.eq_ignore_ascii_case("done")
-        {
-            "✅"
-        } else if status.eq_ignore_ascii_case("in_progress")
-            || status.eq_ignore_ascii_case("in-progress")
-            || status.contains("IN_PROGRESS")
-        {
-            "🔄"
-        } else {
-            "⏳"
-        };
-        out.push(format!("{emoji} {content}"));
-    }
-    if out.is_empty() {
-        "Managing TODO list".to_string()
-    } else {
-        out.join("\n")
-    }
 }
 
 /* ===========================
