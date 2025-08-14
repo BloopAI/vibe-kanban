@@ -96,29 +96,41 @@ export type FileDiffDetails = { fileName: string | null, content: string | null,
 
 export type RepositoryInfo = { id: bigint, name: string, full_name: string, owner: string, description: string | null, clone_url: string, ssh_url: string, default_branch: string, private: boolean, };
 
-export enum BaseCodingAgent { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI = "GEMINI", CODEX = "CODEX", OPENCODE = "OPENCODE", CURSOR = "CURSOR" }
+export type CommandBuilder = { 
+/**
+ * Base executable command (e.g., "npx -y @anthropic-ai/claude-code@latest")
+ */
+base: string, 
+/**
+ * Optional parameters to append to the base command
+ */
+params: Array<string> | null, };
 
-export type CommandBuilder = {
-    /**
-     * Base executable command (e.g., "npx -y @anthropic-ai/claude-code@latest")
-     */
-    base: string,
-    /**
-     * Optional parameters to append to the base command
-     */
-    params: Array<string> | null,
-};
+export type ProfileVariantLabel = { profile: string, variant: string | null, };
 
-export type AgentProfile = {
-    /**
-     * Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
-     */
-    label: string,
-    /**
-     * Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
-     */
-    mcp_config_path: string | null,
-} & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor });
+export type AgentProfile = { 
+/**
+ * additional variants for this profile, e.g. plan, review, subagent
+ */
+variants: Array<AgentProfileVariant>, 
+/**
+ * Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
+ */
+label: string, 
+/**
+ * Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
+ */
+mcp_config_path: string | null, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor });
+
+export type AgentProfileVariant = { 
+/**
+ * Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
+ */
+label: string, 
+/**
+ * Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
+ */
+mcp_config_path: string | null, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor });
 
 export type AgentProfiles = { profiles: Array<AgentProfile>, };
 
@@ -129,6 +141,8 @@ export type Gemini = { command: CommandBuilder, };
 export type Amp = { command: CommandBuilder, };
 
 export type Codex = { command: CommandBuilder, };
+
+export type Cursor = { command: CommandBuilder, };
 
 export type Opencode = { command: CommandBuilder, };
 

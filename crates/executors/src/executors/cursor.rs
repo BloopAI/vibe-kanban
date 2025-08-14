@@ -38,7 +38,7 @@ impl Cursor {
             .get_profile("cursor")
             .expect("Default cursor profile should exist");
 
-        match &profile.agent {
+        match &profile.inner.agent {
             CodingAgent::Cursor(cursor) => cursor.clone(),
             _ => panic!("Expected Cursor agent in profile"),
         }

@@ -69,6 +69,7 @@ pub enum CodingAgent {
     Gemini,
     Codex,
     Opencode,
+    Cursor,
 }
 
 impl CodingAgent {

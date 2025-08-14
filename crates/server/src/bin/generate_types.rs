@@ -64,6 +64,7 @@ fn generate_types_content() -> String {
         executors::executors::gemini::Gemini::decl(),
         executors::executors::amp::Amp::decl(),
         executors::executors::codex::Codex::decl(),
+        executors::executors::cursor::Cursor::decl(),
         executors::executors::opencode::Opencode::decl(),
         executors::actions::coding_agent_initial::CodingAgentInitialRequest::decl(),
         executors::actions::coding_agent_follow_up::CodingAgentFollowUpRequest::decl(),
