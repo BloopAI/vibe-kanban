@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { TaskAttemptDataContext } from '@/components/context/taskDetailsContext.ts';
 import { executionProcessesApi } from '@/lib/api.ts';
+import ProcessLogsViewer from './ProcessLogsViewer';
 import type {
   ExecutionProcessStatus,
   ExecutionProcessSummary,
@@ -227,6 +228,8 @@ function ProcessesTab() {
                     )}
                   </div>
                 </div>
+
+                <ProcessLogsViewer processId={selectedProcess.id} />
               </div>
             ) : loadingProcessId === selectedProcessId ? (
               <div className="text-center text-muted-foreground">
