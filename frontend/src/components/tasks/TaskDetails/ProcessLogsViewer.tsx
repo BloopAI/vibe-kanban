@@ -10,13 +10,15 @@ interface ProcessLogsViewerProps {
   processId: string;
 }
 
-export default function ProcessLogsViewer({ processId }: ProcessLogsViewerProps) {
+export default function ProcessLogsViewer({
+  processId,
+}: ProcessLogsViewerProps) {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const { logs, error } = useLogStream(processId);
 
   const formatLogLine = (entry: LogEntry, index: number) => {
     let className = 'text-sm font-mono px-4 py-1 whitespace-pre-wrap';
-    
+
     if (entry.type === 'STDERR') {
       className += ' text-destructive';
     } else {
