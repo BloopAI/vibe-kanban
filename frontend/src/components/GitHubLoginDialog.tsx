@@ -147,9 +147,9 @@ export function GitHubLoginDialog({
               <CardContent className="text-center py-8">
                 <div className="flex items-center justify-center gap-3 mb-4">
                   <Check className="h-8 w-8 text-green-500" />
-                  <Github className="h-8 w-8 text-gray-600" />
+                  <Github className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <div className="text-lg font-medium text-gray-900 mb-1">
+                <div className="text-lg font-medium mb-1">
                   Successfully connected!
                 </div>
                 <div className="text-sm text-muted-foreground">
@@ -173,18 +173,18 @@ export function GitHubLoginDialog({
               </CardHeader>
               <CardContent className="space-y-4 pt-0">
                 <div className="flex items-start gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm font-semibold">
+                  <span className="flex-shrink-0 w-6 h-6 bg-primary/10 text-primary rounded-full flex items-center justify-center text-sm font-semibold">
                     1
                   </span>
                   <div>
-                    <p className="text-sm font-medium text-gray-900 mb-1">
+                    <p className="text-sm font-medium mb-1">
                       Go to GitHub Device Authorization
                     </p>
                     <a
                       href={deviceState.verification_uri}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 text-sm underline"
+                      className="text-primary hover:text-primary/80 text-sm underline"
                     >
                       {deviceState.verification_uri}
                     </a>
@@ -192,15 +192,15 @@ export function GitHubLoginDialog({
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm font-semibold">
+                  <span className="flex-shrink-0 w-6 h-6 bg-primary/10 text-primary rounded-full flex items-center justify-center text-sm font-semibold">
                     2
                   </span>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900 mb-3">
+                    <p className="text-sm font-medium mb-3">
                       Enter this code:
                     </p>
                     <div className="flex items-center gap-3">
-                      <span className="text-xl font-mono font-bold tracking-[0.2em] bg-gray-50 border rounded-lg px-4 py-2 text-gray-900">
+                      <span className="text-xl font-mono font-bold tracking-[0.2em] bg-muted border rounded-lg px-4 py-2">
                         {deviceState.user_code}
                       </span>
                       <Button
@@ -237,8 +237,8 @@ export function GitHubLoginDialog({
             </div>
 
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                <div className="text-red-600 text-sm">{error}</div>
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <div className="text-destructive text-sm">{error}</div>
               </div>
             )}
 
@@ -288,8 +288,8 @@ export function GitHubLoginDialog({
             </Card>
 
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                <div className="text-red-600 text-sm">{error}</div>
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <div className="text-destructive text-sm">{error}</div>
               </div>
             )}
 
