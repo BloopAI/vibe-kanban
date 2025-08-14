@@ -64,13 +64,6 @@ export default function ProcessLogsViewer({
     );
   };
 
-  // Stable key helps Virtuoso preserve position across big updates
-  const computeItemKey = (index: number, entry: LogEntry) => {
-    // Prefer a real id/timestamp if you have one on the entry
-    const anyEntry = entry as any;
-    return anyEntry.id ?? anyEntry.timestamp ?? `${entry.type}-${index}`;
-  };
-
   return (
     <div className="flex flex-col flex-1 min-h-0 space-y-3">
       <div className="flex-shrink-0">
@@ -95,7 +88,6 @@ export default function ProcessLogsViewer({
             itemContent={(index, entry) =>
               formatLogLine(entry as LogEntry, index)
             }
-            computeItemKey={computeItemKey}
             // Keep pinned while user is at bottom; release when they scroll up
             atBottomStateChange={setAtBottom}
             followOutput={atBottom ? 'smooth' : false}
