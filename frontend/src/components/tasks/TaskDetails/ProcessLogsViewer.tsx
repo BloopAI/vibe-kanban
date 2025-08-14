@@ -93,10 +93,10 @@ export default function ProcessLogsViewer({
           )}
           Process Logs
         </button>
-        
+
         <div className="flex items-center gap-2">
           {getConnectionIcon()}
-          <Badge 
+          <Badge
             variant={getConnectionStatus() === 'live' ? 'default' : 'secondary'}
           >
             {getConnectionStatus()}
