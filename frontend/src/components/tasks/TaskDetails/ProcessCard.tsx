@@ -24,9 +24,8 @@ function ProcessCard({ process }: ProcessCardProps) {
   // Use appropriate hook based on process type
   const {
     logs,
-    isConnected: rawConnected,
     error: rawError,
-  } = useLogStream(process.id, showLogs && !isCodingAgent);
+  } = useLogStream(process.id);
   const {
     entries,
     isConnected: normalizedConnected,
@@ -34,7 +33,7 @@ function ProcessCard({ process }: ProcessCardProps) {
   } = useProcessConversation(process.id, showLogs && isCodingAgent);
 
   const logEndRef = useRef<HTMLDivElement>(null);
-  const isConnected = isCodingAgent ? normalizedConnected : rawConnected;
+  const isConnected = isCodingAgent ? normalizedConnected : false;
   const error = isCodingAgent ? normalizedError : rawError;
 
   const getStatusIcon = (status: ExecutionProcessStatus) => {
@@ -176,9 +175,13 @@ function ProcessCard({ process }: ProcessCardProps) {
                 {logs.length === 0 ? (
                   <div className="text-gray-400">No logs available...</div>
                 ) : (
-                  logs.map((log, index) => (
+                  logs.map((logEntry, index) => (
                     <div key={index} className="break-all">
-                      {log}
+                      {logEntry.type === 'STDERR' ? (
+                        <span className="text-destructive">{logEntry.content}</span>
+                      ) : (
+                        <span className="text-foreground">{logEntry.content}</span>
+                      )}
                     </div>
                   ))
                 )}

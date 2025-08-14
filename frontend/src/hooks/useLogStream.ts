@@ -1,30 +1,26 @@
 import { useEffect, useState, useRef } from 'react';
+import type { PatchType } from 'shared/types';
+
+type LogEntry = Extract<PatchType, { type: 'STDOUT' } | { type: 'STDERR' }>;
 
 interface UseLogStreamResult {
-  logs: string[];
-  isConnected: boolean;
+  logs: LogEntry[];
   error: string | null;
 }
 
 // Simple in-memory cache for logs
-const logCache = new Map<string, string[]>();
+const logCache = new Map<string, LogEntry[]>();
 const MAX_CACHE_ENTRIES = 10;
 const MAX_LOGS_PER_PROCESS = 5000;
 
-export const useLogStream = (
-  processId: string,
-  enabled: boolean
-): UseLogStreamResult => {
+export const useLogStream = (processId: string): UseLogStreamResult => {
   const cacheKey = processId;
-  const [logs, setLogs] = useState<string[]>(
-    () => logCache.get(cacheKey) || []
-  );
-  const [isConnected, setIsConnected] = useState(false);
+  const [logs, setLogs] = useState<LogEntry[]>(() => logCache.get(cacheKey) || []);
   const [error, setError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
-    if (!enabled || !processId) {
+    if (!processId) {
       return;
     }
 
@@ -34,19 +30,18 @@ export const useLogStream = (
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {
-      setIsConnected(true);
       setError(null);
     };
 
-    const addLogLine = (line: string) => {
+    const addLogEntry = (entry: LogEntry) => {
       setLogs((prev) => {
-        const newLogs = [...prev, line];
+        const newLogs = [...prev, entry];
         // Limit log length to prevent memory issues
         const limitedLogs = newLogs.slice(-MAX_LOGS_PER_PROCESS);
-
+        
         // Update cache
         logCache.set(cacheKey, limitedLogs);
-
+        
         // Clean up old cache entries if needed
         if (logCache.size > MAX_CACHE_ENTRIES) {
           const oldestKey = logCache.keys().next().value;
@@ -54,7 +49,7 @@ export const useLogStream = (
             logCache.delete(oldestKey);
           }
         }
-
+        
         return limitedLogs;
       });
     };
@@ -69,10 +64,8 @@ export const useLogStream = (
 
           switch (value.type) {
             case 'STDOUT':
-              addLogLine(`stdout: ${value.content}`);
-              break;
             case 'STDERR':
-              addLogLine(`stderr: ${value.content}`);
+              addLogEntry({ type: value.type, content: value.content });
               break;
             // Ignore other patch types (NORMALIZED_ENTRY, DIFF, etc.)
             default:
@@ -85,30 +78,18 @@ export const useLogStream = (
     });
 
     eventSource.addEventListener('finished', () => {
-      addLogLine('--- Stream finished ---');
       eventSource.close();
-      setIsConnected(false);
     });
 
     eventSource.onerror = () => {
       setError('Connection failed');
-      setIsConnected(false);
       eventSource.close();
     };
 
     return () => {
       eventSource.close();
-      setIsConnected(false);
     };
-  }, [processId, enabled]);
+  }, [processId, cacheKey]);
 
-  // Don't reset cached logs when disabled - just update connection state
-  useEffect(() => {
-    if (!enabled) {
-      setError(null);
-      setIsConnected(false);
-    }
-  }, [enabled]);
-
-  return { logs, isConnected, error };
+  return { logs, error };
 };
