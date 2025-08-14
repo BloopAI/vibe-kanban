@@ -81,16 +81,16 @@ export function TaskFollowUpSection() {
 
         // Build the variant cycle: null (Default) → variant1 → variant2 → ... → null
         const variants = currentProfile.variants;
-        const variantLabels = variants.map(v => v.label);
+        const variantLabels = variants.map((v) => v.label);
         const allOptions = [null, ...variantLabels];
-        
+
         // Find current index and cycle to next
-        const currentIndex = allOptions.findIndex(v => v === selectedVariant);
+        const currentIndex = allOptions.findIndex((v) => v === selectedVariant);
         const nextIndex = (currentIndex + 1) % allOptions.length;
         const nextVariant = allOptions[nextIndex];
-        
+
         setSelectedVariant(nextVariant);
-        
+
         // Trigger animation
         setIsAnimating(true);
         setTimeout(() => setIsAnimating(false), 300);
@@ -174,8 +174,8 @@ export function TaskFollowUpSection() {
                           variant="outline"
                           size="sm"
                           className={cn(
-                            "h-10 w-24 px-2 flex items-center justify-between transition-all",
-                            isAnimating && "scale-105 bg-accent"
+                            'h-10 w-24 px-2 flex items-center justify-between transition-all',
+                            isAnimating && 'scale-105 bg-accent'
                           )}
                         >
                           <span className="text-xs truncate flex-1 text-left">
