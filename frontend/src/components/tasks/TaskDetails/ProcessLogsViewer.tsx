@@ -1,6 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
-import { ChevronDown, ChevronUp, RotateCcw, Wifi, WifiOff, AlertCircle } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  RotateCcw,
+  Wifi,
+  WifiOff,
+  AlertCircle,
+} from 'lucide-react';
 import { useLogStream } from '@/hooks/useLogStream';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,14 +16,16 @@ interface ProcessLogsViewerProps {
   processId: string;
 }
 
-export default function ProcessLogsViewer({ processId }: ProcessLogsViewerProps) {
+export default function ProcessLogsViewer({
+  processId,
+}: ProcessLogsViewerProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [retryKey, setRetryKey] = useState(0);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
-  
+
   const { logs, isConnected, error } = useLogStream(
     processId,
-    isExpanded && retryKey >= 0, // Include retryKey to force reconnection
+    isExpanded && retryKey >= 0 // Include retryKey to force reconnection
   );
 
   // Auto-scroll to bottom when new logs arrive
@@ -30,7 +39,7 @@ export default function ProcessLogsViewer({ processId }: ProcessLogsViewerProps)
   }, [logs.length, isExpanded]);
 
   const handleRetry = () => {
-    setRetryKey(prev => prev + 1);
+    setRetryKey((prev) => prev + 1);
   };
 
   const getConnectionIcon = () => {
@@ -49,10 +58,10 @@ export default function ProcessLogsViewer({ processId }: ProcessLogsViewerProps)
     // Handle stdout/stderr prefixes added by useLogStream
     const isStdout = line.startsWith('stdout: ');
     const isStderr = line.startsWith('stderr: ');
-    
+
     let content = line;
     let className = 'text-sm font-mono px-4 py-1 whitespace-pre-wrap';
-    
+
     if (isStdout) {
       content = line.substring(8); // Remove "stdout: " prefix
       className += ' text-foreground';
@@ -84,10 +93,10 @@ export default function ProcessLogsViewer({ processId }: ProcessLogsViewerProps)
           )}
           Process Logs
         </button>
-        
+
         <div className="flex items-center gap-2">
           {getConnectionIcon()}
-          <Badge 
+          <Badge
             variant={getConnectionStatus() === 'live' ? 'default' : 'secondary'}
           >
             {getConnectionStatus()}
