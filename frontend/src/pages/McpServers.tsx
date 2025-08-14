@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
-import { AgentProfile, McpConfig } from 'shared/types';
+import { ProfileConfig, McpConfig } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
 import { mcpServersApi } from '../lib/api';
 import { McpConfigStrategyGeneral } from '../lib/mcp-strategies';
@@ -29,7 +29,7 @@ export function McpServers() {
   const [mcpConfig, setMcpConfig] = useState<McpConfig | null>(null);
   const [mcpError, setMcpError] = useState<string | null>(null);
   const [mcpLoading, setMcpLoading] = useState(true);
-  const [selectedProfile, setSelectedProfile] = useState<AgentProfile | null>(
+  const [selectedProfile, setSelectedProfile] = useState<ProfileConfig | null>(
     null
   );
   const [mcpApplying, setMcpApplying] = useState(false);
@@ -54,7 +54,7 @@ export function McpServers() {
 
   // Load existing MCP configuration when selected profile changes
   useEffect(() => {
-    const loadMcpServersForProfile = async (profile: AgentProfile) => {
+    const loadMcpServersForProfile = async (profile: ProfileConfig) => {
       // Reset state when loading
       setMcpLoading(true);
       setMcpError(null);

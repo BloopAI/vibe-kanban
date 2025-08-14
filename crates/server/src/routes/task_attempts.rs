@@ -22,7 +22,7 @@ use executors::{
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
         ExecutorAction, ExecutorActionType,
     },
-    profile::{AgentProfiles, ProfileVariantLabel},
+    profile::{ProfileConfigs, ProfileVariantLabel},
 };
 use futures_util::TryStreamExt;
 use serde::{Deserialize, Serialize};
@@ -244,7 +244,7 @@ pub async fn get_task_attempt(
 #[derive(Debug, Deserialize, ts_rs::TS)]
 pub struct CreateTaskAttemptBody {
     pub task_id: Uuid,
-    pub profile: Option<ProfileVariantLabel>,
+    pub profile_variant_label: Option<ProfileVariantLabel>,
     pub base_branch: String,
 }
 
@@ -253,24 +253,24 @@ pub async fn create_task_attempt(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateTaskAttemptBody>,
 ) -> Result<ResponseJson<ApiResponse<TaskAttempt>>, ApiError> {
-    let profile_variant = payload
-        .profile
+    let profile_variant_label = payload
+        .profile_variant_label
         .unwrap_or(deployment.config().read().await.profile.clone());
 
-    let profiles = AgentProfiles::get_cached();
+    let profiles = ProfileConfigs::get_cached();
     let profile = profiles
-        .get_profile(&profile_variant.profile)
+        .get_profile(&profile_variant_label.profile)
         .ok_or_else(|| {
             ApiError::TaskAttempt(TaskAttemptError::ValidationError(format!(
                 "Profile not found: {}",
-                profile_variant.profile
+                profile_variant_label.profile
             )))
         })?;
 
     let task_attempt = TaskAttempt::create(
         &deployment.db().pool,
         &CreateTaskAttempt {
-            profile: profile.inner.label.clone(),
+            profile: profile.default.label.clone(),
             base_branch: payload.base_branch,
         },
         payload.task_id,
@@ -279,7 +279,7 @@ pub async fn create_task_attempt(
 
     let execution_process = deployment
         .container()
-        .start_attempt(&task_attempt, profile_variant.clone())
+        .start_attempt(&task_attempt, profile_variant_label.clone())
         .await?;
 
     deployment
@@ -287,8 +287,8 @@ pub async fn create_task_attempt(
             "task_attempt_started",
             serde_json::json!({
                 "task_id": task_attempt.task_id.to_string(),
-                "variant": &profile_variant,
-                "profile": profile.inner.label,
+                "variant": &profile_variant_label.variant,
+                "profile": profile.default.label,
                 "attempt_id": task_attempt.id.to_string(),
             }),
         )
@@ -336,20 +336,24 @@ pub async fn follow_up(
     .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
         "This executor session doesn't have a session_id".to_string(),
     )))?;
-    let initial_profile = match &latest_execution_process
+    let initial_profile_variant_label = match &latest_execution_process
         .executor_action()
         .map_err(|e| ApiError::TaskAttempt(TaskAttemptError::ValidationError(e.to_string())))?
         .typ
     {
-        ExecutorActionType::CodingAgentInitialRequest(request) => Ok(request.profile.clone()),
-        ExecutorActionType::CodingAgentFollowUpRequest(request) => Ok(request.profile.clone()),
+        ExecutorActionType::CodingAgentInitialRequest(request) => {
+            Ok(request.profile_variant_label.clone())
+        }
+        ExecutorActionType::CodingAgentFollowUpRequest(request) => {
+            Ok(request.profile_variant_label.clone())
+        }
         _ => Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
             "Couldn't find profile from initial request".to_string(),
         ))),
     }?;
 
-    let profile = ProfileVariantLabel {
-        profile: initial_profile.profile,
+    let profile_variant_label = ProfileVariantLabel {
+        profile: initial_profile_variant_label.profile,
         variant: payload.variant,
     };
 
@@ -380,7 +384,7 @@ pub async fn follow_up(
         ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
             prompt: payload.prompt,
             session_id,
-            profile,
+            profile_variant_label,
         }),
         cleanup_action,
     );

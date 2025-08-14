@@ -14,13 +14,13 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct CodingAgentInitialRequest {
     pub prompt: String,
-    pub profile: ProfileVariantLabel,
+    pub profile_variant_label: ProfileVariantLabel,
 }
 
 #[async_trait]
 impl Executable for CodingAgentInitialRequest {
     async fn spawn(&self, current_dir: &PathBuf) -> Result<AsyncGroupChild, ExecutorError> {
-        let executor = CodingAgent::from_profile_variant(&self.profile)?;
+        let executor = CodingAgent::from_profile_variant_label(&self.profile_variant_label)?;
         executor.spawn(current_dir, &self.prompt).await
     }
 }

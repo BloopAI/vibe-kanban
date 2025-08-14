@@ -12,14 +12,14 @@ use ts_rs::TS;
 use crate::executors::CodingAgent;
 
 lazy_static! {
-    static ref PROFILES_CACHE: RwLock<AgentProfiles> = RwLock::new(AgentProfiles::load());
+    static ref PROFILES_CACHE: RwLock<ProfileConfigs> = RwLock::new(ProfileConfigs::load());
 }
 
 // Default profiels embedded at compile time
 const DEFAULT_PROFILES_JSON: &str = include_str!("../default_profiles.json");
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-pub struct AgentProfileVariant {
+pub struct VariantAgentConfig {
     /// Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
     pub label: String,
     /// The coding agent this profile is associated with
@@ -29,23 +29,23 @@ pub struct AgentProfileVariant {
     pub mcp_config_path: Option<String>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-pub struct AgentProfile {
+pub struct ProfileConfig {
     #[serde(flatten)]
     /// default profile variant
-    pub inner: AgentProfileVariant,
+    pub default: VariantAgentConfig,
     /// additional variants for this profile, e.g. plan, review, subagent
-    pub variants: Vec<AgentProfileVariant>,
+    pub variants: Vec<VariantAgentConfig>,
 }
 
-impl AgentProfile {
-    pub fn get_variant(&self, variant: &str) -> Option<&AgentProfileVariant> {
+impl ProfileConfig {
+    pub fn get_variant(&self, variant: &str) -> Option<&VariantAgentConfig> {
         self.variants.iter().find(|m| m.label == variant)
     }
 
     pub fn get_mcp_config_path(&self) -> Option<PathBuf> {
-        match self.inner.mcp_config_path.as_ref() {
+        match self.default.mcp_config_path.as_ref() {
             Some(path) => Some(PathBuf::from(path)),
-            None => self.inner.agent.default_mcp_config_path(),
+            None => self.default.agent.default_mcp_config_path(),
         }
     }
 }
@@ -72,12 +72,12 @@ impl ProfileVariantLabel {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-pub struct AgentProfiles {
-    pub profiles: Vec<AgentProfile>,
+pub struct ProfileConfigs {
+    pub profiles: Vec<ProfileConfig>,
 }
 
-impl AgentProfiles {
-    pub fn get_cached() -> AgentProfiles {
+impl ProfileConfigs {
+    pub fn get_cached() -> ProfileConfigs {
         PROFILES_CACHE.read().unwrap().clone()
     }
 
@@ -138,17 +138,17 @@ impl AgentProfiles {
         let default_labels: HashSet<String> = self
             .profiles
             .iter()
-            .map(|p| p.inner.label.clone())
+            .map(|p| p.default.label.clone())
             .collect();
 
         // Only add user profiles with unique labels
         for user_profile in user_profiles.profiles {
-            if !default_labels.contains(&user_profile.inner.label) {
+            if !default_labels.contains(&user_profile.default.label) {
                 self.profiles.push(user_profile);
             } else {
                 tracing::debug!(
                     "Skipping user profile '{}' - default with same label exists",
-                    user_profile.inner.label
+                    user_profile.default.label
                 );
             }
         }
@@ -156,14 +156,14 @@ impl AgentProfiles {
         Ok(())
     }
 
-    pub fn get_profile(&self, label: &str) -> Option<&AgentProfile> {
-        self.profiles.iter().find(|p| p.inner.label == label)
+    pub fn get_profile(&self, label: &str) -> Option<&ProfileConfig> {
+        self.profiles.iter().find(|p| p.default.label == label)
     }
 
-    pub fn to_map(&self) -> HashMap<String, AgentProfile> {
+    pub fn to_map(&self) -> HashMap<String, ProfileConfig> {
         self.profiles
             .iter()
-            .map(|p| (p.inner.label.clone(), p.clone()))
+            .map(|p| (p.default.label.clone(), p.clone()))
             .collect()
     }
 }
@@ -174,14 +174,14 @@ mod tests {
     #[test]
     fn default_profiles_have_expected_base_and_noninteractive_or_json_flags() {
         // Build default profiles and make lookup by label easy
-        let profiles = AgentProfiles::from_defaults().to_map();
+        let profiles = ProfileConfigs::from_defaults().to_map();
 
         let get_profile_command = |label: &str| {
             profiles
                 .get(label)
                 .map(|p| {
                     use crate::executors::CodingAgent;
-                    match &p.inner.agent {
+                    match &p.default.agent {
                         CodingAgent::ClaudeCode(claude) => claude.command.build_initial(),
                         CodingAgent::Amp(amp) => amp.command.build_initial(),
                         CodingAgent::Gemini(gemini) => gemini.command.build_initial(),
@@ -192,7 +192,7 @@ mod tests {
                 })
                 .unwrap_or_else(|| panic!("Profile not found: {label}"))
         };
-        let profiles = AgentProfiles::from_defaults();
+        let profiles = ProfileConfigs::from_defaults();
         assert!(profiles.profiles.len() == 8);
 
         let claude_code_command = get_profile_command("claude-code");
@@ -261,12 +261,12 @@ mod tests {
             ]
         }"#;
 
-        let profiles: AgentProfiles = serde_json::from_str(test_json).expect("Should deserialize");
+        let profiles: ProfileConfigs = serde_json::from_str(test_json).expect("Should deserialize");
         assert_eq!(profiles.profiles.len(), 2);
 
         // Test Claude profile
         let claude_profile = profiles.get_profile("test-claude").unwrap();
-        match &claude_profile.inner.agent {
+        match &claude_profile.default.agent {
             crate::executors::CodingAgent::ClaudeCode(claude) => {
                 assert_eq!(claude.command.base, "npx claude");
                 assert_eq!(claude.command.params.as_ref().unwrap()[0], "--test");
@@ -277,7 +277,7 @@ mod tests {
 
         // Test Gemini profile
         let gemini_profile = profiles.get_profile("test-gemini").unwrap();
-        match &gemini_profile.inner.agent {
+        match &gemini_profile.default.agent {
             crate::executors::CodingAgent::Gemini(gemini) => {
                 assert_eq!(gemini.command.base, "npx gemini");
                 assert_eq!(gemini.command.params.as_ref().unwrap()[0], "--test");

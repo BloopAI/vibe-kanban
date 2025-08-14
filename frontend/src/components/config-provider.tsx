@@ -10,7 +10,7 @@ import {
 import {
   type Config,
   type Environment,
-  type AgentProfile,
+  type ProfileConfig,
   type UserSystemInfo,
   CheckTokenResponse,
 } from 'shared/types';
@@ -19,7 +19,7 @@ import { configApi, githubAuthApi } from '../lib/api';
 interface UserSystemState {
   config: Config | null;
   environment: Environment | null;
-  profiles: AgentProfile[] | null;
+  profiles: ProfileConfig[] | null;
 }
 
 interface UserSystemContextType {
@@ -34,9 +34,9 @@ interface UserSystemContextType {
 
   // System data access
   environment: Environment | null;
-  profiles: AgentProfile[] | null;
+  profiles: ProfileConfig[] | null;
   setEnvironment: (env: Environment | null) => void;
-  setProfiles: (profiles: AgentProfile[] | null) => void;
+  setProfiles: (profiles: ProfileConfig[] | null) => void;
 
   // Reload system data
   reloadSystem: () => Promise<void>;
@@ -58,7 +58,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
   // Split state for performance - independent re-renders
   const [config, setConfig] = useState<Config | null>(null);
   const [environment, setEnvironment] = useState<Environment | null>(null);
-  const [profiles, setProfiles] = useState<AgentProfile[] | null>(null);
+  const [profiles, setProfiles] = useState<ProfileConfig[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [githubTokenInvalid, setGithubTokenInvalid] = useState(false);
 

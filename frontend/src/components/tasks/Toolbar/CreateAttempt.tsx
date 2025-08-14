@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
 import type {
-  AgentProfile,
+  ProfileConfig,
   GitBranch,
   ProfileVariantLabel,
 } from 'shared/types';
@@ -40,7 +40,7 @@ type Props = {
   setIsInCreateAttemptMode: Dispatch<SetStateAction<boolean>>;
   setCreateAttemptBranch: Dispatch<SetStateAction<string | null>>;
   setSelectedProfile: Dispatch<SetStateAction<ProfileVariantLabel | null>>;
-  availableProfiles: AgentProfile[] | null;
+  availableProfiles: ProfileConfig[] | null;
 };
 
 function CreateAttempt({
@@ -76,7 +76,7 @@ function CreateAttempt({
 
       await attemptsApi.create({
         task_id: task.id,
-        profile: profile,
+        profile_variant_label: profile,
         base_branch: effectiveBaseBranch,
       });
       fetchTaskAttempts();

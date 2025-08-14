@@ -15,7 +15,7 @@ use crate::{
         opencode::Opencode,
     },
     mcp_config::McpConfig,
-    profile::{AgentProfiles, ProfileVariantLabel},
+    profile::{ProfileConfigs, ProfileVariantLabel},
 };
 
 pub mod amp;
@@ -58,10 +58,14 @@ pub enum CodingAgent {
 impl CodingAgent {
     /// Create a CodingAgent from a profile variant
     /// Loads profile from AgentProfiles (both default and custom profiles)
-    pub fn from_profile_variant(profile: &ProfileVariantLabel) -> Result<Self, ExecutorError> {
-        if let Some(agent_profile) = AgentProfiles::get_cached().get_profile(&profile.profile) {
-            if let Some(variant_name) = &profile.variant {
-                if let Some(variant) = agent_profile.get_variant(&variant_name) {
+    pub fn from_profile_variant_label(
+        profile_variant_label: &ProfileVariantLabel,
+    ) -> Result<Self, ExecutorError> {
+        if let Some(profile_config) =
+            ProfileConfigs::get_cached().get_profile(&profile_variant_label.profile)
+        {
+            if let Some(variant_name) = &profile_variant_label.variant {
+                if let Some(variant) = profile_config.get_variant(&variant_name) {
                     Ok(variant.agent.clone())
                 } else {
                     Err(ExecutorError::UnknownExecutorType(format!(
@@ -70,12 +74,12 @@ impl CodingAgent {
                     )))
                 }
             } else {
-                Ok(agent_profile.inner.agent.clone())
+                Ok(profile_config.default.agent.clone())
             }
         } else {
             Err(ExecutorError::UnknownExecutorType(format!(
                 "Unknown profile: {}",
-                profile.profile
+                profile_variant_label.profile
             )))
         }
     }

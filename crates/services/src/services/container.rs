@@ -310,22 +310,26 @@ pub trait ContainerService {
             // Spawn normalizer on populated store
             match executor_action.typ() {
                 ExecutorActionType::CodingAgentInitialRequest(request) => {
-                    if let Ok(executor) = CodingAgent::from_profile_variant(&request.profile) {
+                    if let Ok(executor) =
+                        CodingAgent::from_profile_variant_label(&request.profile_variant_label)
+                    {
                         executor.normalize_logs(temp_store.clone(), &current_dir);
                     } else {
                         tracing::error!(
                             "Failed to resolve profile '{:?}' for normalization",
-                            request.profile
+                            request.profile_variant_label
                         );
                     }
                 }
                 ExecutorActionType::CodingAgentFollowUpRequest(request) => {
-                    if let Ok(executor) = CodingAgent::from_profile_variant(&request.profile) {
+                    if let Ok(executor) =
+                        CodingAgent::from_profile_variant_label(&request.profile_variant_label)
+                    {
                         executor.normalize_logs(temp_store.clone(), &current_dir);
                     } else {
                         tracing::error!(
                             "Failed to resolve profile '{:?}' for normalization",
-                            request.profile
+                            request.profile_variant_label
                         );
                     }
                 }
@@ -427,7 +431,7 @@ pub trait ContainerService {
     async fn start_attempt(
         &self,
         task_attempt: &TaskAttempt,
-        profile: ProfileVariantLabel,
+        profile_variant_label: ProfileVariantLabel,
     ) -> Result<ExecutionProcess, ContainerError> {
         // Create container
         self.create(task_attempt).await?;
@@ -472,7 +476,7 @@ pub trait ContainerService {
                 Some(Box::new(ExecutorAction::new(
                     ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                         prompt: task.to_prompt(),
-                        profile: profile,
+                        profile_variant_label,
                     }),
                     cleanup_action,
                 ))),
@@ -488,7 +492,7 @@ pub trait ContainerService {
             let executor_action = ExecutorAction::new(
                 ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                     prompt: task.to_prompt(),
-                    profile: profile,
+                    profile_variant_label,
                 }),
                 cleanup_action,
             );
@@ -563,7 +567,9 @@ pub trait ContainerService {
         match executor_action.typ() {
             ExecutorActionType::CodingAgentInitialRequest(request) => {
                 if let Some(msg_store) = self.get_msg_store_by_id(&execution_process.id).await {
-                    if let Ok(executor) = CodingAgent::from_profile_variant(&request.profile) {
+                    if let Ok(executor) =
+                        CodingAgent::from_profile_variant_label(&request.profile_variant_label)
+                    {
                         executor.normalize_logs(
                             msg_store,
                             &self.task_attempt_to_current_dir(task_attempt),
@@ -571,14 +577,16 @@ pub trait ContainerService {
                     } else {
                         tracing::error!(
                             "Failed to resolve profile '{:?}' for normalization",
-                            request.profile
+                            request.profile_variant_label
                         );
                     }
                 }
             }
             ExecutorActionType::CodingAgentFollowUpRequest(request) => {
                 if let Some(msg_store) = self.get_msg_store_by_id(&execution_process.id).await {
-                    if let Ok(executor) = CodingAgent::from_profile_variant(&request.profile) {
+                    if let Ok(executor) =
+                        CodingAgent::from_profile_variant_label(&request.profile_variant_label)
+                    {
                         executor.normalize_logs(
                             msg_store,
                             &self.task_attempt_to_current_dir(task_attempt),
@@ -586,7 +594,7 @@ pub trait ContainerService {
                     } else {
                         tracing::error!(
                             "Failed to resolve profile '{:?}' for normalization",
-                            request.profile
+                            request.profile_variant_label
                         );
                     }
                 }

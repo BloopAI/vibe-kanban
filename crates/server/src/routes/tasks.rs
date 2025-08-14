@@ -95,9 +95,9 @@ pub async fn create_task_and_start(
         .await?
         .ok_or(ApiError::Database(SqlxError::RowNotFound))?;
     let branch = GitService::new().get_current_branch(&project.git_repo_path)?;
-    let profile_label = executors::profile::AgentProfiles::get_cached()
+    let profile_label = executors::profile::ProfileConfigs::get_cached()
         .get_profile(&default_profile_variant.profile)
-        .map(|profile| profile.inner.label.clone())
+        .map(|profile| profile.default.label.clone())
         .ok_or_else(|| {
             ApiError::TaskAttempt(TaskAttemptError::ValidationError(format!(
                 "Profile not found: {:?}",

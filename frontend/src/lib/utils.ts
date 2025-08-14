@@ -19,12 +19,8 @@ export function extractProfileVariant(
       actionType.type === 'CodingAgentInitialRequest' ||
       actionType.type === 'CodingAgentFollowUpRequest'
     ) {
-      // Both these types have a profile field
-      if ('profile' in actionType) {
-        return actionType.profile;
-      }
+      return actionType.profile_variant_label;
     }
   }
-
   return null;
 }

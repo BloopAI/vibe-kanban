@@ -11,7 +11,7 @@ use axum::{
 use deployment::{Deployment, DeploymentError};
 use executors::{
     mcp_config::{read_agent_config, write_agent_config, McpConfig},
-    profile::AgentProfiles,
+    profile::ProfileConfigs,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -61,7 +61,7 @@ impl Environment {
 pub struct UserSystemInfo {
     pub config: Config,
     #[serde(flatten)]
-    pub profiles: AgentProfiles,
+    pub profiles: ProfileConfigs,
     pub environment: Environment,
 }
 
@@ -74,7 +74,7 @@ async fn get_user_system_info(
 
     let user_system_info = UserSystemInfo {
         config: config.clone(),
-        profiles: AgentProfiles::get_cached(),
+        profiles: ProfileConfigs::get_cached(),
         environment: Environment::new(),
     };
 
@@ -133,7 +133,7 @@ async fn get_mcp_servers(
     State(_deployment): State<DeploymentImpl>,
     Query(query): Query<McpServerQuery>,
 ) -> Result<ResponseJson<ApiResponse<GetMcpServerResponse>>, ApiError> {
-    let profiles = AgentProfiles::get_cached();
+    let profiles = ProfileConfigs::get_cached();
     let profile = profiles.get_profile(&query.profile).ok_or_else(|| {
         ApiError::Config(ConfigError::ValidationError(format!(
             "Profile not found: {}",
@@ -141,7 +141,7 @@ async fn get_mcp_servers(
         )))
     })?;
 
-    if !profile.inner.agent.supports_mcp() {
+    if !profile.default.agent.supports_mcp() {
         return Ok(ResponseJson(ApiResponse::error(
             "This executor does not support MCP servers",
         )));
@@ -157,7 +157,7 @@ async fn get_mcp_servers(
         }
     };
 
-    let mut mcpc = profile.inner.agent.get_mcp_config();
+    let mut mcpc = profile.default.agent.get_mcp_config();
     let raw_config = read_agent_config(&config_path, &mcpc).await?;
     let servers = get_mcp_servers_from_config_path(&raw_config, &mcpc.servers_path);
     mcpc.set_servers(servers);
@@ -172,7 +172,7 @@ async fn update_mcp_servers(
     Query(query): Query<McpServerQuery>,
     Json(payload): Json<UpdateMcpServersBody>,
 ) -> Result<ResponseJson<ApiResponse<String>>, ApiError> {
-    let profiles = AgentProfiles::get_cached();
+    let profiles = ProfileConfigs::get_cached();
     let agent = &profiles
         .get_profile(&query.profile)
         .ok_or_else(|| {
@@ -181,7 +181,7 @@ async fn update_mcp_servers(
                 query.profile
             )))
         })?
-        .inner
+        .default
         .agent;
 
     if !agent.supports_mcp() {
@@ -311,16 +311,16 @@ async fn get_profiles(
 ) -> ResponseJson<ApiResponse<ProfilesContent>> {
     let profiles_path = utils::assets::profiles_path();
 
-    let mut profiles = AgentProfiles::from_defaults();
+    let mut profiles = ProfileConfigs::from_defaults();
     if let Ok(user_content) = std::fs::read_to_string(&profiles_path) {
-        match serde_json::from_str::<AgentProfiles>(&user_content) {
+        match serde_json::from_str::<ProfileConfigs>(&user_content) {
             Ok(user_profiles) => {
                 // Override defaults with user profiles that have the same label
                 for user_profile in user_profiles.profiles {
                     if let Some(default_profile) = profiles
                         .profiles
                         .iter_mut()
-                        .find(|p| p.inner.label == user_profile.inner.label)
+                        .find(|p| p.default.label == user_profile.default.label)
                     {
                         *default_profile = user_profile;
                     } else {
@@ -336,7 +336,7 @@ async fn get_profiles(
 
     let content = serde_json::to_string_pretty(&profiles).unwrap_or_else(|e| {
         tracing::error!("Failed to serialize profiles to JSON: {}", e);
-        serde_json::to_string_pretty(&AgentProfiles::from_defaults())
+        serde_json::to_string_pretty(&ProfileConfigs::from_defaults())
             .unwrap_or_else(|_| "{}".to_string())
     });
 
@@ -350,7 +350,7 @@ async fn update_profiles(
     State(_deployment): State<DeploymentImpl>,
     body: String,
 ) -> ResponseJson<ApiResponse<String>> {
-    let profiles: AgentProfiles = match serde_json::from_str(&body) {
+    let profiles: ProfileConfigs = match serde_json::from_str(&body) {
         Ok(p) => p,
         Err(e) => {
             return ResponseJson(ApiResponse::error(&format!(
@@ -368,7 +368,7 @@ async fn update_profiles(
         Ok(_) => {
             tracing::info!("All profiles saved to {:?}", profiles_path);
             // Reload the cached profiles
-            AgentProfiles::reload();
+            ProfileConfigs::reload();
             ResponseJson(ApiResponse::success(
                 "Profiles updated successfully".to_string(),
             ))

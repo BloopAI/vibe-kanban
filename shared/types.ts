@@ -50,7 +50,7 @@ export type UpdateTask = { title: string | null, description: string | null, sta
 
 export type ApiResponse<T, E = T> = { success: boolean, data: T | null, error_data: E | null, message: string | null, };
 
-export type UserSystemInfo = { config: Config, environment: Environment, profiles: Array<AgentProfile>, };
+export type UserSystemInfo = { config: Config, environment: Environment, profiles: Array<ProfileConfig>, };
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
 
@@ -108,11 +108,11 @@ params: Array<string> | null, };
 
 export type ProfileVariantLabel = { profile: string, variant: string | null, };
 
-export type AgentProfile = { 
+export type ProfileConfig = { 
 /**
  * additional variants for this profile, e.g. plan, review, subagent
  */
-variants: Array<AgentProfileVariant>, 
+variants: Array<VariantAgentConfig>, 
 /**
  * Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
  */
@@ -122,7 +122,7 @@ label: string,
  */
 mcp_config_path: string | null, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor });
 
-export type AgentProfileVariant = { 
+export type VariantAgentConfig = { 
 /**
  * Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
  */
@@ -132,7 +132,7 @@ label: string,
  */
 mcp_config_path: string | null, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor });
 
-export type AgentProfiles = { profiles: Array<AgentProfile>, };
+export type ProfileConfigs = { profiles: Array<ProfileConfig>, };
 
 export type ClaudeCode = { command: CommandBuilder, plan: boolean, };
 
@@ -146,11 +146,11 @@ export type Cursor = { command: CommandBuilder, };
 
 export type Opencode = { command: CommandBuilder, };
 
-export type CodingAgentInitialRequest = { prompt: string, profile: ProfileVariantLabel, };
+export type CodingAgentInitialRequest = { prompt: string, profile_variant_label: ProfileVariantLabel, };
 
-export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, profile: ProfileVariantLabel, };
+export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, profile_variant_label: ProfileVariantLabel, };
 
-export type CreateTaskAttemptBody = { task_id: string, profile: ProfileVariantLabel | null, base_branch: string, };
+export type CreateTaskAttemptBody = { task_id: string, profile_variant_label: ProfileVariantLabel | null, base_branch: string, };
 
 export type RebaseTaskAttemptRequest = { new_base_branch: string | null, };
 
