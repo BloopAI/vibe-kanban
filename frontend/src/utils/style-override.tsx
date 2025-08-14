@@ -5,14 +5,14 @@ import { ThemeMode } from 'shared/types';
 interface VibeStyleOverrideMessage {
   type: 'VIBE_STYLE_OVERRIDE';
   payload:
-  | {
-    kind: 'cssVars';
-    variables: Record<string, string>;
-  }
-  | {
-    kind: 'theme';
-    theme: ThemeMode;
-  };
+    | {
+        kind: 'cssVars';
+        variables: Record<string, string>;
+      }
+    | {
+        kind: 'theme';
+        theme: ThemeMode;
+      };
 }
 
 interface VibeIframeReadyMessage {
