@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { TaskAttemptDataContext } from '@/components/context/taskDetailsContext.ts';
 import { executionProcessesApi } from '@/lib/api.ts';
+import ProcessLogsViewer from './ProcessLogsViewer';
 import type {
   ExecutionProcessStatus,
   ExecutionProcessSummary,
@@ -169,10 +170,10 @@ function ProcessesTab() {
               Back to list
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 pb-20">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-4 pb-20">
             {selectedProcess ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="flex-1 flex flex-col min-h-0 space-y-4">
+                <div className="grid grid-cols-2 gap-4 flex-shrink-0">
                   <div>
                     <h3 className="font-medium text-sm mb-2">Process Info</h3>
                     <div className="space-y-1 text-sm">
@@ -209,7 +210,7 @@ function ProcessesTab() {
                 </div>
 
                 {/* Command, working directory, stdout, stderr fields not available in new ExecutionProcess type */}
-                <div>
+                <div className="flex-shrink-0">
                   <h3 className="font-medium text-sm mb-2">
                     Process Information
                   </h3>
@@ -227,6 +228,8 @@ function ProcessesTab() {
                     )}
                   </div>
                 </div>
+
+                <ProcessLogsViewer processId={selectedProcess.id} />
               </div>
             ) : loadingProcessId === selectedProcessId ? (
               <div className="text-center text-muted-foreground">

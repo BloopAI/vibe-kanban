@@ -1,24 +1,26 @@
 import { useEffect, useState, useRef } from 'react';
+import type { PatchType } from 'shared/types';
+
+type LogEntry = Extract<PatchType, { type: 'STDOUT' } | { type: 'STDERR' }>;
 
 interface UseLogStreamResult {
-  logs: string[];
-  isConnected: boolean;
+  logs: LogEntry[];
   error: string | null;
 }
 
-export const useLogStream = (
-  processId: string,
-  enabled: boolean
-): UseLogStreamResult => {
-  const [logs, setLogs] = useState<string[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
+export const useLogStream = (processId: string): UseLogStreamResult => {
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
-    if (!enabled || !processId) {
+    if (!processId) {
       return;
     }
+
+    // Clear logs when process changes
+    setLogs([]);
+    setError(null);
 
     const eventSource = new EventSource(
       `/api/execution-processes/${processId}/raw-logs`
@@ -26,49 +28,49 @@ export const useLogStream = (
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {
-      setIsConnected(true);
       setError(null);
     };
 
-    eventSource.onmessage = (event) => {
-      // Handle default messages
-      setLogs((prev) => [...prev, event.data]);
+    const addLogEntry = (entry: LogEntry) => {
+      setLogs((prev) => [...prev, entry]);
     };
 
-    eventSource.addEventListener('stdout', (event) => {
-      setLogs((prev) => [...prev, `stdout: ${event.data}`]);
-    });
+    // Handle json_patch events (new format from server)
+    eventSource.addEventListener('json_patch', (event) => {
+      try {
+        const patches = JSON.parse(event.data);
+        patches.forEach((patch: any) => {
+          const value = patch?.value;
+          if (!value || !value.type) return;
 
-    eventSource.addEventListener('stderr', (event) => {
-      setLogs((prev) => [...prev, `stderr: ${event.data}`]);
+          switch (value.type) {
+            case 'STDOUT':
+            case 'STDERR':
+              addLogEntry({ type: value.type, content: value.content });
+              break;
+            // Ignore other patch types (NORMALIZED_ENTRY, DIFF, etc.)
+            default:
+              break;
+          }
+        });
+      } catch (e) {
+        console.error('Failed to parse json_patch:', e);
+      }
     });
 
     eventSource.addEventListener('finished', () => {
-      setLogs((prev) => [...prev, '--- Stream finished ---']);
       eventSource.close();
-      setIsConnected(false);
     });
 
     eventSource.onerror = () => {
       setError('Connection failed');
-      setIsConnected(false);
       eventSource.close();
     };
 
     return () => {
       eventSource.close();
-      setIsConnected(false);
     };
-  }, [processId, enabled]);
+  }, [processId]);
 
-  // Reset logs when disabled
-  useEffect(() => {
-    if (!enabled) {
-      setLogs([]);
-      setError(null);
-      setIsConnected(false);
-    }
-  }, [enabled]);
-
-  return { logs, isConnected, error };
+  return { logs, error };
 };
