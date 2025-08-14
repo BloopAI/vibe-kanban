@@ -80,8 +80,8 @@ export default function ProcessLogsViewer({
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col flex-1 min-h-0 space-y-3">
+      <div className="flex items-center justify-between flex-shrink-0">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className="flex items-center gap-2 text-sm font-medium hover:text-foreground transition-colors"
@@ -93,10 +93,10 @@ export default function ProcessLogsViewer({
           )}
           Process Logs
         </button>
-
+        
         <div className="flex items-center gap-2">
           {getConnectionIcon()}
-          <Badge
+          <Badge 
             variant={getConnectionStatus() === 'live' ? 'default' : 'secondary'}
           >
             {getConnectionStatus()}
@@ -116,7 +116,7 @@ export default function ProcessLogsViewer({
       </div>
 
       {isExpanded && (
-        <div className="border rounded-lg bg-card">
+        <div className="border rounded-lg bg-card flex-1 min-h-0 flex flex-col">
           {logs.length === 0 && !isConnected && !error ? (
             <div className="p-4 text-center text-muted-foreground text-sm">
               No logs available
@@ -129,11 +129,10 @@ export default function ProcessLogsViewer({
           ) : (
             <Virtuoso
               ref={virtuosoRef}
-              style={{ height: '300px' }}
+              className="flex-1 rounded-lg"
               data={logs}
               itemContent={(index, line) => formatLogLine(line, index)}
               followOutput="smooth"
-              className="rounded-lg"
             />
           )}
         </div>
