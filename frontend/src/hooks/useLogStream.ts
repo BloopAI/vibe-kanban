@@ -8,16 +8,8 @@ interface UseLogStreamResult {
   error: string | null;
 }
 
-// Simple in-memory cache for logs
-const logCache = new Map<string, LogEntry[]>();
-const MAX_CACHE_ENTRIES = 10;
-const MAX_LOGS_PER_PROCESS = 5000;
-
 export const useLogStream = (processId: string): UseLogStreamResult => {
-  const cacheKey = processId;
-  const [logs, setLogs] = useState<LogEntry[]>(
-    () => logCache.get(cacheKey) || []
-  );
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -25,6 +17,10 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
     if (!processId) {
       return;
     }
+
+    // Clear logs when process changes
+    setLogs([]);
+    setError(null);
 
     const eventSource = new EventSource(
       `/api/execution-processes/${processId}/raw-logs`
@@ -36,24 +32,7 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
     };
 
     const addLogEntry = (entry: LogEntry) => {
-      setLogs((prev) => {
-        const newLogs = [...prev, entry];
-        // Limit log length to prevent memory issues
-        const limitedLogs = newLogs.slice(-MAX_LOGS_PER_PROCESS);
-
-        // Update cache
-        logCache.set(cacheKey, limitedLogs);
-
-        // Clean up old cache entries if needed
-        if (logCache.size > MAX_CACHE_ENTRIES) {
-          const oldestKey = logCache.keys().next().value;
-          if (oldestKey) {
-            logCache.delete(oldestKey);
-          }
-        }
-
-        return limitedLogs;
-      });
+      setLogs(prev => [...prev, entry]);
     };
 
     // Handle json_patch events (new format from server)
@@ -91,7 +70,7 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
     return () => {
       eventSource.close();
     };
-  }, [processId, cacheKey]);
+  }, [processId]);
 
   return { logs, error };
 };
