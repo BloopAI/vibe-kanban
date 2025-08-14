@@ -45,47 +45,44 @@
   }
 
   /* Dark defaults (used if no theme class but user prefers dark) */
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --_background: 222.2 84% 4.9%;
-      --_foreground: 210 40% 98%;
-      --_card: 222.2 84% 4.9%;
-      --_card-foreground: 210 40% 98%;
-      --_popover: 222.2 84% 4.9%;
-      --_popover-foreground: 210 40% 98%;
-      --_primary: 210 40% 98%;
-      --_primary-foreground: 222.2 47.4% 11.2%;
-      --_secondary: 217.2 32.6% 17.5%;
-      --_secondary-foreground: 210 40% 98%;
-      --_muted: 217.2 32.6% 17.5%;
-      --_muted-foreground: 215 20.2% 65.1%;
-      --_accent: 217.2 32.6% 17.5%;
-      --_accent-foreground: 210 40% 98%;
-      --_destructive: 0 62.8% 30.6%;
-      --_destructive-foreground: 210 40% 98%;
-      --_border: 217.2 32.6% 17.5%;
-      --_input: 217.2 32.6% 17.5%;
-      --_ring: 212.7 26.8% 83.9%;
+  .dark {
+    --_background: 222.2 84% 4.9%;
+    --_foreground: 210 40% 98%;
+    --_card: 222.2 84% 4.9%;
+    --_card-foreground: 210 40% 98%;
+    --_popover: 222.2 84% 4.9%;
+    --_popover-foreground: 210 40% 98%;
+    --_primary: 210 40% 98%;
+    --_primary-foreground: 222.2 47.4% 11.2%;
+    --_secondary: 217.2 32.6% 17.5%;
+    --_secondary-foreground: 210 40% 98%;
+    --_muted: 217.2 32.6% 17.5%;
+    --_muted-foreground: 215 20.2% 65.1%;
+    --_accent: 217.2 32.6% 17.5%;
+    --_accent-foreground: 210 40% 98%;
+    --_destructive: 0 62.8% 30.6%;
+    --_destructive-foreground: 210 40% 98%;
+    --_border: 217.2 32.6% 17.5%;
+    --_input: 217.2 32.6% 17.5%;
+    --_ring: 212.7 26.8% 83.9%;
 
-      /* Status (dark) */
-      --_success: 138.5 76.5% 47.7%;
-      --_success-foreground: 138.5 76.5% 96.7%;
-      --_warning: 32.2 95% 44.1%;
-      --_warning-foreground: 26 83.3% 14.1%;
-      --_info: 217.2 91.2% 59.8%;
-      --_info-foreground: 222.2 84% 4.9%;
-      --_neutral: 217.2 32.6% 17.5%;
-      --_neutral-foreground: 210 40% 98%;
+    /* Status (dark) */
+    --_success: 138.5 76.5% 47.7%;
+    --_success-foreground: 138.5 76.5% 96.7%;
+    --_warning: 32.2 95% 44.1%;
+    --_warning-foreground: 26 83.3% 14.1%;
+    --_info: 217.2 91.2% 59.8%;
+    --_info-foreground: 222.2 84% 4.9%;
+    --_neutral: 217.2 32.6% 17.5%;
+    --_neutral-foreground: 210 40% 98%;
 
-      /* Console (dark) */
-      --_console-background: 0 0% 0%;
-      --_console-foreground: 210 40% 98%;
-      --_console-success: 138.5 76.5% 47.7%;
-      --_console-error: 0 84.2% 60.2%;
-    }
+    /* Console (dark) */
+    --_console-background: 0 0% 0%;
+    --_console-foreground: 210 40% 98%;
+    --_console-success: 138.5 76.5% 47.7%;
+    --_console-error: 0 84.2% 60.2%;
   }
 
-  /* Your theme classes only set the UNDERSCORED tokens */
   .purple {
     --_background: 266 100% 6%;
     --_foreground: 266 20% 95%;
@@ -106,12 +103,95 @@
     --_border: 266 20% 15%;
     --_input: 266 20% 15%;
     --_ring: 266 80% 75%;
-
-    /* …status + console underscored, if you want them themed too */
   }
 
-  /* Repeat the same idea for .green, .blue, .orange, .red, .dark etc.,
-     but ONLY set --_* tokens in these classes. */
+  .green {
+    --_background: 120 100% 6%;
+    --_foreground: 120 20% 95%;
+    --_card: 120 100% 6%;
+    --_card-foreground: 120 20% 95%;
+    --_popover: 120 100% 6%;
+    --_popover-foreground: 120 20% 95%;
+    --_primary: 120 80% 75%;
+    --_primary-foreground: 120 100% 6%;
+    --_secondary: 120 20% 15%;
+    --_secondary-foreground: 120 20% 95%;
+    --_muted: 120 20% 15%;
+    --_muted-foreground: 120 15% 65%;
+    --_accent: 120 20% 15%;
+    --_accent-foreground: 120 20% 95%;
+    --_destructive: 0 62.8% 30.6%;
+    --_destructive-foreground: 120 20% 95%;
+    --_border: 120 20% 15%;
+    --_input: 120 20% 15%;
+    --_ring: 120 80% 75%;
+  }
+
+  .blue {
+    --_background: 210 100% 6%;
+    --_foreground: 210 20% 95%;
+    --_card: 210 100% 6%;
+    --_card-foreground: 210 20% 95%;
+    --_popover: 210 100% 6%;
+    --_popover-foreground: 210 20% 95%;
+    --_primary: 210 80% 75%;
+    --_primary-foreground: 210 100% 6%;
+    --_secondary: 210 20% 15%;
+    --_secondary-foreground: 210 20% 95%;
+    --_muted: 210 20% 15%;
+    --_muted-foreground: 210 15% 65%;
+    --_accent: 210 20% 15%;
+    --_accent-foreground: 210 20% 95%;
+    --_destructive: 0 62.8% 30.6%;
+    --_destructive-foreground: 210 20% 95%;
+    --_border: 210 20% 15%;
+    --_input: 210 20% 15%;
+    --_ring: 210 80% 75%;
+  }
+
+  .orange {
+    --_background: 30 100% 6%;
+    --_foreground: 30 20% 95%;
+    --_card: 30 100% 6%;
+    --_card-foreground: 30 20% 95%;
+    --_popover: 30 100% 6%;
+    --_popover-foreground: 30 20% 95%;
+    --_primary: 30 80% 75%;
+    --_primary-foreground: 30 100% 6%;
+    --_secondary: 30 20% 15%;
+    --_secondary-foreground: 30 20% 95%;
+    --_muted: 30 20% 15%;
+    --_muted-foreground: 30 15% 65%;
+    --_accent: 30 20% 15%;
+    --_accent-foreground: 30 20% 95%;
+    --_destructive: 0 62.8% 30.6%;
+    --_destructive-foreground: 30 20% 95%;
+    --_border: 30 20% 15%;
+    --_input: 30 20% 15%;
+    --_ring: 30 80% 75%;
+  }
+
+  .red {
+    --_background: 0 100% 6%;
+    --_foreground: 0 20% 95%;
+    --_card: 0 100% 6%;
+    --_card-foreground: 0 20% 95%;
+    --_popover: 0 100% 6%;
+    --_popover-foreground: 0 20% 95%;
+    --_primary: 0 80% 75%;
+    --_primary-foreground: 0 100% 6%;
+    --_secondary: 0 20% 15%;
+    --_secondary-foreground: 0 20% 95%;
+    --_muted: 0 20% 15%;
+    --_muted-foreground: 0 15% 65%;
+    --_accent: 0 20% 15%;
+    --_accent-foreground: 0 20% 95%;
+    --_destructive: 0 62.8% 30.6%;
+    --_destructive-foreground: 0 20% 95%;
+    --_border: 0 20% 15%;
+    --_input: 0 20% 15%;
+    --_ring: 0 80% 75%;
+  }
 }
 
 /* 2) PUBLIC TOKENS: prefer VS Code, else fall back to theme tokens */
