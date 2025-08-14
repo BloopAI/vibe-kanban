@@ -99,11 +99,7 @@ function extractAndRun(baseName, launch) {
 
 if (isMcpMode) {
   extractAndRun("vibe-kanban-mcp", (bin) => {
-    const proc = spawn(bin, [], { stdio: ["pipe", "pipe", "pipe"] });
-    process.stdin.pipe(proc.stdin);
-    proc.stdout.pipe(process.stdout);
-    proc.stderr.pipe(process.stdout);
-
+    const proc = spawn(bin, [], { stdio: "inherit" });
     proc.on("exit", (c) => process.exit(c || 0));
     proc.on("error", (e) => {
       console.error("❌ MCP server error:", e.message);
