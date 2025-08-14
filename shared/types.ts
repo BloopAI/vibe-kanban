@@ -66,7 +66,7 @@ export type CreateGitHubPrRequest = { title: string, body: string | null, base_b
 
 export enum GitHubServiceError { TOKEN_INVALID = "TOKEN_INVALID", INSUFFICIENT_PERMISSIONS = "INSUFFICIENT_PERMISSIONS", REPO_NOT_FOUND_OR_NO_ACCESS = "REPO_NOT_FOUND_OR_NO_ACCESS" }
 
-export type Config = { config_version: string, theme: ThemeMode, profile: ProfileVariant, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, github_login_acknowledged: boolean, telemetry_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean | null, workspace_dir: string | null, };
+export type Config = { config_version: string, theme: ThemeMode, profile: ProfileVariantLabel, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, github_login_acknowledged: boolean, telemetry_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean | null, workspace_dir: string | null, };
 
 export type NotificationConfig = { sound_enabled: boolean, push_enabled: boolean, sound_file: SoundFile, };
 
@@ -132,11 +132,11 @@ export type Codex = { command: CommandBuilder, };
 
 export type Opencode = { command: CommandBuilder, };
 
-export type CodingAgentInitialRequest = { prompt: string, profile: ProfileVariant, };
+export type CodingAgentInitialRequest = { prompt: string, profile: ProfileVariantLabel, };
 
-export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, profile: ProfileVariant, };
+export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, profile: ProfileVariantLabel, };
 
-export type CreateTaskAttemptBody = { task_id: string, profile: ProfileVariant | null, base_branch: string, };
+export type CreateTaskAttemptBody = { task_id: string, profile: ProfileVariantLabel | null, base_branch: string, };
 
 export type RebaseTaskAttemptRequest = { new_base_branch: string | null, };
 

@@ -11,7 +11,7 @@ use ts_rs::TS;
 use utils::msg_store::MsgStore;
 
 use crate::{
-    command::{AgentProfiles, ProfileVariant},
+    command::{AgentProfiles, ProfileVariantLabel},
     executors::{
         amp::Amp, claude::ClaudeCode, codex::Codex, cursor::Cursor, gemini::Gemini,
         opencode::Opencode,
@@ -72,9 +72,9 @@ pub enum CodingAgent {
 }
 
 impl CodingAgent {
-    /// Create an executor from a profile variant
+    /// Create a CodingAgent from a profile variant
     /// Loads profile from AgentProfiles (both default and custom profiles)
-    pub fn from_profile_variant(profile: &ProfileVariant) -> Result<Self, ExecutorError> {
+    pub fn from_profile_variant(profile: &ProfileVariantLabel) -> Result<Self, ExecutorError> {
         if let Some(agent_profile) = AgentProfiles::get_cached().get_profile(&profile.profile) {
             if let Some(variant_name) = &profile.variant {
                 if let Some(variant) = agent_profile.get_variant(&variant_name) {
@@ -86,7 +86,7 @@ impl CodingAgent {
                     )))
                 }
             } else {
-                Ok(agent_profile.agent.clone())
+                Ok(agent_profile.inner.agent.clone())
             }
         } else {
             Err(ExecutorError::UnknownExecutorType(format!(

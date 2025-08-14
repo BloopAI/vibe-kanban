@@ -135,7 +135,6 @@ async fn get_mcp_servers(
 ) -> Result<ResponseJson<ApiResponse<GetMcpServerResponse>>, ApiError> {
     let profile = &executors::command::AgentProfiles::get_cached()
         .get_profile(&query.profile)
-        .clone()
         .ok_or_else(|| {
             ApiError::Config(ConfigError::ValidationError(format!(
                 "Profile not found: {}",
@@ -143,7 +142,7 @@ async fn get_mcp_servers(
             )))
         })?;
 
-    if !profile.agent.supports_mcp() {
+    if !profile.inner.agent.supports_mcp() {
         return Ok(ResponseJson(ApiResponse::error(
             "This executor does not support MCP servers",
         )));
@@ -159,7 +158,7 @@ async fn get_mcp_servers(
         }
     };
 
-    let mut mcpc = profile.agent.get_mcp_config();
+    let mut mcpc = profile.inner.agent.get_mcp_config();
     let raw_config = read_agent_config(&config_path, &mcpc).await?;
     let servers = get_mcp_servers_from_config_path(&raw_config, &mcpc.servers_path);
     mcpc.set_servers(servers);
@@ -176,13 +175,13 @@ async fn update_mcp_servers(
 ) -> Result<ResponseJson<ApiResponse<String>>, ApiError> {
     let agent = &executors::command::AgentProfiles::get_cached()
         .get_profile(&query.profile)
-        .clone()
         .ok_or_else(|| {
             ApiError::Config(ConfigError::ValidationError(format!(
                 "Profile not found: {}",
                 query.profile
             )))
         })?
+        .inner
         .agent;
 
     if !agent.supports_mcp() {
@@ -221,7 +220,7 @@ async fn update_mcp_servers_in_config(
         fs::create_dir_all(parent).await?;
     }
     // Read existing config (JSON or TOML depending on agent)
-    let mut config = read_agent_config(config_path, &mcpc).await?;
+    let mut config = read_agent_config(config_path, mcpc).await?;
 
     // Get the current server count for comparison
     let old_servers = get_mcp_servers_from_config_path(&config, &mcpc.servers_path).len();
@@ -230,7 +229,7 @@ async fn update_mcp_servers_in_config(
     set_mcp_servers_in_config_path(&mut config, &mcpc.servers_path, &new_servers)?;
 
     // Write the updated config back to file (JSON or TOML depending on agent)
-    write_agent_config(config_path, &mcpc, &config).await?;
+    write_agent_config(config_path, mcpc, &config).await?;
 
     let new_count = new_servers.len();
     let message = match (old_servers, new_count) {
@@ -321,7 +320,7 @@ async fn get_profiles(
                     if let Some(default_profile) = profiles
                         .profiles
                         .iter_mut()
-                        .find(|p| p.label == user_profile.label)
+                        .find(|p| p.inner.label == user_profile.inner.label)
                     {
                         *default_profile = user_profile;
                     } else {

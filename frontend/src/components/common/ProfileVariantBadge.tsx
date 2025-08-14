@@ -1,8 +1,8 @@
-import type { ProfileVariant } from 'shared/types';
+import type { ProfileVariantLabel } from 'shared/types';
 import { cn } from '@/lib/utils';
 
 interface ProfileVariantBadgeProps {
-  profileVariant: ProfileVariant | null;
+  profileVariant: ProfileVariantLabel | null;
   className?: string;
 }
 

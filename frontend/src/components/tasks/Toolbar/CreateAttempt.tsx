@@ -7,7 +7,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
-import type { AgentProfile, GitBranch, ProfileVariant } from 'shared/types';
+import type {
+  AgentProfile,
+  GitBranch,
+  ProfileVariantLabel,
+} from 'shared/types';
 import type { TaskAttempt } from 'shared/types';
 import { attemptsApi } from '@/lib/api.ts';
 import {
@@ -30,12 +34,12 @@ type Props = {
   branches: GitBranch[];
   taskAttempts: TaskAttempt[];
   createAttemptBranch: string | null;
-  selectedProfile: ProfileVariant | null;
+  selectedProfile: ProfileVariantLabel | null;
   selectedBranch: string | null;
   fetchTaskAttempts: () => void;
   setIsInCreateAttemptMode: Dispatch<SetStateAction<boolean>>;
   setCreateAttemptBranch: Dispatch<SetStateAction<string | null>>;
-  setSelectedProfile: Dispatch<SetStateAction<ProfileVariant | null>>;
+  setSelectedProfile: Dispatch<SetStateAction<ProfileVariantLabel | null>>;
   availableProfiles: AgentProfile[] | null;
 };
 
@@ -63,7 +67,7 @@ function CreateAttempt({
 
   // Create attempt logic
   const actuallyCreateAttempt = useCallback(
-    async (profile: ProfileVariant, baseBranch?: string) => {
+    async (profile: ProfileVariantLabel, baseBranch?: string) => {
       const effectiveBaseBranch = baseBranch || selectedBranch;
 
       if (!effectiveBaseBranch) {
@@ -83,7 +87,7 @@ function CreateAttempt({
   // Handler for Enter key or Start button
   const onCreateNewAttempt = useCallback(
     (
-      profile: ProfileVariant,
+      profile: ProfileVariantLabel,
       baseBranch?: string,
       isKeyTriggered?: boolean
     ) => {

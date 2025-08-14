@@ -131,7 +131,7 @@ impl ClaudeCode {
             .get_profile("claude-code")
             .expect("Default claude-code profile should exist");
 
-        match &profile.agent {
+        match &profile.inner.agent {
             CodingAgent::ClaudeCode(claude_code) => claude_code.clone(),
             _ => panic!("Expected ClaudeCode agent in claude-code profile"),
         }

@@ -22,7 +22,7 @@ use executors::{
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
         ExecutorAction, ExecutorActionType,
     },
-    command::ProfileVariant,
+    command::ProfileVariantLabel,
 };
 use futures_util::TryStreamExt;
 use serde::{Deserialize, Serialize};
@@ -244,7 +244,7 @@ pub async fn get_task_attempt(
 #[derive(Debug, Deserialize, ts_rs::TS)]
 pub struct CreateTaskAttemptBody {
     pub task_id: Uuid,
-    pub profile: Option<ProfileVariant>,
+    pub profile: Option<ProfileVariantLabel>,
     pub base_branch: String,
 }
 
@@ -269,7 +269,7 @@ pub async fn create_task_attempt(
     let task_attempt = TaskAttempt::create(
         &deployment.db().pool,
         &CreateTaskAttempt {
-            profile: profile.label.clone(),
+            profile: profile.inner.label.clone(),
             base_branch: payload.base_branch,
         },
         payload.task_id,
@@ -287,7 +287,7 @@ pub async fn create_task_attempt(
             serde_json::json!({
                 "task_id": task_attempt.task_id.to_string(),
                 "variant": &profile_variant,
-                "profile": profile.label,
+                "profile": profile.inner.label,
                 "attempt_id": task_attempt.id.to_string(),
             }),
         )
@@ -347,7 +347,7 @@ pub async fn follow_up(
         ))),
     }?;
 
-    let profile = ProfileVariant {
+    let profile = ProfileVariantLabel {
         profile: initial_profile.profile,
         variant: payload.variant,
     };

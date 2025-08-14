@@ -29,7 +29,7 @@ use executors::{
         coding_agent_initial::CodingAgentInitialRequest,
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
-    command::ProfileVariant,
+    command::ProfileVariantLabel,
     executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
     logs::utils::patch::ConversationPatch,
 };
@@ -427,7 +427,7 @@ pub trait ContainerService {
     async fn start_attempt(
         &self,
         task_attempt: &TaskAttempt,
-        profile_id: ProfileVariant,
+        profile: ProfileVariantLabel,
     ) -> Result<ExecutionProcess, ContainerError> {
         // Create container
         self.create(task_attempt).await?;
@@ -472,7 +472,7 @@ pub trait ContainerService {
                 Some(Box::new(ExecutorAction::new(
                     ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                         prompt: task.to_prompt(),
-                        profile: profile_id,
+                        profile: profile,
                     }),
                     cleanup_action,
                 ))),
@@ -488,7 +488,7 @@ pub trait ContainerService {
             let executor_action = ExecutorAction::new(
                 ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                     prompt: task.to_prompt(),
-                    profile: profile_id,
+                    profile: profile,
                 }),
                 cleanup_action,
             );

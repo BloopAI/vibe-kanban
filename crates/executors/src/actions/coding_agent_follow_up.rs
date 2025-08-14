@@ -7,7 +7,7 @@ use ts_rs::TS;
 
 use crate::{
     actions::Executable,
-    command::ProfileVariant,
+    command::ProfileVariantLabel,
     executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
 };
 
@@ -15,7 +15,7 @@ use crate::{
 pub struct CodingAgentFollowUpRequest {
     pub prompt: String,
     pub session_id: String,
-    pub profile: ProfileVariant,
+    pub profile: ProfileVariantLabel,
 }
 
 #[async_trait]

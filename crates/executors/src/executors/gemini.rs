@@ -321,7 +321,7 @@ impl Gemini {
             .get_profile("gemini")
             .expect("Default gemini profile should exist");
 
-        match &profile.agent {
+        match &profile.inner.agent {
             CodingAgent::Gemini(gemini) => gemini.clone(),
             _ => panic!("Expected Gemini agent in gemini profile"),
         }

@@ -209,7 +209,7 @@ impl Amp {
             .get_profile("amp")
             .expect("Default amp profile should exist");
 
-        match &profile.agent {
+        match &profile.inner.agent {
             CodingAgent::Amp(amp) => amp.clone(),
             _ => panic!("Expected Amp agent in amp profile"),
         }

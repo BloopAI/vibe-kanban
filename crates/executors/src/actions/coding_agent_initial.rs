@@ -7,14 +7,14 @@ use ts_rs::TS;
 
 use crate::{
     actions::Executable,
-    command::ProfileVariant,
+    command::ProfileVariantLabel,
     executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct CodingAgentInitialRequest {
     pub prompt: String,
-    pub profile: ProfileVariant,
+    pub profile: ProfileVariantLabel,
 }
 
 #[async_trait]

@@ -118,7 +118,7 @@ impl Codex {
             .get_profile("codex")
             .expect("Default codex profile should exist");
 
-        match &profile.agent {
+        match &profile.inner.agent {
             CodingAgent::Codex(codex) => codex.clone(),
             _ => panic!("Expected Codex agent in codex profile"),
         }

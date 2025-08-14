@@ -12,7 +12,7 @@ use ts_rs::TS;
 use utils::{msg_store::MsgStore, path::make_path_relative, shell::get_shell_command};
 
 use crate::{
-    command::{AgentProfiles, CommandBuilder, ProfileVariant},
+    command::{AgentProfiles, CommandBuilder},
     executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
     logs::{
         ActionType, EditDiff, NormalizedEntry, NormalizedEntryType,
@@ -39,7 +39,7 @@ impl Opencode {
             .get_profile("opencode")
             .expect("Default opencode profile should exist");
 
-        match &profile.agent {
+        match &profile.inner.agent {
             CodingAgent::Opencode(opencode) => opencode.clone(),
             _ => panic!("Expected Opencode agent in opencode profile"),
         }

@@ -25,7 +25,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sparkles, Code, ChevronDown } from 'lucide-react';
-import { EditorType, ProfileVariant } from 'shared/types';
+import { EditorType, ProfileVariantLabel } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
 
 import { toPrettyCase } from '@/utils/string';
@@ -33,13 +33,13 @@ import { toPrettyCase } from '@/utils/string';
 interface OnboardingDialogProps {
   open: boolean;
   onComplete: (config: {
-    profile: ProfileVariant;
+    profile: ProfileVariantLabel;
     editor: { editor_type: EditorType; custom_command: string | null };
   }) => void;
 }
 
 export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
-  const [profile, setProfile] = useState<ProfileVariant>({
+  const [profile, setProfile] = useState<ProfileVariantLabel>({
     profile: 'claude-code',
     variant: null,
   });

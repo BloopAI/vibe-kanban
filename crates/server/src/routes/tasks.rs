@@ -97,7 +97,7 @@ pub async fn create_task_and_start(
     let branch = GitService::new().get_current_branch(&project.git_repo_path)?;
     let profile_label = executors::command::AgentProfiles::get_cached()
         .get_profile(&default_profile_variant.profile)
-        .map(|profile| profile.label.clone())
+        .map(|profile| profile.inner.label.clone())
         .ok_or_else(|| {
             ApiError::TaskAttempt(TaskAttemptError::ValidationError(format!(
                 "Profile not found: {:?}",

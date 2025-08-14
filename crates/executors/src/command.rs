@@ -53,7 +53,7 @@ impl CommandBuilder {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-pub struct AgentVariantProfile {
+pub struct AgentProfileVariant {
     /// Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
     pub label: String,
     /// The coding agent this profile is associated with
@@ -62,40 +62,35 @@ pub struct AgentVariantProfile {
     /// Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
     pub mcp_config_path: Option<String>,
 }
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct AgentProfile {
-    /// Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
-    pub label: String,
-    /// The coding agent this profile is associated with
     #[serde(flatten)]
-    pub agent: CodingAgent,
-    /// Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
-    pub mcp_config_path: Option<String>,
-    /// Supported modes for this profile, may be empty
-    pub variants: Vec<AgentVariantProfile>,
+    /// default profile variant
+    pub inner: AgentProfileVariant,
+    /// additional variants for this profile, e.g. plan, review, subagent
+    pub variants: Vec<AgentProfileVariant>,
 }
 
 impl AgentProfile {
-    pub fn get_variant(&self, variant: &str) -> Option<&AgentVariantProfile> {
+    pub fn get_variant(&self, variant: &str) -> Option<&AgentProfileVariant> {
         self.variants.iter().find(|m| m.label == variant)
     }
 
     pub fn get_mcp_config_path(&self) -> Option<PathBuf> {
-        match self.mcp_config_path.as_ref() {
+        match self.inner.mcp_config_path.as_ref() {
             Some(path) => Some(PathBuf::from(path)),
-            None => self.agent.default_mcp_config_path(),
+            None => self.inner.agent.default_mcp_config_path(),
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-pub struct ProfileVariant {
+pub struct ProfileVariantLabel {
     pub profile: String,
     pub variant: Option<String>,
 }
 
-impl ProfileVariant {
+impl ProfileVariantLabel {
     pub fn default(profile: String) -> Self {
         Self {
             profile,
@@ -188,13 +183,13 @@ impl AgentProfiles {
     }
 
     pub fn get_profile(&self, label: &str) -> Option<&AgentProfile> {
-        self.profiles.iter().find(|p| p.label == label)
+        self.profiles.iter().find(|p| p.inner.label == label)
     }
 
     pub fn to_map(&self) -> HashMap<String, AgentProfile> {
         self.profiles
             .iter()
-            .map(|p| (p.label.clone(), p.clone()))
+            .map(|p| (p.inner.label.clone(), p.clone()))
             .collect()
     }
 }
@@ -212,7 +207,7 @@ mod tests {
                 .get(label)
                 .map(|p| {
                     use crate::executors::CodingAgent;
-                    match &p.agent {
+                    match &p.inner.agent {
                         CodingAgent::ClaudeCode(claude) => claude.command.build_initial(),
                         CodingAgent::Amp(amp) => amp.command.build_initial(),
                         CodingAgent::Gemini(gemini) => gemini.command.build_initial(),
@@ -348,7 +343,7 @@ mod tests {
 
         // Test Claude profile
         let claude_profile = profiles.get_profile("test-claude").unwrap();
-        match &claude_profile.agent {
+        match &claude_profile.inner.agent {
             crate::executors::CodingAgent::ClaudeCode(claude) => {
                 assert_eq!(claude.command.base, "npx claude");
                 assert_eq!(claude.command.params.as_ref().unwrap()[0], "--test");
@@ -359,7 +354,7 @@ mod tests {
 
         // Test Gemini profile
         let gemini_profile = profiles.get_profile("test-gemini").unwrap();
-        match &gemini_profile.agent {
+        match &gemini_profile.inner.agent {
             crate::executors::CodingAgent::Gemini(gemini) => {
                 assert_eq!(gemini.command.base, "npx gemini");
                 assert_eq!(gemini.command.params.as_ref().unwrap()[0], "--test");

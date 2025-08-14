@@ -8,7 +8,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import type { ExecutionProcess, ProfileVariant } from 'shared/types';
+import type { ExecutionProcess, ProfileVariantLabel } from 'shared/types';
 import type {
   EditorType,
   TaskAttempt,
@@ -92,7 +92,8 @@ const TaskDetailsProvider: FC<{
           );
 
           const runningProcessDetails: Record<string, ExecutionProcess> = {};
-          const processProfiles: Record<string, ProfileVariant | null> = {};
+          const processProfiles: Record<string, ProfileVariantLabel | null> =
+            {};
 
           // Fetch details for running processes
           for (const process of runningProcesses) {

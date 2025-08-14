@@ -26,7 +26,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ChevronDown, Key, Loader2, Volume2 } from 'lucide-react';
-import { ThemeMode, EditorType, SoundFile, ProfileVariant } from 'shared/types';
+import {
+  ThemeMode,
+  EditorType,
+  SoundFile,
+  ProfileVariantLabel,
+} from 'shared/types';
 
 import { toPrettyCase } from '@/utils/string';
 import { useTheme } from '@/components/theme-provider';
@@ -274,7 +279,7 @@ export function Settings() {
                   <Select
                     value={config.profile?.profile || ''}
                     onValueChange={(value: string) => {
-                      const newProfile: ProfileVariant = {
+                      const newProfile: ProfileVariantLabel = {
                         profile: value,
                         variant: null,
                       };
@@ -319,7 +324,7 @@ export function Settings() {
                           <DropdownMenuContent>
                             <DropdownMenuItem
                               onClick={() => {
-                                const newProfile: ProfileVariant = {
+                                const newProfile: ProfileVariantLabel = {
                                   profile: config.profile?.profile || '',
                                   variant: null,
                                 };
@@ -335,7 +340,7 @@ export function Settings() {
                               <DropdownMenuItem
                                 key={variant.label}
                                 onClick={() => {
-                                  const newProfile: ProfileVariant = {
+                                  const newProfile: ProfileVariantLabel = {
                                     profile: config.profile?.profile || '',
                                     variant: variant.label,
                                   };
