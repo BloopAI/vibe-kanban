@@ -58,7 +58,8 @@
         "command": {
           "base": "npx -y @sourcegraph/amp@0.0.1752148945-gd8844f",
           "params": [
-            "--format=jsonl"
+            "--format=jsonl",
+            "--dangerously-allow-all"
           ]
         }
       },
