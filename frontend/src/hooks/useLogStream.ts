@@ -43,10 +43,10 @@ export const useLogStream = (
         const newLogs = [...prev, line];
         // Limit log length to prevent memory issues
         const limitedLogs = newLogs.slice(-MAX_LOGS_PER_PROCESS);
-
+        
         // Update cache
         logCache.set(cacheKey, limitedLogs);
-
+        
         // Clean up old cache entries if needed
         if (logCache.size > MAX_CACHE_ENTRIES) {
           const oldestKey = logCache.keys().next().value;
@@ -54,22 +54,34 @@ export const useLogStream = (
             logCache.delete(oldestKey);
           }
         }
-
+        
         return limitedLogs;
       });
     };
 
-    eventSource.onmessage = (event) => {
-      // Handle default messages
-      addLogLine(event.data);
-    };
+    // Handle json_patch events (new format from server)
+    eventSource.addEventListener('json_patch', (event) => {
+      try {
+        const patches = JSON.parse(event.data);
+        patches.forEach((patch: any) => {
+          const value = patch?.value;
+          if (!value || !value.type) return;
 
-    eventSource.addEventListener('stdout', (event) => {
-      addLogLine(`stdout: ${event.data}`);
-    });
-
-    eventSource.addEventListener('stderr', (event) => {
-      addLogLine(`stderr: ${event.data}`);
+          switch (value.type) {
+            case 'STDOUT':
+              addLogLine(`stdout: ${value.content}`);
+              break;
+            case 'STDERR':
+              addLogLine(`stderr: ${value.content}`);
+              break;
+            // Ignore other patch types (NORMALIZED_ENTRY, DIFF, etc.)
+            default:
+              break;
+          }
+        });
+      } catch (e) {
+        console.error('Failed to parse json_patch:', e);
+      }
     });
 
     eventSource.addEventListener('finished', () => {
