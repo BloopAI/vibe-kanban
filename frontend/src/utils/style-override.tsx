@@ -4,13 +4,15 @@ import { ThemeMode } from 'shared/types';
 
 interface VibeStyleOverrideMessage {
   type: 'VIBE_STYLE_OVERRIDE';
-  payload: {
-    kind: "cssVars";
-    variables: Record<string, string>;
-  } | {
-    kind: "theme";
-    theme: ThemeMode;
-  };
+  payload:
+    | {
+        kind: 'cssVars';
+        variables: Record<string, string>;
+      }
+    | {
+        kind: 'theme';
+        theme: ThemeMode;
+      };
 }
 
 interface VibeIframeReadyMessage {
@@ -18,14 +20,18 @@ interface VibeIframeReadyMessage {
 }
 
 // Component that adds postMessage listener for style overrides
-export function AppWithStyleOverride({ children }: { children: React.ReactNode }) {
+export function AppWithStyleOverride({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { setTheme } = useTheme();
 
   useEffect(() => {
     function handleStyleMessage(event: MessageEvent) {
       if (event.data?.type !== 'VIBE_STYLE_OVERRIDE') return;
 
-      console.log("DEBUG3", event.data);
+      console.log('DEBUG3', event.data);
 
       // Origin validation (only if VITE_PARENT_ORIGIN is configured)
       const allowedOrigin = import.meta.env.VITE_PARENT_ORIGIN;
@@ -40,13 +46,16 @@ export function AppWithStyleOverride({ children }: { children: React.ReactNode }
       const message = event.data as VibeStyleOverrideMessage;
 
       // CSS variable overrides (only --vibe-* prefixed variables)
-      if (message.payload.kind === "cssVars" && typeof message.payload.variables === 'object') {
+      if (
+        message.payload.kind === 'cssVars' &&
+        typeof message.payload.variables === 'object'
+      ) {
         Object.entries(message.payload.variables).forEach(([name, value]) => {
           if (typeof value === 'string') {
             document.documentElement.style.setProperty(name, value);
           }
         });
-      } else if (message.payload.kind === "theme") {
+      } else if (message.payload.kind === 'theme') {
         setTheme(message.payload.theme);
       }
     }
@@ -62,7 +71,7 @@ export function AppWithStyleOverride({ children }: { children: React.ReactNode }
     // Only send if we're in an iframe and have a parent
     if (window.parent && window.parent !== window) {
       const readyMessage: VibeIframeReadyMessage = {
-        type: 'VIBE_IFRAME_READY'
+        type: 'VIBE_IFRAME_READY',
       };
 
       // Send to specific origin if configured, otherwise send to any origin
