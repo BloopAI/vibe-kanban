@@ -270,7 +270,7 @@ mod tests {
             crate::executors::CodingAgent::ClaudeCode(claude) => {
                 assert_eq!(claude.command.base, "npx claude");
                 assert_eq!(claude.command.params.as_ref().unwrap()[0], "--test");
-                assert_eq!(claude.plan, true);
+                assert!(claude.plan);
             }
             _ => panic!("Expected ClaudeCode agent"),
         }

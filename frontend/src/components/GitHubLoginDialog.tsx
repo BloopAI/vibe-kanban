@@ -196,9 +196,7 @@ export function GitHubLoginDialog({
                     2
                   </span>
                   <div className="flex-1">
-                    <p className="text-sm font-medium mb-3">
-                      Enter this code:
-                    </p>
+                    <p className="text-sm font-medium mb-3">Enter this code:</p>
                     <div className="flex items-center gap-3">
                       <span className="text-xl font-mono font-bold tracking-[0.2em] bg-muted border rounded-lg px-4 py-2">
                         {deviceState.user_code}

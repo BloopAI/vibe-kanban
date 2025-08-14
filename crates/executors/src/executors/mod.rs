@@ -65,12 +65,11 @@ impl CodingAgent {
             ProfileConfigs::get_cached().get_profile(&profile_variant_label.profile)
         {
             if let Some(variant_name) = &profile_variant_label.variant {
-                if let Some(variant) = profile_config.get_variant(&variant_name) {
+                if let Some(variant) = profile_config.get_variant(variant_name) {
                     Ok(variant.agent.clone())
                 } else {
                     Err(ExecutorError::UnknownExecutorType(format!(
-                        "Unknown mode: {}",
-                        variant_name
+                        "Unknown mode: {variant_name}"
                     )))
                 }
             } else {
