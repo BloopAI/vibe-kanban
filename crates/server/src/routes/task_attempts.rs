@@ -257,7 +257,8 @@ pub async fn create_task_attempt(
         .profile
         .unwrap_or(deployment.config().read().await.profile.clone());
 
-    let profile = executors::command::AgentProfiles::get_cached()
+    let profiles = executors::command::AgentProfiles::get_cached();
+    let profile = profiles
         .get_profile(&profile_variant.profile)
         .ok_or_else(|| {
             ApiError::TaskAttempt(TaskAttemptError::ValidationError(format!(

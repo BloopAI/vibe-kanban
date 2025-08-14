@@ -127,7 +127,8 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 impl ClaudeCode {
     /// Create a new Claude executor with default settings
     pub fn new() -> Self {
-        let profile = AgentProfiles::get_cached()
+        let profiles = AgentProfiles::get_cached();
+        let profile = profiles
             .get_profile("claude-code")
             .expect("Default claude-code profile should exist");
 

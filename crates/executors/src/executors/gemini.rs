@@ -317,7 +317,8 @@ You are continuing work on the above task. The execution history shows the previ
 impl Gemini {
     /// Create a new Gemini executor with default settings
     pub fn new() -> Self {
-        let profile = AgentProfiles::get_cached()
+        let profiles = AgentProfiles::get_cached();
+        let profile = profiles
             .get_profile("gemini")
             .expect("Default gemini profile should exist");
 

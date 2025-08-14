@@ -74,7 +74,7 @@ async fn get_user_system_info(
 
     let user_system_info = UserSystemInfo {
         config: config.clone(),
-        profiles: AgentProfiles::get_cached().clone(),
+        profiles: AgentProfiles::get_cached(),
         environment: Environment::new(),
     };
 
@@ -133,7 +133,8 @@ async fn get_mcp_servers(
     State(_deployment): State<DeploymentImpl>,
     Query(query): Query<McpServerQuery>,
 ) -> Result<ResponseJson<ApiResponse<GetMcpServerResponse>>, ApiError> {
-    let profile = &executors::command::AgentProfiles::get_cached()
+    let profiles = executors::command::AgentProfiles::get_cached();
+    let profile = profiles
         .get_profile(&query.profile)
         .ok_or_else(|| {
             ApiError::Config(ConfigError::ValidationError(format!(
@@ -173,7 +174,8 @@ async fn update_mcp_servers(
     Query(query): Query<McpServerQuery>,
     Json(payload): Json<UpdateMcpServersBody>,
 ) -> Result<ResponseJson<ApiResponse<String>>, ApiError> {
-    let agent = &executors::command::AgentProfiles::get_cached()
+    let profiles = executors::command::AgentProfiles::get_cached();
+    let agent = &profiles
         .get_profile(&query.profile)
         .ok_or_else(|| {
             ApiError::Config(ConfigError::ValidationError(format!(
@@ -367,6 +369,8 @@ async fn update_profiles(
     match fs::write(&profiles_path, formatted).await {
         Ok(_) => {
             tracing::info!("All profiles saved to {:?}", profiles_path);
+            // Reload the cached profiles
+            executors::command::AgentProfiles::reload();
             ResponseJson(ApiResponse::success(
                 "Profiles updated successfully".to_string(),
             ))

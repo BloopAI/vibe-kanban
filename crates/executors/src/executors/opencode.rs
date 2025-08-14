@@ -35,7 +35,8 @@ impl Default for Opencode {
 
 impl Opencode {
     pub fn new() -> Self {
-        let profile = AgentProfiles::get_cached()
+        let profiles = AgentProfiles::get_cached();
+        let profile = profiles
             .get_profile("opencode")
             .expect("Default opencode profile should exist");
 

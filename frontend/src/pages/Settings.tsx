@@ -48,6 +48,7 @@ export function Settings() {
     loading,
     updateAndSaveConfig,
     profiles,
+    reloadSystem,
   } = useUserSystem();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -119,6 +120,8 @@ export function Settings() {
 
     try {
       await profilesApi.save(profilesContent);
+      // Reload the system to get the updated profiles
+      await reloadSystem();
       setProfilesSuccess(true);
       setTimeout(() => setProfilesSuccess(false), 3000);
     } catch (err: any) {

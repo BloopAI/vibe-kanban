@@ -2,7 +2,7 @@ use std::{
     collections::{HashMap, HashSet},
     fs,
     path::PathBuf,
-    sync::OnceLock,
+    sync::RwLock,
 };
 
 use serde::{Deserialize, Serialize};
@@ -10,7 +10,11 @@ use ts_rs::TS;
 
 use crate::executors::CodingAgent;
 
-static PROFILES_CACHE: OnceLock<AgentProfiles> = OnceLock::new();
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref PROFILES_CACHE: RwLock<AgentProfiles> = RwLock::new(AgentProfiles::load());
+}
 
 // Default profiels embedded at compile time
 const DEFAULT_PROFILES_JSON: &str = include_str!("../default_profiles.json");
@@ -116,8 +120,13 @@ pub struct AgentProfiles {
 }
 
 impl AgentProfiles {
-    pub fn get_cached() -> &'static AgentProfiles {
-        PROFILES_CACHE.get_or_init(Self::load)
+    pub fn get_cached() -> AgentProfiles {
+        PROFILES_CACHE.read().unwrap().clone()
+    }
+    
+    pub fn reload() {
+        let mut cache = PROFILES_CACHE.write().unwrap();
+        *cache = Self::load();
     }
 
     fn load() -> Self {

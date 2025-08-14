@@ -114,7 +114,8 @@ impl Default for Codex {
 impl Codex {
     /// Create a new Codex executor with default settings
     pub fn new() -> Self {
-        let profile = AgentProfiles::get_cached()
+        let profiles = AgentProfiles::get_cached();
+        let profile = profiles
             .get_profile("codex")
             .expect("Default codex profile should exist");
 

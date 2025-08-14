@@ -205,7 +205,8 @@ impl StandardCodingAgentExecutor for Amp {
 
 impl Amp {
     pub fn new() -> Self {
-        let profile = AgentProfiles::get_cached()
+        let profiles = AgentProfiles::get_cached();
+        let profile = profiles
             .get_profile("amp")
             .expect("Default amp profile should exist");
 

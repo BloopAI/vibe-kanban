@@ -34,7 +34,8 @@ impl Default for Cursor {
 impl Cursor {
     /// Create a new Cursor executor with default profile
     pub fn new() -> Self {
-        let profile = AgentProfiles::get_cached()
+        let profiles = AgentProfiles::get_cached();
+        let profile = profiles
             .get_profile("cursor")
             .expect("Default cursor profile should exist");
 
