@@ -75,10 +75,6 @@ pnpm run dev
 
 This will start the frontend and backend with live reloading. A blank DB will be copied from the `dev_assets_seed` folder.
 
-### Port Discovery
-
-In development builds, the backend automatically writes a port file to `$TMPDIR/vibe-kanban/vibe-kanban.port` for process discovery. In production builds, this file is only created if the `ENABLE_PORT_FILE` environment variable is set.
-
 ### Build from source
 
 1. Run `build-npm-package.sh`
@@ -99,7 +95,6 @@ The following environment variables can be configured at build time or runtime:
 | `FRONTEND_PORT` | Runtime | `3000` | Frontend development server port |
 | `HOST` | Runtime | `127.0.0.1` | Backend server host |
 | `DISABLE_WORKTREE_ORPHAN_CLEANUP` | Runtime | Not set | Disable git worktree cleanup (for debugging) |
-| `ENABLE_PORT_FILE` | Runtime | Not set | Enable port file creation in production builds |
 
 **Build-time variables** must be set when running `pnpm run build`. **Runtime variables** are read when the application starts.
 
