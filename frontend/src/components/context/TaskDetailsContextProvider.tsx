@@ -8,7 +8,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import type { ExecutionProcess, ProfileVariantLabel } from 'shared/types';
+import type { ExecutionProcess } from 'shared/types';
 import type {
   EditorType,
   TaskAttempt,
@@ -24,7 +24,6 @@ import {
   TaskSelectedAttemptContext,
 } from './taskDetailsContext.ts';
 import type { AttemptData } from '@/lib/types.ts';
-import { extractProfileVariant } from '@/lib/utils.ts';
 import { useUserSystem } from '@/components/config-provider';
 
 const TaskDetailsProvider: FC<{
@@ -52,7 +51,6 @@ const TaskDetailsProvider: FC<{
   const [attemptData, setAttemptData] = useState<AttemptData>({
     processes: [],
     runningProcessDetails: {},
-    processProfiles: {},
   });
 
   const handleOpenInEditor = useCallback(
@@ -87,26 +85,7 @@ const TaskDetailsProvider: FC<{
           await executionProcessesApi.getExecutionProcesses(attemptId);
 
         if (processesResult !== undefined) {
-          const runningProcesses = processesResult.filter(
-            (process) => process.status === 'running'
-          );
-
           const runningProcessDetails: Record<string, ExecutionProcess> = {};
-          const processProfiles: Record<string, ProfileVariantLabel | null> =
-            {};
-
-          // Fetch details for running processes
-          for (const process of runningProcesses) {
-            const result = await executionProcessesApi.getDetails(process.id);
-
-            if (result !== undefined) {
-              runningProcessDetails[process.id] = result;
-              // Extract ProfileVariant from the executor_action
-              processProfiles[process.id] = extractProfileVariant(
-                result.executor_action
-              );
-            }
-          }
 
           // Also fetch setup script process details if it exists in the processes
           const setupProcess = processesResult.find(
@@ -120,19 +99,6 @@ const TaskDetailsProvider: FC<{
             if (result !== undefined) {
               runningProcessDetails[setupProcess.id] = result;
               // Extract ProfileVariant from the executor_action
-              processProfiles[setupProcess.id] = extractProfileVariant(
-                result.executor_action
-              );
-            }
-          }
-
-          // Extract ProfileVariant for all processes (not just running/setup)
-          for (const process of processesResult) {
-            if (!processProfiles[process.id]) {
-              // Extract ProfileVariant from the summary's executor_action
-              processProfiles[process.id] = extractProfileVariant(
-                process.executor_action
-              );
             }
           }
 
@@ -140,7 +106,6 @@ const TaskDetailsProvider: FC<{
             const newData = {
               processes: processesResult,
               runningProcessDetails,
-              processProfiles,
             };
             if (JSON.stringify(prev) === JSON.stringify(newData)) return prev;
             return newData;
@@ -175,20 +140,21 @@ const TaskDetailsProvider: FC<{
 
   const defaultFollowUpVariant = useMemo(() => {
     // Find most recent coding agent process with variant
-    const codingAgentProcesses = attemptData.processes.filter(
-      (p) => p.run_reason === 'codingagent'
-    );
-
-    if (codingAgentProcesses.length > 0) {
-      // Iterate in reverse (most recent first, since ordered ASC)
-      for (let i = codingAgentProcesses.length - 1; i >= 0; i--) {
-        const profileVariant =
-          attemptData.processProfiles[codingAgentProcesses[i].id];
-        if (profileVariant) {
-          return profileVariant?.variant;
+    const latest_profile = attemptData.processes
+      .filter((p) => p.run_reason === 'codingagent')
+      .reverse()
+      .map((process) => {
+        if (
+          process.executor_action?.typ.type === 'CodingAgentInitialRequest' ||
+          process.executor_action?.typ.type === 'CodingAgentFollowUpRequest'
+        ) {
+          return process.executor_action?.typ.profile_variant_label;
         }
-      }
-    } else if (selectedAttempt?.profile && profiles) {
+      })[0];
+    if (latest_profile) {
+      return latest_profile.variant;
+    }
+    if (selectedAttempt?.profile && profiles) {
       // No processes yet, check if profile has default variant
       const profile = profiles.find((p) => p.label === selectedAttempt.profile);
       if (profile?.variants && profile.variants.length > 0) {
@@ -196,12 +162,7 @@ const TaskDetailsProvider: FC<{
       }
     }
     return null;
-  }, [
-    attemptData.processes,
-    attemptData.processProfiles,
-    selectedAttempt?.profile,
-    profiles,
-  ]);
+  }, [attemptData.processes, selectedAttempt?.profile, profiles]);
 
   useEffect(() => {
     if (!isAttemptRunning || !task) return;

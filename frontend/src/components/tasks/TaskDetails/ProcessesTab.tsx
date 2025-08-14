@@ -11,7 +11,6 @@ import {
 import { TaskAttemptDataContext } from '@/components/context/taskDetailsContext.ts';
 import { executionProcessesApi } from '@/lib/api.ts';
 import { ProfileVariantBadge } from '@/components/common/ProfileVariantBadge.tsx';
-import { extractProfileVariant } from '@/lib/utils.ts';
 import type { ExecutionProcessStatus, ExecutionProcess } from 'shared/types';
 
 function ProcessesTab() {
@@ -67,10 +66,6 @@ function ProcessesTab() {
           runningProcessDetails: {
             ...prev.runningProcessDetails,
             [processId]: result,
-          },
-          processProfiles: {
-            ...prev.processProfiles,
-            [processId]: extractProfileVariant(result.executor_action),
           },
         }));
       }
@@ -130,16 +125,22 @@ function ProcessesTab() {
                       <p className="text-sm text-muted-foreground mt-1">
                         Process ID: {process.id}
                       </p>
-                      {attemptData.processProfiles[process.id] && (
+                      {
                         <p className="text-sm text-muted-foreground mt-1">
                           Profile:{' '}
-                          <ProfileVariantBadge
-                            profileVariant={
-                              attemptData.processProfiles[process.id]
-                            }
-                          />
+                          {process.executor_action.typ.type ===
+                            'CodingAgentInitialRequest' ||
+                          process.executor_action.typ.type ===
+                            'CodingAgentFollowUpRequest' ? (
+                            <ProfileVariantBadge
+                              profileVariant={
+                                process.executor_action.typ
+                                  .profile_variant_label
+                              }
+                            />
+                          ) : null}
                         </p>
-                      )}
+                      }
                     </div>
                   </div>
                   <div className="text-right">
@@ -202,16 +203,20 @@ function ProcessesTab() {
                         <span className="font-medium">Exit Code:</span>{' '}
                         {selectedProcess.exit_code?.toString() ?? 'N/A'}
                       </p>
-                      {attemptData.processProfiles[selectedProcessId] && (
+                      {selectedProcess.executor_action.typ.type ===
+                        'CodingAgentInitialRequest' ||
+                      selectedProcess.executor_action.typ.type ===
+                        'CodingAgentFollowUpRequest' ? (
                         <p>
                           <span className="font-medium">Profile:</span>{' '}
                           <ProfileVariantBadge
                             profileVariant={
-                              attemptData.processProfiles[selectedProcessId]
+                              selectedProcess.executor_action.typ
+                                .profile_variant_label
                             }
                           />
                         </p>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                   <div>

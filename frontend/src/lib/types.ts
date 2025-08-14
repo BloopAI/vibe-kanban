@@ -1,9 +1,8 @@
-import { ExecutionProcess, ProfileVariantLabel } from 'shared/types';
+import { ExecutionProcess } from 'shared/types';
 
 export type AttemptData = {
   processes: ExecutionProcess[];
   runningProcessDetails: Record<string, ExecutionProcess>;
-  processProfiles: Record<string, ProfileVariantLabel | null>;
 };
 
 export interface ConversationEntryDisplayType {
