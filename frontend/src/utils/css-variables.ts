@@ -22,7 +22,7 @@ export const ALLOWED_CSS_VARS = new Set([
   '--input',
   '--ring',
   '--radius',
-  
+
   // Status colors
   '--success',
   '--success-foreground',
@@ -32,7 +32,7 @@ export const ALLOWED_CSS_VARS = new Set([
   '--info-foreground',
   '--neutral',
   '--neutral-foreground',
-  
+
   // Status indicator colors
   '--status-init',
   '--status-init-foreground',
@@ -44,7 +44,7 @@ export const ALLOWED_CSS_VARS = new Set([
   '--status-failed-foreground',
   '--status-paused',
   '--status-paused-foreground',
-  
+
   // Console/terminal colors
   '--console-background',
   '--console-foreground',
@@ -53,7 +53,8 @@ export const ALLOWED_CSS_VARS = new Set([
 ]);
 
 // Regex to validate HSL triplet values (e.g., "220 14% 96%")
-export const HSL_TRIPLET_REGEX = /^\d{1,3}(?:\.\d+)?\s+\d{1,3}(?:\.\d+)?%\s+\d{1,3}(?:\.\d+)?%$/;
+export const HSL_TRIPLET_REGEX =
+  /^\d{1,3}(?:\.\d+)?\s+\d{1,3}(?:\.\d+)?%\s+\d{1,3}(?:\.\d+)?%$/;
 
 // Regex to validate rem values (e.g., "0.5rem")
 export const REM_VALUE_REGEX = /^\d+(?:\.\d+)?rem$/;

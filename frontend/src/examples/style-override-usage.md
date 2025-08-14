@@ -17,10 +17,10 @@ Switch between predefined themes:
 iframe.contentWindow.postMessage(
   {
     type: 'VIBE_STYLE_OVERRIDE',
-    payload: { 
-      kind: 'theme', 
-      theme: 'purple' 
-    }
+    payload: {
+      kind: 'theme',
+      theme: 'purple',
+    },
   },
   'https://your-app-domain.com'
 );
@@ -37,14 +37,14 @@ Override individual CSS custom properties:
 iframe.contentWindow.postMessage(
   {
     type: 'VIBE_STYLE_OVERRIDE',
-    payload: { 
-      kind: 'cssVars', 
+    payload: {
+      kind: 'cssVars',
       variables: {
-        '--primary': '220 14% 96%',         // HSL triplet format
-        '--background': '0 0% 100%',        // HSL triplet format
-        '--radius': '1rem'                  // rem value for border radius
-      }
-    }
+        '--primary': '220 14% 96%', // HSL triplet format
+        '--background': '0 0% 100%', // HSL triplet format
+        '--radius': '1rem', // rem value for border radius
+      },
+    },
   },
   'https://your-app-domain.com'
 );
@@ -60,7 +60,7 @@ window.addEventListener('message', (event) => {
   if (event.data.type === 'VIBE_STYLE_OVERRIDE_ACK') {
     if (event.data.applied) {
       console.log('Style override applied successfully');
-      
+
       if (event.data.kind === 'theme') {
         console.log('Theme changed to:', event.data.theme);
       } else if (event.data.kind === 'cssVars') {
@@ -86,9 +86,10 @@ window.addEventListener('message', (event) => {
 The following CSS variables can be overridden:
 
 ### Base Theme Variables
+
 - `--background`, `--foreground`
 - `--card`, `--card-foreground`
-- `--popover`, `--popover-foreground` 
+- `--popover`, `--popover-foreground`
 - `--primary`, `--primary-foreground`
 - `--secondary`, `--secondary-foreground`
 - `--muted`, `--muted-foreground`
@@ -98,12 +99,14 @@ The following CSS variables can be overridden:
 - `--radius`
 
 ### Status Colors
+
 - `--success`, `--success-foreground`
 - `--warning`, `--warning-foreground`
 - `--info`, `--info-foreground`
 - `--neutral`, `--neutral-foreground`
 
 ### Status Indicators
+
 - `--status-init`, `--status-init-foreground`
 - `--status-running`, `--status-running-foreground`
 - `--status-complete`, `--status-complete-foreground`
@@ -111,6 +114,7 @@ The following CSS variables can be overridden:
 - `--status-paused`, `--status-paused-foreground`
 
 ### Console Colors
+
 - `--console-background`, `--console-foreground`
 - `--console-success`, `--console-error`
 
@@ -119,74 +123,75 @@ The following CSS variables can be overridden:
 ```html
 <!DOCTYPE html>
 <html>
-<head>
+  <head>
     <title>Vibe Kanban Embedded</title>
-</head>
-<body>
+  </head>
+  <body>
     <h1>My Dashboard</h1>
-    
+
     <!-- Theme selector -->
     <select id="theme-selector">
-        <option value="system">System</option>
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
-        <option value="purple">Purple</option>
-        <option value="green">Green</option>
-        <option value="blue">Blue</option>
-        <option value="orange">Orange</option>
-        <option value="red">Red</option>
+      <option value="system">System</option>
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+      <option value="purple">Purple</option>
+      <option value="green">Green</option>
+      <option value="blue">Blue</option>
+      <option value="orange">Orange</option>
+      <option value="red">Red</option>
     </select>
-    
+
     <!-- Embedded iframe -->
-    <iframe 
-        id="vibe-iframe" 
-        src="https://your-vibe-kanban-app.com"
-        width="100%" 
-        height="600px">
+    <iframe
+      id="vibe-iframe"
+      src="https://your-vibe-kanban-app.com"
+      width="100%"
+      height="600px"
+    >
     </iframe>
 
     <script>
-        const iframe = document.getElementById('vibe-iframe');
-        const themeSelector = document.getElementById('theme-selector');
-        
-        // Handle theme changes
-        themeSelector.addEventListener('change', (event) => {
-            iframe.contentWindow.postMessage(
-                {
-                    type: 'VIBE_STYLE_OVERRIDE',
-                    payload: { 
-                        kind: 'theme', 
-                        theme: event.target.value 
-                    }
-                },
-                'https://your-vibe-kanban-app.com'
-            );
-        });
-        
-        // Listen for acknowledgments
-        window.addEventListener('message', (event) => {
-            if (event.data.type === 'VIBE_STYLE_OVERRIDE_ACK') {
-                console.log('Style override result:', event.data);
-            }
-        });
-        
-        // Apply custom branding colors when iframe loads
-        iframe.addEventListener('load', () => {
-            iframe.contentWindow.postMessage(
-                {
-                    type: 'VIBE_STYLE_OVERRIDE',
-                    payload: { 
-                        kind: 'cssVars', 
-                        variables: {
-                            '--primary': '210 100% 50%',      // Your brand blue
-                            '--primary-foreground': '0 0% 100%'
-                        }
-                    }
-                },
-                'https://your-vibe-kanban-app.com'
-            );
-        });
+      const iframe = document.getElementById('vibe-iframe');
+      const themeSelector = document.getElementById('theme-selector');
+
+      // Handle theme changes
+      themeSelector.addEventListener('change', (event) => {
+        iframe.contentWindow.postMessage(
+          {
+            type: 'VIBE_STYLE_OVERRIDE',
+            payload: {
+              kind: 'theme',
+              theme: event.target.value,
+            },
+          },
+          'https://your-vibe-kanban-app.com'
+        );
+      });
+
+      // Listen for acknowledgments
+      window.addEventListener('message', (event) => {
+        if (event.data.type === 'VIBE_STYLE_OVERRIDE_ACK') {
+          console.log('Style override result:', event.data);
+        }
+      });
+
+      // Apply custom branding colors when iframe loads
+      iframe.addEventListener('load', () => {
+        iframe.contentWindow.postMessage(
+          {
+            type: 'VIBE_STYLE_OVERRIDE',
+            payload: {
+              kind: 'cssVars',
+              variables: {
+                '--primary': '210 100% 50%', // Your brand blue
+                '--primary-foreground': '0 0% 100%',
+              },
+            },
+          },
+          'https://your-vibe-kanban-app.com'
+        );
+      });
     </script>
-</body>
+  </body>
 </html>
 ```
