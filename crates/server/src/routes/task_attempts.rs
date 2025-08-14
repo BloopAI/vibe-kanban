@@ -467,6 +467,63 @@ pub async fn merge_task_attempt(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+pub async fn push_task_attempt_branch(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<(), GitHubServiceError>>, ApiError> {
+    let github_config = deployment.config().read().await.github.clone();
+    let Some(github_token) = github_config.token() else {
+        return Ok(ResponseJson(ApiResponse::error_with_data(
+            GitHubServiceError::TokenInvalid,
+        )));
+    };
+
+    let github_service = GitHubService::new(&github_token)?;
+    if let Err(e) = github_service.check_token().await {
+        if e.is_api_data() {
+            return Ok(ResponseJson(ApiResponse::error_with_data(e)));
+        } else {
+            return Err(ApiError::GitHubService(e));
+        }
+    }
+
+    let pool = &deployment.db().pool;
+    let task = task_attempt
+        .parent_task(pool)
+        .await?
+        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
+    let ctx =
+        TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
+
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
+    let worktree_path = std::path::Path::new(&container_ref);
+
+    let branch_name = ctx.task_attempt.branch.as_ref().ok_or_else(|| {
+        ApiError::TaskAttempt(TaskAttemptError::ValidationError(
+            "No branch found for task attempt".to_string(),
+        ))
+    })?;
+
+    if let Err(e) =
+        GitService::new().push_to_github(worktree_path, branch_name, &github_token)
+    {
+        tracing::error!("Failed to push branch to GitHub: {}", e);
+        let gh_e = GitHubServiceError::from(e);
+        if gh_e.is_api_data() {
+            Ok(ResponseJson(ApiResponse::error_with_data(gh_e)))
+        } else {
+            Ok(ResponseJson(ApiResponse::error(
+                "Failed to push branch to GitHub",
+            )))
+        }
+    } else {
+        Ok(ResponseJson(ApiResponse::success(())))
+    }
+}
+
 pub async fn create_github_pr(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
@@ -1011,6 +1068,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/branch-status", get(get_task_attempt_branch_status))
         .route("/diff", get(get_task_attempt_diff))
         .route("/merge", post(merge_task_attempt))
+        .route("/push", post(push_task_attempt_branch))
         .route("/rebase", post(rebase_task_attempt))
         .route("/pr", post(create_github_pr))
         .route("/open-editor", post(open_task_attempt_in_editor))

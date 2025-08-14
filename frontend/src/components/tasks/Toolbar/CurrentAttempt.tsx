@@ -4,6 +4,7 @@ import {
   GitBranch as GitBranchIcon,
   GitPullRequest,
   History,
+  Upload,
   Play,
   Plus,
   RefreshCw,
@@ -105,6 +106,7 @@ function CurrentAttempt({
 
   const [isStartingDevServer, setIsStartingDevServer] = useState(false);
   const [merging, setMerging] = useState(false);
+  const [pushing, setPushing] = useState(false);
   const [rebasing, setRebasing] = useState(false);
   const [devServerDetails, setDevServerDetails] =
     useState<ExecutionProcess | null>(null);
@@ -234,6 +236,20 @@ function CurrentAttempt({
 
     // Directly perform merge without checking branch status
     await performMerge();
+  };
+
+  const handlePushClick = async () => {
+    if (!selectedAttempt?.id) return;
+    try {
+      setPushing(true);
+      await attemptsApi.push(selectedAttempt.id);
+      fetchBranchStatus();
+    } catch (error: any) {
+      console.error('Failed to push changes:', error);
+      setError(error.message || 'Failed to push changes');
+    } finally {
+      setPushing(false);
+    }
   };
 
   const fetchBranchStatus = useCallback(async () => {
@@ -622,17 +638,34 @@ function CurrentAttempt({
                           : 'Create PR'}
                     </Button>
                     <Button
-                      onClick={handleMergeClick}
+                      onClick={
+                        selectedAttempt.pr_status === 'open'
+                          ? handlePushClick
+                          : handleMergeClick
+                      }
                       disabled={
-                        merging ||
-                        Boolean(branchStatus.is_behind) ||
-                        isAttemptRunning
+                        selectedAttempt.pr_status === 'open'
+                          ? pushing ||
+                            Boolean(branchStatus.is_behind) ||
+                            isAttemptRunning
+                          : merging ||
+                            Boolean(branchStatus.is_behind) ||
+                            isAttemptRunning
                       }
                       size="sm"
                       className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"
                     >
-                      <GitBranchIcon className="h-3 w-3" />
-                      {merging ? 'Merging...' : 'Merge'}
+                      {selectedAttempt.pr_status === 'open' ? (
+                        <>
+                          <Upload className="h-3 w-3" />
+                          {pushing ? 'Pushing...' : 'Push changes'}
+                        </>
+                      ) : (
+                        <>
+                          <GitBranchIcon className="h-3 w-3" />
+                          {merging ? 'Merging...' : 'Merge'}
+                        </>
+                      )}
                     </Button>
                   </>
                 )
