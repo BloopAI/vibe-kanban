@@ -5,14 +5,14 @@ import { ThemeMode } from 'shared/types';
 interface VibeStyleOverrideMessage {
   type: 'VIBE_STYLE_OVERRIDE';
   payload:
-    | {
-        kind: 'cssVars';
-        variables: Record<string, string>;
-      }
-    | {
-        kind: 'theme';
-        theme: ThemeMode;
-      };
+  | {
+    kind: 'cssVars';
+    variables: Record<string, string>;
+  }
+  | {
+    kind: 'theme';
+    theme: ThemeMode;
+  };
 }
 
 interface VibeIframeReadyMessage {
@@ -30,8 +30,6 @@ export function AppWithStyleOverride({
   useEffect(() => {
     function handleStyleMessage(event: MessageEvent) {
       if (event.data?.type !== 'VIBE_STYLE_OVERRIDE') return;
-
-      console.log('DEBUG3', event.data);
 
       // Origin validation (only if VITE_PARENT_ORIGIN is configured)
       const allowedOrigin = import.meta.env.VITE_PARENT_ORIGIN;
