@@ -77,16 +77,6 @@ export function TaskFollowUpSection() {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Check for Left Shift + Tab
       if (e.shiftKey && e.key === 'Tab') {
-        // Don't cycle if we're in a text input or textarea
-        const target = e.target as HTMLElement;
-        if (
-          target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.isContentEditable
-        ) {
-          return;
-        }
-
         e.preventDefault();
 
         // Build the variant cycle: null (Default) → variant1 → variant2 → ... → null
