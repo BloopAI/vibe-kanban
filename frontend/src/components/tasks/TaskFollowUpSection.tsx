@@ -2,7 +2,7 @@ import { AlertCircle, Send, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
-import { useContext, useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState, useRef } from 'react';
 import { attemptsApi } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,
@@ -17,6 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 export function TaskFollowUpSection() {
   const { task, projectId } = useContext(TaskDetailsContext);
@@ -35,6 +36,8 @@ export function TaskFollowUpSection() {
   const [selectedVariant, setSelectedVariant] = useState<string | null>(
     defaultFollowUpVariant
   );
+  const [isAnimating, setIsAnimating] = useState(false);
+  const variantButtonRef = useRef<HTMLButtonElement>(null);
 
   // Get the profile from the selected attempt
   const selectedProfile = selectedAttempt?.profile || null;
@@ -64,6 +67,49 @@ export function TaskFollowUpSection() {
   useEffect(() => {
     setSelectedVariant(defaultFollowUpVariant);
   }, [defaultFollowUpVariant]);
+
+  // Keyboard shortcut for cycling through variants (Left Shift + Tab)
+  useEffect(() => {
+    if (!currentProfile?.variants || currentProfile.variants.length === 0) {
+      return;
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Left Shift + Tab
+      if (e.shiftKey && e.key === 'Tab') {
+        // Don't cycle if we're in a text input or textarea
+        const target = e.target as HTMLElement;
+        if (
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable
+        ) {
+          return;
+        }
+
+        e.preventDefault();
+
+        // Build the variant cycle: null (Default) → variant1 → variant2 → ... → null
+        const variants = currentProfile.variants;
+        const variantLabels = variants.map(v => v.label);
+        const allOptions = [null, ...variantLabels];
+        
+        // Find current index and cycle to next
+        const currentIndex = allOptions.findIndex(v => v === selectedVariant);
+        const nextIndex = (currentIndex + 1) % allOptions.length;
+        const nextVariant = allOptions[nextIndex];
+        
+        setSelectedVariant(nextVariant);
+        
+        // Trigger animation
+        setIsAnimating(true);
+        setTimeout(() => setIsAnimating(false), 300);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [currentProfile, selectedVariant]);
 
   const onSendFollowUp = async () => {
     if (!task || !selectedAttempt || !followUpMessage.trim()) return;
@@ -134,9 +180,13 @@ export function TaskFollowUpSection() {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
+                          ref={variantButtonRef}
                           variant="outline"
                           size="sm"
-                          className="h-10 w-24 px-2 flex items-center justify-between"
+                          className={cn(
+                            "h-10 w-24 px-2 flex items-center justify-between transition-all",
+                            isAnimating && "scale-105 bg-accent"
+                          )}
                         >
                           <span className="text-xs truncate flex-1 text-left">
                             {selectedVariant || 'Default'}
@@ -171,9 +221,10 @@ export function TaskFollowUpSection() {
                   // Show disabled button when profile exists but has no variants
                   return (
                     <Button
+                      ref={variantButtonRef}
                       variant="outline"
                       size="sm"
-                      className="h-10 w-24 px-2 flex items-center justify-between"
+                      className="h-10 w-24 px-2 flex items-center justify-between transition-all"
                       disabled
                     >
                       <span className="text-xs truncate flex-1 text-left">
