@@ -32,7 +32,7 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
     };
 
     const addLogEntry = (entry: LogEntry) => {
-      setLogs(prev => [...prev, entry]);
+      setLogs((prev) => [...prev, entry]);
     };
 
     // Handle json_patch events (new format from server)
