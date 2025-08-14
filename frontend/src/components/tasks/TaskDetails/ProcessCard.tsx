@@ -25,10 +25,7 @@ function ProcessCard({ process }: ProcessCardProps) {
   const isCodingAgent = process.run_reason === 'codingagent';
 
   // Use appropriate hook based on process type
-  const {
-    logs,
-    error: rawError,
-  } = useLogStream(process.id);
+  const { logs, error: rawError } = useLogStream(process.id);
   const {
     entries,
     isConnected: normalizedConnected,
@@ -181,9 +178,13 @@ function ProcessCard({ process }: ProcessCardProps) {
                   logs.map((logEntry, index) => (
                     <div key={index} className="break-all">
                       {logEntry.type === 'STDERR' ? (
-                        <span className="text-destructive">{logEntry.content}</span>
+                        <span className="text-destructive">
+                          {logEntry.content}
+                        </span>
                       ) : (
-                        <span className="text-foreground">{logEntry.content}</span>
+                        <span className="text-foreground">
+                          {logEntry.content}
+                        </span>
                       )}
                     </div>
                   ))

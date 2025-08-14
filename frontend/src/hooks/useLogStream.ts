@@ -15,7 +15,9 @@ const MAX_LOGS_PER_PROCESS = 5000;
 
 export const useLogStream = (processId: string): UseLogStreamResult => {
   const cacheKey = processId;
-  const [logs, setLogs] = useState<LogEntry[]>(() => logCache.get(cacheKey) || []);
+  const [logs, setLogs] = useState<LogEntry[]>(
+    () => logCache.get(cacheKey) || []
+  );
   const [error, setError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -38,10 +40,10 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
         const newLogs = [...prev, entry];
         // Limit log length to prevent memory issues
         const limitedLogs = newLogs.slice(-MAX_LOGS_PER_PROCESS);
-        
+
         // Update cache
         logCache.set(cacheKey, limitedLogs);
-        
+
         // Clean up old cache entries if needed
         if (logCache.size > MAX_CACHE_ENTRIES) {
           const oldestKey = logCache.keys().next().value;
@@ -49,7 +51,7 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
             logCache.delete(oldestKey);
           }
         }
-        
+
         return limitedLogs;
       });
     };
