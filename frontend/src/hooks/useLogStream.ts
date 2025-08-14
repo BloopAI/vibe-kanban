@@ -43,10 +43,10 @@ export const useLogStream = (
         const newLogs = [...prev, line];
         // Limit log length to prevent memory issues
         const limitedLogs = newLogs.slice(-MAX_LOGS_PER_PROCESS);
-        
+
         // Update cache
         logCache.set(cacheKey, limitedLogs);
-        
+
         // Clean up old cache entries if needed
         if (logCache.size > MAX_CACHE_ENTRIES) {
           const oldestKey = logCache.keys().next().value;
@@ -54,7 +54,7 @@ export const useLogStream = (
             logCache.delete(oldestKey);
           }
         }
-        
+
         return limitedLogs;
       });
     };
