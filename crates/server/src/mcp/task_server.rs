@@ -9,7 +9,7 @@ use rmcp::{
     model::{
         CallToolResult, Content, Implementation, ProtocolVersion, ServerCapabilities, ServerInfo,
     },
-    schemars, tool, tool_handler, tool_router, Error as RmcpError, ServerHandler,
+    schemars, tool, tool_handler, tool_router, ErrorData, ServerHandler,
 };
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -218,7 +218,7 @@ impl TaskServer {
             title,
             description,
         }): Parameters<CreateTaskRequest>,
-    ) -> Result<CallToolResult, RmcpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         // Parse project_id from string to UUID
         let project_uuid = match Uuid::parse_str(&project_id) {
             Ok(uuid) => uuid,
@@ -300,7 +300,7 @@ impl TaskServer {
     }
 
     #[tool(description = "List all the available projects")]
-    async fn list_projects(&self) -> Result<CallToolResult, RmcpError> {
+    async fn list_projects(&self) -> Result<CallToolResult, ErrorData> {
         match Project::find_all(&self.pool).await {
             Ok(projects) => {
                 let count = projects.len();
@@ -353,7 +353,7 @@ impl TaskServer {
             status,
             limit,
         }): Parameters<ListTasksRequest>,
-    ) -> Result<CallToolResult, RmcpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let project_uuid = match Uuid::parse_str(&project_id) {
             Ok(uuid) => uuid,
             Err(_) => {
@@ -494,7 +494,7 @@ impl TaskServer {
             description,
             status,
         }): Parameters<UpdateTaskRequest>,
-    ) -> Result<CallToolResult, RmcpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let project_uuid = match Uuid::parse_str(&project_id) {
             Ok(uuid) => uuid,
             Err(_) => {
@@ -628,7 +628,7 @@ impl TaskServer {
             project_id,
             task_id,
         }): Parameters<DeleteTaskRequest>,
-    ) -> Result<CallToolResult, RmcpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let project_uuid = match Uuid::parse_str(&project_id) {
             Ok(uuid) => uuid,
             Err(_) => {
@@ -722,7 +722,7 @@ impl TaskServer {
             project_id,
             task_id,
         }): Parameters<GetTaskRequest>,
-    ) -> Result<CallToolResult, RmcpError> {
+    ) -> Result<CallToolResult, ErrorData> {
         let project_uuid = match Uuid::parse_str(&project_id) {
             Ok(uuid) => uuid,
             Err(_) => {
