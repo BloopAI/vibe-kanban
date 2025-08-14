@@ -39,7 +39,10 @@ function AppWithStyleOverride({ children }: { children: React.ReactNode }) {
       // Origin validation (only if VITE_PARENT_ORIGIN is configured)
       const allowedOrigin = import.meta.env.VITE_PARENT_ORIGIN;
       if (allowedOrigin && event.origin !== allowedOrigin) {
-        console.warn('[StyleOverride] Message from unauthorized origin:', event.origin);
+        console.warn(
+          '[StyleOverride] Message from unauthorized origin:',
+          event.origin
+        );
         return;
       }
 
