@@ -2,6 +2,13 @@
   "name": "vibe-kanban",
   "version": "0.0.60",
   "private": true,
+  "bin": {
+    "vibe-kanban": "npx-cli/bin/cli.js"
+  },
+  "files": [
+    "npx-cli/bin/cli.js",
+    "npx-cli/dist/**"
+  ],
   "scripts": {
     "check": "npm run frontend:check && npm run backend:check",
     "dev": "export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && concurrently \"npm run backend:dev:watch\" \"npm run frontend:dev\"",
@@ -13,7 +20,9 @@
     "backend:dev:watch": "DISABLE_WORKTREE_ORPHAN_CLEANUP=1 RUST_LOG=debug cargo watch -w crates -x 'run --bin server'",
     "generate-types": "cargo run --bin generate_types",
     "generate-types:check": "cargo run --bin generate_types -- --check",
-    "prepare-db": "node scripts/prepare-db.js"
+    "prepare-db": "node scripts/prepare-db.js",
+    "build:npx": "bash ./local-build.sh",
+    "prepack": "npm run build:npx"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

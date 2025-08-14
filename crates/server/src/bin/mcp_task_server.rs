@@ -34,7 +34,8 @@ fn main() -> anyhow::Result<()> {
                 .with(sentry_layer())
                 .init();
 
-            tracing::debug!("[MCP] Starting MCP task server...");
+            let version = env!("CARGO_PKG_VERSION");
+            tracing::debug!("[MCP] Starting MCP task server version {version}...");
 
             // Database connection
             let database_url = format!(
