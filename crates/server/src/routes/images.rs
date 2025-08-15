@@ -104,11 +104,10 @@ pub async fn get_task_images(
 pub fn routes() -> Router<DeploymentImpl> {
     Router::new()
         .route(
-            "/upload", 
-            post(upload_image).layer(DefaultBodyLimit::max(20 * 1024 * 1024)) // 20MB limit
+            "/upload",
+            post(upload_image).layer(DefaultBodyLimit::max(20 * 1024 * 1024)), // 20MB limit
         )
         .route("/{id}/file", get(serve_image))
         .route("/{id}", delete(delete_image))
         .route("/task/{task_id}", get(get_task_images))
 }
-

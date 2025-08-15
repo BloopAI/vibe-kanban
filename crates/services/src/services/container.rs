@@ -467,17 +467,25 @@ pub trait ContainerService {
         });
 
         // Get images associated with the task
-        let task_images = Image::find_by_task_id(&self.db().pool, task.id).await
+        let task_images = Image::find_by_task_id(&self.db().pool, task.id)
+            .await
             .map_err(|e| ContainerError::Sqlx(e))?;
-        
+
         let image_paths = if !task_images.is_empty() {
             let image_service = ImageService::new(self.db().pool.clone())
                 .map_err(|e| ContainerError::Other(AnyhowError::msg(e.to_string())))?;
-            
-            Some(task_images
-                .iter()
-                .map(|img| image_service.get_absolute_path(img).to_string_lossy().to_string())
-                .collect::<Vec<_>>())
+
+            Some(
+                task_images
+                    .iter()
+                    .map(|img| {
+                        image_service
+                            .get_absolute_path(img)
+                            .to_string_lossy()
+                            .to_string()
+                    })
+                    .collect::<Vec<_>>(),
+            )
         } else {
             None
         };

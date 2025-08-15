@@ -69,18 +69,9 @@ impl IntoResponse for ApiError {
             ApiError::Worktree(_) => (StatusCode::INTERNAL_SERVER_ERROR, "WorktreeError"),
             ApiError::Config(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ConfigError"),
             ApiError::Image(img_err) => match img_err {
-                ImageError::InvalidFormat => (
-                    StatusCode::BAD_REQUEST,
-                    "InvalidImageFormat"
-                ),
-                ImageError::TooLarge(_, _) => (
-                    StatusCode::PAYLOAD_TOO_LARGE,
-                    "ImageTooLarge"
-                ),
-                ImageError::NotFound => (
-                    StatusCode::NOT_FOUND,
-                    "ImageNotFound"
-                ),
+                ImageError::InvalidFormat => (StatusCode::BAD_REQUEST, "InvalidImageFormat"),
+                ImageError::TooLarge(_, _) => (StatusCode::PAYLOAD_TOO_LARGE, "ImageTooLarge"),
+                ImageError::NotFound => (StatusCode::NOT_FOUND, "ImageNotFound"),
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, "ImageError"),
             },
             ApiError::Io(_) => (StatusCode::INTERNAL_SERVER_ERROR, "IoError"),
