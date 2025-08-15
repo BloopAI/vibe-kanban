@@ -11,7 +11,6 @@ use axum::{
 };
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
-    executor_session::ExecutorSession,
     task::{Task, TaskStatus},
     task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptError},
 };
@@ -312,28 +311,23 @@ pub async fn follow_up(
 ) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, ApiError> {
     tracing::info!("{:?}", task_attempt);
 
-    // First, get the most recent execution process that has a session_id
-    let latest_execution_process =
-        ExecutionProcess::find_latest_by_task_attempt_and_run_reason_with_session_id(
-            &deployment.db().pool,
-            task_attempt.id,
-            &ExecutionProcessRunReason::CodingAgent,
-        )
-        .await?
-        .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-            "Couldn't find a prior CodingAgent execution that already has a session_id".to_string(),
-        )))?;
-
-    // Get session_id - guaranteed to exist due to the query condition above
-    let session_id = ExecutorSession::find_by_execution_process_id(
+    // Get the most recent execution process with session_id in a single query
+    let result = ExecutionProcess::find_latest_with_session_id(
         &deployment.db().pool,
-        latest_execution_process.id,
+        task_attempt.id,
+        &ExecutionProcessRunReason::CodingAgent,
     )
     .await?
-    .and_then(|s| s.session_id)
     .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-        "Unexpected: executor session missing session_id".to_string(),
+        "Couldn't find a prior CodingAgent execution that already has a session_id".to_string(),
     )))?;
+
+    // Extract session_id and execution_process from the single query result  
+    let session_id = result
+        .session_id
+        .clone()
+        .expect("guaranteed by IS NOT NULL filter in query");
+    let latest_execution_process = result.into_execution_process();
     let initial_profile_variant_label = match &latest_execution_process
         .executor_action()
         .map_err(|e| ApiError::TaskAttempt(TaskAttemptError::ValidationError(e.to_string())))?
