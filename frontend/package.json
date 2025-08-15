@@ -35,7 +35,7 @@
     "click-to-react-component": "^1.1.2",
     "clsx": "^2.0.0",
     "diff": "^8.0.2",
-    "lucide-react": "^0.303.0",
+    "lucide-react": "^0.539.0",
     "react": "^18.2.0",
     "react-diff-viewer-continued": "^3.4.0",
     "react-dom": "^18.2.0",

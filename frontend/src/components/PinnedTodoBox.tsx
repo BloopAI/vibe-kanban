@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, CheckSquare } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  CheckSquare,
+  Circle,
+  CircleCheck,
+  CircleDotDashed,
+} from 'lucide-react';
 import type { TodoItem } from 'shared/types';
 
 interface PinnedTodoBoxProps {
@@ -7,18 +14,18 @@ interface PinnedTodoBoxProps {
   lastUpdated: string | null;
 }
 
-const getStatusEmoji = (status: string): string => {
+const getStatusIcon = (status: string): React.ReactNode => {
   switch (status.toLowerCase()) {
     case 'completed':
-      return '✅';
+      return <CircleCheck className="h-4 w-4 text-green-500" />;
     case 'in_progress':
     case 'in-progress':
-      return '🔄';
+      return <CircleDotDashed className="h-4 w-4 text-blue-500" />;
     case 'pending':
     case 'todo':
-      return '⏳';
+      return <Circle className="h-4 w-4 text-gray-400" />;
     default:
-      return '📝';
+      return <Circle className="h-4 w-4 text-gray-400" />;
   }
 };
 
@@ -58,8 +65,8 @@ export const PinnedTodoBox: React.FC<PinnedTodoBoxProps> = ({ todos }) => {
                 key={`${todo.content}-${index}`}
                 className="flex items-start gap-2 text-sm"
               >
-                <span className="text-base mt-0.5 flex-shrink-0">
-                  {getStatusEmoji(todo.status)}
+                <span className="mt-0.5 flex-shrink-0">
+                  {getStatusIcon(todo.status)}
                 </span>
                 <div className="flex-1 min-w-0">
                   <span className="text-purple-900 dark:text-purple-100 break-words">
