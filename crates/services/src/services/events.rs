@@ -150,7 +150,6 @@ impl EventService {
                                         }
                                     }
                                 }
-                                _ => unreachable!(),
                             };
 
                             let next_entry_count = {
