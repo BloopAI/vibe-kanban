@@ -200,37 +200,6 @@ impl ExecutionProcess {
         .await
     }
 
-    /// Find latest execution process by task attempt and executor action type
-    pub async fn find_latest_by_task_attempt_and_run_reason(
-        pool: &SqlitePool,
-        task_attempt_id: Uuid,
-        run_reason: &ExecutionProcessRunReason,
-    ) -> Result<Option<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            ExecutionProcess,
-            r#"SELECT 
-                id as "id!: Uuid", 
-                task_attempt_id as "task_attempt_id!: Uuid", 
-                run_reason as "run_reason!: ExecutionProcessRunReason",
-                executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>",
-                status as "status!: ExecutionProcessStatus",
-                exit_code,
-                started_at as "started_at!: DateTime<Utc>",
-                completed_at as "completed_at?: DateTime<Utc>",
-                created_at as "created_at!: DateTime<Utc>", 
-                updated_at as "updated_at!: DateTime<Utc>"
-               FROM execution_processes 
-               WHERE task_attempt_id = $1 
-               AND run_reason = $2
-               ORDER BY created_at DESC 
-               LIMIT 1"#,
-            task_attempt_id,
-            run_reason
-        )
-        .fetch_optional(pool)
-        .await
-    }
-
     /// Find latest execution process by task attempt and run reason that has a session_id
     pub async fn find_latest_by_task_attempt_and_run_reason_with_session_id(
         pool: &SqlitePool,
