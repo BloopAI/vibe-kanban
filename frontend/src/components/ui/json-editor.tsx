@@ -32,7 +32,9 @@ export const JSONEditor: React.FC<JSONEditorProps> = ({
   // Convert app theme to CodeMirror theme
   const getCodeMirrorTheme = () => {
     if (theme === ThemeMode.SYSTEM) {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      return window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light';
     }
     return theme === ThemeMode.DARK ? 'dark' : 'light';
   };
@@ -41,7 +43,7 @@ export const JSONEditor: React.FC<JSONEditorProps> = ({
   if (typeof window === 'undefined') return null;
 
   return (
-    <div 
+    <div
       id={id}
       className={cn(
         'rounded-md border border-input bg-background overflow-hidden',
@@ -71,7 +73,8 @@ export const JSONEditor: React.FC<JSONEditorProps> = ({
         placeholder={placeholder}
         style={{
           fontSize: '14px',
-          fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+          fontFamily:
+            'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
         }}
       />
     </div>
