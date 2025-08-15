@@ -312,29 +312,26 @@ pub async fn follow_up(
 ) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, ApiError> {
     tracing::info!("{:?}", task_attempt);
 
-    // First, get the most recent execution process with executor action type = StandardCoding
-    let latest_execution_process = ExecutionProcess::find_latest_by_task_attempt_and_run_reason(
+    // First, get the most recent execution process that has a session_id
+    let latest_execution_process = ExecutionProcess::find_latest_by_task_attempt_and_run_reason_with_session_id(
         &deployment.db().pool,
         task_attempt.id,
         &ExecutionProcessRunReason::CodingAgent,
     )
     .await?
     .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-        "Couldn't find initial coding agent process, has it run yet?".to_string(),
+        "Couldn't find a prior CodingAgent execution that already has a session_id".to_string(),
     )))?;
 
-    // Get session_id
+    // Get session_id - guaranteed to exist due to the query condition above
     let session_id = ExecutorSession::find_by_execution_process_id(
         &deployment.db().pool,
         latest_execution_process.id,
     )
     .await?
+    .and_then(|s| s.session_id)
     .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-        "Couldn't find related executor session for this execution process".to_string(),
-    )))?
-    .session_id
-    .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-        "This executor session doesn't have a session_id".to_string(),
+        "Unexpected: executor session missing session_id".to_string(),
     )))?;
     let initial_profile_variant_label = match &latest_execution_process
         .executor_action()

@@ -231,6 +231,39 @@ impl ExecutionProcess {
         .await
     }
 
+    /// Find latest execution process by task attempt and run reason that has a session_id
+    pub async fn find_latest_by_task_attempt_and_run_reason_with_session_id(
+        pool: &SqlitePool,
+        task_attempt_id: Uuid,
+        run_reason: &ExecutionProcessRunReason,
+    ) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            ExecutionProcess,
+            r#"SELECT
+                ep.id                    AS "id!: Uuid",
+                ep.task_attempt_id       AS "task_attempt_id!: Uuid",
+                ep.run_reason            AS "run_reason!: ExecutionProcessRunReason",
+                ep.executor_action       AS "executor_action!: sqlx::types::Json<ExecutorActionField>",
+                ep.status                AS "status!: ExecutionProcessStatus",
+                ep.exit_code,
+                ep.started_at            AS "started_at!: DateTime<Utc>",
+                ep.completed_at          AS "completed_at?: DateTime<Utc>",
+                ep.created_at            AS "created_at!: DateTime<Utc>",
+                ep.updated_at            AS "updated_at!: DateTime<Utc>"
+            FROM execution_processes ep
+            JOIN executor_sessions   es ON ep.id = es.execution_process_id
+            WHERE ep.task_attempt_id = $1
+              AND ep.run_reason      = $2
+              AND es.session_id IS NOT NULL
+            ORDER BY ep.created_at DESC
+            LIMIT 1"#,
+            task_attempt_id,
+            run_reason
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
     /// Create a new execution process
     pub async fn create(
         pool: &SqlitePool,
