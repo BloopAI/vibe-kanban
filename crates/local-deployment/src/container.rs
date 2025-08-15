@@ -26,7 +26,10 @@ use db::{
 use deployment::DeploymentError;
 use executors::{
     actions::{Executable, ExecutorAction},
-    logs::utils::{ConversationPatch, patch::escape_json_pointer_segment},
+    logs::{
+        NormalizedEntry, NormalizedEntryType,
+        utils::{ConversationPatch, patch::escape_json_pointer_segment},
+    },
 };
 use futures::{StreamExt, TryStreamExt, stream::select};
 use notify_debouncer_full::DebouncedEvent;
@@ -322,6 +325,11 @@ impl LocalContainerService {
                     }
 
                     if let Ok(ctx) = ExecutionProcess::load_context(&db.pool, exec_id).await {
+                        // Update executor session summary if available
+                        if let Err(e) = container.update_executor_session_summary(&exec_id).await {
+                            tracing::warn!("Failed to update executor session summary: {}", e);
+                        }
+
                         if matches!(
                             ctx.execution_process.status,
                             ExecutionProcessStatus::Completed
@@ -989,6 +997,93 @@ impl ContainerService for LocalContainerService {
                 )));
             }
         }
+        Ok(())
+    }
+}
+
+impl LocalContainerService {
+    /// Extract the last assistant message from the MsgStore history
+    fn extract_last_assistant_message(&self, exec_id: &Uuid) -> Option<String> {
+        // Get the MsgStore for this execution
+        let msg_stores = self.msg_stores.try_read().ok()?;
+        let msg_store = msg_stores.get(exec_id)?;
+
+        // Get the history and scan in reverse for the last assistant message
+        let history = msg_store.get_history();
+
+        for msg in history.iter().rev() {
+            if let LogMsg::JsonPatch(patch) = msg {
+                // Try to extract a NormalizedEntry from the patch
+                if let Some(entry) = self.extract_normalized_entry_from_patch(patch) {
+                    if matches!(entry.entry_type, NormalizedEntryType::AssistantMessage) {
+                        let content = entry.content.trim();
+                        if !content.is_empty() {
+                            // Truncate to reasonable size (4KB as Oracle suggested)
+                            const MAX_SUMMARY_LENGTH: usize = 4096;
+                            if content.len() > MAX_SUMMARY_LENGTH {
+                                return Some(format!("{}...", &content[..MAX_SUMMARY_LENGTH]));
+                            }
+                            return Some(content.to_string());
+                        }
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Extract a NormalizedEntry from a JsonPatch if it contains one
+    fn extract_normalized_entry_from_patch(
+        &self,
+        patch: &json_patch::Patch,
+    ) -> Option<NormalizedEntry> {
+        // Convert the patch to JSON to examine its structure
+        if let Ok(patch_json) = serde_json::to_value(patch) {
+            if let Some(operations) = patch_json.as_array() {
+                for operation in operations {
+                    if let Some(value) = operation.get("value") {
+                        // Try to extract a NormalizedEntry from the value
+                        if let Some(patch_type) = value.get("type").and_then(|t| t.as_str()) {
+                            if patch_type == "NORMALIZED_ENTRY" {
+                                if let Some(content) = value.get("content") {
+                                    if let Ok(entry) =
+                                        serde_json::from_value::<NormalizedEntry>(content.clone())
+                                    {
+                                        return Some(entry);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Update the executor session summary with the final assistant message
+    async fn update_executor_session_summary(&self, exec_id: &Uuid) -> Result<(), anyhow::Error> {
+        // Check if there's an executor session for this execution process
+        let session =
+            ExecutorSession::find_by_execution_process_id(&self.db.pool, *exec_id).await?;
+
+        if let Some(session) = session {
+            // Only update if summary is not already set
+            if session.summary.is_none() {
+                if let Some(summary) = self.extract_last_assistant_message(exec_id) {
+                    tracing::debug!(
+                        "Updating executor session summary for execution {}: {}",
+                        exec_id,
+                        &summary[..summary.len().min(100)]
+                    );
+                    ExecutorSession::update_summary(&self.db.pool, *exec_id, &summary).await?;
+                } else {
+                    tracing::debug!("No assistant message found for execution {}", exec_id);
+                }
+            }
+        }
+
         Ok(())
     }
 }
