@@ -313,15 +313,16 @@ pub async fn follow_up(
     tracing::info!("{:?}", task_attempt);
 
     // First, get the most recent execution process that has a session_id
-    let latest_execution_process = ExecutionProcess::find_latest_by_task_attempt_and_run_reason_with_session_id(
-        &deployment.db().pool,
-        task_attempt.id,
-        &ExecutionProcessRunReason::CodingAgent,
-    )
-    .await?
-    .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-        "Couldn't find a prior CodingAgent execution that already has a session_id".to_string(),
-    )))?;
+    let latest_execution_process =
+        ExecutionProcess::find_latest_by_task_attempt_and_run_reason_with_session_id(
+            &deployment.db().pool,
+            task_attempt.id,
+            &ExecutionProcessRunReason::CodingAgent,
+        )
+        .await?
+        .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
+            "Couldn't find a prior CodingAgent execution that already has a session_id".to_string(),
+        )))?;
 
     // Get session_id - guaranteed to exist due to the query condition above
     let session_id = ExecutorSession::find_by_execution_process_id(
