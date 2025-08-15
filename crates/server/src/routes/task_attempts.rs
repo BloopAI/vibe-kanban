@@ -322,7 +322,7 @@ pub async fn follow_up(
         "Couldn't find a prior CodingAgent execution that already has a session_id".to_string(),
     )))?;
 
-    // Extract session_id and execution_process from the single query result  
+    // Extract session_id and execution_process from the single query result
     let session_id = result
         .session_id
         .clone()
