@@ -321,10 +321,10 @@ function CurrentAttempt({
     setShowRebaseDialog(true);
   };
 
-  const handleCreatePRClick = async () => {
+  const handlePRButtonClick = async () => {
     if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
 
-    // If PR already exists, open it
+    // If PR already exists, view it in a new tab
     if (selectedAttempt.pr_url) {
       window.open(selectedAttempt.pr_url, '_blank');
       return;
@@ -602,7 +602,7 @@ function CurrentAttempt({
                 !branchStatus.merged && (
                   <>
                     <Button
-                      onClick={handleCreatePRClick}
+                      onClick={handlePRButtonClick}
                       disabled={
                         creatingPR ||
                         Boolean(branchStatus.is_behind) ||
@@ -614,7 +614,7 @@ function CurrentAttempt({
                     >
                       <GitPullRequest className="h-3 w-3" />
                       {selectedAttempt.pr_url
-                        ? 'Open PR'
+                        ? 'View PR'
                         : creatingPR
                           ? 'Creating...'
                           : 'Create PR'}
