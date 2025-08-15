@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import './styles/index.css';
+import '@uiw/react-codemirror/dist/codemirror.css';
 import { ClickToComponent } from 'click-to-react-component';
 import * as Sentry from '@sentry/react';
 

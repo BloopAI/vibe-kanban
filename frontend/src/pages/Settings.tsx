@@ -24,7 +24,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { JSONEditor } from '@/components/ui/json-editor';
 import { ChevronDown, Key, Loader2, Volume2 } from 'lucide-react';
 import {
   ThemeMode,
@@ -710,7 +710,7 @@ export function Settings() {
                   <Label htmlFor="profiles-editor">
                     Profiles Configuration
                   </Label>
-                  <Textarea
+                  <JSONEditor
                     id="profiles-editor"
                     placeholder={
                       profilesLoading
@@ -718,9 +718,9 @@ export function Settings() {
                         : '{\n  "profiles": [\n    {\n      "label": "my-custom-profile",\n      "agent": "ClaudeCode",\n      "command": {...}\n    }\n  ]\n}'
                     }
                     value={profilesLoading ? 'Loading...' : profilesContent}
-                    onChange={(e) => handleProfilesChange(e.target.value)}
+                    onChange={handleProfilesChange}
                     disabled={profilesLoading}
-                    className="font-mono text-sm min-h-[300px]"
+                    minHeight={300}
                   />
                 </div>
 

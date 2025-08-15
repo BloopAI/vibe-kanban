@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Textarea } from '@/components/ui/textarea';
+import { JSONEditor } from '@/components/ui/json-editor';
 import { Loader2 } from 'lucide-react';
 import { ProfileConfig, McpConfig } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
@@ -274,7 +274,7 @@ export function McpServers() {
             ) : (
               <div className="space-y-2">
                 <Label htmlFor="mcp-servers">MCP Server Configuration</Label>
-                <Textarea
+                <JSONEditor
                   id="mcp-servers"
                   placeholder={
                     mcpLoading
@@ -282,9 +282,9 @@ export function McpServers() {
                       : '{\n  "server-name": {\n    "type": "stdio",\n    "command": "your-command",\n    "args": ["arg1", "arg2"]\n  }\n}'
                   }
                   value={mcpLoading ? 'Loading...' : mcpServers}
-                  onChange={(e) => handleMcpServersChange(e.target.value)}
+                  onChange={handleMcpServersChange}
                   disabled={mcpLoading}
-                  className="font-mono text-sm min-h-[300px]"
+                  minHeight={300}
                 />
                 {mcpError && !mcpError.includes('does not support MCP') && (
                   <p className="text-sm text-red-600 dark:text-red-400">
