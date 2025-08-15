@@ -311,23 +311,26 @@ pub async fn follow_up(
 ) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, ApiError> {
     tracing::info!("{:?}", task_attempt);
 
-    // Get the most recent execution process with session_id in a single query
-    let result = ExecutionProcess::find_latest_with_session_id(
-        &deployment.db().pool,
-        task_attempt.id,
-        &ExecutionProcessRunReason::CodingAgent,
+    // Get session_id with simple query
+    let session_id = ExecutionProcess::find_latest_session_id_by_task_attempt(
+    &deployment.db().pool,
+    task_attempt.id,
     )
     .await?
     .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
         "Couldn't find a prior CodingAgent execution that already has a session_id".to_string(),
     )))?;
 
-    // Extract session_id and execution_process from the single query result
-    let session_id = result
-        .session_id
-        .clone()
-        .expect("guaranteed by IS NOT NULL filter in query");
-    let latest_execution_process = result.into_execution_process();
+    // Get ExecutionProcess for profile data
+    let latest_execution_process = ExecutionProcess::find_latest_by_task_attempt_and_run_reason(
+        &deployment.db().pool,
+    task_attempt.id,
+    &ExecutionProcessRunReason::CodingAgent,
+    )
+    .await?
+    .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
+        "Couldn't find initial coding agent process, has it run yet?".to_string(),
+    )))?;
     let initial_profile_variant_label = match &latest_execution_process
         .executor_action()
         .map_err(|e| ApiError::TaskAttempt(TaskAttemptError::ValidationError(e.to_string())))?

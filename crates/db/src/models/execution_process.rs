@@ -8,40 +8,6 @@ use uuid::Uuid;
 
 use super::{task::Task, task_attempt::TaskAttempt};
 
-/// Combined struct for ExecutionProcess with session_id in a single query
-#[derive(Debug, FromRow)]
-pub struct ExecutionProcessWithSessionId {
-    pub id: Uuid,
-    pub task_attempt_id: Uuid,
-    pub run_reason: ExecutionProcessRunReason,
-    pub executor_action: sqlx::types::Json<ExecutorActionField>,
-    pub status: ExecutionProcessStatus,
-    pub exit_code: Option<i64>,
-    pub started_at: DateTime<Utc>,
-    pub completed_at: Option<DateTime<Utc>>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub session_id: Option<String>,
-}
-
-impl ExecutionProcessWithSessionId {
-    /// Convert to ExecutionProcess
-    pub fn into_execution_process(self) -> ExecutionProcess {
-        ExecutionProcess {
-            id: self.id,
-            task_attempt_id: self.task_attempt_id,
-            run_reason: self.run_reason,
-            executor_action: self.executor_action,
-            status: self.status,
-            exit_code: self.exit_code,
-            started_at: self.started_at,
-            completed_at: self.completed_at,
-            created_at: self.created_at,
-            updated_at: self.updated_at,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
 #[sqlx(type_name = "execution_process_status", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
@@ -234,33 +200,52 @@ impl ExecutionProcess {
         .await
     }
 
-    /// Find latest execution process with session_id in a single query (optimized)
-    pub async fn find_latest_with_session_id(
+    /// Find latest session_id by task attempt (simple scalar query)
+    pub async fn find_latest_session_id_by_task_attempt(
+        pool: &SqlitePool,
+        task_attempt_id: Uuid,
+    ) -> Result<Option<String>, sqlx::Error> {
+        let row = sqlx::query!(
+            r#"SELECT es.session_id
+               FROM execution_processes ep
+               JOIN executor_sessions es ON ep.id = es.execution_process_id  
+               WHERE ep.task_attempt_id = ?1
+                 AND ep.run_reason = 'coding-agent'
+                 AND es.session_id IS NOT NULL
+               ORDER BY ep.created_at DESC
+               LIMIT 1"#,
+            task_attempt_id
+        )
+        .fetch_optional(pool)
+        .await?;
+        
+        Ok(row.and_then(|r| r.session_id))
+    }
+
+    /// Find latest execution process by task attempt and run reason
+    pub async fn find_latest_by_task_attempt_and_run_reason(
         pool: &SqlitePool,
         task_attempt_id: Uuid,
         run_reason: &ExecutionProcessRunReason,
-    ) -> Result<Option<ExecutionProcessWithSessionId>, sqlx::Error> {
+    ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
-            ExecutionProcessWithSessionId,
-            r#"SELECT
-                ep.id                    AS "id!: Uuid",
-                ep.task_attempt_id       AS "task_attempt_id!: Uuid",
-                ep.run_reason            AS "run_reason!: ExecutionProcessRunReason",
-                ep.executor_action       AS "executor_action!: sqlx::types::Json<ExecutorActionField>",
-                ep.status                AS "status!: ExecutionProcessStatus",
-                ep.exit_code,
-                ep.started_at            AS "started_at!: DateTime<Utc>",
-                ep.completed_at          AS "completed_at?: DateTime<Utc>",
-                ep.created_at            AS "created_at!: DateTime<Utc>",
-                ep.updated_at            AS "updated_at!: DateTime<Utc>",
-                es.session_id            AS "session_id"
-            FROM execution_processes ep
-            JOIN executor_sessions   es ON ep.id = es.execution_process_id
-            WHERE ep.task_attempt_id = $1
-              AND ep.run_reason      = $2
-              AND es.session_id IS NOT NULL
-            ORDER BY ep.created_at DESC
-            LIMIT 1"#,
+            ExecutionProcess,
+            r#"SELECT 
+                id as "id!: Uuid", 
+                task_attempt_id as "task_attempt_id!: Uuid", 
+                run_reason as "run_reason!: ExecutionProcessRunReason",
+                executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>",
+                status as "status!: ExecutionProcessStatus",
+                exit_code,
+                started_at as "started_at!: DateTime<Utc>",
+                completed_at as "completed_at?: DateTime<Utc>",
+                created_at as "created_at!: DateTime<Utc>", 
+                updated_at as "updated_at!: DateTime<Utc>"
+               FROM execution_processes 
+               WHERE task_attempt_id = ?1 
+               AND run_reason = ?2
+               ORDER BY created_at DESC 
+               LIMIT 1"#,
             task_attempt_id,
             run_reason
         )
