@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO execution_processes (\n                id, task_attempt_id, run_reason, executor_action, status, \n                exit_code, started_at, \n                completed_at, created_at, updated_at\n               ) \n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \n               RETURNING \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                run_reason as \"run_reason!: ExecutionProcessRunReason\",\n                executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\",\n                status as \"status!: ExecutionProcessStatus\",\n                exit_code,\n                started_at as \"started_at!: DateTime<Utc>\",\n                completed_at as \"completed_at?: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_attempt_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "run_reason!: ExecutionProcessRunReason",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "executor_action!: sqlx::types::Json<ExecutorActionField>",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "status!: ExecutionProcessStatus",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "exit_code",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "started_at!: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "completed_at?: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 10
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "ca6acd3a57fc44e8e29e057700cee4442c0ab8b37aca0abf29fe5464c8539c6d"
+}

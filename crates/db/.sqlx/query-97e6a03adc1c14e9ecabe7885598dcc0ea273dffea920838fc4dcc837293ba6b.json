@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO execution_process_logs (execution_id, logs, byte_size, inserted_at)\n               VALUES ($1, $2, $3, $4)\n               ON CONFLICT (execution_id) DO UPDATE\n               SET logs = EXCLUDED.logs, \n                   byte_size = EXCLUDED.byte_size,\n                   inserted_at = EXCLUDED.inserted_at\n               RETURNING \n                execution_id as \"execution_id!: Uuid\",\n                logs,\n                byte_size,\n                inserted_at as \"inserted_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "execution_id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "logs",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "byte_size",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "inserted_at!: DateTime<Utc>",
+        "ordinal": 3,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "97e6a03adc1c14e9ecabe7885598dcc0ea273dffea920838fc4dcc837293ba6b"
+}
