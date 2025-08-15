@@ -14,15 +14,24 @@ use crate::services::config::NotificationConfig;
 static WSL_ROOT_PATH_CACHE: OnceLock<Option<String>> = OnceLock::new();
 
 impl NotificationService {
-    pub async fn notify_execution_halted(config: NotificationConfig, ctx: &ExecutionContext) {
+    pub async fn notify_execution_halted(mut config: NotificationConfig, ctx: &ExecutionContext) {
+        // If the process was intentionally killed by user, suppress sound
+        if matches!(ctx.execution_process.status, ExecutionProcessStatus::Killed) {
+            config.sound_enabled = false;
+        }
+
         let title = format!("Task Complete: {}", ctx.task.title);
         let message = match ctx.execution_process.status {
             ExecutionProcessStatus::Completed => format!(
                 "✅ '{}' completed successfully\nBranch: {:?}\nExecutor: {}",
                 ctx.task.title, ctx.task_attempt.branch, ctx.task_attempt.profile
             ),
-            ExecutionProcessStatus::Failed | ExecutionProcessStatus::Killed => format!(
+            ExecutionProcessStatus::Failed => format!(
                 "❌ '{}' execution failed\nBranch: {:?}\nExecutor: {}",
+                ctx.task.title, ctx.task_attempt.branch, ctx.task_attempt.profile
+            ),
+            ExecutionProcessStatus::Killed => format!(
+                "🛑 '{}' execution cancelled by user\nBranch: {:?}\nExecutor: {}",
                 ctx.task.title, ctx.task_attempt.branch, ctx.task_attempt.profile
             ),
             _ => {
