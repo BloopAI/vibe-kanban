@@ -82,10 +82,19 @@ pub fn extract_unified_diff_hunks(unified_diff: &str) -> Vec<String> {
             .filter(|line| line.starts_with([' ', '+', '-']))
             .collect::<String>();
 
+        let old_count = lines
+            .iter()
+            .filter(|line| line.starts_with(['-', ' ']))
+            .count();
+        let new_count = lines
+            .iter()
+            .filter(|line| line.starts_with(['+', ' ']))
+            .count();
+
         return if hunk.is_empty() {
             vec![]
         } else {
-            vec!["@@\n".to_string() + &hunk]
+            vec![format!("@@ -0,{old_count} +0,{new_count} @@\n{hunk}")]
         };
     }
 
@@ -185,7 +194,12 @@ pub fn concatenate_diff_hunks(file_path: &str, hunks: &[String]) -> String {
     unified_diff.push_str(&header);
 
     if !hunks.is_empty() {
-        unified_diff.push_str(hunks.join("\n").as_str());
+        let lines = hunks
+            .iter()
+            .flat_map(|hunk| hunk.lines())
+            .filter(|line| line.starts_with("@@ ") || line.starts_with([' ', '+', '-']))
+            .collect::<Vec<_>>();
+        unified_diff.push_str(lines.join("\n").as_str());
         if !unified_diff.ends_with('\n') {
             unified_diff.push('\n');
         }

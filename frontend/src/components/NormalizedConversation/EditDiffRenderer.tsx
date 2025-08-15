@@ -25,12 +25,9 @@ type Props = {
  * - Decide whether to hide line numbers based on backend data
  */
 function processUnifiedDiff(unifiedDiff: string, hasLineNumbers: boolean) {
-  const totalHunks = unifiedDiff
-    .split('\n')
-    .filter((line) => line.startsWith('@@ ')).length;
-
   // Hide line numbers when backend says they are unreliable
   const hideNums = !hasLineNumbers;
+  let isValidDiff;
 
   // Pre-compute additions/deletions using the library parser so counts are available while collapsed
   let additions = 0;
@@ -43,16 +40,18 @@ function processUnifiedDiff(unifiedDiff: string, hasLineNumbers: boolean) {
         else if (line.type === DiffLineType.Delete) deletions++;
       }
     }
+    isValidDiff = parsed.hunks.length > 0;
   } catch (err) {
     console.error('Failed to parse diff hunks:', err);
+    isValidDiff = false;
   }
 
   return {
     hunks: [unifiedDiff],
     hideLineNumbers: hideNums,
-    totalHunks,
     additions,
     deletions,
+    isValidDiff,
   };
 }
 
@@ -65,7 +64,7 @@ function EditDiffRenderer({ path, unifiedDiff, hasLineNumbers }: Props) {
     theme = 'dark';
   }
 
-  const { hunks, hideLineNumbers, totalHunks, additions, deletions } = useMemo(
+  const { hunks, hideLineNumbers, additions, deletions, isValidDiff } = useMemo(
     () => processUnifiedDiff(unifiedDiff, hasLineNumbers),
     [path, unifiedDiff, hasLineNumbers]
   );
@@ -112,16 +111,27 @@ function EditDiffRenderer({ path, unifiedDiff, hasLineNumbers }: Props) {
         </p>
       </div>
 
-      {expanded && totalHunks > 0 && (
+      {expanded && (
         <div className={'mt-2' + hideLineNumbersClass}>
-          <DiffView
-            data={diffData}
-            diffViewWrap={false}
-            diffViewTheme={theme}
-            diffViewHighlight
-            diffViewMode={DiffModeEnum.Unified}
-            diffViewFontSize={12}
-          />
+          {isValidDiff ? (
+            <DiffView
+              data={diffData}
+              diffViewWrap={false}
+              diffViewTheme={theme}
+              diffViewHighlight
+              diffViewMode={DiffModeEnum.Unified}
+              diffViewFontSize={12}
+            />
+          ) : (
+            <>
+              <pre
+                className="px-4 pb-4 text-xs font-mono overflow-x-auto whitespace-pre-wrap"
+                style={{ color: 'hsl(var(--muted-foreground) / 0.9)' }}
+              >
+                {unifiedDiff}
+              </pre>
+            </>
+          )}
         </div>
       )}
     </div>
