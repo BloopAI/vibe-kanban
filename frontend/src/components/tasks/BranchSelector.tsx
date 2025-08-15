@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button.tsx';
 import { ArrowDown, GitBranch as GitBranchIcon, Search } from 'lucide-react';
 import {
@@ -35,7 +35,10 @@ function BranchSelector({
   excludeCurrentBranch = false,
 }: Props) {
   const [branchSearchTerm, setBranchSearchTerm] = useState('');
+  const [highlighted, setHighlighted] = useState<number | null>(null);
+  const [open, setOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
 
   // Filter branches based on search term and options
   const filteredBranches = useMemo(() => {
@@ -65,10 +68,38 @@ function BranchSelector({
   const handleBranchSelect = (branchName: string) => {
     onBranchSelect(branchName);
     setBranchSearchTerm('');
+    setHighlighted(null);
+    setOpen(false);
   };
 
+  const moveHighlight = (delta: 1 | -1) => {
+    if (filteredBranches.length === 0) return;
+    
+    setHighlighted((prev) => {
+      const next = prev === null 
+        ? (delta === 1 ? 0 : filteredBranches.length - 1)
+        : (prev + delta + filteredBranches.length) % filteredBranches.length;
+      
+      // Focus the matching item for scroll behavior
+      setTimeout(() => itemRefs.current[next]?.scrollIntoView({ block: 'nearest' }), 0);
+      return next;
+    });
+  };
+
+  // Reset highlight when filtered branches change
+  useEffect(() => {
+    if (highlighted !== null && highlighted >= filteredBranches.length) {
+      setHighlighted(null);
+    }
+  }, [filteredBranches, highlighted]);
+
+  // Reset highlight when search changes
+  useEffect(() => {
+    setHighlighted(null);
+  }, [branchSearchTerm]);
+
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
@@ -93,8 +124,38 @@ function BranchSelector({
               onChange={(e) => setBranchSearchTerm(e.target.value)}
               className="pl-8"
               onKeyDown={(e) => {
-                // Prevent the dropdown from closing when typing
-                e.stopPropagation();
+                // Handle keyboard navigation
+                switch (e.key) {
+                  case 'ArrowDown':
+                    e.preventDefault();
+                    e.stopPropagation();
+                    moveHighlight(1);
+                    break;
+                  case 'ArrowUp':
+                    e.preventDefault();
+                    e.stopPropagation();
+                    moveHighlight(-1);
+                    break;
+                  case 'Enter':
+                    if (highlighted !== null && filteredBranches[highlighted]) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const branch = filteredBranches[highlighted];
+                      const isCurrentAndExcluded = excludeCurrentBranch && branch.is_current;
+                      if (!isCurrentAndExcluded) {
+                        handleBranchSelect(branch.name);
+                      }
+                    }
+                    break;
+                  case 'Escape':
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setOpen(false);
+                    break;
+                  default:
+                    // Prevent dropdown from closing when typing
+                    e.stopPropagation();
+                }
               }}
               autoFocus
             />
@@ -107,22 +168,25 @@ function BranchSelector({
               No branches found
             </div>
           ) : (
-            filteredBranches.map((branch) => {
+            filteredBranches.map((branch, idx) => {
               const isCurrentAndExcluded =
                 excludeCurrentBranch && branch.is_current;
+              const isHighlighted = idx === highlighted;
 
               const menuItem = (
                 <DropdownMenuItem
                   key={branch.name}
+                  ref={(el) => (itemRefs.current[idx] = el)}
                   onClick={() => {
                     if (!isCurrentAndExcluded) {
                       handleBranchSelect(branch.name);
                     }
                   }}
+                  onMouseEnter={() => setHighlighted(idx)}
                   disabled={isCurrentAndExcluded}
                   className={`${selectedBranch === branch.name ? 'bg-accent' : ''} ${
                     isCurrentAndExcluded ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
+                  } ${isHighlighted ? 'bg-muted' : ''}`}
                 >
                   <div className="flex items-center justify-between w-full">
                     <span className={branch.is_current ? 'font-medium' : ''}>
