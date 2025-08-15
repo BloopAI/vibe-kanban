@@ -31,6 +31,8 @@ fn generate_types_content() -> String {
         db::models::task::TaskWithAttemptStatus::decl(),
         db::models::task::CreateTask::decl(),
         db::models::task::UpdateTask::decl(),
+        db::models::image::Image::decl(),
+        db::models::image::CreateImage::decl(),
         utils::response::ApiResponse::<()>::decl(),
         server::routes::config::UserSystemInfo::decl(),
         server::routes::config::Environment::decl(),

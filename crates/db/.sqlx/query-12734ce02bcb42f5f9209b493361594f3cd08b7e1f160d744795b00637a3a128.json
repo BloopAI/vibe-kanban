@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE images \n               SET task_id = $1,\n                   updated_at = datetime('now', 'subsec')\n               WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "12734ce02bcb42f5f9209b493361594f3cd08b7e1f160d744795b00637a3a128"
+}

@@ -269,6 +269,7 @@ impl TaskServer {
             title: title.clone(),
             description: description.clone(),
             parent_task_attempt: None,
+            image_ids: None,
         };
 
         match Task::create(&self.pool, &create_task_data, task_id).await {
