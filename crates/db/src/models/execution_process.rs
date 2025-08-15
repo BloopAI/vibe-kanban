@@ -205,12 +205,16 @@ impl ExecutionProcess {
         pool: &SqlitePool,
         task_attempt_id: Uuid,
     ) -> Result<Option<String>, sqlx::Error> {
+        tracing::info!(
+            "Finding latest session id for task attempt {}",
+            task_attempt_id
+        );
         let row = sqlx::query!(
             r#"SELECT es.session_id
                FROM execution_processes ep
                JOIN executor_sessions es ON ep.id = es.execution_process_id  
-               WHERE ep.task_attempt_id = ?1
-                 AND ep.run_reason = 'coding-agent'
+               WHERE ep.task_attempt_id = $1
+                 AND ep.run_reason = 'codingagent'
                  AND es.session_id IS NOT NULL
                ORDER BY ep.created_at DESC
                LIMIT 1"#,
@@ -218,6 +222,8 @@ impl ExecutionProcess {
         )
         .fetch_optional(pool)
         .await?;
+
+        tracing::info!("Latest session id: {:?}", row);
 
         Ok(row.and_then(|r| r.session_id))
     }
