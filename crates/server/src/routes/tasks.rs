@@ -6,6 +6,7 @@ use axum::{
     Extension, Json, Router,
 };
 use db::models::{
+    image::Image,
     project::Project,
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
     task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptError},
@@ -54,9 +55,25 @@ pub async fn create_task(
         payload.project_id
     );
 
+    let image_ids = payload.image_ids.clone();
     let task = Task::create(&deployment.db().pool, &payload, id).await?;
 
-    // Track task creation event
+    // Associate images with the task if any were provided
+    if let Some(ref image_ids) = image_ids {
+        for image_id in image_ids {
+            if let Err(e) =
+                Image::set_task_id(&deployment.db().pool, *image_id, Some(task.id)).await
+            {
+                tracing::error!(
+                    "Failed to associate image {} with task {}: {}",
+                    image_id,
+                    task.id,
+                    e
+                );
+            }
+        }
+    }
+
     deployment
         .track_if_analytics_allowed(
             "task_created",
@@ -64,6 +81,7 @@ pub async fn create_task(
             "task_id": task.id.to_string(),
             "project_id": payload.project_id,
             "has_description": task.description.is_some(),
+            "has_images": image_ids.is_some(),
             }),
         )
         .await;
@@ -75,9 +93,28 @@ pub async fn create_task_and_start(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateTask>,
 ) -> Result<ResponseJson<ApiResponse<TaskWithAttemptStatus>>, ApiError> {
-    // create the task first
     let task_id = Uuid::new_v4();
+
+    let image_ids = payload.image_ids.clone();
+
     let task = Task::create(&deployment.db().pool, &payload, task_id).await?;
+
+    // Associate images with the task if any were provided
+    if let Some(image_ids) = &image_ids {
+        for image_id in image_ids {
+            if let Err(e) =
+                Image::set_task_id(&deployment.db().pool, *image_id, Some(task.id)).await
+            {
+                tracing::error!(
+                    "Failed to associate image {} with task {}: {}",
+                    image_id,
+                    task.id,
+                    e
+                );
+            }
+        }
+    }
+
     deployment
         .track_if_analytics_allowed(
             "task_created",
@@ -85,6 +122,7 @@ pub async fn create_task_and_start(
                 "task_id": task.id.to_string(),
                 "project_id": task.project_id,
                 "has_description": task.description.is_some(),
+                "has_images": image_ids.is_some(),
             }),
         )
         .await;

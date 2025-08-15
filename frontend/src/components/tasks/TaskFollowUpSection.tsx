@@ -1,9 +1,11 @@
-import { AlertCircle, Send, ChevronDown } from 'lucide-react';
+import { AlertCircle, Send, ChevronDown, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ImageUploadSection } from '@/components/ui/ImageUploadSection';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
 import { useContext, useEffect, useMemo, useState, useRef } from 'react';
-import { attemptsApi } from '@/lib/api.ts';
+import { attemptsApi, imagesApi } from '@/lib/api.ts';
+import type { Image } from 'shared/types';
 import {
   TaskAttemptDataContext,
   TaskDetailsContext,
@@ -39,6 +41,8 @@ export function TaskFollowUpSection() {
   );
   const [isAnimating, setIsAnimating] = useState(false);
   const variantButtonRef = useRef<HTMLButtonElement>(null);
+  const [showImageUpload, setShowImageUpload] = useState(false);
+  const [images, setImages] = useState<Image[]>([]);
 
   // Get the profile from the selected attempt
   const selectedProfile = selectedAttempt?.profile || null;
@@ -86,8 +90,12 @@ export function TaskFollowUpSection() {
       await attemptsApi.followUp(selectedAttempt.id, {
         prompt: followUpMessage.trim(),
         variant: selectedVariant,
+        image_ids: images.length > 0 ? images.map((img) => img.id) : null,
       });
       setFollowUpMessage('');
+      // Clear images after successful submission
+      setImages([]);
+      setShowImageUpload(false);
       fetchAttemptData(selectedAttempt.id);
     } catch (error: unknown) {
       // @ts-expect-error it is type ApiError
@@ -108,6 +116,19 @@ export function TaskFollowUpSection() {
             </Alert>
           )}
           <div className="space-y-2">
+            {showImageUpload && (
+              <div className="mb-2">
+                <ImageUploadSection
+                  images={images}
+                  onImagesChange={setImages}
+                  onUpload={imagesApi.upload}
+                  onDelete={imagesApi.delete}
+                  disabled={!canSendFollowUp}
+                  collapsible={false}
+                  defaultExpanded={true}
+                />
+              </div>
+            )}
             <div className="flex gap-2 items-start">
               <FileSearchTextarea
                 placeholder="Continue working on this task... Type @ to search files."
@@ -134,6 +155,19 @@ export function TaskFollowUpSection() {
                 rows={1}
                 maxRows={6}
               />
+
+              {/* Image button */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-10 w-10 p-0"
+                onClick={() => setShowImageUpload(!showImageUpload)}
+                disabled={!canSendFollowUp}
+              >
+                <ImageIcon
+                  className={cn('h-4 w-4', images.length > 0 && 'text-primary')}
+                />
+              </Button>
 
               {/* Variant selector */}
               {(() => {
