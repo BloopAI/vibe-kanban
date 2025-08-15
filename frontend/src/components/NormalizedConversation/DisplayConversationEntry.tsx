@@ -101,7 +101,7 @@ const getContentClassName = (entryType: NormalizedEntryType) => {
           entryType.tool_name.toLowerCase() === 'todo_read' ||
           entryType.tool_name.toLowerCase() === 'todo')))
   ) {
-    return `${baseClasses} font-mono text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/20 px-2 py-1 rounded`;
+    return `${baseClasses} font-mono text-zinc-800 dark:text-zinc-200 bg-zinc-50 dark:bg-zinc-900/40 px-2 py-1 rounded`;
   }
 
   // Special styling for plan presentations
