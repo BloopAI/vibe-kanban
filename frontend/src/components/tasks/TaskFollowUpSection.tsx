@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { useVariantCyclingShortcut } from '@/lib/keyboard-shortcuts';
 
 export function TaskFollowUpSection() {
   const { task, projectId } = useContext(TaskDetailsContext);
@@ -68,38 +69,13 @@ export function TaskFollowUpSection() {
     setSelectedVariant(defaultFollowUpVariant);
   }, [defaultFollowUpVariant]);
 
-  // Keyboard shortcut for cycling through variants (Left Shift + Tab)
-  useEffect(() => {
-    if (!currentProfile?.variants || currentProfile.variants.length === 0) {
-      return;
-    }
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Check for Left Shift + Tab
-      if (e.shiftKey && e.key === 'Tab') {
-        e.preventDefault();
-
-        // Build the variant cycle: null (Default) → variant1 → variant2 → ... → null
-        const variants = currentProfile.variants;
-        const variantLabels = variants.map((v) => v.label);
-        const allOptions = [null, ...variantLabels];
-
-        // Find current index and cycle to next
-        const currentIndex = allOptions.findIndex((v) => v === selectedVariant);
-        const nextIndex = (currentIndex + 1) % allOptions.length;
-        const nextVariant = allOptions[nextIndex];
-
-        setSelectedVariant(nextVariant);
-
-        // Trigger animation
-        setIsAnimating(true);
-        setTimeout(() => setIsAnimating(false), 300);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [currentProfile, selectedVariant]);
+  // Use the centralized keyboard shortcut hook for cycling through variants
+  useVariantCyclingShortcut({
+    currentProfile,
+    selectedVariant,
+    setSelectedVariant,
+    setIsAnimating,
+  });
 
   const onSendFollowUp = async () => {
     if (!task || !selectedAttempt || !followUpMessage.trim()) return;

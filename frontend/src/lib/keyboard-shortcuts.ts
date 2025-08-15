@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import type { ProfileConfig } from 'shared/types';
 
 // Define available keyboard shortcuts
 export interface KeyboardShortcut {
@@ -263,4 +264,49 @@ export function useKanbanKeyboardNavigation({
     setFocusedStatus,
     preserveIndexOnColumnSwitch,
   ]);
+}
+
+// Hook for cycling through profile variants with Left Shift + Tab
+export function useVariantCyclingShortcut({
+  currentProfile,
+  selectedVariant,
+  setSelectedVariant,
+  setIsAnimating,
+}: {
+  currentProfile: ProfileConfig | null | undefined;
+  selectedVariant: string | null;
+  setSelectedVariant: (variant: string | null) => void;
+  setIsAnimating: (animating: boolean) => void;
+}) {
+  useEffect(() => {
+    if (!currentProfile?.variants || currentProfile.variants.length === 0) {
+      return;
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Left Shift + Tab
+      if (e.shiftKey && e.key === 'Tab') {
+        e.preventDefault();
+
+        // Build the variant cycle: null (Default) → variant1 → variant2 → ... → null
+        const variants = currentProfile.variants;
+        const variantLabels = variants.map((v) => v.label);
+        const allOptions = [null, ...variantLabels];
+
+        // Find current index and cycle to next
+        const currentIndex = allOptions.findIndex((v) => v === selectedVariant);
+        const nextIndex = (currentIndex + 1) % allOptions.length;
+        const nextVariant = allOptions[nextIndex];
+
+        setSelectedVariant(nextVariant);
+
+        // Trigger animation
+        setIsAnimating(true);
+        setTimeout(() => setIsAnimating(false), 300);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [currentProfile, selectedVariant, setSelectedVariant, setIsAnimating]);
 }
