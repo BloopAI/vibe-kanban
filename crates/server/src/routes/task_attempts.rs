@@ -11,6 +11,7 @@ use axum::{
 };
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
+    image::Image,
     task::{Task, TaskStatus},
     task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptError},
 };
@@ -29,6 +30,7 @@ use services::services::{
     container::ContainerService,
     git::BranchStatus,
     github_service::{CreatePrRequest, GitHubRepoInfo, GitHubService, GitHubServiceError},
+    image::ImageService,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -139,6 +141,7 @@ pub async fn create_task_attempt(
 pub struct CreateFollowUpAttempt {
     pub prompt: String,
     pub variant: Option<String>,
+    pub image_ids: Option<Vec<Uuid>>,
 }
 
 pub async fn follow_up(
@@ -218,12 +221,36 @@ pub async fn follow_up(
         ))
     });
 
+    let image_paths = if let Some(ref image_ids) = payload.image_ids {
+        let image_service = ImageService::new(deployment.db().pool.clone())?;
+        let mut paths = Vec::new();
+        for image_id in image_ids {
+            if let Ok(Some(image)) = image_service.get_image(*image_id).await {
+                let absolute_path = image_service.get_absolute_path(&image);
+                paths.push(absolute_path.to_string_lossy().to_string());
+            } else {
+                tracing::warn!("Image {} not found when preparing follow-up", image_id);
+            }
+        }
+
+        if paths.is_empty() {
+            None
+        } else {
+            Some(paths)
+        }
+    } else {
+        None
+    };
+
+    let follow_up_request = CodingAgentFollowUpRequest {
+        prompt: payload.prompt,
+        images: image_paths,
+        session_id,
+        profile_variant_label,
+    };
+
     let follow_up_action = ExecutorAction::new(
-        ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
-            prompt: payload.prompt,
-            session_id,
-            profile_variant_label,
-        }),
+        ExecutorActionType::CodingAgentFollowUpRequest(follow_up_request),
         cleanup_action,
     );
 
@@ -235,6 +262,25 @@ pub async fn follow_up(
             &ExecutionProcessRunReason::CodingAgent,
         )
         .await?;
+
+    if let Some(image_ids) = payload.image_ids {
+        for image_id in image_ids {
+            if let Err(e) = Image::set_execution_process_id(
+                &deployment.db().pool,
+                image_id,
+                Some(execution_process.id),
+            )
+            .await
+            {
+                tracing::error!(
+                    "Failed to associate image {} with execution process {}: {}",
+                    image_id,
+                    execution_process.id,
+                    e
+                );
+            }
+        }
+    }
 
     Ok(ResponseJson(ApiResponse::success(execution_process)))
 }

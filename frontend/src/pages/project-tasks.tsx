@@ -169,13 +169,14 @@ export function ProjectTasks() {
   );
 
   const handleCreateTask = useCallback(
-    async (title: string, description: string) => {
+    async (title: string, description: string, imageIds?: string[]) => {
       try {
         const createdTask = await tasksApi.create({
           project_id: projectId!,
           title,
           description: description || null,
           parent_task_attempt: null,
+          image_ids: imageIds || null,
         });
         await fetchTasks();
         // Open the newly created task in the details panel
@@ -190,13 +191,14 @@ export function ProjectTasks() {
   );
 
   const handleCreateAndStartTask = useCallback(
-    async (title: string, description: string) => {
+    async (title: string, description: string, imageIds?: string[]) => {
       try {
         const payload: CreateTask = {
           project_id: projectId!,
           title,
           description: description || null,
           parent_task_attempt: null,
+          image_ids: imageIds || null,
         };
         const result = await tasksApi.createAndStart(payload);
         await fetchTasks();

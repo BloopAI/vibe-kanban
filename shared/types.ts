@@ -44,9 +44,13 @@ export type Task = { id: string, project_id: string, title: string, description:
 
 export type TaskWithAttemptStatus = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, created_at: string, updated_at: string, has_in_progress_attempt: boolean, has_merged_attempt: boolean, last_attempt_failed: boolean, profile: string, };
 
-export type CreateTask = { project_id: string, title: string, description: string | null, parent_task_attempt: string | null, };
+export type CreateTask = { project_id: string, title: string, description: string | null, parent_task_attempt: string | null, image_ids: Array<string> | null, };
 
 export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_task_attempt: string | null, };
+
+export type Image = { id: string, task_id: string | null, execution_process_id: string | null, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, position: bigint, created_at: string, updated_at: string, };
+
+export type CreateImage = { file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, task_id: string | null, execution_process_id: string | null, };
 
 export type ApiResponse<T, E = T> = { success: boolean, data: T | null, error_data: E | null, message: string | null, };
 
@@ -60,7 +64,7 @@ export type UpdateMcpServersBody = { servers: { [key in string]?: JsonValue }, }
 
 export type GetMcpServerResponse = { mcp_config: McpConfig, config_path: string, };
 
-export type CreateFollowUpAttempt = { prompt: string, variant: string | null, };
+export type CreateFollowUpAttempt = { prompt: string, variant: string | null, image_ids: Array<string> | null, };
 
 export type CreateGitHubPrRequest = { title: string, body: string | null, base_branch: string | null, };
 
@@ -118,6 +122,10 @@ variants: Array<VariantAgentConfig>,
  */
 label: string, 
 /**
+ * CodingAgent capabilities
+ */
+capabilities: AgentCapabilities, 
+/**
  * Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
  */
 mcp_config_path: string | null, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor });
@@ -128,11 +136,17 @@ export type VariantAgentConfig = {
  */
 label: string, 
 /**
+ * CodingAgent capabilities
+ */
+capabilities: AgentCapabilities, 
+/**
  * Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
  */
 mcp_config_path: string | null, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor });
 
 export type ProfileConfigs = { profiles: Array<ProfileConfig>, };
+
+export type AgentCapabilities = { supports_images: boolean, supports_mcp: boolean, };
 
 export type ClaudeCode = { command: CommandBuilder, append_prompt: string | null, plan: boolean, };
 
@@ -146,9 +160,9 @@ export type Cursor = { command: CommandBuilder, append_prompt: string | null, };
 
 export type Opencode = { command: CommandBuilder, append_prompt: string | null, };
 
-export type CodingAgentInitialRequest = { prompt: string, profile_variant_label: ProfileVariantLabel, };
+export type CodingAgentInitialRequest = { prompt: string, images: Array<string> | null, profile_variant_label: ProfileVariantLabel, };
 
-export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, profile_variant_label: ProfileVariantLabel, };
+export type CodingAgentFollowUpRequest = { prompt: string, images: Array<string> | null, session_id: string, profile_variant_label: ProfileVariantLabel, };
 
 export type CreateTaskAttemptBody = { task_id: string, profile_variant_label: ProfileVariantLabel | null, base_branch: string, };
 

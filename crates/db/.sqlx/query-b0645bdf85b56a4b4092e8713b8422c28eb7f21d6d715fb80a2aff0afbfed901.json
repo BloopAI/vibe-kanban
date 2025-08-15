@@ -1,0 +1,80 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO images (id, task_id, execution_process_id, file_path, original_name, mime_type, size_bytes, hash, position)\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0)\n               RETURNING id as \"id!: Uuid\", \n                         task_id as \"task_id: Uuid\", \n                         execution_process_id as \"execution_process_id: Uuid\",\n                         file_path as \"file_path!\", \n                         original_name as \"original_name!\", \n                         mime_type,\n                         size_bytes as \"size_bytes!\",\n                         hash as \"hash!\",\n                         position as \"position!\",\n                         created_at as \"created_at!: DateTime<Utc>\", \n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_id: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "execution_process_id: Uuid",
+        "ordinal": 2,
+        "type_info": "Blob"
+      },
+      {
+        "name": "file_path!",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "original_name!",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "mime_type",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "size_bytes!",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "hash!",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "position!",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 10,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b0645bdf85b56a4b4092e8713b8422c28eb7f21d6d715fb80a2aff0afbfed901"
+}

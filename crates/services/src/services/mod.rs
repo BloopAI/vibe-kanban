@@ -8,6 +8,7 @@ pub mod filesystem;
 pub mod filesystem_watcher;
 pub mod git;
 pub mod github_service;
+pub mod image;
 pub mod notification;
 pub mod pr_monitor;
 pub mod sentry;

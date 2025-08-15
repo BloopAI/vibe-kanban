@@ -1,4 +1,5 @@
 use axum::{
+    extract::multipart::MultipartError,
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
@@ -9,7 +10,7 @@ use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
 use services::services::{
     auth::AuthError, config::ConfigError, container::ContainerError, git::GitServiceError,
-    github_service::GitHubServiceError, worktree_manager::WorktreeError,
+    github_service::GitHubServiceError, image::ImageError, worktree_manager::WorktreeError,
 };
 use thiserror::Error;
 use utils::response::ApiResponse;
@@ -39,6 +40,12 @@ pub enum ApiError {
     Worktree(#[from] WorktreeError),
     #[error(transparent)]
     Config(#[from] ConfigError),
+    #[error(transparent)]
+    Image(#[from] ImageError),
+    #[error("Multipart error: {0}")]
+    Multipart(#[from] MultipartError),
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
 }
 
 impl From<Git2Error> for ApiError {
@@ -61,9 +68,30 @@ impl IntoResponse for ApiError {
             ApiError::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DatabaseError"),
             ApiError::Worktree(_) => (StatusCode::INTERNAL_SERVER_ERROR, "WorktreeError"),
             ApiError::Config(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ConfigError"),
+            ApiError::Image(img_err) => match img_err {
+                ImageError::InvalidFormat => (StatusCode::BAD_REQUEST, "InvalidImageFormat"),
+                ImageError::TooLarge(_, _) => (StatusCode::PAYLOAD_TOO_LARGE, "ImageTooLarge"),
+                ImageError::NotFound => (StatusCode::NOT_FOUND, "ImageNotFound"),
+                _ => (StatusCode::INTERNAL_SERVER_ERROR, "ImageError"),
+            },
+            ApiError::Io(_) => (StatusCode::INTERNAL_SERVER_ERROR, "IoError"),
+            ApiError::Multipart(_) => (StatusCode::BAD_REQUEST, "MultipartError"),
         };
 
-        let error_message = format!("{}: {}", error_type, self);
+        let error_message = match &self {
+            ApiError::Image(img_err) => match img_err {
+                ImageError::InvalidFormat => "This file type is not supported. Please upload an image file (PNG, JPG, GIF, WebP, or BMP).".to_string(),
+                ImageError::TooLarge(size, max) => format!(
+                    "This image is too large ({:.1} MB). Maximum file size is {:.1} MB.",
+                    *size as f64 / 1_048_576.0,
+                    *max as f64 / 1_048_576.0
+                ),
+                ImageError::NotFound => "Image not found.".to_string(),
+                _ => "Failed to process image. Please try again.".to_string(),
+            },
+            ApiError::Multipart(_) => "Failed to upload file. Please ensure the file is valid and try again.".to_string(),
+            _ => format!("{}: {}", error_type, self),
+        };
         let response = ApiResponse::<()>::error(&error_message);
         (status_code, Json(response)).into_response()
     }

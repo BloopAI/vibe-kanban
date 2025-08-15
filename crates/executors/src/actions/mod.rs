@@ -58,3 +58,12 @@ impl Executable for ExecutorAction {
         self.typ.spawn(current_dir).await
     }
 }
+
+pub fn format_prompt_with_images(prompt: &str, images: &[String]) -> String {
+    if images.is_empty() {
+        prompt.to_string()
+    } else {
+        let image_refs = images.join("\n");
+        format!("{}\n\n{}", prompt, image_refs)
+    }
+}

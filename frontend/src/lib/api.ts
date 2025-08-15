@@ -33,6 +33,7 @@ import {
   McpServerQuery,
   UpdateMcpServersBody,
   GetMcpServerResponse,
+  Image,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -614,5 +615,42 @@ export const profilesApi = {
       },
     });
     return handleApiResponse<string>(response);
+  },
+};
+
+// Images API
+export const imagesApi = {
+  upload: async (file: File): Promise<Image> => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const response = await fetch('/api/images/upload', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new ApiError(
+        `Failed to upload image: ${errorText}`,
+        response.status,
+        response
+      );
+    }
+
+    return handleApiResponse<Image>(response);
+  },
+
+  delete: async (imageId: string): Promise<void> => {
+    const response = await makeRequest(`/api/images/${imageId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  getTaskImages: async (taskId: string): Promise<Image[]> => {
+    const response = await makeRequest(`/api/images/task/${taskId}`);
+    return handleApiResponse<Image[]>(response);
   },
 };

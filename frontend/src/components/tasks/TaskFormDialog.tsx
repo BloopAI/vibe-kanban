@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Globe2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ImageUploadSection } from '@/components/ui/ImageUploadSection';
 import {
   Dialog,
   DialogContent,
@@ -18,8 +19,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useUserSystem } from '@/components/config-provider';
-import { templatesApi } from '@/lib/api';
-import type { TaskStatus, TaskTemplate } from 'shared/types';
+import { templatesApi, imagesApi } from '@/lib/api';
+import type { TaskStatus, TaskTemplate, Image } from 'shared/types';
 
 interface Task {
   id: string;
@@ -37,12 +38,21 @@ interface TaskFormDialogProps {
   task?: Task | null; // Optional for create mode
   projectId?: string; // For file search functionality
   initialTemplate?: TaskTemplate | null; // For pre-filling from template
-  onCreateTask?: (title: string, description: string) => Promise<void>;
-  onCreateAndStartTask?: (title: string, description: string) => Promise<void>;
+  onCreateTask?: (
+    title: string,
+    description: string,
+    imageIds?: string[]
+  ) => Promise<void>;
+  onCreateAndStartTask?: (
+    title: string,
+    description: string,
+    imageIds?: string[]
+  ) => Promise<void>;
   onUpdateTask?: (
     title: string,
     description: string,
-    status: TaskStatus
+    status: TaskStatus,
+    imageIds?: string[]
   ) => Promise<void>;
 }
 
@@ -64,8 +74,9 @@ export function TaskFormDialog({
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [showDiscardWarning, setShowDiscardWarning] = useState(false);
+  const [images, setImages] = useState<Image[]>([]);
 
-  const { config } = useUserSystem();
+  const { config, profiles } = useUserSystem();
   const isEditMode = Boolean(task);
 
   // Check if there's any content that would be lost
@@ -84,6 +95,17 @@ export function TaskFormDialog({
       setTitle(task.title);
       setDescription(task.description || '');
       setStatus(task.status);
+
+      // Load existing images for the task
+      if (isOpen) {
+        imagesApi
+          .getTaskImages(task.id)
+          .then((taskImages) => setImages(taskImages))
+          .catch((err) => {
+            console.error('Failed to load task images:', err);
+            setImages([]);
+          });
+      }
     } else if (initialTemplate) {
       // Create mode with template - pre-fill from template
       setTitle(initialTemplate.title);
@@ -96,6 +118,7 @@ export function TaskFormDialog({
       setDescription('');
       setStatus('todo');
       setSelectedTemplate('');
+      setImages([]);
     }
   }, [task, initialTemplate, isOpen]);
 
@@ -139,7 +162,9 @@ export function TaskFormDialog({
       if (isEditMode && onUpdateTask) {
         await onUpdateTask(title, description, status);
       } else if (!isEditMode && onCreateTask) {
-        await onCreateTask(title, description);
+        const imageIds =
+          images.length > 0 ? images.map((img) => img.id) : undefined;
+        await onCreateTask(title, description, imageIds);
       }
 
       // Reset form on successful creation
@@ -147,6 +172,7 @@ export function TaskFormDialog({
         setTitle('');
         setDescription('');
         setStatus('todo');
+        setImages([]);
       }
 
       onOpenChange(false);
@@ -161,13 +187,16 @@ export function TaskFormDialog({
     setIsSubmittingAndStart(true);
     try {
       if (!isEditMode && onCreateAndStartTask) {
-        await onCreateAndStartTask(title, description);
+        const imageIds =
+          images.length > 0 ? images.map((img) => img.id) : undefined;
+        await onCreateAndStartTask(title, description, imageIds);
       }
 
       // Reset form on successful creation
       setTitle('');
       setDescription('');
       setStatus('todo');
+      setImages([]);
 
       onOpenChange(false);
     } finally {
@@ -176,7 +205,7 @@ export function TaskFormDialog({
   }, [
     title,
     description,
-    config?.profile,
+    images,
     isEditMode,
     onCreateAndStartTask,
     onOpenChange,
@@ -296,6 +325,18 @@ export function TaskFormDialog({
                 projectId={projectId}
               />
             </div>
+
+            <ImageUploadSection
+              images={images}
+              onImagesChange={setImages}
+              onUpload={imagesApi.upload}
+              onDelete={imagesApi.delete}
+              onImageUploaded={handleImageUploaded}
+              disabled={isSubmitting || isSubmittingAndStart}
+              readOnly={isEditMode}
+              collapsible={true}
+              defaultExpanded={false}
+            />
 
             {!isEditMode && templates.length > 0 && (
               <div className="pt-2">
