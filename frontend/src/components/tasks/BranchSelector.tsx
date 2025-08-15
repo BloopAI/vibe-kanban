@@ -74,14 +74,20 @@ function BranchSelector({
 
   const moveHighlight = (delta: 1 | -1) => {
     if (filteredBranches.length === 0) return;
-    
+
     setHighlighted((prev) => {
-      const next = prev === null 
-        ? (delta === 1 ? 0 : filteredBranches.length - 1)
-        : (prev + delta + filteredBranches.length) % filteredBranches.length;
-      
+      const next =
+        prev === null
+          ? delta === 1
+            ? 0
+            : filteredBranches.length - 1
+          : (prev + delta + filteredBranches.length) % filteredBranches.length;
+
       // Focus the matching item for scroll behavior
-      setTimeout(() => itemRefs.current[next]?.scrollIntoView({ block: 'nearest' }), 0);
+      setTimeout(
+        () => itemRefs.current[next]?.scrollIntoView({ block: 'nearest' }),
+        0
+      );
       return next;
     });
   };
@@ -141,7 +147,8 @@ function BranchSelector({
                       e.preventDefault();
                       e.stopPropagation();
                       const branch = filteredBranches[highlighted];
-                      const isCurrentAndExcluded = excludeCurrentBranch && branch.is_current;
+                      const isCurrentAndExcluded =
+                        excludeCurrentBranch && branch.is_current;
                       if (!isCurrentAndExcluded) {
                         handleBranchSelect(branch.name);
                       }
