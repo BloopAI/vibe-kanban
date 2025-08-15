@@ -165,8 +165,8 @@ mod tests {
         );
 
         // Also handle the inverse: worktree under /private and path under /var
-        let worktree_private = format!("/private{}", worktree);
-        let path_under_var = format!("{}/hello-world.txt", worktree);
+        let worktree_private = format!("/private{worktree}");
+        let path_under_var = format!("{worktree}/hello-world.txt");
         assert_eq!(
             make_path_relative(&path_under_var, &worktree_private),
             "hello-world.txt"
