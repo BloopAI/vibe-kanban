@@ -218,7 +218,7 @@ impl ExecutionProcess {
         )
         .fetch_optional(pool)
         .await?;
-        
+
         Ok(row.and_then(|r| r.session_id))
     }
 

@@ -313,8 +313,8 @@ pub async fn follow_up(
 
     // Get session_id with simple query
     let session_id = ExecutionProcess::find_latest_session_id_by_task_attempt(
-    &deployment.db().pool,
-    task_attempt.id,
+        &deployment.db().pool,
+        task_attempt.id,
     )
     .await?
     .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
@@ -324,8 +324,8 @@ pub async fn follow_up(
     // Get ExecutionProcess for profile data
     let latest_execution_process = ExecutionProcess::find_latest_by_task_attempt_and_run_reason(
         &deployment.db().pool,
-    task_attempt.id,
-    &ExecutionProcessRunReason::CodingAgent,
+        task_attempt.id,
+        &ExecutionProcessRunReason::CodingAgent,
     )
     .await?
     .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
