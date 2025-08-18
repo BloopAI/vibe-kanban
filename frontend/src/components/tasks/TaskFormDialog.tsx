@@ -444,8 +444,8 @@ export function TaskFormDialog({
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-muted-foreground">
-              You have unsaved content in your new task. Are you sure you want to
-              discard it?
+              You have unsaved content in your new task. Are you sure you want
+              to discard it?
             </p>
           </div>
           <div className="flex justify-end gap-2">
