@@ -295,6 +295,14 @@ pub trait ContainerService {
                 }
             };
 
+            if let Err(err) = self.ensure_container_exists(&task_attempt).await {
+                tracing::warn!(
+                    "Failed to recreate worktree before log normalization for task attempt {}: {}",
+                    task_attempt.id,
+                    err
+                );
+            }
+
             let current_dir = self.task_attempt_to_current_dir(&task_attempt);
 
             let executor_action = if let Ok(executor_action) = process.executor_action() {

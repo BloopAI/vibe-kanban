@@ -148,6 +148,12 @@ pub async fn follow_up(
 ) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, ApiError> {
     tracing::info!("{:?}", task_attempt);
 
+    // Ensure worktree exists (recreate if needed for cold task support)
+    deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
+
     // Get session_id with simple query
     let session_id = ExecutionProcess::find_latest_session_id_by_task_attempt(
         &deployment.db().pool,
