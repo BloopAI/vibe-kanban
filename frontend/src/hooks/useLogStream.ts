@@ -6,11 +6,17 @@ interface UseLogStreamResult {
   error: string | null;
 }
 
+// Simple in-memory cache for logs
+const logCache = new Map<string, string[]>();
+const MAX_CACHE_ENTRIES = 10;
+const MAX_LOGS_PER_PROCESS = 5000;
+
 export const useLogStream = (
   processId: string,
   enabled: boolean
 ): UseLogStreamResult => {
-  const [logs, setLogs] = useState<string[]>([]);
+  const cacheKey = processId;
+  const [logs, setLogs] = useState<string[]>(() => logCache.get(cacheKey) || []);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -30,21 +36,42 @@ export const useLogStream = (
       setError(null);
     };
 
+    const addLogLine = (line: string) => {
+      setLogs((prev) => {
+        const newLogs = [...prev, line];
+        // Limit log length to prevent memory issues
+        const limitedLogs = newLogs.slice(-MAX_LOGS_PER_PROCESS);
+        
+        // Update cache
+        logCache.set(cacheKey, limitedLogs);
+        
+        // Clean up old cache entries if needed
+        if (logCache.size > MAX_CACHE_ENTRIES) {
+          const oldestKey = logCache.keys().next().value;
+          if (oldestKey) {
+            logCache.delete(oldestKey);
+          }
+        }
+        
+        return limitedLogs;
+      });
+    };
+
     eventSource.onmessage = (event) => {
       // Handle default messages
-      setLogs((prev) => [...prev, event.data]);
+      addLogLine(event.data);
     };
 
     eventSource.addEventListener('stdout', (event) => {
-      setLogs((prev) => [...prev, `stdout: ${event.data}`]);
+      addLogLine(`stdout: ${event.data}`);
     });
 
     eventSource.addEventListener('stderr', (event) => {
-      setLogs((prev) => [...prev, `stderr: ${event.data}`]);
+      addLogLine(`stderr: ${event.data}`);
     });
 
     eventSource.addEventListener('finished', () => {
-      setLogs((prev) => [...prev, '--- Stream finished ---']);
+      addLogLine('--- Stream finished ---');
       eventSource.close();
       setIsConnected(false);
     });
@@ -61,10 +88,9 @@ export const useLogStream = (
     };
   }, [processId, enabled]);
 
-  // Reset logs when disabled
+  // Don't reset cached logs when disabled - just update connection state
   useEffect(() => {
     if (!enabled) {
-      setLogs([]);
       setError(null);
       setIsConnected(false);
     }
