@@ -64,18 +64,19 @@ export function TaskFormDialog({
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [showDiscardWarning, setShowDiscardWarning] = useState(false);
-  const [initialTitle, setInitialTitle] = useState('');
-  const [initialDescription, setInitialDescription] = useState('');
 
   const { config } = useUserSystem();
   const isEditMode = Boolean(task);
 
-  // Check if there are unsaved changes
+  // Check if there's any content that would be lost
   const hasUnsavedChanges = useCallback(() => {
-    const titleChanged = title.trim() !== initialTitle.trim();
-    const descriptionChanged = description.trim() !== initialDescription.trim();
-    return titleChanged || descriptionChanged;
-  }, [title, description, initialTitle, initialDescription]);
+    // Only warn in create mode when there's content
+    if (!isEditMode) {
+      return title.trim() !== '' || description.trim() !== '';
+    }
+    // No warning for edit mode - users can always reopen the task
+    return false;
+  }, [title, description, isEditMode]);
 
   useEffect(() => {
     if (task) {
@@ -83,24 +84,18 @@ export function TaskFormDialog({
       setTitle(task.title);
       setDescription(task.description || '');
       setStatus(task.status);
-      setInitialTitle(task.title);
-      setInitialDescription(task.description || '');
     } else if (initialTemplate) {
       // Create mode with template - pre-fill from template
       setTitle(initialTemplate.title);
       setDescription(initialTemplate.description || '');
       setStatus('todo');
       setSelectedTemplate('');
-      setInitialTitle('');
-      setInitialDescription('');
     } else {
       // Create mode - reset to defaults
       setTitle('');
       setDescription('');
       setStatus('todo');
       setSelectedTemplate('');
-      setInitialTitle('');
-      setInitialDescription('');
     }
   }, [task, initialTemplate, isOpen]);
 
@@ -152,8 +147,6 @@ export function TaskFormDialog({
         setTitle('');
         setDescription('');
         setStatus('todo');
-        setInitialTitle('');
-        setInitialDescription('');
       }
 
       onOpenChange(false);
@@ -175,8 +168,6 @@ export function TaskFormDialog({
       setTitle('');
       setDescription('');
       setStatus('todo');
-      setInitialTitle('');
-      setInitialDescription('');
 
       onOpenChange(false);
     } finally {
@@ -453,9 +444,8 @@ export function TaskFormDialog({
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-muted-foreground">
-              You have unsaved changes in your{' '}
-              {isEditMode ? 'task edits' : 'new task'}. Are you sure you want to
-              discard them?
+              You have unsaved content in your new task. Are you sure you want to
+              discard it?
             </p>
           </div>
           <div className="flex justify-end gap-2">
