@@ -19,7 +19,6 @@ use db::{
         },
         execution_process_logs::ExecutionProcessLogs,
         executor_session::{CreateExecutorSession, ExecutorSession},
-        image::Image,
         task::{Task, TaskStatus},
         task_attempt::{TaskAttempt, TaskAttemptError},
     },
@@ -43,7 +42,6 @@ use uuid::Uuid;
 
 use crate::services::{
     git::{GitService, GitServiceError},
-    image::ImageService,
     worktree_manager::WorktreeError,
 };
 pub type ContainerRef = String;
@@ -494,30 +492,6 @@ pub trait ContainerService {
             ))
         });
 
-        // Get images associated with the task
-        let task_images = Image::find_by_task_id(&self.db().pool, task.id)
-            .await
-            .map_err(|e| ContainerError::Sqlx(e))?;
-
-        let image_paths = if !task_images.is_empty() {
-            let image_service = ImageService::new(self.db().pool.clone())
-                .map_err(|e| ContainerError::Other(AnyhowError::msg(e.to_string())))?;
-
-            Some(
-                task_images
-                    .iter()
-                    .map(|img| {
-                        image_service
-                            .get_absolute_path(img)
-                            .to_string_lossy()
-                            .to_string()
-                    })
-                    .collect::<Vec<_>>(),
-            )
-        } else {
-            None
-        };
-
         // Choose whether to execute the setup_script or coding agent first
         let execution_process = if let Some(setup_script) = project.setup_script {
             let executor_action = ExecutorAction::new(
@@ -530,7 +504,6 @@ pub trait ContainerService {
                 Some(Box::new(ExecutorAction::new(
                     ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                         prompt: task.to_prompt(),
-                        images: image_paths.clone(),
                         profile_variant_label,
                     }),
                     cleanup_action,
@@ -547,7 +520,6 @@ pub trait ContainerService {
             let executor_action = ExecutorAction::new(
                 ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                     prompt: task.to_prompt(),
-                    images: image_paths,
                     profile_variant_label,
                 }),
                 cleanup_action,

@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO images (id, file_path, original_name, mime_type, size_bytes, hash)\n               VALUES ($1, $2, $3, $4, $5, $6)\n               RETURNING id as \"id!: Uuid\", \n                         file_path as \"file_path!\", \n                         original_name as \"original_name!\", \n                         mime_type,\n                         size_bytes as \"size_bytes!\",\n                         hash as \"hash!\",\n                         created_at as \"created_at!: DateTime<Utc>\", \n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "file_path!",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "original_name!",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "mime_type",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "size_bytes!",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "hash!",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "943c19a516ecc2060133457fc8104ad612dfb872f616cd47bb900646b7f5af37"
+}

@@ -6,22 +6,60 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
+use chrono::{DateTime, Utc};
 use db::models::image::Image;
 use deployment::Deployment;
+use serde::{Deserialize, Serialize};
 use services::services::image::{ImageError, ImageService};
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
+use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{error::ApiError, DeploymentImpl};
 
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct ImageResponse {
+    pub id: Uuid,
+    pub file_path: String,     // relative path within cache/images/
+    pub absolute_path: String, // canonicalized absolute path
+    pub original_name: String,
+    pub mime_type: Option<String>,
+    pub size_bytes: i64,
+    pub hash: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl ImageResponse {
+    pub fn from_image(image: Image, image_service: &ImageService) -> Self {
+        let absolute_path = image_service
+            .get_absolute_path(&image)
+            .canonicalize()
+            .unwrap_or_else(|_| image_service.get_absolute_path(&image))
+            .to_string_lossy()
+            .to_string();
+
+        Self {
+            id: image.id,
+            file_path: image.file_path,
+            absolute_path,
+            original_name: image.original_name,
+            mime_type: image.mime_type,
+            size_bytes: image.size_bytes,
+            hash: image.hash,
+            created_at: image.created_at,
+            updated_at: image.updated_at,
+        }
+    }
+}
+
 pub async fn upload_image(
     State(deployment): State<DeploymentImpl>,
     mut multipart: Multipart,
-) -> Result<ResponseJson<ApiResponse<Image>>, ApiError> {
-    let image_service = ImageService::new(deployment.db().pool.clone())?;
-
+) -> Result<ResponseJson<ApiResponse<ImageResponse>>, ApiError> {
+    let image_service = deployment.image();
     while let Some(field) = multipart.next_field().await? {
         if field.name() == Some("image") {
             let filename = field
@@ -43,7 +81,8 @@ pub async fn upload_image(
                 )
                 .await;
 
-            return Ok(ResponseJson(ApiResponse::success(image)));
+            let image_response = ImageResponse::from_image(image, &image_service);
+            return Ok(ResponseJson(ApiResponse::success(image_response)));
         }
     }
 
@@ -55,7 +94,7 @@ pub async fn serve_image(
     Path(image_id): Path<Uuid>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<Response, ApiError> {
-    let image_service = ImageService::new(deployment.db().pool.clone())?;
+    let image_service = deployment.image();
     let image = image_service
         .get_image(image_id)
         .await?
@@ -88,7 +127,7 @@ pub async fn delete_image(
     Path(image_id): Path<Uuid>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    let image_service = ImageService::new(deployment.db().pool.clone())?;
+    let image_service = deployment.image();
     image_service.delete_image(image_id).await?;
     Ok(ResponseJson(ApiResponse::success(())))
 }
@@ -96,9 +135,14 @@ pub async fn delete_image(
 pub async fn get_task_images(
     Path(task_id): Path<Uuid>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<Vec<Image>>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<Vec<ImageResponse>>>, ApiError> {
+    let image_service = deployment.image();
     let images = Image::find_by_task_id(&deployment.db().pool, task_id).await?;
-    Ok(ResponseJson(ApiResponse::success(images)))
+    let image_responses = images
+        .into_iter()
+        .map(|image| ImageResponse::from_image(image, &image_service))
+        .collect();
+    Ok(ResponseJson(ApiResponse::success(image_responses)))
 }
 
 pub fn routes() -> Router<DeploymentImpl> {

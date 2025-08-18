@@ -3,9 +3,16 @@ import { Button } from '@/components/ui/button';
 import { ImageUploadSection } from '@/components/ui/ImageUploadSection';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
-import { useContext, useEffect, useMemo, useState, useRef } from 'react';
+import {
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+  useCallback,
+} from 'react';
 import { attemptsApi, imagesApi } from '@/lib/api.ts';
-import type { Image } from 'shared/types';
+import type { ImageResponse } from 'shared/types';
 import {
   TaskAttemptDataContext,
   TaskDetailsContext,
@@ -42,7 +49,10 @@ export function TaskFollowUpSection() {
   const [isAnimating, setIsAnimating] = useState(false);
   const variantButtonRef = useRef<HTMLButtonElement>(null);
   const [showImageUpload, setShowImageUpload] = useState(false);
-  const [images, setImages] = useState<Image[]>([]);
+  const [images, setImages] = useState<ImageResponse[]>([]);
+  const [newlyUploadedImageIds, setNewlyUploadedImageIds] = useState<string[]>(
+    []
+  );
 
   // Get the profile from the selected attempt
   const selectedProfile = selectedAttempt?.profile || null;
@@ -68,23 +78,26 @@ export function TaskFollowUpSection() {
     return profiles.find((p) => p.label === selectedProfile);
   }, [selectedProfile, profiles]);
 
-  const supportsImages = useMemo(() => {
-    if (!currentProfile) return false;
-    return currentProfile.capabilities.supports_images;
-  }, [currentProfile]);
-
   // Update selectedVariant when defaultFollowUpVariant changes
   useEffect(() => {
     setSelectedVariant(defaultFollowUpVariant);
   }, [defaultFollowUpVariant]);
 
-  // Reset image state when switching to non-image supporting profile
-  useEffect(() => {
-    if (!supportsImages && (showImageUpload || images.length > 0)) {
-      setShowImageUpload(false);
-      setImages([]);
-    }
-  }, [supportsImages, showImageUpload, images.length]);
+  // Handle image upload success by inserting markdown into followup message
+  const handleImageUploaded = useCallback((image: ImageResponse) => {
+    const markdownText = `![${image.original_name}](${image.absolute_path})`;
+    setFollowUpMessage((prev) => {
+      if (prev.trim() === '') {
+        return markdownText;
+      } else {
+        return prev + ' ' + markdownText;
+      }
+    });
+
+    setImages((prev) => [...prev, image]);
+    // Track as newly uploaded for backend association
+    setNewlyUploadedImageIds((prev) => [...prev, image.id]);
+  }, []);
 
   // Use the centralized keyboard shortcut hook for cycling through variants
   useVariantCyclingShortcut({
@@ -100,14 +113,23 @@ export function TaskFollowUpSection() {
     try {
       setIsSendingFollowUp(true);
       setFollowUpError(null);
+      // Use newly uploaded image IDs if available, otherwise use all image IDs
+      const imageIds =
+        newlyUploadedImageIds.length > 0
+          ? newlyUploadedImageIds
+          : images.length > 0
+            ? images.map((img) => img.id)
+            : null;
+
       await attemptsApi.followUp(selectedAttempt.id, {
         prompt: followUpMessage.trim(),
         variant: selectedVariant,
-        image_ids: images.length > 0 ? images.map((img) => img.id) : null,
+        image_ids: imageIds,
       });
       setFollowUpMessage('');
-      // Clear images after successful submission
+      // Clear images and newly uploaded IDs after successful submission
       setImages([]);
+      setNewlyUploadedImageIds([]);
       setShowImageUpload(false);
       fetchAttemptData(selectedAttempt.id);
     } catch (error: unknown) {
@@ -129,13 +151,14 @@ export function TaskFollowUpSection() {
             </Alert>
           )}
           <div className="space-y-2">
-            {showImageUpload && supportsImages && (
+            {showImageUpload && (
               <div className="mb-2">
                 <ImageUploadSection
                   images={images}
                   onImagesChange={setImages}
                   onUpload={imagesApi.upload}
                   onDelete={imagesApi.delete}
+                  onImageUploaded={handleImageUploaded}
                   disabled={!canSendFollowUp}
                   collapsible={false}
                   defaultExpanded={true}
@@ -169,23 +192,18 @@ export function TaskFollowUpSection() {
                 maxRows={6}
               />
 
-              {/* Image button - only show if profile supports images */}
-              {supportsImages && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-10 w-10 p-0"
-                  onClick={() => setShowImageUpload(!showImageUpload)}
-                  disabled={!canSendFollowUp}
-                >
-                  <ImageIcon
-                    className={cn(
-                      'h-4 w-4',
-                      images.length > 0 && 'text-primary'
-                    )}
-                  />
-                </Button>
-              )}
+              {/* Image button */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-10 w-10 p-0"
+                onClick={() => setShowImageUpload(!showImageUpload)}
+                disabled={!canSendFollowUp}
+              >
+                <ImageIcon
+                  className={cn('h-4 w-4', images.length > 0 && 'text-primary')}
+                />
+              </Button>
 
               {/* Variant selector */}
               {(() => {

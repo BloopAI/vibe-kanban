@@ -29,6 +29,7 @@ pub enum ImageError {
     ResponseBuildError(String),
 }
 
+#[derive(Clone)]
 pub struct ImageService {
     cache_dir: PathBuf,
     pool: SqlitePool,
@@ -58,7 +59,6 @@ impl ImageService {
         }
 
         let hash = format!("{:x}", Sha256::digest(data));
-        let existing_image = Image::find_by_hash(&self.pool, &hash).await?;
 
         // Extract extension from original filename
         let extension = Path::new(original_filename)
@@ -79,50 +79,69 @@ impl ImageService {
             return Err(ImageError::InvalidFormat);
         }
 
-        // Determine the cached filename - either reuse existing or create new
-        let cached_filename = if let Some(ref existing) = existing_image {
-            existing.file_path.clone()
-        } else {
-            let new_filename = format!("{}.{}", Uuid::new_v4(), extension);
-            let cached_path = self.cache_dir.join(&new_filename);
-            fs::write(&cached_path, data)?;
-            new_filename
-        };
+        let existing_image = Image::find_by_hash(&self.pool, &hash).await?;
+
+        if let Some(existing) = existing_image {
+            tracing::debug!("Reusing existing image record with hash {}", hash);
+            return Ok(existing);
+        }
+
+        let new_filename = format!("{}.{}", Uuid::new_v4(), extension);
+        let cached_path = self.cache_dir.join(&new_filename);
+        fs::write(&cached_path, data)?;
 
         let image = Image::create(
             &self.pool,
             &CreateImage {
-                file_path: cached_filename,
+                file_path: new_filename,
                 original_name: original_filename.to_string(),
                 mime_type,
                 size_bytes: file_size as i64,
                 hash,
-                task_id: None,
-                execution_process_id: None,
             },
         )
         .await?;
         Ok(image)
     }
 
-    pub fn get_absolute_path(&self, image: &Image) -> PathBuf {
-        self.cache_dir.join(&image.file_path)
-    }
+    pub async fn delete_orphaned_images(&self) -> Result<(), ImageError> {
+        let orphaned_images = Image::find_orphaned_images(&self.pool).await?;
+        if orphaned_images.is_empty() {
+            tracing::debug!("No orphaned images found during cleanup");
+            return Ok(());
+        }
 
-    pub async fn attach_to_execution_process(
-        &self,
-        image_id: Uuid,
-        execution_process_id: Uuid,
-    ) -> Result<(), ImageError> {
-        Image::set_execution_process_id(&self.pool, image_id, Some(execution_process_id)).await?;
+        tracing::debug!(
+            "Found {} orphaned images to clean up",
+            orphaned_images.len()
+        );
+        let mut deleted_count = 0;
+        let mut failed_count = 0;
+
+        for image in orphaned_images {
+            match self.delete_image(image.id).await {
+                Ok(_) => {
+                    deleted_count += 1;
+                    tracing::debug!("Deleted orphaned image: {}", image.id);
+                }
+                Err(e) => {
+                    failed_count += 1;
+                    tracing::error!("Failed to delete orphaned image {}: {}", image.id, e);
+                }
+            }
+        }
+
+        tracing::info!(
+            "Image cleanup completed: {} deleted, {} failed",
+            deleted_count,
+            failed_count
+        );
+
         Ok(())
     }
 
-    pub async fn get_execution_process_images(
-        &self,
-        execution_process_id: Uuid,
-    ) -> Result<Vec<Image>, ImageError> {
-        Ok(Image::find_by_execution_process_id(&self.pool, execution_process_id).await?)
+    pub fn get_absolute_path(&self, image: &Image) -> PathBuf {
+        self.cache_dir.join(&image.file_path)
     }
 
     pub async fn get_image(&self, id: Uuid) -> Result<Option<Image>, ImageError> {

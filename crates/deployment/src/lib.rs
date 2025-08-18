@@ -24,6 +24,7 @@ use services::services::{
     filesystem::{FilesystemError, FilesystemService},
     filesystem_watcher::FilesystemWatcherError,
     git::{GitService, GitServiceError},
+    image::{ImageError, ImageService},
     pr_monitor::PrMonitorService,
     sentry::SentryService,
     worktree_manager::WorktreeError,
@@ -53,6 +54,8 @@ pub enum DeploymentError {
     Executor(#[from] ExecutorError),
     #[error(transparent)]
     Auth(#[from] AuthError),
+    #[error(transparent)]
+    Image(#[from] ImageError),
     #[error(transparent)]
     Filesystem(#[from] FilesystemError),
     #[error(transparent)]
@@ -86,6 +89,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn auth(&self) -> &AuthService;
 
     fn git(&self) -> &GitService;
+
+    fn image(&self) -> &ImageService;
 
     fn filesystem(&self) -> &FilesystemService;
 

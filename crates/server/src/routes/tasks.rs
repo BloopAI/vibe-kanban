@@ -6,7 +6,7 @@ use axum::{
     Extension, Json, Router,
 };
 use db::models::{
-    image::Image,
+    image::{CreateTaskImage, TaskImage},
     project::Project,
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
     task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptError},
@@ -55,23 +55,10 @@ pub async fn create_task(
         payload.project_id
     );
 
-    let image_ids = payload.image_ids.clone();
     let task = Task::create(&deployment.db().pool, &payload, id).await?;
 
-    // Associate images with the task if any were provided
-    if let Some(ref image_ids) = image_ids {
-        for image_id in image_ids {
-            if let Err(e) =
-                Image::set_task_id(&deployment.db().pool, *image_id, Some(task.id)).await
-            {
-                tracing::error!(
-                    "Failed to associate image {} with task {}: {}",
-                    image_id,
-                    task.id,
-                    e
-                );
-            }
-        }
+    if let Some(image_ids) = &payload.image_ids {
+        associate_images(&deployment.db().pool, task.id, image_ids).await?;
     }
 
     deployment
@@ -81,7 +68,7 @@ pub async fn create_task(
             "task_id": task.id.to_string(),
             "project_id": payload.project_id,
             "has_description": task.description.is_some(),
-            "has_images": image_ids.is_some(),
+            "has_images": payload.image_ids.is_some(),
             }),
         )
         .await;
@@ -94,25 +81,10 @@ pub async fn create_task_and_start(
     Json(payload): Json<CreateTask>,
 ) -> Result<ResponseJson<ApiResponse<TaskWithAttemptStatus>>, ApiError> {
     let task_id = Uuid::new_v4();
-
-    let image_ids = payload.image_ids.clone();
-
     let task = Task::create(&deployment.db().pool, &payload, task_id).await?;
 
-    // Associate images with the task if any were provided
-    if let Some(image_ids) = &image_ids {
-        for image_id in image_ids {
-            if let Err(e) =
-                Image::set_task_id(&deployment.db().pool, *image_id, Some(task.id)).await
-            {
-                tracing::error!(
-                    "Failed to associate image {} with task {}: {}",
-                    image_id,
-                    task.id,
-                    e
-                );
-            }
-        }
+    if let Some(image_ids) = &payload.image_ids {
+        associate_images(&deployment.db().pool, task.id, image_ids).await?;
     }
 
     deployment
@@ -122,7 +94,7 @@ pub async fn create_task_and_start(
                 "task_id": task.id.to_string(),
                 "project_id": task.project_id,
                 "has_description": task.description.is_some(),
-                "has_images": image_ids.is_some(),
+                "has_images": payload.image_ids.is_some(),
             }),
         )
         .await;
@@ -215,6 +187,11 @@ pub async fn update_task(
     )
     .await?;
 
+    if let Some(image_ids) = &payload.image_ids {
+        TaskImage::delete_by_task_id(&deployment.db().pool, task.id).await?;
+        associate_images(&deployment.db().pool, task.id, image_ids).await?;
+    }
+
     Ok(ResponseJson(ApiResponse::success(task)))
 }
 
@@ -247,6 +224,28 @@ pub async fn delete_task(
     } else {
         Ok(ResponseJson(ApiResponse::success(())))
     }
+}
+
+async fn associate_images(
+    pool: &sqlx::SqlitePool,
+    task_id: Uuid,
+    image_ids: &[Uuid],
+) -> Result<(), ApiError> {
+    for image_id in image_ids {
+        let task_image = CreateTaskImage {
+            task_id,
+            image_id: *image_id,
+        };
+        if let Err(e) = TaskImage::create(pool, &task_image).await {
+            tracing::error!(
+                "Failed to associate image {} with task {}: {}",
+                image_id,
+                task_id,
+                e
+            );
+        }
+    }
+    Ok(())
 }
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {

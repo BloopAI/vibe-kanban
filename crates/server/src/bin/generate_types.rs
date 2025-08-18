@@ -41,6 +41,7 @@ fn generate_types_content() -> String {
         server::routes::config::GetMcpServerResponse::decl(),
         server::routes::task_attempts::CreateFollowUpAttempt::decl(),
         server::routes::task_attempts::CreateGitHubPrRequest::decl(),
+        server::routes::images::ImageResponse::decl(),
         services::services::github_service::GitHubServiceError::decl(),
         services::services::config::Config::decl(),
         services::services::config::NotificationConfig::decl(),

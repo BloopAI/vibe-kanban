@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Globe2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ImageUploadSection } from '@/components/ui/ImageUploadSection';
@@ -18,9 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useUserSystem } from '@/components/config-provider';
 import { templatesApi, imagesApi } from '@/lib/api';
-import type { TaskStatus, TaskTemplate, Image } from 'shared/types';
+import type { TaskStatus, TaskTemplate, ImageResponse } from 'shared/types';
 
 interface Task {
   id: string;
@@ -74,9 +73,11 @@ export function TaskFormDialog({
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [showDiscardWarning, setShowDiscardWarning] = useState(false);
-  const [images, setImages] = useState<Image[]>([]);
+  const [images, setImages] = useState<ImageResponse[]>([]);
+  const [newlyUploadedImageIds, setNewlyUploadedImageIds] = useState<string[]>(
+    []
+  );
 
-  const { config, profiles } = useUserSystem();
   const isEditMode = Boolean(task);
 
   // Check if there's any content that would be lost
@@ -119,6 +120,7 @@ export function TaskFormDialog({
       setStatus('todo');
       setSelectedTemplate('');
       setImages([]);
+      setNewlyUploadedImageIds([]);
     }
   }, [task, initialTemplate, isOpen]);
 
@@ -154,16 +156,41 @@ export function TaskFormDialog({
     }
   };
 
-  const handleSubmit = async () => {
+  // Handle image upload success by inserting markdown into description
+  const handleImageUploaded = useCallback((image: ImageResponse) => {
+    const markdownText = `![${image.original_name}](${image.absolute_path})`;
+    setDescription((prev) => {
+      if (prev.trim() === '') {
+        return markdownText;
+      } else {
+        return prev + ' ' + markdownText;
+      }
+    });
+
+    setImages((prev) => [...prev, image]);
+    // Track as newly uploaded for backend association
+    setNewlyUploadedImageIds((prev) => [...prev, image.id]);
+  }, []);
+
+  const handleSubmit = useCallback(async () => {
     if (!title.trim()) return;
 
     setIsSubmitting(true);
     try {
+      let imageIds: string[] | undefined;
+
+      if (isEditMode) {
+        // In edit mode, send all current image IDs (existing + newly uploaded)
+        imageIds = images.length > 0 ? images.map((img) => img.id) : undefined;
+      } else {
+        // In create mode, only send newly uploaded image IDs
+        imageIds =
+          newlyUploadedImageIds.length > 0 ? newlyUploadedImageIds : undefined;
+      }
+
       if (isEditMode && onUpdateTask) {
-        await onUpdateTask(title, description, status);
+        await onUpdateTask(title, description, status, imageIds);
       } else if (!isEditMode && onCreateTask) {
-        const imageIds =
-          images.length > 0 ? images.map((img) => img.id) : undefined;
         await onCreateTask(title, description, imageIds);
       }
 
@@ -173,13 +200,24 @@ export function TaskFormDialog({
         setDescription('');
         setStatus('todo');
         setImages([]);
+        setNewlyUploadedImageIds([]);
       }
 
       onOpenChange(false);
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [
+    title,
+    description,
+    status,
+    isEditMode,
+    onCreateTask,
+    onUpdateTask,
+    onOpenChange,
+    newlyUploadedImageIds,
+    images,
+  ]);
 
   const handleCreateAndStart = useCallback(async () => {
     if (!title.trim()) return;
@@ -188,7 +226,7 @@ export function TaskFormDialog({
     try {
       if (!isEditMode && onCreateAndStartTask) {
         const imageIds =
-          images.length > 0 ? images.map((img) => img.id) : undefined;
+          newlyUploadedImageIds.length > 0 ? newlyUploadedImageIds : undefined;
         await onCreateAndStartTask(title, description, imageIds);
       }
 
@@ -197,6 +235,7 @@ export function TaskFormDialog({
       setDescription('');
       setStatus('todo');
       setImages([]);
+      setNewlyUploadedImageIds([]);
 
       onOpenChange(false);
     } finally {
@@ -205,10 +244,10 @@ export function TaskFormDialog({
   }, [
     title,
     description,
-    images,
     isEditMode,
     onCreateAndStartTask,
     onOpenChange,
+    newlyUploadedImageIds,
   ]);
 
   const handleCancel = useCallback(() => {
@@ -269,6 +308,7 @@ export function TaskFormDialog({
     isEditMode,
     onCreateAndStartTask,
     title,
+    handleSubmit,
     isSubmitting,
     isSubmittingAndStart,
     handleCreateAndStart,

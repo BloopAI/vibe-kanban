@@ -9,13 +9,15 @@ import {
 import { Button } from './button';
 import { Alert, AlertDescription } from './alert';
 import { cn } from '@/lib/utils';
-import type { Image } from 'shared/types';
+import { imagesApi } from '@/lib/api';
+import type { ImageResponse } from 'shared/types';
 
 interface ImageUploadSectionProps {
-  images: Image[];
-  onImagesChange: (images: Image[]) => void;
-  onUpload: (file: File) => Promise<Image>;
+  images: ImageResponse[];
+  onImagesChange: (images: ImageResponse[]) => void;
+  onUpload: (file: File) => Promise<ImageResponse>;
   onDelete?: (imageId: string) => Promise<void>;
+  onImageUploaded?: (image: ImageResponse) => void; // Custom callback for upload success
   isUploading?: boolean;
   disabled?: boolean;
   readOnly?: boolean;
@@ -29,6 +31,7 @@ export function ImageUploadSection({
   onImagesChange,
   onUpload,
   onDelete,
+  onImageUploaded,
   isUploading = false,
   disabled = false,
   readOnly = false,
@@ -99,7 +102,14 @@ export function ImageUploadSection({
 
         try {
           const uploadedImage = await onUpload(file);
-          onImagesChange([...images, uploadedImage]);
+
+          // Call custom upload callback if provided, otherwise use default behavior
+          if (onImageUploaded) {
+            onImageUploaded(uploadedImage);
+          } else {
+            onImagesChange([...images, uploadedImage]);
+          }
+
           setErrorMessage(null);
         } catch (error: any) {
           console.error('Failed to upload image:', error);
@@ -222,7 +232,7 @@ export function ImageUploadSection({
             >
               <div className="flex items-center gap-2">
                 <img
-                  src={`/api/images/${image.id}/file`}
+                  src={imagesApi.getImageUrl(image.id)}
                   alt={image.original_name}
                   className="h-16 w-16 object-cover rounded"
                 />

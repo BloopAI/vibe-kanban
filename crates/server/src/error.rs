@@ -87,7 +87,9 @@ impl IntoResponse for ApiError {
                     *max as f64 / 1_048_576.0
                 ),
                 ImageError::NotFound => "Image not found.".to_string(),
-                _ => "Failed to process image. Please try again.".to_string(),
+                _ => {
+                    "Failed to process image. Please try again.".to_string()
+                }
             },
             ApiError::Multipart(_) => "Failed to upload file. Please ensure the file is valid and try again.".to_string(),
             _ => format!("{}: {}", error_type, self),

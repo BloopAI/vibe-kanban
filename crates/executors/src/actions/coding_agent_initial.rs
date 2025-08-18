@@ -5,7 +5,6 @@ use command_group::AsyncGroupChild;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use super::format_prompt_with_images;
 use crate::{
     actions::Executable,
     executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
@@ -15,7 +14,6 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct CodingAgentInitialRequest {
     pub prompt: String,
-    pub images: Option<Vec<String>>, // Absolute paths to images
     pub profile_variant_label: ProfileVariantLabel,
 }
 
@@ -23,12 +21,6 @@ pub struct CodingAgentInitialRequest {
 impl Executable for CodingAgentInitialRequest {
     async fn spawn(&self, current_dir: &PathBuf) -> Result<AsyncGroupChild, ExecutorError> {
         let agent = CodingAgent::from_profile_variant_label(&self.profile_variant_label)?;
-
-        let prompt = match (agent.supports_images(), &self.images) {
-            (true, Some(images)) => format_prompt_with_images(&self.prompt, images),
-            _ => self.prompt.clone(),
-        };
-
-        agent.spawn(current_dir, &prompt).await
+        agent.spawn(current_dir, &self.prompt).await
     }
 }

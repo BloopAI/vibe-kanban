@@ -11,6 +11,7 @@ use services::services::{
     events::EventService,
     filesystem::FilesystemService,
     git::GitService,
+    image::ImageService,
     sentry::SentryService,
 };
 use tokio::sync::RwLock;
@@ -33,6 +34,7 @@ pub struct LocalDeployment {
     container: LocalContainerService,
     git: GitService,
     auth: AuthService,
+    image: ImageService,
     filesystem: FilesystemService,
     events: EventService,
 }
@@ -67,6 +69,17 @@ impl Deployment for LocalDeployment {
             DBService::new_with_after_connect(hook).await?
         };
 
+        let image = ImageService::new(db.clone().pool)?;
+        {
+            let image_service = image.clone();
+            tokio::spawn(async move {
+                tracing::info!("Starting orphaned image cleanup...");
+                if let Err(e) = image_service.delete_orphaned_images().await {
+                    tracing::error!("Failed to clean up orphaned images: {}", e);
+                }
+            });
+        }
+
         // We need to make analytics accessible to the ContainerService
         // TODO: Handle this more gracefully
         let analytics_ctx = analytics.as_ref().map(|s| AnalyticsContext {
@@ -94,6 +107,7 @@ impl Deployment for LocalDeployment {
             container,
             git,
             auth,
+            image,
             filesystem,
             events,
         })
@@ -132,6 +146,10 @@ impl Deployment for LocalDeployment {
 
     fn git(&self) -> &GitService {
         &self.git
+    }
+
+    fn image(&self) -> &ImageService {
+        &self.image
     }
 
     fn filesystem(&self) -> &FilesystemService {

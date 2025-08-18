@@ -7,14 +7,11 @@ use uuid::Uuid;
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
 pub struct Image {
     pub id: Uuid,
-    pub task_id: Option<Uuid>,
-    pub execution_process_id: Option<Uuid>,
     pub file_path: String, // relative path within cache/images/
     pub original_name: String,
     pub mime_type: Option<String>,
     pub size_bytes: i64,
     pub hash: String, // SHA256 hash for deduplication
-    pub position: i64,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -26,8 +23,20 @@ pub struct CreateImage {
     pub mime_type: Option<String>,
     pub size_bytes: i64,
     pub hash: String,
-    pub task_id: Option<Uuid>,
-    pub execution_process_id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+pub struct TaskImage {
+    pub id: Uuid,
+    pub task_id: Uuid,
+    pub image_id: Uuid,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize, TS)]
+pub struct CreateTaskImage {
+    pub task_id: Uuid,
+    pub image_id: Uuid,
 }
 
 impl Image {
@@ -35,22 +44,17 @@ impl Image {
         let id = Uuid::new_v4();
         sqlx::query_as!(
             Image,
-            r#"INSERT INTO images (id, task_id, execution_process_id, file_path, original_name, mime_type, size_bytes, hash, position)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0)
+            r#"INSERT INTO images (id, file_path, original_name, mime_type, size_bytes, hash)
+               VALUES ($1, $2, $3, $4, $5, $6)
                RETURNING id as "id!: Uuid", 
-                         task_id as "task_id: Uuid", 
-                         execution_process_id as "execution_process_id: Uuid",
                          file_path as "file_path!", 
                          original_name as "original_name!", 
                          mime_type,
                          size_bytes as "size_bytes!",
                          hash as "hash!",
-                         position as "position!",
                          created_at as "created_at!: DateTime<Utc>", 
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
-            data.task_id,
-            data.execution_process_id,
             data.file_path,
             data.original_name,
             data.mime_type,
@@ -65,14 +69,11 @@ impl Image {
         sqlx::query_as!(
             Image,
             r#"SELECT id as "id!: Uuid",
-                      task_id as "task_id: Uuid",
-                      execution_process_id as "execution_process_id: Uuid",
                       file_path as "file_path!",
                       original_name as "original_name!",
                       mime_type,
                       size_bytes as "size_bytes!",
                       hash as "hash!",
-                      position as "position!",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM images
@@ -87,14 +88,11 @@ impl Image {
         sqlx::query_as!(
             Image,
             r#"SELECT id as "id!: Uuid",
-                      task_id as "task_id: Uuid",
-                      execution_process_id as "execution_process_id: Uuid",
                       file_path as "file_path!",
                       original_name as "original_name!",
                       mime_type,
                       size_bytes as "size_bytes!",
                       hash as "hash!",
-                      position as "position!",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM images
@@ -111,90 +109,79 @@ impl Image {
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Image,
-            r#"SELECT id as "id!: Uuid",
-                      task_id as "task_id: Uuid",
-                      execution_process_id as "execution_process_id: Uuid",
-                      file_path as "file_path!",
-                      original_name as "original_name!",
-                      mime_type,
-                      size_bytes as "size_bytes!",
-                      hash as "hash!",
-                      position as "position!",
-                      created_at as "created_at!: DateTime<Utc>",
-                      updated_at as "updated_at!: DateTime<Utc>"
-               FROM images
-               WHERE task_id = $1
-               ORDER BY position, created_at"#,
+            r#"SELECT i.id as "id!: Uuid",
+                      i.file_path as "file_path!",
+                      i.original_name as "original_name!",
+                      i.mime_type,
+                      i.size_bytes as "size_bytes!",
+                      i.hash as "hash!",
+                      i.created_at as "created_at!: DateTime<Utc>",
+                      i.updated_at as "updated_at!: DateTime<Utc>"
+               FROM images i
+               JOIN task_images ti ON i.id = ti.image_id
+               WHERE ti.task_id = $1
+               ORDER BY ti.created_at"#,
             task_id
         )
         .fetch_all(pool)
         .await
     }
 
-    pub async fn find_by_execution_process_id(
-        pool: &SqlitePool,
-        execution_process_id: Uuid,
-    ) -> Result<Vec<Self>, sqlx::Error> {
+    pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<(), sqlx::Error> {
+        sqlx::query!(r#"DELETE FROM images WHERE id = $1"#, id)
+            .execute(pool)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn find_orphaned_images(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Image,
-            r#"SELECT id as "id!: Uuid",
-                      task_id as "task_id: Uuid",
-                      execution_process_id as "execution_process_id: Uuid",
-                      file_path as "file_path!",
-                      original_name as "original_name!",
-                      mime_type,
-                      size_bytes as "size_bytes!",
-                      hash as "hash!",
-                      position as "position!",
-                      created_at as "created_at!: DateTime<Utc>",
-                      updated_at as "updated_at!: DateTime<Utc>"
-               FROM images
-               WHERE execution_process_id = $1
-               ORDER BY position, created_at"#,
-            execution_process_id
+            r#"SELECT i.id as "id!: Uuid",
+                      i.file_path as "file_path!",
+                      i.original_name as "original_name!",
+                      i.mime_type,
+                      i.size_bytes as "size_bytes!",
+                      i.hash as "hash!",
+                      i.created_at as "created_at!: DateTime<Utc>",
+                      i.updated_at as "updated_at!: DateTime<Utc>"
+               FROM images i
+               LEFT JOIN task_images ti ON i.id = ti.image_id
+               WHERE ti.task_id IS NULL"#
         )
         .fetch_all(pool)
         .await
     }
+}
 
-    pub async fn set_task_id(
-        pool: &SqlitePool,
-        id: Uuid,
-        task_id: Option<Uuid>,
-    ) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            r#"UPDATE images 
-               SET task_id = $1,
-                   updated_at = datetime('now', 'subsec')
-               WHERE id = $2"#,
-            task_id,
-            id
+impl TaskImage {
+    pub async fn create(pool: &SqlitePool, data: &CreateTaskImage) -> Result<Self, sqlx::Error> {
+        let id = Uuid::new_v4();
+        sqlx::query_as!(
+            TaskImage,
+            r#"INSERT INTO task_images (id, task_id, image_id)
+               VALUES ($1, $2, $3)
+               RETURNING id as "id!: Uuid",
+                         task_id as "task_id!: Uuid",
+                         image_id as "image_id!: Uuid", 
+                         created_at as "created_at!: DateTime<Utc>""#,
+            id,
+            data.task_id,
+            data.image_id,
         )
-        .execute(pool)
-        .await?;
+        .fetch_one(pool)
+        .await
+    }
+
+    pub async fn delete_by_task_id(pool: &SqlitePool, task_id: Uuid) -> Result<(), sqlx::Error> {
+        sqlx::query!(r#"DELETE FROM task_images WHERE task_id = $1"#, task_id)
+            .execute(pool)
+            .await?;
         Ok(())
     }
 
-    pub async fn set_execution_process_id(
-        pool: &SqlitePool,
-        id: Uuid,
-        execution_process_id: Option<Uuid>,
-    ) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            r#"UPDATE images 
-               SET execution_process_id = $1,
-                   updated_at = datetime('now', 'subsec')
-               WHERE id = $2"#,
-            execution_process_id,
-            id
-        )
-        .execute(pool)
-        .await?;
-        Ok(())
-    }
-
-    pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<(), sqlx::Error> {
-        sqlx::query!(r#"DELETE FROM images WHERE id = $1"#, id)
+    pub async fn delete_by_image_id(pool: &SqlitePool, image_id: Uuid) -> Result<(), sqlx::Error> {
+        sqlx::query!(r#"DELETE FROM task_images WHERE image_id = $1"#, image_id)
             .execute(pool)
             .await?;
         Ok(())

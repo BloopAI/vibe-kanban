@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM task_images WHERE image_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "be8c4575ae464f82c2710cff8da41389eeedf0d7c9af1c637ba2bf5e96661f08"
+}
