@@ -842,6 +842,9 @@ impl GitService {
 
         let new_base_commit_id = base_branch.get().peel_to_commit()?.id();
 
+        // Remember the original task-branch commit before we touch anything
+        let original_head_oid = worktree_repo.head()?.peel_to_commit()?.id();
+
         // Get the HEAD commit of the worktree (the changes to rebase)
         let head = worktree_repo.head()?;
         let task_branch_commit_id = head.peel_to_commit()?.id();
@@ -872,17 +875,32 @@ impl GitService {
             new_base_commit_id,
         )?;
 
-        if !unique_commits.is_empty() {
+        // Attempt the rebase operation
+        let rebase_result = if !unique_commits.is_empty() {
             // Reset HEAD to the new base branch
             let new_base_commit = worktree_repo.find_commit(new_base_commit_id)?;
             worktree_repo.reset(new_base_commit.as_object(), git2::ResetType::Hard, None)?;
 
             // Cherry-pick the unique commits
-            Self::cherry_pick_commits(&worktree_repo, &unique_commits, &signature)?;
+            Self::cherry_pick_commits(&worktree_repo, &unique_commits, &signature)
         } else {
             // No unique commits to rebase, just reset to new base
             let new_base_commit = worktree_repo.find_commit(new_base_commit_id)?;
             worktree_repo.reset(new_base_commit.as_object(), git2::ResetType::Hard, None)?;
+            Ok(())
+        };
+
+        // Handle rebase failure by restoring original state
+        if let Err(e) = rebase_result {
+            // Clean up any cherry-pick state
+            let _ = worktree_repo.cleanup_state();
+
+            // Restore original task branch state
+            if let Ok(orig_commit) = worktree_repo.find_commit(original_head_oid) {
+                let _ = worktree_repo.reset(orig_commit.as_object(), git2::ResetType::Hard, None);
+            }
+
+            return Err(e);
         }
 
         // Get the final commit ID after rebase
@@ -1163,16 +1181,6 @@ impl GitService {
             // Check for conflicts
             let mut index = repo.index()?;
             if index.has_conflicts() {
-                // Clean up the repository state by aborting the cherry-pick
-                // Reset the index to the current HEAD to clear conflicts
-                let head_commit = repo.head()?.peel_to_commit()?;
-                let head_tree = head_commit.tree()?;
-                repo.reset(head_commit.as_object(), git2::ResetType::Hard, None)?;
-
-                // Also clear the index explicitly
-                index.read_tree(&head_tree)?;
-                index.write()?;
-
                 return Err(GitServiceError::MergeConflicts(format!(
                     "Cherry-pick failed due to conflicts on commit {commit_id}"
                 )));
