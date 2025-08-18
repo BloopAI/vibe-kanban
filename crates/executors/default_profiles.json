@@ -76,7 +76,22 @@
           ]
         }
       },
-      "variants": []
+      "variants": [
+        {
+          "label": "flash",
+          "mcp_config_path": null,
+          "GEMINI": {
+            "command": {
+              "base": "npx -y @google/gemini-cli@latest",
+              "params": [
+                "--yolo",
+                "--model",
+                "gemini-2.5-flash"
+              ]
+            }
+          }
+        }
+      ]
     },
     {
       "label": "codex",
