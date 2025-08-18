@@ -533,8 +533,27 @@ impl GitService {
             base_branch_name,
         )?;
 
-        // Fix: Update main repo's HEAD if it's pointing to the base branch
+        // Reset the task branch to point to the squash commit
+        // This allows follow-up work to continue from the merged state without conflicts
+        let task_refname = format!("refs/heads/{}", branch_name);
+        worktree_repo.reference(
+            &task_refname,
+            squash_commit_id,
+            true,
+            "Reset task branch after merge",
+        )?;
+
+        // Also update the task branch in the main repository
+        // This ensures the branch status is correctly reflected in the UI
         let main_repo = self.open_repo(repo_path)?;
+        main_repo.reference(
+            &task_refname,
+            squash_commit_id,
+            true,
+            "Reset task branch after merge in main repo",
+        )?;
+
+        // Fix: Update main repo's HEAD if it's pointing to the base branch
         let refname = format!("refs/heads/{base_branch_name}");
 
         if let Ok(main_head) = main_repo.head()

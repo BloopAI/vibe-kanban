@@ -519,6 +519,21 @@ impl TaskAttempt {
         Ok(())
     }
 
+    /// Clear the merge commit for a task attempt (used when follow-up work comes in)
+    pub async fn clear_merge_commit(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+    ) -> Result<(), TaskAttemptError> {
+        sqlx::query!(
+            "UPDATE task_attempts SET merge_commit = NULL, updated_at = datetime('now') WHERE id = $1",
+            attempt_id
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
+
     pub async fn update_base_branch(
         pool: &SqlitePool,
         attempt_id: Uuid,

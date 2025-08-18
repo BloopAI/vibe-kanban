@@ -249,6 +249,11 @@ pub async fn follow_up(
         cleanup_action,
     );
 
+    // Clear merge_commit if it exists - follow-ups after merge should allow re-merging
+    if task_attempt.merge_commit.is_some() {
+        TaskAttempt::clear_merge_commit(&deployment.db().pool, task_attempt.id).await?;
+    }
+
     let execution_process = deployment
         .container()
         .start_execution(
