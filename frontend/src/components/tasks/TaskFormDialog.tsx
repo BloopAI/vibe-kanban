@@ -187,36 +187,15 @@ export function TaskFormDialog({
     if (hasUnsavedChanges()) {
       setShowDiscardWarning(true);
     } else {
-      // Reset form state when canceling
-      if (task) {
-        setTitle(task.title);
-        setDescription(task.description || '');
-        setStatus(task.status);
-      } else {
-        setTitle('');
-        setDescription('');
-        setStatus('todo');
-        setSelectedTemplate('');
-      }
       onOpenChange(false);
     }
-  }, [task, onOpenChange, hasUnsavedChanges]);
+  }, [onOpenChange, hasUnsavedChanges]);
 
   const handleDiscardChanges = useCallback(() => {
-    // Reset form state and close
-    if (task) {
-      setTitle(task.title);
-      setDescription(task.description || '');
-      setStatus(task.status);
-    } else {
-      setTitle('');
-      setDescription('');
-      setStatus('todo');
-      setSelectedTemplate('');
-    }
+    // Close both dialogs
     setShowDiscardWarning(false);
     onOpenChange(false);
-  }, [task, onOpenChange]);
+  }, [onOpenChange]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
