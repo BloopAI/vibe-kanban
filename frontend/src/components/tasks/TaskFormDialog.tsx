@@ -288,191 +288,189 @@ export function TaskFormDialog({
 
   return (
     <>
-    <Dialog open={isOpen} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className="sm:max-w-[550px]">
-        <DialogHeader>
-          <DialogTitle>
-            {isEditMode ? 'Edit Task' : 'Create New Task'}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="task-title" className="text-sm font-medium">
-              Title
-            </Label>
-            <Input
-              id="task-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="What needs to be done?"
-              className="mt-1.5"
-              disabled={isSubmitting || isSubmittingAndStart}
-              autoFocus
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="task-description" className="text-sm font-medium">
-              Description
-            </Label>
-            <FileSearchTextarea
-              value={description}
-              onChange={setDescription}
-              rows={3}
-              maxRows={8}
-              placeholder="Add more details (optional). Type @ to search files."
-              className="mt-1.5"
-              disabled={isSubmitting || isSubmittingAndStart}
-              projectId={projectId}
-            />
-          </div>
-
-          {!isEditMode && templates.length > 0 && (
-            <div className="pt-2">
-              <details className="group">
-                <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-2">
-                  <svg
-                    className="h-3 w-3 transition-transform group-open:rotate-90"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  Use a template
-                </summary>
-                <div className="mt-3 space-y-2">
-                  <p className="text-xs text-muted-foreground">
-                    Templates help you quickly create tasks with predefined
-                    content.
-                  </p>
-                  <Select
-                    value={selectedTemplate}
-                    onValueChange={handleTemplateChange}
-                  >
-                    <SelectTrigger id="task-template" className="w-full">
-                      <SelectValue placeholder="Choose a template to prefill this form" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No template</SelectItem>
-                      {templates.map((template) => (
-                        <SelectItem key={template.id} value={template.id}>
-                          <div className="flex items-center gap-2">
-                            {template.project_id === null && (
-                              <Globe2 className="h-3 w-3 text-muted-foreground" />
-                            )}
-                            <span>{template.template_name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </details>
-            </div>
-          )}
-
-          {isEditMode && (
-            <div className="pt-2">
-              <Label htmlFor="task-status" className="text-sm font-medium">
-                Status
+      <Dialog open={isOpen} onOpenChange={handleDialogOpenChange}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>
+              {isEditMode ? 'Edit Task' : 'Create New Task'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="task-title" className="text-sm font-medium">
+                Title
               </Label>
-              <Select
-                value={status}
-                onValueChange={(value) => setStatus(value as TaskStatus)}
+              <Input
+                id="task-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="What needs to be done?"
+                className="mt-1.5"
+                disabled={isSubmitting || isSubmittingAndStart}
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="task-description" className="text-sm font-medium">
+                Description
+              </Label>
+              <FileSearchTextarea
+                value={description}
+                onChange={setDescription}
+                rows={3}
+                maxRows={8}
+                placeholder="Add more details (optional). Type @ to search files."
+                className="mt-1.5"
+                disabled={isSubmitting || isSubmittingAndStart}
+                projectId={projectId}
+              />
+            </div>
+
+            {!isEditMode && templates.length > 0 && (
+              <div className="pt-2">
+                <details className="group">
+                  <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-2">
+                    <svg
+                      className="h-3 w-3 transition-transform group-open:rotate-90"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    Use a template
+                  </summary>
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      Templates help you quickly create tasks with predefined
+                      content.
+                    </p>
+                    <Select
+                      value={selectedTemplate}
+                      onValueChange={handleTemplateChange}
+                    >
+                      <SelectTrigger id="task-template" className="w-full">
+                        <SelectValue placeholder="Choose a template to prefill this form" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No template</SelectItem>
+                        {templates.map((template) => (
+                          <SelectItem key={template.id} value={template.id}>
+                            <div className="flex items-center gap-2">
+                              {template.project_id === null && (
+                                <Globe2 className="h-3 w-3 text-muted-foreground" />
+                              )}
+                              <span>{template.template_name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </details>
+              </div>
+            )}
+
+            {isEditMode && (
+              <div className="pt-2">
+                <Label htmlFor="task-status" className="text-sm font-medium">
+                  Status
+                </Label>
+                <Select
+                  value={status}
+                  onValueChange={(value) => setStatus(value as TaskStatus)}
+                  disabled={isSubmitting || isSubmittingAndStart}
+                >
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todo">To Do</SelectItem>
+                    <SelectItem value="inprogress">In Progress</SelectItem>
+                    <SelectItem value="inreview">In Review</SelectItem>
+                    <SelectItem value="done">Done</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={handleCancel}
                 disabled={isSubmitting || isSubmittingAndStart}
               >
-                <SelectTrigger className="mt-1.5">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todo">To Do</SelectItem>
-                  <SelectItem value="inprogress">In Progress</SelectItem>
-                  <SelectItem value="inreview">In Review</SelectItem>
-                  <SelectItem value="done">Done</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              disabled={isSubmitting || isSubmittingAndStart}
-            >
-              Cancel
-            </Button>
-            {isEditMode ? (
-              <Button
-                onClick={handleSubmit}
-                disabled={isSubmitting || !title.trim()}
-              >
-                {isSubmitting ? 'Updating...' : 'Update Task'}
+                Cancel
               </Button>
-            ) : (
-              <>
+              {isEditMode ? (
                 <Button
-                  variant="secondary"
                   onClick={handleSubmit}
-                  disabled={
-                    isSubmitting || isSubmittingAndStart || !title.trim()
-                  }
+                  disabled={isSubmitting || !title.trim()}
                 >
-                  {isSubmitting ? 'Creating...' : 'Create Task'}
+                  {isSubmitting ? 'Updating...' : 'Update Task'}
                 </Button>
-                {onCreateAndStartTask && (
+              ) : (
+                <>
                   <Button
-                    onClick={handleCreateAndStart}
+                    variant="secondary"
+                    onClick={handleSubmit}
                     disabled={
                       isSubmitting || isSubmittingAndStart || !title.trim()
                     }
-                    className={'font-medium'}
                   >
-                    {isSubmittingAndStart
-                      ? 'Creating & Starting...'
-                      : 'Create & Start'}
+                    {isSubmitting ? 'Creating...' : 'Create Task'}
                   </Button>
-                )}
-              </>
-            )}
+                  {onCreateAndStartTask && (
+                    <Button
+                      onClick={handleCreateAndStart}
+                      disabled={
+                        isSubmitting || isSubmittingAndStart || !title.trim()
+                      }
+                      className={'font-medium'}
+                    >
+                      {isSubmittingAndStart
+                        ? 'Creating & Starting...'
+                        : 'Create & Start'}
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
 
-    {/* Discard Warning Dialog */}
-    <Dialog open={showDiscardWarning} onOpenChange={setShowDiscardWarning}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Discard unsaved changes?</DialogTitle>
-        </DialogHeader>
-        <div className="py-4">
-          <p className="text-sm text-muted-foreground">
-            You have unsaved changes in your {isEditMode ? 'task edits' : 'new task'}. 
-            Are you sure you want to discard them?
-          </p>
-        </div>
-        <div className="flex justify-end gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowDiscardWarning(false)}
-          >
-            Continue Editing
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={handleDiscardChanges}
-          >
-            Discard Changes
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      {/* Discard Warning Dialog */}
+      <Dialog open={showDiscardWarning} onOpenChange={setShowDiscardWarning}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Discard unsaved changes?</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              You have unsaved changes in your{' '}
+              {isEditMode ? 'task edits' : 'new task'}. Are you sure you want to
+              discard them?
+            </p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowDiscardWarning(false)}
+            >
+              Continue Editing
+            </Button>
+            <Button variant="destructive" onClick={handleDiscardChanges}>
+              Discard Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
