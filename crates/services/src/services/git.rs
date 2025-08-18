@@ -1163,6 +1163,16 @@ impl GitService {
             // Check for conflicts
             let mut index = repo.index()?;
             if index.has_conflicts() {
+                // Clean up the repository state by aborting the cherry-pick
+                // Reset the index to the current HEAD to clear conflicts
+                let head_commit = repo.head()?.peel_to_commit()?;
+                let head_tree = head_commit.tree()?;
+                repo.reset(head_commit.as_object(), git2::ResetType::Hard, None)?;
+                
+                // Also clear the index explicitly
+                index.read_tree(&head_tree)?;
+                index.write()?;
+                
                 return Err(GitServiceError::MergeConflicts(format!(
                     "Cherry-pick failed due to conflicts on commit {commit_id}"
                 )));
