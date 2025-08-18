@@ -63,9 +63,19 @@ export function TaskFormDialog({
   const [isSubmittingAndStart, setIsSubmittingAndStart] = useState(false);
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [showDiscardWarning, setShowDiscardWarning] = useState(false);
+  const [initialTitle, setInitialTitle] = useState('');
+  const [initialDescription, setInitialDescription] = useState('');
 
   const { config } = useUserSystem();
   const isEditMode = Boolean(task);
+
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = useCallback(() => {
+    const titleChanged = title.trim() !== initialTitle.trim();
+    const descriptionChanged = description.trim() !== initialDescription.trim();
+    return titleChanged || descriptionChanged;
+  }, [title, description, initialTitle, initialDescription]);
 
   useEffect(() => {
     if (task) {
@@ -73,18 +83,24 @@ export function TaskFormDialog({
       setTitle(task.title);
       setDescription(task.description || '');
       setStatus(task.status);
+      setInitialTitle(task.title);
+      setInitialDescription(task.description || '');
     } else if (initialTemplate) {
       // Create mode with template - pre-fill from template
       setTitle(initialTemplate.title);
       setDescription(initialTemplate.description || '');
       setStatus('todo');
       setSelectedTemplate('');
+      setInitialTitle('');
+      setInitialDescription('');
     } else {
       // Create mode - reset to defaults
       setTitle('');
       setDescription('');
       setStatus('todo');
       setSelectedTemplate('');
+      setInitialTitle('');
+      setInitialDescription('');
     }
   }, [task, initialTemplate, isOpen]);
 
@@ -136,6 +152,8 @@ export function TaskFormDialog({
         setTitle('');
         setDescription('');
         setStatus('todo');
+        setInitialTitle('');
+        setInitialDescription('');
       }
 
       onOpenChange(false);
@@ -157,6 +175,8 @@ export function TaskFormDialog({
       setTitle('');
       setDescription('');
       setStatus('todo');
+      setInitialTitle('');
+      setInitialDescription('');
 
       onOpenChange(false);
     } finally {
@@ -172,7 +192,27 @@ export function TaskFormDialog({
   ]);
 
   const handleCancel = useCallback(() => {
-    // Reset form state when canceling
+    // Check for unsaved changes before closing
+    if (hasUnsavedChanges()) {
+      setShowDiscardWarning(true);
+    } else {
+      // Reset form state when canceling
+      if (task) {
+        setTitle(task.title);
+        setDescription(task.description || '');
+        setStatus(task.status);
+      } else {
+        setTitle('');
+        setDescription('');
+        setStatus('todo');
+        setSelectedTemplate('');
+      }
+      onOpenChange(false);
+    }
+  }, [task, onOpenChange, hasUnsavedChanges]);
+
+  const handleDiscardChanges = useCallback(() => {
+    // Reset form state and close
     if (task) {
       setTitle(task.title);
       setDescription(task.description || '');
@@ -183,6 +223,7 @@ export function TaskFormDialog({
       setStatus('todo');
       setSelectedTemplate('');
     }
+    setShowDiscardWarning(false);
     onOpenChange(false);
   }, [task, onOpenChange]);
 
@@ -235,8 +276,19 @@ export function TaskFormDialog({
     handleCancel,
   ]);
 
+  // Handle dialog close attempt
+  const handleDialogOpenChange = (open: boolean) => {
+    if (!open && hasUnsavedChanges()) {
+      // Trying to close with unsaved changes
+      setShowDiscardWarning(true);
+    } else {
+      onOpenChange(open);
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <>
+    <Dialog open={isOpen} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
           <DialogTitle>
@@ -392,5 +444,35 @@ export function TaskFormDialog({
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Discard Warning Dialog */}
+    <Dialog open={showDiscardWarning} onOpenChange={setShowDiscardWarning}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Discard unsaved changes?</DialogTitle>
+        </DialogHeader>
+        <div className="py-4">
+          <p className="text-sm text-muted-foreground">
+            You have unsaved changes in your {isEditMode ? 'task edits' : 'new task'}. 
+            Are you sure you want to discard them?
+          </p>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowDiscardWarning(false)}
+          >
+            Continue Editing
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleDiscardChanges}
+          >
+            Discard Changes
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
