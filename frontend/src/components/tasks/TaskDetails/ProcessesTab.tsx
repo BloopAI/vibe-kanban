@@ -109,10 +109,11 @@ function ProcessesTab() {
             {attemptData.processes.map((process) => (
               <div
                 key={process.id}
-                className={`border rounded-lg p-4 hover:bg-muted/30 cursor-pointer transition-colors ${loadingProcessId === process.id
+                className={`border rounded-lg p-4 hover:bg-muted/30 cursor-pointer transition-colors ${
+                  loadingProcessId === process.id
                     ? 'opacity-50 cursor-wait'
                     : ''
-                  }`}
+                }`}
                 onClick={() => handleProcessClick(process)}
               >
                 <div className="flex items-start justify-between">
@@ -130,7 +131,7 @@ function ProcessesTab() {
                           Profile:{' '}
                           {process.executor_action.typ.type ===
                             'CodingAgentInitialRequest' ||
-                            process.executor_action.typ.type ===
+                          process.executor_action.typ.type ===
                             'CodingAgentFollowUpRequest' ? (
                             <ProfileVariantBadge
                               profileVariant={
@@ -205,7 +206,7 @@ function ProcessesTab() {
                       </p>
                       {selectedProcess.executor_action.typ.type ===
                         'CodingAgentInitialRequest' ||
-                        selectedProcess.executor_action.typ.type ===
+                      selectedProcess.executor_action.typ.type ===
                         'CodingAgentFollowUpRequest' ? (
                         <p>
                           <span className="font-medium">Profile:</span>{' '}
