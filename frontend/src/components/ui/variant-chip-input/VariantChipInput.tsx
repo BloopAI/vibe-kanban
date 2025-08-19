@@ -77,8 +77,11 @@ export function VariantChipInput({
 
       const chipRowHeight = chipRow.scrollHeight;
       const paddingBottom = chipRowHeight + 12; // Add some extra space
-      container.style.setProperty('--chip-padding-bottom', `${paddingBottom}px`);
-      
+      container.style.setProperty(
+        '--chip-padding-bottom',
+        `${paddingBottom}px`
+      );
+
       // Also update the textarea directly
       const textarea = container.querySelector('textarea');
       if (textarea) {
@@ -95,7 +98,7 @@ export function VariantChipInput({
     // If clicking the same variant, deselect it (go back to default)
     const newVariant = selectedVariant === variant ? null : variant;
     onVariantSelect(newVariant);
-    
+
     // Focus textarea to continue typing - find textarea within container
     const textarea = containerRef.current?.querySelector('textarea');
     if (textarea) {
@@ -119,7 +122,7 @@ export function VariantChipInput({
         placeholder={placeholder}
         rows={rows}
         disabled={disabled}
-        className={cn("w-full", className)}
+        className={cn('w-full', className)}
         projectId={projectId}
         onKeyDown={onKeyDown}
         maxRows={maxRows}
@@ -128,7 +131,13 @@ export function VariantChipInput({
   }
 
   return (
-    <div ref={containerRef} className={cn("relative w-full", className?.includes('flex-1') && 'flex-1')}>
+    <div
+      ref={containerRef}
+      className={cn(
+        'relative w-full',
+        className?.includes('flex-1') && 'flex-1'
+      )}
+    >
       {/* Chip overlay - positioned at bottom of textarea */}
       <div
         ref={chipRowRef}
@@ -191,7 +200,7 @@ export function VariantChipInput({
                     <DropdownMenuItem
                       key={variant}
                       onClick={() => handleChipClick(variant)}
-                      className={cn("uppercase", isSelected ? 'bg-accent' : '')}
+                      className={cn('uppercase', isSelected ? 'bg-accent' : '')}
                     >
                       {variant}
                     </DropdownMenuItem>
