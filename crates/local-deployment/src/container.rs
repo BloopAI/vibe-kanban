@@ -1014,8 +1014,8 @@ impl LocalContainerService {
         for msg in history.iter().rev() {
             if let LogMsg::JsonPatch(patch) = msg {
                 // Try to extract a NormalizedEntry from the patch
-                if let Some(entry) = self.extract_normalized_entry_from_patch(patch) {
-                    if matches!(entry.entry_type, NormalizedEntryType::AssistantMessage) {
+                if let Some(entry) = self.extract_normalized_entry_from_patch(patch)
+                    && matches!(entry.entry_type, NormalizedEntryType::AssistantMessage) {
                         let content = entry.content.trim();
                         if !content.is_empty() {
                             // Truncate to reasonable size (4KB as Oracle suggested)
@@ -1026,7 +1026,6 @@ impl LocalContainerService {
                             return Some(content.to_string());
                         }
                     }
-                }
             }
         }
 
@@ -1039,26 +1038,22 @@ impl LocalContainerService {
         patch: &json_patch::Patch,
     ) -> Option<NormalizedEntry> {
         // Convert the patch to JSON to examine its structure
-        if let Ok(patch_json) = serde_json::to_value(patch) {
-            if let Some(operations) = patch_json.as_array() {
+        if let Ok(patch_json) = serde_json::to_value(patch)
+            && let Some(operations) = patch_json.as_array() {
                 for operation in operations {
                     if let Some(value) = operation.get("value") {
                         // Try to extract a NormalizedEntry from the value
-                        if let Some(patch_type) = value.get("type").and_then(|t| t.as_str()) {
-                            if patch_type == "NORMALIZED_ENTRY" {
-                                if let Some(content) = value.get("content") {
-                                    if let Ok(entry) =
+                        if let Some(patch_type) = value.get("type").and_then(|t| t.as_str())
+                            && patch_type == "NORMALIZED_ENTRY"
+                                && let Some(content) = value.get("content")
+                                    && let Ok(entry) =
                                         serde_json::from_value::<NormalizedEntry>(content.clone())
                                     {
                                         return Some(entry);
                                     }
-                                }
-                            }
-                        }
                     }
                 }
             }
-        }
         None
     }
 
