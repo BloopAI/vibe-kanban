@@ -72,6 +72,7 @@ impl ImageService {
             "gif" => Some("image/gif".to_string()),
             "webp" => Some("image/webp".to_string()),
             "bmp" => Some("image/bmp".to_string()),
+            "svg" => Some("image/svg+xml".to_string()),
             _ => None,
         };
 

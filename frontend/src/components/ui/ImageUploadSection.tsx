@@ -61,6 +61,7 @@ export function ImageUploadSection({
         'image/gif',
         'image/webp',
         'image/bmp',
+        'image/svg+xml',
       ];
 
       const invalidFiles: string[] = [];

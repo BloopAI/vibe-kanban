@@ -92,8 +92,8 @@ impl CodingAgent {
 
     pub fn supports_images(&self) -> bool {
         match self {
-            Self::Amp(_) | Self::ClaudeCode(_) => true,
-            _ => false,
+            Self::Amp(_) | Self::ClaudeCode(_) | Self::Gemini(_) => true,
+            Self::Codex(_) | Self::Opencode(_) | Self::Cursor(_) => false,
         }
     }
 
