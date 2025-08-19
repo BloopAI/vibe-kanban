@@ -44,8 +44,7 @@ impl StandardCodingAgentExecutor for Cursor {
         let (shell_cmd, shell_arg) = get_shell_command();
         let agent_cmd = self.command.build_initial();
 
-        let combined_prompt =
-            utils::text::combine_prompt(&self.append_prompt, prompt);
+        let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
         let mut command = Command::new(shell_cmd);
         command
@@ -78,8 +77,7 @@ impl StandardCodingAgentExecutor for Cursor {
             .command
             .build_follow_up(&["--resume".to_string(), session_id.to_string()]);
 
-        let combined_prompt =
-            utils::text::combine_prompt(&self.append_prompt, prompt);
+        let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
         let mut command = Command::new(shell_cmd);
         command

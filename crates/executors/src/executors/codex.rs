@@ -121,8 +121,7 @@ impl StandardCodingAgentExecutor for Codex {
         let (shell_cmd, shell_arg) = get_shell_command();
         let codex_command = self.command.build_initial();
 
-        let combined_prompt =
-            utils::text::combine_prompt(&self.append_prompt, prompt);
+        let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
         let mut command = Command::new(shell_cmd);
         command
@@ -165,8 +164,7 @@ impl StandardCodingAgentExecutor for Codex {
             format!("experimental_resume={}", rollout_file_path.display()),
         ]);
 
-        let combined_prompt =
-            utils::text::combine_prompt(&self.append_prompt, prompt);
+        let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
         let mut command = Command::new(shell_cmd);
         command

@@ -25,7 +25,7 @@ pub fn short_uuid(u: &Uuid) -> String {
 
 pub fn combine_prompt(append: &Option<String>, prompt: &str) -> String {
     match append {
-        Some(append) => format!("{}{}", prompt, append),
+        Some(append) => format!("{prompt}{append}"),
         None => prompt.to_string(),
     }
 }

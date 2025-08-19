@@ -39,8 +39,7 @@ impl StandardCodingAgentExecutor for Amp {
         let (shell_cmd, shell_arg) = get_shell_command();
         let amp_command = self.command.build_initial();
 
-        let combined_prompt =
-            utils::text::combine_prompt(&self.append_prompt, prompt);
+        let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
         let mut command = Command::new(shell_cmd);
         command
@@ -77,8 +76,7 @@ impl StandardCodingAgentExecutor for Amp {
             session_id.to_string(),
         ]);
 
-        let combined_prompt =
-            utils::text::combine_prompt(&self.append_prompt, prompt);
+        let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
         let mut command = Command::new(shell_cmd);
         command
