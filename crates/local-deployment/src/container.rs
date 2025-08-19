@@ -114,6 +114,19 @@ impl LocalContainerService {
             ))
     }
 
+    /// Finalize task execution by updating status to InReview and sending notifications
+    async fn finalize_task(
+        db: &DBService,
+        config: &Arc<RwLock<Config>>,
+        ctx: &ExecutionContext,
+    ) {
+        if let Err(e) = Task::update_status(&db.pool, ctx.task.id, TaskStatus::InReview).await {
+            tracing::error!("Failed to update task status to InReview: {e}");
+        }
+        let notify_cfg = config.read().await.notifications.clone();
+        NotificationService::notify_execution_halted(notify_cfg, ctx).await;
+    }
+
     /// Defensively check for externally deleted worktrees and mark them as deleted in the database
     async fn check_externally_deleted_worktrees(db: &DBService) -> Result<(), DeploymentError> {
         let active_attempts = TaskAttempt::find_by_worktree_deleted(&db.pool).await?;
@@ -373,18 +386,14 @@ impl LocalContainerService {
                                     "Skipping cleanup script for task attempt {} - no changes made by coding agent",
                                     ctx.task_attempt.id
                                 );
+                                
+                                // Manually finalize task since we're bypassing normal execution flow
+                                Self::finalize_task(&db, &config, &ctx).await;
                             }
                         }
 
                         if Self::should_finalize(&ctx) {
-                            if let Err(e) =
-                                Task::update_status(&db.pool, ctx.task.id, TaskStatus::InReview)
-                                    .await
-                            {
-                                tracing::error!("Failed to update task status to InReview: {e}");
-                            }
-                            let notify_cfg = config.read().await.notifications.clone();
-                            NotificationService::notify_execution_halted(notify_cfg, &ctx).await;
+                            Self::finalize_task(&db, &config, &ctx).await;
                         }
 
                         // Fire event when CodingAgent execution has finished
