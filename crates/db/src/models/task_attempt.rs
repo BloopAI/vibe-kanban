@@ -422,7 +422,7 @@ impl TaskAttempt {
         Ok(result.exists)
     }
 
-    /// Find task attempts that are expired (24+ hours since last activity) and eligible for worktree cleanup
+    /// Find task attempts that are expired (72+ hours since last activity) and eligible for worktree cleanup
     /// Activity includes: execution completion, task attempt updates (including worktree recreation),
     /// and any attempts that are currently in progress
     pub async fn find_expired_for_cleanup(
@@ -443,7 +443,7 @@ impl TaskAttempt {
                     WHERE ep2.completed_at IS NULL
                 )
             GROUP BY ta.id, ta.container_ref, p.git_repo_path, ta.updated_at
-            HAVING datetime('now', '-24 hours') > datetime(
+            HAVING datetime('now', '-72 hours') > datetime(
                 MAX(
                     CASE
                         WHEN ep.completed_at IS NOT NULL THEN ep.completed_at
