@@ -1,8 +1,8 @@
-import { AlertCircle, Send, ChevronDown } from 'lucide-react';
+import { AlertCircle, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
-import { useContext, useEffect, useMemo, useState, useRef } from 'react';
+import { VariantChipInput } from '@/components/ui/variant-chip-input';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { attemptsApi } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,
@@ -11,13 +11,6 @@ import {
 } from '@/components/context/taskDetailsContext.ts';
 import { Loader } from '@/components/ui/loader';
 import { useUserSystem } from '@/components/config-provider';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
 import { useVariantCyclingShortcut } from '@/lib/keyboard-shortcuts';
 
 export function TaskFollowUpSection() {
@@ -38,7 +31,6 @@ export function TaskFollowUpSection() {
     defaultFollowUpVariant
   );
   const [isAnimating, setIsAnimating] = useState(false);
-  const variantButtonRef = useRef<HTMLButtonElement>(null);
 
   // Get the profile from the selected attempt
   const selectedProfile = selectedAttempt?.profile || null;
@@ -59,10 +51,19 @@ export function TaskFollowUpSection() {
     isAttemptRunning,
     isSendingFollowUp,
   ]);
+  
   const currentProfile = useMemo(() => {
     if (!selectedProfile || !profiles) return null;
     return profiles.find((p) => p.label === selectedProfile);
   }, [selectedProfile, profiles]);
+
+  // Prepare variants list for the chip input
+  const variants = useMemo(() => {
+    if (!currentProfile?.variants || currentProfile.variants.length === 0) {
+      return [];
+    }
+    return ['Default', ...currentProfile.variants.map(v => v.label)];
+  }, [currentProfile]);
 
   // Update selectedVariant when defaultFollowUpVariant changes
   useEffect(() => {
@@ -109,7 +110,7 @@ export function TaskFollowUpSection() {
           )}
           <div className="space-y-2">
             <div className="flex gap-2 items-start">
-              <FileSearchTextarea
+              <VariantChipInput
                 placeholder="Continue working on this task... Type @ to search files."
                 value={followUpMessage}
                 onChange={(value) => {
@@ -133,74 +134,11 @@ export function TaskFollowUpSection() {
                 projectId={projectId}
                 rows={1}
                 maxRows={6}
+                variants={variants}
+                selectedVariant={selectedVariant}
+                onVariantSelect={setSelectedVariant}
+                isAnimating={isAnimating}
               />
-
-              {/* Variant selector */}
-              {(() => {
-                const hasVariants =
-                  currentProfile?.variants &&
-                  currentProfile.variants.length > 0;
-
-                if (hasVariants) {
-                  return (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          ref={variantButtonRef}
-                          variant="outline"
-                          size="sm"
-                          className={cn(
-                            'h-10 w-24 px-2 flex items-center justify-between transition-all',
-                            isAnimating && 'scale-105 bg-accent'
-                          )}
-                        >
-                          <span className="text-xs truncate flex-1 text-left">
-                            {selectedVariant || 'Default'}
-                          </span>
-                          <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem
-                          onClick={() => setSelectedVariant(null)}
-                          className={!selectedVariant ? 'bg-accent' : ''}
-                        >
-                          Default
-                        </DropdownMenuItem>
-                        {currentProfile.variants.map((variant) => (
-                          <DropdownMenuItem
-                            key={variant.label}
-                            onClick={() => setSelectedVariant(variant.label)}
-                            className={
-                              selectedVariant === variant.label
-                                ? 'bg-accent'
-                                : ''
-                            }
-                          >
-                            {variant.label}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  );
-                } else if (currentProfile) {
-                  // Show disabled button when profile exists but has no variants
-                  return (
-                    <Button
-                      ref={variantButtonRef}
-                      variant="outline"
-                      size="sm"
-                      className="h-10 w-24 px-2 flex items-center justify-between transition-all"
-                      disabled
-                    >
-                      <span className="text-xs truncate flex-1 text-left">
-                        Default
-                      </span>
-                    </Button>
-                  );
-                }
-                return null;
-              })()}
 
               <Button
                 onClick={onSendFollowUp}
