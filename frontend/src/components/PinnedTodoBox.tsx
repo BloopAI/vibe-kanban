@@ -35,28 +35,34 @@ export const PinnedTodoBox: React.FC<PinnedTodoBoxProps> = ({ todos }) => {
 
   return (
     <div className="sticky top-0 z-10 border-b bg-muted/20">
-      <div
-        className="flex items-center justify-between px-4 py-2 cursor-pointer"
-        onClick={() => setIsCollapsed(!isCollapsed)}
-      >
-        <div className="flex items-center gap-2">
-          <CircleCheck className="h-4 w-4 text-primary" />
-          <span className="text-sm text-primary">
-            TODOs
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          {isCollapsed ? (
+      {isCollapsed && (
+        <div
+          className="flex items-center justify-between px-4 py-2 cursor-pointer"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+        >
+          <div className="flex items-center gap-2">
+            <CircleCheck className="h-4 w-4 text-primary" />
+            <span className="text-sm text-primary">
+              TODOs
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
             <ChevronDown className="h-4 w-4 text-primary" />
-          ) : (
-            <ChevronUp className="h-4 w-4 text-primary" />
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {!isCollapsed && (
-        <div className="border-t">
-          <div className="px-4 py-3 space-y-2 max-h-64 overflow-y-auto">
+        <div className="relative">
+          <div className="absolute top-2 right-2 z-20">
+            <button
+              className="flex items-center justify-center p-1 cursor-pointer hover:bg-muted/40 rounded"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+            >
+              <ChevronUp className="h-4 w-4 text-primary" />
+            </button>
+          </div>
+          <div className="px-4 py-2 pr-10 space-y-2 max-h-64 overflow-y-auto">
             {todos.map((todo, index) => (
               <div
                 key={`${todo.content}-${index}`}
