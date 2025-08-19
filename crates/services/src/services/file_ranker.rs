@@ -73,10 +73,11 @@ impl FileRanker {
             // Verify cache is still valid by checking HEAD
             if let Ok(repo) = git2::Repository::open(&repo_path)
                 && let Ok(head) = repo.head()
-                    && let Some(head_oid) = head.target()
-                        && head_oid == cache_entry.head_oid {
-                            return Ok(Arc::clone(&cache_entry.stats));
-                        }
+                && let Some(head_oid) = head.target()
+                && head_oid == cache_entry.head_oid
+            {
+                return Ok(Arc::clone(&cache_entry.stats));
+            }
         }
 
         // Cache miss or invalid - compute new stats
@@ -144,16 +145,17 @@ impl FileRanker {
         // Update cache
         if let Ok(repo) = git2::Repository::open(&repo_path_for_error)
             && let Ok(head) = repo.head()
-                && let Some(head_oid) = head.target() {
-                    FILE_STATS_CACHE.insert(
-                        repo_path_for_error,
-                        RepoHistoryCache {
-                            head_oid,
-                            stats: Arc::clone(&stats_arc),
-                            generated_at: Instant::now(),
-                        },
-                    );
-                }
+            && let Some(head_oid) = head.target()
+        {
+            FILE_STATS_CACHE.insert(
+                repo_path_for_error,
+                RepoHistoryCache {
+                    head_oid,
+                    stats: Arc::clone(&stats_arc),
+                    generated_at: Instant::now(),
+                },
+            );
+        }
 
         Ok(stats_arc)
     }
