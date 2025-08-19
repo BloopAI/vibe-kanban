@@ -1,6 +1,6 @@
 [package]
 name = "server"
-version = "0.0.63"
+version = "0.0.62"
 edition = "2021"
 default-run = "server"
 
