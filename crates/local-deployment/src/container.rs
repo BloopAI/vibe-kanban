@@ -339,7 +339,10 @@ impl LocalContainerService {
                             let changes_committed = match container.try_commit_changes(&ctx).await {
                                 Ok(committed) => committed,
                                 Err(e) => {
-                                    tracing::error!("Failed to commit changes after execution: {}", e);
+                                    tracing::error!(
+                                        "Failed to commit changes after execution: {}",
+                                        e
+                                    );
                                     // Treat commit failures as if changes were made to be safe
                                     true
                                 }
