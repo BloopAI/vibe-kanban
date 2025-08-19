@@ -86,12 +86,12 @@ function ProcessesTab({ jumpProcessId, onProcessJumped }: ProcessesTabProps) {
   useEffect(() => {
     if (jumpProcessId) {
       setSelectedProcessId(jumpProcessId);
-      
+
       // Ensure process details are loaded
       if (!attemptData.runningProcessDetails[jumpProcessId]) {
         fetchProcessDetails(jumpProcessId);
       }
-      
+
       // Call the callback to clear the jump request
       onProcessJumped?.();
     }

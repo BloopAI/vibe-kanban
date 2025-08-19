@@ -140,7 +140,10 @@ function CurrentAttempt({
   const latestDevServerProcess = useMemo(() => {
     return [...attemptData.processes]
       .filter((process) => process.run_reason === 'devserver')
-      .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())[0];
+      .sort(
+        (a, b) =>
+          new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
+      )[0];
   }, [attemptData.processes]);
 
   const fetchDevServerDetails = useCallback(async () => {

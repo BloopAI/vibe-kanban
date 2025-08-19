@@ -83,12 +83,12 @@ export function TaskDetailsPanel({
           projectHasDevScript={projectHasDevScript}
         >
           <TabNavContext.Provider value={{ activeTab, setActiveTab }}>
-            <ProcessSelectionContext.Provider 
-              value={{ 
+            <ProcessSelectionContext.Provider
+              value={{
                 jumpToProcess: (processId: string) => {
                   setJumpProcessId(processId);
                   setActiveTab('processes');
-                }
+                },
               }}
             >
               {/* Backdrop - only on smaller screens (overlay mode) */}
@@ -120,7 +120,10 @@ export function TaskDetailsPanel({
                     {activeTab === 'diffs' ? (
                       <DiffTab />
                     ) : activeTab === 'processes' ? (
-                      <ProcessesTab jumpProcessId={jumpProcessId} onProcessJumped={() => setJumpProcessId(null)} />
+                      <ProcessesTab
+                        jumpProcessId={jumpProcessId}
+                        onProcessJumped={() => setJumpProcessId(null)}
+                      />
                     ) : (
                       <LogsTab />
                     )}
