@@ -214,7 +214,7 @@ function CurrentAttempt({
 
   useKeyboardShortcuts({
     stopExecution: () => setShowStopConfirmation(true),
-    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => {},
+    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => { },
     hasOpenDialog: showStopConfirmation,
     closeDialog: () => setShowStopConfirmation(false),
     onEnter: () => {
@@ -408,7 +408,7 @@ function CurrentAttempt({
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="xs"
                     onClick={handleRebaseDialogOpen}
                     disabled={
                       rebasing || branchStatusLoading || isAttemptRunning
@@ -466,7 +466,7 @@ function CurrentAttempt({
           </div>
           <Button
             variant="ghost"
-            size="sm"
+            size="xs"
             onClick={() => handleOpenInEditor()}
             className="h-6 px-2 text-xs hover:bg-muted gap-1"
           >
@@ -475,11 +475,10 @@ function CurrentAttempt({
           </Button>
         </div>
         <div
-          className={`text-xs font-mono px-2 py-1 rounded break-all cursor-pointer transition-all duration-300 flex items-center gap-2 ${
-            copied
-              ? 'bg-green-100 text-green-800 border border-green-300'
-              : 'text-muted-foreground bg-muted hover:bg-muted/80'
-          }`}
+          className={`text-xs font-mono px-2 py-1 rounded break-all cursor-pointer transition-all duration-300 flex items-center gap-2 ${copied
+            ? 'bg-green-100 text-green-800 border border-green-300'
+            : 'text-muted-foreground bg-muted hover:bg-muted/80'
+            }`}
           onClick={handleCopyWorktreePath}
           title={copied ? 'Copied!' : 'Click to copy worktree path'}
         >
@@ -505,7 +504,7 @@ function CurrentAttempt({
                 >
                   <Button
                     variant={runningDevServer ? 'destructive' : 'outline'}
-                    size="sm"
+                    size="xs"
                     onClick={runningDevServer ? stopDevServer : startDevServer}
                     disabled={isStartingDevServer || !projectHasDevScript}
                     className="gap-1"
@@ -518,7 +517,7 @@ function CurrentAttempt({
                     ) : (
                       <>
                         <Play className="h-3 w-3" />
-                        Dev Server
+                        Dev
                       </>
                     )}
                   </Button>
@@ -555,47 +554,6 @@ function CurrentAttempt({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {taskAttempts.length > 1 && (
-            <DropdownMenu>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <History className="h-4 w-4" />
-                        History
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>View attempt history</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <DropdownMenuContent align="start" className="w-64">
-                {taskAttempts.map((attempt) => (
-                  <DropdownMenuItem
-                    key={attempt.id}
-                    onClick={() => handleAttemptChange(attempt)}
-                    className={
-                      selectedAttempt?.id === attempt.id ? 'bg-accent' : ''
-                    }
-                  >
-                    <div className="flex flex-col w-full">
-                      <span className="font-medium text-sm">
-                        {new Date(attempt.created_at).toLocaleDateString()}{' '}
-                        {new Date(attempt.created_at).toLocaleTimeString()}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {attempt.profile || 'Base Agent'}
-                      </span>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
           {/* Git Operations */}
           {selectedAttempt && branchStatus && (
             <>
@@ -607,7 +565,7 @@ function CurrentAttempt({
                       rebasing || branchStatusLoading || isAttemptRunning
                     }
                     variant="outline"
-                    size="sm"
+                    size="xs"
                     className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1"
                   >
                     <RefreshCw
@@ -628,7 +586,7 @@ function CurrentAttempt({
                         isAttemptRunning
                       }
                       variant="outline"
-                      size="sm"
+                      size="xs"
                       className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1"
                     >
                       <GitPullRequest className="h-3 w-3" />
@@ -647,13 +605,13 @@ function CurrentAttempt({
                       disabled={
                         selectedAttempt.pr_status === 'open'
                           ? pushing ||
-                            isAttemptRunning ||
-                            (branchStatus.remote_up_to_date ?? true)
+                          isAttemptRunning ||
+                          (branchStatus.remote_up_to_date ?? true)
                           : merging ||
-                            Boolean((branchStatus.commits_behind ?? 0) > 0) ||
-                            isAttemptRunning
+                          Boolean((branchStatus.commits_behind ?? 0) > 0) ||
+                          isAttemptRunning
                       }
-                      size="sm"
+                      size="xs"
                       className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"
                     >
                       {selectedAttempt.pr_status === 'open' ? (
@@ -685,7 +643,7 @@ function CurrentAttempt({
           {isStopping || isAttemptRunning ? (
             <Button
               variant="destructive"
-              size="sm"
+              size="xs"
               onClick={stopAllExecutions}
               disabled={isStopping}
               className="gap-2"
@@ -696,13 +654,52 @@ function CurrentAttempt({
           ) : (
             <Button
               variant="outline"
-              size="sm"
+              size="xs"
               onClick={handleEnterCreateAttemptMode}
               className="gap-2"
             >
               <Plus className="h-4 w-4" />
               New Attempt
             </Button>
+          )}
+          {taskAttempts.length > 1 && (
+            <DropdownMenu>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="xs" className="gap-2">
+                        <History className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>View attempt history</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <DropdownMenuContent align="start" className="w-64">
+                {taskAttempts.map((attempt) => (
+                  <DropdownMenuItem
+                    key={attempt.id}
+                    onClick={() => handleAttemptChange(attempt)}
+                    className={
+                      selectedAttempt?.id === attempt.id ? 'bg-accent' : ''
+                    }
+                  >
+                    <div className="flex flex-col w-full">
+                      <span className="font-medium text-sm">
+                        {new Date(attempt.created_at).toLocaleDateString()}{' '}
+                        {new Date(attempt.created_at).toLocaleTimeString()}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {attempt.profile || 'Base Agent'}
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </div>
