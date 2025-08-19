@@ -43,10 +43,11 @@ export const JSONEditor: React.FC<JSONEditorProps> = ({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         disabled={disabled}
-        style={{ 
+        style={{
           height: `${minHeight}px`,
           fontSize: '14px',
-          fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+          fontFamily:
+            'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
         }}
         className="w-full p-3 bg-transparent resize-none outline-none"
       />

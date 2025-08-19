@@ -78,7 +78,7 @@ export function VariantChipInput({
       const chipRowWidth = chipRow.scrollWidth;
       const paddingLeft = chipRowWidth + 12; // Add some extra space
       container.style.setProperty('--chip-padding-left', `${paddingLeft}px`);
-      
+
       // Also update the textarea directly
       const textarea = container.querySelector('textarea');
       if (textarea) {
@@ -94,7 +94,7 @@ export function VariantChipInput({
   const handleChipClick = (variant: string) => {
     const newVariant = variant === 'Default' ? null : variant;
     onVariantSelect(newVariant);
-    
+
     // Focus textarea to continue typing - find textarea within container
     const textarea = containerRef.current?.querySelector('textarea');
     if (textarea) {
@@ -136,13 +136,14 @@ export function VariantChipInput({
       >
         {/* Visible variant chips */}
         {visibleVariants.map((variant) => {
-          const isSelected = (variant === 'Default' && !selectedVariant) || 
-                           (selectedVariant === variant);
-          
+          const isSelected =
+            (variant === 'Default' && !selectedVariant) ||
+            selectedVariant === variant;
+
           return (
             <div
               key={variant}
-              ref={el => chipRefs.current[variants.indexOf(variant)] = el}
+              ref={(el) => (chipRefs.current[variants.indexOf(variant)] = el)}
               className="pointer-events-auto"
             >
               <Badge
@@ -185,9 +186,10 @@ export function VariantChipInput({
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 {hiddenVariants.map((variant) => {
-                  const isSelected = (variant === 'Default' && !selectedVariant) || 
-                                   (selectedVariant === variant);
-                  
+                  const isSelected =
+                    (variant === 'Default' && !selectedVariant) ||
+                    selectedVariant === variant;
+
                   return (
                     <DropdownMenuItem
                       key={variant}

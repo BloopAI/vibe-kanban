@@ -51,7 +51,7 @@ export function TaskFollowUpSection() {
     isAttemptRunning,
     isSendingFollowUp,
   ]);
-  
+
   const currentProfile = useMemo(() => {
     if (!selectedProfile || !profiles) return null;
     return profiles.find((p) => p.label === selectedProfile);
@@ -62,7 +62,7 @@ export function TaskFollowUpSection() {
     if (!currentProfile?.variants || currentProfile.variants.length === 0) {
       return [];
     }
-    return ['Default', ...currentProfile.variants.map(v => v.label)];
+    return ['Default', ...currentProfile.variants.map((v) => v.label)];
   }, [currentProfile]);
 
   // Update selectedVariant when defaultFollowUpVariant changes

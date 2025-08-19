@@ -19,7 +19,11 @@ export function useVisibleVariants({
   const resizeObserverRef = useRef<ResizeObserver>();
 
   const measureVariants = () => {
-    if (!containerRef.current || !moreButtonRef.current || variants.length === 0) {
+    if (
+      !containerRef.current ||
+      !moreButtonRef.current ||
+      variants.length === 0
+    ) {
       setVisibleCount(variants.length);
       return;
     }
@@ -39,15 +43,16 @@ export function useVisibleVariants({
       if (!chipEl) continue;
 
       const chipWidth = chipEl.offsetWidth + gap;
-      
+
       // Check if we need to reserve space for the "more" button
       const needsMoreButton = i < variants.length - 1;
-      const requiredSpace = totalWidth + chipWidth + (needsMoreButton ? moreButtonWidth : 0);
-      
+      const requiredSpace =
+        totalWidth + chipWidth + (needsMoreButton ? moreButtonWidth : 0);
+
       if (requiredSpace > containerWidth && count > 0) {
         break;
       }
-      
+
       totalWidth += chipWidth;
       count++;
     }
@@ -92,7 +97,7 @@ export function useVisibleVariants({
     }
 
     const selectedIndex = variants.indexOf(selectedVariant);
-    
+
     // If selected variant would be hidden, prioritize showing it
     if (selectedIndex >= visibleCount && selectedIndex !== -1) {
       const visible = [...variants.slice(0, visibleCount - 1), selectedVariant];
