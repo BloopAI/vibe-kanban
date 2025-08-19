@@ -16,7 +16,7 @@ import TabNavigation from '@/components/tasks/TaskDetails/TabNavigation.tsx';
 import TaskDetailsProvider from '../context/TaskDetailsContextProvider.tsx';
 import TaskDetailsToolbar from './TaskDetailsToolbar.tsx';
 import { TabNavContext } from '@/contexts/TabNavigationContext';
-import { ProcessSelectionContext } from '@/contexts/ProcessSelectionContext';
+import { ProcessSelectionProvider } from '@/contexts/ProcessSelectionContext';
 
 interface TaskDetailsPanelProps {
   task: TaskWithAttemptStatus | null;
@@ -47,7 +47,6 @@ export function TaskDetailsPanel({
 
   // Tab and collapsible state
   const [activeTab, setActiveTab] = useState<TabType>('logs');
-  const [jumpProcessId, setJumpProcessId] = useState<string | null>(null);
 
   // Reset to logs tab when task changes
   useEffect(() => {
@@ -83,14 +82,7 @@ export function TaskDetailsPanel({
           projectHasDevScript={projectHasDevScript}
         >
           <TabNavContext.Provider value={{ activeTab, setActiveTab }}>
-            <ProcessSelectionContext.Provider
-              value={{
-                jumpToProcess: (processId: string) => {
-                  setJumpProcessId(processId);
-                  setActiveTab('processes');
-                },
-              }}
-            >
+            <ProcessSelectionProvider>
               {/* Backdrop - only on smaller screens (overlay mode) */}
               {!hideBackdrop && (
                 <div className={getBackdropClasses()} onClick={onClose} />
@@ -120,10 +112,7 @@ export function TaskDetailsPanel({
                     {activeTab === 'diffs' ? (
                       <DiffTab />
                     ) : activeTab === 'processes' ? (
-                      <ProcessesTab
-                        jumpProcessId={jumpProcessId}
-                        onProcessJumped={() => setJumpProcessId(null)}
-                      />
+                      <ProcessesTab />
                     ) : (
                       <LogsTab />
                     )}
@@ -139,7 +128,7 @@ export function TaskDetailsPanel({
               />
 
               <DeleteFileConfirmationDialog />
-            </ProcessSelectionContext.Provider>
+            </ProcessSelectionProvider>
           </TabNavContext.Provider>
         </TaskDetailsProvider>
       )}

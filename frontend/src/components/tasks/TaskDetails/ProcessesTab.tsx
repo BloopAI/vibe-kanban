@@ -13,17 +13,11 @@ import { executionProcessesApi } from '@/lib/api.ts';
 import { ProfileVariantBadge } from '@/components/common/ProfileVariantBadge.tsx';
 import ProcessLogsViewer from './ProcessLogsViewer';
 import type { ExecutionProcessStatus, ExecutionProcess } from 'shared/types';
+import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
 
-interface ProcessesTabProps {
-  jumpProcessId?: string | null;
-  onProcessJumped?: () => void;
-}
-
-function ProcessesTab({ jumpProcessId, onProcessJumped }: ProcessesTabProps) {
+function ProcessesTab() {
   const { attemptData, setAttemptData } = useContext(TaskAttemptDataContext);
-  const [selectedProcessId, setSelectedProcessId] = useState<string | null>(
-    null
-  );
+  const { selectedProcessId, setSelectedProcessId } = useProcessSelection();
   const [loadingProcessId, setLoadingProcessId] = useState<string | null>(null);
 
   const getStatusIcon = (status: ExecutionProcessStatus) => {
@@ -82,20 +76,12 @@ function ProcessesTab({ jumpProcessId, onProcessJumped }: ProcessesTabProps) {
     }
   };
 
-  // Handle jump to specific process
+  // Automatically fetch process details when selectedProcessId changes
   useEffect(() => {
-    if (jumpProcessId) {
-      setSelectedProcessId(jumpProcessId);
-
-      // Ensure process details are loaded
-      if (!attemptData.runningProcessDetails[jumpProcessId]) {
-        fetchProcessDetails(jumpProcessId);
-      }
-
-      // Call the callback to clear the jump request
-      onProcessJumped?.();
+    if (selectedProcessId && !attemptData.runningProcessDetails[selectedProcessId]) {
+      fetchProcessDetails(selectedProcessId);
     }
-  }, [jumpProcessId, onProcessJumped, attemptData.runningProcessDetails]);
+  }, [selectedProcessId, attemptData.runningProcessDetails]);
 
   const handleProcessClick = async (process: ExecutionProcess) => {
     setSelectedProcessId(process.id);

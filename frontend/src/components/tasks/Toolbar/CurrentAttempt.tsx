@@ -53,6 +53,7 @@ import {
 import { useConfig } from '@/components/config-provider.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
+import { useTabNavigation } from '@/contexts/TabNavigationContext';
 
 // Helper function to get the display name for different editor types
 function getEditorDisplayName(editorType: string): string {
@@ -105,6 +106,7 @@ function CurrentAttempt({
     TaskAttemptDataContext
   );
   const { jumpToProcess } = useProcessSelection();
+  const { setActiveTab } = useTabNavigation();
 
   const [isStartingDevServer, setIsStartingDevServer] = useState(false);
   const [merging, setMerging] = useState(false);
@@ -202,7 +204,7 @@ function CurrentAttempt({
 
   const handleViewDevServerLogs = () => {
     if (latestDevServerProcess) {
-      jumpToProcess(latestDevServerProcess.id);
+      jumpToProcess(latestDevServerProcess.id, setActiveTab);
     }
   };
 
