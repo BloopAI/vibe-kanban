@@ -9,6 +9,7 @@ import {
   RefreshCw,
   Settings,
   StopCircle,
+  FileText,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -51,6 +52,7 @@ import {
 } from '@/components/context/taskDetailsContext.ts';
 import { useConfig } from '@/components/config-provider.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
+import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
 
 // Helper function to get the display name for different editor types
 function getEditorDisplayName(editorType: string): string {
@@ -102,6 +104,7 @@ function CurrentAttempt({
   const { attemptData, fetchAttemptData, isAttemptRunning } = useContext(
     TaskAttemptDataContext
   );
+  const { jumpToProcess } = useProcessSelection();
 
   const [isStartingDevServer, setIsStartingDevServer] = useState(false);
   const [merging, setMerging] = useState(false);
@@ -131,6 +134,13 @@ function CurrentAttempt({
       (process) =>
         process.run_reason === 'devserver' && process.status === 'running'
     );
+  }, [attemptData.processes]);
+
+  // Find latest dev server process (for logs viewing)
+  const latestDevServerProcess = useMemo(() => {
+    return [...attemptData.processes]
+      .filter((process) => process.run_reason === 'devserver')
+      .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())[0];
   }, [attemptData.processes]);
 
   const fetchDevServerDetails = useCallback(async () => {
@@ -184,6 +194,12 @@ function CurrentAttempt({
       console.error('Failed to stop dev server:', err);
     } finally {
       setIsStartingDevServer(false);
+    }
+  };
+
+  const handleViewDevServerLogs = () => {
+    if (latestDevServerProcess) {
+      jumpToProcess(latestDevServerProcess.id);
     }
   };
 
@@ -554,6 +570,27 @@ function CurrentAttempt({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+
+          {/* View Dev Server Logs Button */}
+          {latestDevServerProcess && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={handleViewDevServerLogs}
+                    className="gap-1"
+                  >
+                    <FileText className="h-3 w-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>View dev server logs</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">

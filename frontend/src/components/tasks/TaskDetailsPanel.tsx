@@ -15,6 +15,8 @@ import DeleteFileConfirmationDialog from '@/components/tasks/DeleteFileConfirmat
 import TabNavigation from '@/components/tasks/TaskDetails/TabNavigation.tsx';
 import TaskDetailsProvider from '../context/TaskDetailsContextProvider.tsx';
 import TaskDetailsToolbar from './TaskDetailsToolbar.tsx';
+import { TabNavContext } from '@/contexts/TabNavigationContext';
+import { ProcessSelectionContext } from '@/contexts/ProcessSelectionContext';
 
 interface TaskDetailsPanelProps {
   task: TaskWithAttemptStatus | null;
@@ -45,6 +47,7 @@ export function TaskDetailsPanel({
 
   // Tab and collapsible state
   const [activeTab, setActiveTab] = useState<TabType>('logs');
+  const [jumpProcessId, setJumpProcessId] = useState<string | null>(null);
 
   // Reset to logs tab when task changes
   useEffect(() => {
@@ -79,51 +82,62 @@ export function TaskDetailsPanel({
           setShowEditorDialog={setShowEditorDialog}
           projectHasDevScript={projectHasDevScript}
         >
-          {/* Backdrop - only on smaller screens (overlay mode) */}
-          {!hideBackdrop && (
-            <div className={getBackdropClasses()} onClick={onClose} />
-          )}
-
-          {/* Panel */}
-          <div className={className || getTaskPanelClasses()}>
-            <div className="flex flex-col h-full">
-              {!hideHeader && (
-                <TaskDetailsHeader
-                  onClose={onClose}
-                  onEditTask={onEditTask}
-                  onDeleteTask={onDeleteTask}
-                  hideCloseButton={hideBackdrop}
-                />
+          <TabNavContext.Provider value={{ activeTab, setActiveTab }}>
+            <ProcessSelectionContext.Provider 
+              value={{ 
+                jumpToProcess: (processId: string) => {
+                  setJumpProcessId(processId);
+                  setActiveTab('processes');
+                }
+              }}
+            >
+              {/* Backdrop - only on smaller screens (overlay mode) */}
+              {!hideBackdrop && (
+                <div className={getBackdropClasses()} onClick={onClose} />
               )}
 
-              <TaskDetailsToolbar />
+              {/* Panel */}
+              <div className={className || getTaskPanelClasses()}>
+                <div className="flex flex-col h-full">
+                  {!hideHeader && (
+                    <TaskDetailsHeader
+                      onClose={onClose}
+                      onEditTask={onEditTask}
+                      onDeleteTask={onDeleteTask}
+                      hideCloseButton={hideBackdrop}
+                    />
+                  )}
 
-              <TabNavigation
-                activeTab={activeTab}
-                setActiveTab={setActiveTab}
-              />
+                  <TaskDetailsToolbar />
 
-              {/* Tab Content */}
-              <div className="flex-1 flex flex-col min-h-0">
-                {activeTab === 'diffs' ? (
-                  <DiffTab />
-                ) : activeTab === 'processes' ? (
-                  <ProcessesTab />
-                ) : (
-                  <LogsTab />
-                )}
+                  <TabNavigation
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
+                  />
+
+                  {/* Tab Content */}
+                  <div className="flex-1 flex flex-col min-h-0">
+                    {activeTab === 'diffs' ? (
+                      <DiffTab />
+                    ) : activeTab === 'processes' ? (
+                      <ProcessesTab jumpProcessId={jumpProcessId} onProcessJumped={() => setJumpProcessId(null)} />
+                    ) : (
+                      <LogsTab />
+                    )}
+                  </div>
+
+                  <TaskFollowUpSection />
+                </div>
               </div>
 
-              <TaskFollowUpSection />
-            </div>
-          </div>
+              <EditorSelectionDialog
+                isOpen={showEditorDialog}
+                onClose={() => setShowEditorDialog(false)}
+              />
 
-          <EditorSelectionDialog
-            isOpen={showEditorDialog}
-            onClose={() => setShowEditorDialog(false)}
-          />
-
-          <DeleteFileConfirmationDialog />
+              <DeleteFileConfirmationDialog />
+            </ProcessSelectionContext.Provider>
+          </TabNavContext.Provider>
         </TaskDetailsProvider>
       )}
     </>

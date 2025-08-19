@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import {
   Play,
   Square,
@@ -14,7 +14,12 @@ import { ProfileVariantBadge } from '@/components/common/ProfileVariantBadge.tsx
 import ProcessLogsViewer from './ProcessLogsViewer';
 import type { ExecutionProcessStatus, ExecutionProcess } from 'shared/types';
 
-function ProcessesTab() {
+interface ProcessesTabProps {
+  jumpProcessId?: string | null;
+  onProcessJumped?: () => void;
+}
+
+function ProcessesTab({ jumpProcessId, onProcessJumped }: ProcessesTabProps) {
   const { attemptData, setAttemptData } = useContext(TaskAttemptDataContext);
   const [selectedProcessId, setSelectedProcessId] = useState<string | null>(
     null
@@ -76,6 +81,21 @@ function ProcessesTab() {
       setLoadingProcessId(null);
     }
   };
+
+  // Handle jump to specific process
+  useEffect(() => {
+    if (jumpProcessId) {
+      setSelectedProcessId(jumpProcessId);
+      
+      // Ensure process details are loaded
+      if (!attemptData.runningProcessDetails[jumpProcessId]) {
+        fetchProcessDetails(jumpProcessId);
+      }
+      
+      // Call the callback to clear the jump request
+      onProcessJumped?.();
+    }
+  }, [jumpProcessId, onProcessJumped, attemptData.runningProcessDetails]);
 
   const handleProcessClick = async (process: ExecutionProcess) => {
     setSelectedProcessId(process.id);
