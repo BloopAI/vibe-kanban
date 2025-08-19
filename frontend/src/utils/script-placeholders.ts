@@ -19,7 +19,7 @@ npm run dev
 REM Add dev server start command here...`,
       cleanup: `@echo off
 REM Add cleanup commands here...
-REM This runs after coding agent execution`,
+REM This runs after coding agent execution - only if changes were made`,
     };
   }
 }
@@ -35,7 +35,7 @@ npm run dev
 # Add dev server start command here...`,
       cleanup: `#!/bin/bash
 # Add cleanup commands here...
-# This runs after coding agent execution`,
+# This runs after coding agent execution - only if changes were made`,
     };
   }
 }
