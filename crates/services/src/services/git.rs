@@ -13,6 +13,7 @@ use utils::diff::{Diff, FileDiffDetails};
 
 // Import for file ranking functionality
 use super::file_ranker::FileStat;
+use crate::services::github_service::GitHubRepoInfo;
 
 #[derive(Debug, Error)]
 pub enum GitServiceError {
@@ -1011,7 +1012,7 @@ impl GitService {
     pub fn get_github_repo_info(
         &self,
         repo_path: &Path,
-    ) -> Result<(String, String), GitServiceError> {
+    ) -> Result<GitHubRepoInfo, GitServiceError> {
         let repo = self.open_repo(repo_path)?;
         let remote = repo.find_remote("origin").map_err(|_| {
             GitServiceError::InvalidRepository("No 'origin' remote found".to_string())
@@ -1028,7 +1029,7 @@ impl GitService {
         if let Some(captures) = github_regex.captures(url) {
             let owner = captures.get(1).unwrap().as_str().to_string();
             let repo_name = captures.get(2).unwrap().as_str().to_string();
-            Ok((owner, repo_name))
+            Ok(GitHubRepoInfo { owner, repo_name })
         } else {
             Err(GitServiceError::InvalidRepository(format!(
                 "Not a GitHub repository: {url}"
