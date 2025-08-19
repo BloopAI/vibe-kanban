@@ -115,11 +115,7 @@ impl LocalContainerService {
     }
 
     /// Finalize task execution by updating status to InReview and sending notifications
-    async fn finalize_task(
-        db: &DBService,
-        config: &Arc<RwLock<Config>>,
-        ctx: &ExecutionContext,
-    ) {
+    async fn finalize_task(db: &DBService, config: &Arc<RwLock<Config>>, ctx: &ExecutionContext) {
         if let Err(e) = Task::update_status(&db.pool, ctx.task.id, TaskStatus::InReview).await {
             tracing::error!("Failed to update task status to InReview: {e}");
         }
@@ -386,7 +382,7 @@ impl LocalContainerService {
                                     "Skipping cleanup script for task attempt {} - no changes made by coding agent",
                                     ctx.task_attempt.id
                                 );
-                                
+
                                 // Manually finalize task since we're bypassing normal execution flow
                                 Self::finalize_task(&db, &config, &ctx).await;
                             }
