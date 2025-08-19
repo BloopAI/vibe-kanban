@@ -659,22 +659,22 @@ impl GitService {
     pub fn get_head_info(&self, repo_path: &Path) -> Result<HeadInfo, GitServiceError> {
         let repo = self.open_repo(repo_path)?;
         let head = repo.head()?;
-        
+
         let branch = if let Some(branch_name) = head.shorthand() {
             branch_name.to_string()
         } else {
             "HEAD".to_string()
         };
-        
+
         let oid = if let Some(target_oid) = head.target() {
             target_oid.to_string()
         } else {
             // Handle case where HEAD exists but has no target (empty repo)
             return Err(GitServiceError::InvalidRepository(
-                "Repository HEAD has no target commit".to_string()
+                "Repository HEAD has no target commit".to_string(),
             ));
         };
-        
+
         Ok(HeadInfo { branch, oid })
     }
 
