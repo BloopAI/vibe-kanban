@@ -101,15 +101,7 @@ impl Task {
        AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')
      LIMIT 1
   ) THEN 1 ELSE 0 END            AS "has_in_progress_attempt!: i64",
-
-  CASE WHEN EXISTS (
-    SELECT 1
-      FROM task_attempts ta
-     WHERE ta.task_id       = t.id
-       AND ta.merge_commit IS NOT NULL
-     LIMIT 1
-  ) THEN 1 ELSE 0 END            AS "has_merged_attempt!: i64",
-
+  
   CASE WHEN (
     SELECT ep.status
       FROM task_attempts ta
@@ -149,7 +141,7 @@ ORDER BY t.created_at DESC"#,
                 created_at: rec.created_at,
                 updated_at: rec.updated_at,
                 has_in_progress_attempt: rec.has_in_progress_attempt != 0,
-                has_merged_attempt: rec.has_merged_attempt != 0,
+                has_merged_attempt: false, // TODO use merges table
                 last_attempt_failed: rec.last_attempt_failed != 0,
                 profile: rec.profile,
             })

@@ -74,7 +74,6 @@ pub struct TaskAttempt {
     pub container_ref: Option<String>, // Path to a worktree (local), or cloud container id
     pub branch: Option<String>,        // Git branch name for this task attempt
     pub base_branch: String,           // Base branch this attempt is based on
-    pub merge_commit: Option<String>,
     pub profile: String, // Name of the base coding agent to use ("AMP", "CLAUDE_CODE",
     // "GEMINI", etc.)
     pub pr_url: Option<String>,                    // GitHub PR URL
@@ -141,7 +140,6 @@ impl TaskAttempt {
                               container_ref,
                               branch,
                               base_branch,
-                              merge_commit,
                               profile AS "profile!",
                               pr_url,
                               pr_number,
@@ -166,7 +164,6 @@ impl TaskAttempt {
                               container_ref,
                               branch,
                               base_branch,
-                              merge_commit,
                               profile AS "profile!",
                               pr_url,
                               pr_number,
@@ -202,7 +199,6 @@ impl TaskAttempt {
                        ta.container_ref,
                        ta.branch,
                        ta.base_branch,
-                       ta.merge_commit,
                        ta.profile AS "profile!",
                        ta.pr_url,
                        ta.pr_number,
@@ -296,7 +292,6 @@ impl TaskAttempt {
                        task_id           AS "task_id!: Uuid",
                        container_ref,
                        branch,
-                       merge_commit,
                        base_branch,
                        profile AS "profile!",
                        pr_url,
@@ -322,7 +317,6 @@ impl TaskAttempt {
                        task_id           AS "task_id!: Uuid",
                        container_ref,
                        branch,
-                       merge_commit,
                        base_branch,
                        profile AS "profile!",
                        pr_url,
@@ -481,15 +475,14 @@ impl TaskAttempt {
         // Insert the record into the database
         Ok(sqlx::query_as!(
             TaskAttempt,
-            r#"INSERT INTO task_attempts (id, task_id, container_ref, branch, base_branch, merge_commit, profile, pr_url, pr_number, pr_status, pr_merged_at, worktree_deleted, setup_completed_at)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, base_branch, merge_commit, profile as "profile!",  pr_url, pr_number, pr_status, pr_merged_at as "pr_merged_at: DateTime<Utc>", worktree_deleted as "worktree_deleted!: bool", setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO task_attempts (id, task_id, container_ref, branch, base_branch, profile, pr_url, pr_number, pr_status, pr_merged_at, worktree_deleted, setup_completed_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, base_branch, profile as "profile!",  pr_url, pr_number, pr_status, pr_merged_at as "pr_merged_at: DateTime<Utc>", worktree_deleted as "worktree_deleted!: bool", setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             attempt_id,
             task_id,
             Option::<String>::None, // Container isn't known yet
             Option::<String>::None, // branch name isn't known yet
             data.base_branch,
-            Option::<String>::None, // merge_commit is always None during creation
             data.profile,
             Option::<String>::None, // pr_url is None during creation
             Option::<i64>::None, // pr_number is None during creation
@@ -500,38 +493,6 @@ impl TaskAttempt {
         )
         .fetch_one(pool)
         .await?)
-    }
-
-    /// Update the task attempt with the merge commit ID
-    pub async fn update_merge_commit(
-        pool: &SqlitePool,
-        attempt_id: Uuid,
-        merge_commit_id: &str,
-    ) -> Result<(), TaskAttemptError> {
-        sqlx::query!(
-            "UPDATE task_attempts SET merge_commit = $1, updated_at = datetime('now') WHERE id = $2",
-            merge_commit_id,
-            attempt_id
-        )
-        .execute(pool)
-        .await?;
-
-        Ok(())
-    }
-
-    /// Clear the merge commit for a task attempt (used when follow-up work comes in)
-    pub async fn clear_merge_commit(
-        pool: &SqlitePool,
-        attempt_id: Uuid,
-    ) -> Result<(), TaskAttemptError> {
-        sqlx::query!(
-            "UPDATE task_attempts SET merge_commit = NULL, updated_at = datetime('now') WHERE id = $1",
-            attempt_id
-        )
-        .execute(pool)
-        .await?;
-
-        Ok(())
     }
 
     pub async fn update_base_branch(

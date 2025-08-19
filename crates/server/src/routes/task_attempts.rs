@@ -12,6 +12,7 @@ use axum::{
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     image::TaskImage,
+    merge::Merge,
     task::{Task, TaskStatus},
     task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptError},
 };
@@ -249,11 +250,6 @@ pub async fn follow_up(
         cleanup_action,
     );
 
-    // Clear merge_commit if it exists - follow-ups after merge should allow re-merging
-    if task_attempt.merge_commit.is_some() {
-        TaskAttempt::clear_merge_commit(&deployment.db().pool, task_attempt.id).await?;
-    }
-
     let execution_process = deployment
         .container()
         .start_execution(
@@ -329,7 +325,7 @@ pub async fn merge_task_attempt(
         &commit_message,
     )?;
 
-    TaskAttempt::update_merge_commit(pool, task_attempt.id, &merge_commit_id).await?;
+    Merge::create(pool, task_attempt.id, &merge_commit_id).await?;
     Task::update_status(pool, ctx.task.id, TaskStatus::Done).await?;
 
     deployment
@@ -591,7 +587,6 @@ pub async fn get_task_attempt_branch_status(
                 ))
             })?,
             &ctx.task_attempt.base_branch,
-            ctx.task_attempt.merge_commit.is_some(),
             github_config.token(),
         )
         .map_err(|e| {

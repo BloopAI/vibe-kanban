@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO task_attempts (id, task_id, container_ref, branch, base_branch, merge_commit, profile, pr_url, pr_number, pr_status, pr_merged_at, worktree_deleted, setup_completed_at)\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)\n               RETURNING id as \"id!: Uuid\", task_id as \"task_id!: Uuid\", container_ref, branch, base_branch, merge_commit, profile as \"profile!\",  pr_url, pr_number, pr_status, pr_merged_at as \"pr_merged_at: DateTime<Utc>\", worktree_deleted as \"worktree_deleted!: bool\", setup_completed_at as \"setup_completed_at: DateTime<Utc>\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT id AS \"id!: Uuid\",\n                              task_id AS \"task_id!: Uuid\",\n                              container_ref,\n                              branch,\n                              base_branch,\n                              profile AS \"profile!\",\n                              pr_url,\n                              pr_number,\n                              pr_status,\n                              pr_merged_at AS \"pr_merged_at: DateTime<Utc>\",\n                              worktree_deleted AS \"worktree_deleted!: bool\",\n                              setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                              created_at AS \"created_at!: DateTime<Utc>\",\n                              updated_at AS \"updated_at!: DateTime<Utc>\"\n                       FROM task_attempts\n                       ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -29,58 +29,53 @@
         "type_info": "Text"
       },
       {
-        "name": "merge_commit",
+        "name": "profile!",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "profile!",
+        "name": "pr_url",
         "ordinal": 6,
         "type_info": "Text"
       },
       {
-        "name": "pr_url",
-        "ordinal": 7,
-        "type_info": "Text"
-      },
-      {
         "name": "pr_number",
-        "ordinal": 8,
+        "ordinal": 7,
         "type_info": "Integer"
       },
       {
         "name": "pr_status",
-        "ordinal": 9,
+        "ordinal": 8,
         "type_info": "Text"
       },
       {
         "name": "pr_merged_at: DateTime<Utc>",
-        "ordinal": 10,
+        "ordinal": 9,
         "type_info": "Datetime"
       },
       {
         "name": "worktree_deleted!: bool",
-        "ordinal": 11,
+        "ordinal": 10,
         "type_info": "Bool"
       },
       {
         "name": "setup_completed_at: DateTime<Utc>",
-        "ordinal": 12,
+        "ordinal": 11,
         "type_info": "Datetime"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 13,
+        "ordinal": 12,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 14,
+        "ordinal": 13,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 13
+      "Right": 0
     },
     "nullable": [
       true,
@@ -93,12 +88,11 @@
       true,
       true,
       true,
-      true,
       false,
       true,
       false,
       false
     ]
   },
-  "hash": "741e831f4509958c508da36e955e381905672b39fc121170418015e2512184a2"
+  "hash": "806d43edd2a51e83a53a8a9afb2574bc597d21a639d7b164c6dcaa3436e77b19"
 }

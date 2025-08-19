@@ -18,6 +18,7 @@ use db::{
             ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
         },
         executor_session::ExecutorSession,
+        merge::Merge,
         project::Project,
         task::{Task, TaskStatus},
         task_attempt::TaskAttempt,
@@ -908,10 +909,12 @@ impl ContainerService for LocalContainerService {
 
         let worktree_path = PathBuf::from(container_ref);
         let project_repo_path = self.get_project_repo_path(task_attempt).await?;
+        let latest_merge =
+            Merge::find_latest_by_task_attempt_id(&self.db.pool, task_attempt.id).await?;
 
         // Handle merged attempts (static diff)
-        if let Some(merge_commit_id) = &task_attempt.merge_commit {
-            return self.create_merged_diff_stream(&project_repo_path, merge_commit_id);
+        if let Some(merge) = &latest_merge {
+            return self.create_merged_diff_stream(&project_repo_path, &merge.merge_commit);
         }
 
         let task_branch = task_attempt

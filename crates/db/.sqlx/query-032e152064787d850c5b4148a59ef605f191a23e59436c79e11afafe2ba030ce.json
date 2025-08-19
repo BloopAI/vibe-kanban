@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT \n                id as \"id!: Uuid\",\n                task_attempt_id as \"task_attempt_id!: Uuid\",\n                merge_commit as \"merge_commit!\",\n                merged_at as \"merged_at!: DateTime<Utc>\"\n               FROM merges \n               WHERE task_attempt_id = $1 \n               ORDER BY merged_at DESC\n               LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_attempt_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "merge_commit!",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "merged_at!: DateTime<Utc>",
+        "ordinal": 3,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "032e152064787d850c5b4148a59ef605f191a23e59436c79e11afafe2ba030ce"
+}

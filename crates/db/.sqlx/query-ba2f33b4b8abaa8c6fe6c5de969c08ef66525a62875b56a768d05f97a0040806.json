@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT  ta.id                AS \"id!: Uuid\",\n                       ta.task_id           AS \"task_id!: Uuid\",\n                       ta.container_ref,\n                       ta.branch,\n                       ta.base_branch,\n                       ta.merge_commit,\n                       ta.profile AS \"profile!\",\n                       ta.pr_url,\n                       ta.pr_number,\n                       ta.pr_status,\n                       ta.pr_merged_at      AS \"pr_merged_at: DateTime<Utc>\",\n                       ta.worktree_deleted  AS \"worktree_deleted!: bool\",\n                       ta.setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                       ta.created_at        AS \"created_at!: DateTime<Utc>\",\n                       ta.updated_at        AS \"updated_at!: DateTime<Utc>\"\n               FROM    task_attempts ta\n               JOIN    tasks t ON ta.task_id = t.id\n               JOIN    projects p ON t.project_id = p.id\n               WHERE   ta.id = $1 AND t.id = $2 AND p.id = $3",
+  "query": "SELECT  ta.id                AS \"id!: Uuid\",\n                       ta.task_id           AS \"task_id!: Uuid\",\n                       ta.container_ref,\n                       ta.branch,\n                       ta.base_branch,\n                       ta.profile AS \"profile!\",\n                       ta.pr_url,\n                       ta.pr_number,\n                       ta.pr_status,\n                       ta.pr_merged_at      AS \"pr_merged_at: DateTime<Utc>\",\n                       ta.worktree_deleted  AS \"worktree_deleted!: bool\",\n                       ta.setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                       ta.created_at        AS \"created_at!: DateTime<Utc>\",\n                       ta.updated_at        AS \"updated_at!: DateTime<Utc>\"\n               FROM    task_attempts ta\n               JOIN    tasks t ON ta.task_id = t.id\n               JOIN    projects p ON t.project_id = p.id\n               WHERE   ta.id = $1 AND t.id = $2 AND p.id = $3",
   "describe": {
     "columns": [
       {
@@ -29,53 +29,48 @@
         "type_info": "Text"
       },
       {
-        "name": "merge_commit",
+        "name": "profile!",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "profile!",
+        "name": "pr_url",
         "ordinal": 6,
         "type_info": "Text"
       },
       {
-        "name": "pr_url",
-        "ordinal": 7,
-        "type_info": "Text"
-      },
-      {
         "name": "pr_number",
-        "ordinal": 8,
+        "ordinal": 7,
         "type_info": "Integer"
       },
       {
         "name": "pr_status",
-        "ordinal": 9,
+        "ordinal": 8,
         "type_info": "Text"
       },
       {
         "name": "pr_merged_at: DateTime<Utc>",
-        "ordinal": 10,
+        "ordinal": 9,
         "type_info": "Datetime"
       },
       {
         "name": "worktree_deleted!: bool",
-        "ordinal": 11,
+        "ordinal": 10,
         "type_info": "Bool"
       },
       {
         "name": "setup_completed_at: DateTime<Utc>",
-        "ordinal": 12,
+        "ordinal": 11,
         "type_info": "Datetime"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 13,
+        "ordinal": 12,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 14,
+        "ordinal": 13,
         "type_info": "Text"
       }
     ],
@@ -93,12 +88,11 @@
       true,
       true,
       true,
-      true,
       false,
       true,
       false,
       false
     ]
   },
-  "hash": "703270b5172b81852470a886a72d9f749cbef0078e786582d23eb18e8cf11119"
+  "hash": "ba2f33b4b8abaa8c6fe6c5de969c08ef66525a62875b56a768d05f97a0040806"
 }

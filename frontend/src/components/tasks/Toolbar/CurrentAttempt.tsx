@@ -234,7 +234,7 @@ function CurrentAttempt({
 
   useKeyboardShortcuts({
     stopExecution: () => setShowStopConfirmation(true),
-    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => {},
+    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => { },
     hasOpenDialog: showStopConfirmation,
     closeDialog: () => setShowStopConfirmation(false),
     onEnter: () => {
@@ -456,14 +456,11 @@ function CurrentAttempt({
             Status
           </div>
           <div className="flex items-center gap-1.5">
-            {selectedAttempt.merge_commit ? (
-              <div className="flex items-center gap-1.5 overflow-hidden">
+            {(branchStatus?.commits_ahead ?? 0) === 0 ? (
+              <div className="flex items-center gap-1.5">
                 <div className="h-2 w-2 bg-green-500 rounded-full" />
                 <span className="text-sm font-medium text-green-700 truncate">
                   Merged
-                </span>
-                <span className="text-xs font-mono text-muted-foreground truncate">
-                  ({selectedAttempt.merge_commit.slice(0, 8)})
                 </span>
               </div>
             ) : (
@@ -494,11 +491,10 @@ function CurrentAttempt({
           </Button>
         </div>
         <div
-          className={`text-xs font-mono px-2 py-1 rounded cursor-pointer transition-all duration-300 flex items-center gap-2 ${
-            copied
+          className={`text-xs font-mono px-2 py-1 rounded cursor-pointer transition-all duration-300 flex items-center gap-2 ${copied
               ? 'bg-green-100 text-green-800 border border-green-300'
               : 'text-muted-foreground bg-muted hover:bg-muted/80'
-          }`}
+            }`}
           onClick={handleCopyWorktreePath}
           title={copied ? 'Copied!' : 'Click to copy worktree path'}
         >
@@ -603,7 +599,7 @@ function CurrentAttempt({
           {selectedAttempt && branchStatus && (
             <>
               {(branchStatus.commits_behind ?? 0) > 0 &&
-                !branchStatus.merged && (
+                (branchStatus.commits_ahead ?? 0) > 0 && (
                   <Button
                     onClick={handleRebaseClick}
                     disabled={
@@ -621,7 +617,7 @@ function CurrentAttempt({
                 )}
               {
                 // Normal merge and PR buttons for regular tasks
-                !branchStatus.merged && (
+                (branchStatus.commits_ahead ?? 0) > 0 && (
                   <>
                     <Button
                       onClick={handlePRButtonClick}
@@ -650,11 +646,11 @@ function CurrentAttempt({
                       disabled={
                         selectedAttempt.pr_status === 'open'
                           ? pushing ||
-                            isAttemptRunning ||
-                            (branchStatus.remote_up_to_date ?? true)
+                          isAttemptRunning ||
+                          (branchStatus.remote_up_to_date ?? true)
                           : merging ||
-                            Boolean((branchStatus.commits_behind ?? 0) > 0) ||
-                            isAttemptRunning
+                          Boolean((branchStatus.commits_behind ?? 0) > 0) ||
+                          isAttemptRunning
                       }
                       size="xs"
                       className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"

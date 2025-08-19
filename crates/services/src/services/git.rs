@@ -60,8 +60,6 @@ pub struct BranchStatus {
     pub commits_behind: Option<usize>,
     pub commits_ahead: Option<usize>,
     pub up_to_date: Option<bool>,
-    pub merged: bool,
-    pub has_uncommitted_changes: bool,
     pub base_branch_name: String,
     pub remote_commits_behind: Option<usize>,
     pub remote_commits_ahead: Option<usize>,
@@ -575,7 +573,6 @@ impl GitService {
         repo_path: &Path,
         branch_name: &str,
         base_branch_name: &str,
-        is_merged: bool,
         github_token: Option<String>,
     ) -> Result<BranchStatus, GitServiceError> {
         let repo = Repository::open(repo_path)?;
@@ -612,23 +609,10 @@ impl GitService {
             (None, None, None)
         };
 
-        let mut status_opts = StatusOptions::new();
-        status_opts
-            .include_untracked(true)
-            .recurse_untracked_dirs(true)
-            .include_ignored(false);
-
-        let has_uncommitted_changes = repo
-            .statuses(Some(&mut status_opts))?
-            .iter()
-            .any(|e| e.status() != Status::CURRENT);
-
         Ok(BranchStatus {
             commits_behind,
             commits_ahead,
             up_to_date,
-            merged: is_merged,
-            has_uncommitted_changes,
             base_branch_name: base_branch_name.to_string(),
             remote_commits_behind,
             remote_commits_ahead,

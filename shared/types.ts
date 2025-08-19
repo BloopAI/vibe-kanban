@@ -94,7 +94,7 @@ export enum CheckTokenResponse { VALID = "VALID", INVALID = "INVALID" }
 
 export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
 
-export type BranchStatus = { commits_behind: number | null, commits_ahead: number | null, up_to_date: boolean | null, merged: boolean, has_uncommitted_changes: boolean, base_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, remote_up_to_date: boolean | null, };
+export type BranchStatus = { commits_behind: number | null, commits_ahead: number | null, up_to_date: boolean | null, base_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, remote_up_to_date: boolean | null, };
 
 export type Diff = { oldFile: FileDiffDetails | null, newFile: FileDiffDetails | null, hunks: Array<string>, };
 
@@ -160,7 +160,7 @@ export type CreateTaskAttemptBody = { task_id: string, profile_variant_label: Pr
 
 export type RebaseTaskAttemptRequest = { new_base_branch: string | null, };
 
-export type TaskAttempt = { id: string, task_id: string, container_ref: string | null, branch: string | null, base_branch: string, merge_commit: string | null, profile: string, pr_url: string | null, pr_number: bigint | null, pr_status: string | null, pr_merged_at: string | null, worktree_deleted: boolean, setup_completed_at: string | null, created_at: string, updated_at: string, };
+export type TaskAttempt = { id: string, task_id: string, container_ref: string | null, branch: string | null, base_branch: string, profile: string, pr_url: string | null, pr_number: bigint | null, pr_status: string | null, pr_merged_at: string | null, worktree_deleted: boolean, setup_completed_at: string | null, created_at: string, updated_at: string, };
 
 export type ExecutionProcess = { id: string, task_attempt_id: string, run_reason: ExecutionProcessRunReason, executor_action: ExecutorAction, status: ExecutionProcessStatus, exit_code: bigint | null, started_at: string, completed_at: string | null, created_at: string, updated_at: string, };
 

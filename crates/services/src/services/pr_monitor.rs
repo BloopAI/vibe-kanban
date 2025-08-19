@@ -3,6 +3,7 @@ use std::{sync::Arc, time::Duration};
 use db::{
     DBService,
     models::{
+        merge::Merge,
         task::{Task, TaskStatus},
         task_attempt::{PrInfo, TaskAttempt, TaskAttemptError},
     },
@@ -128,12 +129,7 @@ impl PrMonitorService {
                 );
                 let merge_commit_sha = pr_status.merge_commit_sha.as_deref().unwrap_or("unknown");
                 Task::update_status(&self.db.pool, pr_info.task_id, TaskStatus::Done).await?;
-                TaskAttempt::update_merge_commit(
-                    &self.db.pool,
-                    pr_info.attempt_id,
-                    merge_commit_sha,
-                )
-                .await?;
+                Merge::create(&self.db.pool, pr_info.attempt_id, merge_commit_sha).await?;
             }
         }
 

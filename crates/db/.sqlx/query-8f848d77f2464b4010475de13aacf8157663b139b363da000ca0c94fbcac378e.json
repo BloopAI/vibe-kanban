@@ -1,0 +1,80 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n  t.id                            AS \"id!: Uuid\",\n  t.project_id                    AS \"project_id!: Uuid\",\n  t.title,\n  t.description,\n  t.status                        AS \"status!: TaskStatus\",\n  t.parent_task_attempt           AS \"parent_task_attempt: Uuid\",\n  t.created_at                    AS \"created_at!: DateTime<Utc>\",\n  t.updated_at                    AS \"updated_at!: DateTime<Utc>\",\n\n  CASE WHEN EXISTS (\n    SELECT 1\n      FROM task_attempts ta\n      JOIN execution_processes ep\n        ON ep.task_attempt_id = ta.id\n     WHERE ta.task_id       = t.id\n       AND ep.status        = 'running'\n       AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')\n     LIMIT 1\n  ) THEN 1 ELSE 0 END            AS \"has_in_progress_attempt!: i64\",\n  \n  CASE WHEN (\n    SELECT ep.status\n      FROM task_attempts ta\n      JOIN execution_processes ep\n        ON ep.task_attempt_id = ta.id\n     WHERE ta.task_id       = t.id\n     AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')\n     ORDER BY ep.created_at DESC\n     LIMIT 1\n  ) IN ('failed','killed') THEN 1 ELSE 0 END\n                                 AS \"last_attempt_failed!: i64\",\n\n  ( SELECT ta.profile\n      FROM task_attempts ta\n      WHERE ta.task_id = t.id\n     ORDER BY ta.created_at DESC\n      LIMIT 1\n    )                               AS \"profile!: String\"\n\nFROM tasks t\nWHERE t.project_id = $1\nORDER BY t.created_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "project_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "description",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "status!: TaskStatus",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "parent_task_attempt: Uuid",
+        "ordinal": 5,
+        "type_info": "Blob"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "has_in_progress_attempt!: i64",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "last_attempt_failed!: i64",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "profile!: String",
+        "ordinal": 10,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "8f848d77f2464b4010475de13aacf8157663b139b363da000ca0c94fbcac378e"
+}

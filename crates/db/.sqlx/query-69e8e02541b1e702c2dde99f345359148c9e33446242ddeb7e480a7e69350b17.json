@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!: Uuid\",\n                              task_id AS \"task_id!: Uuid\",\n                              container_ref,\n                              branch,\n                              base_branch,\n                              merge_commit,\n                              profile AS \"profile!\",\n                              pr_url,\n                              pr_number,\n                              pr_status,\n                              pr_merged_at AS \"pr_merged_at: DateTime<Utc>\",\n                              worktree_deleted AS \"worktree_deleted!: bool\",\n                              setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                              created_at AS \"created_at!: DateTime<Utc>\",\n                              updated_at AS \"updated_at!: DateTime<Utc>\"\n                       FROM task_attempts\n                       ORDER BY created_at DESC",
+  "query": "SELECT id AS \"id!: Uuid\",\n                              task_id AS \"task_id!: Uuid\",\n                              container_ref,\n                              branch,\n                              base_branch,\n                              profile AS \"profile!\",\n                              pr_url,\n                              pr_number,\n                              pr_status,\n                              pr_merged_at AS \"pr_merged_at: DateTime<Utc>\",\n                              worktree_deleted AS \"worktree_deleted!: bool\",\n                              setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                              created_at AS \"created_at!: DateTime<Utc>\",\n                              updated_at AS \"updated_at!: DateTime<Utc>\"\n                       FROM task_attempts\n                       WHERE task_id = $1\n                       ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -29,58 +29,53 @@
         "type_info": "Text"
       },
       {
-        "name": "merge_commit",
+        "name": "profile!",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "profile!",
+        "name": "pr_url",
         "ordinal": 6,
         "type_info": "Text"
       },
       {
-        "name": "pr_url",
-        "ordinal": 7,
-        "type_info": "Text"
-      },
-      {
         "name": "pr_number",
-        "ordinal": 8,
+        "ordinal": 7,
         "type_info": "Integer"
       },
       {
         "name": "pr_status",
-        "ordinal": 9,
+        "ordinal": 8,
         "type_info": "Text"
       },
       {
         "name": "pr_merged_at: DateTime<Utc>",
-        "ordinal": 10,
+        "ordinal": 9,
         "type_info": "Datetime"
       },
       {
         "name": "worktree_deleted!: bool",
-        "ordinal": 11,
+        "ordinal": 10,
         "type_info": "Bool"
       },
       {
         "name": "setup_completed_at: DateTime<Utc>",
-        "ordinal": 12,
+        "ordinal": 11,
         "type_info": "Datetime"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 13,
+        "ordinal": 12,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 14,
+        "ordinal": 13,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       true,
@@ -93,12 +88,11 @@
       true,
       true,
       true,
-      true,
       false,
       true,
       false,
       false
     ]
   },
-  "hash": "8a1b8a47f4405a3e4a5bc41db8ec40af31f748587b61b7821f7e326ce9e23a75"
+  "hash": "69e8e02541b1e702c2dde99f345359148c9e33446242ddeb7e480a7e69350b17"
 }
