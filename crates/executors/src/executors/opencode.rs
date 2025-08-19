@@ -28,6 +28,8 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Opencode {
     pub command: CommandBuilder,
+    pub prepend_prompt: Option<String>,
+    pub append_prompt: Option<String>,
 }
 
 #[async_trait]
@@ -39,6 +41,9 @@ impl StandardCodingAgentExecutor for Opencode {
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let opencode_command = self.command.build_initial();
+
+        let combined_prompt =
+            utils::text::combine_prompt(&self.prepend_prompt, &self.append_prompt, prompt);
 
         let mut command = Command::new(shell_cmd);
         command
@@ -55,7 +60,7 @@ impl StandardCodingAgentExecutor for Opencode {
 
         // Write prompt to stdin
         if let Some(mut stdin) = child.inner().stdin.take() {
-            stdin.write_all(prompt.as_bytes()).await?;
+            stdin.write_all(combined_prompt.as_bytes()).await?;
             stdin.shutdown().await?;
         }
 
@@ -73,6 +78,9 @@ impl StandardCodingAgentExecutor for Opencode {
             .command
             .build_follow_up(&["--session".to_string(), session_id.to_string()]);
 
+        let combined_prompt =
+            utils::text::combine_prompt(&self.prepend_prompt, &self.append_prompt, prompt);
+
         let mut command = Command::new(shell_cmd);
         command
             .kill_on_drop(true)
@@ -88,7 +96,7 @@ impl StandardCodingAgentExecutor for Opencode {
 
         // Write prompt to stdin
         if let Some(mut stdin) = child.inner().stdin.take() {
-            stdin.write_all(prompt.as_bytes()).await?;
+            stdin.write_all(combined_prompt.as_bytes()).await?;
             stdin.shutdown().await?;
         }
 

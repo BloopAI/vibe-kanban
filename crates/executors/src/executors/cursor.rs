@@ -31,6 +31,8 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Cursor {
     pub command: CommandBuilder,
+    pub prepend_prompt: Option<String>,
+    pub append_prompt: Option<String>,
 }
 
 #[async_trait]
@@ -42,6 +44,9 @@ impl StandardCodingAgentExecutor for Cursor {
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let agent_cmd = self.command.build_initial();
+
+        let combined_prompt =
+            utils::text::combine_prompt(&self.prepend_prompt, &self.append_prompt, prompt);
 
         let mut command = Command::new(shell_cmd);
         command
@@ -56,7 +61,7 @@ impl StandardCodingAgentExecutor for Cursor {
         let mut child = command.group_spawn()?;
 
         if let Some(mut stdin) = child.inner().stdin.take() {
-            stdin.write_all(prompt.as_bytes()).await?;
+            stdin.write_all(combined_prompt.as_bytes()).await?;
             stdin.shutdown().await?;
         }
 
@@ -74,6 +79,9 @@ impl StandardCodingAgentExecutor for Cursor {
             .command
             .build_follow_up(&["--resume".to_string(), session_id.to_string()]);
 
+        let combined_prompt =
+            utils::text::combine_prompt(&self.prepend_prompt, &self.append_prompt, prompt);
+
         let mut command = Command::new(shell_cmd);
         command
             .kill_on_drop(true)
@@ -87,7 +95,7 @@ impl StandardCodingAgentExecutor for Cursor {
         let mut child = command.group_spawn()?;
 
         if let Some(mut stdin) = child.inner().stdin.take() {
-            stdin.write_all(prompt.as_bytes()).await?;
+            stdin.write_all(combined_prompt.as_bytes()).await?;
             stdin.shutdown().await?;
         }
 
@@ -782,6 +790,8 @@ mod tests {
         // Avoid relying on feature flag in tests; construct with a dummy command
         let executor = Cursor {
             command: CommandBuilder::new(""),
+            prepend_prompt: None,
+            append_prompt: None,
         };
         let msg_store = Arc::new(MsgStore::new());
         let current_dir = std::path::PathBuf::from("/tmp/test-worktree");

@@ -26,6 +26,8 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Gemini {
     pub command: CommandBuilder,
+    pub prepend_prompt: Option<String>,
+    pub append_prompt: Option<String>,
 }
 
 #[async_trait]
@@ -38,8 +40,10 @@ impl StandardCodingAgentExecutor for Gemini {
         let (shell_cmd, shell_arg) = get_shell_command();
         let gemini_command = self.command.build_initial();
 
-        let mut command = Command::new(shell_cmd);
+        let combined_prompt =
+            utils::text::combine_prompt(&self.prepend_prompt, &self.append_prompt, prompt);
 
+        let mut command = Command::new(shell_cmd);
         command
             .kill_on_drop(true)
             .stdin(Stdio::piped())
@@ -54,7 +58,7 @@ impl StandardCodingAgentExecutor for Gemini {
 
         // Write prompt to stdin
         if let Some(mut stdin) = child.inner().stdin.take() {
-            stdin.write_all(prompt.as_bytes()).await?;
+            stdin.write_all(combined_prompt.as_bytes()).await?;
             stdin.shutdown().await?;
         }
 
@@ -77,7 +81,7 @@ impl StandardCodingAgentExecutor for Gemini {
         _session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         // Build comprehensive prompt with session context
-        let followup_prompt = Self::build_followup_prompt(current_dir, prompt).await?;
+        let followup_prompt = self.build_followup_prompt(current_dir, prompt).await?;
 
         let (shell_cmd, shell_arg) = get_shell_command();
         let gemini_command = self.command.build_follow_up(&[]);
@@ -274,6 +278,7 @@ impl Gemini {
 
     /// Build comprehensive prompt with session context for follow-up execution
     async fn build_followup_prompt(
+        &self,
         current_dir: &PathBuf,
         prompt: &str,
     ) -> Result<String, ExecutorError> {
@@ -295,11 +300,13 @@ The following is the conversation history from this session:
 {session_context}
 
 === CURRENT REQUEST ===
-{prompt}
+{}{prompt}
 
 === INSTRUCTIONS ===
-You are continuing work on the above task. The execution history shows the previous conversation in this session. Please continue from where the previous execution left off, taking into account all the context provided above.
-"#
+You are continuing work on the above task. The execution history shows the previous conversation in this session. Please continue from where the previous execution left off, taking into account all the context provided above.{}
+"#,
+            self.prepend_prompt.clone().unwrap_or_default(),
+            self.append_prompt.clone().unwrap_or_default(),
         ))
     }
 

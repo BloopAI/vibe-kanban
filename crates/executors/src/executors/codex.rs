@@ -108,6 +108,8 @@ impl SessionHandler {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Codex {
     pub command: CommandBuilder,
+    pub prepend_prompt: Option<String>,
+    pub append_prompt: Option<String>,
 }
 
 #[async_trait]
@@ -119,6 +121,9 @@ impl StandardCodingAgentExecutor for Codex {
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let codex_command = self.command.build_initial();
+
+        let combined_prompt =
+            utils::text::combine_prompt(&self.prepend_prompt, &self.append_prompt, prompt);
 
         let mut command = Command::new(shell_cmd);
         command
@@ -136,7 +141,7 @@ impl StandardCodingAgentExecutor for Codex {
 
         // Feed the prompt in, then close the pipe so codex sees EOF
         if let Some(mut stdin) = child.inner().stdin.take() {
-            stdin.write_all(prompt.as_bytes()).await?;
+            stdin.write_all(combined_prompt.as_bytes()).await?;
             stdin.shutdown().await?;
         }
 
@@ -161,6 +166,9 @@ impl StandardCodingAgentExecutor for Codex {
             format!("experimental_resume={}", rollout_file_path.display()),
         ]);
 
+        let combined_prompt =
+            utils::text::combine_prompt(&self.prepend_prompt, &self.append_prompt, prompt);
+
         let mut command = Command::new(shell_cmd);
         command
             .kill_on_drop(true)
@@ -177,7 +185,7 @@ impl StandardCodingAgentExecutor for Codex {
 
         // Feed the prompt in, then close the pipe so codex sees EOF
         if let Some(mut stdin) = child.inner().stdin.take() {
-            stdin.write_all(prompt.as_bytes()).await?;
+            stdin.write_all(combined_prompt.as_bytes()).await?;
             stdin.shutdown().await?;
         }
 
