@@ -36,8 +36,7 @@ struct RepoHistoryCache {
 }
 
 /// Global cache for file ranking statistics
-static FILE_STATS_CACHE: Lazy<DashMap<PathBuf, RepoHistoryCache>> =
-    Lazy::new(DashMap::new);
+static FILE_STATS_CACHE: Lazy<DashMap<PathBuf, RepoHistoryCache>> = Lazy::new(DashMap::new);
 
 /// Configuration constants for ranking algorithm
 const DEFAULT_COMMIT_LIMIT: usize = 100;
@@ -68,19 +67,16 @@ impl FileRanker {
     /// Get file statistics for a repository, using cache when possible
     pub async fn get_stats(&self, repo_path: &Path) -> Result<Arc<FileStats>, GitServiceError> {
         let repo_path = repo_path.to_path_buf();
-        
+
         // Check if we have a valid cache entry
         if let Some(cache_entry) = FILE_STATS_CACHE.get(&repo_path) {
             // Verify cache is still valid by checking HEAD
-            if let Ok(repo) = git2::Repository::open(&repo_path) {
-                if let Ok(head) = repo.head() {
-                    if let Some(head_oid) = head.target() {
-                        if head_oid == cache_entry.head_oid {
+            if let Ok(repo) = git2::Repository::open(&repo_path)
+                && let Ok(head) = repo.head()
+                    && let Some(head_oid) = head.target()
+                        && head_oid == cache_entry.head_oid {
                             return Ok(Arc::clone(&cache_entry.stats));
                         }
-                    }
-                }
-            }
         }
 
         // Cache miss or invalid - compute new stats
@@ -108,7 +104,7 @@ impl FileRanker {
         if let Some(stat) = stats.get(&result.path) {
             let recency_bonus = (100 - stat.last_index.min(99) as i64) * RECENCY_WEIGHT;
             let frequency_bonus = stat.commit_count as i64 * FREQUENCY_WEIGHT;
-            
+
             // Multiply base score to maintain hierarchy, add git-based bonuses
             base_score * 1000 + recency_bonus * 10 + frequency_bonus
         } else {
@@ -122,17 +118,22 @@ impl FileRanker {
         let repo_path = repo_path.to_path_buf();
         let repo_path_for_error = repo_path.clone();
         let git_service = self.git_service.clone();
-        
+
         // Run git analysis in blocking task to avoid blocking async runtime
         let stats = task::spawn_blocking(move || {
             git_service.collect_recent_file_stats(&repo_path, DEFAULT_COMMIT_LIMIT)
-        }).await
-        .map_err(|e| GitServiceError::InvalidRepository(format!("Task join error: {}", e)))?;
+        })
+        .await
+        .map_err(|e| GitServiceError::InvalidRepository(format!("Task join error: {e}")))?;
 
         let stats = match stats {
             Ok(s) => s,
             Err(e) => {
-                tracing::warn!("Failed to collect file stats for {:?}: {}", repo_path_for_error, e);
+                tracing::warn!(
+                    "Failed to collect file stats for {:?}: {}",
+                    repo_path_for_error,
+                    e
+                );
                 // Return empty stats on error - search will still work without ranking
                 HashMap::new()
             }
@@ -141,17 +142,18 @@ impl FileRanker {
         let stats_arc = Arc::new(stats);
 
         // Update cache
-        if let Ok(repo) = git2::Repository::open(&repo_path_for_error) {
-            if let Ok(head) = repo.head() {
-                if let Some(head_oid) = head.target() {
-                    FILE_STATS_CACHE.insert(repo_path_for_error, RepoHistoryCache {
-                        head_oid,
-                        stats: Arc::clone(&stats_arc),
-                        generated_at: Instant::now(),
-                    });
+        if let Ok(repo) = git2::Repository::open(&repo_path_for_error)
+            && let Ok(head) = repo.head()
+                && let Some(head_oid) = head.target() {
+                    FILE_STATS_CACHE.insert(
+                        repo_path_for_error,
+                        RepoHistoryCache {
+                            head_oid,
+                            stats: Arc::clone(&stats_arc),
+                            generated_at: Instant::now(),
+                        },
+                    );
                 }
-            }
-        }
 
         Ok(stats_arc)
     }

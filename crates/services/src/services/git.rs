@@ -3,7 +3,7 @@ use std::{collections::HashMap, path::Path};
 use chrono::{DateTime, Utc};
 use git2::{
     BranchType, CherrypickOptions, Delta, DiffFindOptions, DiffOptions, Error as GitError,
-    FetchOptions, Repository, Status, StatusOptions, build::CheckoutBuilder, Sort,
+    FetchOptions, Repository, Sort, Status, StatusOptions, build::CheckoutBuilder,
 };
 use regex;
 use serde::{Deserialize, Serialize};
@@ -1282,8 +1282,7 @@ impl GitService {
             // Get commit timestamp
             let commit_time = {
                 let time = commit.time();
-                DateTime::from_timestamp(time.seconds(), 0)
-                    .unwrap_or_else(Utc::now)
+                DateTime::from_timestamp(time.seconds(), 0).unwrap_or_else(Utc::now)
             };
 
             // Get the commit tree
@@ -1297,18 +1296,13 @@ impl GitService {
             };
 
             // Create diff between parent and current commit
-            let diff = repo.diff_tree_to_tree(
-                parent_tree.as_ref(),
-                Some(&commit_tree),
-                None,
-            )?;
+            let diff = repo.diff_tree_to_tree(parent_tree.as_ref(), Some(&commit_tree), None)?;
 
             // Process each changed file in this commit
             diff.foreach(
                 &mut |delta, _progress| {
                     // Get the file path - prefer new file path, fall back to old
-                    if let Some(path) = delta.new_file().path()
-                        .or_else(|| delta.old_file().path())
+                    if let Some(path) = delta.new_file().path().or_else(|| delta.old_file().path())
                     {
                         let path_str = path.to_string_lossy().to_string();
 
@@ -1332,7 +1326,7 @@ impl GitService {
                     true // Continue iteration
                 },
                 None, // No binary callback
-                None, // No hunk callback  
+                None, // No hunk callback
                 None, // No line callback
             )?;
         }

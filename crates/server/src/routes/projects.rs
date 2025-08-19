@@ -13,7 +13,7 @@ use db::models::project::{
 };
 use deployment::Deployment;
 use ignore::WalkBuilder;
-use services::services::{git::GitBranch, file_ranker::FileRanker};
+use services::services::{file_ranker::FileRanker, git::GitBranch};
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -363,7 +363,10 @@ async fn search_files_in_repo(
             file_ranker.rerank(&mut results, &stats);
         }
         Err(e) => {
-            tracing::warn!("Failed to get git stats for ranking, using basic sort: {}", e);
+            tracing::warn!(
+                "Failed to get git stats for ranking, using basic sort: {}",
+                e
+            );
             // Fallback to basic priority sorting
             results.sort_by(|a, b| {
                 let priority = |match_type: &SearchMatchType| match match_type {
