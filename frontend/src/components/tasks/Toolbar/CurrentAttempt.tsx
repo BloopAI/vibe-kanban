@@ -61,10 +61,12 @@ function getEditorDisplayName(editorType: string): string {
       return 'Cursor';
     case 'WINDSURF':
       return 'Windsurf';
-    case 'INTELLIJ':
+    case 'INTELLI_J':
       return 'IntelliJ IDEA';
     case 'ZED':
       return 'Zed';
+    case 'XCODE':
+      return 'Xcode';
     case 'CUSTOM':
       return 'Editor';
     default:
