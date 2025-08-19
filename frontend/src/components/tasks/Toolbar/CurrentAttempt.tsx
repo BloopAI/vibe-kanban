@@ -1,5 +1,4 @@
 import {
-  Check,
   ExternalLink,
   GitBranch as GitBranchIcon,
   GitPullRequest,
@@ -214,7 +213,7 @@ function CurrentAttempt({
 
   useKeyboardShortcuts({
     stopExecution: () => setShowStopConfirmation(true),
-    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => { },
+    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => {},
     hasOpenDialog: showStopConfirmation,
     closeDialog: () => setShowStopConfirmation(false),
     onEnter: () => {
@@ -380,7 +379,6 @@ function CurrentAttempt({
   return (
     <div className="space-y-2">
       <div className="flex gap-6 items-start">
-
         <div className="min-w-0">
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
             Profile
@@ -390,7 +388,6 @@ function CurrentAttempt({
 
         <div className="min-w-0">
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-
             Task Branch
           </div>
           <div className="flex items-center gap-1.5">
@@ -476,10 +473,11 @@ function CurrentAttempt({
           </Button>
         </div>
         <div
-          className={`text-xs font-mono px-2 py-1 rounded cursor-pointer transition-all duration-300 flex items-center gap-2 ${copied
-            ? 'bg-green-100 text-green-800 border border-green-300'
-            : 'text-muted-foreground bg-muted hover:bg-muted/80'
-            }`}
+          className={`text-xs font-mono px-2 py-1 rounded cursor-pointer transition-all duration-300 flex items-center gap-2 ${
+            copied
+              ? 'bg-green-100 text-green-800 border border-green-300'
+              : 'text-muted-foreground bg-muted hover:bg-muted/80'
+          }`}
           onClick={handleCopyWorktreePath}
           title={copied ? 'Copied!' : 'Click to copy worktree path'}
         >
@@ -495,7 +493,6 @@ function CurrentAttempt({
             </span>
           )}
         </div>
-
       </div>
 
       <div className="col-span-4 flex flex-wrap items-center justify-between gap-2">
@@ -611,11 +608,11 @@ function CurrentAttempt({
                       disabled={
                         selectedAttempt.pr_status === 'open'
                           ? pushing ||
-                          isAttemptRunning ||
-                          (branchStatus.remote_up_to_date ?? true)
+                            isAttemptRunning ||
+                            (branchStatus.remote_up_to_date ?? true)
                           : merging ||
-                          Boolean((branchStatus.commits_behind ?? 0) > 0) ||
-                          isAttemptRunning
+                            Boolean((branchStatus.commits_behind ?? 0) > 0) ||
+                            isAttemptRunning
                       }
                       size="xs"
                       className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"
@@ -787,7 +784,7 @@ function CurrentAttempt({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div >
+    </div>
   );
 }
 

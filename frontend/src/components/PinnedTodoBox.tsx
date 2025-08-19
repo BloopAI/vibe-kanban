@@ -42,9 +42,7 @@ export const PinnedTodoBox: React.FC<PinnedTodoBoxProps> = ({ todos }) => {
         >
           <div className="flex items-center gap-2">
             <CircleCheck className="h-4 w-4 text-primary" />
-            <span className="text-sm text-primary">
-              TODOs
-            </span>
+            <span className="text-sm text-primary">TODOs</span>
           </div>
           <div className="flex items-center gap-2">
             <ChevronDown className="h-4 w-4 text-primary" />
