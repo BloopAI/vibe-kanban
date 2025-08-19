@@ -3,9 +3,9 @@ use std::{sync::Arc, time::Duration};
 use db::{
     DBService,
     models::{
-        merge::Merge,
+        merge::{Merge, MergeStatus, PrMerge},
         task::{Task, TaskStatus},
-        task_attempt::{PrInfo, TaskAttempt, TaskAttemptError},
+        task_attempt::{TaskAttempt, TaskAttemptError},
     },
 };
 use sqlx::error::Error as SqlxError;
@@ -67,7 +67,7 @@ impl PrMonitorService {
 
     /// Check all open PRs for updates with the provided GitHub token
     async fn check_all_open_prs(&self) -> Result<(), PrMonitorError> {
-        let open_prs = TaskAttempt::get_open_prs(&self.db.pool).await?;
+        let open_prs = Merge::get_open_prs(&self.db.pool).await?;
 
         if open_prs.is_empty() {
             debug!("No open PRs to check");
@@ -76,60 +76,58 @@ impl PrMonitorService {
 
         info!("Checking {} open PRs", open_prs.len());
 
-        for pr_info in open_prs {
-            if let Err(e) = self.check_pr_status(&pr_info).await {
+        for pr_merge in open_prs {
+            if let Err(e) = self.check_pr_status(&pr_merge).await {
                 error!(
                     "Error checking PR #{} for attempt {}: {}",
-                    pr_info.pr_number, pr_info.attempt_id, e
+                    pr_merge.pr_info.number, pr_merge.task_attempt_id, e
                 );
             }
         }
-
         Ok(())
     }
 
     /// Check the status of a specific PR
-    async fn check_pr_status(&self, pr_info: &PrInfo) -> Result<(), PrMonitorError> {
+    async fn check_pr_status(&self, pr_merge: &PrMerge) -> Result<(), PrMonitorError> {
         let github_config = self.config.read().await.github.clone();
         let github_token = github_config.token().ok_or(PrMonitorError::NoGitHubToken)?;
 
         let github_service = GitHubService::new(&github_token)?;
 
-        let repo_info = GitHubRepoInfo {
-            owner: pr_info.repo_owner.clone(),
-            repo_name: pr_info.repo_name.clone(),
-        };
+        let repo_info = GitHubRepoInfo::from_pr_url(&pr_merge.pr_info.url)?;
 
         let pr_status = github_service
-            .update_pr_status(&repo_info, pr_info.pr_number)
+            .update_pr_status(&repo_info, pr_merge.pr_info.number)
             .await?;
 
         debug!(
-            "PR #{} status: {} (was open)",
-            pr_info.pr_number, pr_status.status
+            "PR #{} status: {:?} (was open)",
+            pr_merge.pr_info.number, pr_status.status
         );
 
         // Update the PR status in the database
-        if pr_status.status != "open" {
-            // Extract merge commit SHA if the PR was merged
-            TaskAttempt::update_pr_status(
+        if !matches!(&pr_status.status, MergeStatus::Open) {
+            // Update merge status with the latest information from GitHub
+            Merge::update_status(
                 &self.db.pool,
-                pr_info.attempt_id,
-                pr_status.url,
-                pr_status.number,
-                pr_status.status,
+                pr_merge.id,
+                pr_status.status.clone(),
+                pr_status.merge_commit_sha,
             )
             .await?;
 
             // If the PR was merged, update the task status to done
-            if pr_status.merged {
-                info!(
-                    "PR #{} was merged, updating task {} to done",
-                    pr_info.pr_number, pr_info.task_id
-                );
-                let merge_commit_sha = pr_status.merge_commit_sha.as_deref().unwrap_or("unknown");
-                Task::update_status(&self.db.pool, pr_info.task_id, TaskStatus::Done).await?;
-                Merge::create(&self.db.pool, pr_info.attempt_id, merge_commit_sha).await?;
+            if matches!(&pr_status.status, MergeStatus::Merged) {
+                if let Some(task_attempt) =
+                    TaskAttempt::find_by_id(&self.db.pool, pr_merge.task_attempt_id).await?
+                {
+                    info!(
+                        "PR #{} was merged, updating task {} to done",
+                        pr_merge.pr_info.number, task_attempt.task_id
+                    );
+                    Task::update_status(&self.db.pool, task_attempt.task_id, TaskStatus::Done)
+                        .await?;
+                }
             }
         }
 

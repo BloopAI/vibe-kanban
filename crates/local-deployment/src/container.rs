@@ -905,17 +905,20 @@ impl ContainerService for LocalContainerService {
         task_attempt: &TaskAttempt,
     ) -> Result<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>, ContainerError>
     {
-        let container_ref = self.ensure_container_exists(task_attempt).await?;
-
-        let worktree_path = PathBuf::from(container_ref);
         let project_repo_path = self.get_project_repo_path(task_attempt).await?;
         let latest_merge =
             Merge::find_latest_by_task_attempt_id(&self.db.pool, task_attempt.id).await?;
 
         // Handle merged attempts (static diff)
-        if let Some(merge) = &latest_merge {
-            return self.create_merged_diff_stream(&project_repo_path, &merge.merge_commit);
+        if let Some(merge) = &latest_merge
+            && let Some(commit) = merge.merge_commit()
+        {
+            return self.create_merged_diff_stream(&project_repo_path, &commit);
         }
+
+        // worktree is needed for non-merged diffs
+        let container_ref = self.ensure_container_exists(task_attempt).await?;
+        let worktree_path = PathBuf::from(container_ref);
 
         let task_branch = task_attempt
             .branch

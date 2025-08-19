@@ -325,7 +325,7 @@ pub async fn merge_task_attempt(
         &commit_message,
     )?;
 
-    Merge::create(pool, task_attempt.id, &merge_commit_id).await?;
+    Merge::create_direct(pool, task_attempt.id, &merge_commit_id).await?;
     Task::update_status(pool, ctx.task.id, TaskStatus::Done).await?;
 
     deployment
@@ -466,14 +466,8 @@ pub async fn create_github_pr(
     match github_service.create_pr(&repo_info, &pr_request).await {
         Ok(pr_info) => {
             // Update the task attempt with PR information
-            if let Err(e) = TaskAttempt::update_pr_status(
-                pool,
-                task_attempt.id,
-                pr_info.url.clone(),
-                pr_info.number,
-                pr_info.status.clone(),
-            )
-            .await
+            if let Err(e) =
+                Merge::create_pr(pool, task_attempt.id, pr_info.number, &pr_info.url).await
             {
                 tracing::error!("Failed to update task attempt PR status: {}", e);
             }

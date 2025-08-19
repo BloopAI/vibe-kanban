@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO task_attempts (id, task_id, container_ref, branch, base_branch, profile, worktree_deleted, setup_completed_at)\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)\n               RETURNING id as \"id!: Uuid\", task_id as \"task_id!: Uuid\", container_ref, branch, base_branch, profile as \"profile!\",  worktree_deleted as \"worktree_deleted!: bool\", setup_completed_at as \"setup_completed_at: DateTime<Utc>\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "container_ref",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "branch",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "base_branch",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "profile!",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "worktree_deleted!: bool",
+        "ordinal": 6,
+        "type_info": "Bool"
+      },
+      {
+        "name": "setup_completed_at: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "25d8df97101afa1a3a6e7c609d741237f24871bd270d37f50c37807cdece1104"
+}

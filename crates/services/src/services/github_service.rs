@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use backon::{ExponentialBuilder, Retryable};
+use db::models::merge::{MergeStatus, PullRequestInfo};
 use octocrab::{Octocrab, OctocrabBuilder};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -97,6 +98,19 @@ pub struct GitHubRepoInfo {
     pub owner: String,
     pub repo_name: String,
 }
+impl GitHubRepoInfo {
+    pub fn from_pr_url(pr_url: &str) -> Result<Self, sqlx::Error> {
+        let re = regex::Regex::new(r"github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)").unwrap();
+        let caps = re
+            .captures(pr_url)
+            .ok_or_else(|| sqlx::Error::ColumnNotFound("Invalid URL format".into()))?;
+
+        let owner = caps.name("owner").unwrap().as_str().to_string();
+        let repo_name = caps.name("repo").unwrap().as_str().to_string();
+
+        Ok(Self { owner, repo_name })
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct CreatePrRequest {
@@ -104,16 +118,6 @@ pub struct CreatePrRequest {
     pub body: Option<String>,
     pub head_branch: String,
     pub base_branch: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PullRequestInfo {
-    pub number: i64,
-    pub url: String,
-    pub status: String,
-    pub merged: bool,
-    pub merged_at: Option<chrono::DateTime<chrono::Utc>>,
-    pub merge_commit_sha: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -255,8 +259,7 @@ impl GitHubService {
         let pr_info = PullRequestInfo {
             number: pr.number as i64,
             url: pr.html_url.map(|url| url.to_string()).unwrap_or_default(),
-            status: "open".to_string(),
-            merged: false,
+            status: MergeStatus::Open,
             merged_at: None,
             merge_commit_sha: None,
         };
@@ -309,23 +312,22 @@ impl GitHubService {
             })?;
 
         let status = match pr.state {
-            Some(octocrab::models::IssueState::Open) => "open",
+            Some(octocrab::models::IssueState::Open) => MergeStatus::Open,
             Some(octocrab::models::IssueState::Closed) => {
                 if pr.merged_at.is_some() {
-                    "merged"
+                    MergeStatus::Merged
                 } else {
-                    "closed"
+                    MergeStatus::Closed
                 }
             }
-            None => "unknown",
-            Some(_) => "unknown", // Handle any other states
+            None => MergeStatus::Unknown,
+            Some(_) => MergeStatus::Unknown,
         };
 
         let pr_info = PullRequestInfo {
             number: pr.number as i64,
             url: pr.html_url.map(|url| url.to_string()).unwrap_or_default(),
-            status: status.to_string(),
-            merged: pr.merged_at.is_some(),
+            status,
             merged_at: pr.merged_at.map(|dt| dt.naive_utc().and_utc()),
             merge_commit_sha: pr.merge_commit_sha.clone(),
         };

@@ -7,40 +7,6 @@ use uuid::Uuid;
 
 use super::{project::Project, task::Task};
 
-#[derive(Debug)]
-pub struct PrInfo {
-    pub attempt_id: Uuid,
-    pub task_id: Uuid,
-    pub pr_number: i64,
-    pub repo_owner: String,
-    pub repo_name: String,
-}
-
-impl PrInfo {
-    pub fn from_task_attempt_data(
-        attempt_id: Uuid,
-        task_id: Uuid,
-        pr_number: i64,
-        pr_url: &str,
-    ) -> Result<Self, sqlx::Error> {
-        let re = regex::Regex::new(r"github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)").unwrap();
-        let caps = re
-            .captures(pr_url)
-            .ok_or_else(|| sqlx::Error::ColumnNotFound("Invalid URL format".into()))?;
-
-        let owner = caps.name("owner").unwrap().as_str().to_string();
-        let repo_name = caps.name("repo").unwrap().as_str().to_string();
-
-        Ok(Self {
-            attempt_id,
-            task_id,
-            pr_number,
-            repo_owner: owner,
-            repo_name,
-        })
-    }
-}
-
 #[derive(Debug, Error)]
 pub enum TaskAttemptError {
     #[error(transparent)]
@@ -76,10 +42,6 @@ pub struct TaskAttempt {
     pub base_branch: String,           // Base branch this attempt is based on
     pub profile: String, // Name of the base coding agent to use ("AMP", "CLAUDE_CODE",
     // "GEMINI", etc.)
-    pub pr_url: Option<String>,                    // GitHub PR URL
-    pub pr_number: Option<i64>,                    // GitHub PR number
-    pub pr_status: Option<String>,                 // open, closed, merged
-    pub pr_merged_at: Option<DateTime<Utc>>,       // When PR was merged
     pub worktree_deleted: bool, // Flag indicating if worktree has been cleaned up
     pub setup_completed_at: Option<DateTime<Utc>>, // When setup script was last completed
     pub created_at: DateTime<Utc>,
@@ -141,10 +103,6 @@ impl TaskAttempt {
                               branch,
                               base_branch,
                               profile AS "profile!",
-                              pr_url,
-                              pr_number,
-                              pr_status,
-                              pr_merged_at AS "pr_merged_at: DateTime<Utc>",
                               worktree_deleted AS "worktree_deleted!: bool",
                               setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                               created_at AS "created_at!: DateTime<Utc>",
@@ -165,10 +123,6 @@ impl TaskAttempt {
                               branch,
                               base_branch,
                               profile AS "profile!",
-                              pr_url,
-                              pr_number,
-                              pr_status,
-                              pr_merged_at AS "pr_merged_at: DateTime<Utc>",
                               worktree_deleted AS "worktree_deleted!: bool",
                               setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                               created_at AS "created_at!: DateTime<Utc>",
@@ -200,10 +154,6 @@ impl TaskAttempt {
                        ta.branch,
                        ta.base_branch,
                        ta.profile AS "profile!",
-                       ta.pr_url,
-                       ta.pr_number,
-                       ta.pr_status,
-                       ta.pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
                        ta.worktree_deleted  AS "worktree_deleted!: bool",
                        ta.setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                        ta.created_at        AS "created_at!: DateTime<Utc>",
@@ -294,10 +244,6 @@ impl TaskAttempt {
                        branch,
                        base_branch,
                        profile AS "profile!",
-                       pr_url,
-                       pr_number,
-                       pr_status,
-                       pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
                        worktree_deleted  AS "worktree_deleted!: bool",
                        setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                        created_at        AS "created_at!: DateTime<Utc>",
@@ -319,10 +265,6 @@ impl TaskAttempt {
                        branch,
                        base_branch,
                        profile AS "profile!",
-                       pr_url,
-                       pr_number,
-                       pr_status,
-                       pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
                        worktree_deleted  AS "worktree_deleted!: bool",
                        setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                        created_at        AS "created_at!: DateTime<Utc>",
@@ -334,36 +276,6 @@ impl TaskAttempt {
         .fetch_optional(pool)
         .await
     }
-
-    // pub async fn find_by_task_id(
-    //     pool: &SqlitePool,
-    //     task_id: Uuid,
-    // ) -> Result<Vec<Self>, sqlx::Error> {
-    //     sqlx::query_as!(
-    //         TaskAttempt,
-    //         r#"SELECT  id                AS "id!: Uuid",
-    //                    task_id           AS "task_id!: Uuid",
-    //                    worktree_path,
-    //                    branch,
-    //                    base_branch,
-    //                    merge_commit,
-    //                    executor,
-    //                    pr_url,
-    //                    pr_number,
-    //                    pr_status,
-    //                    pr_merged_at      AS "pr_merged_at: DateTime<Utc>",
-    //                    worktree_deleted  AS "worktree_deleted!: bool",
-    //                    setup_completed_at AS "setup_completed_at: DateTime<Utc>",
-    //                    created_at        AS "created_at!: DateTime<Utc>",
-    //                    updated_at        AS "updated_at!: DateTime<Utc>"
-    //            FROM    task_attempts
-    //            WHERE   task_id = $1
-    //            ORDER BY created_at DESC"#,
-    //         task_id
-    //     )
-    //     .fetch_all(pool)
-    //     .await
-    // }
 
     /// Find task attempts by task_id with project git repo path for cleanup operations
     pub async fn find_by_task_id_with_project(
@@ -475,19 +387,15 @@ impl TaskAttempt {
         // Insert the record into the database
         Ok(sqlx::query_as!(
             TaskAttempt,
-            r#"INSERT INTO task_attempts (id, task_id, container_ref, branch, base_branch, profile, pr_url, pr_number, pr_status, pr_merged_at, worktree_deleted, setup_completed_at)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, base_branch, profile as "profile!",  pr_url, pr_number, pr_status, pr_merged_at as "pr_merged_at: DateTime<Utc>", worktree_deleted as "worktree_deleted!: bool", setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO task_attempts (id, task_id, container_ref, branch, base_branch, profile, worktree_deleted, setup_completed_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, base_branch, profile as "profile!",  worktree_deleted as "worktree_deleted!: bool", setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             attempt_id,
             task_id,
             Option::<String>::None, // Container isn't known yet
             Option::<String>::None, // branch name isn't known yet
             data.base_branch,
             data.profile,
-            Option::<String>::None, // pr_url is None during creation
-            Option::<i64>::None, // pr_number is None during creation
-            Option::<String>::None, // pr_status is None during creation
-            Option::<DateTime<Utc>>::None, // pr_merged_at is None during creation
             false, // worktree_deleted is false during creation
             Option::<DateTime<Utc>>::None // setup_completed_at is None during creation
         )
@@ -504,27 +412,6 @@ impl TaskAttempt {
             "UPDATE task_attempts SET base_branch = $1, updated_at = datetime('now') WHERE id = $2",
             new_base_branch,
             attempt_id,
-        )
-        .execute(pool)
-        .await?;
-
-        Ok(())
-    }
-
-    /// Update PR status for a task attempt
-    pub async fn update_pr_status(
-        pool: &SqlitePool,
-        attempt_id: Uuid,
-        pr_url: String,
-        pr_number: i64,
-        pr_status: String,
-    ) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            "UPDATE task_attempts SET pr_url = $1, pr_number = $2, pr_status = $3, updated_at = datetime('now') WHERE id = $4",
-            pr_url,
-            pr_number,
-            pr_status,
-            attempt_id
         )
         .execute(pool)
         .await?;
@@ -550,25 +437,5 @@ impl TaskAttempt {
         .ok_or(sqlx::Error::RowNotFound)?;
 
         Ok((result.attempt_id, result.task_id, result.project_id))
-    }
-
-    pub async fn get_open_prs(pool: &SqlitePool) -> Result<Vec<PrInfo>, sqlx::Error> {
-        let rows = sqlx::query!(
-            r#"SELECT 
-                ta.id as "attempt_id!: Uuid",
-                ta.task_id as "task_id!: Uuid",
-                ta.pr_number as "pr_number!: i64",
-                ta.pr_url as "pr_url!: String"
-               FROM task_attempts ta
-               WHERE ta.pr_status = 'open' AND ta.pr_number IS NOT NULL"#
-        )
-        .fetch_all(pool)
-        .await?;
-        Ok(rows
-            .into_iter()
-            .filter_map(|r| {
-                PrInfo::from_task_attempt_data(r.attempt_id, r.task_id, r.pr_number, &r.pr_url).ok()
-            })
-            .collect())
     }
 }
