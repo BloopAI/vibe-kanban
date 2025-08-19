@@ -13,7 +13,7 @@ use db::models::project::{
 };
 use deployment::Deployment;
 use ignore::WalkBuilder;
-use services::services::git::GitBranch;
+use services::services::{git::GitBranch, file_ranker::FileRanker};
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -355,18 +355,29 @@ async fn search_files_in_repo(
         }
     }
 
-    // Sort results by priority: FileName > DirectoryName > FullPath
-    results.sort_by(|a, b| {
-        let priority = |match_type: &SearchMatchType| match match_type {
-            SearchMatchType::FileName => 0,
-            SearchMatchType::DirectoryName => 1,
-            SearchMatchType::FullPath => 2,
-        };
+    // Apply git history-based ranking
+    let file_ranker = FileRanker::new();
+    match file_ranker.get_stats(repo_path).await {
+        Ok(stats) => {
+            // Re-rank results using git history
+            file_ranker.rerank(&mut results, &stats);
+        }
+        Err(e) => {
+            tracing::warn!("Failed to get git stats for ranking, using basic sort: {}", e);
+            // Fallback to basic priority sorting
+            results.sort_by(|a, b| {
+                let priority = |match_type: &SearchMatchType| match match_type {
+                    SearchMatchType::FileName => 0,
+                    SearchMatchType::DirectoryName => 1,
+                    SearchMatchType::FullPath => 2,
+                };
 
-        priority(&a.match_type)
-            .cmp(&priority(&b.match_type))
-            .then_with(|| a.path.cmp(&b.path))
-    });
+                priority(&a.match_type)
+                    .cmp(&priority(&b.match_type))
+                    .then_with(|| a.path.cmp(&b.path))
+            });
+        }
+    }
 
     // Limit to top 10 results
     results.truncate(10);

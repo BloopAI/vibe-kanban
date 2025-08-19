@@ -3,6 +3,7 @@ pub mod auth;
 pub mod config;
 pub mod container;
 pub mod events;
+pub mod file_ranker;
 pub mod filesystem;
 pub mod filesystem_watcher;
 pub mod git;
