@@ -94,7 +94,7 @@ export enum CheckTokenResponse { VALID = "VALID", INVALID = "INVALID" }
 
 export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
 
-export type BranchStatus = { commits_behind: number | null, commits_ahead: number | null, up_to_date: boolean | null, base_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, remote_up_to_date: boolean | null, };
+export type BranchStatus = { commits_behind: number | null, commits_ahead: number | null, up_to_date: boolean | null, base_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, remote_up_to_date: boolean | null, merges: Array<Merge>, };
 
 export type Diff = { oldFile: FileDiffDetails | null, newFile: FileDiffDetails | null, hunks: Array<string>, };
 
@@ -167,6 +167,16 @@ export type ExecutionProcess = { id: string, task_attempt_id: string, run_reason
 export type ExecutionProcessStatus = "running" | "completed" | "failed" | "killed";
 
 export type ExecutionProcessRunReason = "setupscript" | "cleanupscript" | "codingagent" | "devserver";
+
+export type Merge = { "type": "direct" } & DirectMerge | { "type": "pr" } & PrMerge;
+
+export type DirectMerge = { id: string, task_attempt_id: string, merge_commit: string, created_at: string, };
+
+export type PrMerge = { id: string, task_attempt_id: string, created_at: string, pr_info: PullRequestInfo, };
+
+export type MergeStatus = "open" | "merged" | "closed" | "unknown";
+
+export type PullRequestInfo = { number: bigint, url: string, status: MergeStatus, merged_at: string | null, merge_commit_sha: string | null, };
 
 export type EventPatch = { op: string, path: string, value: EventPatchInner, };
 

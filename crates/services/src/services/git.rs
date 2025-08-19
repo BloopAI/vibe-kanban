@@ -14,6 +14,7 @@ use utils::diff::{Diff, FileDiffDetails};
 // Import for file ranking functionality
 use super::file_ranker::FileStat;
 use crate::services::github_service::GitHubRepoInfo;
+use db::models::merge::Merge;
 
 #[derive(Debug, Error)]
 pub enum GitServiceError {
@@ -65,6 +66,7 @@ pub struct BranchStatus {
     pub remote_commits_behind: Option<usize>,
     pub remote_commits_ahead: Option<usize>,
     pub remote_up_to_date: Option<bool>,
+    pub merges: Vec<Merge>,
 }
 
 /// Target for diff generation
@@ -618,6 +620,7 @@ impl GitService {
             remote_commits_behind,
             remote_commits_ahead,
             remote_up_to_date,
+            merges: Vec::new(), // Will be populated by the calling endpoint
         })
     }
 

@@ -563,7 +563,7 @@ pub async fn get_task_attempt_branch_status(
     let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
     let github_config = deployment.config().read().await.github.clone();
 
-    let branch_status = deployment
+    let mut branch_status = deployment
         .git()
         .get_branch_status(
             &ctx.project.git_repo_path,
@@ -583,6 +583,19 @@ pub async fn get_task_attempt_branch_status(
             );
             ApiError::GitService(e)
         })?;
+
+    // Fetch merges for this task attempt and add to branch status
+    let merges = Merge::find_by_task_attempt_id(pool, task_attempt.id)
+        .await
+        .map_err(|e| {
+            tracing::error!(
+                "Failed to fetch merges for task attempt {}: {}",
+                task_attempt.id,
+                e
+            );
+            ApiError::Database(e)
+        })?;
+    branch_status.merges = merges;
 
     Ok(ResponseJson(ApiResponse::success(branch_status)))
 }

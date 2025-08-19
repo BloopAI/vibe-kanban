@@ -361,8 +361,8 @@ function CurrentAttempt({
     if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
 
     // If PR already exists, view it in a new tab
-    if (selectedAttempt.pr_url) {
-      window.open(selectedAttempt.pr_url, '_blank');
+    if (mergeInfo.hasOpenPR && mergeInfo.openPR && mergeInfo.openPR.type === 'pr') {
+      window.open(mergeInfo.openPR.pr_info.url, '_blank');
       return;
     }
 
@@ -386,6 +386,33 @@ function CurrentAttempt({
     if (!config?.editor?.editor_type) return 'Editor';
     return getEditorDisplayName(config.editor.editor_type);
   }, [config?.editor?.editor_type]);
+
+  // Memoize merge status information to avoid repeated calculations
+  const mergeInfo = useMemo(() => {
+    if (!branchStatus?.merges) return {
+      hasOpenPR: false,
+      openPR: null,
+      hasMerged: false,
+      latestMerge: null
+    };
+
+    const openPR = branchStatus.merges.find(m =>
+      m.type === 'pr' && m.pr_info.status === 'open'
+    );
+
+    const merges = branchStatus.merges.filter(m =>
+      m.type === 'direct' ||
+      (m.type === 'pr' && m.pr_info.status === 'merged')
+    );
+
+    return {
+      hasOpenPR: !!openPR,
+      openPR,
+      hasMerged: merges.length > 0,
+      latestMerge: branchStatus.merges[0] || null // Most recent merge
+    };
+  }, [branchStatus?.merges]);
+
 
   const handleCopyWorktreePath = useCallback(async () => {
     try {
@@ -456,18 +483,32 @@ function CurrentAttempt({
             Status
           </div>
           <div className="flex items-center gap-1.5">
-            {(branchStatus?.commits_ahead ?? 0) === 0 ? (
+            {mergeInfo.hasOpenPR && mergeInfo.openPR && mergeInfo.openPR.type === 'pr' ? (
+              <div className="flex items-center gap-1.5">
+                <div className="h-2 w-2 bg-yellow-500 rounded-full" />
+                <span className="text-sm font-medium text-yellow-700">
+                  PR #{mergeInfo.openPR.pr_info.number.toString()}
+                </span>
+              </div>
+            ) : mergeInfo.hasMerged ? (
               <div className="flex items-center gap-1.5">
                 <div className="h-2 w-2 bg-green-500 rounded-full" />
                 <span className="text-sm font-medium text-green-700 truncate">
                   Merged
                 </span>
               </div>
-            ) : (
-              <div className="flex items-center gap-1.5 overflow-hidden">
+            ) : (branchStatus?.commits_ahead ?? 0) > 0 ? (
+              <div className="flex items-center gap-1.5">
                 <div className="h-2 w-2 bg-yellow-500 rounded-full" />
                 <span className="text-sm font-medium text-yellow-700">
                   Not merged
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <div className="h-2 w-2 bg-gray-500 rounded-full" />
+                <span className="text-sm font-medium text-gray-700">
+                  Up to date
                 </span>
               </div>
             )}
@@ -491,9 +532,9 @@ function CurrentAttempt({
           </Button>
         </div>
         <div
-          className={`text-xs font-mono px-2 py-1 rounded cursor-pointer transition-all duration-300 flex items-center gap-2 ${copied
-              ? 'bg-green-100 text-green-800 border border-green-300'
-              : 'text-muted-foreground bg-muted hover:bg-muted/80'
+          className={`text-xs font-mono px-2 py-1 rounded break-all cursor-pointer transition-all duration-300 flex items-center gap-2 ${copied
+            ? 'bg-green-100 text-green-800 border border-green-300'
+            : 'text-muted-foreground bg-muted hover:bg-muted/80'
             }`}
           onClick={handleCopyWorktreePath}
           title={copied ? 'Copied!' : 'Click to copy worktree path'}
@@ -631,20 +672,16 @@ function CurrentAttempt({
                       className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1"
                     >
                       <GitPullRequest className="h-3 w-3" />
-                      {selectedAttempt.pr_url
+                      {mergeInfo.hasOpenPR
                         ? 'View PR'
                         : creatingPR
                           ? 'Creating...'
                           : 'Create PR'}
                     </Button>
                     <Button
-                      onClick={
-                        selectedAttempt.pr_status === 'open'
-                          ? handlePushClick
-                          : handleMergeClick
-                      }
+                      onClick={mergeInfo.hasOpenPR ? handlePushClick : handleMergeClick}
                       disabled={
-                        selectedAttempt.pr_status === 'open'
+                        mergeInfo.hasOpenPR
                           ? pushing ||
                           isAttemptRunning ||
                           (branchStatus.remote_up_to_date ?? true)
@@ -655,7 +692,7 @@ function CurrentAttempt({
                       size="xs"
                       className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"
                     >
-                      {selectedAttempt.pr_status === 'open' ? (
+                      {mergeInfo.hasOpenPR ? (
                         <>
                           <Upload className="h-3 w-3" />
                           {pushing
