@@ -247,9 +247,10 @@ export function ProjectFormFields({
           className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md resize-vertical focus:outline-none focus:ring-2 focus:ring-ring"
         />
         <p className="text-sm text-muted-foreground">
-          This script runs after coding agent execution <strong>only if changes were made</strong>. 
-          Use it for quality assurance tasks like running linters, formatters, tests, 
-          or other validation steps. If no changes are made, this script is skipped.
+          This script runs after coding agent execution{' '}
+          <strong>only if changes were made</strong>. Use it for quality
+          assurance tasks like running linters, formatters, tests, or other
+          validation steps. If no changes are made, this script is skipped.
         </p>
       </div>
 
