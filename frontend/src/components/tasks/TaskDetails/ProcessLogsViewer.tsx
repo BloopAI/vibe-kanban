@@ -65,37 +65,31 @@ export default function ProcessLogsViewer({
   };
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 space-y-3">
-      <div className="flex-shrink-0">
-        <h3 className="text-sm font-medium">Process Logs</h3>
-      </div>
-
-      <div className="border rounded-lg bg-card flex-1 min-h-0 flex flex-col">
-        {logs.length === 0 && !error ? (
-          <div className="p-4 text-center text-muted-foreground text-sm">
-            No logs available
-          </div>
-        ) : error ? (
-          <div className="p-4 text-center text-destructive text-sm">
-            <AlertCircle className="h-4 w-4 inline mr-2" />
-            {error}
-          </div>
-        ) : (
-          <Virtuoso<LogEntry>
-            ref={virtuosoRef}
-            className="flex-1 rounded-lg"
-            data={logs}
-            itemContent={(index, entry) =>
-              formatLogLine(entry as LogEntry, index)
-            }
-            // Keep pinned while user is at bottom; release when they scroll up
-            atBottomStateChange={setAtBottom}
-            followOutput={atBottom ? 'smooth' : false}
-            // Optional: a bit more overscan helps during bursts
-            increaseViewportBy={{ top: 0, bottom: 600 }}
-          />
-        )}
-      </div>
+    <div className="h-full">
+      {logs.length === 0 && !error ? (
+        <div className="p-4 text-center text-muted-foreground text-sm">
+          No logs available
+        </div>
+      ) : error ? (
+        <div className="p-4 text-center text-destructive text-sm">
+          <AlertCircle className="h-4 w-4 inline mr-2" />
+          {error}
+        </div>
+      ) : (
+        <Virtuoso<LogEntry>
+          ref={virtuosoRef}
+          className="flex-1 rounded-lg"
+          data={logs}
+          itemContent={(index, entry) =>
+            formatLogLine(entry as LogEntry, index)
+          }
+          // Keep pinned while user is at bottom; release when they scroll up
+          atBottomStateChange={setAtBottom}
+          followOutput={atBottom ? 'smooth' : false}
+          // Optional: a bit more overscan helps during bursts
+          increaseViewportBy={{ top: 0, bottom: 600 }}
+        />
+      )}
     </div>
   );
 }

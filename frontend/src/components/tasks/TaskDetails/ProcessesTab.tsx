@@ -183,7 +183,7 @@ function ProcessesTab() {
         </div>
       ) : (
         <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
+          <div className="flex items-center justify-between px-4 py-2 border-b flex-shrink-0">
             <h2 className="text-lg font-semibold">Process Details</h2>
             <button
               onClick={() => setSelectedProcessId(null)}
@@ -193,81 +193,9 @@ function ProcessesTab() {
               Back to list
             </button>
           </div>
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-4 pb-20">
+          <div className="flex-1">
             {selectedProcess ? (
-              <div className="flex-1 flex flex-col min-h-0 space-y-4">
-                <div className="grid grid-cols-2 gap-4 flex-shrink-0">
-                  <div>
-                    <h3 className="font-medium text-sm mb-2">Process Info</h3>
-                    <div className="space-y-1 text-sm">
-                      <p>
-                        <span className="font-medium">Type:</span>{' '}
-                        {selectedProcess.run_reason}
-                      </p>
-                      <p>
-                        <span className="font-medium">Status:</span>{' '}
-                        {selectedProcess.status}
-                      </p>
-                      {/* Executor type field not available in new type */}
-                      <p>
-                        <span className="font-medium">Exit Code:</span>{' '}
-                        {selectedProcess.exit_code?.toString() ?? 'N/A'}
-                      </p>
-                      {selectedProcess.executor_action.typ.type ===
-                        'CodingAgentInitialRequest' ||
-                      selectedProcess.executor_action.typ.type ===
-                        'CodingAgentFollowUpRequest' ? (
-                        <p>
-                          <span className="font-medium">Profile:</span>{' '}
-                          <ProfileVariantBadge
-                            profileVariant={
-                              selectedProcess.executor_action.typ
-                                .profile_variant_label
-                            }
-                          />
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-sm mb-2">Timing</h3>
-                    <div className="space-y-1 text-sm">
-                      <p>
-                        <span className="font-medium">Started:</span>{' '}
-                        {formatDate(selectedProcess.started_at)}
-                      </p>
-                      {selectedProcess.completed_at && (
-                        <p>
-                          <span className="font-medium">Completed:</span>{' '}
-                          {formatDate(selectedProcess.completed_at)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Command, working directory, stdout, stderr fields not available in new ExecutionProcess type */}
-                <div className="flex-shrink-0">
-                  <h3 className="font-medium text-sm mb-2">
-                    Process Information
-                  </h3>
-                  <div className="bg-muted/50 p-3 rounded-md font-mono text-sm">
-                    <div>Process ID: {selectedProcess.id}</div>
-                    <div>
-                      Task Attempt ID: {selectedProcess.task_attempt_id}
-                    </div>
-                    <div>Run Reason: {selectedProcess.run_reason}</div>
-                    <div>Status: {selectedProcess.status}</div>
-                    {selectedProcess.exit_code !== null && (
-                      <div>
-                        Exit Code: {selectedProcess.exit_code.toString()}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <ProcessLogsViewer processId={selectedProcess.id} />
-              </div>
+              <ProcessLogsViewer processId={selectedProcess.id} />
             ) : loadingProcessId === selectedProcessId ? (
               <div className="text-center text-muted-foreground">
                 <p>Loading process details...</p>
