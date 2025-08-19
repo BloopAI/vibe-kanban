@@ -112,7 +112,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &PathBuf) {
-        let entry_index_provider = EntryIndexProvider::new();
+        let entry_index_provider = EntryIndexProvider::seeded_from_msg_store(&msg_store);
 
         // Process stdout logs (Claude's JSON output)
         ClaudeLogProcessor::process_logs(
@@ -329,16 +329,8 @@ impl ClaudeLogProcessor {
                 }
                 entries
             }
-            ClaudeJson::User { message, .. } => {
-                let mut entries = Vec::new();
-                for content_item in &message.content {
-                    if let Some(entry) =
-                        Self::content_item_to_normalized_entry(content_item, "user", worktree_path)
-                    {
-                        entries.push(entry);
-                    }
-                }
-                entries
+            ClaudeJson::User { .. } => {
+                vec![]
             }
             ClaudeJson::ToolUse { tool_data, .. } => {
                 let tool_name = tool_data.get_name();
@@ -386,7 +378,6 @@ impl ClaudeLogProcessor {
         match content_item {
             ClaudeContentItem::Text { text } => {
                 let entry_type = match role {
-                    "user" => NormalizedEntryType::UserMessage,
                     "assistant" => NormalizedEntryType::AssistantMessage,
                     _ => return None,
                 };

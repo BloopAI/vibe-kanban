@@ -393,7 +393,7 @@ mod tests {
 
         let mut processor = PlainTextLogProcessor::builder()
             .normalized_entry_producer(producer)
-            .index_provider(EntryIndexProvider::new())
+            .index_provider(EntryIndexProvider::test_new())
             .build();
 
         let patches = processor.process("hello world\n".to_string());
@@ -429,7 +429,7 @@ mod tests {
 
         let mut processor = PlainTextLogProcessor::builder()
             .normalized_entry_producer(tool_producer)
-            .index_provider(EntryIndexProvider::new())
+            .index_provider(EntryIndexProvider::test_new())
             .build();
 
         let patches = processor.process("TOOL: file_read\n".to_string());

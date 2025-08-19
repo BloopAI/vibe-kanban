@@ -30,7 +30,7 @@ use executors::{
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
     executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
-    logs::utils::patch::ConversationPatch,
+    logs::{NormalizedEntry, NormalizedEntryType, utils::patch::ConversationPatch},
     profile::ProfileVariantLabel,
 };
 use futures::{StreamExt, TryStreamExt, future};
@@ -321,6 +321,16 @@ pub trait ContainerService {
                     if let Ok(executor) =
                         CodingAgent::from_profile_variant_label(&request.profile_variant_label)
                     {
+                        // Inject the initial user prompt before normalization (DB fallback path)
+                        let user_entry = NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::UserMessage,
+                            content: request.prompt.clone(),
+                            metadata: None,
+                        };
+                        temp_store
+                            .push_patch(ConversationPatch::add_normalized_entry(0, user_entry));
+
                         executor.normalize_logs(temp_store.clone(), &current_dir);
                     } else {
                         tracing::error!(
@@ -333,6 +343,16 @@ pub trait ContainerService {
                     if let Ok(executor) =
                         CodingAgent::from_profile_variant_label(&request.profile_variant_label)
                     {
+                        // Inject the follow-up user prompt before normalization (DB fallback path)
+                        let user_entry = NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::UserMessage,
+                            content: request.prompt.clone(),
+                            metadata: None,
+                        };
+                        temp_store
+                            .push_patch(ConversationPatch::add_normalized_entry(0, user_entry));
+
                         executor.normalize_logs(temp_store.clone(), &current_dir);
                     } else {
                         tracing::error!(
@@ -578,6 +598,16 @@ pub trait ContainerService {
                     if let Ok(executor) =
                         CodingAgent::from_profile_variant_label(&request.profile_variant_label)
                     {
+                        // Prepend the initial user prompt as a normalized entry
+                        let user_entry = NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::UserMessage,
+                            content: request.prompt.clone(),
+                            metadata: None,
+                        };
+                        msg_store
+                            .push_patch(ConversationPatch::add_normalized_entry(0, user_entry));
+
                         executor.normalize_logs(
                             msg_store,
                             &self.task_attempt_to_current_dir(task_attempt),
@@ -595,6 +625,16 @@ pub trait ContainerService {
                     if let Ok(executor) =
                         CodingAgent::from_profile_variant_label(&request.profile_variant_label)
                     {
+                        // Prepend the follow-up user prompt as a normalized entry
+                        let user_entry = NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::UserMessage,
+                            content: request.prompt.clone(),
+                            metadata: None,
+                        };
+                        msg_store
+                            .push_patch(ConversationPatch::add_normalized_entry(0, user_entry));
+
                         executor.normalize_logs(
                             msg_store,
                             &self.task_attempt_to_current_dir(task_attempt),

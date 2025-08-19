@@ -100,7 +100,7 @@ impl StandardCodingAgentExecutor for Cursor {
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &PathBuf) {
-        let entry_index_provider = EntryIndexProvider::new();
+        let entry_index_provider = EntryIndexProvider::seeded_from_msg_store(&msg_store);
 
         // Process Cursor stdout JSONL with typed serde models
         let current_dir = worktree_path.clone();
@@ -116,7 +116,7 @@ impl StandardCodingAgentExecutor for Cursor {
                     metadata: None,
                 }))
                 .time_gap(Duration::from_secs(2)) // Break messages if they are 2 seconds apart
-                .index_provider(EntryIndexProvider::new())
+                .index_provider(entry_index_provider.clone())
                 .build();
 
             // Assistant streaming coalescer state
@@ -183,19 +183,7 @@ impl StandardCodingAgentExecutor for Cursor {
                         }
                     }
 
-                    CursorJson::User { message, .. } => {
-                        if let Some(text) = message.concat_text() {
-                            let entry = NormalizedEntry {
-                                timestamp: None,
-                                entry_type: NormalizedEntryType::UserMessage,
-                                content: text,
-                                metadata: None,
-                            };
-                            let id = entry_index_provider.next();
-                            msg_store
-                                .push_patch(ConversationPatch::add_normalized_entry(id, entry));
-                        }
-                    }
+                    CursorJson::User { .. } => {}
 
                     CursorJson::Assistant { message, .. } => {
                         if let Some(chunk) = message.concat_text() {

@@ -190,7 +190,7 @@ impl StandardCodingAgentExecutor for Codex {
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &PathBuf) {
-        let entry_index_provider = EntryIndexProvider::new();
+        let entry_index_provider = EntryIndexProvider::seeded_from_msg_store(&msg_store);
 
         // Process stderr logs for session extraction only (errors come through JSONL)
         SessionHandler::start_session_id_extraction(msg_store.clone());
