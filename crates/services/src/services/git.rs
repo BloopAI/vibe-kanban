@@ -171,7 +171,7 @@ impl GitService {
         Ok(())
     }
 
-    pub fn commit(&self, path: &Path, message: &str) -> Result<(), GitServiceError> {
+    pub fn commit(&self, path: &Path, message: &str) -> Result<bool, GitServiceError> {
         let repo = Repository::open(path)?;
 
         // Check if there are any changes to commit
@@ -189,7 +189,7 @@ impl GitService {
 
         if !has_changes {
             tracing::debug!("No changes to commit!");
-            return Ok(());
+            return Ok(false);
         }
 
         // Get the current HEAD commit
@@ -214,7 +214,7 @@ impl GitService {
             &[&parent_commit],
         )?;
 
-        Ok(())
+        Ok(true)
     }
 
     /// Get diffs between branches or worktree changes

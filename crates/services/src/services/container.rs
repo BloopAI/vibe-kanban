@@ -122,7 +122,7 @@ pub trait ContainerService {
         execution_process: &ExecutionProcess,
     ) -> Result<(), ContainerError>;
 
-    async fn try_commit_changes(&self, ctx: &ExecutionContext) -> Result<(), ContainerError>;
+    async fn try_commit_changes(&self, ctx: &ExecutionContext) -> Result<bool, ContainerError>;
 
     async fn copy_project_files(
         &self,
