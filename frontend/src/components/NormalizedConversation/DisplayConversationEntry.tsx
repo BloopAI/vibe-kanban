@@ -126,7 +126,6 @@ const shouldRenderMarkdown = (entryType: NormalizedEntryType) => {
   return (
     entryType.type === 'assistant_message' ||
     entryType.type === 'system_message' ||
-    entryType.type === 'user_message' ||
     entryType.type === 'thinking' ||
     entryType.type === 'tool_use'
   );

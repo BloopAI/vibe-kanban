@@ -11,6 +11,7 @@ use axum::{
 };
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
+    image::TaskImage,
     task::{Task, TaskStatus},
     task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptError},
 };
@@ -29,6 +30,7 @@ use services::services::{
     container::ContainerService,
     git::BranchStatus,
     github_service::{CreatePrRequest, GitHubRepoInfo, GitHubService, GitHubServiceError},
+    image::ImageService,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -208,6 +210,23 @@ pub async fn follow_up(
         .await?
         .ok_or(SqlxError::RowNotFound)?;
 
+    let mut prompt = payload.prompt;
+    if let Some(image_ids) = &payload.image_ids {
+        TaskImage::associate_many(&deployment.db().pool, task.id, image_ids).await?;
+
+        // Copy new images from the image cache to the worktree
+        if let Some(container_ref) = &task_attempt.container_ref {
+            let worktree_path = std::path::PathBuf::from(container_ref);
+            deployment
+                .image()
+                .copy_images_by_ids_to_worktree(&worktree_path, image_ids)
+                .await?;
+
+            // Update image paths in prompt with full worktree path
+            prompt = ImageService::canonicalise_image_paths(&prompt, &worktree_path);
+        }
+    }
+
     let cleanup_action = project.cleanup_script.map(|script| {
         Box::new(ExecutorAction::new(
             ExecutorActionType::ScriptRequest(ScriptRequest {
@@ -220,7 +239,7 @@ pub async fn follow_up(
     });
 
     let follow_up_request = CodingAgentFollowUpRequest {
-        prompt: payload.prompt,
+        prompt,
         session_id,
         profile_variant_label,
     };

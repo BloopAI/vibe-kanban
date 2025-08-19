@@ -91,6 +91,7 @@ impl Deployment for LocalDeployment {
             msg_stores.clone(),
             config.clone(),
             git.clone(),
+            image.clone(),
             analytics_ctx,
         );
         container.spawn_worktree_cleanup().await;

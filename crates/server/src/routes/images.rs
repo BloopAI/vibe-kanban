@@ -10,7 +10,7 @@ use chrono::{DateTime, Utc};
 use db::models::image::Image;
 use deployment::Deployment;
 use serde::{Deserialize, Serialize};
-use services::services::image::{ImageError, ImageService};
+use services::services::image::ImageError;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 use ts_rs::TS;
@@ -22,8 +22,7 @@ use crate::{error::ApiError, DeploymentImpl};
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ImageResponse {
     pub id: Uuid,
-    pub file_path: String,     // relative path within cache/images/
-    pub absolute_path: String, // canonicalized absolute path
+    pub file_path: String, // relative path to display in markdown
     pub original_name: String,
     pub mime_type: Option<String>,
     pub size_bytes: i64,
@@ -33,18 +32,12 @@ pub struct ImageResponse {
 }
 
 impl ImageResponse {
-    pub fn from_image(image: Image, image_service: &ImageService) -> Self {
-        let absolute_path = image_service
-            .get_absolute_path(&image)
-            .canonicalize()
-            .unwrap_or_else(|_| image_service.get_absolute_path(&image))
-            .to_string_lossy()
-            .to_string();
-
+    pub fn from_image(image: Image) -> Self {
+        // special relative path for images
+        let markdown_path = format!(".vibe-images/{}", image.file_path);
         Self {
             id: image.id,
-            file_path: image.file_path,
-            absolute_path,
+            file_path: markdown_path,
             original_name: image.original_name,
             mime_type: image.mime_type,
             size_bytes: image.size_bytes,
@@ -81,7 +74,7 @@ pub async fn upload_image(
                 )
                 .await;
 
-            let image_response = ImageResponse::from_image(image, &image_service);
+            let image_response = ImageResponse::from_image(image);
             return Ok(ResponseJson(ApiResponse::success(image_response)));
         }
     }
@@ -136,12 +129,8 @@ pub async fn get_task_images(
     Path(task_id): Path<Uuid>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Vec<ImageResponse>>>, ApiError> {
-    let image_service = deployment.image();
     let images = Image::find_by_task_id(&deployment.db().pool, task_id).await?;
-    let image_responses = images
-        .into_iter()
-        .map(|image| ImageResponse::from_image(image, &image_service))
-        .collect();
+    let image_responses = images.into_iter().map(ImageResponse::from_image).collect();
     Ok(ResponseJson(ApiResponse::success(image_responses)))
 }
 

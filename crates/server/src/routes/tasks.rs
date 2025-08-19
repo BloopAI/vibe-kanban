@@ -6,7 +6,7 @@ use axum::{
     Extension, Json, Router,
 };
 use db::models::{
-    image::{CreateTaskImage, TaskImage},
+    image::TaskImage,
     project::Project,
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
     task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptError},
@@ -58,7 +58,7 @@ pub async fn create_task(
     let task = Task::create(&deployment.db().pool, &payload, id).await?;
 
     if let Some(image_ids) = &payload.image_ids {
-        associate_images(&deployment.db().pool, task.id, image_ids).await?;
+        TaskImage::associate_many(&deployment.db().pool, task.id, image_ids).await?;
     }
 
     deployment
@@ -84,7 +84,7 @@ pub async fn create_task_and_start(
     let task = Task::create(&deployment.db().pool, &payload, task_id).await?;
 
     if let Some(image_ids) = &payload.image_ids {
-        associate_images(&deployment.db().pool, task.id, image_ids).await?;
+        TaskImage::associate_many(&deployment.db().pool, task.id, image_ids).await?;
     }
 
     deployment
@@ -189,7 +189,7 @@ pub async fn update_task(
 
     if let Some(image_ids) = &payload.image_ids {
         TaskImage::delete_by_task_id(&deployment.db().pool, task.id).await?;
-        associate_images(&deployment.db().pool, task.id, image_ids).await?;
+        TaskImage::associate_many(&deployment.db().pool, task.id, image_ids).await?;
     }
 
     Ok(ResponseJson(ApiResponse::success(task)))
@@ -224,28 +224,6 @@ pub async fn delete_task(
     } else {
         Ok(ResponseJson(ApiResponse::success(())))
     }
-}
-
-async fn associate_images(
-    pool: &sqlx::SqlitePool,
-    task_id: Uuid,
-    image_ids: &[Uuid],
-) -> Result<(), ApiError> {
-    for image_id in image_ids {
-        let task_image = CreateTaskImage {
-            task_id,
-            image_id: *image_id,
-        };
-        if let Err(e) = TaskImage::create(pool, &task_image).await {
-            tracing::error!(
-                "Failed to associate image {} with task {}: {}",
-                image_id,
-                task_id,
-                e
-            );
-        }
-    }
-    Ok(())
 }
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {

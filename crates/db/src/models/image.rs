@@ -173,6 +173,18 @@ impl TaskImage {
         .await
     }
 
+    pub async fn associate_many(
+        pool: &SqlitePool,
+        task_id: Uuid,
+        image_ids: &[Uuid],
+    ) -> Result<(), sqlx::Error> {
+        for &image_id in image_ids {
+            let task_image = CreateTaskImage { task_id, image_id };
+            TaskImage::create(pool, &task_image).await?;
+        }
+        Ok(())
+    }
+
     pub async fn delete_by_task_id(pool: &SqlitePool, task_id: Uuid) -> Result<(), sqlx::Error> {
         sqlx::query!(r#"DELETE FROM task_images WHERE task_id = $1"#, task_id)
             .execute(pool)

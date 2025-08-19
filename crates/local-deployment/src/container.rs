@@ -40,6 +40,7 @@ use services::services::{
     container::{ContainerError, ContainerRef, ContainerService},
     filesystem_watcher,
     git::{DiffTarget, GitService},
+    image::ImageService,
     notification::NotificationService,
     worktree_manager::WorktreeManager,
 };
@@ -61,6 +62,7 @@ pub struct LocalContainerService {
     msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
     config: Arc<RwLock<Config>>,
     git: GitService,
+    image_service: ImageService,
     analytics: Option<AnalyticsContext>,
 }
 
@@ -70,6 +72,7 @@ impl LocalContainerService {
         msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
         config: Arc<RwLock<Config>>,
         git: GitService,
+        image_service: ImageService,
         analytics: Option<AnalyticsContext>,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
@@ -80,6 +83,7 @@ impl LocalContainerService {
             msg_stores,
             config,
             git,
+            image_service,
             analytics,
         }
     }
@@ -721,6 +725,22 @@ impl ContainerService for LocalContainerService {
                 .unwrap_or_else(|e| {
                     tracing::warn!("Failed to copy project files: {}", e);
                 });
+        }
+
+        if let Err(e) = self
+            .git
+            .add_to_git_exclude(&project.git_repo_path, ".vibe-images/")
+        {
+            tracing::warn!("Failed to add .vibe-images/ to git exclude: {}", e);
+        }
+
+        // Copy task images from cache to worktree
+        if let Err(e) = self
+            .image_service
+            .copy_images_by_task_to_worktree(&worktree_path, task.id)
+            .await
+        {
+            tracing::warn!("Failed to copy task images to worktree: {}", e);
         }
 
         // Update both container_ref and branch in the database

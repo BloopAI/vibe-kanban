@@ -7,7 +7,7 @@ use std::{
     },
 };
 
-use anyhow::Error as AnyhowError;
+use anyhow::{Error as AnyhowError, anyhow};
 use async_trait::async_trait;
 use axum::response::sse::Event;
 use db::{
@@ -42,6 +42,7 @@ use uuid::Uuid;
 
 use crate::services::{
     git::{GitService, GitServiceError},
+    image::ImageService,
     worktree_manager::WorktreeError,
 };
 pub type ContainerRef = String;
@@ -481,6 +482,15 @@ pub trait ContainerService {
             .await?
             .ok_or(SqlxError::RowNotFound)?;
 
+        // TODO: this implementation will not work in cloud
+        let worktree_path = PathBuf::from(
+            task_attempt
+                .container_ref
+                .as_ref()
+                .ok_or_else(|| ContainerError::Other(anyhow!("Container ref not found")))?,
+        );
+        let prompt = ImageService::canonicalise_image_paths(&task.to_prompt(), &worktree_path);
+
         let cleanup_action = project.cleanup_script.map(|script| {
             Box::new(ExecutorAction::new(
                 ExecutorActionType::ScriptRequest(ScriptRequest {
@@ -503,7 +513,7 @@ pub trait ContainerService {
                 // once the setup script is done, run the initial coding agent request
                 Some(Box::new(ExecutorAction::new(
                     ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
-                        prompt: task.to_prompt(),
+                        prompt,
                         profile_variant_label,
                     }),
                     cleanup_action,
@@ -519,7 +529,7 @@ pub trait ContainerService {
         } else {
             let executor_action = ExecutorAction::new(
                 ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
-                    prompt: task.to_prompt(),
+                    prompt,
                     profile_variant_label,
                 }),
                 cleanup_action,

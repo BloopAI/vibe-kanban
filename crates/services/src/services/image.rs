@@ -4,6 +4,7 @@ use std::{
 };
 
 use db::models::image::{CreateImage, Image};
+use regex::{Captures, Regex};
 use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
 use uuid::Uuid;
@@ -160,5 +161,66 @@ impl ImageService {
         }
 
         Ok(())
+    }
+
+    pub async fn copy_images_by_task_to_worktree(
+        &self,
+        worktree_path: &Path,
+        task_id: Uuid,
+    ) -> Result<(), ImageError> {
+        let images = Image::find_by_task_id(&self.pool, task_id).await?;
+        self.copy_images(worktree_path, images)
+    }
+
+    pub async fn copy_images_by_ids_to_worktree(
+        &self,
+        worktree_path: &Path,
+        image_ids: &[Uuid],
+    ) -> Result<(), ImageError> {
+        let mut images = Vec::new();
+        for id in image_ids {
+            if let Some(image) = Image::find_by_id(&self.pool, *id).await? {
+                images.push(image);
+            }
+        }
+        self.copy_images(worktree_path, images)
+    }
+
+    fn copy_images(&self, worktree_path: &Path, images: Vec<Image>) -> Result<(), ImageError> {
+        if images.is_empty() {
+            return Ok(());
+        }
+
+        let images_dir = worktree_path.join(".vibe-images");
+        std::fs::create_dir_all(&images_dir)?;
+
+        for image in images {
+            let src = self.cache_dir.join(&image.file_path);
+            let dst = images_dir.join(&image.file_path);
+            if src.exists() {
+                if let Err(e) = std::fs::copy(&src, &dst) {
+                    tracing::error!("Failed to copy {}: {}", image.file_path, e);
+                } else {
+                    tracing::debug!("Copied {}", image.file_path);
+                }
+            } else {
+                tracing::warn!("Missing cache file: {}", src.display());
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn canonicalise_image_paths(prompt: &str, worktree_path: &Path) -> String {
+        let re = Regex::new(r#"!\[([^\]]*)\]\((\.vibe-images/[^)\s]+)\)"#).unwrap();
+
+        re.replace_all(prompt, |caps: &Captures| {
+            let alt = &caps[1];
+            let rel = &caps[2];
+            let abs = worktree_path.join(rel);
+            let abs = abs.to_string_lossy().replace('\\', "/");
+            format!("![{}]({})", alt, abs)
+        })
+        .into_owned()
     }
 }
