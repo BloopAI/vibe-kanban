@@ -1,12 +1,11 @@
 import React from 'react';
-// TODO: Re-enable CodeMirror when dependencies are installed
-// import CodeMirror from '@uiw/react-codemirror';
-// import { json, jsonParseLinter } from '@codemirror/lang-json';
-// import { linter } from '@codemirror/lint';
-// import { indentOnInput } from '@codemirror/language';
-// import { EditorView } from '@codemirror/view';
-// import { useTheme } from '@/components/theme-provider';
-// import { ThemeMode } from 'shared/types';
+import CodeMirror from '@uiw/react-codemirror';
+import { json, jsonParseLinter } from '@codemirror/lang-json';
+import { linter } from '@codemirror/lint';
+import { indentOnInput } from '@codemirror/language';
+import { EditorView } from '@codemirror/view';
+import { useTheme } from '@/components/theme-provider';
+import { ThemeMode } from 'shared/types';
 import { cn } from '@/lib/utils';
 
 interface JSONEditorProps {
@@ -28,7 +27,21 @@ export const JSONEditor: React.FC<JSONEditorProps> = ({
   className,
   id,
 }) => {
-  // Fallback to simple textarea until CodeMirror dependencies are installed
+  const { theme } = useTheme();
+
+  // Convert app theme to CodeMirror theme
+  const getCodeMirrorTheme = () => {
+    if (theme === ThemeMode.SYSTEM) {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light';
+    }
+    return theme === ThemeMode.DARK ? 'dark' : 'light';
+  };
+
+  // Avoid SSR errors
+  if (typeof window === 'undefined') return null;
+
   return (
     <div
       id={id}
@@ -38,18 +51,31 @@ export const JSONEditor: React.FC<JSONEditorProps> = ({
         className
       )}
     >
-      <textarea
+      <CodeMirror
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        height={`${minHeight}px`}
+        basicSetup={{
+          lineNumbers: true,
+          autocompletion: true,
+          bracketMatching: true,
+          closeBrackets: true,
+          searchKeymap: true,
+        }}
+        extensions={[
+          json(),
+          linter(jsonParseLinter()),
+          indentOnInput(),
+          EditorView.lineWrapping,
+          disabled ? EditorView.editable.of(false) : [],
+        ]}
+        theme={getCodeMirrorTheme()}
+        onChange={onChange}
         placeholder={placeholder}
-        disabled={disabled}
         style={{
-          height: `${minHeight}px`,
           fontSize: '14px',
           fontFamily:
             'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
         }}
-        className="w-full p-3 bg-transparent resize-none outline-none"
       />
     </div>
   );
