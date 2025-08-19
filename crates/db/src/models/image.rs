@@ -179,11 +179,4 @@ impl TaskImage {
             .await?;
         Ok(())
     }
-
-    pub async fn delete_by_image_id(pool: &SqlitePool, image_id: Uuid) -> Result<(), sqlx::Error> {
-        sqlx::query!(r#"DELETE FROM task_images WHERE image_id = $1"#, image_id)
-            .execute(pool)
-            .await?;
-        Ok(())
-    }
 }

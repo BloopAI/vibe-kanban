@@ -83,7 +83,6 @@ export function TaskFollowUpSection() {
     setSelectedVariant(defaultFollowUpVariant);
   }, [defaultFollowUpVariant]);
 
-  // Handle image upload success by inserting markdown into followup message
   const handleImageUploaded = useCallback((image: ImageResponse) => {
     const markdownText = `![${image.original_name}](${image.absolute_path})`;
     setFollowUpMessage((prev) => {
@@ -95,7 +94,6 @@ export function TaskFollowUpSection() {
     });
 
     setImages((prev) => [...prev, image]);
-    // Track as newly uploaded for backend association
     setNewlyUploadedImageIds((prev) => [...prev, image.id]);
   }, []);
 
