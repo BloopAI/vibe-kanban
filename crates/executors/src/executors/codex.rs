@@ -108,7 +108,6 @@ impl SessionHandler {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Codex {
     pub command: CommandBuilder,
-    pub prepend_prompt: Option<String>,
     pub append_prompt: Option<String>,
 }
 
@@ -123,7 +122,7 @@ impl StandardCodingAgentExecutor for Codex {
         let codex_command = self.command.build_initial();
 
         let combined_prompt =
-            utils::text::combine_prompt(&self.prepend_prompt, &self.append_prompt, prompt);
+            utils::text::combine_prompt(&self.append_prompt, prompt);
 
         let mut command = Command::new(shell_cmd);
         command
@@ -167,7 +166,7 @@ impl StandardCodingAgentExecutor for Codex {
         ]);
 
         let combined_prompt =
-            utils::text::combine_prompt(&self.prepend_prompt, &self.append_prompt, prompt);
+            utils::text::combine_prompt(&self.append_prompt, prompt);
 
         let mut command = Command::new(shell_cmd);
         command

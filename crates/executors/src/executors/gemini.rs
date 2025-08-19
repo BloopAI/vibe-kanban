@@ -26,7 +26,6 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Gemini {
     pub command: CommandBuilder,
-    pub prepend_prompt: Option<String>,
     pub append_prompt: Option<String>,
 }
 
@@ -41,7 +40,7 @@ impl StandardCodingAgentExecutor for Gemini {
         let gemini_command = self.command.build_initial();
 
         let combined_prompt =
-            utils::text::combine_prompt(&self.prepend_prompt, &self.append_prompt, prompt);
+            utils::text::combine_prompt(&self.append_prompt, prompt);
 
         let mut command = Command::new(shell_cmd);
         command
@@ -300,12 +299,11 @@ The following is the conversation history from this session:
 {session_context}
 
 === CURRENT REQUEST ===
-{}{prompt}
+{prompt}
 
 === INSTRUCTIONS ===
 You are continuing work on the above task. The execution history shows the previous conversation in this session. Please continue from where the previous execution left off, taking into account all the context provided above.{}
 "#,
-            self.prepend_prompt.clone().unwrap_or_default(),
             self.append_prompt.clone().unwrap_or_default(),
         ))
     }

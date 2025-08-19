@@ -23,11 +23,9 @@ pub fn short_uuid(u: &Uuid) -> String {
     full.chars().take(4).collect() // grab the first 4 chars
 }
 
-pub fn combine_prompt(prepend: &Option<String>, append: &Option<String>, prompt: &str) -> String {
-    match (prepend, append) {
-        (Some(prepend), Some(append)) => format!("{}{}{}", prepend, prompt, append),
-        (Some(prepend), None) => format!("{}{}", prepend, prompt),
-        (None, Some(append)) => format!("{}{}", prompt, append),
-        (None, None) => prompt.to_string(),
+pub fn combine_prompt(append: &Option<String>, prompt: &str) -> String {
+    match append {
+        Some(append) => format!("{}{}", prompt, append),
+        None => prompt.to_string(),
     }
 }

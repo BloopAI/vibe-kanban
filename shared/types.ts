@@ -134,17 +134,17 @@ mcp_config_path: string | null, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Am
 
 export type ProfileConfigs = { profiles: Array<ProfileConfig>, };
 
-export type ClaudeCode = { command: CommandBuilder, prepend_prompt: string | null, append_prompt: string | null, plan: boolean, };
+export type ClaudeCode = { command: CommandBuilder, append_prompt: string | null, plan: boolean, };
 
-export type Gemini = { command: CommandBuilder, prepend_prompt: string | null, append_prompt: string | null, };
+export type Gemini = { command: CommandBuilder, append_prompt: string | null, };
 
-export type Amp = { command: CommandBuilder, prepend_prompt: string | null, append_prompt: string | null, };
+export type Amp = { command: CommandBuilder, append_prompt: string | null, };
 
-export type Codex = { command: CommandBuilder, prepend_prompt: string | null, append_prompt: string | null, };
+export type Codex = { command: CommandBuilder, append_prompt: string | null, };
 
-export type Cursor = { command: CommandBuilder, prepend_prompt: string | null, append_prompt: string | null, };
+export type Cursor = { command: CommandBuilder, append_prompt: string | null, };
 
-export type Opencode = { command: CommandBuilder, prepend_prompt: string | null, append_prompt: string | null, };
+export type Opencode = { command: CommandBuilder, append_prompt: string | null, };
 
 export type CodingAgentInitialRequest = { prompt: string, profile_variant_label: ProfileVariantLabel, };
 

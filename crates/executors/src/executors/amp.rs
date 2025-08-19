@@ -26,7 +26,6 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Amp {
     pub command: CommandBuilder,
-    pub prepend_prompt: Option<String>,
     pub append_prompt: Option<String>,
 }
 
@@ -41,7 +40,7 @@ impl StandardCodingAgentExecutor for Amp {
         let amp_command = self.command.build_initial();
 
         let combined_prompt =
-            utils::text::combine_prompt(&self.prepend_prompt, &self.append_prompt, prompt);
+            utils::text::combine_prompt(&self.append_prompt, prompt);
 
         let mut command = Command::new(shell_cmd);
         command
@@ -79,7 +78,7 @@ impl StandardCodingAgentExecutor for Amp {
         ]);
 
         let combined_prompt =
-            utils::text::combine_prompt(&self.prepend_prompt, &self.append_prompt, prompt);
+            utils::text::combine_prompt(&self.append_prompt, prompt);
 
         let mut command = Command::new(shell_cmd);
         command

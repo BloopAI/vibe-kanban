@@ -28,7 +28,6 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct ClaudeCode {
     pub command: CommandBuilder,
-    pub prepend_prompt: Option<String>,
     pub append_prompt: Option<String>,
     pub plan: bool,
 }
@@ -49,7 +48,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         };
 
         let combined_prompt =
-            utils::text::combine_prompt(&self.prepend_prompt, &self.append_prompt, prompt);
+            utils::text::combine_prompt(&self.append_prompt, prompt);
 
         let mut command = Command::new(shell_cmd);
         command
@@ -91,7 +90,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         };
 
         let combined_prompt =
-            utils::text::combine_prompt(&self.prepend_prompt, &self.append_prompt, prompt);
+            utils::text::combine_prompt(&self.append_prompt, prompt);
 
         let mut command = Command::new(shell_cmd);
         command
@@ -942,7 +941,6 @@ mod tests {
         let executor = ClaudeCode {
             command: CommandBuilder::new(""),
             plan: false,
-            prepend_prompt: None,
             append_prompt: None,
         };
         let msg_store = Arc::new(MsgStore::new());

@@ -28,7 +28,6 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Opencode {
     pub command: CommandBuilder,
-    pub prepend_prompt: Option<String>,
     pub append_prompt: Option<String>,
 }
 
@@ -43,7 +42,7 @@ impl StandardCodingAgentExecutor for Opencode {
         let opencode_command = self.command.build_initial();
 
         let combined_prompt =
-            utils::text::combine_prompt(&self.prepend_prompt, &self.append_prompt, prompt);
+            utils::text::combine_prompt(&self.append_prompt, prompt);
 
         let mut command = Command::new(shell_cmd);
         command
@@ -79,7 +78,7 @@ impl StandardCodingAgentExecutor for Opencode {
             .build_follow_up(&["--session".to_string(), session_id.to_string()]);
 
         let combined_prompt =
-            utils::text::combine_prompt(&self.prepend_prompt, &self.append_prompt, prompt);
+            utils::text::combine_prompt(&self.append_prompt, prompt);
 
         let mut command = Command::new(shell_cmd);
         command
