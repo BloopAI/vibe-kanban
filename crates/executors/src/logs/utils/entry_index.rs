@@ -70,6 +70,14 @@ impl Default for EntryIndexProvider {
 }
 
 #[cfg(test)]
+impl EntryIndexProvider {
+    /// Test-only constructor for a fresh provider starting at 0
+    pub fn test_new() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -101,13 +109,5 @@ mod tests {
 
         provider.next();
         assert_eq!(provider.current(), 2);
-    }
-}
-
-#[cfg(test)]
-impl EntryIndexProvider {
-    /// Test-only constructor for a fresh provider starting at 0
-    pub fn test_new() -> Self {
-        Self::new()
     }
 }
