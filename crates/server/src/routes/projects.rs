@@ -293,11 +293,14 @@ async fn search_files_in_repo(
     let mut results = Vec::new();
     let query_lower = query.to_lowercase();
 
-    // Use ignore::WalkBuilder to respect gitignore files
+    // We intentionally do NOT respect gitignore here because this search is
+    // used to help users pick files like ".env" or local config files that are
+    // commonly gitignored but still need to be copied into the worktree.
+    // Include hidden files as well.
     let walker = WalkBuilder::new(repo_path)
-        .git_ignore(true)
-        .git_global(true)
-        .git_exclude(true)
+        .git_ignore(false)
+        .git_global(false)
+        .git_exclude(false)
         .hidden(false)
         .build();
 
