@@ -56,18 +56,18 @@ import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
 // Helper function to get the display name for different editor types
 function getEditorDisplayName(editorType: string): string {
   switch (editorType) {
-    case 'vscode':
+    case 'VS_CODE':
       return 'Visual Studio Code';
-    case 'cursor':
+    case 'CURSOR':
       return 'Cursor';
-    case 'windsurf':
+    case 'WINDSURF':
       return 'Windsurf';
-    case 'intellij':
+    case 'INTELLIJ':
       return 'IntelliJ IDEA';
-    case 'zed':
+    case 'ZED':
       return 'Zed';
-    case 'custom':
-      return 'Custom Editor';
+    case 'CUSTOM':
+      return 'Editor';
     default:
       return 'Editor';
   }
@@ -379,19 +379,7 @@ function CurrentAttempt({
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-4 gap-3 items-start">
-        <div>
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-            Started
-          </div>
-          <div className="text-sm font-medium">
-            {new Date(selectedAttempt.created_at).toLocaleDateString()}{' '}
-            {new Date(selectedAttempt.created_at).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </div>
-        </div>
+      <div className="grid grid-cols-3 gap-3 items-start">
 
         <div>
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
@@ -431,38 +419,12 @@ function CurrentAttempt({
             </span>
           </div>
         </div>
-
-        <div>
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-            Merge Status
-          </div>
-          <div className="flex items-center gap-1.5">
-            {selectedAttempt.merge_commit ? (
-              <div className="flex items-center gap-1.5">
-                <div className="h-2 w-2 bg-green-500 rounded-full" />
-                <span className="text-sm font-medium text-green-700">
-                  Merged
-                </span>
-                <span className="text-xs font-mono text-muted-foreground">
-                  ({selectedAttempt.merge_commit.slice(0, 8)})
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5">
-                <div className="h-2 w-2 bg-yellow-500 rounded-full" />
-                <span className="text-sm font-medium text-yellow-700">
-                  Not merged
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
       <div className="col-span-4">
         <div className="flex items-center gap-1.5 mb-1">
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-            Worktree Path
+          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 pt-1">
+            Path
           </div>
           <Button
             variant="ghost"
@@ -475,21 +437,26 @@ function CurrentAttempt({
           </Button>
         </div>
         <div
-          className={`text-xs font-mono px-2 py-1 rounded break-all cursor-pointer transition-all duration-300 flex items-center gap-2 ${copied
-            ? 'bg-green-100 text-green-800 border border-green-300'
-            : 'text-muted-foreground bg-muted hover:bg-muted/80'
+          className={`text-xs font-mono px-2 py-1 rounded cursor-pointer transition-all duration-300 flex items-center gap-2 ${copied
+              ? 'bg-green-100 text-green-800 border border-green-300'
+              : 'text-muted-foreground bg-muted hover:bg-muted/80'
             }`}
           onClick={handleCopyWorktreePath}
           title={copied ? 'Copied!' : 'Click to copy worktree path'}
         >
-          {copied && <Check className="h-3 w-3 text-green-600" />}
-          <span className={copied ? 'text-green-800' : ''}>
+          <span
+            className={`truncate ${copied ? 'text-green-800' : ''}`}
+            dir="rtl"
+          >
             {selectedAttempt.container_ref}
           </span>
           {copied && (
-            <span className="text-green-700 font-medium">Copied!</span>
+            <span className="text-green-700 font-medium whitespace-nowrap">
+              Copied!
+            </span>
           )}
         </div>
+
       </div>
 
       <div className="col-span-4 flex flex-wrap items-center justify-between gap-2">
