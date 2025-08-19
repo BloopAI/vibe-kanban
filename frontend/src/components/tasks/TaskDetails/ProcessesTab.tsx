@@ -78,7 +78,10 @@ function ProcessesTab() {
 
   // Automatically fetch process details when selectedProcessId changes
   useEffect(() => {
-    if (selectedProcessId && !attemptData.runningProcessDetails[selectedProcessId]) {
+    if (
+      selectedProcessId &&
+      !attemptData.runningProcessDetails[selectedProcessId]
+    ) {
       fetchProcessDetails(selectedProcessId);
     }
   }, [selectedProcessId, attemptData.runningProcessDetails]);
