@@ -9,7 +9,7 @@ import {
   RefreshCw,
   Settings,
   StopCircle,
-  FileText,
+  ScrollText,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -585,7 +585,7 @@ function CurrentAttempt({
                     onClick={handleViewDevServerLogs}
                     className="gap-1"
                   >
-                    <FileText className="h-3 w-3" />
+                    <ScrollText className="h-3 w-3" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
