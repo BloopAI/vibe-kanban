@@ -30,7 +30,7 @@ pub type FileStats = HashMap<String, FileStat>;
 /// Cache entry for repository history
 #[derive(Clone)]
 struct RepoHistoryCache {
-    head_oid: git2::Oid,
+    head_sha: String,
     stats: Arc<FileStats>,
     generated_at: Instant,
 }
@@ -71,10 +71,8 @@ impl FileRanker {
         // Check if we have a valid cache entry
         if let Some(cache_entry) = FILE_STATS_CACHE.get(&repo_path) {
             // Verify cache is still valid by checking HEAD
-            if let Ok(repo) = git2::Repository::open(&repo_path)
-                && let Ok(head) = repo.head()
-                && let Some(head_oid) = head.target()
-                && head_oid == cache_entry.head_oid
+            if let Ok(head_info) = self.git_service.get_head_info(&repo_path)
+                && head_info.oid == cache_entry.head_sha
             {
                 return Ok(Arc::clone(&cache_entry.stats));
             }
@@ -143,14 +141,11 @@ impl FileRanker {
         let stats_arc = Arc::new(stats);
 
         // Update cache
-        if let Ok(repo) = git2::Repository::open(&repo_path_for_error)
-            && let Ok(head) = repo.head()
-            && let Some(head_oid) = head.target()
-        {
+        if let Ok(head_info) = self.git_service.get_head_info(&repo_path_for_error) {
             FILE_STATS_CACHE.insert(
                 repo_path_for_error,
                 RepoHistoryCache {
-                    head_oid,
+                    head_sha: head_info.oid,
                     stats: Arc::clone(&stats_arc),
                     generated_at: Instant::now(),
                 },

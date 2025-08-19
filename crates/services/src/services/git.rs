@@ -49,6 +49,12 @@ pub struct GitBranch {
     pub last_commit_date: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone)]
+pub struct HeadInfo {
+    pub branch: String,
+    pub oid: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct BranchStatus {
     pub commits_behind: Option<usize>,
@@ -649,13 +655,35 @@ impl GitService {
         Ok(())
     }
 
-    pub fn get_current_branch(&self, repo_path: &Path) -> Result<String, git2::Error> {
-        let repo = Repository::open(repo_path)?;
+    /// Get current HEAD information including branch name and commit OID
+    pub fn get_head_info(&self, repo_path: &Path) -> Result<HeadInfo, GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
         let head = repo.head()?;
-        if let Some(branch_name) = head.shorthand() {
-            Ok(branch_name.to_string())
+        
+        let branch = if let Some(branch_name) = head.shorthand() {
+            branch_name.to_string()
         } else {
-            Ok("HEAD".to_string())
+            "HEAD".to_string()
+        };
+        
+        let oid = if let Some(target_oid) = head.target() {
+            target_oid.to_string()
+        } else {
+            // Handle case where HEAD exists but has no target (empty repo)
+            return Err(GitServiceError::InvalidRepository(
+                "Repository HEAD has no target commit".to_string()
+            ));
+        };
+        
+        Ok(HeadInfo { branch, oid })
+    }
+
+    pub fn get_current_branch(&self, repo_path: &Path) -> Result<String, git2::Error> {
+        // Thin wrapper for backward compatibility
+        match self.get_head_info(repo_path) {
+            Ok(head_info) => Ok(head_info.branch),
+            Err(GitServiceError::Git(git_err)) => Err(git_err),
+            Err(_) => Err(git2::Error::from_str("Failed to get head info")),
         }
     }
 
