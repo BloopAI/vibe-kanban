@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { AlertCircle } from 'lucide-react';
 import { useLogStream } from '@/hooks/useLogStream';
+import RawLogText from '@/components/common/RawLogText';
 import type { PatchType } from 'shared/types';
 
 type LogEntry = Extract<PatchType, { type: 'STDOUT' } | { type: 'STDERR' }>;
@@ -53,14 +54,13 @@ export default function ProcessLogsViewer({
   }, [logs.length, atBottom, logs]);
 
   const formatLogLine = (entry: LogEntry, index: number) => {
-    let className = 'text-sm font-mono px-4 py-1 whitespace-pre-wrap';
-    className +=
-      entry.type === 'STDERR' ? ' text-destructive' : ' text-foreground';
-
     return (
-      <div key={index} className={className}>
-        {entry.content}
-      </div>
+      <RawLogText
+        key={index}
+        content={entry.content}
+        channel={entry.type === 'STDERR' ? 'stderr' : 'stdout'}
+        className="text-sm px-4 py-1"
+      />
     );
   };
 

@@ -12,6 +12,7 @@ import type { ExecutionProcessStatus, ExecutionProcess } from 'shared/types';
 import { useLogStream } from '@/hooks/useLogStream';
 import { useProcessConversation } from '@/hooks/useProcessConversation';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
+import RawLogText from '@/components/common/RawLogText';
 
 interface ProcessCardProps {
   process: ExecutionProcess;
@@ -173,17 +174,12 @@ function ProcessCard({ process }: ProcessCardProps) {
                   <div className="text-gray-400">No logs available...</div>
                 ) : (
                   logs.map((logEntry, index) => (
-                    <div key={index} className="break-all">
-                      {logEntry.type === 'STDERR' ? (
-                        <span className="text-destructive">
-                          {logEntry.content}
-                        </span>
-                      ) : (
-                        <span className="text-foreground">
-                          {logEntry.content}
-                        </span>
-                      )}
-                    </div>
+                    <RawLogText
+                      key={index}
+                      content={logEntry.content}
+                      channel={logEntry.type === 'STDERR' ? 'stderr' : 'stdout'}
+                      as="div"
+                    />
                   ))
                 )}
                 <div ref={logEndRef} />
