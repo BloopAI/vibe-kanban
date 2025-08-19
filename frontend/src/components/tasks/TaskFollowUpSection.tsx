@@ -57,12 +57,12 @@ export function TaskFollowUpSection() {
     return profiles.find((p) => p.label === selectedProfile);
   }, [selectedProfile, profiles]);
 
-  // Prepare variants list for the chip input
+  // Prepare variants list for the chip input (exclude Default)
   const variants = useMemo(() => {
     if (!currentProfile?.variants || currentProfile.variants.length === 0) {
       return [];
     }
-    return ['Default', ...currentProfile.variants.map((v) => v.label)];
+    return currentProfile.variants.map((v) => v.label);
   }, [currentProfile]);
 
   // Update selectedVariant when defaultFollowUpVariant changes

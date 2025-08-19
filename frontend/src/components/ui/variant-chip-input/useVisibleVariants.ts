@@ -30,7 +30,7 @@ export function useVisibleVariants({
 
     const container = containerRef.current;
     const moreButton = moreButtonRef.current;
-    const containerWidth = container.offsetWidth - 16; // Account for padding
+    const containerWidth = container.offsetWidth - 24; // Account for padding left and right
     const moreButtonWidth = moreButton.offsetWidth + 4; // Include gap
     const gap = 4; // Gap between chips
 

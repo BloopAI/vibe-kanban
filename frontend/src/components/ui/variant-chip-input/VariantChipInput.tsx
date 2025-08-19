@@ -60,7 +60,7 @@ export function VariantChipInput({
 
   const { visibleVariants, hiddenVariants, hasOverflow } = useVisibleVariants({
     variants,
-    selectedVariant: selectedVariant || 'Default',
+    selectedVariant: selectedVariant || 'none', // Use a placeholder when no selection
     containerRef: chipRowRef,
     chipRefs,
     moreButtonRef,
@@ -75,14 +75,14 @@ export function VariantChipInput({
       const container = containerRef.current;
       if (!chipRow || !container) return;
 
-      const chipRowWidth = chipRow.scrollWidth;
-      const paddingLeft = chipRowWidth + 12; // Add some extra space
-      container.style.setProperty('--chip-padding-left', `${paddingLeft}px`);
-
+      const chipRowHeight = chipRow.scrollHeight;
+      const paddingBottom = chipRowHeight + 12; // Add some extra space
+      container.style.setProperty('--chip-padding-bottom', `${paddingBottom}px`);
+      
       // Also update the textarea directly
       const textarea = container.querySelector('textarea');
       if (textarea) {
-        textarea.style.paddingLeft = `${paddingLeft}px`;
+        textarea.style.paddingBottom = `${paddingBottom}px`;
       }
     };
 
@@ -92,9 +92,10 @@ export function VariantChipInput({
   }, [visibleVariants, hasOverflow]);
 
   const handleChipClick = (variant: string) => {
-    const newVariant = variant === 'Default' ? null : variant;
+    // If clicking the same variant, deselect it (go back to default)
+    const newVariant = selectedVariant === variant ? null : variant;
     onVariantSelect(newVariant);
-
+    
     // Focus textarea to continue typing - find textarea within container
     const textarea = containerRef.current?.querySelector('textarea');
     if (textarea) {
@@ -118,7 +119,7 @@ export function VariantChipInput({
         placeholder={placeholder}
         rows={rows}
         disabled={disabled}
-        className={className}
+        className={cn("w-full", className)}
         projectId={projectId}
         onKeyDown={onKeyDown}
         maxRows={maxRows}
@@ -127,18 +128,15 @@ export function VariantChipInput({
   }
 
   return (
-    <div ref={containerRef} className="relative">
-      {/* Chip overlay */}
+    <div ref={containerRef} className={cn("relative w-full", className?.includes('flex-1') && 'flex-1')}>
+      {/* Chip overlay - positioned at bottom of textarea */}
       <div
         ref={chipRowRef}
-        className="absolute inset-y-0 left-0 flex items-start gap-1 pl-3 pt-2 pointer-events-none z-10"
-        style={{ maxWidth: 'calc(100% - 80px)' }} // Reserve space for send button
+        className="absolute bottom-0 left-0 right-0 flex flex-wrap items-center gap-1 pl-3 pr-3 pb-2 pointer-events-none z-10"
       >
         {/* Visible variant chips */}
         {visibleVariants.map((variant) => {
-          const isSelected =
-            (variant === 'Default' && !selectedVariant) ||
-            selectedVariant === variant;
+          const isSelected = selectedVariant === variant;
 
           return (
             <div
@@ -149,9 +147,10 @@ export function VariantChipInput({
               <Badge
                 variant={isSelected ? 'default' : 'outline'}
                 className={cn(
-                  'cursor-pointer transition-all select-none max-w-[120px] truncate',
+                  'cursor-pointer transition-all select-none max-w-[120px] truncate uppercase',
                   'hover:bg-accent hover:text-accent-foreground',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  'text-xs',
                   isAnimating && isSelected && 'scale-105 bg-accent'
                 )}
                 role="button"
@@ -186,15 +185,13 @@ export function VariantChipInput({
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 {hiddenVariants.map((variant) => {
-                  const isSelected =
-                    (variant === 'Default' && !selectedVariant) ||
-                    selectedVariant === variant;
+                  const isSelected = selectedVariant === variant;
 
                   return (
                     <DropdownMenuItem
                       key={variant}
                       onClick={() => handleChipClick(variant)}
-                      className={isSelected ? 'bg-accent' : ''}
+                      className={cn("uppercase", isSelected ? 'bg-accent' : '')}
                     >
                       {variant}
                     </DropdownMenuItem>
@@ -213,7 +210,7 @@ export function VariantChipInput({
         placeholder={placeholder}
         rows={rows}
         disabled={disabled}
-        className={cn(className)}
+        className="w-full"
         projectId={projectId}
         onKeyDown={onKeyDown}
         maxRows={maxRows}
