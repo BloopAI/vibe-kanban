@@ -29,9 +29,7 @@ describe('RawLogText', () => {
   });
 
   it('preserves whitespace with pre-wrap', () => {
-    const { container } = render(
-      <RawLogText content="  Indented text  " />
-    );
+    const { container } = render(<RawLogText content="  Indented text  " />);
     expect(container.firstChild).toHaveClass('whitespace-pre-wrap');
   });
 

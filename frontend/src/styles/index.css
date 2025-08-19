@@ -294,23 +294,61 @@
 
 /* ANSI color classes for fancy-ansi */
 @layer components {
-  .ansi-red { @apply text-red-500; }
-  .ansi-green { @apply text-green-500; }
-  .ansi-yellow { @apply text-yellow-500; }
-  .ansi-blue { @apply text-blue-500; }
-  .ansi-magenta { @apply text-purple-500; }
-  .ansi-cyan { @apply text-cyan-500; }
-  .ansi-white { @apply text-white; }
-  .ansi-black { @apply text-black; }
-  .ansi-bright-red { @apply text-red-400; }
-  .ansi-bright-green { @apply text-green-400; }
-  .ansi-bright-yellow { @apply text-yellow-400; }
-  .ansi-bright-blue { @apply text-blue-400; }
-  .ansi-bright-magenta { @apply text-purple-400; }
-  .ansi-bright-cyan { @apply text-cyan-400; }
-  .ansi-bright-white { @apply text-gray-200; }
-  .ansi-bright-black { @apply text-gray-700; }
-  .ansi-bold { @apply font-bold; }
-  .ansi-italic { @apply italic; }
-  .ansi-underline { @apply underline; }
+  .ansi-red {
+    @apply text-red-500;
+  }
+  .ansi-green {
+    @apply text-green-500;
+  }
+  .ansi-yellow {
+    @apply text-yellow-500;
+  }
+  .ansi-blue {
+    @apply text-blue-500;
+  }
+  .ansi-magenta {
+    @apply text-purple-500;
+  }
+  .ansi-cyan {
+    @apply text-cyan-500;
+  }
+  .ansi-white {
+    @apply text-white;
+  }
+  .ansi-black {
+    @apply text-black;
+  }
+  .ansi-bright-red {
+    @apply text-red-400;
+  }
+  .ansi-bright-green {
+    @apply text-green-400;
+  }
+  .ansi-bright-yellow {
+    @apply text-yellow-400;
+  }
+  .ansi-bright-blue {
+    @apply text-blue-400;
+  }
+  .ansi-bright-magenta {
+    @apply text-purple-400;
+  }
+  .ansi-bright-cyan {
+    @apply text-cyan-400;
+  }
+  .ansi-bright-white {
+    @apply text-gray-200;
+  }
+  .ansi-bright-black {
+    @apply text-gray-700;
+  }
+  .ansi-bold {
+    @apply font-bold;
+  }
+  .ansi-italic {
+    @apply italic;
+  }
+  .ansi-underline {
+    @apply underline;
+  }
 }
