@@ -22,12 +22,12 @@ ts-rs = { workspace = true }
 dirs = "5.0"
 xdg = "3.0"
 git2 = "0.18"
+tempfile = "3.21"
 async-trait = "0.1"
 libc = "0.2"
 rust-embed = "8.2"
 directories = "6.0.0"
 open = "5.3.2"
-pathdiff = "0.2.1"
 ignore = "0.4"
 command-group = { version = "5.0", features = ["with-tokio"] }
 openssl-sys = { workspace = true }
