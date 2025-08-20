@@ -88,7 +88,8 @@ export function TaskFormDialog({
     } else if (task) {
       // Edit mode - warn when current values differ from original task
       const titleChanged = title.trim() !== task.title.trim();
-      const descriptionChanged = (description || '').trim() !== (task.description || '').trim();
+      const descriptionChanged =
+        (description || '').trim() !== (task.description || '').trim();
       const statusChanged = status !== task.status;
       return titleChanged || descriptionChanged || statusChanged;
     }
