@@ -5,15 +5,18 @@ import { useConfig } from './config-provider';
 import { useContext } from 'react';
 import { TaskSelectedAttemptContext } from './context/taskDetailsContext';
 import { Button } from './ui/button';
-import { FolderOpen } from 'lucide-react';
+import { FolderOpen, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { attemptsApi } from '@/lib/api';
 
 type Props = {
   diffFile: DiffFile;
   key: any;
+  isCollapsed: boolean;
+  onToggle: () => void;
 };
 
-const DiffCard = ({ diffFile, key }: Props) => {
+const DiffCard = ({ diffFile, key, isCollapsed, onToggle }: Props) => {
   const { config } = useConfig();
   const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
 
@@ -37,37 +40,49 @@ const DiffCard = ({ diffFile, key }: Props) => {
 
   return (
     <div className="my-4 border" key={key}>
-      <div className="flex items-center justify-between px-4 py-2">
-        <p
-          className="text-xs font-mono overflow-x-auto flex-1"
-          style={{ color: 'hsl(var(--muted-foreground) / 0.7)' }}
-        >
-          {diffFile._newFileName}{' '}
-          <span style={{ color: 'hsl(var(--console-success))' }}>
-            +{diffFile.additionLength}
-          </span>{' '}
-          <span style={{ color: 'hsl(var(--console-error))' }}>
-            -{diffFile.deletionLength}
-          </span>
-        </p>
+      <div 
+        className="flex items-center justify-between px-4 py-2 cursor-pointer select-none hover:bg-muted/50 transition-colors"
+        onClick={onToggle}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onToggle()}
+        aria-expanded={!isCollapsed}
+      >
+        <div className="flex items-center gap-2 overflow-x-auto flex-1">
+          <ChevronRight className={cn('h-4 w-4 transition-transform', { 'rotate-90': !isCollapsed })} />
+          <p
+            className="text-xs font-mono"
+            style={{ color: 'hsl(var(--muted-foreground) / 0.7)' }}
+          >
+            {diffFile._newFileName}{' '}
+            <span style={{ color: 'hsl(var(--console-success))' }}>
+              +{diffFile.additionLength}
+            </span>{' '}
+            <span style={{ color: 'hsl(var(--console-error))' }}>
+              -{diffFile.deletionLength}
+            </span>
+          </p>
+        </div>
         <Button
           variant="ghost"
           size="sm"
-          onClick={handleOpenInIDE}
+          onClick={(e) => { e.stopPropagation(); handleOpenInIDE(); }}
           className="h-6 w-6 p-0 ml-2"
           title="Open in IDE"
         >
           <FolderOpen className="h-3 w-3" />
         </Button>
       </div>
-      <DiffView
-        diffFile={diffFile}
-        diffViewWrap={false}
-        diffViewTheme={theme}
-        diffViewHighlight
-        diffViewMode={DiffModeEnum.Unified}
-        diffViewFontSize={12}
-      />
+      {!isCollapsed && (
+        <DiffView
+          diffFile={diffFile}
+          diffViewWrap={false}
+          diffViewTheme={theme}
+          diffViewHighlight
+          diffViewMode={DiffModeEnum.Unified}
+          diffViewFontSize={12}
+        />
+      )}
     </div>
   );
 };
