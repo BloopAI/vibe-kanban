@@ -218,7 +218,10 @@ impl ImageService {
     }
 
     pub fn canonicalise_image_paths(prompt: &str, worktree_path: &Path) -> String {
-        let pattern = format!(r#"!\[([^\]]*)\]\(({}/[^)\s]+)\)"#, regex::escape(utils::path::VIBE_IMAGES_DIR));
+        let pattern = format!(
+            r#"!\[([^\]]*)\]\(({}/[^)\s]+)\)"#,
+            regex::escape(utils::path::VIBE_IMAGES_DIR)
+        );
         let re = Regex::new(&pattern).unwrap();
 
         re.replace_all(prompt, |caps: &Captures| {
