@@ -110,6 +110,7 @@ pub trait ContainerService {
         &self,
         task_attempt: &TaskAttempt,
     ) -> Result<ContainerRef, ContainerError>;
+    async fn is_container_clean(&self, task_attempt: &TaskAttempt) -> Result<bool, ContainerError>;
 
     async fn start_execution_inner(
         &self,

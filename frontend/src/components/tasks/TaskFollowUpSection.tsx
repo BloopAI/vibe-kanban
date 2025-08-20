@@ -37,6 +37,7 @@ export function TaskFollowUpSection() {
     fetchAttemptData,
     isAttemptRunning,
     defaultFollowUpVariant,
+    branchStatus,
   } = useContext(TaskAttemptDataContext);
   const { profiles } = useUserSystem();
 
@@ -66,12 +67,24 @@ export function TaskFollowUpSection() {
     ) {
       return false;
     }
+
+    // Check if PR is merged - if so, block follow-ups
+    if (branchStatus?.merges) {
+      const mergedPR = branchStatus.merges.find(
+        (m) => m.type === 'pr' && m.pr_info.status === 'merged'
+      );
+      if (mergedPR) {
+        return false;
+      }
+    }
+
     return true;
   }, [
     selectedAttempt,
     attemptData.processes,
     isAttemptRunning,
     isSendingFollowUp,
+    branchStatus?.merges,
   ]);
   const currentProfile = useMemo(() => {
     if (!selectedProfile || !profiles) return null;

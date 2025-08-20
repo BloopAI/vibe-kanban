@@ -94,8 +94,6 @@ export enum CheckTokenResponse { VALID = "VALID", INVALID = "INVALID" }
 
 export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
 
-export type BranchStatus = { commits_behind: number | null, commits_ahead: number | null, up_to_date: boolean | null, base_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, remote_up_to_date: boolean | null, merges: Array<Merge>, };
-
 export type Diff = { oldFile: FileDiffDetails | null, newFile: FileDiffDetails | null, hunks: Array<string>, };
 
 export type FileDiffDetails = { fileName: string | null, content: string | null, };
@@ -159,6 +157,8 @@ export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, p
 export type CreateTaskAttemptBody = { task_id: string, profile_variant_label: ProfileVariantLabel | null, base_branch: string, };
 
 export type RebaseTaskAttemptRequest = { new_base_branch: string | null, };
+
+export type BranchStatus = { commits_behind: number | null, commits_ahead: number | null, has_uncommitted_changes: boolean | null, base_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, merges: Array<Merge>, };
 
 export type TaskAttempt = { id: string, task_id: string, container_ref: string | null, branch: string | null, base_branch: string, profile: string, worktree_deleted: boolean, setup_completed_at: string | null, created_at: string, updated_at: string, };
 

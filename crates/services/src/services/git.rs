@@ -3,7 +3,7 @@ use std::{collections::HashMap, path::Path};
 use chrono::{DateTime, Utc};
 use git2::{
     BranchType, CherrypickOptions, Delta, DiffFindOptions, DiffOptions, Error as GitError,
-    FetchOptions, Repository, Sort, Status, StatusOptions, build::CheckoutBuilder,
+    FetchOptions, Repository, Sort, build::CheckoutBuilder,
 };
 use regex;
 use serde::{Deserialize, Serialize};
@@ -14,7 +14,6 @@ use utils::diff::{Diff, FileDiffDetails};
 // Import for file ranking functionality
 use super::file_ranker::FileStat;
 use crate::services::github_service::GitHubRepoInfo;
-use db::models::merge::Merge;
 
 #[derive(Debug, Error)]
 pub enum GitServiceError {
@@ -55,18 +54,6 @@ pub struct GitBranch {
 pub struct HeadInfo {
     pub branch: String,
     pub oid: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct BranchStatus {
-    pub commits_behind: Option<usize>,
-    pub commits_ahead: Option<usize>,
-    pub up_to_date: Option<bool>,
-    pub base_branch_name: String,
-    pub remote_commits_behind: Option<usize>,
-    pub remote_commits_ahead: Option<usize>,
-    pub remote_up_to_date: Option<bool>,
-    pub merges: Vec<Merge>,
 }
 
 /// Target for diff generation
@@ -502,10 +489,12 @@ impl GitService {
         commit_message: &str,
     ) -> Result<String, GitServiceError> {
         // Open the worktree repository
-        let worktree_repo = Repository::open(worktree_path)?;
+        let worktree_repo = self.open_repo(worktree_path)?;
+        let main_repo = self.open_repo(repo_path)?;
 
         // Check if worktree is dirty before proceeding
         self.check_worktree_clean(&worktree_repo)?;
+        self.check_worktree_clean(&main_repo)?;
 
         // Verify the task branch exists in the worktree
         let task_branch = worktree_repo
@@ -537,16 +526,6 @@ impl GitService {
         // Reset the task branch to point to the squash commit
         // This allows follow-up work to continue from the merged state without conflicts
         let task_refname = format!("refs/heads/{}", branch_name);
-        worktree_repo.reference(
-            &task_refname,
-            squash_commit_id,
-            true,
-            "Reset task branch after merge",
-        )?;
-
-        // Also update the task branch in the main repository
-        // This ensures the branch status is correctly reflected in the UI
-        let main_repo = self.open_repo(repo_path)?;
         main_repo.reference(
             &task_refname,
             squash_commit_id,
@@ -571,13 +550,36 @@ impl GitService {
         Ok(squash_commit_id.to_string())
     }
 
-    pub fn get_branch_status(
+    pub fn get_local_branch_status(
         &self,
         repo_path: &Path,
         branch_name: &str,
         base_branch_name: &str,
-        github_token: Option<String>,
-    ) -> Result<BranchStatus, GitServiceError> {
+    ) -> Result<(usize, usize), GitServiceError> {
+        let repo = Repository::open(repo_path)?;
+        let branch_ref = repo
+            // try "refs/heads/<name>" first, then raw name
+            .find_reference(&format!("refs/heads/{branch_name}"))
+            .or_else(|_| repo.find_reference(branch_name))?;
+        let branch_oid = branch_ref.target().unwrap();
+        // Calculate ahead/behind counts using the stored base branch
+        let base_oid = repo
+            .find_branch(base_branch_name, BranchType::Local)?
+            .get()
+            .target()
+            .ok_or(GitServiceError::BranchNotFound(format!(
+                "refs/heads/{base_branch_name}"
+            )))?;
+        let (a, b) = repo.graph_ahead_behind(branch_oid, base_oid)?;
+        Ok((a, b))
+    }
+
+    pub fn get_remote_branch_status(
+        &self,
+        repo_path: &Path,
+        branch_name: &str,
+        github_token: String,
+    ) -> Result<(usize, usize), GitServiceError> {
         let repo = Repository::open(repo_path)?;
 
         let branch_ref = repo
@@ -585,43 +587,25 @@ impl GitService {
             .find_reference(&format!("refs/heads/{branch_name}"))
             .or_else(|_| repo.find_reference(branch_name))?;
         let branch_oid = branch_ref.target().unwrap();
-
         // Check for unpushed commits by comparing with origin/branch_name
-        let (remote_commits_ahead, remote_commits_behind, remote_up_to_date) = if let Some(token) =
-            github_token
-            && self.fetch_from_remote(&repo, &token).is_ok()
-            && let Ok(remote_ref) =
-                repo.find_reference(&format!("refs/remotes/origin/{branch_name}"))
-            && let Some(remote_oid) = remote_ref.target()
-        {
-            let (a, b) = repo.graph_ahead_behind(branch_oid, remote_oid)?;
-            (Some(a), Some(b), Some(a == 0 && b == 0))
-        } else {
-            (None, None, None)
-        };
+        self.fetch_from_remote(&repo, &github_token)?;
+        let remote_oid = repo
+            .find_reference(&format!("refs/remotes/origin/{branch_name}"))?
+            .target()
+            .ok_or(GitServiceError::BranchNotFound(format!(
+                "origin/{branch_name}"
+            )))?;
+        let (a, b) = repo.graph_ahead_behind(branch_oid, remote_oid)?;
+        Ok((a, b))
+    }
 
-        // Calculate ahead/behind counts using the stored base branch
-        let (commits_ahead, commits_behind, up_to_date) = if let Ok(base_branch) =
-            repo.find_branch(base_branch_name, BranchType::Local)
-            && let Some(base_oid) = base_branch.get().target()
-        {
-            let (a, b) = repo.graph_ahead_behind(branch_oid, base_oid)?;
-            (Some(a), Some(b), Some(a == 0 && b == 0))
-        } else {
-            // Base branch doesn't exist, assume no relationship
-            (None, None, None)
-        };
-
-        Ok(BranchStatus {
-            commits_behind,
-            commits_ahead,
-            up_to_date,
-            base_branch_name: base_branch_name.to_string(),
-            remote_commits_behind,
-            remote_commits_ahead,
-            remote_up_to_date,
-            merges: Vec::new(), // Will be populated by the calling endpoint
-        })
+    pub fn is_worktree_clean(&self, worktree_path: &Path) -> Result<bool, GitServiceError> {
+        let repo = self.open_repo(worktree_path)?;
+        match self.check_worktree_clean(&repo) {
+            Ok(()) => Ok(true),
+            Err(GitServiceError::WorktreeDirty(_)) => Ok(false),
+            Err(e) => Err(e),
+        }
     }
 
     /// Check if the worktree is clean (no uncommitted changes to tracked files)
@@ -1048,6 +1032,7 @@ impl GitService {
         github_token: &str,
     ) -> Result<(), GitServiceError> {
         let repo = Repository::open(worktree_path)?;
+        self.check_worktree_clean(&repo)?;
 
         // Get the remote
         let remote = repo.find_remote("origin")?;

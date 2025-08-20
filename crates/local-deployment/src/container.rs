@@ -814,6 +814,20 @@ impl ContainerService for LocalContainerService {
         Ok(container_ref.to_string())
     }
 
+    async fn is_container_clean(&self, task_attempt: &TaskAttempt) -> Result<bool, ContainerError> {
+        if let Some(container_ref) = &task_attempt.container_ref {
+            // If container_ref is set, check if the worktree exists
+            let path = PathBuf::from(container_ref);
+            if path.exists() {
+                self.git().is_worktree_clean(&path).map_err(|e| e.into())
+            } else {
+                return Ok(true); // No worktree means it's clean
+            }
+        } else {
+            return Ok(true); // No container_ref means no worktree, so it's clean
+        }
+    }
+
     async fn start_execution_inner(
         &self,
         task_attempt: &TaskAttempt,
@@ -909,9 +923,10 @@ impl ContainerService for LocalContainerService {
         let latest_merge =
             Merge::find_latest_by_task_attempt_id(&self.db.pool, task_attempt.id).await?;
 
-        // Handle merged attempts (static diff)
+        // Show merged diff when there is a merge and the container is clean
         if let Some(merge) = &latest_merge
             && let Some(commit) = merge.merge_commit()
+            && self.is_container_clean(task_attempt).await?
         {
             return self.create_merged_diff_stream(&project_repo_path, &commit);
         }

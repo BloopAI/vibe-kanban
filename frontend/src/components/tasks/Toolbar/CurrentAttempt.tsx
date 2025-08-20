@@ -3,7 +3,6 @@ import {
   GitBranch as GitBranchIcon,
   GitPullRequest,
   History,
-  Upload,
   Play,
   Plus,
   RefreshCw,
@@ -44,7 +43,7 @@ import {
   useState,
 } from 'react';
 import type { ExecutionProcess } from 'shared/types';
-import type { BranchStatus, GitBranch, TaskAttempt } from 'shared/types';
+import type { GitBranch, TaskAttempt } from 'shared/types';
 import {
   TaskAttemptDataContext,
   TaskAttemptStoppingContext,
@@ -103,9 +102,8 @@ function CurrentAttempt({
     useContext(TaskDetailsContext);
   const { config } = useConfig();
   const { isStopping, setIsStopping } = useContext(TaskAttemptStoppingContext);
-  const { attemptData, fetchAttemptData, isAttemptRunning } = useContext(
-    TaskAttemptDataContext
-  );
+  const { attemptData, fetchAttemptData, isAttemptRunning, branchStatus } =
+    useContext(TaskAttemptDataContext);
   const { jumpToProcess } = useProcessSelection();
 
   const [isStartingDevServer, setIsStartingDevServer] = useState(false);
@@ -115,8 +113,6 @@ function CurrentAttempt({
   const [devServerDetails, setDevServerDetails] =
     useState<ExecutionProcess | null>(null);
   const [isHoveringDevServer, setIsHoveringDevServer] = useState(false);
-  const [branchStatus, setBranchStatus] = useState<BranchStatus | null>(null);
-  const [branchStatusLoading, setBranchStatusLoading] = useState(false);
   const [showRebaseDialog, setShowRebaseDialog] = useState(false);
   const [selectedRebaseBranch, setSelectedRebaseBranch] = useState<string>('');
   const [showStopConfirmation, setShowStopConfirmation] = useState(false);
@@ -234,7 +230,7 @@ function CurrentAttempt({
 
   useKeyboardShortcuts({
     stopExecution: () => setShowStopConfirmation(true),
-    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => { },
+    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => {},
     hasOpenDialog: showStopConfirmation,
     closeDialog: () => setShowStopConfirmation(false),
     onEnter: () => {
@@ -263,7 +259,7 @@ function CurrentAttempt({
     try {
       setPushing(true);
       await attemptsApi.push(selectedAttempt.id);
-      fetchBranchStatus();
+      fetchAttemptData(selectedAttempt.id);
     } catch (error: any) {
       console.error('Failed to push changes:', error);
       setError(error.message || 'Failed to push changes');
@@ -272,38 +268,13 @@ function CurrentAttempt({
     }
   };
 
-  const fetchBranchStatus = useCallback(async () => {
-    if (!selectedAttempt?.id) return;
-
-    try {
-      setBranchStatusLoading(true);
-      const result = await attemptsApi.getBranchStatus(selectedAttempt.id);
-      setBranchStatus((prev) => {
-        if (JSON.stringify(prev) === JSON.stringify(result)) return prev;
-        return result;
-      });
-    } catch (err) {
-      setError('Failed to load branch status');
-    } finally {
-      setBranchStatusLoading(false);
-    }
-  }, [projectId, selectedAttempt?.id, selectedAttempt?.task_id, setError]);
-
-  // Fetch branch status when selected attempt changes
-  useEffect(() => {
-    if (selectedAttempt) {
-      fetchBranchStatus();
-    }
-  }, [selectedAttempt, fetchBranchStatus]);
-
   const performMerge = async () => {
     if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
 
     try {
       setMerging(true);
       await attemptsApi.merge(selectedAttempt.id);
-      // Refetch branch status to show updated state
-      fetchBranchStatus();
+      fetchAttemptData(selectedAttempt.id);
     } catch (error) {
       console.error('Failed to merge changes:', error);
       // @ts-expect-error it is type ApiError
@@ -319,8 +290,7 @@ function CurrentAttempt({
     try {
       setRebasing(true);
       await attemptsApi.rebase(selectedAttempt.id, { new_base_branch: null });
-      // Refresh branch status after rebase
-      fetchBranchStatus();
+      fetchAttemptData(selectedAttempt.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to rebase branch');
     } finally {
@@ -336,8 +306,7 @@ function CurrentAttempt({
       await attemptsApi.rebase(selectedAttempt.id, {
         new_base_branch: newBaseBranch,
       });
-      // Refresh branch status after rebase
-      fetchBranchStatus();
+      fetchAttemptData(selectedAttempt.id);
       setShowRebaseDialog(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to rebase branch');
@@ -360,9 +329,9 @@ function CurrentAttempt({
   const handlePRButtonClick = async () => {
     if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
 
-    // If PR already exists, view it in a new tab
-    if (mergeInfo.hasOpenPR && mergeInfo.openPR && mergeInfo.openPR.type === 'pr') {
-      window.open(mergeInfo.openPR.pr_info.url, '_blank');
+    // If PR already exists, push to it
+    if (mergeInfo.hasOpenPR) {
+      await handlePushClick();
       return;
     }
 
@@ -389,30 +358,39 @@ function CurrentAttempt({
 
   // Memoize merge status information to avoid repeated calculations
   const mergeInfo = useMemo(() => {
-    if (!branchStatus?.merges) return {
-      hasOpenPR: false,
-      openPR: null,
-      hasMerged: false,
-      latestMerge: null
-    };
+    if (!branchStatus?.merges)
+      return {
+        hasOpenPR: false,
+        openPR: null,
+        hasMergedPR: false,
+        mergedPR: null,
+        hasMerged: false,
+        latestMerge: null,
+      };
 
-    const openPR = branchStatus.merges.find(m =>
-      m.type === 'pr' && m.pr_info.status === 'open'
+    const openPR = branchStatus.merges.find(
+      (m) => m.type === 'pr' && m.pr_info.status === 'open'
     );
 
-    const merges = branchStatus.merges.filter(m =>
-      m.type === 'direct' ||
-      (m.type === 'pr' && m.pr_info.status === 'merged')
+    const mergedPR = branchStatus.merges.find(
+      (m) => m.type === 'pr' && m.pr_info.status === 'merged'
+    );
+
+    const merges = branchStatus.merges.filter(
+      (m) =>
+        m.type === 'direct' ||
+        (m.type === 'pr' && m.pr_info.status === 'merged')
     );
 
     return {
       hasOpenPR: !!openPR,
       openPR,
+      hasMergedPR: !!mergedPR,
+      mergedPR,
       hasMerged: merges.length > 0,
-      latestMerge: branchStatus.merges[0] || null // Most recent merge
+      latestMerge: branchStatus.merges[0] || null, // Most recent merge
     };
   }, [branchStatus?.merges]);
-
 
   const handleCopyWorktreePath = useCallback(async () => {
     try {
@@ -456,9 +434,7 @@ function CurrentAttempt({
                     variant="ghost"
                     size="xs"
                     onClick={handleRebaseDialogOpen}
-                    disabled={
-                      rebasing || branchStatusLoading || isAttemptRunning
-                    }
+                    disabled={rebasing || isAttemptRunning}
                     className="h-4 w-4 p-0 hover:bg-muted"
                   >
                     <Settings className="h-3 w-3" />
@@ -483,25 +459,62 @@ function CurrentAttempt({
             Status
           </div>
           <div className="flex items-center gap-1.5">
-            {mergeInfo.hasOpenPR && mergeInfo.openPR && mergeInfo.openPR.type === 'pr' ? (
-              <div className="flex items-center gap-1.5">
-                <div className="h-2 w-2 bg-yellow-500 rounded-full" />
-                <span className="text-sm font-medium text-yellow-700">
-                  PR #{mergeInfo.openPR.pr_info.number.toString()}
-                </span>
-              </div>
-            ) : mergeInfo.hasMerged ? (
+            {mergeInfo.hasMergedPR &&
+            mergeInfo.mergedPR &&
+            mergeInfo.mergedPR.type === 'pr' ? (
               <div className="flex items-center gap-1.5">
                 <div className="h-2 w-2 bg-green-500 rounded-full" />
-                <span className="text-sm font-medium text-green-700 truncate">
-                  Merged
+                <button
+                  onClick={() =>
+                    mergeInfo.mergedPR &&
+                    mergeInfo.mergedPR.type === 'pr' &&
+                    window.open(mergeInfo.mergedPR.pr_info.url, '_blank')
+                  }
+                  className="text-sm font-medium text-green-700 hover:underline cursor-pointer"
+                >
+                  PR #
+                  {mergeInfo.mergedPR && mergeInfo.mergedPR.type === 'pr'
+                    ? mergeInfo.mergedPR.pr_info.number.toString()
+                    : ''}{' '}
+                  merged
+                </button>
+              </div>
+            ) : mergeInfo.hasOpenPR &&
+              mergeInfo.openPR &&
+              mergeInfo.openPR.type === 'pr' ? (
+              <div className="flex items-center gap-1.5">
+                <div className="h-2 w-2 bg-blue-500 rounded-full" />
+                <button
+                  onClick={() =>
+                    mergeInfo.openPR &&
+                    mergeInfo.openPR.type === 'pr' &&
+                    window.open(mergeInfo.openPR.pr_info.url, '_blank')
+                  }
+                  className="text-sm font-medium text-blue-700 hover:underline cursor-pointer"
+                >
+                  PR #
+                  {mergeInfo.openPR && mergeInfo.openPR.type === 'pr'
+                    ? mergeInfo.openPR.pr_info.number.toString()
+                    : ''}
+                </button>
+              </div>
+            ) : (branchStatus?.commits_behind ?? 0) > 0 &&
+              (branchStatus?.commits_ahead ?? 0) > 0 ? (
+              <div className="flex items-center gap-1.5">
+                <div className="h-2 w-2 bg-orange-500 rounded-full" />
+                <span className="text-sm font-medium text-orange-700">
+                  Rebase needed
+                  {branchStatus?.has_uncommitted_changes && ' (dirty)'}
                 </span>
               </div>
             ) : (branchStatus?.commits_ahead ?? 0) > 0 ? (
               <div className="flex items-center gap-1.5">
                 <div className="h-2 w-2 bg-yellow-500 rounded-full" />
                 <span className="text-sm font-medium text-yellow-700">
-                  Not merged
+                  {branchStatus?.commits_ahead === 1
+                    ? '1 commit ahead'
+                    : `${branchStatus?.commits_ahead} commits ahead`}
+                  {branchStatus?.has_uncommitted_changes && ' (dirty)'}
                 </span>
               </div>
             ) : (
@@ -509,6 +522,7 @@ function CurrentAttempt({
                 <div className="h-2 w-2 bg-gray-500 rounded-full" />
                 <span className="text-sm font-medium text-gray-700">
                   Up to date
+                  {branchStatus?.has_uncommitted_changes && ' (dirty)'}
                 </span>
               </div>
             )}
@@ -532,10 +546,11 @@ function CurrentAttempt({
           </Button>
         </div>
         <div
-          className={`text-xs font-mono px-2 py-1 rounded break-all cursor-pointer transition-all duration-300 flex items-center gap-2 ${copied
-            ? 'bg-green-100 text-green-800 border border-green-300'
-            : 'text-muted-foreground bg-muted hover:bg-muted/80'
-            }`}
+          className={`text-xs font-mono px-2 py-1 rounded break-all cursor-pointer transition-all duration-300 flex items-center gap-2 ${
+            copied
+              ? 'bg-green-100 text-green-800 border border-green-300'
+              : 'text-muted-foreground bg-muted hover:bg-muted/80'
+          }`}
           onClick={handleCopyWorktreePath}
           title={copied ? 'Copied!' : 'Click to copy worktree path'}
         >
@@ -637,25 +652,22 @@ function CurrentAttempt({
 
         <div className="flex items-center gap-2 flex-wrap">
           {/* Git Operations */}
-          {selectedAttempt && branchStatus && (
+          {selectedAttempt && branchStatus && !mergeInfo.hasMergedPR && (
             <>
-              {(branchStatus.commits_behind ?? 0) > 0 &&
-                (branchStatus.commits_ahead ?? 0) > 0 && (
-                  <Button
-                    onClick={handleRebaseClick}
-                    disabled={
-                      rebasing || branchStatusLoading || isAttemptRunning
-                    }
-                    variant="outline"
-                    size="xs"
-                    className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1"
-                  >
-                    <RefreshCw
-                      className={`h-3 w-3 ${rebasing ? 'animate-spin' : ''}`}
-                    />
-                    {rebasing ? 'Rebasing...' : `Rebase`}
-                  </Button>
-                )}
+              {(branchStatus.commits_behind ?? 0) > 0 && (
+                <Button
+                  onClick={handleRebaseClick}
+                  disabled={rebasing || isAttemptRunning}
+                  variant="outline"
+                  size="xs"
+                  className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1"
+                >
+                  <RefreshCw
+                    className={`h-3 w-3 ${rebasing ? 'animate-spin' : ''}`}
+                  />
+                  {rebasing ? 'Rebasing...' : `Rebase`}
+                </Button>
+              )}
               {
                 // Normal merge and PR buttons for regular tasks
                 (branchStatus.commits_ahead ?? 0) > 0 && (
@@ -664,8 +676,11 @@ function CurrentAttempt({
                       onClick={handlePRButtonClick}
                       disabled={
                         creatingPR ||
+                        pushing ||
                         Boolean((branchStatus.commits_behind ?? 0) > 0) ||
-                        isAttemptRunning
+                        isAttemptRunning ||
+                        (mergeInfo.hasOpenPR &&
+                          branchStatus.remote_commits_ahead === 0)
                       }
                       variant="outline"
                       size="xs"
@@ -673,44 +688,30 @@ function CurrentAttempt({
                     >
                       <GitPullRequest className="h-3 w-3" />
                       {mergeInfo.hasOpenPR
-                        ? 'View PR'
+                        ? pushing
+                          ? 'Pushing...'
+                          : branchStatus.remote_commits_ahead === 0
+                            ? 'Push to PR'
+                            : branchStatus.remote_commits_ahead === 1
+                              ? 'Push 1 commit'
+                              : `Push ${branchStatus.remote_commits_ahead || 0} commits`
                         : creatingPR
                           ? 'Creating...'
                           : 'Create PR'}
                     </Button>
                     <Button
-                      onClick={mergeInfo.hasOpenPR ? handlePushClick : handleMergeClick}
+                      onClick={handleMergeClick}
                       disabled={
-                        mergeInfo.hasOpenPR
-                          ? pushing ||
-                          isAttemptRunning ||
-                          (branchStatus.remote_up_to_date ?? true)
-                          : merging ||
-                          Boolean((branchStatus.commits_behind ?? 0) > 0) ||
-                          isAttemptRunning
+                        mergeInfo.hasOpenPR ||
+                        merging ||
+                        Boolean((branchStatus.commits_behind ?? 0) > 0) ||
+                        isAttemptRunning
                       }
                       size="xs"
                       className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"
                     >
-                      {mergeInfo.hasOpenPR ? (
-                        <>
-                          <Upload className="h-3 w-3" />
-                          {pushing
-                            ? 'Pushing...'
-                            : branchStatus.remote_commits_behind === null
-                              ? 'Disconnected'
-                              : branchStatus.remote_commits_behind === 0
-                                ? 'Push to remote'
-                                : branchStatus.remote_commits_behind === 1
-                                  ? 'Push 1 commit'
-                                  : `Push ${branchStatus.remote_commits_behind} commits`}
-                        </>
-                      ) : (
-                        <>
-                          <GitBranchIcon className="h-3 w-3" />
-                          {merging ? 'Merging...' : 'Merge'}
-                        </>
-                      )}
+                      <GitBranchIcon className="h-3 w-3" />
+                      {merging ? 'Merging...' : 'Merge'}
                     </Button>
                   </>
                 )

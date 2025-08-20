@@ -3,6 +3,7 @@ import type {
   EditorType,
   TaskAttempt,
   TaskWithAttemptStatus,
+  BranchStatus,
 } from 'shared/types';
 import { AttemptData } from '@/lib/types.ts';
 
@@ -33,6 +34,8 @@ interface TaskAttemptDataContextValue {
   fetchAttemptData: (attemptId: string) => Promise<void> | void;
   isAttemptRunning: boolean;
   defaultFollowUpVariant: string | null;
+  branchStatus: BranchStatus | null;
+  setBranchStatus: Dispatch<SetStateAction<BranchStatus | null>>;
 }
 
 export const TaskAttemptDataContext =
