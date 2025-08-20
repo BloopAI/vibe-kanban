@@ -90,6 +90,25 @@ export function TaskFormDialog({
     return false;
   }, [title, description, isEditMode]);
 
+  // Warn on browser/tab close if there are unsaved changes
+  useEffect(() => {
+    if (!isOpen) return; // dialog closed → nothing to do
+
+    // always re-evaluate latest fields via hasUnsavedChanges()
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges()) {
+        e.preventDefault();
+        // Chrome / Edge still require returnValue to be set
+        e.returnValue = '';
+        return '';
+      }
+      // nothing returned → no prompt
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isOpen, hasUnsavedChanges]); // hasUnsavedChanges is memoised with title/descr deps
+
   useEffect(() => {
     if (task) {
       // Edit mode - populate with existing task data
