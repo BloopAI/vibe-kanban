@@ -22,7 +22,7 @@ export function GitHubLoginDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { config, loading, githubTokenInvalid } = useConfig();
+  const { config, loading, githubTokenInvalid, reloadSystem } = useConfig();
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deviceState, setDeviceState] =
@@ -62,6 +62,7 @@ export function GitHubLoginDialog({
               setPolling(false);
               setDeviceState(null);
               setError(null);
+              await reloadSystem();
               onOpenChange(false);
               break;
             case DevicePollStatus.AUTHORIZATION_PENDING:

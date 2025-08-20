@@ -204,6 +204,7 @@ export function useConfig() {
     updateAndSaveConfig,
     loading,
     githubTokenInvalid,
+    reloadSystem,
   } = useUserSystem();
   return {
     config,
@@ -212,6 +213,7 @@ export function useConfig() {
     updateAndSaveConfig,
     loading,
     githubTokenInvalid,
+    reloadSystem,
   };
 }
 
