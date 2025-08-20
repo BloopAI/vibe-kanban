@@ -86,7 +86,7 @@ function DiffTab() {
     <div className="h-full flex flex-col">
       {diffFiles.length > 0 && (
         <div className="sticky top-0 bg-background border-b px-4 py-2 z-10">
-          <Button variant="outline" size="sm" onClick={handleCollapseAll}>
+          <Button variant="outline" size="xs" onClick={handleCollapseAll}>
             {allCollapsed ? 'Expand All' : 'Collapse All'}
           </Button>
         </div>
