@@ -40,7 +40,7 @@ const DiffCard = ({ diffFile, key, isCollapsed, onToggle }: Props) => {
 
   return (
     <div className="my-4 border" key={key}>
-      <div 
+      <div
         className="flex items-center justify-between px-4 py-2 cursor-pointer select-none hover:bg-muted/50 transition-colors"
         onClick={onToggle}
         role="button"
@@ -49,7 +49,11 @@ const DiffCard = ({ diffFile, key, isCollapsed, onToggle }: Props) => {
         aria-expanded={!isCollapsed}
       >
         <div className="flex items-center gap-2 overflow-x-auto flex-1">
-          <ChevronRight className={cn('h-4 w-4 transition-transform', { 'rotate-90': !isCollapsed })} />
+          <ChevronRight
+            className={cn('h-4 w-4 transition-transform', {
+              'rotate-90': !isCollapsed,
+            })}
+          />
           <p
             className="text-xs font-mono"
             style={{ color: 'hsl(var(--muted-foreground) / 0.7)' }}
@@ -66,7 +70,10 @@ const DiffCard = ({ diffFile, key, isCollapsed, onToggle }: Props) => {
         <Button
           variant="ghost"
           size="sm"
-          onClick={(e) => { e.stopPropagation(); handleOpenInIDE(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenInIDE();
+          }}
           className="h-6 w-6 p-0 ml-2"
           title="Open in IDE"
         >
