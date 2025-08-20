@@ -47,7 +47,7 @@ function DiffTab() {
     const files = diffs
       .map((diff) => createDiffFile(diff))
       .filter((diffFile) => diffFile !== null);
-    
+
     const totals = files.reduce(
       (acc, file) => {
         acc.added += file.additionLength ?? 0;
@@ -98,12 +98,13 @@ function DiffTab() {
       {diffFiles.length > 0 && (
         <div className="sticky top-0 bg-background border-b px-4 py-2 z-10">
           <div className="flex items-center justify-between gap-4">
-            <span 
-              className="text-xs font-mono whitespace-nowrap" 
+            <span
+              className="text-xs font-mono whitespace-nowrap"
               aria-live="polite"
               style={{ color: 'hsl(var(--muted-foreground) / 0.7)' }}
             >
-              {diffFiles.length} file{diffFiles.length === 1 ? '' : 's'} changed,{' '}
+              {diffFiles.length} file{diffFiles.length === 1 ? '' : 's'}{' '}
+              changed,{' '}
               <span style={{ color: 'hsl(var(--console-success))' }}>
                 +{totals.added}
               </span>{' '}
@@ -111,7 +112,12 @@ function DiffTab() {
                 -{totals.deleted}
               </span>
             </span>
-            <Button variant="outline" size="xs" onClick={handleCollapseAll} className="shrink-0">
+            <Button
+              variant="outline"
+              size="xs"
+              onClick={handleCollapseAll}
+              className="shrink-0"
+            >
               {allCollapsed ? 'Expand All' : 'Collapse All'}
             </Button>
           </div>
@@ -119,9 +125,9 @@ function DiffTab() {
       )}
       <div className="flex-1 overflow-y-auto px-4">
         {diffFiles.map((diffFile, idx) => (
-          <DiffCard 
-            key={idx} 
-            diffFile={diffFile} 
+          <DiffCard
+            key={idx}
+            diffFile={diffFile}
             isCollapsed={collapsedIds.has(diffFile._newFileName)}
             onToggle={() => toggle(diffFile._newFileName)}
           />
