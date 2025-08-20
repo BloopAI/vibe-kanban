@@ -565,10 +565,6 @@ pub async fn get_task_attempt_branch_status(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<BranchStatus>>, ApiError> {
-    tracing::info!(
-        "Fetching branch status for task attempt {}",
-        task_attempt.id
-    );
     let pool = &deployment.db().pool;
 
     let task = task_attempt
