@@ -124,10 +124,6 @@ variants: Array<VariantAgentConfig>,
  */
 label: string, 
 /**
- * CodingAgent capabilities
- */
-capabilities: AgentCapabilities, 
-/**
  * Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
  */
 mcp_config_path: string | null, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor });
@@ -138,17 +134,11 @@ export type VariantAgentConfig = {
  */
 label: string, 
 /**
- * CodingAgent capabilities
- */
-capabilities: AgentCapabilities, 
-/**
  * Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
  */
 mcp_config_path: string | null, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor });
 
 export type ProfileConfigs = { profiles: Array<ProfileConfig>, };
-
-export type AgentCapabilities = { supports_images: boolean, supports_mcp: boolean, };
 
 export type ClaudeCode = { command: CommandBuilder, append_prompt: string | null, plan: boolean, };
 

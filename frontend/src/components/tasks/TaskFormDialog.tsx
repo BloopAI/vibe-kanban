@@ -172,6 +172,14 @@ export function TaskFormDialog({
     setNewlyUploadedImageIds((prev) => [...prev, image.id]);
   }, []);
 
+  const handleImagesChange = useCallback((updatedImages: ImageResponse[]) => {
+    setImages(updatedImages);
+    // Also update newlyUploadedImageIds to remove any deleted image IDs
+    setNewlyUploadedImageIds((prev) =>
+      prev.filter((id) => updatedImages.some((img) => img.id === id))
+    );
+  }, []);
+
   const handleSubmit = useCallback(async () => {
     if (!title.trim()) return;
 
@@ -368,7 +376,7 @@ export function TaskFormDialog({
 
             <ImageUploadSection
               images={images}
-              onImagesChange={setImages}
+              onImagesChange={handleImagesChange}
               onUpload={imagesApi.upload}
               onDelete={imagesApi.delete}
               onImageUploaded={handleImageUploaded}

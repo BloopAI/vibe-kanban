@@ -191,8 +191,14 @@ impl ImageService {
             return Ok(());
         }
 
-        let images_dir = worktree_path.join(".vibe-images");
+        let images_dir = worktree_path.join(utils::path::VIBE_IMAGES_DIR);
         std::fs::create_dir_all(&images_dir)?;
+
+        // Create .gitignore to ignore all files in this directory
+        let gitignore_path = images_dir.join(".gitignore");
+        if !gitignore_path.exists() {
+            std::fs::write(&gitignore_path, "*\n")?;
+        }
 
         for image in images {
             let src = self.cache_dir.join(&image.file_path);
@@ -212,7 +218,8 @@ impl ImageService {
     }
 
     pub fn canonicalise_image_paths(prompt: &str, worktree_path: &Path) -> String {
-        let re = Regex::new(r#"!\[([^\]]*)\]\((\.vibe-images/[^)\s]+)\)"#).unwrap();
+        let pattern = format!(r#"!\[([^\]]*)\]\(({}/[^)\s]+)\)"#, regex::escape(utils::path::VIBE_IMAGES_DIR));
+        let re = Regex::new(&pattern).unwrap();
 
         re.replace_all(prompt, |caps: &Captures| {
             let alt = &caps[1];

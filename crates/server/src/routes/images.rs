@@ -34,7 +34,7 @@ pub struct ImageResponse {
 impl ImageResponse {
     pub fn from_image(image: Image) -> Self {
         // special relative path for images
-        let markdown_path = format!(".vibe-images/{}", image.file_path);
+        let markdown_path = format!("{}/{}", utils::path::VIBE_IMAGES_DIR, image.file_path);
         Self {
             id: image.id,
             file_path: markdown_path,

@@ -1,5 +1,8 @@
 use std::path::{Path, PathBuf};
 
+/// Directory name for storing images in worktrees
+pub const VIBE_IMAGES_DIR: &str = ".vibe-images";
+
 /// Convert absolute paths to relative paths based on worktree path
 /// This is a robust implementation that handles symlinks and edge cases
 pub fn make_path_relative(path: &str, worktree_path: &str) -> String {

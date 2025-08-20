@@ -727,13 +727,6 @@ impl ContainerService for LocalContainerService {
                 });
         }
 
-        if let Err(e) = self
-            .git
-            .add_to_git_exclude(&project.git_repo_path, ".vibe-images/")
-        {
-            tracing::warn!("Failed to add .vibe-images/ to git exclude: {}", e);
-        }
-
         // Copy task images from cache to worktree
         if let Err(e) = self
             .image_service

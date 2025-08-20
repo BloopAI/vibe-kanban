@@ -1235,38 +1235,6 @@ impl GitService {
         Ok(())
     }
 
-    /// Add a pattern to the .git/info/exclude file for a repository
-    /// This provides a way to ignore files locally without modifying .gitignore
-    pub fn add_to_git_exclude(
-        &self,
-        repo_path: &Path,
-        pattern: &str,
-    ) -> Result<(), GitServiceError> {
-        let repo = Repository::open(repo_path)?;
-        let git_dir = repo.path();
-        let exclude_path = git_dir.join("info/exclude");
-
-        if let Some(parent) = exclude_path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-
-        let mut content = std::fs::read_to_string(&exclude_path).unwrap_or_default();
-
-        let pattern_line = pattern.trim();
-        let already_present = content.lines().any(|line| line.trim() == pattern_line);
-
-        if !already_present {
-            if !content.is_empty() && !content.ends_with('\n') {
-                content.push('\n');
-            }
-            content.push_str(pattern_line);
-            content.push('\n');
-            std::fs::write(&exclude_path, content)?;
-        }
-
-        Ok(())
-    }
-
     /// Clone a repository to the specified directory
     #[cfg(feature = "cloud")]
     pub fn clone_repository(
