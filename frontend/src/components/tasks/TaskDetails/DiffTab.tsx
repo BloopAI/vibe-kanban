@@ -43,10 +43,21 @@ function DiffTab() {
     }
   }, []);
 
-  const diffFiles = useMemo(() => {
-    return diffs
+  const { files: diffFiles, totals } = useMemo(() => {
+    const files = diffs
       .map((diff) => createDiffFile(diff))
       .filter((diffFile) => diffFile !== null);
+    
+    const totals = files.reduce(
+      (acc, file) => {
+        acc.added += file.additionLength ?? 0;
+        acc.deleted += file.deletionLength ?? 0;
+        return acc;
+      },
+      { added: 0, deleted: 0 }
+    );
+
+    return { files, totals };
   }, [diffs, createDiffFile]);
 
   const toggle = useCallback((id: string) => {
@@ -86,16 +97,31 @@ function DiffTab() {
     <div className="h-full flex flex-col">
       {diffFiles.length > 0 && (
         <div className="sticky top-0 bg-background border-b px-4 py-2 z-10">
-          <Button variant="outline" size="xs" onClick={handleCollapseAll}>
-            {allCollapsed ? 'Expand All' : 'Collapse All'}
-          </Button>
+          <div className="flex items-center justify-between gap-4">
+            <span 
+              className="text-xs font-mono whitespace-nowrap" 
+              aria-live="polite"
+              style={{ color: 'hsl(var(--muted-foreground) / 0.7)' }}
+            >
+              {diffFiles.length} file{diffFiles.length === 1 ? '' : 's'} changed,{' '}
+              <span style={{ color: 'hsl(var(--console-success))' }}>
+                +{totals.added}
+              </span>{' '}
+              <span style={{ color: 'hsl(var(--console-error))' }}>
+                -{totals.deleted}
+              </span>
+            </span>
+            <Button variant="outline" size="xs" onClick={handleCollapseAll} className="shrink-0">
+              {allCollapsed ? 'Expand All' : 'Collapse All'}
+            </Button>
+          </div>
         </div>
       )}
       <div className="flex-1 overflow-y-auto px-4">
         {diffFiles.map((diffFile, idx) => (
-          <DiffCard
-            key={idx}
-            diffFile={diffFile}
+          <DiffCard 
+            key={idx} 
+            diffFile={diffFile} 
             isCollapsed={collapsedIds.has(diffFile._newFileName)}
             onToggle={() => toggle(diffFile._newFileName)}
           />
