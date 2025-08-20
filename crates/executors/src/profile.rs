@@ -9,7 +9,7 @@ use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::executors::{AgentCapabilities, CodingAgent};
+use crate::executors::CodingAgent;
 
 lazy_static! {
     static ref PROFILES_CACHE: RwLock<ProfileConfigs> = RwLock::new(ProfileConfigs::load());
@@ -25,18 +25,8 @@ pub struct VariantAgentConfig {
     /// The coding agent this profile is associated with
     #[serde(flatten)]
     pub agent: CodingAgent,
-    /// CodingAgent capabilities
-    #[serde(skip_deserializing)]
-    pub capabilities: AgentCapabilities,
     /// Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
     pub mcp_config_path: Option<String>,
-}
-
-impl VariantAgentConfig {
-    pub fn with_capabilities(mut self) -> Self {
-        self.capabilities = self.agent.capabilities();
-        self
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
@@ -109,7 +99,7 @@ impl ProfileConfigs {
             }
         };
 
-        let mut profiles = match serde_json::from_str::<Self>(&content) {
+        match serde_json::from_str::<Self>(&content) {
             Ok(profiles) => {
                 tracing::info!("Loaded all profiles from profiles.json");
                 profiles
@@ -118,32 +108,14 @@ impl ProfileConfigs {
                 tracing::warn!("Failed to parse profiles.json: {}, using defaults", e);
                 Self::from_defaults()
             }
-        };
-
-        for profile in &mut profiles.profiles {
-            profile.default = profile.default.clone().with_capabilities();
-            for variant in &mut profile.variants {
-                *variant = variant.clone().with_capabilities();
-            }
         }
-
-        profiles
     }
 
     pub fn from_defaults() -> Self {
-        let mut profiles: Self = serde_json::from_str(DEFAULT_PROFILES_JSON).unwrap_or_else(|e| {
+        serde_json::from_str(DEFAULT_PROFILES_JSON).unwrap_or_else(|e| {
             tracing::error!("Failed to parse embedded default_profiles.json: {}", e);
             panic!("Default profiles JSON is invalid")
-        });
-
-        for profile in &mut profiles.profiles {
-            profile.default = profile.default.clone().with_capabilities();
-            for variant in &mut profile.variants {
-                *variant = variant.clone().with_capabilities();
-            }
-        }
-
-        profiles
+        })
     }
 
     pub fn extend_from_file(&mut self) -> Result<(), std::io::Error> {

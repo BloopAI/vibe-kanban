@@ -83,20 +83,6 @@ impl CodingAgent {
         }
     }
 
-    pub fn capabilities(&self) -> AgentCapabilities {
-        AgentCapabilities {
-            supports_images: self.supports_images(),
-            supports_mcp: self.supports_mcp(),
-        }
-    }
-
-    pub fn supports_images(&self) -> bool {
-        match self {
-            Self::Amp(_) | Self::ClaudeCode(_) | Self::Gemini(_) => true,
-            Self::Codex(_) | Self::Opencode(_) | Self::Cursor(_) => false,
-        }
-    }
-
     pub fn supports_mcp(&self) -> bool {
         self.default_mcp_config_path().is_some()
     }
@@ -180,12 +166,6 @@ impl CodingAgent {
             Self::Cursor(_) => dirs::home_dir().map(|home| home.join(".cursor").join("mcp.json")),
         }
     }
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, TS)]
-pub struct AgentCapabilities {
-    pub supports_images: bool,
-    pub supports_mcp: bool,
 }
 
 #[async_trait]

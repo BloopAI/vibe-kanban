@@ -63,7 +63,6 @@ fn generate_types_content() -> String {
         executors::profile::ProfileConfig::decl(),
         executors::profile::VariantAgentConfig::decl(),
         executors::profile::ProfileConfigs::decl(),
-        executors::executors::AgentCapabilities::decl(),
         executors::executors::claude::ClaudeCode::decl(),
         executors::executors::gemini::Gemini::decl(),
         executors::executors::amp::Amp::decl(),
