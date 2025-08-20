@@ -495,26 +495,28 @@ function CurrentAttempt({
           <div className="flex items-center gap-1.5">
             {mergeInfo.hasOpenPR && mergeInfo.openPR && mergeInfo.openPR.type === 'pr' ? (
               <div className="flex items-center gap-1.5">
-                <div className="h-2 w-2 bg-yellow-500 rounded-full" />
+                <div className="h-2 w-2 bg-blue-500 rounded-full" />
                 <button
                   onClick={() => mergeInfo.openPR && mergeInfo.openPR.type === 'pr' && window.open(mergeInfo.openPR.pr_info.url, '_blank')}
-                  className="text-sm font-medium text-yellow-700 hover:underline cursor-pointer"
+                  className="text-sm font-medium text-blue-700 hover:underline cursor-pointer"
                 >
                   PR #{mergeInfo.openPR && mergeInfo.openPR.type === 'pr' ? mergeInfo.openPR.pr_info.number.toString() : ''}
                 </button>
               </div>
-            ) : mergeInfo.hasMerged ? (
+            ) : (branchStatus?.commits_behind ?? 0) > 0 && (branchStatus?.commits_ahead ?? 0) > 0 ? (
               <div className="flex items-center gap-1.5">
-                <div className="h-2 w-2 bg-green-500 rounded-full" />
-                <span className="text-sm font-medium text-green-700 truncate">
-                  Merged
+                <div className="h-2 w-2 bg-orange-500 rounded-full" />
+                <span className="text-sm font-medium text-orange-700">
+                  Rebase needed
                 </span>
               </div>
             ) : (branchStatus?.commits_ahead ?? 0) > 0 ? (
               <div className="flex items-center gap-1.5">
                 <div className="h-2 w-2 bg-yellow-500 rounded-full" />
                 <span className="text-sm font-medium text-yellow-700">
-                  Not merged
+                  {branchStatus?.commits_ahead === 1
+                    ? '1 commit ahead'
+                    : `${branchStatus?.commits_ahead} commits ahead`}
                 </span>
               </div>
             ) : (
@@ -679,7 +681,8 @@ function CurrentAttempt({
                         creatingPR ||
                         pushing ||
                         Boolean((branchStatus.commits_behind ?? 0) > 0) ||
-                        isAttemptRunning
+                        isAttemptRunning ||
+                        (mergeInfo.hasOpenPR && branchStatus.remote_commits_ahead === 0)
                       }
                       variant="outline"
                       size="xs"
@@ -689,13 +692,11 @@ function CurrentAttempt({
                       {mergeInfo.hasOpenPR
                         ? pushing
                           ? 'Pushing...'
-                          : branchStatus.remote_commits_behind === null
-                            ? 'Disconnected'
-                            : branchStatus.remote_commits_behind === 0
-                              ? 'Push to PR'
-                              : branchStatus.remote_commits_behind === 1
-                                ? 'Push 1 commit'
-                                : `Push ${branchStatus.remote_commits_behind} commits`
+                          : branchStatus.remote_commits_ahead === 0
+                            ? 'Push to PR'
+                            : branchStatus.remote_commits_ahead === 1
+                              ? 'Push 1 commit'
+                              : `Push ${branchStatus.remote_commits_ahead || 0} commits`
                         : creatingPR
                           ? 'Creating...'
                           : 'Create PR'}
