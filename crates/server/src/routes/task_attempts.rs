@@ -268,13 +268,8 @@ pub async fn get_task_attempt_diff(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
     // ) -> Result<ResponseJson<ApiResponse<Diff>>, ApiError> {
-) -> Result<Sse<impl futures_util::Stream<Item = Result<Event, BoxError>>>, axum::http::StatusCode>
-{
-    let stream = deployment
-        .container()
-        .get_diff(&task_attempt)
-        .await
-        .map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+) -> Result<Sse<impl futures_util::Stream<Item = Result<Event, BoxError>>>, ApiError> {
+    let stream = deployment.container().get_diff(&task_attempt).await?;
 
     Ok(Sse::new(stream.map_err(|e| -> BoxError { e.into() })).keep_alive(KeepAlive::default()))
 }

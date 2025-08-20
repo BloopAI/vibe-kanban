@@ -4,12 +4,15 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use git2::{Error as GitError, Repository, WorktreeAddOptions};
+use git2::{Error as GitError, Repository};
 use thiserror::Error;
-use tracing::{debug, info, warn};
-use utils::{is_wsl2, shell::get_shell_command};
+use tracing::{debug, info};
+use utils::shell::get_shell_command;
 
-use super::git::{GitService, GitServiceError};
+use super::{
+    git::{GitService, GitServiceError},
+    git_cli::GitCli,
+};
 
 // Global synchronization for worktree creation to prevent race conditions
 lazy_static::lazy_static! {
@@ -23,6 +26,8 @@ pub enum WorktreeError {
     Git(#[from] GitError),
     #[error(transparent)]
     GitService(#[from] GitServiceError),
+    #[error("Git CLI error: {0}")]
+    GitCli(String),
     #[error("Task join error: {0}")]
     TaskJoin(String),
     #[error("Invalid path: {0}")]
@@ -185,23 +190,6 @@ impl WorktreeManager {
         .map_err(|e| WorktreeError::TaskJoin(format!("{e}")))?
     }
 
-    /// Try to remove a worktree registration from git
-    fn try_remove_worktree(repo: &Repository, worktree_name: &str) -> Result<(), GitError> {
-        let worktrees = repo.worktrees()?;
-
-        for name in worktrees.iter().flatten() {
-            if name == worktree_name {
-                let worktree = repo.find_worktree(name)?;
-                worktree.prune(None)?;
-                debug!("Successfully removed worktree registration: {}", name);
-                return Ok(());
-            }
-        }
-
-        debug!("Worktree {} not found in git worktrees list", worktree_name);
-        Ok(())
-    }
-
     /// Comprehensive cleanup of worktree path and metadata to prevent "path exists" errors (blocking)
     fn comprehensive_worktree_cleanup(
         repo: &Repository,
@@ -212,12 +200,17 @@ impl WorktreeManager {
 
         let git_repo_path = Self::get_git_repo_path(repo)?;
 
-        // Step 1: Always try to remove worktree registration first (this may fail if not registered)
-        if let Err(e) = Self::try_remove_worktree(repo, worktree_name) {
-            debug!(
-                "Worktree registration removal failed or not found (non-fatal): {}",
-                e
-            );
+        // Try git CLI worktree remove first (force). This tends to be more robust.
+        let git = GitCli::new();
+        if let Err(e) = git.worktree_remove(&git_repo_path, worktree_path, true) {
+            debug!("git worktree remove non-fatal error: {}", e);
+        }
+
+        // Step 1: Use Git CLI to remove the worktree registration (force) if present
+        // The Git CLI is more robust than libgit2 for mutable worktree operations
+        let git = GitCli::new();
+        if let Err(e) = git.worktree_remove(&git_repo_path, worktree_path, true) {
+            debug!("git worktree remove non-fatal error: {}", e);
         }
 
         // Step 2: Always force cleanup metadata directory (proactive cleanup)
@@ -232,6 +225,11 @@ impl WorktreeManager {
                 worktree_path.display()
             );
             std::fs::remove_dir_all(worktree_path).map_err(WorktreeError::Io)?;
+        }
+
+        // Step 4: Good-practice to clean up any other stale admin entries
+        if let Err(e) = git.worktree_prune(&git_repo_path) {
+            debug!("git worktree prune non-fatal error: {}", e);
         }
 
         debug!(
@@ -301,85 +299,46 @@ impl WorktreeManager {
         let path_str = path_str.to_string();
 
         tokio::task::spawn_blocking(move || -> Result<(), WorktreeError> {
-            // Open repository in blocking context
-            let repo = Repository::open(&git_repo_path).map_err(WorktreeError::Git)?;
-
-            // Find the branch reference using the branch name
-            let branch_ref = GitService::find_branch(&repo, &branch_name)?.into_reference();
-
-            // Create worktree options
-            let mut worktree_opts = WorktreeAddOptions::new();
-            worktree_opts.reference(Some(&branch_ref));
-
-            match repo.worktree(&branch_name, &worktree_path, Some(&worktree_opts)) {
-                Ok(_) => {
-                    // Verify the worktree was actually created
+            // Prefer git CLI for worktree add to inherit sparse-checkout semantics
+            let git = GitCli::new();
+            match git.worktree_add(&git_repo_path, &worktree_path, &branch_name, false) {
+                Ok(()) => {
                     if !worktree_path.exists() {
                         return Err(WorktreeError::Repository(format!(
                             "Worktree creation reported success but path {path_str} does not exist"
                         )));
                     }
-
                     info!(
-                        "Successfully created worktree {} at {}",
+                        "Successfully created worktree {} at {} (git CLI)",
                         branch_name, path_str
                     );
-
-                    // Fix commondir for Windows/WSL compatibility
-                    if let Err(e) = Self::fix_worktree_commondir_for_windows_wsl(
-                        Path::new(&git_repo_path),
-                        &worktree_name,
-                    ) {
-                        warn!("Failed to fix worktree commondir for Windows/WSL: {}", e);
-                    }
-
                     Ok(())
                 }
-                Err(e) if e.code() == git2::ErrorCode::Exists => {
-                    // Handle the specific "directory exists" error for metadata
+                Err(e) => {
                     debug!(
-                        "Worktree metadata directory exists, attempting force cleanup: {}",
+                        "git worktree add failed; attempting metadata cleanup and retry: {}",
                         e
                     );
-
                     // Force cleanup metadata and try one more time
                     Self::force_cleanup_worktree_metadata(&git_repo_path, &worktree_name)
                         .map_err(WorktreeError::Io)?;
-
-                    // Try again after cleanup
-                    match repo.worktree(&branch_name, &worktree_path, Some(&worktree_opts)) {
-                        Ok(_) => {
-                            if !worktree_path.exists() {
-                                return Err(WorktreeError::Repository(format!(
-                                    "Worktree creation reported success but path {path_str} does not exist"
-                                )));
-                            }
-
-                            info!(
-                                "Successfully created worktree {} at {} after metadata cleanup",
-                                branch_name, path_str
-                            );
-
-                            // Fix commondir for Windows/WSL compatibility
-                            if let Err(e) = Self::fix_worktree_commondir_for_windows_wsl(
-                                Path::new(&git_repo_path),
-                                &worktree_name,
-                            ) {
-                                warn!("Failed to fix worktree commondir for Windows/WSL: {}", e);
-                            }
-
-                            Ok(())
-                        }
-                        Err(retry_error) => {
-                            debug!(
-                                "Worktree creation failed even after metadata cleanup: {}",
-                                retry_error
-                            );
-                            Err(WorktreeError::Git(retry_error))
-                        }
+                    if let Err(e2) =
+                        git.worktree_add(&git_repo_path, &worktree_path, &branch_name, false)
+                    {
+                        debug!("Retry of git worktree add failed: {}", e2);
+                        return Err(WorktreeError::GitCli(e2.to_string()));
                     }
+                    if !worktree_path.exists() {
+                        return Err(WorktreeError::Repository(format!(
+                            "Worktree creation reported success but path {path_str} does not exist"
+                        )));
+                    }
+                    info!(
+                        "Successfully created worktree {} at {} after metadata cleanup (git CLI)",
+                        branch_name, path_str
+                    );
+                    Ok(())
                 }
-                Err(e) => Err(WorktreeError::Git(e)),
             }
         })
         .await
@@ -523,88 +482,6 @@ impl WorktreeManager {
         })
         .await
         .map_err(|e| WorktreeError::TaskJoin(format!("{e}")))?
-    }
-
-    /// Rewrite worktree's commondir file to use relative paths for WSL compatibility
-    ///
-    /// This fixes Git repository corruption in WSL environments where git2/libgit2 creates
-    /// worktrees with absolute WSL paths (/mnt/c/...) that Windows Git cannot understand.
-    /// Git CLI creates relative paths (../../..) which work across both environments.
-    ///
-    /// References:
-    /// - Git 2.48+ native support: https://git-scm.com/docs/git-config/2.48.0#Documentation/git-config.txt-worktreeuseRelativePaths
-    /// - WSL worktree absolute path issue: https://github.com/git-ecosystem/git-credential-manager/issues/1789
-    pub fn fix_worktree_commondir_for_windows_wsl(
-        git_repo_path: &Path,
-        worktree_name: &str,
-    ) -> Result<(), std::io::Error> {
-        if !cfg!(target_os = "linux") || !is_wsl2() {
-            debug!("Skipping commondir fix for non-WSL2 environment");
-            return Ok(());
-        }
-
-        let commondir_path = git_repo_path
-            .join(".git")
-            .join("worktrees")
-            .join(worktree_name)
-            .join("commondir");
-
-        if !commondir_path.exists() {
-            debug!(
-                "commondir file does not exist: {}",
-                commondir_path.display()
-            );
-            return Ok(());
-        }
-
-        // Read current commondir content
-        let current_content = std::fs::read_to_string(&commondir_path)?.trim().to_string();
-
-        debug!("Current commondir content: {}", current_content);
-
-        // Skip if already relative
-        if !Path::new(&current_content).is_absolute() {
-            debug!("commondir already contains relative path, skipping");
-            return Ok(());
-        }
-
-        // Calculate relative path from worktree metadata dir to repo .git dir
-        let metadata_dir = commondir_path.parent().unwrap();
-        let target_git_dir = Path::new(&current_content);
-
-        if let Some(relative_path) = pathdiff::diff_paths(target_git_dir, metadata_dir) {
-            let relative_path_str = relative_path.to_string_lossy();
-
-            // Safety check: ensure the relative path resolves to the same absolute path
-            let resolved_path = metadata_dir.join(&relative_path);
-            if let (Ok(resolved_canonical), Ok(target_canonical)) =
-                (resolved_path.canonicalize(), target_git_dir.canonicalize())
-            {
-                if resolved_canonical == target_canonical {
-                    // Write the relative path
-                    std::fs::write(&commondir_path, format!("{relative_path_str}\n"))?;
-                    info!(
-                        "Rewrote commondir to relative path: {} -> {}",
-                        current_content, relative_path_str
-                    );
-                } else {
-                    warn!(
-                        "Safety check failed: relative path {} does not resolve to same target",
-                        relative_path_str
-                    );
-                }
-            } else {
-                warn!("Failed to canonicalize paths for safety check");
-            }
-        } else {
-            warn!(
-                "Failed to calculate relative path from {} to {}",
-                metadata_dir.display(),
-                target_git_dir.display()
-            );
-        }
-
-        Ok(())
     }
 
     /// Get the base directory for vibe-kanban worktrees

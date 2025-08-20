@@ -2,7 +2,7 @@ use std::{collections::HashMap, path::Path};
 
 use chrono::{DateTime, Utc};
 use git2::{
-    Branch, BranchType, CherrypickOptions, Delta, DiffFindOptions, DiffOptions, Error as GitError,
+    BranchType, CherrypickOptions, Delta, DiffFindOptions, DiffOptions, Error as GitError,
     FetchOptions, Reference, Remote, Repository, Sort, build::CheckoutBuilder,
 };
 use regex;
@@ -13,6 +13,7 @@ use utils::diff::{Diff, DiffChangeKind, FileDiffDetails};
 
 // Import for file ranking functionality
 use super::file_ranker::FileStat;
+use super::git_cli::{ChangeType, GitCli, StatusDiffEntry, StatusDiffOptions};
 use crate::services::github_service::GitHubRepoInfo;
 
 #[derive(Debug, Error)]
@@ -175,48 +176,20 @@ impl GitService {
     }
 
     pub fn commit(&self, path: &Path, message: &str) -> Result<bool, GitServiceError> {
-        let repo = Repository::open(path)?;
-
-        // Check if there are any changes to commit
-        let status = repo.statuses(None)?;
-
-        let has_changes = status.iter().any(|entry| {
-            let flags = entry.status();
-            flags.contains(git2::Status::INDEX_NEW)
-                || flags.contains(git2::Status::INDEX_MODIFIED)
-                || flags.contains(git2::Status::INDEX_DELETED)
-                || flags.contains(git2::Status::WT_NEW)
-                || flags.contains(git2::Status::WT_MODIFIED)
-                || flags.contains(git2::Status::WT_DELETED)
-        });
-
+        // Use Git CLI to respect sparse-checkout semantics for staging and commit
+        let git = GitCli::new();
+        let has_changes = git
+            .has_changes(path)
+            .map_err(|e| GitServiceError::InvalidRepository(format!("git status failed: {e}")))?;
         if !has_changes {
             tracing::debug!("No changes to commit!");
             return Ok(false);
         }
 
-        // Get the current HEAD commit
-        let head = repo.head()?;
-        let parent_commit = head.peel_to_commit()?;
-
-        // Stage all has_changes
-        let mut index = repo.index()?;
-        index.add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)?;
-        index.write()?;
-
-        let tree_id = index.write_tree()?;
-        let tree = repo.find_tree(tree_id)?;
-
-        let signature = repo.signature()?;
-        repo.commit(
-            Some("HEAD"),
-            &signature,
-            &signature,
-            message,
-            &tree,
-            &[&parent_commit],
-        )?;
-
+        git.add_all(path)
+            .map_err(|e| GitServiceError::InvalidRepository(format!("git add failed: {e}")))?;
+        git.commit(path, message)
+            .map_err(|e| GitServiceError::InvalidRepository(format!("git commit failed: {e}")))?;
         Ok(true)
     }
 
@@ -232,31 +205,24 @@ impl GitService {
                 branch_name: _,
                 base_branch,
             } => {
+                // Use Git CLI to compute diff vs base to avoid sparse false deletions
                 let repo = Repository::open(worktree_path)?;
                 let base_git_branch = GitService::find_branch(&repo, base_branch)?;
                 let base_tree = base_git_branch.get().peel_to_commit()?.tree()?;
 
-                let mut diff_opts = DiffOptions::new();
-                diff_opts
-                    .include_untracked(true)
-                    .include_typechange(true)
-                    .recurse_untracked_dirs(true);
-
-                // Add path filtering if specified
-                if let Some(paths) = path_filter {
-                    for path in paths {
-                        diff_opts.pathspec(*path);
-                    }
-                }
-
-                let mut diff =
-                    repo.diff_tree_to_workdir_with_index(Some(&base_tree), Some(&mut diff_opts))?;
-
-                // Enable rename detection
-                let mut find_opts = DiffFindOptions::new();
-                diff.find_similar(Some(&mut find_opts))?;
-
-                self.convert_diff_to_file_diffs(diff, &repo)
+                let git = GitCli::new();
+                let cli_opts = StatusDiffOptions {
+                    path_filter: path_filter.map(|fs| fs.iter().map(|s| s.to_string()).collect()),
+                };
+                let entries = git
+                    .diff_status(worktree_path, base_branch, cli_opts)
+                    .map_err(|e| {
+                        GitServiceError::InvalidRepository(format!("git diff failed: {e}"))
+                    })?;
+                Ok(entries
+                    .into_iter()
+                    .map(|e| Self::status_entry_to_diff(&repo, &base_tree, e))
+                    .collect())
             }
             DiffTarget::Branch {
                 repo_path,
@@ -515,6 +481,74 @@ impl GitService {
         FileDiffDetails {
             file_name: Some(file_name),
             content,
+        }
+    }
+
+    /// Create Diff entries from git_cli::StatusDiffEntry
+    /// New Diff format is flattened with change kind, paths, and optional contents.
+    fn status_entry_to_diff(repo: &Repository, base_tree: &git2::Tree, e: StatusDiffEntry) -> Diff {
+        // Map ChangeType to DiffChangeKind
+        let mut change = match e.change {
+            ChangeType::Added => DiffChangeKind::Added,
+            ChangeType::Deleted => DiffChangeKind::Deleted,
+            ChangeType::Modified => DiffChangeKind::Modified,
+            ChangeType::Renamed => DiffChangeKind::Renamed,
+            ChangeType::Copied => DiffChangeKind::Copied,
+            // Treat type changes and unmerged as modified for now
+            ChangeType::TypeChanged | ChangeType::Unmerged => DiffChangeKind::Modified,
+            ChangeType::Unknown(_) => DiffChangeKind::Modified,
+        };
+
+        // Determine old/new paths based on change
+        let (old_path_opt, new_path_opt): (Option<String>, Option<String>) = match e.change {
+            ChangeType::Added => (None, Some(e.path.clone())),
+            ChangeType::Deleted => (Some(e.old_path.unwrap_or(e.path.clone())), None),
+            ChangeType::Modified | ChangeType::TypeChanged | ChangeType::Unmerged => (
+                Some(e.old_path.unwrap_or(e.path.clone())),
+                Some(e.path.clone()),
+            ),
+            ChangeType::Renamed | ChangeType::Copied => (e.old_path.clone(), Some(e.path.clone())),
+            ChangeType::Unknown(_) => (e.old_path.clone(), Some(e.path.clone())),
+        };
+
+        // Load old content from base tree if possible
+        let old_content = if let Some(ref oldp) = old_path_opt {
+            let rel = std::path::Path::new(oldp);
+            match base_tree.get_path(rel) {
+                Ok(entry) if entry.kind() == Some(git2::ObjectType::Blob) => repo
+                    .find_blob(entry.id())
+                    .ok()
+                    .and_then(|b| Self::blob_to_string(&b)),
+                _ => None,
+            }
+        } else {
+            None
+        };
+
+        // Load new content from filesystem (worktree) when available
+        let new_content = if let Some(ref newp) = new_path_opt {
+            let rel = std::path::Path::new(newp);
+            Self::read_file_to_string(repo, rel)
+        } else {
+            None
+        };
+
+        // If reported as Modified but content is identical, treat as a permission-only change
+        if matches!(change, DiffChangeKind::Modified)
+            && old_content
+                .as_ref()
+                .zip(new_content.as_ref())
+                .is_none_or(|(o, n)| o == n)
+        {
+            change = DiffChangeKind::PermissionChange;
+        }
+
+        Diff {
+            change,
+            old_path: old_path_opt,
+            new_path: new_path_opt,
+            old_content,
+            new_content,
         }
     }
 

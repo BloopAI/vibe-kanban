@@ -588,7 +588,10 @@ impl LocalContainerService {
                                     &task_branch,
                                     &base_branch,
                                     &changed_paths,
-                                ).map_err(|e| io::Error::other(e.to_string()))? {
+                                ).map_err(|e| {
+                                    tracing::error!("Error processing file changes: {}", e);
+                                    io::Error::other(e.to_string())
+                                })? {
                                     yield event;
                                 }
                             }
@@ -598,6 +601,7 @@ impl LocalContainerService {
                                 .map(|e| e.to_string())
                                 .collect::<Vec<_>>()
                                 .join("; ");
+                            tracing::error!("Filesystem watcher error: {}", error_msg);
                             Err(io::Error::other(error_msg))?;
                         }
                     }
@@ -624,6 +628,7 @@ impl LocalContainerService {
                     .ok()
                     .map(|p| p.to_string_lossy().replace('\\', "/"))
             })
+            .filter(|s| !s.is_empty())
             .collect()
     }
 
