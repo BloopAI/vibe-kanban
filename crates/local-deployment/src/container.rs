@@ -1103,10 +1103,18 @@ impl LocalContainerService {
             // Only update if summary is not already set
             if session.summary.is_none() {
                 if let Some(summary) = self.extract_last_assistant_message(exec_id) {
+                    let preview = {
+                        let end = summary
+                            .char_indices()
+                            .nth(100)
+                            .map(|(idx, _)| idx)
+                            .unwrap_or(summary.len());
+                        &summary[..end]
+                    };
                     tracing::debug!(
                         "Updating executor session summary for execution {}: {}",
                         exec_id,
-                        &summary[..summary.len().min(100)]
+                        preview
                     );
                     ExecutorSession::update_summary(&self.db.pool, *exec_id, &summary).await?;
                 } else {
