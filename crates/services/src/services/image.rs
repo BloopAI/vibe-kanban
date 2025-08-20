@@ -229,7 +229,7 @@ impl ImageService {
             let rel = &caps[2];
             let abs = worktree_path.join(rel);
             let abs = abs.to_string_lossy().replace('\\', "/");
-            format!("![{}]({})", alt, abs)
+            format!("![{alt}]({abs})")
         })
         .into_owned()
     }
