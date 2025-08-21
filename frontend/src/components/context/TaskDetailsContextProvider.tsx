@@ -176,8 +176,6 @@ const TaskDetailsProvider: FC<{
   }, [attemptData.processes, selectedAttempt?.profile, profiles]);
 
   useEffect(() => {
-    if (!isAttemptRunning || !task) return;
-
     const interval = setInterval(() => {
       if (selectedAttempt) {
         fetchAttemptData(selectedAttempt.id);
@@ -205,22 +203,6 @@ const TaskDetailsProvider: FC<{
     };
 
     fetchBranchStatus();
-  }, [selectedAttempt]);
-
-  // Add periodic polling for branch status
-  useEffect(() => {
-    if (!selectedAttempt) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const result = await attemptsApi.getBranchStatus(selectedAttempt.id);
-        setBranchStatus(result);
-      } catch (err) {
-        console.error('Failed to fetch branch status during polling:', err);
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
   }, [selectedAttempt]);
 
   const value = useMemo(
