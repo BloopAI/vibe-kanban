@@ -134,6 +134,16 @@ impl PlainTextBuffer {
         &self.lines
     }
 
+    /// Mutably view lines for in-place transformations.
+    pub fn lines_mut(&mut self) -> &mut Vec<String> {
+        &mut self.lines
+    }
+
+    /// Recompute cached total length from current lines.
+    pub fn recompute_len(&mut self) {
+        self.total_len = self.lines.iter().map(|s| s.len()).sum();
+    }
+
     /// Get the current parial line.
     pub fn partial_line(&self) -> Option<&str> {
         if let Some(last) = self.lines.last()
@@ -167,6 +177,9 @@ pub type MessageBoundaryPredicateFn =
 /// Function to create a `NormalizedEntry` from content.
 pub type NormalizedEntryProducerFn = Box<dyn Fn(String) -> NormalizedEntry + Send + 'static>;
 
+/// Optional function to transform buffered lines in-place before boundary checks.
+pub type LinesTransformFn = Box<dyn FnMut(&mut Vec<String>) + Send + 'static>;
+
 /// High-level plain text log processor with configurable formatting and splitting
 pub struct PlainTextLogProcessor {
     buffer: PlainTextBuffer,
@@ -174,6 +187,7 @@ pub struct PlainTextLogProcessor {
     entry_size_threshold: Option<usize>,
     time_gap: Option<Duration>,
     format_chunk: Option<FormatChunkFn>,
+    transform_lines: Option<LinesTransformFn>,
     message_boundary_predicate: Option<MessageBoundaryPredicateFn>,
     normalized_entry_producer: NormalizedEntryProducerFn,
     last_chunk_arrival_time: Instant, // time since last chunk arrived
@@ -216,6 +230,15 @@ impl PlainTextLogProcessor {
 
         // Let the buffer handle text buffering
         self.buffer.ingest(formatted_chunk);
+
+        if let Some(transform_lines) = self.transform_lines.as_mut() {
+            transform_lines(self.buffer.lines_mut());
+            self.buffer.recompute_len();
+            if self.buffer.is_empty() {
+                // Nothing left to process after transformation
+                return vec![];
+            }
+        }
 
         let mut patches = Vec::new();
 
@@ -313,6 +336,7 @@ impl PlainTextLogProcessor {
         size_threshold: Option<usize>,
         time_gap: Option<Duration>,
         format_chunk: Option<Box<dyn Fn(Option<&str>, String) -> String + 'static + Send>>,
+        transform_lines: Option<Box<dyn FnMut(&mut Vec<String>) + 'static + Send>>,
         message_boundary_predicate: Option<
             Box<dyn Fn(&[String]) -> Option<MessageBoundary> + 'static + Send>,
         >,
@@ -330,6 +354,8 @@ impl PlainTextLogProcessor {
             format_chunk: format_chunk.map(|f| {
                 Box::new(f) as Box<dyn Fn(Option<&str>, String) -> String + Send + 'static>
             }),
+            transform_lines: transform_lines
+                .map(|f| Box::new(f) as Box<dyn FnMut(&mut Vec<String>) + Send + 'static>),
             message_boundary_predicate: message_boundary_predicate.map(|p| {
                 Box::new(p) as Box<dyn Fn(&[String]) -> Option<MessageBoundary> + Send + 'static>
             }),
@@ -433,6 +459,39 @@ mod tests {
             .build();
 
         let patches = processor.process("TOOL: file_read\n".to_string());
+        assert_eq!(patches.len(), 1);
+    }
+
+    #[test]
+    fn test_processor_transform_lines_clears_first_line() {
+        let producer = |content: String| -> NormalizedEntry {
+            NormalizedEntry {
+                timestamp: None,
+                entry_type: NormalizedEntryType::SystemMessage,
+                content,
+                metadata: None,
+            }
+        };
+
+        let mut processor = PlainTextLogProcessor::builder()
+            .normalized_entry_producer(producer)
+            .transform_lines(Box::new(|lines: &mut Vec<String>| {
+                // Drop a specific leading banner line if present
+                if !lines.is_empty()
+                    && lines.first().map(|s| s.as_str()) == Some("BANNER LINE TO DROP\n")
+                {
+                    lines.remove(0);
+                }
+            }))
+            .index_provider(EntryIndexProvider::test_new())
+            .build();
+
+        // Provide a single-line chunk. The transform removes it, leaving nothing to emit.
+        let patches = processor.process("BANNER LINE TO DROP\n".to_string());
+        assert_eq!(patches.len(), 0);
+
+        // Next, add actual content; should emit one patch with the content
+        let patches = processor.process("real content\n".to_string());
         assert_eq!(patches.len(), 1);
     }
 }

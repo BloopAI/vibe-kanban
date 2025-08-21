@@ -162,6 +162,12 @@ impl StandardCodingAgentExecutor for Gemini {
                 .format_chunk(Box::new(|partial_line: Option<&str>, chunk: String| {
                     Self::format_stdout_chunk(&chunk, partial_line.unwrap_or(""))
                 }))
+                // Gemini CLI sometimes prints a non-conversational noise
+                .transform_lines({
+                    Box::new(move |lines: &mut Vec<String>| {
+                        lines.retain(|line| line != "Data collection is disabled.\n");
+                    })
+                })
                 .index_provider(entry_index_counter)
                 .build();
 
