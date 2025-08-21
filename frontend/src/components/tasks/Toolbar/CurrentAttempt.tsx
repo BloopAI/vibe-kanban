@@ -700,62 +700,57 @@ function CurrentAttempt({
                   {rebasing ? 'Rebasing...' : `Rebase`}
                 </Button>
               )}
-              {
-                // Normal merge and PR buttons for regular tasks
-                ((branchStatus.commits_ahead ?? 0) > 0 ||
-                  pushSuccess ||
-                  mergeSuccess) && (
-                  <>
-                    <Button
-                      onClick={handlePRButtonClick}
-                      disabled={
-                        creatingPR ||
-                        pushing ||
-                        Boolean((branchStatus.commits_behind ?? 0) > 0) ||
-                        isAttemptRunning ||
-                        (mergeInfo.hasOpenPR &&
-                          branchStatus.remote_commits_ahead === 0)
-                      }
-                      variant="outline"
-                      size="xs"
-                      className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1 min-w-[120px]"
-                    >
-                      <GitPullRequest className="h-3 w-3" />
-                      {mergeInfo.hasOpenPR
-                        ? pushSuccess
-                          ? 'Pushed!'
-                          : pushing
-                            ? 'Pushing...'
-                            : branchStatus.remote_commits_ahead === 0
-                              ? 'Push to PR'
-                              : branchStatus.remote_commits_ahead === 1
-                                ? 'Push 1 commit'
-                                : `Push ${branchStatus.remote_commits_ahead || 0} commits`
-                        : creatingPR
-                          ? 'Creating...'
-                          : 'Create PR'}
-                    </Button>
-                    <Button
-                      onClick={handleMergeClick}
-                      disabled={
-                        mergeInfo.hasOpenPR ||
-                        merging ||
-                        Boolean((branchStatus.commits_behind ?? 0) > 0) ||
-                        isAttemptRunning
-                      }
-                      size="xs"
-                      className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1 min-w-[120px]"
-                    >
-                      <GitBranchIcon className="h-3 w-3" />
-                      {mergeSuccess
-                        ? 'Merged!'
-                        : merging
-                          ? 'Merging...'
-                          : 'Merge'}
-                    </Button>
-                  </>
-                )
-              }
+              <>
+                <Button
+                  onClick={handlePRButtonClick}
+                  disabled={
+                    creatingPR ||
+                    pushing ||
+                    Boolean((branchStatus.commits_behind ?? 0) > 0) ||
+                    isAttemptRunning ||
+                    (mergeInfo.hasOpenPR &&
+                      branchStatus.remote_commits_ahead === 0) ||
+                    ((branchStatus.commits_ahead ?? 0) === 0 &&
+                      !pushSuccess &&
+                      !mergeSuccess)
+                  }
+                  variant="outline"
+                  size="xs"
+                  className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1 min-w-[120px]"
+                >
+                  <GitPullRequest className="h-3 w-3" />
+                  {mergeInfo.hasOpenPR
+                    ? pushSuccess
+                      ? 'Pushed!'
+                      : pushing
+                        ? 'Pushing...'
+                        : branchStatus.remote_commits_ahead === 0
+                          ? 'Push to PR'
+                          : branchStatus.remote_commits_ahead === 1
+                            ? 'Push 1 commit'
+                            : `Push ${branchStatus.remote_commits_ahead || 0} commits`
+                    : creatingPR
+                      ? 'Creating...'
+                      : 'Create PR'}
+                </Button>
+                <Button
+                  onClick={handleMergeClick}
+                  disabled={
+                    mergeInfo.hasOpenPR ||
+                    merging ||
+                    Boolean((branchStatus.commits_behind ?? 0) > 0) ||
+                    isAttemptRunning ||
+                    ((branchStatus.commits_ahead ?? 0) === 0 &&
+                      !pushSuccess &&
+                      !mergeSuccess)
+                  }
+                  size="xs"
+                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1 min-w-[120px]"
+                >
+                  <GitBranchIcon className="h-3 w-3" />
+                  {mergeSuccess ? 'Merged!' : merging ? 'Merging...' : 'Merge'}
+                </Button>
+              </>
             </>
           )}
 
