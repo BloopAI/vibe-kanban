@@ -1,24 +1,36 @@
 import { generateDiffFile } from '@git-diff-view/file';
 import { useDiffEntries } from '@/hooks/useDiffEntries';
 import { useMemo, useContext, useCallback, useState, useEffect } from 'react';
-import { TaskSelectedAttemptContext } from '@/components/context/taskDetailsContext.ts';
+import {
+  TaskSelectedAttemptContext,
+  TaskAttemptDataContext,
+} from '@/components/context/taskDetailsContext.ts';
 import { Diff } from 'shared/types';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import { Loader } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
 import DiffCard from '@/components/DiffCard';
+import { FileText } from 'lucide-react';
 
 function DiffTab() {
   const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
+  const { isAttemptRunning } = useContext(TaskAttemptDataContext);
   const [loading, setLoading] = useState(true);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const { diffs, error } = useDiffEntries(selectedAttempt?.id ?? null, true);
 
   useEffect(() => {
-    if (diffs.length > 0 && loading) {
+    if (diffs.length > 0) {
       setLoading(false);
+    } else if (!isAttemptRunning) {
+      // If attempt is not running and we have no diffs, stop loading
+      // Add a small delay to ensure any pending diffs are received
+      const timer = setTimeout(() => {
+        setLoading(false);
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, [diffs, loading]);
+  }, [diffs, isAttemptRunning]);
 
   const createDiffFile = useCallback((diff: Diff) => {
     const oldFileName = diff.oldFile?.fileName || 'old';
@@ -89,6 +101,17 @@ function DiffTab() {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader />
+      </div>
+    );
+  }
+
+  if (diffFiles.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center text-muted-foreground">
+          <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+          <p className="text-sm font-medium">No file changes</p>
+        </div>
       </div>
     );
   }
