@@ -51,6 +51,7 @@ import {
 } from '@/components/context/taskDetailsContext.ts';
 import { useConfig } from '@/components/config-provider.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
+import { writeClipboardViaBridge } from '@/vscode/bridge';
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
 
 // Helper function to get the display name for different editor types
@@ -404,7 +405,7 @@ function CurrentAttempt({
 
   const handleCopyWorktreePath = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(selectedAttempt.container_ref || '');
+      await writeClipboardViaBridge(selectedAttempt.container_ref || '');
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
