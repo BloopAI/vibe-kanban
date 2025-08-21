@@ -6,7 +6,7 @@ use git2::{
     FetchOptions, Repository, Sort, build::CheckoutBuilder,
 };
 use regex;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use thiserror::Error;
 use ts_rs::TS;
 use utils::diff::{Diff, FileDiffDetails};
@@ -525,7 +525,7 @@ impl GitService {
 
         // Reset the task branch to point to the squash commit
         // This allows follow-up work to continue from the merged state without conflicts
-        let task_refname = format!("refs/heads/{}", branch_name);
+        let task_refname = format!("refs/heads/{branch_name}");
         main_repo.reference(
             &task_refname,
             squash_commit_id,

@@ -117,17 +117,15 @@ impl PrMonitorService {
             .await?;
 
             // If the PR was merged, update the task status to done
-            if matches!(&pr_status.status, MergeStatus::Merged) {
-                if let Some(task_attempt) =
+            if matches!(&pr_status.status, MergeStatus::Merged)
+                && let Some(task_attempt) =
                     TaskAttempt::find_by_id(&self.db.pool, pr_merge.task_attempt_id).await?
-                {
-                    info!(
-                        "PR #{} was merged, updating task {} to done",
-                        pr_merge.pr_info.number, task_attempt.task_id
-                    );
-                    Task::update_status(&self.db.pool, task_attempt.task_id, TaskStatus::Done)
-                        .await?;
-                }
+            {
+                info!(
+                    "PR #{} was merged, updating task {} to done",
+                    pr_merge.pr_info.number, task_attempt.task_id
+                );
+                Task::update_status(&self.db.pool, task_attempt.task_id, TaskStatus::Done).await?;
             }
         }
 
