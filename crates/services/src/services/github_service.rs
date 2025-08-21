@@ -167,7 +167,10 @@ impl GitHubService {
                     .with_max_times(3)
                     .with_jitter(),
             )
-            .when(|e| !matches!(e, GitHubServiceError::TokenInvalid))
+            .when(|e| {
+                !matches!(e, GitHubServiceError::TokenInvalid)
+                    && !matches!(e, GitHubServiceError::Branch(_))
+            })
             .notify(|err: &GitHubServiceError, dur: Duration| {
                 tracing::warn!(
                     "GitHub API call failed, retrying after {:.2}s: {}",

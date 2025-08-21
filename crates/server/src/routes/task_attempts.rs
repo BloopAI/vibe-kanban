@@ -449,7 +449,7 @@ pub async fn create_github_pr(
             return Ok(ResponseJson(ApiResponse::error_with_data(gh_e)));
         } else {
             return Ok(ResponseJson(ApiResponse::error(
-                "Failed to push branch to GitHub",
+                format!("Failed to push branch to GitHub: {}", gh_e).as_str(),
             )));
         }
     }
@@ -498,7 +498,9 @@ pub async fn create_github_pr(
             if e.is_api_data() {
                 Ok(ResponseJson(ApiResponse::error_with_data(e)))
             } else {
-                Ok(ResponseJson(ApiResponse::error("Failed to create PR")))
+                Ok(ResponseJson(ApiResponse::error(
+                    format!("Failed to create PR: {}", e).as_str(),
+                )))
             }
         }
     }
