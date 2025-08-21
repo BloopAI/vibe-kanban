@@ -29,8 +29,8 @@ pub enum GitServiceError {
     MergeConflicts(String),
     #[error("Invalid path: {0}")]
     InvalidPath(String),
-    #[error("Worktree has uncommitted changes: {0}")]
-    WorktreeDirty(String),
+    #[error("{0} has uncommitted changes: {1}")]
+    WorktreeDirty(String, String),
     #[error("Invalid file paths: {0}")]
     InvalidFilePaths(String),
     #[error("No GitHub token available.")]
@@ -603,7 +603,7 @@ impl GitService {
         let repo = self.open_repo(worktree_path)?;
         match self.check_worktree_clean(&repo) {
             Ok(()) => Ok(true),
-            Err(GitServiceError::WorktreeDirty(_)) => Ok(false),
+            Err(GitServiceError::WorktreeDirty(_, _)) => Ok(false),
             Err(e) => Err(e),
         }
     }
@@ -639,7 +639,15 @@ impl GitService {
             }
 
             if !dirty_files.is_empty() {
-                return Err(GitServiceError::WorktreeDirty(dirty_files.join(", ")));
+                let branch_name = repo
+                    .head()
+                    .ok()
+                    .and_then(|h| h.shorthand().map(|s| s.to_string()))
+                    .unwrap_or_else(|| "unknown branch".to_string());
+                return Err(GitServiceError::WorktreeDirty(
+                    branch_name,
+                    dirty_files.join(", "),
+                ));
             }
         }
 
