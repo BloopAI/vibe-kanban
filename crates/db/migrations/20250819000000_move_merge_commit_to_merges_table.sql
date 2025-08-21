@@ -29,6 +29,9 @@ CREATE TABLE merges (
     FOREIGN KEY (task_attempt_id) REFERENCES task_attempts(id) ON DELETE CASCADE
 );
 
+-- Create general index for all task_attempt_id queries
+CREATE INDEX idx_merges_task_attempt_id ON merges(task_attempt_id);
+
 -- Create index for finding open PRs quickly
 CREATE INDEX idx_merges_open_pr ON merges(task_attempt_id, pr_status) 
 WHERE merge_type = 'pr' AND pr_status = 'open';
