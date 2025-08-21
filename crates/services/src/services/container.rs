@@ -323,12 +323,7 @@ pub trait ContainerService {
                         CodingAgent::from_profile_variant_label(&request.profile_variant_label)
                     {
                         // Inject the initial user prompt before normalization (DB fallback path)
-                        let user_entry = NormalizedEntry {
-                            timestamp: None,
-                            entry_type: NormalizedEntryType::UserMessage,
-                            content: request.prompt.clone(),
-                            metadata: None,
-                        };
+                        let user_entry = create_user_message(request.prompt.clone());
                         temp_store
                             .push_patch(ConversationPatch::add_normalized_entry(0, user_entry));
 
@@ -345,12 +340,7 @@ pub trait ContainerService {
                         CodingAgent::from_profile_variant_label(&request.profile_variant_label)
                     {
                         // Inject the follow-up user prompt before normalization (DB fallback path)
-                        let user_entry = NormalizedEntry {
-                            timestamp: None,
-                            entry_type: NormalizedEntryType::UserMessage,
-                            content: request.prompt.clone(),
-                            metadata: None,
-                        };
+                        let user_entry = create_user_message(request.prompt.clone());
                         temp_store
                             .push_patch(ConversationPatch::add_normalized_entry(0, user_entry));
 
@@ -609,12 +599,7 @@ pub trait ContainerService {
                         CodingAgent::from_profile_variant_label(&request.profile_variant_label)
                     {
                         // Prepend the initial user prompt as a normalized entry
-                        let user_entry = NormalizedEntry {
-                            timestamp: None,
-                            entry_type: NormalizedEntryType::UserMessage,
-                            content: request.prompt.clone(),
-                            metadata: None,
-                        };
+                        let user_entry = create_user_message(request.prompt.clone());
                         msg_store
                             .push_patch(ConversationPatch::add_normalized_entry(0, user_entry));
 
@@ -636,12 +621,7 @@ pub trait ContainerService {
                         CodingAgent::from_profile_variant_label(&request.profile_variant_label)
                     {
                         // Prepend the follow-up user prompt as a normalized entry
-                        let user_entry = NormalizedEntry {
-                            timestamp: None,
-                            entry_type: NormalizedEntryType::UserMessage,
-                            content: request.prompt.clone(),
-                            metadata: None,
-                        };
+                        let user_entry = create_user_message(request.prompt.clone());
                         msg_store
                             .push_patch(ConversationPatch::add_normalized_entry(0, user_entry));
 
@@ -698,5 +678,14 @@ pub trait ContainerService {
 
         tracing::debug!("Started next action: {:?}", next_action);
         Ok(())
+    }
+}
+
+fn create_user_message(prompt: String) -> NormalizedEntry {
+    NormalizedEntry {
+        timestamp: None,
+        entry_type: NormalizedEntryType::UserMessage,
+        content: prompt,
+        metadata: None,
     }
 }

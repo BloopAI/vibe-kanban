@@ -100,7 +100,7 @@ impl StandardCodingAgentExecutor for Amp {
     }
 
     fn normalize_logs(&self, raw_logs_msg_store: Arc<MsgStore>, current_dir: &PathBuf) {
-        let entry_index_provider = EntryIndexProvider::seeded_from_msg_store(&raw_logs_msg_store);
+        let entry_index_provider = EntryIndexProvider::start_from(&raw_logs_msg_store);
 
         // Process stderr logs using the standard stderr processor
         normalize_stderr_logs(raw_logs_msg_store.clone(), entry_index_provider.clone());
@@ -410,7 +410,7 @@ impl AmpContentItem {
         match self {
             AmpContentItem::Text { text } => {
                 let entry_type = match role {
-                    "user" => return None,
+                    "user" => NormalizedEntryType::UserMessage,
                     "assistant" => NormalizedEntryType::AssistantMessage,
                     _ => return None,
                 };

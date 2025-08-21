@@ -32,9 +32,9 @@ impl EntryIndexProvider {
         self.0.store(0, Ordering::Relaxed);
     }
 
-    /// Create a provider seeded from the maximum existing normalized-entry index
+    /// Create a provider starting from the maximum existing normalized-entry index
     /// observed in prior JSON patches in `MsgStore`.
-    pub fn seeded_from_msg_store(msg_store: &MsgStore) -> Self {
+    pub fn start_from(msg_store: &MsgStore) -> Self {
         let provider = EntryIndexProvider::new();
 
         let max_index: Option<usize> = msg_store

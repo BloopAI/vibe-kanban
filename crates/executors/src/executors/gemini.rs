@@ -135,7 +135,7 @@ impl StandardCodingAgentExecutor for Gemini {
     /// - stderr via [`normalize_stderr_logs`]
     /// - stdout via [`PlainTextLogProcessor`] with Gemini-specific formatting and default heuristics
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &PathBuf) {
-        let entry_index_counter = EntryIndexProvider::seeded_from_msg_store(&msg_store);
+        let entry_index_counter = EntryIndexProvider::start_from(&msg_store);
         normalize_stderr_logs(msg_store.clone(), entry_index_counter.clone());
 
         // Send session ID to msg_store to enable follow-ups

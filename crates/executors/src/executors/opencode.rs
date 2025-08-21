@@ -108,7 +108,7 @@ impl StandardCodingAgentExecutor for Opencode {
     /// 3. Main normalizer thread: read stderr by line, filter out log lines, send lines (with '\n' appended) to plain text normalizer,
     ///    then define predicate for split and create appropriate normalized entry (either assistant or tool call).
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &PathBuf) {
-        let entry_index_counter = EntryIndexProvider::seeded_from_msg_store(&msg_store);
+        let entry_index_counter = EntryIndexProvider::start_from(&msg_store);
         let worktree_path = worktree_path.clone();
 
         let stderr_lines = msg_store

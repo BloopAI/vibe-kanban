@@ -112,7 +112,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &PathBuf) {
-        let entry_index_provider = EntryIndexProvider::seeded_from_msg_store(&msg_store);
+        let entry_index_provider = EntryIndexProvider::start_from(&msg_store);
 
         // Process stdout logs (Claude's JSON output)
         ClaudeLogProcessor::process_logs(

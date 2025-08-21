@@ -100,7 +100,7 @@ impl StandardCodingAgentExecutor for Cursor {
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &PathBuf) {
-        let entry_index_provider = EntryIndexProvider::seeded_from_msg_store(&msg_store);
+        let entry_index_provider = EntryIndexProvider::start_from(&msg_store);
 
         // Process Cursor stdout JSONL with typed serde models
         let current_dir = worktree_path.clone();
