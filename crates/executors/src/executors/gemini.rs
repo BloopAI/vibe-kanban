@@ -217,8 +217,7 @@ impl Gemini {
         prompt: String,
         resume_session: bool,
     ) {
-        let file_path =
-            Self::get_sessions_base_dir().join(current_dir.file_name().unwrap_or_default());
+        let file_path = Self::get_session_file_path(&current_dir).await;
 
         // Ensure the directory exists
         if let Some(parent) = file_path.parent() {
@@ -280,8 +279,7 @@ impl Gemini {
         current_dir: &PathBuf,
         prompt: &str,
     ) -> Result<String, ExecutorError> {
-        let session_file_path =
-            Self::get_sessions_base_dir().join(current_dir.file_name().unwrap_or_default());
+        let session_file_path = Self::get_session_file_path(current_dir).await;
 
         // Read existing session context
         let session_context = fs::read_to_string(&session_file_path).await.map_err(|e| {
@@ -308,6 +306,53 @@ You are continuing work on the above task. The execution history shows the previ
     }
 
     fn get_sessions_base_dir() -> PathBuf {
+        // Determine base directory under user's home
+        let home = dirs::home_dir().unwrap_or_else(std::env::temp_dir);
+        if cfg!(debug_assertions) {
+            home.join(".vibe-kanban")
+                .join("dev")
+                .join("gemini_sessions")
+        } else {
+            home.join(".vibe-kanban").join("gemini_sessions")
+        }
+    }
+
+    fn get_legacy_sessions_base_dir() -> PathBuf {
+        // Previous location was under the temp-based vibe-kanban dir
         utils::path::get_vibe_kanban_temp_dir().join("gemini_sessions")
+    }
+
+    async fn get_session_file_path(current_dir: &PathBuf) -> PathBuf {
+        let file_name = current_dir.file_name().unwrap_or_default();
+        let new_base = Self::get_sessions_base_dir();
+        let new_path = new_base.join(file_name);
+
+        // Ensure base directory exists
+        if let Some(parent) = new_path.parent() {
+            let _ = fs::create_dir_all(parent).await;
+        }
+
+        // If the new file doesn't exist yet, try to migrate from legacy location
+        let new_exists = fs::metadata(&new_path).await.is_ok();
+        if !new_exists {
+            let legacy_path = Self::get_legacy_sessions_base_dir().join(file_name);
+            if fs::metadata(&legacy_path).await.is_ok() {
+                if let Err(e) = fs::rename(&legacy_path, &new_path).await {
+                    tracing::warn!(
+                        "Failed to migrate Gemini session from {:?} to {:?}: {}",
+                        legacy_path,
+                        new_path,
+                        e
+                    );
+                } else {
+                    tracing::info!(
+                        "Migrated Gemini session file from legacy temp directory to persistent directory: {:?}",
+                        new_path
+                    );
+                }
+            }
+        }
+
+        new_path
     }
 }
