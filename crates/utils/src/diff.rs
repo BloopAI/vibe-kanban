@@ -11,12 +11,27 @@ pub struct FileDiffDetails {
     pub content: Option<String>,
 }
 
+// Worktree diffs for the diffs tab: minimal, no hunks, optional full contents
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct Diff {
-    pub old_file: Option<FileDiffDetails>,
-    pub new_file: Option<FileDiffDetails>,
-    pub hunks: Vec<String>,
+    pub change: DiffChangeKind,
+    pub old_path: Option<String>,
+    pub new_path: Option<String>,
+    pub old_content: Option<String>,
+    pub new_content: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+#[serde(rename_all = "camelCase")]
+pub enum DiffChangeKind {
+    Added,
+    Deleted,
+    Modified,
+    Renamed,
+    Copied,
+    PermissionChange,
 }
 
 // ==============================

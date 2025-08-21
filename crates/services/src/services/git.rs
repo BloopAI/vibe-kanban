@@ -9,7 +9,7 @@ use regex;
 use serde::Serialize;
 use thiserror::Error;
 use ts_rs::TS;
-use utils::diff::{Diff, FileDiffDetails};
+use utils::diff::{Diff, DiffChangeKind, FileDiffDetails};
 
 // Import for file ranking functionality
 use super::file_ranker::FileStat;
@@ -370,10 +370,41 @@ impl GitService {
                         .map(|p| self.create_file_details(p, &delta.new_file().id(), repo))
                 };
 
+                let mut change = match status {
+                    Delta::Added => DiffChangeKind::Added,
+                    Delta::Deleted => DiffChangeKind::Deleted,
+                    Delta::Modified => DiffChangeKind::Modified,
+                    Delta::Renamed => DiffChangeKind::Renamed,
+                    Delta::Copied => DiffChangeKind::Copied,
+                    Delta::Untracked => DiffChangeKind::Added,
+                    _ => DiffChangeKind::Modified,
+                };
+
+                let old_path = old_file.as_ref().and_then(|f| f.file_name.clone());
+                let new_path = new_file.as_ref().and_then(|f| f.file_name.clone());
+                let old_content = old_file.and_then(|f| f.content);
+                let new_content = new_file.and_then(|f| f.content);
+
+                // Detect pure mode changes (e.g., chmod +/-x) and classify as PermissionChange
+                if matches!(status, Delta::Modified)
+                    && delta.old_file().mode() != delta.new_file().mode()
+                {
+                    // If content unchanged or unavailable, prefer PermissionChange label
+                    if old_content
+                        .as_ref()
+                        .zip(new_content.as_ref())
+                        .is_none_or(|(o, n)| o == n)
+                    {
+                        change = DiffChangeKind::PermissionChange;
+                    }
+                }
+
                 file_diffs.push(Diff {
-                    old_file,
-                    new_file,
-                    hunks: vec![], // still empty
+                    change,
+                    old_path,
+                    new_path,
+                    old_content,
+                    new_content,
                 });
 
                 true
@@ -388,10 +419,9 @@ impl GitService {
 
     /// Extract file path from a Diff (for indexing and ConversationPatch)
     pub fn diff_path(diff: &Diff) -> String {
-        diff.new_file
-            .as_ref()
-            .and_then(|f| f.file_name.clone())
-            .or_else(|| diff.old_file.as_ref().and_then(|f| f.file_name.clone()))
+        diff.new_path
+            .clone()
+            .or_else(|| diff.old_path.clone())
             .unwrap_or_default()
     }
 

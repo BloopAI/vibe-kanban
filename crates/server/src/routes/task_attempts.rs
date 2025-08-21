@@ -266,7 +266,7 @@ pub async fn follow_up(
 pub async fn get_task_attempt_diff(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
-    // ) -> Result<ResponseJson<ApiResponse<WorktreeDiff>>, ApiError> {
+    // ) -> Result<ResponseJson<ApiResponse<Diff>>, ApiError> {
 ) -> Result<Sse<impl futures_util::Stream<Item = Result<Event, BoxError>>>, axum::http::StatusCode>
 {
     let stream = deployment

@@ -55,6 +55,7 @@ fn generate_types_content() -> String {
         server::routes::auth::CheckTokenResponse::decl(),
         services::services::git::GitBranch::decl(),
         utils::diff::Diff::decl(),
+        utils::diff::DiffChangeKind::decl(),
         utils::diff::FileDiffDetails::decl(),
         services::services::github_service::RepositoryInfo::decl(),
         executors::command::CommandBuilder::decl(),

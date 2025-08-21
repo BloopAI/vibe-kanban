@@ -94,7 +94,9 @@ export enum CheckTokenResponse { VALID = "VALID", INVALID = "INVALID" }
 
 export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
 
-export type Diff = { oldFile: FileDiffDetails | null, newFile: FileDiffDetails | null, hunks: Array<string>, };
+export type Diff = { change: DiffChangeKind, oldPath: string | null, newPath: string | null, oldContent: string | null, newContent: string | null, };
+
+export type DiffChangeKind = "added" | "deleted" | "modified" | "renamed" | "copied" | "permissionChange";
 
 export type FileDiffDetails = { fileName: string | null, content: string | null, };
 
