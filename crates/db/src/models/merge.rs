@@ -26,6 +26,7 @@ pub struct DirectMerge {
     pub id: Uuid,
     pub task_attempt_id: Uuid,
     pub merge_commit: String,
+    pub target_branch_name: String,
     pub created_at: DateTime<Utc>,
 }
 
@@ -35,6 +36,7 @@ pub struct PrMerge {
     pub id: Uuid,
     pub task_attempt_id: Uuid,
     pub created_at: DateTime<Utc>,
+    pub target_branch_name: String,
     pub pr_info: PullRequestInfo,
 }
 
@@ -60,6 +62,7 @@ struct MergeRow {
     task_attempt_id: Uuid,
     merge_type: MergeType,
     merge_commit: Option<String>,
+    target_branch_name: String,
     pr_number: Option<i64>,
     pr_url: Option<String>,
     pr_status: Option<MergeStatus>,
@@ -80,6 +83,7 @@ impl Merge {
     pub async fn create_direct(
         pool: &SqlitePool,
         task_attempt_id: Uuid,
+        target_branch_name: &str,
         merge_commit: &str,
     ) -> Result<DirectMerge, sqlx::Error> {
         let id = Uuid::new_v4();
@@ -88,8 +92,8 @@ impl Merge {
         sqlx::query_as!(
             MergeRow,
             r#"INSERT INTO merges (
-                id, task_attempt_id, merge_type, merge_commit, created_at
-            ) VALUES ($1, $2, 'direct', $3, $4)
+                id, task_attempt_id, merge_type, merge_commit, created_at, target_branch_name
+            ) VALUES ($1, $2, 'direct', $3, $4, $5)
             RETURNING 
                 id as "id!: Uuid",
                 task_attempt_id as "task_attempt_id!: Uuid",
@@ -100,11 +104,14 @@ impl Merge {
                 pr_status as "pr_status?: MergeStatus",
                 pr_merged_at as "pr_merged_at?: DateTime<Utc>",
                 pr_merge_commit_sha,
-                created_at as "created_at!: DateTime<Utc>""#,
+                created_at as "created_at!: DateTime<Utc>",
+                target_branch_name as "target_branch_name!: String"
+            "#,
             id,
             task_attempt_id,
             merge_commit,
-            now
+            now,
+            target_branch_name
         )
         .fetch_one(pool)
         .await
@@ -114,6 +121,7 @@ impl Merge {
     pub async fn create_pr(
         pool: &SqlitePool,
         task_attempt_id: Uuid,
+        target_branch_name: &str,
         pr_number: i64,
         pr_url: &str,
     ) -> Result<PrMerge, sqlx::Error> {
@@ -123,8 +131,8 @@ impl Merge {
         sqlx::query_as!(
             MergeRow,
             r#"INSERT INTO merges (
-                id, task_attempt_id, merge_type, pr_number, pr_url, pr_status, created_at
-            ) VALUES ($1, $2, 'pr', $3, $4, 'open', $5)
+                id, task_attempt_id, merge_type, pr_number, pr_url, pr_status, created_at, target_branch_name
+            ) VALUES ($1, $2, 'pr', $3, $4, 'open', $5, $6)
             RETURNING 
                 id as "id!: Uuid",
                 task_attempt_id as "task_attempt_id!: Uuid",
@@ -135,12 +143,15 @@ impl Merge {
                 pr_status as "pr_status?: MergeStatus",
                 pr_merged_at as "pr_merged_at?: DateTime<Utc>",
                 pr_merge_commit_sha,
-                created_at as "created_at!: DateTime<Utc>""#,
+                created_at as "created_at!: DateTime<Utc>",
+                target_branch_name as "target_branch_name!: String"
+            "#,
             id,
             task_attempt_id,
             pr_number,
             pr_url,
-            now
+            now,
+            target_branch_name
         )
         .fetch_one(pool)
         .await
@@ -161,7 +172,8 @@ impl Merge {
                 pr_status as "pr_status?: MergeStatus",
                 pr_merged_at as "pr_merged_at?: DateTime<Utc>",
                 pr_merge_commit_sha,
-                created_at as "created_at!: DateTime<Utc>"
+                created_at as "created_at!: DateTime<Utc>",
+                target_branch_name as "target_branch_name!: String"
                FROM merges 
                WHERE merge_type = 'pr' AND pr_status = 'open'
                ORDER BY created_at DESC"#,
@@ -219,6 +231,7 @@ impl Merge {
                 pr_status as "pr_status?: MergeStatus",
                 pr_merged_at as "pr_merged_at?: DateTime<Utc>",
                 pr_merge_commit_sha,
+                target_branch_name as "target_branch_name!: String",
                 created_at as "created_at!: DateTime<Utc>"
             FROM merges 
             WHERE task_attempt_id = $1
@@ -252,6 +265,7 @@ impl From<MergeRow> for DirectMerge {
             merge_commit: row
                 .merge_commit
                 .expect("direct merge must have merge_commit"),
+            target_branch_name: row.target_branch_name,
             created_at: row.created_at,
         }
     }
@@ -262,6 +276,7 @@ impl From<MergeRow> for PrMerge {
         PrMerge {
             id: row.id,
             task_attempt_id: row.task_attempt_id,
+            target_branch_name: row.target_branch_name,
             pr_info: PullRequestInfo {
                 number: row.pr_number.expect("pr merge must have pr_number"),
                 url: row.pr_url.expect("pr merge must have pr_url"),

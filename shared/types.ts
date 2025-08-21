@@ -170,9 +170,9 @@ export type ExecutionProcessRunReason = "setupscript" | "cleanupscript" | "codin
 
 export type Merge = { "type": "direct" } & DirectMerge | { "type": "pr" } & PrMerge;
 
-export type DirectMerge = { id: string, task_attempt_id: string, merge_commit: string, created_at: string, };
+export type DirectMerge = { id: string, task_attempt_id: string, merge_commit: string, target_branch_name: string, created_at: string, };
 
-export type PrMerge = { id: string, task_attempt_id: string, created_at: string, pr_info: PullRequestInfo, };
+export type PrMerge = { id: string, task_attempt_id: string, created_at: string, target_branch_name: string, pr_info: PullRequestInfo, };
 
 export type MergeStatus = "open" | "merged" | "closed" | "unknown";
 

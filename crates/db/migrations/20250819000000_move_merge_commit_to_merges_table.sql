@@ -15,7 +15,8 @@ CREATE TABLE merges (
     pr_merge_commit_sha TEXT,
     
     created_at      TEXT NOT NULL DEFAULT (datetime('now', 'subsec')),
-    
+    target_branch_name TEXT NOT NULL,
+
     -- Data integrity constraints
     CHECK (
         (merge_type = 'direct' AND merge_commit IS NOT NULL 
@@ -33,18 +34,19 @@ CREATE INDEX idx_merges_open_pr ON merges(task_attempt_id, pr_status)
 WHERE merge_type = 'pr' AND pr_status = 'open';
 
 -- Migrate existing merge_commit data to new table as direct merges
-INSERT INTO merges (id, task_attempt_id, merge_type, merge_commit, created_at)
+INSERT INTO merges (id, task_attempt_id, merge_type, merge_commit, created_at, target_branch_name)
 SELECT 
     randomblob(16),
     id,
     'direct',
     merge_commit,
-    updated_at
+    updated_at,
+    base_branch
 FROM task_attempts
 WHERE merge_commit IS NOT NULL;
 
 -- Migrate existing PR data from task_attempts to merges
-INSERT INTO merges (id, task_attempt_id, merge_type, pr_number, pr_url, pr_status, pr_merged_at, pr_merge_commit_sha, created_at)
+INSERT INTO merges (id, task_attempt_id, merge_type, pr_number, pr_url, pr_status, pr_merged_at, pr_merge_commit_sha, created_at, target_branch_name)
 SELECT 
     randomblob(16),
     id,
@@ -58,7 +60,8 @@ SELECT
     END,
     pr_merged_at,
     NULL, -- We don't have merge_commit for PRs in task_attempts
-    COALESCE(pr_merged_at, updated_at)
+    COALESCE(pr_merged_at, updated_at),
+    base_branch
 FROM task_attempts
 WHERE pr_number IS NOT NULL;
 
