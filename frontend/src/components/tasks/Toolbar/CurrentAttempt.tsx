@@ -412,6 +412,62 @@ function CurrentAttempt({
     }
   }, [selectedAttempt.container_ref]);
 
+  // Get status information for display
+  const getStatusInfo = useCallback(() => {
+    if (mergeInfo.hasMergedPR && mergeInfo.mergedPR?.type === 'pr') {
+      const prMerge = mergeInfo.mergedPR; // TypeScript knows this is PrMerge type
+      return {
+        dotColor: 'bg-green-500',
+        textColor: 'text-green-700',
+        text: `PR #${prMerge.pr_info.number} merged`,
+        isClickable: true,
+        onClick: () => window.open(prMerge.pr_info.url, '_blank'),
+      };
+    }
+
+    if (mergeInfo.hasOpenPR && mergeInfo.openPR?.type === 'pr') {
+      const prMerge = mergeInfo.openPR; // TypeScript knows this is PrMerge type
+      return {
+        dotColor: 'bg-blue-500',
+        textColor: 'text-blue-700',
+        text: `PR #${prMerge.pr_info.number}`,
+        isClickable: true,
+        onClick: () => window.open(prMerge.pr_info.url, '_blank'),
+      };
+    }
+
+    if (
+      (branchStatus?.commits_behind ?? 0) > 0 &&
+      (branchStatus?.commits_ahead ?? 0) > 0
+    ) {
+      return {
+        dotColor: 'bg-orange-500',
+        textColor: 'text-orange-700',
+        text: `Rebase needed${branchStatus?.has_uncommitted_changes ? ' (dirty)' : ''}`,
+        isClickable: false,
+      };
+    }
+
+    if ((branchStatus?.commits_ahead ?? 0) > 0) {
+      return {
+        dotColor: 'bg-yellow-500',
+        textColor: 'text-yellow-700',
+        text:
+          branchStatus?.commits_ahead === 1
+            ? `1 commit ahead${branchStatus?.has_uncommitted_changes ? ' (dirty)' : ''}`
+            : `${branchStatus?.commits_ahead} commits ahead${branchStatus?.has_uncommitted_changes ? ' (dirty)' : ''}`,
+        isClickable: false,
+      };
+    }
+
+    return {
+      dotColor: 'bg-gray-500',
+      textColor: 'text-gray-700',
+      text: `Up to date${branchStatus?.has_uncommitted_changes ? ' (dirty)' : ''}`,
+      isClickable: false,
+    };
+  }, [mergeInfo, branchStatus]);
+
   return (
     <div className="space-y-2">
       <div className="flex gap-6 items-start">
@@ -469,73 +525,30 @@ function CurrentAttempt({
             Status
           </div>
           <div className="flex items-center gap-1.5">
-            {mergeInfo.hasMergedPR &&
-            mergeInfo.mergedPR &&
-            mergeInfo.mergedPR.type === 'pr' ? (
-              <div className="flex items-center gap-1.5">
-                <div className="h-2 w-2 bg-green-500 rounded-full" />
-                <button
-                  onClick={() =>
-                    mergeInfo.mergedPR &&
-                    mergeInfo.mergedPR.type === 'pr' &&
-                    window.open(mergeInfo.mergedPR.pr_info.url, '_blank')
-                  }
-                  className="text-sm font-medium text-green-700 hover:underline cursor-pointer"
-                >
-                  PR #
-                  {mergeInfo.mergedPR && mergeInfo.mergedPR.type === 'pr'
-                    ? mergeInfo.mergedPR.pr_info.number.toString()
-                    : ''}{' '}
-                  merged
-                </button>
-              </div>
-            ) : mergeInfo.hasOpenPR &&
-              mergeInfo.openPR &&
-              mergeInfo.openPR.type === 'pr' ? (
-              <div className="flex items-center gap-1.5">
-                <div className="h-2 w-2 bg-blue-500 rounded-full" />
-                <button
-                  onClick={() =>
-                    mergeInfo.openPR &&
-                    mergeInfo.openPR.type === 'pr' &&
-                    window.open(mergeInfo.openPR.pr_info.url, '_blank')
-                  }
-                  className="text-sm font-medium text-blue-700 hover:underline cursor-pointer"
-                >
-                  PR #
-                  {mergeInfo.openPR && mergeInfo.openPR.type === 'pr'
-                    ? mergeInfo.openPR.pr_info.number.toString()
-                    : ''}
-                </button>
-              </div>
-            ) : (branchStatus?.commits_behind ?? 0) > 0 &&
-              (branchStatus?.commits_ahead ?? 0) > 0 ? (
-              <div className="flex items-center gap-1.5">
-                <div className="h-2 w-2 bg-orange-500 rounded-full" />
-                <span className="text-sm font-medium text-orange-700">
-                  Rebase needed
-                  {branchStatus?.has_uncommitted_changes && ' (dirty)'}
-                </span>
-              </div>
-            ) : (branchStatus?.commits_ahead ?? 0) > 0 ? (
-              <div className="flex items-center gap-1.5">
-                <div className="h-2 w-2 bg-yellow-500 rounded-full" />
-                <span className="text-sm font-medium text-yellow-700">
-                  {branchStatus?.commits_ahead === 1
-                    ? '1 commit ahead'
-                    : `${branchStatus?.commits_ahead} commits ahead`}
-                  {branchStatus?.has_uncommitted_changes && ' (dirty)'}
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5">
-                <div className="h-2 w-2 bg-gray-500 rounded-full" />
-                <span className="text-sm font-medium text-gray-700">
-                  Up to date
-                  {branchStatus?.has_uncommitted_changes && ' (dirty)'}
-                </span>
-              </div>
-            )}
+            {(() => {
+              const statusInfo = getStatusInfo();
+              return (
+                <div className="flex items-center gap-1.5">
+                  <div
+                    className={`h-2 w-2 ${statusInfo.dotColor} rounded-full`}
+                  />
+                  {statusInfo.isClickable ? (
+                    <button
+                      onClick={statusInfo.onClick}
+                      className={`text-sm font-medium ${statusInfo.textColor} hover:underline cursor-pointer`}
+                    >
+                      {statusInfo.text}
+                    </button>
+                  ) : (
+                    <span
+                      className={`text-sm font-medium ${statusInfo.textColor}`}
+                    >
+                      {statusInfo.text}
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
