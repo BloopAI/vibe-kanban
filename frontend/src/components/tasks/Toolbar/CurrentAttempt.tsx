@@ -259,6 +259,7 @@ function CurrentAttempt({
     try {
       setPushing(true);
       await attemptsApi.push(selectedAttempt.id);
+      setError(null); // Clear any previous errors on success
       fetchAttemptData(selectedAttempt.id);
     } catch (error: any) {
       console.error('Failed to push changes:', error);
@@ -274,6 +275,7 @@ function CurrentAttempt({
     try {
       setMerging(true);
       await attemptsApi.merge(selectedAttempt.id);
+      setError(null); // Clear any previous errors on success
       fetchAttemptData(selectedAttempt.id);
     } catch (error) {
       console.error('Failed to merge changes:', error);
@@ -290,6 +292,7 @@ function CurrentAttempt({
     try {
       setRebasing(true);
       await attemptsApi.rebase(selectedAttempt.id, { new_base_branch: null });
+      setError(null); // Clear any previous errors on success
       fetchAttemptData(selectedAttempt.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to rebase branch');
@@ -306,6 +309,7 @@ function CurrentAttempt({
       await attemptsApi.rebase(selectedAttempt.id, {
         new_base_branch: newBaseBranch,
       });
+      setError(null); // Clear any previous errors on success
       fetchAttemptData(selectedAttempt.id);
       setShowRebaseDialog(false);
     } catch (err) {
