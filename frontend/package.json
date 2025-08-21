@@ -51,6 +51,7 @@
     "react-virtuoso": "^4.13.0",
     "react-window": "^1.8.11",
     "rfc6902": "^5.1.2",
+    "zustand": "^4.5.4",
     "tailwind-merge": "^2.2.0",
     "tailwindcss-animate": "^1.0.7"
   },

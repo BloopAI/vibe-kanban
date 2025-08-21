@@ -43,7 +43,7 @@ function LogEntryRow({
             return (
               <DisplayConversationEntry
                 entry={entry.payload as NormalizedEntry}
-                index={index}
+                expansionKey={`${entry.processId}:${index}`}
                 diffDeletable={false}
               />
             );

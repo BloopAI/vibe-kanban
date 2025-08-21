@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { ThemeMode, type FileChange } from 'shared/types';
 import { useConfig } from '@/components/config-provider';
 import { Button } from '@/components/ui/button';
@@ -13,10 +12,12 @@ import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import EditDiffRenderer from './EditDiffRenderer';
 import FileContentView from './FileContentView';
 import '@/styles/diff-style-overrides.css';
+import { useExpandable } from '@/stores/useExpandableStore';
 
 type Props = {
   path: string;
   change: FileChange;
+  expansionKey: string;
 };
 
 function isWrite(
@@ -40,9 +41,9 @@ function isEdit(
   return change?.action === 'edit';
 }
 
-const FileChangeRenderer = ({ path, change }: Props) => {
+const FileChangeRenderer = ({ path, change, expansionKey }: Props) => {
   const { config } = useConfig();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useExpandable(expansionKey, false);
 
   let theme: 'light' | 'dark' | undefined = 'light';
   if (config?.theme === ThemeMode.DARK) theme = 'dark';
@@ -54,6 +55,7 @@ const FileChangeRenderer = ({ path, change }: Props) => {
         path={path}
         unifiedDiff={change.unified_diff}
         hasLineNumbers={change.has_line_numbers}
+        expansionKey={expansionKey}
       />
     );
   }
@@ -121,7 +123,7 @@ const FileChangeRenderer = ({ path, change }: Props) => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setExpanded((e) => !e)}
+            onClick={() => setExpanded()}
             className="h-6 w-6 p-0 mr-2"
             title={expanded ? 'Collapse' : 'Expand'}
             aria-expanded={expanded}

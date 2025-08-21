@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   DiffView,
   DiffModeEnum,
@@ -17,6 +17,7 @@ type Props = {
   path: string;
   unifiedDiff: string;
   hasLineNumbers: boolean;
+  expansionKey: string;
 };
 
 /**
@@ -55,9 +56,16 @@ function processUnifiedDiff(unifiedDiff: string, hasLineNumbers: boolean) {
   };
 }
 
-function EditDiffRenderer({ path, unifiedDiff, hasLineNumbers }: Props) {
+import { useExpandable } from '@/stores/useExpandableStore';
+
+function EditDiffRenderer({
+  path,
+  unifiedDiff,
+  hasLineNumbers,
+  expansionKey,
+}: Props) {
   const { config } = useConfig();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useExpandable(expansionKey, false);
 
   let theme: 'light' | 'dark' | undefined = 'light';
   if (config?.theme === ThemeMode.DARK) {
@@ -86,7 +94,7 @@ function EditDiffRenderer({ path, unifiedDiff, hasLineNumbers }: Props) {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setExpanded((e) => !e)}
+          onClick={() => setExpanded()}
           className="h-6 w-6 p-0 mr-2"
           title={expanded ? 'Collapse' : 'Expand'}
           aria-expanded={expanded}

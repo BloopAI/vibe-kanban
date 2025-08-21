@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import MarkdownRenderer from '@/components/ui/markdown-renderer.tsx';
 import {
   AlertCircle,
@@ -25,7 +24,7 @@ import FileChangeRenderer from './FileChangeRenderer';
 
 type Props = {
   entry: NormalizedEntry;
-  index: number;
+  expansionKey: string;
   diffDeletable?: boolean;
 };
 
@@ -131,24 +130,15 @@ const shouldRenderMarkdown = (entryType: NormalizedEntryType) => {
   );
 };
 
-function DisplayConversationEntry({ entry, index }: Props) {
-  const [expandedErrors, setExpandedErrors] = useState<Set<number>>(new Set());
+import { useExpandable } from '@/stores/useExpandableStore';
 
-  const toggleErrorExpansion = (index: number) => {
-    setExpandedErrors((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(index)) {
-        newSet.delete(index);
-      } else {
-        newSet.add(index);
-      }
-      return newSet;
-    });
-  };
-
+function DisplayConversationEntry({ entry, expansionKey }: Props) {
   const isErrorMessage = entry.entry_type.type === 'error_message';
-  const isExpanded = expandedErrors.has(index);
   const hasMultipleLines = isErrorMessage && entry.content.includes('\n');
+  const [isExpanded, setIsExpanded] = useExpandable(
+    `err:${expansionKey}`,
+    false
+  );
 
   const fileEdit =
     entry.entry_type.type === 'tool_use' &&
@@ -160,12 +150,12 @@ function DisplayConversationEntry({ entry, index }: Props) {
       : null;
 
   return (
-    <div key={index} className="px-4 py-1">
+    <div className="px-4 py-1">
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 mt-1">
           {isErrorMessage && hasMultipleLines ? (
             <button
-              onClick={() => toggleErrorExpansion(index)}
+              onClick={() => setIsExpanded()}
               className="transition-colors hover:opacity-70"
             >
               {getEntryIcon(entry.entry_type)}
@@ -191,7 +181,7 @@ function DisplayConversationEntry({ entry, index }: Props) {
                   <>
                     {entry.content.split('\n')[0]}
                     <button
-                      onClick={() => toggleErrorExpansion(index)}
+                      onClick={() => setIsExpanded()}
                       className="ml-2 inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                     >
                       <ChevronRight className="h-3 w-3" />
@@ -202,7 +192,7 @@ function DisplayConversationEntry({ entry, index }: Props) {
               </div>
               {isExpanded && (
                 <button
-                  onClick={() => toggleErrorExpansion(index)}
+                  onClick={() => setIsExpanded()}
                   className="flex items-center gap-1 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                 >
                   <ChevronUp className="h-3 w-3" />
@@ -225,13 +215,16 @@ function DisplayConversationEntry({ entry, index }: Props) {
 
           {fileEdit &&
             Array.isArray(fileEdit.changes) &&
-            fileEdit.changes.map((change, idx) => (
-              <FileChangeRenderer
-                key={idx}
-                path={fileEdit.path}
-                change={change}
-              />
-            ))}
+            fileEdit.changes.map((change, idx) => {
+              return (
+                <FileChangeRenderer
+                  key={idx}
+                  path={fileEdit.path}
+                  change={change}
+                  expansionKey={`edit:${expansionKey}:${idx}`}
+                />
+              );
+            })}
         </div>
       </div>
     </div>

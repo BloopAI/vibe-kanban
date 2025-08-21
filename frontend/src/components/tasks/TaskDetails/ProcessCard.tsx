@@ -160,7 +160,7 @@ function ProcessCard({ process }: ProcessCardProps) {
                     <DisplayConversationEntry
                       key={entry.timestamp ?? index}
                       entry={entry}
-                      index={index}
+                      expansionKey={`${process.id}:${index}`}
                       diffDeletable={false}
                     />
                   ))
