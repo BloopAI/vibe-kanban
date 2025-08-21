@@ -117,6 +117,8 @@ function CurrentAttempt({
   const [selectedRebaseBranch, setSelectedRebaseBranch] = useState<string>('');
   const [showStopConfirmation, setShowStopConfirmation] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [mergeSuccess, setMergeSuccess] = useState(false);
+  const [pushSuccess, setPushSuccess] = useState(false);
 
   const processedDevServerLogs = useMemo(() => {
     if (!devServerDetails) return 'No output yet...';
@@ -260,6 +262,8 @@ function CurrentAttempt({
       setPushing(true);
       await attemptsApi.push(selectedAttempt.id);
       setError(null); // Clear any previous errors on success
+      setPushSuccess(true);
+      setTimeout(() => setPushSuccess(false), 2000);
       fetchAttemptData(selectedAttempt.id);
     } catch (error: any) {
       console.error('Failed to push changes:', error);
@@ -276,6 +280,8 @@ function CurrentAttempt({
       setMerging(true);
       await attemptsApi.merge(selectedAttempt.id);
       setError(null); // Clear any previous errors on success
+      setMergeSuccess(true);
+      setTimeout(() => setMergeSuccess(false), 2000);
       fetchAttemptData(selectedAttempt.id);
     } catch (error) {
       console.error('Failed to merge changes:', error);
@@ -674,7 +680,9 @@ function CurrentAttempt({
               )}
               {
                 // Normal merge and PR buttons for regular tasks
-                (branchStatus.commits_ahead ?? 0) > 0 && (
+                ((branchStatus.commits_ahead ?? 0) > 0 ||
+                  pushSuccess ||
+                  mergeSuccess) && (
                   <>
                     <Button
                       onClick={handlePRButtonClick}
@@ -688,17 +696,19 @@ function CurrentAttempt({
                       }
                       variant="outline"
                       size="xs"
-                      className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1"
+                      className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1 min-w-[120px]"
                     >
                       <GitPullRequest className="h-3 w-3" />
                       {mergeInfo.hasOpenPR
-                        ? pushing
-                          ? 'Pushing...'
-                          : branchStatus.remote_commits_ahead === 0
-                            ? 'Push to PR'
-                            : branchStatus.remote_commits_ahead === 1
-                              ? 'Push 1 commit'
-                              : `Push ${branchStatus.remote_commits_ahead || 0} commits`
+                        ? pushSuccess
+                          ? 'Pushed!'
+                          : pushing
+                            ? 'Pushing...'
+                            : branchStatus.remote_commits_ahead === 0
+                              ? 'Push to PR'
+                              : branchStatus.remote_commits_ahead === 1
+                                ? 'Push 1 commit'
+                                : `Push ${branchStatus.remote_commits_ahead || 0} commits`
                         : creatingPR
                           ? 'Creating...'
                           : 'Create PR'}
@@ -712,10 +722,14 @@ function CurrentAttempt({
                         isAttemptRunning
                       }
                       size="xs"
-                      className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"
+                      className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1 min-w-[120px]"
                     >
                       <GitBranchIcon className="h-3 w-3" />
-                      {merging ? 'Merging...' : 'Merge'}
+                      {mergeSuccess
+                        ? 'Merged!'
+                        : merging
+                          ? 'Merging...'
+                          : 'Merge'}
                     </Button>
                   </>
                 )
