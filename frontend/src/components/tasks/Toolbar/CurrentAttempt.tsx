@@ -415,7 +415,7 @@ function CurrentAttempt({
   // Get status information for display
   const getStatusInfo = useCallback(() => {
     if (mergeInfo.hasMergedPR && mergeInfo.mergedPR?.type === 'pr') {
-      const prMerge = mergeInfo.mergedPR; // TypeScript knows this is PrMerge type
+      const prMerge = mergeInfo.mergedPR;
       return {
         dotColor: 'bg-green-500',
         textColor: 'text-green-700',
@@ -424,9 +424,21 @@ function CurrentAttempt({
         onClick: () => window.open(prMerge.pr_info.url, '_blank'),
       };
     }
+    if (
+      mergeInfo.hasMerged &&
+      mergeInfo.latestMerge?.type === 'direct' &&
+      (branchStatus?.commits_ahead ?? 0) === 0
+    ) {
+      return {
+        dotColor: 'bg-green-500',
+        textColor: 'text-green-700',
+        text: `Merged`,
+        isClickable: false,
+      };
+    }
 
     if (mergeInfo.hasOpenPR && mergeInfo.openPR?.type === 'pr') {
-      const prMerge = mergeInfo.openPR; // TypeScript knows this is PrMerge type
+      const prMerge = mergeInfo.openPR;
       return {
         dotColor: 'bg-blue-500',
         textColor: 'text-blue-700',
@@ -436,10 +448,7 @@ function CurrentAttempt({
       };
     }
 
-    if (
-      (branchStatus?.commits_behind ?? 0) > 0 &&
-      (branchStatus?.commits_ahead ?? 0) > 0
-    ) {
+    if ((branchStatus?.commits_behind ?? 0) > 0) {
       return {
         dotColor: 'bg-orange-500',
         textColor: 'text-orange-700',
