@@ -51,13 +51,8 @@ import {
 } from '@/components/context/taskDetailsContext.ts';
 import { useConfig } from '@/components/config-provider.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
-<<<<<<< HEAD
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
-=======
-import { useNavigate } from 'react-router-dom';
-import { useTranslation } from '@/lib/i18n';
->>>>>>> 6ddf031 (feat(i18n): add internationalization support with Traditional Chinese translation)
 
 // Helper function to get the display name for different editor types
 function getEditorDisplayName(editorType: string): string {
@@ -104,7 +99,6 @@ function CurrentAttempt({
   handleAttemptSelect,
   branches,
 }: Props) {
-  const { t } = useTranslation();
   const { task, projectId, handleOpenInEditor, projectHasDevScript } =
     useContext(TaskDetailsContext);
   const { config } = useConfig();
@@ -489,11 +483,7 @@ function CurrentAttempt({
       <div className="flex gap-6 items-start">
         <div className="min-w-0">
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-<<<<<<< HEAD
             Profile
-=======
-            {t('createAttempt.started')}
->>>>>>> 6ddf031 (feat(i18n): add internationalization support with Traditional Chinese translation)
           </div>
           <div className="text-sm font-medium">{selectedAttempt.profile}</div>
         </div>
@@ -510,27 +500,9 @@ function CurrentAttempt({
           </div>
         </div>
 
-<<<<<<< HEAD
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
             <span className="truncate">Base Branch</span>
-=======
-        <div>
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-            {t('createAttempt.agent')}
-          </div>
-          <div className="text-sm font-medium">
-            {availableExecutors.find((e) => e.id === selectedAttempt.executor)
-              ?.name ||
-              selectedAttempt.executor ||
-              'Unknown'}
-          </div>
-        </div>
-
-        <div>
-          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-            <span>{t('createAttempt.baseBranch')}</span>
->>>>>>> 6ddf031 (feat(i18n): add internationalization support with Traditional Chinese translation)
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -545,7 +517,7 @@ function CurrentAttempt({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{t('createAttempt.changeBaseBranch')}</p>
+                  <p>Change base branch</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -560,18 +532,13 @@ function CurrentAttempt({
 
         <div className="min-w-0">
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-<<<<<<< HEAD
             Status
-=======
-            {isPlanTask ? t('createAttempt.planStatus') : t('createAttempt.mergeStatus')}
->>>>>>> 6ddf031 (feat(i18n): add internationalization support with Traditional Chinese translation)
           </div>
           <div className="flex items-center gap-1.5">
             {(() => {
               const statusInfo = getStatusInfo();
               return (
                 <div className="flex items-center gap-1.5">
-<<<<<<< HEAD
                   <div
                     className={`h-2 w-2 ${statusInfo.dotColor} rounded-full`}
                   />
@@ -592,53 +559,14 @@ function CurrentAttempt({
                 </div>
               );
             })()}
-=======
-                  <div className="h-2 w-2 bg-green-500 rounded-full" />
-                  <span className="text-sm font-medium text-green-700">
-                    {t('createAttempt.taskCreated')}
-                  </span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5">
-                  <div className="h-2 w-2 bg-gray-500 rounded-full" />
-                  <span className="text-sm font-medium text-gray-700">
-                    {t('createAttempt.draft')}
-                  </span>
-                </div>
-              )
-            ) : // Merge status for regular tasks
-            selectedAttempt.merge_commit ? (
-              <div className="flex items-center gap-1.5">
-                <div className="h-2 w-2 bg-green-500 rounded-full" />
-                <span className="text-sm font-medium text-green-700">
-                  {t('createAttempt.merged')}
-                </span>
-                <span className="text-xs font-mono text-muted-foreground">
-                  ({selectedAttempt.merge_commit.slice(0, 8)})
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5">
-                <div className="h-2 w-2 bg-yellow-500 rounded-full" />
-                <span className="text-sm font-medium text-yellow-700">
-                  {t('createAttempt.notMerged')}
-                </span>
-              </div>
-            )}
->>>>>>> 6ddf031 (feat(i18n): add internationalization support with Traditional Chinese translation)
           </div>
         </div>
       </div>
 
       <div className="col-span-4">
         <div className="flex items-center gap-1.5 mb-1">
-<<<<<<< HEAD
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 pt-1">
             Path
-=======
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-            {t('createAttempt.worktreePath')}
->>>>>>> 6ddf031 (feat(i18n): add internationalization support with Traditional Chinese translation)
           </div>
           <Button
             variant="ghost"
@@ -647,7 +575,7 @@ function CurrentAttempt({
             className="h-6 px-2 text-xs hover:bg-muted gap-1"
           >
             <ExternalLink className="h-3 w-3" />
-            {t('createAttempt.openInEditor', { editor: editorDisplayName })}
+            Open in {editorDisplayName}
           </Button>
         </div>
         <div
@@ -657,7 +585,7 @@ function CurrentAttempt({
               : 'text-muted-foreground bg-muted hover:bg-muted/80'
           }`}
           onClick={handleCopyWorktreePath}
-          title={copied ? t('createAttempt.copied') : t('createAttempt.clickToCopyPath')}
+          title={copied ? 'Copied!' : 'Click to copy worktree path'}
         >
           <span
             className={`truncate ${copied ? 'text-green-800' : ''}`}
@@ -666,13 +594,9 @@ function CurrentAttempt({
             {selectedAttempt.container_ref}
           </span>
           {copied && (
-<<<<<<< HEAD
             <span className="text-green-700 font-medium whitespace-nowrap">
               Copied!
             </span>
-=======
-            <span className="text-green-700 font-medium">{t('createAttempt.copied')}</span>
->>>>>>> 6ddf031 (feat(i18n): add internationalization support with Traditional Chinese translation)
           )}
         </div>
       </div>
@@ -697,16 +621,12 @@ function CurrentAttempt({
                     {runningDevServer ? (
                       <>
                         <StopCircle className="h-3 w-3" />
-                        {t('createAttempt.stopDev')}
+                        Stop Dev
                       </>
                     ) : (
                       <>
                         <Play className="h-3 w-3" />
-<<<<<<< HEAD
                         Dev
-=======
-                        {t('createAttempt.devServer')}
->>>>>>> 6ddf031 (feat(i18n): add internationalization support with Traditional Chinese translation)
                       </>
                     )}
                   </Button>
@@ -720,21 +640,22 @@ function CurrentAttempt({
               >
                 {!projectHasDevScript ? (
                   <p>
-                    {t('createAttempt.addDevScriptToEnable')}
+                    Add a dev server script in project settings to enable this
+                    feature
                   </p>
                 ) : runningDevServer && devServerDetails ? (
                   <div className="space-y-2">
                     <p className="text-sm font-medium">
-                      {t('createAttempt.devServerLogs')}
+                      Dev Server Logs (Last 10 lines):
                     </p>
                     <pre className="text-xs bg-muted p-2 rounded max-h-64 overflow-y-auto whitespace-pre-wrap">
                       {processedDevServerLogs}
                     </pre>
                   </div>
                 ) : runningDevServer ? (
-                  <p>{t('createAttempt.stopRunningDevServer')}</p>
+                  <p>Stop the running dev server</p>
                 ) : (
-                  <p>{t('createAttempt.startDevServer')}</p>
+                  <p>Start the dev server</p>
                 )}
               </TooltipContent>
             </Tooltip>
@@ -864,15 +785,11 @@ function CurrentAttempt({
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="xs" className="gap-2">
                         <History className="h-4 w-4" />
-<<<<<<< HEAD
-=======
-                        {t('createAttempt.history')}
->>>>>>> 6ddf031 (feat(i18n): add internationalization support with Traditional Chinese translation)
                       </Button>
                     </DropdownMenuTrigger>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>{t('createAttempt.viewAttemptHistory')}</p>
+                    <p>View attempt history</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -899,110 +816,6 @@ function CurrentAttempt({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-<<<<<<< HEAD
-=======
-
-          {/* Git Operations */}
-          {selectedAttempt && branchStatus && (
-            <>
-              {branchStatus.is_behind &&
-                !branchStatus.merged &&
-                !isPlanTask && (
-                  <Button
-                    onClick={handleRebaseClick}
-                    disabled={
-                      rebasing || branchStatusLoading || isAttemptRunning
-                    }
-                    variant="outline"
-                    size="sm"
-                    className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1"
-                  >
-                    <RefreshCw
-                      className={`h-3 w-3 ${rebasing ? 'animate-spin' : ''}`}
-                    />
-                    {rebasing ? t('createAttempt.rebasing') : t('createAttempt.rebase')}
-                  </Button>
-                )}
-              {isPlanTask ? (
-                // Plan tasks: show approval button
-                <Button
-                  onClick={handlePlanApproval}
-                  disabled={
-                    isAttemptRunning ||
-                    executionState?.execution_state === 'CodingAgentFailed' ||
-                    executionState?.execution_state === 'SetupFailed' ||
-                    (isPlanningMode && !canCreateTask)
-                  }
-                  size="sm"
-                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"
-                >
-                  <GitBranchIcon className="h-3 w-3" />
-                  {isApprovingPlan ? t('createAttempt.approving') : t('createAttempt.createTask')}
-                </Button>
-              ) : (
-                // Normal merge and PR buttons for regular tasks
-                !branchStatus.merged && (
-                  <>
-                    <Button
-                      onClick={handleCreatePRClick}
-                      disabled={
-                        creatingPR ||
-                        Boolean(branchStatus.is_behind) ||
-                        isAttemptRunning
-                      }
-                      variant="outline"
-                      size="sm"
-                      className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1"
-                    >
-                      <GitPullRequest className="h-3 w-3" />
-                      {selectedAttempt.pr_url
-                        ? t('createAttempt.openPR')
-                        : creatingPR
-                          ? t('createAttempt.creating')
-                          : t('createAttempt.createPR')}
-                    </Button>
-                    <Button
-                      onClick={handleMergeClick}
-                      disabled={
-                        merging ||
-                        Boolean(branchStatus.is_behind) ||
-                        isAttemptRunning
-                      }
-                      size="sm"
-                      className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1"
-                    >
-                      <GitBranchIcon className="h-3 w-3" />
-                      {merging ? t('createAttempt.merging') : t('createAttempt.merge')}
-                    </Button>
-                  </>
-                )
-              )}
-            </>
-          )}
-
-          {isStopping || isAttemptRunning ? (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={stopAllExecutions}
-              disabled={isStopping}
-              className="gap-2"
-            >
-              <StopCircle className="h-4 w-4" />
-              {isStopping ? t('createAttempt.stopping') : t('createAttempt.stopAttempt')}
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleEnterCreateAttemptMode}
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              {t('createAttempt.newAttempt')}
-            </Button>
-          )}
->>>>>>> 6ddf031 (feat(i18n): add internationalization support with Traditional Chinese translation)
         </div>
       </div>
 
@@ -1010,22 +823,22 @@ function CurrentAttempt({
       <Dialog open={showRebaseDialog} onOpenChange={setShowRebaseDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{t('createAttempt.rebaseTaskAttempt')}</DialogTitle>
+            <DialogTitle>Rebase Task Attempt</DialogTitle>
             <DialogDescription>
-              {t('createAttempt.chooseNewBaseBranch')}
+              Choose a new base branch to rebase this task attempt onto.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="base-branch" className="text-sm font-medium">
-                {t('createAttempt.baseBranch')}
+                Base Branch
               </label>
               <BranchSelector
                 branches={branches}
                 selectedBranch={selectedRebaseBranch}
                 onBranchSelect={setSelectedRebaseBranch}
-                placeholder={t('createAttempt.selectBaseBranch')}
+                placeholder="Select a base branch"
                 excludeCurrentBranch={false}
               />
             </div>
@@ -1037,13 +850,13 @@ function CurrentAttempt({
               onClick={() => setShowRebaseDialog(false)}
               disabled={rebasing}
             >
-              {t('common.cancel')}
+              Cancel
             </Button>
             <Button
               onClick={handleRebaseDialogConfirm}
               disabled={rebasing || !selectedRebaseBranch}
             >
-              {rebasing ? t('createAttempt.rebasing') : t('createAttempt.rebase')}
+              {rebasing ? 'Rebasing...' : 'Rebase'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1056,9 +869,10 @@ function CurrentAttempt({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{t('createAttempt.stopCurrentAttempt')}</DialogTitle>
+            <DialogTitle>Stop Current Attempt?</DialogTitle>
             <DialogDescription>
-              {t('createAttempt.confirmStopExecution')}
+              Are you sure you want to stop the current execution? This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -1067,7 +881,7 @@ function CurrentAttempt({
               onClick={() => setShowStopConfirmation(false)}
               disabled={isStopping}
             >
-              {t('common.cancel')}
+              Cancel
             </Button>
             <Button
               variant="destructive"
@@ -1077,7 +891,7 @@ function CurrentAttempt({
               }}
               disabled={isStopping}
             >
-              {isStopping ? t('createAttempt.stopping') : t('createAttempt.stop')}
+              {isStopping ? 'Stopping...' : 'Stop'}
             </Button>
           </DialogFooter>
         </DialogContent>
