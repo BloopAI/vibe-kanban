@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -14,42 +14,120 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Key, Loader2, Volume2, Globe } from 'lucide-react';
-import type { EditorType, SoundFile, ThemeMode } from 'shared/types';
+import { JSONEditor } from '@/components/ui/json-editor';
+import { ChevronDown, Key, Loader2, Volume2 } from 'lucide-react';
 import {
-  EDITOR_LABELS,
-  EDITOR_TYPES,
-  EXECUTOR_LABELS,
-  EXECUTOR_TYPES,
-  SOUND_FILES,
-  SOUND_LABELS,
+  ThemeMode,
+  EditorType,
+  SoundFile,
+  ProfileVariantLabel,
 } from 'shared/types';
+
+import { toPrettyCase } from '@/utils/string';
 import { useTheme } from '@/components/theme-provider';
-import { useConfig } from '@/components/config-provider';
+import { useUserSystem } from '@/components/config-provider';
 import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
-import { useTranslation, LANGUAGE_LABELS, type Language } from '@/lib/i18n';
+import { profilesApi } from '@/lib/api';
 
 export function Settings() {
-  const { config, updateConfig, saveConfig, loading, updateAndSaveConfig } =
-    useConfig();
+  const {
+    config,
+    updateConfig,
+    saveConfig,
+    loading,
+    updateAndSaveConfig,
+    profiles,
+    reloadSystem,
+  } = useUserSystem();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const { setTheme } = useTheme();
   const [showGitHubLogin, setShowGitHubLogin] = useState(false);
-  const { t, currentLanguage, setLanguage } = useTranslation();
+
+  // Profiles editor state
+  const [profilesContent, setProfilesContent] = useState('');
+  const [profilesPath, setProfilesPath] = useState('');
+  const [profilesError, setProfilesError] = useState<string | null>(null);
+  const [profilesLoading, setProfilesLoading] = useState(false);
+  const [profilesSaving, setProfilesSaving] = useState(false);
+  const [profilesSuccess, setProfilesSuccess] = useState(false);
+
+  // Load profiles content on mount
+  useEffect(() => {
+    const loadProfiles = async () => {
+      setProfilesLoading(true);
+      try {
+        const result = await profilesApi.load();
+        setProfilesContent(result.content);
+        setProfilesPath(result.path);
+      } catch (err) {
+        console.error('Failed to load profiles:', err);
+        setProfilesError('Failed to load profiles');
+      } finally {
+        setProfilesLoading(false);
+      }
+    };
+    loadProfiles();
+  }, []);
 
   const playSound = async (soundFile: SoundFile) => {
-    const audio = new Audio(`/api/sounds/${soundFile}.wav`);
+    const audio = new Audio(`/api/sounds/${soundFile}`);
     try {
       await audio.play();
     } catch (err) {
       console.error('Failed to play sound:', err);
+    }
+  };
+
+  const handleProfilesChange = (value: string) => {
+    setProfilesContent(value);
+    setProfilesError(null);
+
+    // Validate JSON on change
+    if (value.trim()) {
+      try {
+        const parsed = JSON.parse(value);
+        // Basic structure validation
+        if (!parsed.profiles || !Array.isArray(parsed.profiles)) {
+          setProfilesError('Invalid structure: must have a "profiles" array');
+        }
+      } catch (err) {
+        if (err instanceof SyntaxError) {
+          setProfilesError('Invalid JSON format');
+        } else {
+          setProfilesError('Validation error');
+        }
+      }
+    }
+  };
+
+  const handleSaveProfiles = async () => {
+    setProfilesSaving(true);
+    setProfilesError(null);
+    setProfilesSuccess(false);
+
+    try {
+      await profilesApi.save(profilesContent);
+      // Reload the system to get the updated profiles
+      await reloadSystem();
+      setProfilesSuccess(true);
+      setTimeout(() => setProfilesSuccess(false), 3000);
+    } catch (err: any) {
+      setProfilesError(err.message || 'Failed to save profiles');
+    } finally {
+      setProfilesSaving(false);
     }
   };
 
@@ -93,14 +171,16 @@ export function Settings() {
     updateConfig({ onboarding_acknowledged: false });
   };
 
-  const isAuthenticated = !!(config?.github?.username && config?.github?.token);
+  const isAuthenticated = !!(
+    config?.github?.username && config?.github?.oauth_token
+  );
 
   const handleLogout = useCallback(async () => {
     if (!config) return;
     updateAndSaveConfig({
       github: {
         ...config.github,
-        token: null,
+        oauth_token: null,
         username: null,
         primary_email: null,
       },
@@ -112,7 +192,7 @@ export function Settings() {
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">{t('settings.loading')}</span>
+          <span className="ml-2">Loading settings...</span>
         </div>
       </div>
     );
@@ -122,7 +202,7 @@ export function Settings() {
     return (
       <div className="container mx-auto px-4 py-8">
         <Alert variant="destructive">
-          <AlertDescription>{t('settings.failed')} {error}</AlertDescription>
+          <AlertDescription>Failed to load settings. {error}</AlertDescription>
         </Alert>
       </div>
     );
@@ -132,9 +212,9 @@ export function Settings() {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">{t('settings.title')}</h1>
+          <h1 className="text-3xl font-bold">Settings</h1>
           <p className="text-muted-foreground">
-            {t('settings.subtitle')}
+            Configure your preferences and application settings.
           </p>
         </div>
 
@@ -147,7 +227,7 @@ export function Settings() {
         {success && (
           <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
             <AlertDescription className="font-medium">
-              {t('settings.saved')}
+              ✓ Settings saved successfully!
             </AlertDescription>
           </Alert>
         )}
@@ -155,49 +235,14 @@ export function Settings() {
         <div className="grid gap-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5" />
-                {t('settings.language.title')}
-              </CardTitle>
+              <CardTitle>Appearance</CardTitle>
               <CardDescription>
-                {t('settings.language.subtitle')}
+                Customize how the application looks and feels.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="language">{t('settings.language.language')}</Label>
-                <Select
-                  value={currentLanguage}
-                  onValueChange={(value: Language) => setLanguage(value)}
-                >
-                  <SelectTrigger id="language">
-                    <SelectValue placeholder={t('settings.language.languagePlaceholder')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(LANGUAGE_LABELS).map(([code, label]) => (
-                      <SelectItem key={code} value={code}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-sm text-muted-foreground">
-                  {t('settings.language.languageDescription')}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('settings.appearance.title')}</CardTitle>
-              <CardDescription>
-                {t('settings.appearance.subtitle')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="theme">{t('settings.appearance.theme')}</Label>
+                <Label htmlFor="theme">Theme</Label>
                 <Select
                   value={config.theme}
                   onValueChange={(value: ThemeMode) => {
@@ -206,55 +251,18 @@ export function Settings() {
                   }}
                 >
                   <SelectTrigger id="theme">
-                    <SelectValue placeholder={t('settings.appearance.themePlaceholder')} />
+                    <SelectValue placeholder="Select theme" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="light">{t('settings.appearance.themes.light')}</SelectItem>
-                    <SelectItem value="dark">{t('settings.appearance.themes.dark')}</SelectItem>
-                    <SelectItem value="system">{t('settings.appearance.themes.system')}</SelectItem>
-                    <SelectItem value="purple">{t('settings.appearance.themes.purple')}</SelectItem>
-                    <SelectItem value="green">{t('settings.appearance.themes.green')}</SelectItem>
-                    <SelectItem value="blue">{t('settings.appearance.themes.blue')}</SelectItem>
-                    <SelectItem value="orange">{t('settings.appearance.themes.orange')}</SelectItem>
-                    <SelectItem value="red">{t('settings.appearance.themes.red')}</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-sm text-muted-foreground">
-                  {t('settings.appearance.themeDescription')}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('settings.taskExecution.title')}</CardTitle>
-              <CardDescription>
-                {t('settings.taskExecution.subtitle')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="executor">{t('settings.taskExecution.executor')}</Label>
-                <Select
-                  value={config.executor.type}
-                  onValueChange={(value: 'echo' | 'claude' | 'amp') =>
-                    updateConfig({ executor: { type: value } })
-                  }
-                >
-                  <SelectTrigger id="executor">
-                    <SelectValue placeholder={t('settings.taskExecution.executorPlaceholder')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {EXECUTOR_TYPES.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {EXECUTOR_LABELS[type]}
+                    {Object.values(ThemeMode).map((theme) => (
+                      <SelectItem key={theme} value={theme}>
+                        {toPrettyCase(theme)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-muted-foreground">
-                  {t('settings.taskExecution.executorDescription')}
+                  Choose your preferred color scheme.
                 </p>
               </div>
             </CardContent>
@@ -262,14 +270,132 @@ export function Settings() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{t('settings.editor.title')}</CardTitle>
+              <CardTitle>Task Execution</CardTitle>
               <CardDescription>
-                {t('settings.editor.subtitle')}
+                Configure how tasks are executed and processed.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="editor">{t('settings.editor.editor')}</Label>
+                <Label htmlFor="executor">Default Profile</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Select
+                    value={config.profile?.profile || ''}
+                    onValueChange={(value: string) => {
+                      const newProfile: ProfileVariantLabel = {
+                        profile: value,
+                        variant: null,
+                      };
+                      updateConfig({ profile: newProfile });
+                    }}
+                  >
+                    <SelectTrigger id="executor">
+                      <SelectValue placeholder="Select profile" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {profiles?.map((profile) => (
+                        <SelectItem key={profile.label} value={profile.label}>
+                          {profile.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Show variant selector if selected profile has variants */}
+                  {(() => {
+                    const selectedProfile = profiles?.find(
+                      (p) => p.label === config.profile?.profile
+                    );
+                    const hasVariants =
+                      selectedProfile?.variants &&
+                      selectedProfile.variants.length > 0;
+
+                    if (hasVariants) {
+                      return (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-full h-10 px-2 flex items-center justify-between"
+                            >
+                              <span className="text-sm truncate flex-1 text-left">
+                                {config.profile?.variant || 'Default'}
+                              </span>
+                              <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                const newProfile: ProfileVariantLabel = {
+                                  profile: config.profile?.profile || '',
+                                  variant: null,
+                                };
+                                updateConfig({ profile: newProfile });
+                              }}
+                              className={
+                                !config.profile?.variant ? 'bg-accent' : ''
+                              }
+                            >
+                              Default
+                            </DropdownMenuItem>
+                            {selectedProfile.variants.map((variant) => (
+                              <DropdownMenuItem
+                                key={variant.label}
+                                onClick={() => {
+                                  const newProfile: ProfileVariantLabel = {
+                                    profile: config.profile?.profile || '',
+                                    variant: variant.label,
+                                  };
+                                  updateConfig({ profile: newProfile });
+                                }}
+                                className={
+                                  config.profile?.variant === variant.label
+                                    ? 'bg-accent'
+                                    : ''
+                                }
+                              >
+                                {variant.label}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      );
+                    } else if (selectedProfile) {
+                      // Show disabled button when profile exists but has no variants
+                      return (
+                        <Button
+                          variant="outline"
+                          className="w-full h-10 px-2 flex items-center justify-between"
+                          disabled
+                        >
+                          <span className="text-sm truncate flex-1 text-left">
+                            Default
+                          </span>
+                        </Button>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Choose the default profile to use when creating a task
+                  attempt.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Editor</CardTitle>
+              <CardDescription>
+                Configure which editor to open when viewing task attempts.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="editor">Preferred Editor</Label>
                 <Select
                   value={config.editor.editor_type}
                   onValueChange={(value: EditorType) =>
@@ -278,7 +404,7 @@ export function Settings() {
                         ...config.editor,
                         editor_type: value,
                         custom_command:
-                          value === 'custom'
+                          value === EditorType.CUSTOM
                             ? config.editor.custom_command
                             : null,
                       },
@@ -286,27 +412,27 @@ export function Settings() {
                   }
                 >
                   <SelectTrigger id="editor">
-                    <SelectValue placeholder={t('settings.editor.editorPlaceholder')} />
+                    <SelectValue placeholder="Select editor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {EDITOR_TYPES.map((type) => (
+                    {Object.values(EditorType).map((type) => (
                       <SelectItem key={type} value={type}>
-                        {EDITOR_LABELS[type]}
+                        {toPrettyCase(type)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-muted-foreground">
-                  {t('settings.editor.editorDescription')}
+                  Choose your preferred code editor for opening task attempts.
                 </p>
               </div>
 
-              {config.editor.editor_type === 'custom' && (
+              {config.editor.editor_type === EditorType.CUSTOM && (
                 <div className="space-y-2">
-                  <Label htmlFor="custom-command">{t('settings.editor.customCommand')}</Label>
+                  <Label htmlFor="custom-command">Custom Command</Label>
                   <Input
                     id="custom-command"
-                    placeholder={t('settings.editor.customCommandPlaceholder')}
+                    placeholder="e.g., code, subl, vim"
                     value={config.editor.custom_command || ''}
                     onChange={(e) =>
                       updateConfig({
@@ -318,7 +444,8 @@ export function Settings() {
                     }
                   />
                   <p className="text-sm text-muted-foreground">
-                    {t('settings.editor.customCommandDescription')}
+                    Enter the command to run your custom editor. Use spaces for
+                    arguments (e.g., "code --wait").
                   </p>
                 </div>
               )}
@@ -329,19 +456,20 @@ export function Settings() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Key className="h-5 w-5" />
-                {t('settings.github.title')}
+                GitHub Integration
               </CardTitle>
               <CardDescription>
-                {t('settings.github.subtitle')}
+                Configure GitHub settings for creating pull requests from task
+                attempts.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="github-token">{t('settings.github.token')}</Label>
+                <Label htmlFor="github-token">Personal Access Token</Label>
                 <Input
                   id="github-token"
                   type="password"
-                  placeholder={t('settings.github.tokenPlaceholder')}
+                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
                   value={config.github.pat || ''}
                   onChange={(e) =>
                     updateConfig({
@@ -353,32 +481,33 @@ export function Settings() {
                   }
                 />
                 <p className="text-sm text-muted-foreground">
-                  {t('settings.github.tokenDescription')}{' '}
+                  GitHub Personal Access Token with 'repo' permissions. Required
+                  for creating pull requests.{' '}
                   <a
                     href="https://github.com/settings/tokens"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:underline"
                   >
-                    {t('settings.github.createToken')}
+                    Create token here
                   </a>
                 </p>
               </div>
               {config && isAuthenticated ? (
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <Label>{t('settings.github.signedInAs')}</Label>
+                    <Label>Signed in as</Label>
                     <div className="text-lg font-mono">
                       {config.github.username}
                     </div>
                   </div>
                   <Button variant="outline" onClick={handleLogout}>
-                    {t('settings.github.logOut')}
+                    Log out
                   </Button>
                 </div>
               ) : (
                 <Button onClick={() => setShowGitHubLogin(true)}>
-                  {t('settings.github.signIn')}
+                  Sign in with GitHub
                 </Button>
               )}
               <GitHubLoginDialog
@@ -386,10 +515,10 @@ export function Settings() {
                 onOpenChange={setShowGitHubLogin}
               />
               <div className="space-y-2 pt-4">
-                <Label htmlFor="default-pr-base">{t('settings.github.defaultPrBase')}</Label>
+                <Label htmlFor="default-pr-base">Default PR Base Branch</Label>
                 <Input
                   id="default-pr-base"
-                  placeholder={t('settings.github.defaultPrBasePlaceholder')}
+                  placeholder="main"
                   value={config.github.default_pr_base || ''}
                   onChange={(e) =>
                     updateConfig({
@@ -401,7 +530,8 @@ export function Settings() {
                   }
                 />
                 <p className="text-sm text-muted-foreground">
-                  {t('settings.github.defaultPrBaseDescription')}
+                  Default base branch for pull requests. Defaults to 'main' if
+                  not specified.
                 </p>
               </div>
             </CardContent>
@@ -409,47 +539,57 @@ export function Settings() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{t('settings.notifications.title')}</CardTitle>
+              <CardTitle>Notifications</CardTitle>
               <CardDescription>
-                {t('settings.notifications.subtitle')}
+                Configure how you receive notifications about task completion.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="sound-alerts"
-                  checked={config.sound_alerts}
+                  checked={config.notifications.sound_enabled}
                   onCheckedChange={(checked: boolean) =>
-                    updateConfig({ sound_alerts: checked })
+                    updateConfig({
+                      notifications: {
+                        ...config.notifications,
+                        sound_enabled: checked,
+                      },
+                    })
                   }
                 />
                 <div className="space-y-0.5">
                   <Label htmlFor="sound-alerts" className="cursor-pointer">
-                    {t('settings.notifications.soundAlerts')}
+                    Sound Alerts
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    {t('settings.notifications.soundAlertsDescription')}
+                    Play a sound when task attempts finish running.
                   </p>
                 </div>
               </div>
 
-              {config.sound_alerts && (
+              {config.notifications.sound_enabled && (
                 <div className="space-y-2 ml-6">
-                  <Label htmlFor="sound-file">{t('settings.notifications.sound')}</Label>
+                  <Label htmlFor="sound-file">Sound</Label>
                   <div className="flex items-center gap-2">
                     <Select
-                      value={config.sound_file}
+                      value={config.notifications.sound_file}
                       onValueChange={(value: SoundFile) =>
-                        updateConfig({ sound_file: value })
+                        updateConfig({
+                          notifications: {
+                            ...config.notifications,
+                            sound_file: value,
+                          },
+                        })
                       }
                     >
                       <SelectTrigger id="sound-file" className="flex-1">
-                        <SelectValue placeholder={t('settings.notifications.soundPlaceholder')} />
+                        <SelectValue placeholder="Select sound" />
                       </SelectTrigger>
                       <SelectContent>
-                        {SOUND_FILES.map((soundFile) => (
+                        {Object.values(SoundFile).map((soundFile) => (
                           <SelectItem key={soundFile} value={soundFile}>
-                            {SOUND_LABELS[soundFile]}
+                            {toPrettyCase(soundFile)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -457,23 +597,29 @@ export function Settings() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => playSound(config.sound_file)}
+                      onClick={() => playSound(config.notifications.sound_file)}
                       className="px-3"
                     >
                       <Volume2 className="h-4 w-4" />
                     </Button>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {t('settings.notifications.soundDescription')}
+                    Choose the sound to play when tasks complete. Click the
+                    volume button to preview.
                   </p>
                 </div>
               )}
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="push-notifications"
-                  checked={config.push_notifications}
+                  checked={config.notifications.push_enabled}
                   onCheckedChange={(checked: boolean) =>
-                    updateConfig({ push_notifications: checked })
+                    updateConfig({
+                      notifications: {
+                        ...config.notifications,
+                        push_enabled: checked,
+                      },
+                    })
                   }
                 />
                 <div className="space-y-0.5">
@@ -481,10 +627,10 @@ export function Settings() {
                     htmlFor="push-notifications"
                     className="cursor-pointer"
                   >
-                    {t('settings.notifications.pushNotifications')}
+                    Push Notifications
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    {t('settings.notifications.pushNotificationsDescription')}
+                    Show system notifications when task attempts finish running.
                   </p>
                 </div>
               </div>
@@ -493,9 +639,9 @@ export function Settings() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{t('settings.privacy.title')}</CardTitle>
+              <CardTitle>Privacy</CardTitle>
               <CardDescription>
-                {t('settings.privacy.subtitle')}
+                Help improve Vibe-Kanban by sharing anonymous usage data.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -509,10 +655,12 @@ export function Settings() {
                 />
                 <div className="space-y-0.5">
                   <Label htmlFor="analytics-enabled" className="cursor-pointer">
-                    {t('settings.privacy.enableTelemetry')}
+                    Enable Telemetry
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    {t('settings.privacy.telemetryDescription')}
+                    Enables anonymous usage events tracking to help improve the
+                    application. No prompts or project information are
+                    collected.
                   </p>
                 </div>
               </div>
@@ -521,9 +669,10 @@ export function Settings() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{t('settings.taskTemplates.title')}</CardTitle>
+              <CardTitle>Task Templates</CardTitle>
               <CardDescription>
-                {t('settings.taskTemplates.subtitle')}
+                Manage global task templates that can be used across all
+                projects.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -533,20 +682,101 @@ export function Settings() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{t('settings.safety.title')}</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                Agent Profiles
+              </CardTitle>
               <CardDescription>
-                {t('settings.safety.subtitle')}
+                Configure coding agent profiles with specific command-line
+                parameters.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {profilesError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{profilesError}</AlertDescription>
+                </Alert>
+              )}
+
+              {profilesSuccess && (
+                <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
+                  <AlertDescription className="font-medium">
+                    ✓ Profiles saved successfully!
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="profiles-editor">
+                    Profiles Configuration
+                  </Label>
+                  <JSONEditor
+                    id="profiles-editor"
+                    placeholder={
+                      profilesLoading
+                        ? 'Loading profiles...'
+                        : '{\n  "profiles": [\n    {\n      "label": "my-custom-profile",\n      "agent": "ClaudeCode",\n      "command": {...}\n    }\n  ]\n}'
+                    }
+                    value={profilesLoading ? 'Loading...' : profilesContent}
+                    onChange={handleProfilesChange}
+                    disabled={profilesLoading}
+                    minHeight={300}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  {!profilesError && profilesPath && (
+                    <p className="text-sm text-muted-foreground">
+                      <span className="font-medium">Configuration file:</span>{' '}
+                      <span className="font-mono text-xs">{profilesPath}</span>
+                    </p>
+                  )}
+                  <p className="text-sm text-muted-foreground">
+                    Edit coding agent profiles. Each profile needs a unique
+                    label, agent type, and command configuration.
+                  </p>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <Button
+                    onClick={handleSaveProfiles}
+                    disabled={
+                      profilesSaving ||
+                      profilesLoading ||
+                      !!profilesError ||
+                      profilesSuccess
+                    }
+                    className={
+                      profilesSuccess ? 'bg-green-600 hover:bg-green-700' : ''
+                    }
+                  >
+                    {profilesSaving && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    {profilesSuccess && <span className="mr-2">✓</span>}
+                    {profilesSuccess ? 'Profiles Saved!' : 'Save Profiles'}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Safety & Disclaimers</CardTitle>
+              <CardDescription>
+                Manage safety warnings and acknowledgments.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label>{t('settings.safety.disclaimerStatus')}</Label>
+                    <Label>Disclaimer Status</Label>
                     <p className="text-sm text-muted-foreground">
                       {config.disclaimer_acknowledged
-                        ? t('settings.safety.disclaimerAcknowledged')
-                        : t('settings.safety.disclaimerNotAcknowledged')}
+                        ? 'You have acknowledged the safety disclaimer.'
+                        : 'The safety disclaimer has not been acknowledged.'}
                     </p>
                   </div>
                   <Button
@@ -555,21 +785,22 @@ export function Settings() {
                     size="sm"
                     disabled={!config.disclaimer_acknowledged}
                   >
-                    {t('settings.safety.resetDisclaimer')}
+                    Reset Disclaimer
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {t('settings.safety.resetDisclaimerDescription')}
+                  Resetting the disclaimer will require you to acknowledge the
+                  safety warning again.
                 </p>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label>{t('settings.safety.onboardingStatus')}</Label>
+                    <Label>Onboarding Status</Label>
                     <p className="text-sm text-muted-foreground">
                       {config.onboarding_acknowledged
-                        ? t('settings.safety.onboardingCompleted')
-                        : t('settings.safety.onboardingNotCompleted')}
+                        ? 'You have completed the onboarding process.'
+                        : 'The onboarding process has not been completed.'}
                     </p>
                   </div>
                   <Button
@@ -578,21 +809,21 @@ export function Settings() {
                     size="sm"
                     disabled={!config.onboarding_acknowledged}
                   >
-                    {t('settings.safety.resetOnboarding')}
+                    Reset Onboarding
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {t('settings.safety.resetOnboardingDescription')}
+                  Resetting the onboarding will show the setup screen again.
                 </p>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label>{t('settings.safety.telemetryAcknowledgment')}</Label>
+                    <Label>Telemetry Acknowledgment</Label>
                     <p className="text-sm text-muted-foreground">
                       {config.telemetry_acknowledged
-                        ? t('settings.safety.telemetryAcknowledged')
-                        : t('settings.safety.telemetryNotAcknowledged')}
+                        ? 'You have acknowledged the telemetry notice.'
+                        : 'The telemetry notice has not been acknowledged.'}
                     </p>
                   </div>
                   <Button
@@ -603,11 +834,12 @@ export function Settings() {
                     size="sm"
                     disabled={!config.telemetry_acknowledged}
                   >
-                    {t('settings.safety.resetAcknowledgment')}
+                    Reset Acknowledgment
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {t('settings.safety.resetAcknowledgmentDescription')}
+                  Resetting the acknowledgment will require you to acknowledge
+                  the telemetry notice again.
                 </p>
               </div>
             </CardContent>
@@ -624,7 +856,7 @@ export function Settings() {
             >
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {success && <span className="mr-2">✓</span>}
-              {success ? t('settings.saving') : t('settings.save')}
+              {success ? 'Settings Saved!' : 'Save Settings'}
             </Button>
           </div>
         </div>

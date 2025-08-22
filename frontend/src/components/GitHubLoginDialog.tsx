@@ -12,9 +12,8 @@ import { useConfig } from './config-provider';
 import { Check, Clipboard, Github } from 'lucide-react';
 import { Loader } from './ui/loader';
 import { githubAuthApi } from '../lib/api';
-import { DeviceStartResponse } from 'shared/types.ts';
+import { DeviceFlowStartResponse, DevicePollStatus } from 'shared/types';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { useTranslation } from '../lib/i18n';
 
 export function GitHubLoginDialog({
   open,
@@ -23,18 +22,16 @@ export function GitHubLoginDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { config, loading, githubTokenInvalid } = useConfig();
-  const { t } = useTranslation();
+  const { config, loading, githubTokenInvalid, reloadSystem } = useConfig();
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [deviceState, setDeviceState] = useState<null | DeviceStartResponse>(
-    null
-  );
+  const [deviceState, setDeviceState] =
+    useState<null | DeviceFlowStartResponse>(null);
   const [polling, setPolling] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const isAuthenticated =
-    !!(config?.github?.username && config?.github?.token) &&
+    !!(config?.github?.username && config?.github?.oauth_token) &&
     !githubTokenInvalid;
 
   const handleLogin = async () => {
@@ -47,7 +44,7 @@ export function GitHubLoginDialog({
       setPolling(true);
     } catch (e: any) {
       console.error(e);
-      setError(e?.message || t('githubLogin.networkError'));
+      setError(e?.message || 'Network error');
     } finally {
       setFetching(false);
     }
@@ -55,27 +52,33 @@ export function GitHubLoginDialog({
 
   // Poll for completion
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     if (polling && deviceState) {
       const poll = async () => {
         try {
-          await githubAuthApi.poll(deviceState.device_code);
-          setPolling(false);
-          setDeviceState(null);
-          setError(null);
-          onOpenChange(false);
+          const poll_status = await githubAuthApi.poll();
+          switch (poll_status) {
+            case DevicePollStatus.SUCCESS:
+              setPolling(false);
+              setDeviceState(null);
+              setError(null);
+              await reloadSystem();
+              onOpenChange(false);
+              break;
+            case DevicePollStatus.AUTHORIZATION_PENDING:
+              timer = setTimeout(poll, deviceState.interval * 1000);
+              break;
+            case DevicePollStatus.SLOW_DOWN:
+              timer = setTimeout(poll, (deviceState.interval + 5) * 1000);
+          }
         } catch (e: any) {
-          if (e?.message === 'authorization_pending') {
-            timer = setTimeout(poll, (deviceState.interval || 5) * 1000);
-          } else if (e?.message === 'slow_down') {
-            timer = setTimeout(poll, (deviceState.interval + 5) * 1000);
-          } else if (e?.message === 'expired_token') {
+          if (e?.message === 'expired_token') {
             setPolling(false);
-            setError(t('githubLogin.deviceCodeExpired'));
+            setError('Device code expired. Please try again.');
             setDeviceState(null);
           } else {
             setPolling(false);
-            setError(e?.message || t('githubLogin.loginFailed'));
+            setError(e?.message || 'Login failed.');
             setDeviceState(null);
           }
         }
@@ -130,33 +133,34 @@ export function GitHubLoginDialog({
         <DialogHeader>
           <div className="flex items-center gap-3">
             <Github className="h-6 w-6 text-primary" />
-            <DialogTitle>{t('githubLogin.title')}</DialogTitle>
+            <DialogTitle>Sign in with GitHub</DialogTitle>
           </div>
           <DialogDescription className="text-left pt-1">
-            {t('githubLogin.description')}
+            Connect your GitHub account to create and manage pull requests
+            directly from Vibe Kanban.
           </DialogDescription>
         </DialogHeader>
         {loading ? (
-          <Loader message={t('githubLogin.loading')} size={32} className="py-8" />
+          <Loader message="Loading…" size={32} className="py-8" />
         ) : isAuthenticated ? (
           <div className="space-y-4 py-3">
             <Card>
               <CardContent className="text-center py-8">
                 <div className="flex items-center justify-center gap-3 mb-4">
                   <Check className="h-8 w-8 text-green-500" />
-                  <Github className="h-8 w-8 text-gray-600" />
+                  <Github className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <div className="text-lg font-medium text-gray-900 mb-1">
-                  {t('githubLogin.successfullyConnected')}
+                <div className="text-lg font-medium mb-1">
+                  Successfully connected!
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {t('githubLogin.signedInAs')} <b>{config?.github?.username ?? ''}</b>
+                  You are signed in as <b>{config?.github?.username ?? ''}</b>
                 </div>
               </CardContent>
             </Card>
             <DialogFooter>
               <Button onClick={() => onOpenChange(false)} className="w-full">
-                {t('common.close')}
+                Close
               </Button>
             </DialogFooter>
           </div>
@@ -165,23 +169,23 @@ export function GitHubLoginDialog({
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">
-                  {t('githubLogin.completeAuthorization')}
+                  Complete GitHub Authorization
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 pt-0">
                 <div className="flex items-start gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm font-semibold">
+                  <span className="flex-shrink-0 w-6 h-6 bg-primary/10 text-primary rounded-full flex items-center justify-center text-sm font-semibold">
                     1
                   </span>
                   <div>
-                    <p className="text-sm font-medium text-gray-900 mb-1">
-                      {t('githubLogin.goToGitHub')}
+                    <p className="text-sm font-medium mb-1">
+                      Go to GitHub Device Authorization
                     </p>
                     <a
                       href={deviceState.verification_uri}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 text-sm underline"
+                      className="text-primary hover:text-primary/80 text-sm underline"
                     >
                       {deviceState.verification_uri}
                     </a>
@@ -189,15 +193,13 @@ export function GitHubLoginDialog({
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-sm font-semibold">
+                  <span className="flex-shrink-0 w-6 h-6 bg-primary/10 text-primary rounded-full flex items-center justify-center text-sm font-semibold">
                     2
                   </span>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900 mb-3">
-                      {t('githubLogin.enterCode')}
-                    </p>
+                    <p className="text-sm font-medium mb-3">Enter this code:</p>
                     <div className="flex items-center gap-3">
-                      <span className="text-xl font-mono font-bold tracking-[0.2em] bg-gray-50 border rounded-lg px-4 py-2 text-gray-900">
+                      <span className="text-xl font-mono font-bold tracking-[0.2em] bg-muted border rounded-lg px-4 py-2">
                         {deviceState.user_code}
                       </span>
                       <Button
@@ -209,12 +211,12 @@ export function GitHubLoginDialog({
                         {copied ? (
                           <>
                             <Check className="w-4 h-4 mr-1" />
-                            {t('common.copied')}
+                            Copied
                           </>
                         ) : (
                           <>
                             <Clipboard className="w-4 h-4 mr-1" />
-                            {t('common.copy')}
+                            Copy
                           </>
                         )}
                       </Button>
@@ -228,20 +230,20 @@ export function GitHubLoginDialog({
               <Github className="h-3 w-3 flex-shrink-0" />
               <span>
                 {copied
-                  ? t('githubLogin.codeCopiedMessage')
-                  : t('githubLogin.codeWaitingMessage')}
+                  ? 'Code copied to clipboard! Complete the authorization on GitHub.'
+                  : 'Waiting for you to authorize this application on GitHub...'}
               </span>
             </div>
 
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                <div className="text-red-600 text-sm">{error}</div>
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <div className="text-destructive text-sm">{error}</div>
               </div>
             )}
 
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
-                {t('common.skip')}
+                Skip
               </Button>
             </DialogFooter>
           </div>
@@ -250,34 +252,34 @@ export function GitHubLoginDialog({
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">
-                  {t('githubLogin.whyNeedAccess')}
+                  Why do you need GitHub access?
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 pt-0">
                 <div className="flex items-start gap-3">
                   <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-medium">{t('githubLogin.createPullRequests')}</p>
+                    <p className="text-sm font-medium">Create pull requests</p>
                     <p className="text-xs text-muted-foreground">
-                      {t('githubLogin.createPullRequestsDesc')}
+                      Generate PRs directly from your task attempts
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-medium">{t('githubLogin.manageRepositories')}</p>
+                    <p className="text-sm font-medium">Manage repositories</p>
                     <p className="text-xs text-muted-foreground">
-                      {t('githubLogin.manageRepositoriesDesc')}
+                      Access your repos to push changes and create branches
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-medium">{t('githubLogin.streamlineWorkflow')}</p>
+                    <p className="text-sm font-medium">Streamline workflow</p>
                     <p className="text-xs text-muted-foreground">
-                      {t('githubLogin.streamlineWorkflowDesc')}
+                      Skip manual PR creation and focus on coding
                     </p>
                   </div>
                 </div>
@@ -285,8 +287,8 @@ export function GitHubLoginDialog({
             </Card>
 
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                <div className="text-red-600 text-sm">{error}</div>
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <div className="text-destructive text-sm">{error}</div>
               </div>
             )}
 
@@ -296,7 +298,7 @@ export function GitHubLoginDialog({
                 onClick={() => onOpenChange(false)}
                 className="flex-1"
               >
-                {t('common.skip')}
+                Skip
               </Button>
               <Button
                 onClick={handleLogin}
@@ -304,7 +306,7 @@ export function GitHubLoginDialog({
                 className="flex-1"
               >
                 <Github className="h-4 w-4 mr-2" />
-                {fetching ? t('githubLogin.starting') : t('githubLogin.signInWithGitHub')}
+                {fetching ? 'Starting…' : 'Sign in with GitHub'}
               </Button>
             </DialogFooter>
           </div>

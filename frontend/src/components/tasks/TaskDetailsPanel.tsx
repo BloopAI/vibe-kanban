@@ -96,7 +96,6 @@ export function TaskDetailsPanel({
                       onClose={onClose}
                       onEditTask={onEditTask}
                       onDeleteTask={onDeleteTask}
-                      hideCloseButton={hideBackdrop}
                     />
                   )}
 

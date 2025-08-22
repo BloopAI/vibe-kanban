@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Globe2, AlertTriangle } from 'lucide-react';
+import { Globe2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ImageUploadSection } from '@/components/ui/ImageUploadSection';
 import {
   Dialog,
   DialogContent,
@@ -17,10 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useConfig } from '@/components/config-provider';
-import { templatesApi } from '@/lib/api';
-import type { TaskStatus, ExecutorConfig, TaskTemplate } from 'shared/types';
-import { useTranslation } from '@/lib/i18n';
+import { templatesApi, imagesApi } from '@/lib/api';
+import type { TaskStatus, TaskTemplate, ImageResponse } from 'shared/types';
 
 interface Task {
   id: string;
@@ -38,23 +37,22 @@ interface TaskFormDialogProps {
   task?: Task | null; // Optional for create mode
   projectId?: string; // For file search functionality
   initialTemplate?: TaskTemplate | null; // For pre-filling from template
-  onCreateTask?: (title: string, description: string) => Promise<void>;
+  onCreateTask?: (
+    title: string,
+    description: string,
+    imageIds?: string[]
+  ) => Promise<void>;
   onCreateAndStartTask?: (
     title: string,
     description: string,
-    executor?: ExecutorConfig
+    imageIds?: string[]
   ) => Promise<void>;
   onUpdateTask?: (
     title: string,
     description: string,
-    status: TaskStatus
+    status: TaskStatus,
+    imageIds?: string[]
   ) => Promise<void>;
-  // Plan context for disabling task creation when no plan exists
-  planContext?: {
-    isPlanningMode: boolean;
-    canCreateTask: boolean;
-    latestProcessHasNoPlan: boolean;
-  };
 }
 
 export function TaskFormDialog({
@@ -66,7 +64,6 @@ export function TaskFormDialog({
   onCreateTask,
   onCreateAndStartTask,
   onUpdateTask,
-  planContext,
 }: TaskFormDialogProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -75,16 +72,48 @@ export function TaskFormDialog({
   const [isSubmittingAndStart, setIsSubmittingAndStart] = useState(false);
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [showDiscardWarning, setShowDiscardWarning] = useState(false);
+  const [images, setImages] = useState<ImageResponse[]>([]);
+  const [newlyUploadedImageIds, setNewlyUploadedImageIds] = useState<string[]>(
+    []
+  );
 
-  const { config } = useConfig();
-  const { t } = useTranslation();
   const isEditMode = Boolean(task);
 
-  // Check if task creation should be disabled based on plan context
-  const isPlanningModeWithoutPlan =
-    planContext?.isPlanningMode && !planContext?.canCreateTask;
-  const showPlanWarning =
-    planContext?.isPlanningMode && planContext?.latestProcessHasNoPlan;
+  // Check if there's any content that would be lost
+  const hasUnsavedChanges = useCallback(() => {
+    if (!isEditMode) {
+      // Create mode - warn when there's content
+      return title.trim() !== '' || description.trim() !== '';
+    } else if (task) {
+      // Edit mode - warn when current values differ from original task
+      const titleChanged = title.trim() !== task.title.trim();
+      const descriptionChanged =
+        (description || '').trim() !== (task.description || '').trim();
+      const statusChanged = status !== task.status;
+      return titleChanged || descriptionChanged || statusChanged;
+    }
+    return false;
+  }, [title, description, status, isEditMode, task]);
+
+  // Warn on browser/tab close if there are unsaved changes
+  useEffect(() => {
+    if (!isOpen) return; // dialog closed → nothing to do
+
+    // always re-evaluate latest fields via hasUnsavedChanges()
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges()) {
+        e.preventDefault();
+        // Chrome / Edge still require returnValue to be set
+        e.returnValue = '';
+        return '';
+      }
+      // nothing returned → no prompt
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isOpen, hasUnsavedChanges]); // hasUnsavedChanges is memoised with title/descr deps
 
   useEffect(() => {
     if (task) {
@@ -92,6 +121,17 @@ export function TaskFormDialog({
       setTitle(task.title);
       setDescription(task.description || '');
       setStatus(task.status);
+
+      // Load existing images for the task
+      if (isOpen) {
+        imagesApi
+          .getTaskImages(task.id)
+          .then((taskImages) => setImages(taskImages))
+          .catch((err) => {
+            console.error('Failed to load task images:', err);
+            setImages([]);
+          });
+      }
     } else if (initialTemplate) {
       // Create mode with template - pre-fill from template
       setTitle(initialTemplate.title);
@@ -104,6 +144,8 @@ export function TaskFormDialog({
       setDescription('');
       setStatus('todo');
       setSelectedTemplate('');
+      setImages([]);
+      setNewlyUploadedImageIds([]);
     }
   }, [task, initialTemplate, isOpen]);
 
@@ -139,15 +181,50 @@ export function TaskFormDialog({
     }
   };
 
-  const handleSubmit = async () => {
+  // Handle image upload success by inserting markdown into description
+  const handleImageUploaded = useCallback((image: ImageResponse) => {
+    const markdownText = `![${image.original_name}](${image.file_path})`;
+    setDescription((prev) => {
+      if (prev.trim() === '') {
+        return markdownText;
+      } else {
+        return prev + ' ' + markdownText;
+      }
+    });
+
+    setImages((prev) => [...prev, image]);
+    // Track as newly uploaded for backend association
+    setNewlyUploadedImageIds((prev) => [...prev, image.id]);
+  }, []);
+
+  const handleImagesChange = useCallback((updatedImages: ImageResponse[]) => {
+    setImages(updatedImages);
+    // Also update newlyUploadedImageIds to remove any deleted image IDs
+    setNewlyUploadedImageIds((prev) =>
+      prev.filter((id) => updatedImages.some((img) => img.id === id))
+    );
+  }, []);
+
+  const handleSubmit = useCallback(async () => {
     if (!title.trim()) return;
 
     setIsSubmitting(true);
     try {
+      let imageIds: string[] | undefined;
+
+      if (isEditMode) {
+        // In edit mode, send all current image IDs (existing + newly uploaded)
+        imageIds = images.length > 0 ? images.map((img) => img.id) : undefined;
+      } else {
+        // In create mode, only send newly uploaded image IDs
+        imageIds =
+          newlyUploadedImageIds.length > 0 ? newlyUploadedImageIds : undefined;
+      }
+
       if (isEditMode && onUpdateTask) {
-        await onUpdateTask(title, description, status);
+        await onUpdateTask(title, description, status, imageIds);
       } else if (!isEditMode && onCreateTask) {
-        await onCreateTask(title, description);
+        await onCreateTask(title, description, imageIds);
       }
 
       // Reset form on successful creation
@@ -155,13 +232,25 @@ export function TaskFormDialog({
         setTitle('');
         setDescription('');
         setStatus('todo');
+        setImages([]);
+        setNewlyUploadedImageIds([]);
       }
 
       onOpenChange(false);
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [
+    title,
+    description,
+    status,
+    isEditMode,
+    onCreateTask,
+    onUpdateTask,
+    onOpenChange,
+    newlyUploadedImageIds,
+    images,
+  ]);
 
   const handleCreateAndStart = useCallback(async () => {
     if (!title.trim()) return;
@@ -169,13 +258,17 @@ export function TaskFormDialog({
     setIsSubmittingAndStart(true);
     try {
       if (!isEditMode && onCreateAndStartTask) {
-        await onCreateAndStartTask(title, description, config?.executor);
+        const imageIds =
+          newlyUploadedImageIds.length > 0 ? newlyUploadedImageIds : undefined;
+        await onCreateAndStartTask(title, description, imageIds);
       }
 
       // Reset form on successful creation
       setTitle('');
       setDescription('');
       setStatus('todo');
+      setImages([]);
+      setNewlyUploadedImageIds([]);
 
       onOpenChange(false);
     } finally {
@@ -184,26 +277,26 @@ export function TaskFormDialog({
   }, [
     title,
     description,
-    config?.executor,
     isEditMode,
     onCreateAndStartTask,
     onOpenChange,
+    newlyUploadedImageIds,
   ]);
 
   const handleCancel = useCallback(() => {
-    // Reset form state when canceling
-    if (task) {
-      setTitle(task.title);
-      setDescription(task.description || '');
-      setStatus(task.status);
+    // Check for unsaved changes before closing
+    if (hasUnsavedChanges()) {
+      setShowDiscardWarning(true);
     } else {
-      setTitle('');
-      setDescription('');
-      setStatus('todo');
-      setSelectedTemplate('');
+      onOpenChange(false);
     }
+  }, [onOpenChange, hasUnsavedChanges]);
+
+  const handleDiscardChanges = useCallback(() => {
+    // Close both dialogs
+    setShowDiscardWarning(false);
     onOpenChange(false);
-  }, [task, onOpenChange]);
+  }, [onOpenChange]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -248,209 +341,219 @@ export function TaskFormDialog({
     isEditMode,
     onCreateAndStartTask,
     title,
+    handleSubmit,
     isSubmitting,
     isSubmittingAndStart,
     handleCreateAndStart,
     handleCancel,
   ]);
 
+  // Handle dialog close attempt
+  const handleDialogOpenChange = (open: boolean) => {
+    if (!open && hasUnsavedChanges()) {
+      // Trying to close with unsaved changes
+      setShowDiscardWarning(true);
+    } else {
+      onOpenChange(open);
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[550px]">
-        <DialogHeader>
-          <DialogTitle>
-            {isEditMode ? t('tasks.form.editTask') : t('tasks.form.createNewTask')}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          {/* Plan warning when in planning mode without plan */}
-          {showPlanWarning && (
-            <div className="p-4 rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/20">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                <p className="text-sm font-semibold text-orange-800 dark:text-orange-300">
-                  {t('tasks.form.planRequired')}
-                </p>
-              </div>
-              <p className="text-sm text-orange-700 dark:text-orange-400">
-                {t('tasks.form.planRequiredMessage')}
-              </p>
-            </div>
-          )}
-
-          <div>
-            <Label htmlFor="task-title" className="text-sm font-medium">
-              {t('tasks.form.titleLabel')}
-            </Label>
-            <Input
-              id="task-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={t('tasks.form.titlePlaceholderForm')}
-              className="mt-1.5"
-              disabled={isSubmitting || isSubmittingAndStart}
-              autoFocus
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="task-description" className="text-sm font-medium">
-              {t('tasks.form.descriptionLabel')}
-            </Label>
-            <FileSearchTextarea
-              value={description}
-              onChange={setDescription}
-              rows={3}
-              maxRows={8}
-              placeholder={t('tasks.form.descriptionPlaceholderForm')}
-              className="mt-1.5"
-              disabled={isSubmitting || isSubmittingAndStart}
-              projectId={projectId}
-            />
-          </div>
-
-          {!isEditMode && templates.length > 0 && (
-            <div className="pt-2">
-              <details className="group">
-                <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-2">
-                  <svg
-                    className="h-3 w-3 transition-transform group-open:rotate-90"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  {t('tasks.form.useTemplate')}
-                </summary>
-                <div className="mt-3 space-y-2">
-                  <p className="text-xs text-muted-foreground">
-                    {t('tasks.form.templateHelp')}
-                  </p>
-                  <Select
-                    value={selectedTemplate}
-                    onValueChange={handleTemplateChange}
-                  >
-                    <SelectTrigger id="task-template" className="w-full">
-                      <SelectValue placeholder={t('tasks.form.chooseTemplate')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">{t('tasks.form.noTemplate')}</SelectItem>
-                      {templates.map((template) => (
-                        <SelectItem key={template.id} value={template.id}>
-                          <div className="flex items-center gap-2">
-                            {template.project_id === null && (
-                              <Globe2 className="h-3 w-3 text-muted-foreground" />
-                            )}
-                            <span>{template.template_name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </details>
-            </div>
-          )}
-
-          {isEditMode && (
-            <div className="pt-2">
-              <Label htmlFor="task-status" className="text-sm font-medium">
-                {t('tasks.form.statusLabel')}
+    <>
+      <Dialog open={isOpen} onOpenChange={handleDialogOpenChange}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>
+              {isEditMode ? 'Edit Task' : 'Create New Task'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="task-title" className="text-sm font-medium">
+                Title
               </Label>
-              <Select
-                value={status}
-                onValueChange={(value) => setStatus(value as TaskStatus)}
+              <Input
+                id="task-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="What needs to be done?"
+                className="mt-1.5"
+                disabled={isSubmitting || isSubmittingAndStart}
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="task-description" className="text-sm font-medium">
+                Description
+              </Label>
+              <FileSearchTextarea
+                value={description}
+                onChange={setDescription}
+                rows={3}
+                maxRows={8}
+                placeholder="Add more details (optional). Type @ to search files."
+                className="mt-1.5"
+                disabled={isSubmitting || isSubmittingAndStart}
+                projectId={projectId}
+              />
+            </div>
+
+            <ImageUploadSection
+              images={images}
+              onImagesChange={handleImagesChange}
+              onUpload={imagesApi.upload}
+              onDelete={imagesApi.delete}
+              onImageUploaded={handleImageUploaded}
+              disabled={isSubmitting || isSubmittingAndStart}
+              readOnly={isEditMode}
+              collapsible={true}
+              defaultExpanded={false}
+            />
+
+            {!isEditMode && templates.length > 0 && (
+              <div className="pt-2">
+                <details className="group">
+                  <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-2">
+                    <svg
+                      className="h-3 w-3 transition-transform group-open:rotate-90"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    Use a template
+                  </summary>
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      Templates help you quickly create tasks with predefined
+                      content.
+                    </p>
+                    <Select
+                      value={selectedTemplate}
+                      onValueChange={handleTemplateChange}
+                    >
+                      <SelectTrigger id="task-template" className="w-full">
+                        <SelectValue placeholder="Choose a template to prefill this form" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No template</SelectItem>
+                        {templates.map((template) => (
+                          <SelectItem key={template.id} value={template.id}>
+                            <div className="flex items-center gap-2">
+                              {template.project_id === null && (
+                                <Globe2 className="h-3 w-3 text-muted-foreground" />
+                              )}
+                              <span>{template.template_name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </details>
+              </div>
+            )}
+
+            {isEditMode && (
+              <div className="pt-2">
+                <Label htmlFor="task-status" className="text-sm font-medium">
+                  Status
+                </Label>
+                <Select
+                  value={status}
+                  onValueChange={(value) => setStatus(value as TaskStatus)}
+                  disabled={isSubmitting || isSubmittingAndStart}
+                >
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todo">To Do</SelectItem>
+                    <SelectItem value="inprogress">In Progress</SelectItem>
+                    <SelectItem value="inreview">In Review</SelectItem>
+                    <SelectItem value="done">Done</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={handleCancel}
                 disabled={isSubmitting || isSubmittingAndStart}
               >
-                <SelectTrigger className="mt-1.5">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todo">{t('tasks.status.todo')}</SelectItem>
-                  <SelectItem value="inprogress">{t('tasks.status.inprogress')}</SelectItem>
-                  <SelectItem value="inreview">{t('tasks.status.inreview')}</SelectItem>
-                  <SelectItem value="done">{t('tasks.status.done')}</SelectItem>
-                  <SelectItem value="cancelled">{t('tasks.status.cancelled')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              disabled={isSubmitting || isSubmittingAndStart}
-            >
-              {t('tasks.form.cancel')}
-            </Button>
-            {isEditMode ? (
-              <Button
-                onClick={handleSubmit}
-                disabled={isSubmitting || !title.trim()}
-              >
-                {isSubmitting ? t('tasks.form.updatingTask') : t('tasks.form.updateTask')}
+                Cancel
               </Button>
-            ) : (
-              <>
+              {isEditMode ? (
                 <Button
-                  variant="secondary"
                   onClick={handleSubmit}
-                  disabled={
-                    isSubmitting ||
-                    isSubmittingAndStart ||
-                    !title.trim() ||
-                    isPlanningModeWithoutPlan
-                  }
-                  className={
-                    isPlanningModeWithoutPlan
-                      ? 'opacity-60 cursor-not-allowed'
-                      : ''
-                  }
-                  title={
-                    isPlanningModeWithoutPlan
-                      ? t('tasks.form.planRequiredTooltip')
-                      : undefined
-                  }
+                  disabled={isSubmitting || !title.trim()}
                 >
-                  {isPlanningModeWithoutPlan && (
-                    <AlertTriangle className="h-4 w-4 mr-2" />
-                  )}
-                  {isSubmitting ? t('tasks.form.creatingTask') : t('tasks.form.createTask')}
+                  {isSubmitting ? 'Updating...' : 'Update Task'}
                 </Button>
-                {onCreateAndStartTask && (
+              ) : (
+                <>
                   <Button
-                    onClick={handleCreateAndStart}
+                    variant="secondary"
+                    onClick={handleSubmit}
                     disabled={
-                      isSubmitting ||
-                      isSubmittingAndStart ||
-                      !title.trim() ||
-                      isPlanningModeWithoutPlan
-                    }
-                    className={`font-medium ${isPlanningModeWithoutPlan ? 'opacity-60 cursor-not-allowed bg-red-600 hover:bg-red-600' : ''}`}
-                    title={
-                      isPlanningModeWithoutPlan
-                        ? t('tasks.form.planRequiredStartTooltip')
-                        : undefined
+                      isSubmitting || isSubmittingAndStart || !title.trim()
                     }
                   >
-                    {isPlanningModeWithoutPlan && (
-                      <AlertTriangle className="h-4 w-4 mr-2" />
-                    )}
-                    {isSubmittingAndStart
-                      ? t('tasks.form.creatingAndStarting')
-                      : t('tasks.form.createAndStartTask')}
+                    {isSubmitting ? 'Creating...' : 'Create Task'}
                   </Button>
-                )}
-              </>
-            )}
+                  {onCreateAndStartTask && (
+                    <Button
+                      onClick={handleCreateAndStart}
+                      disabled={
+                        isSubmitting || isSubmittingAndStart || !title.trim()
+                      }
+                      className={'font-medium'}
+                    >
+                      {isSubmittingAndStart
+                        ? 'Creating & Starting...'
+                        : 'Create & Start'}
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      {/* Discard Warning Dialog */}
+      <Dialog open={showDiscardWarning} onOpenChange={setShowDiscardWarning}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Discard unsaved changes?</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              You have unsaved content in your new task. Are you sure you want
+              You have unsaved changes. Are you sure you want to discard them?
+            </p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowDiscardWarning(false)}
+            >
+              Continue Editing
+            </Button>
+            <Button variant="destructive" onClick={handleDiscardChanges}>
+              Discard Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

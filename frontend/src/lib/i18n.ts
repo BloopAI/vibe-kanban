@@ -669,18 +669,6 @@ const translations = {
       cancel: 'Cancel',
     },
 
-    // Common UI elements
-    common: {
-      cancel: 'Cancel',
-      save: 'Save',
-      saving: 'Saving...',
-      general: 'General',
-      close: 'Close',
-      skip: 'Skip',
-      copy: 'Copy',
-      copied: 'Copied',
-    },
-
     // GitHub Login Dialog
     githubLogin: {
       title: 'Sign in with GitHub',
@@ -1383,18 +1371,6 @@ const translations = {
       startNewAttemptTitle: '開始新嘗試？',
       startNewAttemptDescription: '您確定要為此任務開始新嘗試嗎？這將建立新的會話和分支。',
       cancel: '取消',
-    },
-
-    // Common UI elements
-    common: {
-      cancel: '取消',
-      save: '儲存',
-      saving: '儲存中...',
-      general: '一般',
-      close: '關閉',
-      skip: '跳過',
-      copy: '複製',
-      copied: '已複製',
     },
 
     // GitHub Login Dialog

@@ -15,93 +15,124 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Sparkles, Code } from 'lucide-react';
-import type { EditorType, ExecutorConfig } from 'shared/types';
-import {
-  EXECUTOR_TYPES,
-  EDITOR_TYPES,
-  EXECUTOR_LABELS,
-  EDITOR_LABELS,
-} from 'shared/types';
+import { Sparkles, Code, ChevronDown } from 'lucide-react';
+import { EditorType, ProfileVariantLabel } from 'shared/types';
+import { useUserSystem } from '@/components/config-provider';
 import { useTranslation } from '@/lib/i18n';
+
+import { toPrettyCase } from '@/utils/string';
 
 interface OnboardingDialogProps {
   open: boolean;
   onComplete: (config: {
-    executor: ExecutorConfig;
+    profile: ProfileVariantLabel;
     editor: { editor_type: EditorType; custom_command: string | null };
   }) => void;
 }
 
 export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
   const { t } = useTranslation();
-  const [executor, setExecutor] = useState<ExecutorConfig>({ type: 'claude' });
-  const [editorType, setEditorType] = useState<EditorType>('vscode');
+  const [profile, setProfile] = useState<ProfileVariantLabel>({
+    profile: 'claude-code',
+    variant: null,
+  });
+  const [editorType, setEditorType] = useState<EditorType>(EditorType.VS_CODE);
   const [customCommand, setCustomCommand] = useState<string>('');
+
+  const { profiles } = useUserSystem();
 
   const handleComplete = () => {
     onComplete({
-      executor,
+      profile,
       editor: {
         editor_type: editorType,
-        custom_command: editorType === 'custom' ? customCommand || null : null,
+        custom_command:
+          editorType === EditorType.CUSTOM ? customCommand || null : null,
       },
     });
   };
 
   const isValid =
-    editorType !== 'custom' ||
-    (editorType === 'custom' && customCommand.trim() !== '');
+    editorType !== EditorType.CUSTOM ||
+    (editorType === EditorType.CUSTOM && customCommand.trim() !== '');
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <div className="flex items-center gap-3">
-            <Sparkles className="h-6 w-6 text-primary" />
-            <DialogTitle>{t('onboarding.title')}</DialogTitle>
-          </div>
-          <DialogDescription className="text-left pt-2">
-            {t('onboarding.description')}
-          </DialogDescription>
+          <DialogTitle>{t('onboarding.title')}</DialogTitle>
+          <DialogDescription>{t('onboarding.description')}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-6 py-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />
-{t('onboarding.codingAgent.title')}
+                {t('onboarding.codingAgent.title')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="executor">{t('onboarding.codingAgent.label')}</Label>
-                <Select
-                  value={executor.type}
-                  onValueChange={(value) => setExecutor({ type: value as any })}
-                >
-                  <SelectTrigger id="executor">
-                    <SelectValue placeholder={t('onboarding.codingAgent.placeholder')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {EXECUTOR_TYPES.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {EXECUTOR_LABELS[type]}
-                      </SelectItem>
+                <Label htmlFor="profile">
+                  {t('onboarding.codingAgent.label')}
+                </Label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between"
+                    >
+                      {profile.variant
+                        ? toPrettyCase(profile.variant)
+                        : toPrettyCase(profile.profile)}
+                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-full">
+                    {profiles?.map((profileConfig) => (
+                      <div key={profileConfig.label}>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            setProfile({
+                              profile: profileConfig.label,
+                              variant: null,
+                            })
+                          }
+                        >
+                          {toPrettyCase(profileConfig.label)}
+                        </DropdownMenuItem>
+
+                        {profileConfig.variants.map((variant) => (
+                          <DropdownMenuItem
+                            key={variant.label}
+                            onClick={() =>
+                              setProfile({
+                                profile: profileConfig.label,
+                                variant: variant.label,
+                              })
+                            }
+                            className="pl-6"
+                          >
+                            {toPrettyCase(variant.label)}
+                          </DropdownMenuItem>
+                        ))}
+                      </div>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <p className="text-sm text-muted-foreground">
-                  {executor.type === 'claude' && t('onboarding.codingAgent.descriptions.claude')}
-                  {executor.type === 'amp' && t('onboarding.codingAgent.descriptions.amp')}
-                  {executor.type === 'gemini' && t('onboarding.codingAgent.descriptions.gemini')}
-                  {executor.type === 'charm-opencode' && t('onboarding.codingAgent.descriptions.charmOpencode')}
-                  {executor.type === 'claude-code-router' && t('onboarding.codingAgent.descriptions.claudeCodeRouter')}
-                  {executor.type === 'echo' && t('onboarding.codingAgent.descriptions.echo')}
+                  {t('onboarding.codingAgent.description')}
                 </p>
               </div>
             </CardContent>
@@ -111,25 +142,37 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Code className="h-4 w-4" />
-{t('onboarding.codeEditor.title')}
+                {t('onboarding.codeEditor.title')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="editor">{t('onboarding.codeEditor.label')}</Label>
+                <Label htmlFor="editor">
+                  {t('onboarding.codeEditor.label')}
+                </Label>
                 <Select
                   value={editorType}
                   onValueChange={(value: EditorType) => setEditorType(value)}
                 >
                   <SelectTrigger id="editor">
-                    <SelectValue placeholder={t('onboarding.codeEditor.placeholder')} />
+                    <SelectValue
+                      placeholder={t('onboarding.codeEditor.placeholder')}
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    {EDITOR_TYPES.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {EDITOR_LABELS[type]}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value={EditorType.VS_CODE}>VS Code</SelectItem>
+                    <SelectItem value={EditorType.CURSOR}>Cursor</SelectItem>
+                    <SelectItem value={EditorType.WINDSURF}>
+                      Windsurf
+                    </SelectItem>
+                    <SelectItem value={EditorType.INTELLI_J}>
+                      IntelliJ
+                    </SelectItem>
+                    <SelectItem value={EditorType.ZED}>Zed</SelectItem>
+                    <SelectItem value={EditorType.XCODE}>Xcode</SelectItem>
+                    <SelectItem value={EditorType.CUSTOM}>
+                      {t('onboarding.codeEditor.custom')}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-muted-foreground">
@@ -137,9 +180,11 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
                 </p>
               </div>
 
-              {editorType === 'custom' && (
+              {editorType === EditorType.CUSTOM && (
                 <div className="space-y-2">
-                  <Label htmlFor="custom-command">{t('onboarding.codeEditor.customCommand')}</Label>
+                  <Label htmlFor="custom-command">
+                    {t('onboarding.codeEditor.customCommand')}
+                  </Label>
                   <Input
                     id="custom-command"
                     placeholder={t('onboarding.codeEditor.customPlaceholder')}
@@ -161,7 +206,7 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
             disabled={!isValid}
             className="w-full"
           >
-{t('onboarding.continueButton')}
+            {t('onboarding.continueButton')}
           </Button>
         </DialogFooter>
       </DialogContent>
