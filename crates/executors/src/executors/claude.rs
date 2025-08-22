@@ -153,11 +153,16 @@ exit "$exit_code"
 /// Handles log processing and interpretation for Claude executor
 struct ClaudeLogProcessor {
     model_name: Option<String>,
+    // Map tool_use_id -> structured info for follow-up ToolResult replacement
+    tool_map: std::collections::HashMap<String, ClaudeToolCallInfo>,
 }
 
 impl ClaudeLogProcessor {
     fn new() -> Self {
-        Self { model_name: None }
+        Self {
+            model_name: None,
+            tool_map: std::collections::HashMap::new(),
+        }
     }
 
     /// Process raw logs and convert them to normalized entries with patches
@@ -214,14 +219,240 @@ impl ClaudeLogProcessor {
                                 session_id_extracted = true;
                             }
 
-                            // Convert to normalized entries and create patches
-                            for entry in
-                                processor.to_normalized_entries(&claude_json, &worktree_path)
-                            {
-                                let patch_id = entry_index_provider.next();
-                                let patch =
-                                    ConversationPatch::add_normalized_entry(patch_id, entry);
-                                msg_store.push_patch(patch);
+                            // Special handling to capture tool_use ids and replace with results later
+                            match &claude_json {
+                                ClaudeJson::Assistant { message, .. } => {
+                                    // Inject system init with model if first time
+                                    if processor.model_name.is_none()
+                                        && let Some(model) = message.model.as_ref()
+                                    {
+                                        processor.model_name = Some(model.clone());
+                                        let entry = NormalizedEntry {
+                                            timestamp: None,
+                                            entry_type: NormalizedEntryType::SystemMessage,
+                                            content: format!(
+                                                "System initialized with model: {model}"
+                                            ),
+                                            metadata: None,
+                                        };
+                                        let id = entry_index_provider.next();
+                                        msg_store.push_patch(
+                                            ConversationPatch::add_normalized_entry(id, entry),
+                                        );
+                                    }
+
+                                    for item in &message.content {
+                                        match item {
+                                            ClaudeContentItem::ToolUse { id, tool_data } => {
+                                                let tool_name = tool_data.get_name().to_string();
+                                                let action_type = Self::extract_action_type(
+                                                    tool_data,
+                                                    &worktree_path,
+                                                );
+                                                let content_text = Self::generate_concise_content(
+                                                    tool_data,
+                                                    &action_type,
+                                                    &worktree_path,
+                                                );
+                                                let entry = NormalizedEntry {
+                                                    timestamp: None,
+                                                    entry_type: NormalizedEntryType::ToolUse {
+                                                        tool_name: tool_name.clone(),
+                                                        action_type,
+                                                    },
+                                                    content: content_text.clone(),
+                                                    metadata: Some(
+                                                        serde_json::to_value(item)
+                                                            .unwrap_or(serde_json::Value::Null),
+                                                    ),
+                                                };
+                                                let id_num = entry_index_provider.next();
+                                                processor.tool_map.insert(
+                                                    id.clone(),
+                                                    ClaudeToolCallInfo {
+                                                        entry_index: id_num,
+                                                        tool_name: tool_name.clone(),
+                                                        tool_data: tool_data.clone(),
+                                                        content: content_text.clone(),
+                                                    },
+                                                );
+                                                msg_store.push_patch(
+                                                    ConversationPatch::add_normalized_entry(
+                                                        id_num, entry,
+                                                    ),
+                                                );
+                                            }
+                                            ClaudeContentItem::Text { .. }
+                                            | ClaudeContentItem::Thinking { .. } => {
+                                                if let Some(entry) =
+                                                    Self::content_item_to_normalized_entry(
+                                                        item,
+                                                        "assistant",
+                                                        &worktree_path,
+                                                    )
+                                                {
+                                                    let id = entry_index_provider.next();
+                                                    msg_store.push_patch(
+                                                        ConversationPatch::add_normalized_entry(
+                                                            id, entry,
+                                                        ),
+                                                    );
+                                                }
+                                            }
+                                            ClaudeContentItem::ToolResult { .. } => {
+                                                // handled via User or Assistant ToolResult messages below
+                                            }
+                                        }
+                                    }
+                                }
+                                ClaudeJson::User { message, .. } => {
+                                    for item in &message.content {
+                                        if let ClaudeContentItem::ToolResult {
+                                            tool_use_id,
+                                            content,
+                                            is_error,
+                                        } = item
+                                            && let Some(info) =
+                                                processor.tool_map.get(tool_use_id).cloned()
+                                        {
+                                            let is_command = matches!(
+                                                info.tool_data,
+                                                ClaudeToolData::Bash { .. }
+                                            );
+                                            if is_command {
+                                                // For bash commands, attach result as CommandRun output where possible
+                                                let (r#type, value) = if content.is_string() {
+                                                    (
+                                                        crate::logs::ToolResultValueType::Markdown,
+                                                        content.clone(),
+                                                    )
+                                                } else {
+                                                    (
+                                                        crate::logs::ToolResultValueType::Json,
+                                                        content.clone(),
+                                                    )
+                                                };
+                                                // Prefer string content to be the output; otherwise JSON
+                                                let output = match r#type {
+                                                    crate::logs::ToolResultValueType::Markdown => {
+                                                        content.as_str().map(|s| s.to_string())
+                                                    }
+                                                    crate::logs::ToolResultValueType::Json => {
+                                                        Some(content.to_string())
+                                                    }
+                                                };
+                                                // Derive success from is_error when present
+                                                let exit_status = is_error.as_ref().map(|e| {
+                                                    crate::logs::CommandExitStatus::Success {
+                                                        success: !*e,
+                                                    }
+                                                });
+                                                let entry = NormalizedEntry {
+                                                    timestamp: None,
+                                                    entry_type: NormalizedEntryType::ToolUse {
+                                                        tool_name: info.tool_name.clone(),
+                                                        action_type: ActionType::CommandRun {
+                                                            command: info.content.clone(),
+                                                            result: Some(
+                                                                crate::logs::CommandRunResult {
+                                                                    exit_status,
+                                                                    output,
+                                                                },
+                                                            ),
+                                                        },
+                                                    },
+                                                    content: info.content.clone(),
+                                                    metadata: None,
+                                                };
+                                                msg_store.push_patch(ConversationPatch::replace(
+                                                    info.entry_index,
+                                                    entry,
+                                                ));
+                                            } else {
+                                                // Show args and results for NotebookEdit and MCP tools
+                                                let is_notebook = matches!(
+                                                    info.tool_data,
+                                                    ClaudeToolData::NotebookEdit { .. }
+                                                );
+                                                let tool_name =
+                                                    info.tool_data.get_name().to_string();
+                                                let is_mcp = tool_name.starts_with("mcp__");
+                                                if is_notebook || is_mcp {
+                                                    let (res_type, res_value) =
+                                                        Self::normalize_claude_tool_result_value(
+                                                            content,
+                                                        );
+
+                                                    // Arguments: prefer input for MCP unknown, else full struct
+                                                    // Arguments: prefer `input` field if present, derived from tool_data
+                                                    let args_to_show =
+                                                        serde_json::to_value(&info.tool_data)
+                                                            .ok()
+                                                            .and_then(|v| {
+                                                                serde_json::from_value::<
+                                                                    ClaudeToolWithInput,
+                                                                >(
+                                                                    v
+                                                                )
+                                                                .ok()
+                                                            })
+                                                            .map(|w| w.input)
+                                                            .unwrap_or(serde_json::Value::Null);
+
+                                                    // Normalize MCP label
+                                                    let label = if is_mcp {
+                                                        let parts: Vec<&str> =
+                                                            tool_name.split("__").collect();
+                                                        if parts.len() >= 3 {
+                                                            format!("mcp:{}:{}", parts[1], parts[2])
+                                                        } else {
+                                                            tool_name.clone()
+                                                        }
+                                                    } else {
+                                                        tool_name.clone()
+                                                    };
+
+                                                    let entry = NormalizedEntry {
+                                                        timestamp: None,
+                                                        entry_type: NormalizedEntryType::ToolUse {
+                                                            tool_name: label.clone(),
+                                                            action_type: ActionType::Tool {
+                                                                tool_name: label,
+                                                                arguments: Some(args_to_show),
+                                                                result: Some(
+                                                                    crate::logs::ToolResult {
+                                                                        r#type: res_type,
+                                                                        value: res_value,
+                                                                    },
+                                                                ),
+                                                            },
+                                                        },
+                                                        content: info.content.clone(),
+                                                        metadata: None,
+                                                    };
+                                                    msg_store.push_patch(
+                                                        ConversationPatch::replace(
+                                                            info.entry_index,
+                                                            entry,
+                                                        ),
+                                                    );
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                _ => {
+                                    // Convert to normalized entries and create patches for other kinds
+                                    for entry in processor
+                                        .to_normalized_entries(&claude_json, &worktree_path)
+                                    {
+                                        let patch_id = entry_index_provider.next();
+                                        let patch = ConversationPatch::add_normalized_entry(
+                                            patch_id, entry,
+                                        );
+                                        msg_store.push_patch(patch);
+                                    }
+                                }
                             }
                         }
                         Err(_) => {
@@ -369,6 +600,44 @@ impl ClaudeLogProcessor {
         }
     }
 
+    /// Normalize Claude tool_result content to either Markdown string or parsed JSON.
+    /// - If content is a string that parses as JSON, return Json with parsed value.
+    /// - If content is a string (non-JSON), return Markdown with the raw string.
+    /// - If content is an array of { text: string }, join texts as Markdown.
+    /// - Otherwise return Json with the original value.
+    fn normalize_claude_tool_result_value(
+        content: &serde_json::Value,
+    ) -> (crate::logs::ToolResultValueType, serde_json::Value) {
+        if let Some(s) = content.as_str() {
+            if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(s) {
+                return (crate::logs::ToolResultValueType::Json, parsed);
+            }
+            return (
+                crate::logs::ToolResultValueType::Markdown,
+                serde_json::Value::String(s.to_string()),
+            );
+        }
+
+        if let Ok(items) = serde_json::from_value::<Vec<ClaudeToolResultTextItem>>(content.clone())
+            && !items.is_empty()
+        {
+            let joined = items
+                .into_iter()
+                .map(|i| i.text)
+                .collect::<Vec<_>>()
+                .join("\n\n");
+            if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&joined) {
+                return (crate::logs::ToolResultValueType::Json, parsed);
+            }
+            return (
+                crate::logs::ToolResultValueType::Markdown,
+                serde_json::Value::String(joined),
+            );
+        }
+
+        (crate::logs::ToolResultValueType::Json, content.clone())
+    }
+
     /// Convert Claude content item to normalized entry
     fn content_item_to_normalized_entry(
         content_item: &ClaudeContentItem,
@@ -484,6 +753,7 @@ impl ClaudeLogProcessor {
             }
             ClaudeToolData::Bash { command, .. } => ActionType::CommandRun {
                 command: command.clone(),
+                result: None,
             },
             ClaudeToolData::Grep { pattern, .. } => ActionType::Search {
                 query: pattern.clone(),
@@ -507,9 +777,10 @@ impl ClaudeLogProcessor {
             ClaudeToolData::ExitPlanMode { plan } => {
                 ActionType::PlanPresentation { plan: plan.clone() }
             }
-            ClaudeToolData::NotebookEdit { notebook_path, .. } => ActionType::FileEdit {
-                path: make_path_relative(notebook_path, worktree_path),
-                changes: vec![],
+            ClaudeToolData::NotebookEdit { .. } => ActionType::Tool {
+                tool_name: "NotebookEdit".to_string(),
+                arguments: Some(serde_json::to_value(tool_data).unwrap_or(serde_json::Value::Null)),
+                result: None,
             },
             ClaudeToolData::TodoWrite { todos } => ActionType::TodoManagement {
                 todos: todos
@@ -528,9 +799,33 @@ impl ClaudeLogProcessor {
             ClaudeToolData::LS { .. } => ActionType::Other {
                 description: "List directory".to_string(),
             },
-            ClaudeToolData::Unknown { .. } => ActionType::Other {
-                description: format!("Tool: {}", tool_data.get_name()),
-            },
+            ClaudeToolData::Unknown { data } => {
+                // Surface MCP tools as generic Tool with args
+                let name = tool_data.get_name();
+                if name.starts_with("mcp__") {
+                    let parts: Vec<&str> = name.split("__").collect();
+                    let label = if parts.len() >= 3 {
+                        format!("mcp:{}:{}", parts[1], parts[2])
+                    } else {
+                        name.to_string()
+                    };
+                    // Extract `input` if present by serializing then deserializing to a tiny struct
+                    let args = serde_json::to_value(tool_data)
+                        .ok()
+                        .and_then(|v| serde_json::from_value::<ClaudeToolWithInput>(v).ok())
+                        .map(|w| w.input)
+                        .unwrap_or(serde_json::Value::Null);
+                    ActionType::Tool {
+                        tool_name: label,
+                        arguments: Some(args),
+                        result: None,
+                    }
+                } else {
+                    ActionType::Other {
+                        description: format!("Tool: {}", tool_data.get_name()),
+                    }
+                }
+            }
         }
     }
 
@@ -543,9 +838,25 @@ impl ClaudeLogProcessor {
         match action_type {
             ActionType::FileRead { path } => format!("`{path}`"),
             ActionType::FileEdit { path, .. } => format!("`{path}`"),
-            ActionType::CommandRun { command } => format!("`{command}`"),
+            ActionType::CommandRun { command, .. } => format!("`{command}`"),
             ActionType::Search { query } => format!("`{query}`"),
             ActionType::WebFetch { url } => format!("`{url}`"),
+            ActionType::Tool { .. } => match tool_data {
+                ClaudeToolData::NotebookEdit { notebook_path, .. } => {
+                    format!("`{}`", make_path_relative(notebook_path, worktree_path))
+                }
+                ClaudeToolData::Unknown { data } => {
+                    let name = tool_data.get_name();
+                    if name.starts_with("mcp__") {
+                        let parts: Vec<&str> = name.split("__").collect();
+                        if parts.len() >= 3 {
+                            return format!("mcp:{}:{}", parts[1], parts[2]);
+                        }
+                    }
+                    name.to_string()
+                }
+                _ => tool_data.get_name().to_string(),
+            },
             ActionType::TaskCreate { description } => description.clone(),
             ActionType::PlanPresentation { plan } => plan.clone(),
             ActionType::TodoManagement { .. } => "TODO list updated".to_string(),
@@ -725,6 +1036,26 @@ pub enum ClaudeToolData {
         #[serde(flatten)]
         data: std::collections::HashMap<String, serde_json::Value>,
     },
+}
+
+// Helper structs for parsing tool_result content and generic tool input
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+struct ClaudeToolResultTextItem {
+    text: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+struct ClaudeToolWithInput {
+    #[serde(default)]
+    input: serde_json::Value,
+}
+
+#[derive(Debug, Clone)]
+struct ClaudeToolCallInfo {
+    entry_index: usize,
+    tool_name: String,
+    tool_data: ClaudeToolData,
+    content: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]

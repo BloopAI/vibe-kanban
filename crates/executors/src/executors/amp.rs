@@ -111,6 +111,8 @@ impl StandardCodingAgentExecutor for Amp {
             let mut s = raw_logs_msg_store.stdout_lines_stream();
 
             let mut seen_amp_message_ids: HashMap<usize, Vec<usize>> = HashMap::new();
+            // Consolidated tool state keyed by toolUseID
+            let mut tool_records: HashMap<String, ToolRecord> = HashMap::new();
             while let Some(Ok(line)) = s.next().await {
                 let trimmed = line.trim();
                 match serde_json::from_str(trimmed) {
@@ -119,18 +121,18 @@ impl StandardCodingAgentExecutor for Amp {
                             messages,
                             tool_results,
                         } => {
-                            for (amp_message_id, message) in messages {
+                            for (amp_message_id, message) in &messages {
                                 let role = &message.role;
 
                                 for (content_index, content_item) in
                                     message.content.iter().enumerate()
                                 {
                                     let mut has_patch_ids =
-                                        seen_amp_message_ids.get_mut(&amp_message_id);
+                                        seen_amp_message_ids.get_mut(amp_message_id);
 
-                                    if let Some(entry) = content_item.to_normalized_entry(
+                                    if let Some(mut entry) = content_item.to_normalized_entry(
                                         role,
-                                        &message,
+                                        message,
                                         &current_dir.to_string_lossy(),
                                     ) {
                                         // Text
@@ -145,26 +147,65 @@ impl StandardCodingAgentExecutor for Amp {
                                                 );
                                             }
                                             entry_index_provider.reset();
+                                            // Clear tool state on new user message to avoid stale mappings
+                                            tool_records.clear();
+                                        }
+
+                                        // Consolidate tool state and refine concise content
+                                        if let AmpContentItem::ToolUse { id, tool_data } =
+                                            content_item
+                                        {
+                                            let rec = tool_records.entry(id.clone()).or_default();
+                                            rec.tool_name = Some(tool_data.get_name().to_string());
+                                            if let Some(new_content) = rec
+                                                .update_tool_content_from_tool_input(
+                                                    tool_data,
+                                                    &current_dir.to_string_lossy(),
+                                                )
+                                            {
+                                                entry.content = new_content;
+                                            }
+                                            rec.update_concise(&entry.content);
                                         }
 
                                         let patch: Patch = match &mut has_patch_ids {
                                             None => {
                                                 let new_id = entry_index_provider.next();
                                                 seen_amp_message_ids
-                                                    .entry(amp_message_id)
+                                                    .entry(*amp_message_id)
                                                     .or_default()
                                                     .push(new_id);
+                                                // Track tool_use id if present
+                                                if let AmpContentItem::ToolUse { id, .. } =
+                                                    content_item
+                                                    && let Some(rec) = tool_records.get_mut(id)
+                                                {
+                                                    rec.entry_idx = Some(new_id);
+                                                }
                                                 ConversationPatch::add_normalized_entry(
                                                     new_id, entry,
                                                 )
                                             }
                                             Some(patch_ids) => match patch_ids.get(content_index) {
                                                 Some(patch_id) => {
+                                                    // Update tool record's entry index
+                                                    if let AmpContentItem::ToolUse { id, .. } =
+                                                        content_item
+                                                        && let Some(rec) = tool_records.get_mut(id)
+                                                    {
+                                                        rec.entry_idx = Some(*patch_id);
+                                                    }
                                                     ConversationPatch::replace(*patch_id, entry)
                                                 }
                                                 None => {
                                                     let new_id = entry_index_provider.next();
                                                     patch_ids.push(new_id);
+                                                    if let AmpContentItem::ToolUse { id, .. } =
+                                                        content_item
+                                                        && let Some(rec) = tool_records.get_mut(id)
+                                                    {
+                                                        rec.entry_idx = Some(new_id);
+                                                    }
                                                     ConversationPatch::add_normalized_entry(
                                                         new_id, entry,
                                                     )
@@ -174,6 +215,94 @@ impl StandardCodingAgentExecutor for Amp {
 
                                         raw_logs_msg_store.push_patch(patch);
                                     }
+
+                                    // Handle tool_result messages in-stream, keyed by toolUseID
+                                    if let AmpContentItem::ToolResult {
+                                        tool_use_id,
+                                        run,
+                                        content: result_content,
+                                    } = content_item
+                                    {
+                                        let rec =
+                                            tool_records.entry(tool_use_id.clone()).or_default();
+                                        rec.run = run.clone();
+                                        rec.content_result = result_content.clone();
+                                        if let Some(idx) = rec.entry_idx
+                                            && let Some(entry) = build_result_entry(rec)
+                                        {
+                                            raw_logs_msg_store
+                                                .push_patch(ConversationPatch::replace(idx, entry));
+                                        }
+                                    }
+
+                                    // No separate pending apply: handled right after ToolUse entry creation
+                                }
+                            }
+                            // Also process separate toolResults pairs that may arrive outside messages
+                            for AmpToolResultsEntry::Pair([first, second]) in tool_results {
+                                // Normalize order: references to ToolUse then ToolResult
+                                let (tool_use_ref, tool_result_ref) = match (&first, &second) {
+                                    (
+                                        AmpToolResultsObject::ToolUse { .. },
+                                        AmpToolResultsObject::ToolResult { .. },
+                                    ) => (&first, &second),
+                                    (
+                                        AmpToolResultsObject::ToolResult { .. },
+                                        AmpToolResultsObject::ToolUse { .. },
+                                    ) => (&second, &first),
+                                    _ => continue,
+                                };
+
+                                // Apply tool_use summary
+                                let (id, name, input_val) = match tool_use_ref {
+                                    AmpToolResultsObject::ToolUse { id, name, input } => {
+                                        (id.clone(), name.clone(), input.clone())
+                                    }
+                                    _ => unreachable!(),
+                                };
+                                let rec = tool_records.entry(id.clone()).or_default();
+                                rec.tool_name = Some(name.clone());
+                                // Only update tool input/args if the input is meaningful (not empty)
+                                if is_meaningful_input(&input_val) {
+                                    if let Some(parsed) = parse_tool_input(&name, &input_val) {
+                                        if let Some(new_content) = rec
+                                            .update_tool_content_from_tool_input(
+                                                &parsed,
+                                                &current_dir.to_string_lossy(),
+                                            )
+                                        {
+                                            rec.update_concise(&new_content);
+                                        }
+                                    } else {
+                                        rec.args = Some(input_val);
+                                    }
+                                }
+
+                                // Apply tool_result summary
+                                if let AmpToolResultsObject::ToolResult {
+                                    tool_use_id: _,
+                                    run,
+                                    content,
+                                } = tool_result_ref
+                                {
+                                    rec.run = run.clone();
+                                    rec.content_result = content.clone();
+                                }
+
+                                // Render: replace existing entry or add a new one
+                                if let Some(idx) = rec.entry_idx {
+                                    if let Some(entry) = build_result_entry(rec) {
+                                        raw_logs_msg_store
+                                            .push_patch(ConversationPatch::replace(idx, entry));
+                                    }
+                                } else if let Some(entry) = build_result_entry(rec) {
+                                    let new_id = entry_index_provider.next();
+                                    if let Some(rec_mut) = tool_records.get_mut(&id) {
+                                        rec_mut.entry_idx = Some(new_id);
+                                    }
+                                    raw_logs_msg_store.push_patch(
+                                        ConversationPatch::add_normalized_entry(new_id, entry),
+                                    );
                                 }
                             }
                         }
@@ -212,7 +341,7 @@ pub enum AmpJson {
     Messages {
         messages: Vec<(usize, AmpMessage)>,
         #[serde(rename = "toolResults")]
-        tool_results: Vec<serde_json::Value>,
+        tool_results: Vec<AmpToolResultsEntry>,
     },
     #[serde(rename = "initial")]
     Initial {
@@ -227,6 +356,15 @@ pub enum AmpJson {
     Shutdown,
     #[serde(rename = "tool-status")]
     ToolStatus(serde_json::Value),
+    // Subthread/subagent noise we should ignore
+    #[serde(rename = "subagent-started")]
+    SubagentStarted(serde_json::Value),
+    #[serde(rename = "subagent-status")]
+    SubagentStatus(serde_json::Value),
+    #[serde(rename = "subagent-finished")]
+    SubagentFinished(serde_json::Value),
+    #[serde(rename = "subthread-activity")]
+    SubthreadActivity(serde_json::Value),
 }
 
 impl AmpJson {
@@ -273,6 +411,35 @@ pub struct AmpMeta {
     pub sent_at: u64,
 }
 
+// Typed objects for top-level toolResults stream (outside messages)
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum AmpToolResultsEntry {
+    // Common shape: an array of two objects [tool_use, tool_result]
+    Pair([AmpToolResultsObject; 2]),
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(tag = "type")]
+pub enum AmpToolResultsObject {
+    #[serde(rename = "tool_use")]
+    ToolUse {
+        id: String,
+        name: String,
+        #[serde(default)]
+        input: serde_json::Value,
+    },
+    #[serde(rename = "tool_result")]
+    ToolResult {
+        #[serde(rename = "toolUseID")]
+        tool_use_id: String,
+        #[serde(default)]
+        run: Option<AmpToolRun>,
+        #[serde(default)]
+        content: Option<serde_json::Value>,
+    },
+}
+
 /// Tool data combining name and input
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(tag = "name", content = "input")]
@@ -298,7 +465,7 @@ pub enum AmpToolData {
         #[serde(default)]
         new_str: Option<String>,
     },
-    #[serde(alias = "bash")]
+    #[serde(alias = "bash", alias = "Bash")]
     Bash {
         #[serde(alias = "cmd")]
         command: String,
@@ -323,6 +490,7 @@ pub enum AmpToolData {
     },
     #[serde(alias = "glob")]
     Glob {
+        #[serde(alias = "filePattern")]
         pattern: String,
         #[serde(default)]
         path: Option<String>,
@@ -392,7 +560,10 @@ pub enum AmpContentItem {
     ToolResult {
         #[serde(rename = "toolUseID")]
         tool_use_id: String,
-        run: serde_json::Value,
+        #[serde(default)]
+        run: Option<AmpToolRun>,
+        #[serde(default)]
+        content: Option<serde_json::Value>,
     },
 }
 
@@ -430,9 +601,7 @@ impl AmpContentItem {
             AmpContentItem::ToolUse { tool_data, .. } => {
                 let name = tool_data.get_name();
                 let input = tool_data;
-                let action_type = Self::extract_action_type(name, input, worktree_path);
-                let content =
-                    Self::generate_concise_content(name, input, &action_type, worktree_path);
+                let (action_type, content) = Self::action_and_content(input, worktree_path);
 
                 Some(NormalizedEntry {
                     timestamp,
@@ -448,11 +617,13 @@ impl AmpContentItem {
         }
     }
 
-    fn extract_action_type(
-        tool_name: &str,
-        input: &AmpToolData,
-        worktree_path: &str,
-    ) -> ActionType {
+    fn action_and_content(input: &AmpToolData, worktree_path: &str) -> (ActionType, String) {
+        let action_type = Self::extract_action_type(input, worktree_path);
+        let content = Self::generate_concise_content(input, &action_type, worktree_path);
+        (action_type, content)
+    }
+
+    fn extract_action_type(input: &AmpToolData, worktree_path: &str) -> ActionType {
         match input {
             AmpToolData::Read { path, .. } => ActionType::FileRead {
                 path: make_path_relative(path, worktree_path),
@@ -495,6 +666,7 @@ impl AmpContentItem {
             }
             AmpToolData::Bash { command, .. } => ActionType::CommandRun {
                 command: command.clone(),
+                result: None,
             },
             AmpToolData::Search { pattern, .. } => ActionType::Search {
                 query: pattern.clone(),
@@ -527,23 +699,24 @@ impl AmpContentItem {
                 operation: "write".to_string(),
             },
             AmpToolData::Unknown { .. } => ActionType::Other {
-                description: format!("Tool: {tool_name}"),
+                description: format!("Tool: {}", input.get_name()),
             },
         }
     }
 
     fn generate_concise_content(
-        tool_name: &str,
         input: &AmpToolData,
         action_type: &ActionType,
         worktree_path: &str,
     ) -> String {
+        let tool_name = input.get_name();
         match action_type {
             ActionType::FileRead { path } => format!("`{path}`"),
             ActionType::FileEdit { path, .. } => format!("`{path}`"),
-            ActionType::CommandRun { command } => format!("`{command}`"),
-            ActionType::Search { query } => format!("`{query}`"),
+            ActionType::CommandRun { command, .. } => format!("`{command}`"),
+            ActionType::Search { query } => format!("Search: `{query}`"),
             ActionType::WebFetch { url } => format!("`{url}`"),
+            ActionType::Tool { .. } => tool_name.to_string(),
             ActionType::PlanPresentation { plan } => format!("Plan Presentation: `{plan}`"),
             ActionType::TaskCreate { description } => description.clone(),
             ActionType::TodoManagement { .. } => "TODO list updated".to_string(),
@@ -602,6 +775,274 @@ impl AmpContentItem {
                     _ => tool_name.to_string(),
                 }
             }
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct AmpToolRun {
+    #[serde(default)]
+    pub result: Option<serde_json::Value>,
+    #[serde(default)]
+    pub error: Option<serde_json::Value>,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub progress: Option<serde_json::Value>,
+    // Some tools provide stdout/stderr/success at top-level under run
+    #[serde(default)]
+    pub stdout: Option<String>,
+    #[serde(default)]
+    pub stderr: Option<String>,
+    #[serde(default)]
+    pub success: Option<bool>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Default)]
+struct BashInnerResult {
+    #[serde(default)]
+    output: Option<String>,
+    #[serde(default, rename = "exitCode")]
+    exit_code: Option<i32>,
+}
+
+#[derive(Debug, Clone, Default)]
+struct ToolRecord {
+    entry_idx: Option<usize>,
+    tool_name: Option<String>,
+    tool_input: Option<AmpToolData>,
+    args: Option<serde_json::Value>,
+    concise_content: Option<String>,
+    bash_cmd: Option<String>,
+    run: Option<AmpToolRun>,
+    content_result: Option<serde_json::Value>,
+}
+
+impl ToolRecord {
+    fn update_concise(&mut self, new_content: &str) {
+        let new_is_cmd = new_content.trim_start().starts_with('`');
+        match self.concise_content.as_ref() {
+            None => self.concise_content = Some(new_content.to_string()),
+            Some(prev) => {
+                let prev_is_cmd = prev.trim_start().starts_with('`');
+                if !(prev_is_cmd && !new_is_cmd) {
+                    self.concise_content = Some(new_content.to_string());
+                }
+            }
+        }
+    }
+
+    fn update_tool_content_from_tool_input(
+        &mut self,
+        tool_data: &AmpToolData,
+        worktree_path: &str,
+    ) -> Option<String> {
+        self.tool_input = Some(tool_data.clone());
+        match tool_data {
+            AmpToolData::Task { description } => {
+                self.args = Some(serde_json::json!({ "description": description }));
+                None
+            }
+            AmpToolData::Bash { command } => {
+                self.bash_cmd = Some(command.clone());
+                None
+            }
+            AmpToolData::Glob { pattern, path } => {
+                self.args = Some(serde_json::json!({ "pattern": pattern, "path": path }));
+                // Prefer concise content derived from typed input
+                let (_action, content) =
+                    AmpContentItem::action_and_content(tool_data, worktree_path);
+                Some(content)
+            }
+            AmpToolData::Search {
+                pattern,
+                include,
+                path,
+            } => {
+                self.args = Some(
+                    serde_json::json!({ "pattern": pattern, "include": include, "path": path }),
+                );
+                None
+            }
+            AmpToolData::List { path } => {
+                self.args = Some(serde_json::json!({ "path": path }));
+                None
+            }
+            AmpToolData::Read { path }
+            | AmpToolData::CreateFile { path, .. }
+            | AmpToolData::EditFile { path, .. } => {
+                self.args = Some(serde_json::json!({ "path": path }));
+                None
+            }
+            AmpToolData::ReadWebPage { url } => {
+                self.args = Some(serde_json::json!({ "url": url }));
+                None
+            }
+            AmpToolData::WebSearch { query } => {
+                self.args = Some(serde_json::json!({ "query": query }));
+                None
+            }
+            AmpToolData::Todo { .. } => None,
+            AmpToolData::Unknown { data } => {
+                if let Some(inp) = data.get("input")
+                    && is_meaningful_input(inp)
+                {
+                    self.args = Some(inp.clone());
+                    let name = self
+                        .tool_name
+                        .clone()
+                        .unwrap_or_else(|| tool_data.get_name().to_string());
+                    return parse_tool_input(&name, inp).map(|parsed| {
+                        let (_action, content) =
+                            AmpContentItem::action_and_content(&parsed, worktree_path);
+                        content
+                    });
+                }
+                None
+            }
+        }
+    }
+}
+
+fn parse_tool_input(tool_name: &str, input: &serde_json::Value) -> Option<AmpToolData> {
+    let obj = serde_json::json!({ "name": tool_name, "input": input });
+    serde_json::from_value::<AmpToolData>(obj).ok()
+}
+
+fn is_meaningful_input(v: &serde_json::Value) -> bool {
+    use serde_json::Value::*;
+    match v {
+        Null => false,
+        Bool(_) | Number(_) => true,
+        String(s) => !s.trim().is_empty(),
+        Array(arr) => !arr.is_empty(),
+        Object(map) => !map.is_empty(),
+    }
+}
+
+fn build_result_entry(rec: &ToolRecord) -> Option<NormalizedEntry> {
+    let input = rec.tool_input.as_ref()?;
+    match input {
+        AmpToolData::Bash { .. } => {
+            let mut output: Option<String> = None;
+            let mut exit_status: Option<crate::logs::CommandExitStatus> = None;
+            if let Some(run) = &rec.run {
+                if let Some(res) = &run.result
+                    && let Ok(inner) = serde_json::from_value::<BashInnerResult>(res.clone())
+                {
+                    if let Some(oc) = inner.output
+                        && !oc.trim().is_empty()
+                    {
+                        output = Some(oc);
+                    }
+                    if let Some(code) = inner.exit_code {
+                        exit_status = Some(crate::logs::CommandExitStatus::ExitCode { code });
+                    }
+                }
+                if output.is_none() {
+                    output = match (run.stdout.clone(), run.stderr.clone()) {
+                        (Some(sout), Some(serr)) => {
+                            let st = sout.trim().to_string();
+                            let se = serr.trim().to_string();
+                            if st.is_empty() && se.is_empty() {
+                                None
+                            } else if st.is_empty() {
+                                Some(serr)
+                            } else if se.is_empty() {
+                                Some(sout)
+                            } else {
+                                Some(format!("STDOUT:\n{st}\n\nSTDERR:\n{se}"))
+                            }
+                        }
+                        (Some(sout), None) => {
+                            if sout.trim().is_empty() {
+                                None
+                            } else {
+                                Some(sout)
+                            }
+                        }
+                        (None, Some(serr)) => {
+                            if serr.trim().is_empty() {
+                                None
+                            } else {
+                                Some(serr)
+                            }
+                        }
+                        (None, None) => None,
+                    };
+                }
+                if exit_status.is_none()
+                    && let Some(s) = run.success
+                {
+                    exit_status = Some(crate::logs::CommandExitStatus::Success { success: s });
+                }
+            }
+            let cmd = rec.bash_cmd.clone().unwrap_or_default();
+            let content = rec
+                .concise_content
+                .clone()
+                .or_else(|| {
+                    if !cmd.is_empty() {
+                        Some(format!("`{cmd}`"))
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| input.get_name().to_string());
+            Some(NormalizedEntry {
+                timestamp: None,
+                entry_type: NormalizedEntryType::ToolUse {
+                    tool_name: input.get_name().to_string(),
+                    action_type: ActionType::CommandRun {
+                        command: cmd,
+                        result: Some(crate::logs::CommandRunResult {
+                            exit_status,
+                            output,
+                        }),
+                    },
+                },
+                content,
+                metadata: None,
+            })
+        }
+        AmpToolData::Read { .. }
+        | AmpToolData::CreateFile { .. }
+        | AmpToolData::EditFile { .. }
+        | AmpToolData::Glob { .. }
+        | AmpToolData::Search { .. }
+        | AmpToolData::List { .. }
+        | AmpToolData::ReadWebPage { .. }
+        | AmpToolData::WebSearch { .. }
+        | AmpToolData::Todo { .. } => None,
+        _ => {
+            // Generic tool: attach args + result as JSON
+            let args = rec.args.clone().unwrap_or(serde_json::Value::Null);
+            let render_value = rec
+                .run
+                .as_ref()
+                .and_then(|r| r.result.clone())
+                .or_else(|| rec.content_result.clone())
+                .unwrap_or(serde_json::Value::Null);
+            let content = rec
+                .concise_content
+                .clone()
+                .unwrap_or_else(|| input.get_name().to_string());
+            Some(NormalizedEntry {
+                timestamp: None,
+                entry_type: NormalizedEntryType::ToolUse {
+                    tool_name: input.get_name().to_string(),
+                    action_type: ActionType::Tool {
+                        tool_name: input.get_name().to_string(),
+                        arguments: Some(args),
+                        result: Some(crate::logs::ToolResult {
+                            r#type: crate::logs::ToolResultValueType::Json,
+                            value: render_value,
+                        }),
+                    },
+                },
+                content,
+                metadata: None,
+            })
         }
     }
 }

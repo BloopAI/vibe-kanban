@@ -186,6 +186,10 @@ export type EventPatchInner = { db_op: string, record: RecordTypes, };
 
 export type RecordTypes = { "type": "TASK", "data": Task } | { "type": "TASK_ATTEMPT", "data": TaskAttempt } | { "type": "EXECUTION_PROCESS", "data": ExecutionProcess } | { "type": "DELETED_TASK", "data": { rowid: bigint, } } | { "type": "DELETED_TASK_ATTEMPT", "data": { rowid: bigint, } } | { "type": "DELETED_EXECUTION_PROCESS", "data": { rowid: bigint, } };
 
+export type CommandExitStatus = { "type": "exit_code", code: number, } | { "type": "success", success: boolean, };
+
+export type CommandRunResult = { exit_status: CommandExitStatus | null, output: string | null, };
+
 export type NormalizedConversation = { entries: Array<NormalizedEntry>, session_id: string | null, executor_type: string, prompt: string | null, summary: string | null, };
 
 export type NormalizedEntry = { timestamp: string | null, entry_type: NormalizedEntryType, content: string, };
@@ -202,9 +206,17 @@ unified_diff: string,
  */
 has_line_numbers: boolean, };
 
-export type ActionType = { "action": "file_read", path: string, } | { "action": "file_edit", path: string, changes: Array<FileChange>, } | { "action": "command_run", command: string, } | { "action": "search", query: string, } | { "action": "web_fetch", url: string, } | { "action": "task_create", description: string, } | { "action": "plan_presentation", plan: string, } | { "action": "todo_management", todos: Array<TodoItem>, operation: string, } | { "action": "other", description: string, };
+export type ActionType = { "action": "file_read", path: string, } | { "action": "file_edit", path: string, changes: Array<FileChange>, } | { "action": "command_run", command: string, result: CommandRunResult | null, } | { "action": "search", query: string, } | { "action": "web_fetch", url: string, } | { "action": "tool", tool_name: string, arguments: JsonValue | null, result: ToolResult | null, } | { "action": "task_create", description: string, } | { "action": "plan_presentation", plan: string, } | { "action": "todo_management", todos: Array<TodoItem>, operation: string, } | { "action": "other", description: string, };
 
 export type TodoItem = { content: string, status: string, priority: string | null, };
+
+export type ToolResult = { type: ToolResultValueType, 
+/**
+ * For Markdown, this will be a JSON string; for JSON, a structured value
+ */
+value: JsonValue, };
+
+export type ToolResultValueType = { "type": "markdown" } | { "type": "json" };
 
 export type PatchType = { "type": "NORMALIZED_ENTRY", "content": NormalizedEntry } | { "type": "STDOUT", "content": string } | { "type": "STDERR", "content": string } | { "type": "DIFF", "content": Diff };
 

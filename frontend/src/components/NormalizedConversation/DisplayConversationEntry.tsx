@@ -21,6 +21,8 @@ import {
   type ActionType,
 } from 'shared/types.ts';
 import FileChangeRenderer from './FileChangeRenderer';
+import ToolDetails from './ToolDetails';
+import { Braces, FileText, MoreHorizontal, Dot } from 'lucide-react';
 
 type Props = {
   entry: NormalizedEntry;
@@ -149,6 +151,49 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
         >)
       : null;
 
+  // One-line collapsed UX for tool entries
+  const isToolUse = entry.entry_type.type === 'tool_use';
+  const toolAction: any = isToolUse
+    ? (entry.entry_type as any).action_type
+    : null;
+  const hasArgs = toolAction?.action === 'tool' && !!toolAction?.arguments;
+  const hasResult = toolAction?.action === 'tool' && !!toolAction?.result;
+  const isCommand = toolAction?.action === 'command_run';
+  const commandOutput: string | null = isCommand
+    ? (toolAction?.result?.output ?? null)
+    : null;
+  // Derive success from either { type: 'success', success: boolean } or { type: 'exit_code', code: number }
+  let commandSuccess: boolean | undefined = undefined;
+  let commandExitCode: number | undefined = undefined;
+  if (isCommand) {
+    const st: any = toolAction?.result?.exit_status;
+    if (st && typeof st === 'object') {
+      if (st.type === 'success' && typeof st.success === 'boolean') {
+        commandSuccess = st.success;
+      } else if (st.type === 'exit_code' && typeof st.code === 'number') {
+        commandExitCode = st.code;
+        commandSuccess = st.code === 0;
+      }
+    }
+  }
+  const outputMeta = (() => {
+    if (!commandOutput) return null;
+    const lineCount =
+      commandOutput === '' ? 0 : commandOutput.split('\n').length;
+    const bytes = new Blob([commandOutput]).size;
+    const kb = bytes / 1024;
+    const sizeStr = kb >= 1 ? `${kb.toFixed(1)} kB` : `${bytes} B`;
+    return { lineCount, sizeStr };
+  })();
+  const canExpand =
+    (isCommand && !!commandOutput) ||
+    (toolAction?.action === 'tool' && (hasArgs || hasResult));
+
+  const [toolExpanded, toggleToolExpanded] = useExpandable(
+    `tool-entry:${expansionKey}`,
+    false
+  );
+
   return (
     <div className="px-4 py-1">
       <div className="flex items-start gap-3">
@@ -201,14 +246,149 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
               )}
             </div>
           ) : (
-            <div className={getContentClassName(entry.entry_type)}>
-              {shouldRenderMarkdown(entry.entry_type) ? (
-                <MarkdownRenderer
-                  content={entry.content}
-                  className="whitespace-pre-wrap break-words"
-                />
+            <div>
+              {isToolUse ? (
+                canExpand ? (
+                  <button
+                    onClick={() => toggleToolExpanded()}
+                    className="flex items-center gap-2 w-full text-left"
+                    title={toolExpanded ? 'Hide details' : 'Show details'}
+                  >
+                    <span className="flex items-center gap-1 min-w-0">
+                      <span
+                        className="text-sm truncate whitespace-nowrap overflow-hidden text-ellipsis"
+                        title={entry.content}
+                      >
+                        {shouldRenderMarkdown(entry.entry_type) ? (
+                          <MarkdownRenderer
+                            content={entry.content}
+                            className="inline"
+                          />
+                        ) : (
+                          entry.content
+                        )}
+                      </span>
+                      {/* Icons immediately after tool name */}
+                      {isCommand ? (
+                        <>
+                          {typeof commandSuccess === 'boolean' && (
+                            <span
+                              className={
+                                'px-1.5 py-0.5 rounded text-[10px] border ' +
+                                (commandSuccess
+                                  ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-900/40'
+                                  : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/40')
+                              }
+                              title={
+                                typeof commandExitCode === 'number'
+                                  ? `exit code: ${commandExitCode}`
+                                  : commandSuccess
+                                    ? 'success'
+                                    : 'failed'
+                              }
+                            >
+                              {typeof commandExitCode === 'number'
+                                ? `exit ${commandExitCode}`
+                                : commandSuccess
+                                  ? 'ok'
+                                  : 'fail'}
+                            </span>
+                          )}
+                          {commandOutput && (
+                            <span
+                              title={
+                                outputMeta
+                                  ? `output: ${outputMeta.lineCount} lines · ${outputMeta.sizeStr}`
+                                  : 'output'
+                              }
+                            >
+                              <FileText className="h-3.5 w-3.5 text-zinc-500" />
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          {hasArgs && (
+                            <Braces className="h-3.5 w-3.5 text-zinc-500" />
+                          )}
+                          {hasResult &&
+                            (toolAction?.result?.type === 'json' ? (
+                              <Braces className="h-3.5 w-3.5 text-zinc-500" />
+                            ) : (
+                              <FileText className="h-3.5 w-3.5 text-zinc-500" />
+                            ))}
+                        </>
+                      )}
+                    </span>
+                    <MoreHorizontal className="ml-auto h-4 w-4 text-zinc-400 group-hover:text-zinc-600" />
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={
+                        'text-sm truncate whitespace-nowrap overflow-hidden text-ellipsis'
+                      }
+                      title={entry.content}
+                    >
+                      {shouldRenderMarkdown(entry.entry_type) ? (
+                        <MarkdownRenderer
+                          content={entry.content}
+                          className="inline"
+                        />
+                      ) : (
+                        entry.content
+                      )}
+                    </div>
+                    {isCommand ? (
+                      <>
+                        {typeof commandSuccess === 'boolean' && (
+                          <Dot
+                            className={
+                              'h-4 w-4 ' +
+                              (commandSuccess
+                                ? 'text-green-600'
+                                : 'text-red-600')
+                            }
+                          />
+                        )}
+                        {commandOutput && (
+                          <span
+                            title={
+                              outputMeta
+                                ? `output: ${outputMeta.lineCount} lines · ${outputMeta.sizeStr}`
+                                : 'output'
+                            }
+                          >
+                            <FileText className="h-3.5 w-3.5 text-zinc-500" />
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {hasArgs && (
+                          <Braces className="h-3.5 w-3.5 text-zinc-500" />
+                        )}
+                        {hasResult &&
+                          (toolAction?.result?.type === 'json' ? (
+                            <Braces className="h-3.5 w-3.5 text-zinc-500" />
+                          ) : (
+                            <FileText className="h-3.5 w-3.5 text-zinc-500" />
+                          ))}
+                      </>
+                    )}
+                  </div>
+                )
               ) : (
-                entry.content
+                <div className={getContentClassName(entry.entry_type)}>
+                  {shouldRenderMarkdown(entry.entry_type) ? (
+                    <MarkdownRenderer
+                      content={entry.content}
+                      className="whitespace-pre-wrap break-words"
+                    />
+                  ) : (
+                    entry.content
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -225,6 +405,34 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
                 />
               );
             })}
+          {entry.entry_type.type === 'tool_use' &&
+            toolExpanded &&
+            (() => {
+              const at: any = entry.entry_type.action_type as any;
+              if (at?.action === 'tool') {
+                return (
+                  <ToolDetails
+                    arguments={at.arguments ?? null}
+                    result={
+                      at.result
+                        ? { type: at.result.type, value: at.result.value }
+                        : null
+                    }
+                  />
+                );
+              }
+              if (at?.action === 'command_run') {
+                const output = at?.result?.output as string | undefined;
+                const exit = (at?.result?.exit_status as any) ?? null;
+                return (
+                  <ToolDetails
+                    commandOutput={output ?? null}
+                    commandExit={exit}
+                  />
+                );
+              }
+              return null;
+            })()}
         </div>
       </div>
     </div>
