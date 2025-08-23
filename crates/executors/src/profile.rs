@@ -207,8 +207,9 @@ mod tests {
         assert!(claude_code_router_command.contains("--dangerously-skip-permissions"));
 
         let amp_command = get_profile_command("amp");
-        assert!(amp_command.contains("npx -y @sourcegraph/amp@0.0.1752148945-gd8844f"));
-        assert!(amp_command.contains("--format=jsonl"));
+        assert!(amp_command.contains("npx -y @sourcegraph/amp@latest"));
+        assert!(amp_command.contains("--execute"));
+        assert!(amp_command.contains("--stream-json"));
 
         let gemini_command = get_profile_command("gemini");
         assert!(gemini_command.contains("npx -y @google/gemini-cli@latest"));

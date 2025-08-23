@@ -56,9 +56,10 @@
       "mcp_config_path": null,
       "AMP": {
         "command": {
-          "base": "npx -y @sourcegraph/amp@0.0.1752148945-gd8844f",
+          "base": "npx -y @sourcegraph/amp@latest",
           "params": [
-            "--format=jsonl",
+            "--execute",
+            "--stream-json",
             "--dangerously-allow-all"
           ]
         }

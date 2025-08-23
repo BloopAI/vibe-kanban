@@ -27,7 +27,6 @@ use executors::{
     profile::{ProfileConfigs, ProfileVariantLabel},
 };
 use futures_util::TryStreamExt;
-use local_deployment::container;
 use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,

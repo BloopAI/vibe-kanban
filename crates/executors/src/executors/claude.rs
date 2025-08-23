@@ -116,7 +116,6 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 
         // Process stdout logs (Claude's JSON output)
         ClaudeLogProcessor::process_logs(
-            self,
             msg_store.clone(),
             current_dir,
             entry_index_provider.clone(),
@@ -151,7 +150,7 @@ exit "$exit_code"
 }
 
 /// Handles log processing and interpretation for Claude executor
-struct ClaudeLogProcessor {
+pub struct ClaudeLogProcessor {
     model_name: Option<String>,
 }
 
@@ -161,8 +160,7 @@ impl ClaudeLogProcessor {
     }
 
     /// Process raw logs and convert them to normalized entries with patches
-    fn process_logs(
-        _executor: &ClaudeCode,
+    pub fn process_logs(
         msg_store: Arc<MsgStore>,
         current_dir: &PathBuf,
         entry_index_provider: EntryIndexProvider,
