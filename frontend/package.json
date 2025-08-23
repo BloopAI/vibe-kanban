@@ -51,11 +51,12 @@
     "react-virtuoso": "^4.13.0",
     "react-window": "^1.8.11",
     "rfc6902": "^5.1.2",
-    "zustand": "^4.5.4",
     "tailwind-merge": "^2.2.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "zustand": "^4.5.4"
   },
   "devDependencies": {
+    "@tailwindcss/container-queries": "^0.1.1",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
