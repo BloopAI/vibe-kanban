@@ -1,84 +1,103 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   FolderOpen,
   Settings,
   BookOpen,
   Server,
   MessageCircleQuestion,
+  Menu,
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
 
+const INTERNAL_NAV = [
+  { label: 'Projects', icon: FolderOpen, to: '/projects' },
+  { label: 'MCP Servers', icon: Server, to: '/mcp-servers' },
+  { label: 'Settings', icon: Settings, to: '/settings' },
+];
+
+const EXTERNAL_LINKS = [
+  {
+    label: 'Docs',
+    icon: BookOpen,
+    href: 'https://vibekanban.com/',
+  },
+  {
+    label: 'Support',
+    icon: MessageCircleQuestion,
+    href: 'https://github.com/BloopAI/vibe-kanban/issues',
+  },
+];
+
 export function Navbar() {
   const location = useLocation();
+  const isAnyInternalActive = INTERNAL_NAV.some(
+    item => location.pathname === item.to
+  );
 
   return (
     <div className="border-b">
       <div className="w-full px-3">
         <div className="flex items-center justify-between h-10">
-          <div className="flex items-center space-x-6">
+          <Link to="/projects">
             <Logo />
-            <div className="flex items-center space-x-1">
+          </Link>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button
-                asChild
-                variant={
-                  location.pathname === '/projects' ? 'default' : 'ghost'
-                }
-                size="sm"
+                variant={isAnyInternalActive ? 'default' : 'ghost'}
+                size="icon"
+                aria-label="Main navigation"
               >
-                <Link to="/projects">
-                  <FolderOpen className="mr-2 h-4 w-4" />
-                  Projects
-                </Link>
+                <Menu className="h-4 w-4" />
               </Button>
-              <Button
-                asChild
-                variant={
-                  location.pathname === '/mcp-servers' ? 'default' : 'ghost'
-                }
-                size="sm"
-              >
-                <Link to="/mcp-servers">
-                  <Server className="mr-2 h-4 w-4" />
-                  MCP Servers
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant={
-                  location.pathname === '/settings' ? 'default' : 'ghost'
-                }
-                size="sm"
-              >
-                <Link to="/settings">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </Link>
-              </Button>
-            </div>
-          </div>
-          <div className="flex items-center space-x-1">
-            <Button asChild variant="ghost" size="sm">
-              <a
-                href="https://vibekanban.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <BookOpen className="mr-2 h-4 w-4" />
-                Docs
-              </a>
-            </Button>
-            <Button asChild variant="ghost" size="sm">
-              <a
-                href="https://github.com/BloopAI/vibe-kanban/issues"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <MessageCircleQuestion className="mr-2 h-4 w-4" />
-                Support
-              </a>
-            </Button>
-          </div>
+            </DropdownMenuTrigger>
+            
+            <DropdownMenuContent align="end">
+              {INTERNAL_NAV.map(item => {
+                const active = location.pathname === item.to;
+                const Icon = item.icon;
+                return (
+                  <DropdownMenuItem
+                    key={item.to}
+                    asChild
+                    className={active ? 'bg-accent' : ''}
+                  >
+                    <Link to={item.to}>
+                      <Icon className="mr-2 h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  </DropdownMenuItem>
+                );
+              })}
+              
+              <DropdownMenuSeparator />
+              
+              {EXTERNAL_LINKS.map(item => {
+                const Icon = item.icon;
+                return (
+                  <DropdownMenuItem key={item.href} asChild>
+                    <a
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Icon className="mr-2 h-4 w-4" />
+                      {item.label}
+                    </a>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </div>
