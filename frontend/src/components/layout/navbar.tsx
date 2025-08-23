@@ -46,19 +46,22 @@ export function Navbar() {
     <div className="border-b bg-secondary">
       <div className="w-full px-3">
         <div className="flex items-center h-12 py-2">
-          <Link to="/projects">
-            <Logo />
-          </Link>
+          <div className="flex-1">
+            <Link to="/projects">
+              <Logo />
+            </Link>
+          </div>
 
           <SearchBar 
-            className="hidden sm:flex mx-auto" 
+            className="hidden sm:flex" 
             value={query}
             onChange={setQuery}
             disabled={!active}
             onClear={clear}
           />
 
-          <DropdownMenu>
+          <div className="flex-1 flex justify-end">
+            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
@@ -106,6 +109,7 @@ export function Navbar() {
               })}
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </div>
       </div>
     </div>

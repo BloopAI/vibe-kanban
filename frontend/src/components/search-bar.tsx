@@ -11,12 +11,12 @@ interface SearchBarProps {
   onClear?: () => void;
 }
 
-export function SearchBar({ 
-  className, 
-  value = '', 
-  onChange, 
+export function SearchBar({
+  className,
+  value = '',
+  onChange,
   disabled = false,
-  onClear 
+  onClear
 }: SearchBarProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -26,7 +26,7 @@ export function SearchBar({
         e.preventDefault();
         inputRef.current?.focus();
       }
-      
+
       if (e.key === 'Escape' && document.activeElement === inputRef.current) {
         e.preventDefault();
         onClear?.();
@@ -39,7 +39,7 @@ export function SearchBar({
   }, [onClear]);
 
   return (
-    <div className={cn("relative w-64 sm:w-80", className)}>
+    <div className={cn("relative w-64 sm:w-72", className)}>
       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       <Input
         ref={inputRef}
