@@ -43,7 +43,7 @@ const statusLabels: Record<TaskStatus, string> = {
 };
 
 const statusBoardColors: Record<TaskStatus, string> = {
-  todo: 'hsl(var(--neutral))',
+  todo: 'hsl(var(--neutral-foreground))',
   inprogress: 'hsl(var(--info))',
   inreview: 'hsl(var(--warning))',
   done: 'hsl(var(--success))',

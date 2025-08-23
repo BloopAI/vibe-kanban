@@ -32,7 +32,7 @@ export function Logo({ className = '' }: { className?: string }) {
 
   return (
     <svg
-      width="200"
+      width="140"
       viewBox="0 0 604 74"
       fill={fillColor}
       xmlns="http://www.w3.org/2000/svg"

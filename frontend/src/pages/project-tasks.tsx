@@ -390,109 +390,6 @@ export function ProjectTasks() {
       <div
         className={getKanbanSectionClasses(isPanelOpen, fullScreenTaskDetails)}
       >
-        {/* Header */}
-
-        <div className="px-8 my-12 flex flex-row">
-          <div className="w-full flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{project?.name || 'Project'}</h1>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleOpenInIDE}
-              className="h-8 w-8 p-0"
-              title="Open in IDE"
-            >
-              <FolderOpen className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsProjectSettingsOpen(true)}
-              className="h-8 w-8 p-0"
-              title="Project Settings"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="flex items-center gap-3">
-            <Input
-              type="text"
-              placeholder="Search tasks..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-64"
-            />
-            <Button onClick={handleCreateNewTask}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Task
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <LibraryBig className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[250px]">
-                <DropdownMenuItem onClick={handleOpenTemplateManager}>
-                  <Plus className="h-3 w-3 mr-2" />
-                  Manage Templates
-                </DropdownMenuItem>
-                {templates.length > 0 && <DropdownMenuSeparator />}
-
-                {/* Project Templates */}
-                {templates.filter((t) => t.project_id !== null).length > 0 && (
-                  <>
-                    <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-                      Project Templates
-                    </div>
-                    {templates
-                      .filter((t) => t.project_id !== null)
-                      .map((template) => (
-                        <DropdownMenuItem
-                          key={template.id}
-                          onClick={() => handleTemplateSelect(template)}
-                        >
-                          <span className="truncate">
-                            {template.template_name}
-                          </span>
-                        </DropdownMenuItem>
-                      ))}
-                  </>
-                )}
-
-                {/* Separator if both types exist */}
-                {templates.filter((t) => t.project_id !== null).length > 0 &&
-                  templates.filter((t) => t.project_id === null).length > 0 && (
-                    <DropdownMenuSeparator />
-                  )}
-
-                {/* Global Templates */}
-                {templates.filter((t) => t.project_id === null).length > 0 && (
-                  <>
-                    <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-                      Global Templates
-                    </div>
-                    {templates
-                      .filter((t) => t.project_id === null)
-                      .map((template) => (
-                        <DropdownMenuItem
-                          key={template.id}
-                          onClick={() => handleTemplateSelect(template)}
-                        >
-                          <Globe2 className="h-3 w-3 mr-2 text-muted-foreground" />
-                          <span className="truncate">
-                            {template.template_name}
-                          </span>
-                        </DropdownMenuItem>
-                      ))}
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        {/* Tasks View */}
         {tasks.length === 0 ? (
           <div className="max-w-7xl mx-auto">
             <Card>
@@ -508,8 +405,8 @@ export function ProjectTasks() {
             </Card>
           </div>
         ) : (
-          <div className="px-8 overflow-x-scroll my-4">
-            <div className="min-w-[900px] max-w-[2000px] relative py-1">
+          <div className="overflow-x-scroll">
+            <div className="min-w-[900px] max-w-[2000px] relative">
               <TaskKanbanBoard
                 tasks={tasks}
                 searchQuery={searchQuery}

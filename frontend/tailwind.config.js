@@ -31,6 +31,16 @@ module.exports = {
       },
     },
     extend: {
+      ringColor: {
+        DEFAULT: 'hsl(var(--primary))', // e.g. Tailwind's blue-500
+      },
+      fontSize: { // These are downshifted by 1
+        xs: ['0.625rem', { lineHeight: '0.875rem' }], // 10px / 14px
+        sm: ['0.75rem', { lineHeight: '1rem' }],     // 12px / 16px
+        base: ['0.875rem', { lineHeight: '1.25rem' }],  // 14px / 20px
+        lg: ['1rem', { lineHeight: '1.5rem' }],   // 16px / 24px
+        xl: ['1.125rem', { lineHeight: '1.75rem' }],  // 18px / 28px
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
