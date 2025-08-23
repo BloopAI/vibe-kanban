@@ -38,10 +38,6 @@ const EXTERNAL_LINKS = [
 
 export function Navbar() {
   const location = useLocation();
-  const isAnyInternalActive = INTERNAL_NAV.some(
-    item => location.pathname === item.to
-  );
-
   return (
     <div className="border-b">
       <div className="w-full px-3">
@@ -49,18 +45,18 @@ export function Navbar() {
           <Link to="/projects">
             <Logo />
           </Link>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                variant={isAnyInternalActive ? 'default' : 'ghost'}
+                variant="ghost"
                 size="icon"
                 aria-label="Main navigation"
               >
                 <Menu className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            
+
             <DropdownMenuContent align="end">
               {INTERNAL_NAV.map(item => {
                 const active = location.pathname === item.to;
@@ -78,9 +74,9 @@ export function Navbar() {
                   </DropdownMenuItem>
                 );
               })}
-              
+
               <DropdownMenuSeparator />
-              
+
               {EXTERNAL_LINKS.map(item => {
                 const Icon = item.icon;
                 return (
