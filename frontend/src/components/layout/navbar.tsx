@@ -8,9 +8,12 @@ import {
   MessageCircleQuestion,
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
+import { LanguageSelector } from '@/components/language-selector';
+import { useTranslation } from '@/lib/i18n';
 
 export function Navbar() {
   const location = useLocation();
+  const { t } = useTranslation();
 
   return (
     <div className="border-b">
@@ -28,7 +31,7 @@ export function Navbar() {
               >
                 <Link to="/projects">
                   <FolderOpen className="mr-2 h-4 w-4" />
-                  Projects
+                  {t('nav.projects')}
                 </Link>
               </Button>
               <Button
@@ -40,7 +43,7 @@ export function Navbar() {
               >
                 <Link to="/mcp-servers">
                   <Server className="mr-2 h-4 w-4" />
-                  MCP Servers
+                  {t('nav.mcpServers')}
                 </Link>
               </Button>
               <Button
@@ -52,12 +55,13 @@ export function Navbar() {
               >
                 <Link to="/settings">
                   <Settings className="mr-2 h-4 w-4" />
-                  Settings
+                  {t('nav.settings')}
                 </Link>
               </Button>
             </div>
           </div>
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-2">
+            <LanguageSelector />
             <Button asChild variant="ghost" size="sm">
               <a
                 href="https://vibekanban.com/"
@@ -65,7 +69,7 @@ export function Navbar() {
                 rel="noopener noreferrer"
               >
                 <BookOpen className="mr-2 h-4 w-4" />
-                Docs
+                {t('nav.docs')}
               </a>
             </Button>
             <Button asChild variant="ghost" size="sm">
@@ -75,7 +79,7 @@ export function Navbar() {
                 rel="noopener noreferrer"
               >
                 <MessageCircleQuestion className="mr-2 h-4 w-4" />
-                Support
+                {t('nav.support')}
               </a>
             </Button>
           </div>

@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useTranslation } from '@/lib/i18n';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FolderPicker } from '@/components/ui/folder-picker';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
@@ -28,6 +29,7 @@ export function ProjectForm({
   onSuccess,
   project,
 }: ProjectFormProps) {
+  const { t } = useTranslation();
   const [name, setName] = useState(project?.name || '');
   const [gitRepoPath, setGitRepoPath] = useState(project?.git_repo_path || '');
   const [setupScript, setSetupScript] = useState(project?.setup_script ?? '');
@@ -190,20 +192,20 @@ export function ProjectForm({
       >
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? 'Edit Project' : 'Create New Project'}
+            {isEditing ? t('projects.form.editTitle') : t('projects.form.title')}
           </DialogTitle>
           <DialogDescription>
             {isEditing
-              ? "Make changes to your project here. Click save when you're done."
-              : 'Choose whether to use an existing git repository or create a new one.'}
+              ? t('projects.form.editDescription')
+              : t('projectCreation.chooseRepoType')}
           </DialogDescription>
         </DialogHeader>
 
         {isEditing ? (
           <Tabs defaultValue="general" className="w-full -mt-2">
             <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="general">General</TabsTrigger>
-              <TabsTrigger value="templates">Task Templates</TabsTrigger>
+              <TabsTrigger value="general">{t('common.general')}</TabsTrigger>
+              <TabsTrigger value="templates">{t('templateManager.title')}</TabsTrigger>
             </TabsList>
             <TabsContent value="general" className="space-y-4">
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -238,13 +240,13 @@ export function ProjectForm({
                     onClick={handleClose}
                     disabled={loading}
                   >
-                    Cancel
+                    {t('projectCreation.cancel')}
                   </Button>
                   <Button
                     type="submit"
                     disabled={loading || !name.trim() || !gitRepoPath.trim()}
                   >
-                    {loading ? 'Saving...' : 'Save Changes'}
+                    {loading ? t('projects.form.saving') : t('projects.form.saveChanges')}
                   </Button>
                 </DialogFooter>
               </form>
@@ -350,7 +352,7 @@ export function ProjectForm({
                 onClick={handleClose}
                 disabled={loading}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 type="submit"
@@ -362,7 +364,7 @@ export function ProjectForm({
                     : !parentPath.trim() || !folderName.trim())
                 }
               >
-                {loading ? 'Creating...' : 'Create Project'}
+                {loading ? t('projects.form.creating') : t('projects.form.create')}
               </Button>
             </DialogFooter>
           </form>
