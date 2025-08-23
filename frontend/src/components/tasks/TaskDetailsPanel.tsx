@@ -158,7 +158,7 @@ export function TaskDetailsPanel({
                         <TaskDetailsToolbar
                           forceCreateAttempt={forceCreateAttempt}
                           onLeaveForceCreateAttempt={onLeaveForceCreateAttempt}
-                        // hide actions in sidebar; moved to header in fullscreen
+                          // hide actions in sidebar; moved to header in fullscreen
                         />
 
                         {/* Task Breakdown (TODOs) */}
