@@ -153,11 +153,13 @@ exit "$exit_code"
 /// Handles log processing and interpretation for Claude executor
 struct ClaudeLogProcessor {
     model_name: Option<String>,
+    // Map tool_use_id -> (entry_index, tool_name, arguments_json, content, is_command)
+    tool_map: std::collections::HashMap<String, (usize, String, serde_json::Value, String, bool)>,
 }
 
 impl ClaudeLogProcessor {
     fn new() -> Self {
-        Self { model_name: None }
+        Self { model_name: None, tool_map: std::collections::HashMap::new() }
     }
 
     /// Process raw logs and convert them to normalized entries with patches
@@ -214,14 +216,110 @@ impl ClaudeLogProcessor {
                                 session_id_extracted = true;
                             }
 
-                            // Convert to normalized entries and create patches
-                            for entry in
-                                processor.to_normalized_entries(&claude_json, &worktree_path)
-                            {
-                                let patch_id = entry_index_provider.next();
-                                let patch =
-                                    ConversationPatch::add_normalized_entry(patch_id, entry);
-                                msg_store.push_patch(patch);
+                            // Special handling to capture tool_use ids and replace with results later
+                            match &claude_json {
+                                ClaudeJson::Assistant { message, .. } => {
+                                    // Inject system init with model if first time
+                                    if processor.model_name.is_none()
+                                        && let Some(model) = message.model.as_ref()
+                                    {
+                                        processor.model_name = Some(model.clone());
+                                        let entry = NormalizedEntry {
+                                            timestamp: None,
+                                            entry_type: NormalizedEntryType::SystemMessage,
+                                            content: format!("System initialized with model: {model}"),
+                                            metadata: None,
+                                        };
+                                        let id = entry_index_provider.next();
+                                        msg_store.push_patch(ConversationPatch::add_normalized_entry(id, entry));
+                                    }
+
+                                    for item in &message.content {
+                                        match item {
+                                            ClaudeContentItem::ToolUse { id, tool_data } => {
+                                                let tool_name = tool_data.get_name().to_string();
+                                                let args_json = serde_json::to_value(tool_data).unwrap_or(serde_json::Value::Null);
+                                                let action_type = Self::extract_action_type(tool_data, &worktree_path);
+                                                let content_text = Self::generate_concise_content(tool_data, &action_type, &worktree_path);
+                                                let entry = NormalizedEntry {
+                                                    timestamp: None,
+                                                    entry_type: NormalizedEntryType::ToolUse {
+                                                        tool_name: tool_name.clone(),
+                                                        action_type,
+                                                    },
+                                                    content: content_text.clone(),
+                                                    metadata: Some(serde_json::to_value(item).unwrap_or(serde_json::Value::Null)),
+                                                };
+                                                let id_num = entry_index_provider.next();
+                                                let is_command = matches!(tool_data, ClaudeToolData::Bash { .. });
+                                                processor
+                                                    .tool_map
+                                                    .insert(id.clone(), (id_num, tool_name, args_json.clone(), content_text, is_command));
+                                                msg_store.push_patch(ConversationPatch::add_normalized_entry(id_num, entry));
+                                            }
+                                            ClaudeContentItem::Text { .. } | ClaudeContentItem::Thinking { .. } => {
+                                                if let Some(entry) = Self::content_item_to_normalized_entry(item, "assistant", &worktree_path) {
+                                                    let id = entry_index_provider.next();
+                                                    msg_store.push_patch(ConversationPatch::add_normalized_entry(id, entry));
+                                                }
+                                            }
+                                            ClaudeContentItem::ToolResult { .. } => {
+                                                // handled via User or Assistant ToolResult messages below
+                                            }
+                                        }
+                                    }
+                                }
+                                ClaudeJson::User { message, .. } => {
+                                    for item in &message.content {
+                                        if let ClaudeContentItem::ToolResult { tool_use_id, content, is_error } = item {
+                                            if let Some((idx, tool_name, _args, prev_content, is_command)) = processor.tool_map.get(tool_use_id).cloned() {
+                                                if is_command {
+                                                    // For bash commands, attach result as CommandRun output where possible
+                                                    let (r#type, value) = if content.is_string() {
+                                                        (crate::logs::ToolResultValueType::Markdown, content.clone())
+                                                    } else {
+                                                        (crate::logs::ToolResultValueType::Json, content.clone())
+                                                    };
+                                                    // Prefer string content to be the output; otherwise JSON
+                                                    let output = match r#type {
+                                                        crate::logs::ToolResultValueType::Markdown => content.as_str().map(|s| s.to_string()),
+                                                        crate::logs::ToolResultValueType::Json => Some(content.to_string()),
+                                                    };
+                                                    // Derive success from is_error when present
+                                                    let exit_status = is_error
+                                                        .as_ref()
+                                                        .map(|e| crate::logs::CommandExitStatus::Success { success: !*e });
+                                                    let entry = NormalizedEntry {
+                                                        timestamp: None,
+                                                        entry_type: NormalizedEntryType::ToolUse {
+                                                            tool_name: tool_name.clone(),
+                                                            action_type: ActionType::CommandRun {
+                                                                command: prev_content.clone(),
+                                                                result: Some(crate::logs::CommandRunResult {
+                                                                    exit_status,
+                                                                    output,
+                                                                }),
+                                                            },
+                                                        },
+                                                        content: prev_content,
+                                                        metadata: None,
+                                                    };
+                                                    msg_store.push_patch(ConversationPatch::replace(idx, entry));
+                                                } else {
+                                                    // For non-command tools, keep the specialized action. We can skip replacement for now.
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                _ => {
+                                    // Convert to normalized entries and create patches for other kinds
+                                    for entry in processor.to_normalized_entries(&claude_json, &worktree_path) {
+                                        let patch_id = entry_index_provider.next();
+                                        let patch = ConversationPatch::add_normalized_entry(patch_id, entry);
+                                        msg_store.push_patch(patch);
+                                    }
+                                }
                             }
                         }
                         Err(_) => {
@@ -484,6 +582,7 @@ impl ClaudeLogProcessor {
             }
             ClaudeToolData::Bash { command, .. } => ActionType::CommandRun {
                 command: command.clone(),
+                result: None,
             },
             ClaudeToolData::Grep { pattern, .. } => ActionType::Search {
                 query: pattern.clone(),
@@ -543,9 +642,10 @@ impl ClaudeLogProcessor {
         match action_type {
             ActionType::FileRead { path } => format!("`{path}`"),
             ActionType::FileEdit { path, .. } => format!("`{path}`"),
-            ActionType::CommandRun { command } => format!("`{command}`"),
+            ActionType::CommandRun { command, .. } => format!("`{command}`"),
             ActionType::Search { query } => format!("`{query}`"),
             ActionType::WebFetch { url } => format!("`{url}`"),
+            ActionType::Tool { .. } => tool_data.get_name().to_string(),
             ActionType::TaskCreate { description } => description.clone(),
             ActionType::PlanPresentation { plan } => plan.clone(),
             ActionType::TodoManagement { .. } => "TODO list updated".to_string(),

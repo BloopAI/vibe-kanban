@@ -128,6 +128,10 @@ impl StandardCodingAgentExecutor for Cursor {
 
             let worktree_str = current_dir.to_string_lossy().to_string();
 
+            use std::collections::HashMap;
+            // Track tool call_id -> entry index
+            let mut call_index_map: HashMap<String, usize> = HashMap::new();
+
             while let Some(Ok(line)) = lines.next().await {
                 // Parse line as CursorJson
                 let cursor_json: CursorJson = match serde_json::from_str(&line) {
@@ -207,15 +211,9 @@ impl StandardCodingAgentExecutor for Cursor {
                         }
                     }
 
-                    CursorJson::ToolCall {
-                        subtype, tool_call, ..
-                    } => {
+                    CursorJson::ToolCall { subtype, call_id, tool_call, .. } => {
                         // Only process "started" subtype (completed contains results we currently ignore)
-                        if subtype
-                            .as_deref()
-                            .map(|s| s.eq_ignore_ascii_case("started"))
-                            .unwrap_or(false)
-                        {
+                        if subtype.as_deref().map(|s| s.eq_ignore_ascii_case("started")).unwrap_or(false) {
                             let tool_name = tool_call.get_name().to_string();
                             let (action_type, content) =
                                 tool_call.to_action_and_content(&worktree_str);
@@ -230,8 +228,55 @@ impl StandardCodingAgentExecutor for Cursor {
                                 metadata: None,
                             };
                             let id = entry_index_provider.next();
+                            if let Some(cid) = call_id.as_ref() {
+                                call_index_map.insert(cid.clone(), id);
+                            }
                             msg_store
                                 .push_patch(ConversationPatch::add_normalized_entry(id, entry));
+                        } else if subtype.as_deref().map(|s| s.eq_ignore_ascii_case("completed")).unwrap_or(false) {
+                            if let Some(cid) = call_id.as_ref() {
+                                if let Some(&idx) = call_index_map.get(cid) {
+                                    // Compute base content and action again
+                                    let (mut new_action, content_str) = tool_call.to_action_and_content(&worktree_str);
+                                    if let CursorToolCall::Shell { args, result } = &tool_call {
+                                        // Merge stdout/stderr if available
+                                        let (stdout_val, stderr_val) = if let Some(res) = result {
+                                            (
+                                                res.get("stdout").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                                                res.get("stderr").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                                            )
+                                        } else { (None, None) };
+                                        let output = match (stdout_val, stderr_val) {
+                                            (Some(sout), Some(serr)) => {
+                                                let st = sout.trim();
+                                                let se = serr.trim();
+                                                if st.is_empty() && se.is_empty() {
+                                                    None
+                                                } else if st.is_empty() { Some(serr) }
+                                                else if se.is_empty() { Some(sout) }
+                                                else { Some(format!("STDOUT:\n{}\n\nSTDERR:\n{}", st, se)) }
+                                            }
+                                            (Some(sout), None) => if sout.trim().is_empty() { None } else { Some(sout) },
+                                            (None, Some(serr)) => if serr.trim().is_empty() { None } else { Some(serr) },
+                                            (None, None) => None,
+                                        };
+                                        new_action = ActionType::CommandRun {
+                                            command: args.command.clone(),
+                                            result: Some(crate::logs::CommandRunResult { exit_status: None, output }),
+                                        };
+                                    }
+                                    let entry = NormalizedEntry {
+                                        timestamp: None,
+                                        entry_type: NormalizedEntryType::ToolUse {
+                                            tool_name: tool_call.get_name().to_string(),
+                                            action_type: new_action,
+                                        },
+                                        content: content_str,
+                                        metadata: None,
+                                    };
+                                    msg_store.push_patch(ConversationPatch::replace(idx, entry));
+                                }
+                            }
                         }
                     }
 
@@ -542,9 +587,7 @@ impl CursorToolCall {
             CursorToolCall::Shell { args, .. } => {
                 let cmd = &args.command;
                 (
-                    ActionType::CommandRun {
-                        command: cmd.clone(),
-                    },
+                    ActionType::CommandRun { command: cmd.clone(), result: None },
                     format!("`{cmd}`"),
                 )
             }

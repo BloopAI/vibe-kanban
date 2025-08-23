@@ -111,14 +111,15 @@ impl StandardCodingAgentExecutor for Amp {
             let mut s = raw_logs_msg_store.stdout_lines_stream();
 
             let mut seen_amp_message_ids: HashMap<usize, Vec<usize>> = HashMap::new();
+            // Map toolUseID -> entry index for follow-up tool_result replacement
+            let mut tool_index_map: HashMap<String, usize> = HashMap::new();
+            // Preserve the concise content text for each tool_use
+            let mut tool_content_map: HashMap<String, String> = HashMap::new();
             while let Some(Ok(line)) = s.next().await {
                 let trimmed = line.trim();
                 match serde_json::from_str(trimmed) {
                     Ok(amp_json) => match amp_json {
-                        AmpJson::Messages {
-                            messages,
-                            tool_results,
-                        } => {
+                        AmpJson::Messages { messages, tool_results } => {
                             for (amp_message_id, message) in messages {
                                 let role = &message.role;
 
@@ -154,6 +155,11 @@ impl StandardCodingAgentExecutor for Amp {
                                                     .entry(amp_message_id)
                                                     .or_default()
                                                     .push(new_id);
+                                                // Track tool_use id if present
+                                                if let AmpContentItem::ToolUse { id, .. } = content_item {
+                                                    tool_index_map.insert(id.clone(), new_id);
+                                                    tool_content_map.insert(id.clone(), entry.content.clone());
+                                                }
                                                 ConversationPatch::add_normalized_entry(
                                                     new_id, entry,
                                                 )
@@ -165,6 +171,10 @@ impl StandardCodingAgentExecutor for Amp {
                                                 None => {
                                                     let new_id = entry_index_provider.next();
                                                     patch_ids.push(new_id);
+                                                    if let AmpContentItem::ToolUse { id, .. } = content_item {
+                                                        tool_index_map.insert(id.clone(), new_id);
+                                                        tool_content_map.insert(id.clone(), entry.content.clone());
+                                                    }
                                                     ConversationPatch::add_normalized_entry(
                                                         new_id, entry,
                                                     )
@@ -173,6 +183,82 @@ impl StandardCodingAgentExecutor for Amp {
                                         };
 
                                         raw_logs_msg_store.push_patch(patch);
+                                    }
+                                }
+                            }
+                            // Now process tool results (pairs of [tool_use, tool_result])
+                            for pair in tool_results {
+                                if let Some(arr) = pair.as_array() {
+                                    if arr.len() == 2 {
+                                        let tool_use = &arr[0];
+                                        let tool_result = &arr[1];
+                                        let id_opt = tool_use.get("id").and_then(|v| v.as_str());
+                                        let name_opt = tool_use.get("name").and_then(|v| v.as_str());
+                                        let run_obj = tool_result.get("run");
+                                        if let (Some(id), Some(name), Some(run)) = (id_opt, name_opt, run_obj) {
+                                            if let Some(&entry_idx) = tool_index_map.get(id) {
+                                                // Only special-handle bash results for now
+                                                if name.eq_ignore_ascii_case("bash") {
+                                                    // Merge stdout/stderr if present
+                                                    let stdout_val = run.get("stdout").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                                    let stderr_val = run.get("stderr").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                                    let output = match (stdout_val, stderr_val) {
+                                                        (Some(sout), Some(serr)) => {
+                                                            let st = sout.trim();
+                                                            let se = serr.trim();
+                                                            if st.is_empty() && se.is_empty() {
+                                                                None
+                                                            } else if st.is_empty() { Some(serr) }
+                                                            else if se.is_empty() { Some(sout) }
+                                                            else { Some(format!("STDOUT:\n{}\n\nSTDERR:\n{}", st, se)) }
+                                                        }
+                                                        (Some(sout), None) => if sout.trim().is_empty() { None } else { Some(sout) },
+                                                        (None, Some(serr)) => if serr.trim().is_empty() { None } else { Some(serr) },
+                                                        (None, None) => None,
+                                                    };
+                                                    let success_opt = run.get("success").and_then(|v| v.as_bool());
+                                                    let content = tool_content_map.get(id).cloned().unwrap_or_else(|| format!("`{}`", name));
+                                                    let entry = NormalizedEntry {
+                                                        timestamp: None,
+                                                        entry_type: NormalizedEntryType::ToolUse {
+                                                            tool_name: "bash".to_string(),
+                                                            action_type: ActionType::CommandRun {
+                                                                command: "".to_string(),
+                                                                result: Some(crate::logs::CommandRunResult {
+                                                                    exit_status: success_opt.map(|s| crate::logs::CommandExitStatus::Success { success: s }),
+                                                                    output,
+                                                                }),
+                                                            },
+                                                        },
+                                                        content,
+                                                        metadata: None,
+                                                    };
+                                                    raw_logs_msg_store.push_patch(ConversationPatch::replace(entry_idx, entry));
+                                                } else {
+                                                    // Generic tool result (render as JSON)
+                                                    let tool_name = name.to_string();
+                                                    let args = tool_use.get("input").cloned().unwrap_or(serde_json::Value::Null);
+                                                    let content = tool_content_map.get(id).cloned().unwrap_or_else(|| tool_name.clone());
+                                                    let entry = NormalizedEntry {
+                                                        timestamp: None,
+                                                        entry_type: NormalizedEntryType::ToolUse {
+                                                            tool_name: tool_name.clone(),
+                                                            action_type: ActionType::Tool {
+                                                                tool_name,
+                                                                arguments: Some(args),
+                                                                result: Some(crate::logs::ToolResult {
+                                                                    r#type: crate::logs::ToolResultValueType::Json,
+                                                                    value: tool_result.clone(),
+                                                                }),
+                                                            },
+                                                        },
+                                                        content,
+                                                        metadata: None,
+                                                    };
+                                                    raw_logs_msg_store.push_patch(ConversationPatch::replace(entry_idx, entry));
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -495,6 +581,7 @@ impl AmpContentItem {
             }
             AmpToolData::Bash { command, .. } => ActionType::CommandRun {
                 command: command.clone(),
+                result: None,
             },
             AmpToolData::Search { pattern, .. } => ActionType::Search {
                 query: pattern.clone(),
@@ -541,9 +628,10 @@ impl AmpContentItem {
         match action_type {
             ActionType::FileRead { path } => format!("`{path}`"),
             ActionType::FileEdit { path, .. } => format!("`{path}`"),
-            ActionType::CommandRun { command } => format!("`{command}`"),
+            ActionType::CommandRun { command, .. } => format!("`{command}`"),
             ActionType::Search { query } => format!("`{query}`"),
             ActionType::WebFetch { url } => format!("`{url}`"),
+            ActionType::Tool { .. } => tool_name.to_string(),
             ActionType::PlanPresentation { plan } => format!("Plan Presentation: `{plan}`"),
             ActionType::TaskCreate { description } => description.clone(),
             ActionType::TodoManagement { .. } => "TODO list updated".to_string(),
