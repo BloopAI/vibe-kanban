@@ -71,11 +71,9 @@ function uiReducer(state: UiState, action: UiAction): UiState {
 }
 
 function TaskDetailsToolbar({
-  variant = 'default',
   forceCreateAttempt,
   onLeaveForceCreateAttempt,
 }: {
-  variant?: 'default' | 'sidebar';
   forceCreateAttempt?: boolean;
   onLeaveForceCreateAttempt?: () => void;
 }) {
@@ -172,10 +170,10 @@ function TaskDetailsToolbar({
         const currentLatest =
           taskAttempts.length > 0
             ? taskAttempts.reduce((latest, current) =>
-                new Date(current.created_at) > new Date(latest.created_at)
-                  ? current
-                  : latest
-              )
+              new Date(current.created_at) > new Date(latest.created_at)
+                ? current
+                : latest
+            )
             : null;
 
         const newLatest = result.reduce((latest, current) =>
@@ -334,12 +332,9 @@ function TaskDetailsToolbar({
     [ui.creatingPR]
   );
 
-  const containerClasses =
-    variant === 'sidebar' ? 'p-0 border-0' : 'p-4 border-b';
-
   return (
     <>
-      <div className={containerClasses}>
+      <div>
         {/* Error Display */}
         {ui.error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -362,11 +357,7 @@ function TaskDetailsToolbar({
           />
         ) : (
           <div
-            className={
-              variant === 'sidebar'
-                ? 'space-y-3 p-3 bg-muted/20 rounded-lg border'
-                : 'space-y-3 p-3 bg-muted/20 rounded-lg border'
-            }
+            className="space-y-3 p-3 bg-muted/20 rounded-lg border"
           >
             {/* Current Attempt Info */}
             <div className="space-y-2">
@@ -381,8 +372,6 @@ function TaskDetailsToolbar({
                   handleEnterCreateAttemptMode={handleEnterCreateAttemptMode}
                   handleAttemptSelect={handleAttemptSelect}
                   branches={branches}
-                  layout={variant === 'sidebar' ? 'sidebar' : 'default'}
-                  hideActions={variant === 'sidebar'}
                 />
               ) : (
                 <div className="text-center py-8">
@@ -399,8 +388,7 @@ function TaskDetailsToolbar({
             {/* Special Actions: show only in sidebar (non-fullscreen) */}
             {!selectedAttempt &&
               !isAttemptRunning &&
-              !isStopping &&
-              variant !== 'sidebar' && (
+              !isStopping && (
                 <div className="space-y-2 pt-3 border-t">
                   <Button
                     onClick={handleEnterCreateAttemptMode}

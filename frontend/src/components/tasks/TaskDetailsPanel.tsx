@@ -14,11 +14,9 @@ import ProcessesTab from '@/components/tasks/TaskDetails/ProcessesTab.tsx';
 import DeleteFileConfirmationDialog from '@/components/tasks/DeleteFileConfirmationDialog.tsx';
 import CreatePRDialog from '@/components/tasks/Toolbar/CreatePRDialog';
 import TabNavigation from '@/components/tasks/TaskDetails/TabNavigation.tsx';
-import { TaskAttemptActions } from '@/components/tasks/TaskAttemptActions';
 import TaskDetailsProvider from '../context/TaskDetailsContextProvider.tsx';
 import TaskDetailsToolbar from './TaskDetailsToolbar.tsx';
 import TodoPanel from '@/components/tasks/TodoPanel';
-import { Edit, Trash2 } from 'lucide-react';
 import { TabNavContext } from '@/contexts/TabNavigationContext';
 import { ProcessSelectionProvider } from '@/contexts/ProcessSelectionContext';
 import { projectsApi } from '@/lib/api';
@@ -159,19 +157,9 @@ export function TaskDetailsPanel({
 
                         {/* Current Attempt / Actions */}
                         <TaskDetailsToolbar
-                          variant="sidebar"
                           forceCreateAttempt={forceCreateAttempt}
                           onLeaveForceCreateAttempt={onLeaveForceCreateAttempt}
                         // hide actions in sidebar; moved to header in fullscreen
-                        />
-
-                        {/* Actions: moved from header to sidebar in fullscreen */}
-                        <TaskAttemptActions
-                          creatingPR={creatingPR}
-                          setShowCreatePRDialog={setShowCreatePRDialog}
-                          setError={setPrError}
-                          onNewAttempt={onNewAttempt}
-                          variant="sidebar"
                         />
 
                         {/* Task Breakdown (TODOs) */}
@@ -200,7 +188,9 @@ export function TaskDetailsPanel({
                     </div>
                   ) : (
                     <>
-                      <TaskDetailsToolbar />
+                      <div className="p-4 border-b">
+                        <TaskDetailsToolbar />
+                      </div>
 
                       <TabNavigation
                         activeTab={activeTab}

@@ -44,7 +44,6 @@ import {
 import { useConfig } from '@/components/config-provider.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
-import { TaskAttemptActions } from '@/components/tasks/TaskAttemptActions';
 
 // Helper function to get the display name for different editor types
 function getEditorDisplayName(editorType: string): string {
@@ -79,7 +78,6 @@ type Props = {
   handleAttemptSelect: (attempt: TaskAttempt) => void;
   branches: GitBranch[];
   layout?: 'default' | 'sidebar';
-  hideActions?: boolean;
 };
 
 function CurrentAttempt({
@@ -93,7 +91,6 @@ function CurrentAttempt({
   handleAttemptSelect,
   branches,
   layout = 'default',
-  hideActions = false,
 }: Props) {
   const { task, projectId, handleOpenInEditor } =
     useContext(TaskDetailsContext);
@@ -135,7 +132,7 @@ function CurrentAttempt({
 
   useKeyboardShortcuts({
     stopExecution: () => setShowStopConfirmation(true),
-    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => {},
+    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => { },
     hasOpenDialog: showStopConfirmation,
     closeDialog: () => setShowStopConfirmation(false),
     onEnter: () => {
@@ -417,11 +414,10 @@ function CurrentAttempt({
           </Button>
         </div>
         <div
-          className={`text-xs font-mono px-2 py-1 rounded break-all cursor-pointer transition-all duration-300 flex items-center gap-2 ${
-            copied
-              ? 'bg-green-100 text-green-800 border border-green-300'
-              : 'text-muted-foreground bg-muted hover:bg-muted/80'
-          }`}
+          className={`text-xs font-mono px-2 py-1 rounded break-all cursor-pointer transition-all duration-300 flex items-center gap-2 ${copied
+            ? 'bg-green-100 text-green-800 border border-green-300'
+            : 'text-muted-foreground bg-muted hover:bg-muted/80'
+            }`}
           onClick={handleCopyWorktreePath}
           title={copied ? 'Copied!' : 'Click to copy worktree path'}
         >
@@ -439,57 +435,55 @@ function CurrentAttempt({
         </div>
       </div>
 
-      {!hideActions && (
-        <div className="col-span-4 flex items-center justify-between gap-2 flex-wrap">
-          <TaskAttemptActions
-            creatingPR={creatingPR}
-            setShowCreatePRDialog={setShowCreatePRDialog}
-            setError={setError}
-            onNewAttempt={handleEnterCreateAttemptMode}
-            variant="card"
-          />
+      <div className="col-span-4 flex items-center justify-between gap-2 flex-wrap">
+        {/* <TaskAttemptActions
+          creatingPR={creatingPR}
+          setShowCreatePRDialog={setShowCreatePRDialog}
+          setError={setError}
+          onNewAttempt={handleEnterCreateAttemptMode}
+          variant="card"
+        /> */}
 
-          {taskAttempts.length > 1 && (
-            <DropdownMenu>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="xs" className="gap-2">
-                        <History className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>View attempt history</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <DropdownMenuContent align="start" className="w-64">
-                {taskAttempts.map((attempt) => (
-                  <DropdownMenuItem
-                    key={attempt.id}
-                    onClick={() => handleAttemptChange(attempt)}
-                    className={
-                      selectedAttempt?.id === attempt.id ? 'bg-accent' : ''
-                    }
-                  >
-                    <div className="flex flex-col w-full">
-                      <span className="font-medium text-sm">
-                        {new Date(attempt.created_at).toLocaleDateString()}{' '}
-                        {new Date(attempt.created_at).toLocaleTimeString()}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {attempt.profile || 'Base Agent'}
-                      </span>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
-      )}
+        {taskAttempts.length > 1 && (
+          <DropdownMenu>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="xs" className="gap-2">
+                      <History className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>View attempt history</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <DropdownMenuContent align="start" className="w-64">
+              {taskAttempts.map((attempt) => (
+                <DropdownMenuItem
+                  key={attempt.id}
+                  onClick={() => handleAttemptChange(attempt)}
+                  className={
+                    selectedAttempt?.id === attempt.id ? 'bg-accent' : ''
+                  }
+                >
+                  <div className="flex flex-col w-full">
+                    <span className="font-medium text-sm">
+                      {new Date(attempt.created_at).toLocaleDateString()}{' '}
+                      {new Date(attempt.created_at).toLocaleTimeString()}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {attempt.profile || 'Base Agent'}
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
 
       {/* Rebase Dialog */}
       <Dialog open={showRebaseDialog} onOpenChange={setShowRebaseDialog}>
