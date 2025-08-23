@@ -52,7 +52,6 @@ export function TaskDetailsPanel({
   isDialogOpen = false,
   hideBackdrop = false,
   className,
-  hideHeader = false,
   isFullScreen,
   setFullScreen,
   forceCreateAttempt,
@@ -131,16 +130,14 @@ export function TaskDetailsPanel({
                 }
               >
                 <div className="flex flex-col h-full">
-                  {!hideHeader && (
-                    <TaskDetailsHeader
-                      onClose={onClose}
-                      onEditTask={onEditTask}
-                      onDeleteTask={onDeleteTask}
-                      hideCloseButton={hideBackdrop}
-                      isFullScreen={isFullScreen}
-                      setFullScreen={setFullScreen}
-                    />
-                  )}
+                  <TaskDetailsHeader
+                    onClose={onClose}
+                    onEditTask={onEditTask}
+                    onDeleteTask={onDeleteTask}
+                    hideCloseButton={hideBackdrop}
+                    isFullScreen={isFullScreen}
+                    setFullScreen={setFullScreen}
+                  />
 
                   {isFullScreen ? (
                     <div className="flex-1 min-h-0 flex">
@@ -158,31 +155,6 @@ export function TaskDetailsPanel({
                               <p className="italic">No description provided</p>
                             )}
                           </div>
-                          {/* Edit/Delete actions under description */}
-                          <div className="block">
-                            {(onEditTask || onDeleteTask) && (
-                              <div className="flex items-center gap-1">
-                                {onEditTask && (
-                                  <button
-                                    className="inline-flex items-center h-8 w-8 justify-center rounded-md hover:bg-accent"
-                                    onClick={() => onEditTask(task)}
-                                    title="Edit task"
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </button>
-                                )}
-                                {onDeleteTask && (
-                                  <button
-                                    className="inline-flex items-center h-8 w-8 justify-center rounded-md hover:bg-accent"
-                                    onClick={() => onDeleteTask(task.id)}
-                                    title="Delete task"
-                                  >
-                                    <Trash2 className="h-4 w-4 text-red-500" />
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </div>
                         </div>
 
                         {/* Current Attempt / Actions */}
@@ -190,7 +162,7 @@ export function TaskDetailsPanel({
                           variant="sidebar"
                           forceCreateAttempt={forceCreateAttempt}
                           onLeaveForceCreateAttempt={onLeaveForceCreateAttempt}
-                          // hide actions in sidebar; moved to header in fullscreen
+                        // hide actions in sidebar; moved to header in fullscreen
                         />
 
                         {/* Actions: moved from header to sidebar in fullscreen */}

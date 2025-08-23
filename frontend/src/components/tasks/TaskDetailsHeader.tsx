@@ -111,7 +111,7 @@ function TaskDetailsHeader({
               </TooltipProvider>
             )}
             <div className="flex items-center gap-1">
-              {onEditTask && !isFullScreen && (
+              {onEditTask && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -129,7 +129,7 @@ function TaskDetailsHeader({
                   </Tooltip>
                 </TooltipProvider>
               )}
-              {onDeleteTask && !isFullScreen && (
+              {onDeleteTask && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
