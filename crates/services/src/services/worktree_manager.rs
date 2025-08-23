@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use git2::{BranchType, Error as GitError, Repository, WorktreeAddOptions};
+use git2::{Error as GitError, Repository, WorktreeAddOptions};
 use thiserror::Error;
 use tracing::{debug, info, warn};
 use utils::{is_wsl2, shell::get_shell_command};
@@ -43,43 +43,24 @@ impl WorktreeManager {
         repo_path: &Path,
         branch_name: &str,
         worktree_path: &Path,
-        base_branch: Option<&str>,
+        base_branch: &str,
         create_branch: bool,
     ) -> Result<(), WorktreeError> {
         if create_branch {
             let repo_path_owned = repo_path.to_path_buf();
             let branch_name_owned = branch_name.to_string();
-            let base_branch_owned = base_branch.map(|s| s.to_string());
+            let base_branch_owned = base_branch.to_string();
 
             tokio::task::spawn_blocking(move || {
                 let repo = Repository::open(&repo_path_owned)?;
-
-                let base_reference = if let Some(base_branch) = base_branch_owned.as_deref() {
-                    let branch = repo.find_branch(base_branch, BranchType::Local)?;
-                    branch.into_reference()
-                } else {
-                    // Handle new repositories without any commits
-                    match repo.head() {
-                        Ok(head_ref) => head_ref,
-                        Err(e)
-                            if e.class() == git2::ErrorClass::Reference
-                                && e.code() == git2::ErrorCode::UnbornBranch =>
-                        {
-                            // Repository has no commits yet, create an initial commit
-                            GitService::new()
-                                .create_initial_commit(&repo)
-                                .map_err(|_| {
-                                    GitError::from_str("Failed to create initial commit")
-                                })?;
-                            repo.find_reference("refs/heads/main")?
-                        }
-                        Err(e) => return Err(e),
-                    }
-                };
-
-                // Create branch
-                repo.branch(&branch_name_owned, &base_reference.peel_to_commit()?, false)?;
-                Ok::<(), GitError>(())
+                let base_branch_ref =
+                    GitService::find_branch(&repo, &base_branch_owned)?.into_reference();
+                repo.branch(
+                    &branch_name_owned,
+                    &base_branch_ref.peel_to_commit()?,
+                    false,
+                )?;
+                Ok::<(), GitServiceError>(())
             })
             .await
             .map_err(|e| WorktreeError::TaskJoin(format!("Task join error: {e}")))??;
@@ -324,10 +305,7 @@ impl WorktreeManager {
             let repo = Repository::open(&git_repo_path).map_err(WorktreeError::Git)?;
 
             // Find the branch reference using the branch name
-            let branch_ref = repo
-                .find_branch(&branch_name, git2::BranchType::Local)
-                .map_err(WorktreeError::Git)?
-                .into_reference();
+            let branch_ref = GitService::find_branch(&repo, &branch_name)?.into_reference();
 
             // Create worktree options
             let mut worktree_opts = WorktreeAddOptions::new();

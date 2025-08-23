@@ -637,6 +637,7 @@ function CurrentAttempt({
                     (mergeInfo.hasOpenPR &&
                       branchStatus.remote_commits_ahead === 0) ||
                     ((branchStatus.commits_ahead ?? 0) === 0 &&
+                      (branchStatus.remote_commits_ahead ?? 0) === 0 &&
                       !pushSuccess &&
                       !mergeSuccess)
                   }

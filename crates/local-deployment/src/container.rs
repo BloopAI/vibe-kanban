@@ -691,7 +691,6 @@ impl ContainerService for LocalContainerService {
     fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf {
         PathBuf::from(task_attempt.container_ref.clone().unwrap_or_default())
     }
-
     /// Create a container
     async fn create(&self, task_attempt: &TaskAttempt) -> Result<ContainerRef, ContainerError> {
         let task = task_attempt
@@ -712,7 +711,7 @@ impl ContainerService for LocalContainerService {
             &project.git_repo_path,
             &task_branch_name,
             &worktree_path,
-            Some(&task_attempt.base_branch),
+            &task_attempt.base_branch,
             true, // create new branch
         )
         .await?;
@@ -930,7 +929,7 @@ impl ContainerService for LocalContainerService {
                 task_attempt.id
             )))?;
 
-        let is_ahead = if let Ok((ahead, _)) = self.git().get_local_branch_status(
+        let is_ahead = if let Ok((ahead, _)) = self.git().get_branch_status(
             &project_repo_path,
             &task_branch,
             &task_attempt.base_branch,
