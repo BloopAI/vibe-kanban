@@ -333,7 +333,7 @@ impl WorktreeManager {
             let mut worktree_opts = WorktreeAddOptions::new();
             worktree_opts.reference(Some(&branch_ref));
 
-            match repo.worktree(&branch_name, &worktree_path, Some(&worktree_opts)) {
+            match repo.worktree(&worktree_name, &worktree_path, Some(&worktree_opts)) {
                 Ok(_) => {
                     // Verify the worktree was actually created
                     if !worktree_path.exists() {
@@ -369,7 +369,7 @@ impl WorktreeManager {
                         .map_err(WorktreeError::Io)?;
 
                     // Try again after cleanup
-                    match repo.worktree(&branch_name, &worktree_path, Some(&worktree_opts)) {
+                    match repo.worktree(&worktree_name, &worktree_path, Some(&worktree_opts)) {
                         Ok(_) => {
                             if !worktree_path.exists() {
                                 return Err(WorktreeError::Repository(format!(

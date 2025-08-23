@@ -445,6 +445,11 @@ impl LocalContainerService {
         format!("vk-{}-{}", short_uuid(attempt_id), task_title_id)
     }
 
+    pub fn git_branch_from_task_attempt(attempt_id: &Uuid, task_title: &str) -> String {
+        let task_title_id = git_branch_id(task_title);
+        format!("vk/{}-{}", short_uuid(attempt_id), task_title_id)
+    }
+
     async fn track_child_msgs_in_store(&self, id: Uuid, child: &mut AsyncGroupChild) {
         let store = Arc::new(MsgStore::new());
 
@@ -699,9 +704,12 @@ impl ContainerService for LocalContainerService {
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
 
-        let task_branch_name =
+        let worktree_dir_name =
             LocalContainerService::dir_name_from_task_attempt(&task_attempt.id, &task.title);
-        let worktree_path = WorktreeManager::get_worktree_base_dir().join(&task_branch_name);
+        let worktree_path = WorktreeManager::get_worktree_base_dir().join(&worktree_dir_name);
+
+        let git_branch_name =
+            LocalContainerService::git_branch_from_task_attempt(&task_attempt.id, &task.title);
 
         let project = task
             .parent_project(&self.db.pool)
@@ -710,7 +718,7 @@ impl ContainerService for LocalContainerService {
 
         WorktreeManager::create_worktree(
             &project.git_repo_path,
-            &task_branch_name,
+            &git_branch_name,
             &worktree_path,
             Some(&task_attempt.base_branch),
             true, // create new branch
@@ -745,7 +753,7 @@ impl ContainerService for LocalContainerService {
         )
         .await?;
 
-        TaskAttempt::update_branch(&self.db.pool, task_attempt.id, &task_branch_name).await?;
+        TaskAttempt::update_branch(&self.db.pool, task_attempt.id, &git_branch_name).await?;
 
         Ok(worktree_path.to_string_lossy().to_string())
     }
