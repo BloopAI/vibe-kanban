@@ -3,7 +3,7 @@ export type Language = 'en' | 'zh-TW';
 
 // Language labels
 export const LANGUAGE_LABELS: Record<Language, string> = {
-  'en': 'English',
+  en: 'English',
   'zh-TW': '繁體中文',
 };
 
@@ -18,7 +18,7 @@ const translations = {
       docs: 'Docs',
       support: 'Support',
     },
-    
+
     // Settings page
     settings: {
       title: 'Settings',
@@ -28,7 +28,7 @@ const translations = {
       saved: '✓ Settings saved successfully!',
       save: 'Save Settings',
       saving: 'Settings Saved!',
-      
+
       // Appearance settings
       appearance: {
         title: 'Appearance',
@@ -47,16 +47,17 @@ const translations = {
           red: 'Red',
         },
       },
-      
+
       // Language settings
       language: {
         title: 'Language',
         subtitle: 'Select your preferred language for the interface.',
         language: 'Interface Language',
         languagePlaceholder: 'Select language',
-        languageDescription: 'Choose your preferred language for the user interface.',
+        languageDescription:
+          'Choose your preferred language for the user interface.',
       },
-      
+
       // Task execution settings
       taskExecution: {
         title: 'Task Execution',
@@ -65,84 +66,102 @@ const translations = {
         executorPlaceholder: 'Select executor',
         executorDescription: 'Choose the default executor for running tasks.',
       },
-      
+
       // Editor settings
       editor: {
         title: 'Editor',
         subtitle: 'Configure which editor to open when viewing task attempts.',
         editor: 'Preferred Editor',
         editorPlaceholder: 'Select editor',
-        editorDescription: 'Choose your preferred code editor for opening task attempts.',
+        editorDescription:
+          'Choose your preferred code editor for opening task attempts.',
         customCommand: 'Custom Command',
         customCommandPlaceholder: 'e.g., code, subl, vim',
-        customCommandDescription: 'Enter the command to run your custom editor. Use spaces for arguments (e.g., "code --wait").',
+        customCommandDescription:
+          'Enter the command to run your custom editor. Use spaces for arguments (e.g., "code --wait").',
       },
-      
+
       // GitHub integration
       github: {
         title: 'GitHub Integration',
-        subtitle: 'Configure GitHub settings for creating pull requests from task attempts.',
+        subtitle:
+          'Configure GitHub settings for creating pull requests from task attempts.',
         token: 'Personal Access Token',
         tokenPlaceholder: 'ghp_xxxxxxxxxxxxxxxxxxxx',
-        tokenDescription: 'GitHub Personal Access Token with \'repo\' permissions. Required for creating pull requests.',
+        tokenDescription:
+          "GitHub Personal Access Token with 'repo' permissions. Required for creating pull requests.",
         createToken: 'Create token here',
         signedInAs: 'Signed in as',
         logOut: 'Log out',
         signIn: 'Sign in with GitHub',
         defaultPrBase: 'Default PR Base Branch',
         defaultPrBasePlaceholder: 'main',
-        defaultPrBaseDescription: 'Default base branch for pull requests. Defaults to \'main\' if not specified.',
+        defaultPrBaseDescription:
+          "Default base branch for pull requests. Defaults to 'main' if not specified.",
       },
-      
+
       // Notification settings
       notifications: {
         title: 'Notifications',
-        subtitle: 'Configure how you receive notifications about task completion.',
+        subtitle:
+          'Configure how you receive notifications about task completion.',
         soundAlerts: 'Sound Alerts',
-        soundAlertsDescription: 'Play a sound when task attempts finish running.',
+        soundAlertsDescription:
+          'Play a sound when task attempts finish running.',
         sound: 'Sound',
         soundPlaceholder: 'Select sound',
-        soundDescription: 'Choose the sound to play when tasks complete. Click the volume button to preview.',
+        soundDescription:
+          'Choose the sound to play when tasks complete. Click the volume button to preview.',
         pushNotifications: 'Push Notifications',
-        pushNotificationsDescription: 'Show system notifications when task attempts finish running.',
+        pushNotificationsDescription:
+          'Show system notifications when task attempts finish running.',
       },
-      
+
       // Privacy settings
       privacy: {
         title: 'Privacy',
         subtitle: 'Help improve Vibe-Kanban by sharing anonymous usage data.',
         enableTelemetry: 'Enable Usage Analytics',
-        telemetryDescription: 'Enables anonymous usage events tracking to help improve the application. No prompts or project information are collected.',
+        telemetryDescription:
+          'Enables anonymous usage events tracking to help improve the application. No prompts or project information are collected.',
       },
-      
+
       // Task templates
       taskTemplates: {
         title: 'Task Templates',
-        subtitle: 'Manage global task templates that can be used across all projects.',
+        subtitle:
+          'Manage global task templates that can be used across all projects.',
       },
-      
+
       // Security and disclaimer
       safety: {
         title: 'Safety & Disclaimers',
         subtitle: 'Manage safety warnings and acknowledgments.',
         disclaimerStatus: 'Disclaimer Status',
         disclaimerAcknowledged: 'You have acknowledged the safety disclaimer.',
-        disclaimerNotAcknowledged: 'The safety disclaimer has not been acknowledged.',
+        disclaimerNotAcknowledged:
+          'The safety disclaimer has not been acknowledged.',
         resetDisclaimer: 'Reset Disclaimer',
-        resetDisclaimerDescription: 'Resetting the disclaimer will require you to acknowledge the safety warning again.',
+        resetDisclaimerDescription:
+          'Resetting the disclaimer will require you to acknowledge the safety warning again.',
         onboardingStatus: 'Onboarding Status',
         onboardingCompleted: 'You have completed the onboarding process.',
-        onboardingNotCompleted: 'The onboarding process has not been completed.',
+        onboardingNotCompleted:
+          'The onboarding process has not been completed.',
         resetOnboarding: 'Reset Onboarding',
-        resetOnboardingDescription: 'Resetting the onboarding will show the setup screen again.',
+        resetOnboardingDescription:
+          'Resetting the onboarding will show the setup screen again.',
         telemetryAcknowledgment: 'Usage Analytics Acknowledgment',
-        telemetryAcknowledged: 'You have acknowledged the usage analytics notice.',
-        telemetryNotAcknowledged: 'The usage analytics notice has not been acknowledged.',
+        telemetryAcknowledged:
+          'You have acknowledged the usage analytics notice.',
+        telemetryNotAcknowledged:
+          'The usage analytics notice has not been acknowledged.',
         resetAcknowledgment: 'Reset Acknowledgment',
-        resetAcknowledgmentDescription: 'Resetting the acknowledgment will require you to acknowledge the usage analytics notice again.',
+        resetAcknowledgmentDescription:
+          'Resetting the acknowledgment will require you to acknowledge the usage analytics notice again.',
       },
     },
-    
+
     // Project management
     projects: {
       title: 'Projects',
@@ -153,7 +172,7 @@ const translations = {
       noProjectsDescription: 'Get started by creating your first project.',
       loading: 'Loading projects...',
       failed: 'Failed to fetch projects',
-      
+
       // Project form
       form: {
         title: 'Create Project',
@@ -176,14 +195,16 @@ const translations = {
         updating: 'Updating...',
         saving: 'Saving...',
         saveChanges: 'Save Changes',
-        editDescription: 'Make changes to your project here. Click save when you\'re done.',
+        editDescription:
+          "Make changes to your project here. Click save when you're done.",
       },
-      
+
       // Project card
       card: {
         edit: 'Edit',
         delete: 'Delete',
-        confirmDelete: 'Are you sure you want to delete this project? This action cannot be undone.',
+        confirmDelete:
+          'Are you sure you want to delete this project? This action cannot be undone.',
         tasks: 'tasks',
         viewTasks: 'View Tasks',
         openInIDE: 'Open in IDE',
@@ -191,7 +212,7 @@ const translations = {
         active: 'Active',
       },
     },
-    
+
     // Task management
     tasks: {
       title: 'Tasks',
@@ -202,7 +223,7 @@ const translations = {
       noTasksDescription: 'Get started by creating your first task.',
       loading: 'Loading tasks...',
       failed: 'Failed to fetch tasks',
-      
+
       // Task page
       addTask: 'Add Task',
       searchTasks: 'Search tasks...',
@@ -214,7 +235,7 @@ const translations = {
       noTasksFound: 'No tasks found for this project.',
       createFirstTask: 'Create First Task',
       done: 'Done',
-      
+
       // Error messages
       failedCreateTask: 'Failed to create task',
       failedCreateAndStartTask: 'Failed to create and start task',
@@ -224,7 +245,7 @@ const translations = {
       failedOpenIDE: 'Failed to open project in IDE',
       failedLoadProject: 'Failed to load project',
       failedLoadTasks: 'Failed to load tasks',
-      
+
       // Task status
       status: {
         todo: 'To Do',
@@ -233,7 +254,7 @@ const translations = {
         done: 'Done',
         cancelled: 'Cancelled',
       },
-      
+
       // Task form
       form: {
         title: 'Create Task',
@@ -253,26 +274,30 @@ const translations = {
         creating: 'Creating...',
         updating: 'Updating...',
         starting: 'Starting...',
-        
+
         // Task form dialog
         createNewTask: 'Create New Task',
         editTask: 'Edit Task',
         titleLabel: 'Title',
         titlePlaceholderForm: 'What needs to be done?',
         descriptionLabel: 'Description',
-        descriptionPlaceholderForm: 'Add more details (optional). Type @ to search files.',
+        descriptionPlaceholderForm:
+          'Add more details (optional). Type @ to search files.',
         statusLabel: 'Status',
         useTemplate: 'Use a template',
-        templateHelp: 'Templates help you quickly create tasks with predefined content.',
+        templateHelp:
+          'Templates help you quickly create tasks with predefined content.',
         chooseTemplate: 'Choose a template to prefill this form',
         noTemplate: 'No template',
-        
+
         // Plan related
         planRequired: 'Plan Required',
-        planRequiredMessage: 'No plan was generated in the last execution attempt. Task creation is disabled until a plan is available. Please generate a plan first.',
+        planRequiredMessage:
+          'No plan was generated in the last execution attempt. Task creation is disabled until a plan is available. Please generate a plan first.',
         planRequiredTooltip: 'Plan required before creating task',
-        planRequiredStartTooltip: 'Plan required before creating and starting task',
-        
+        planRequiredStartTooltip:
+          'Plan required before creating and starting task',
+
         // Button text
         updateTask: 'Update Task',
         createTask: 'Create Task',
@@ -281,7 +306,7 @@ const translations = {
         updatingTask: 'Updating...',
         creatingAndStarting: 'Creating & Starting...',
       },
-      
+
       // Task operations
       actions: {
         start: 'Start',
@@ -290,10 +315,11 @@ const translations = {
         viewDetails: 'View Details',
         createPR: 'Create PR',
         openEditor: 'Open in Editor',
-        confirmDelete: 'Are you sure you want to delete this task? This action cannot be undone.',
+        confirmDelete:
+          'Are you sure you want to delete this task? This action cannot be undone.',
       },
     },
-    
+
     // Common UI
     common: {
       save: 'Save',
@@ -318,25 +344,31 @@ const translations = {
       no: 'No',
       general: 'General',
     },
-    
+
     // Privacy choice dialog
     privacyOptIn: {
       title: 'Feedback Opt-In',
-      description: 'Help us improve Vibe Kanban by sharing usage data and allowing us to contact you if needed.',
+      description:
+        'Help us improve Vibe Kanban by sharing usage data and allowing us to contact you if needed.',
       whatDataCollect: 'What data do we collect?',
       githubProfile: 'GitHub profile information',
-      githubProfileDesc: 'Username and email address to send you only very important updates about the project. We promise not to abuse this',
+      githubProfileDesc:
+        'Username and email address to send you only very important updates about the project. We promise not to abuse this',
       usageMetrics: 'High-level usage metrics',
-      usageMetricsDesc: 'Number of tasks created, projects managed, feature usage',
+      usageMetricsDesc:
+        'Number of tasks created, projects managed, feature usage',
       performanceData: 'Performance and error data',
-      performanceDataDesc: 'Application crashes, response times, technical issues',
+      performanceDataDesc:
+        'Application crashes, response times, technical issues',
       doNotCollect: 'We do NOT collect',
-      doNotCollectDesc: 'Task contents, code snippets, project names, or other personal data',
-      settingsNote: 'This helps us prioritize improvements. You can change this preference anytime in Settings.',
+      doNotCollectDesc:
+        'Task contents, code snippets, project names, or other personal data',
+      settingsNote:
+        'This helps us prioritize improvements. You can change this preference anytime in Settings.',
       noThanks: 'No thanks',
       yesHelp: 'Yes, help improve Vibe Kanban',
     },
-    
+
     // Task details
     taskDetails: {
       title: 'Task Details',
@@ -375,11 +407,12 @@ const translations = {
         failedToLoad: 'Failed to load process details. Please try again.',
       },
     },
-    
+
     // Security warning dialog
     disclaimer: {
       title: 'Important Safety Warning',
-      pleaseRead: 'Please read and acknowledge the following before proceeding:',
+      pleaseRead:
+        'Please read and acknowledge the following before proceeding:',
       fullAccess: 'Coding agents have full access to your computer',
       executeCommands: 'and can execute any terminal commands, including:',
       risks: {
@@ -388,22 +421,29 @@ const translations = {
         network: 'Making network requests and connections',
         system: 'Running system-level commands with your permissions',
       },
-      experimental: 'This software is experimental and may cause catastrophic damage',
-      acknowledgeUsage: 'to your system, data, or projects. By using this software, you acknowledge that:',
+      experimental:
+        'This software is experimental and may cause catastrophic damage',
+      acknowledgeUsage:
+        'to your system, data, or projects. By using this software, you acknowledge that:',
       acknowledgeItems: {
         ownRisk: 'You use this software entirely at your own risk',
-        noResponsibility: 'The developers are not responsible for any damage, data loss, or security issues',
-        backups: 'You should have proper backups of important data before using this software',
-        consequences: 'You understand the potential consequences of granting unrestricted system access',
+        noResponsibility:
+          'The developers are not responsible for any damage, data loss, or security issues',
+        backups:
+          'You should have proper backups of important data before using this software',
+        consequences:
+          'You understand the potential consequences of granting unrestricted system access',
       },
-      checkboxLabel: 'I understand and acknowledge the risks described above. I am aware that coding agents have full access to my computer and may cause catastrophic damage.',
+      checkboxLabel:
+        'I understand and acknowledge the risks described above. I am aware that coding agents have full access to my computer and may cause catastrophic damage.',
       acceptButton: 'I Accept the Risks and Want to Proceed',
     },
-    
+
     // Welcome setup dialog
     onboarding: {
       title: 'Welcome to Vibe Kanban',
-      description: "Let's set up your coding preferences. You can always change these later in Settings.",
+      description:
+        "Let's set up your coding preferences. You can always change these later in Settings.",
       codingAgent: {
         title: 'Choose Your Coding Agent',
         label: 'Default Executor',
@@ -421,25 +461,29 @@ const translations = {
         title: 'Choose Your Code Editor',
         label: 'Preferred Editor',
         placeholder: 'Select your preferred editor',
-        description: 'This editor will be used to open task attempts and project files.',
+        description:
+          'This editor will be used to open task attempts and project files.',
         customCommand: 'Custom Command',
         customPlaceholder: 'e.g., code, subl, vim',
-        customDescription: 'Enter the command to run your custom editor. Use spaces for arguments (e.g., "code --wait").',
+        customDescription:
+          'Enter the command to run your custom editor. Use spaces for arguments (e.g., "code --wait").',
       },
       continueButton: 'Continue',
     },
-    
+
     // Task template manager
     templateManager: {
       title: 'Task Templates',
       globalTemplates: 'Global Task Templates',
       projectTemplates: 'Project Task Templates',
       addTemplate: 'Add Template',
-      noTemplates: 'No templates yet. Create your first template to get started.',
+      noTemplates:
+        'No templates yet. Create your first template to get started.',
       editTemplate: 'Edit Template',
       createTemplate: 'Create Template',
       deleteTemplate: 'Delete template',
-      confirmDelete: 'Are you sure you want to delete the template "{templateName}"?',
+      confirmDelete:
+        'Are you sure you want to delete the template "{templateName}"?',
       table: {
         templateName: 'Template Name',
         title: 'Title',
@@ -452,65 +496,71 @@ const translations = {
         defaultTitle: 'Default Title',
         defaultTitlePlaceholder: 'e.g., Fix bug in...',
         defaultDescription: 'Default Description',
-        defaultDescriptionPlaceholder: 'Enter a default description for tasks created with this template',
+        defaultDescriptionPlaceholder:
+          'Enter a default description for tasks created with this template',
       },
       errors: {
         nameAndTitleRequired: 'Template name and title are required',
         failedToSave: 'Failed to save template',
       },
     },
-    
+
     // MCP server configuration
     mcpServers: {
       title: 'MCP Servers',
       subtitle: 'Configure MCP servers to extend executor capabilities.',
       successMessage: '✓ MCP configuration saved successfully!',
-      
+
       configuration: {
         title: 'Configuration',
-        description: 'Configure MCP servers for different executors to extend their capabilities with custom tools and resources.',
+        description:
+          'Configure MCP servers for different executors to extend their capabilities with custom tools and resources.',
         label: 'MCP Server Configuration',
-        placeholder: '{\n  "server-name": {\n    "type": "stdio",\n    "command": "your-command",\n    "args": ["arg1", "arg2"]\n  }\n}',
+        placeholder:
+          '{\n  "server-name": {\n    "type": "stdio",\n    "command": "your-command",\n    "args": ["arg1", "arg2"]\n  }\n}',
         loadingPlaceholder: 'Loading current configuration...',
         loading: 'Loading...',
         loadingText: 'Loading current MCP server configuration...',
         saveLocation: 'Changes will be saved to:',
       },
-      
+
       executor: {
         label: 'Executor',
         placeholder: 'Select executor',
         description: 'Choose which executor to configure MCP servers for.',
       },
-      
+
       notSupported: {
         title: 'MCP Not Supported',
-        description: 'To use MCP servers, please select a different executor (Claude, Amp, or Gemini) above.',
+        description:
+          'To use MCP servers, please select a different executor (Claude, Amp, or Gemini) above.',
       },
-      
+
       addVibeKanban: {
         button: 'Add Vibe-Kanban MCP',
         description: 'Automatically adds the Vibe-Kanban MCP server.',
       },
-      
+
       saveButton: {
         save: 'Save Settings',
         saved: 'Settings Saved!',
       },
-      
+
       errors: {
         failedToLoadConfiguration: 'Failed to load configuration.',
         configurationError: 'MCP Configuration Error: {error}',
-        ampConfiguration: 'AMP configuration must contain an "amp.mcpServers" object',
+        ampConfiguration:
+          'AMP configuration must contain an "amp.mcpServers" object',
         mcpConfiguration: 'Configuration must contain an "mcp" object',
-        mcpServersConfiguration: 'Configuration must contain an "mcpServers" object',
+        mcpServersConfiguration:
+          'Configuration must contain an "mcpServers" object',
         invalidJson: 'Invalid JSON format',
         failedToConfigure: 'Failed to configure vibe-kanban MCP server',
         failedToSave: 'Failed to save MCP servers',
         failedToApply: 'Failed to apply MCP server configuration',
       },
     },
-    
+
     // Task attempts and execution
     taskAttempt: {
       started: 'Started',
@@ -527,11 +577,12 @@ const translations = {
       merge: 'Merge',
       newAttempt: 'New Attempt',
       createAttempt: 'Create Attempt',
-      attemptDescription: 'Each time you start an attempt, a new session is initiated with your selected coding agent, and a git worktree and corresponding task branch are created.',
+      attemptDescription:
+        'Each time you start an attempt, a new session is initiated with your selected coding agent, and a git worktree and corresponding task branch are created.',
       codingAgent: 'Coding agent',
       start: 'Start',
     },
-    
+
     // Create attempt related translations
     createAttempt: {
       started: 'Started',
@@ -550,7 +601,8 @@ const translations = {
       clickToCopyPath: 'Click to copy worktree path',
       stopDev: 'Stop Dev',
       devServer: 'Dev Server',
-      addDevScriptToEnable: 'Add a dev server script in project settings to enable this feature',
+      addDevScriptToEnable:
+        'Add a dev server script in project settings to enable this feature',
       devServerLogs: 'Dev Server Logs (Last 10 lines):',
       stopRunningDevServer: 'Stop the running dev server',
       startDevServer: 'Start the dev server',
@@ -569,47 +621,56 @@ const translations = {
       stopAttempt: 'Stop Attempt',
       newAttempt: 'New Attempt',
       rebaseTaskAttempt: 'Rebase Task Attempt',
-      chooseNewBaseBranch: 'Choose a new base branch to rebase this task attempt onto.',
+      chooseNewBaseBranch:
+        'Choose a new base branch to rebase this task attempt onto.',
       selectBaseBranch: 'Select a base branch',
       stopCurrentAttempt: 'Stop Current Attempt?',
-      confirmStopExecution: 'Are you sure you want to stop the current execution? This action cannot be undone.',
+      confirmStopExecution:
+        'Are you sure you want to stop the current execution? This action cannot be undone.',
       stop: 'Stop',
     },
-    
+
     // Project creation
     projectCreation: {
       createProject: 'Create Project',
-      chooseRepoType: 'Choose whether to use an existing git repository or create a new one.',
+      chooseRepoType:
+        'Choose whether to use an existing git repository or create a new one.',
       repositoryType: 'Repository Type',
       useExistingRepo: 'Use existing repository',
       createNewRepo: 'Create new repository',
       gitRepoPath: 'Git Repository Path',
       gitRepoPathPlaceholder: '/path/to/your/existing/repo',
-      selectFolderDescription: 'Select a folder that already contains a git repository',
+      selectFolderDescription:
+        'Select a folder that already contains a git repository',
       parentDirectory: 'Parent Directory',
       parentDirectoryPlaceholder: '/path/to/parent/directory',
       chooseParentDescription: 'Choose where to create the new repository',
       repositoryFolderName: 'Repository Folder Name',
       folderNamePlaceholder: 'my-awesome-project',
-      folderNameDescription: 'The project name will be auto-populated from this folder name',
+      folderNameDescription:
+        'The project name will be auto-populated from this folder name',
       projectName: 'Project Name',
       projectNamePlaceholder: 'Enter project name',
       setupScript: 'Setup Script (Optional)',
-      setupScriptDescription: 'This script will run after creating the worktree and before the executor starts. Use it for setup tasks like installing dependencies or preparing the environment.',
+      setupScriptDescription:
+        'This script will run after creating the worktree and before the executor starts. Use it for setup tasks like installing dependencies or preparing the environment.',
       devServerScript: 'Dev Server Script (Optional)',
-      devServerScriptDescription: 'This script can be run from task attempts to start a development server. Use it to quickly start your project\'s dev server for testing changes.',
+      devServerScriptDescription:
+        "This script can be run from task attempts to start a development server. Use it to quickly start your project's dev server for testing changes.",
       cleanupScript: 'Cleanup Script (Optional)',
-      cleanupScriptDescription: 'This script will run after coding agent execution is complete. Use it for quality assurance tasks like running linters, formatters, tests, or other validation steps.',
+      cleanupScriptDescription:
+        'This script will run after coding agent execution is complete. Use it for quality assurance tasks like running linters, formatters, tests, or other validation steps.',
       cancel: 'Cancel',
       createProjectButton: 'Create Project',
       close: 'Close',
     },
-    
+
     // Git repository selection
     gitRepoSelection: {
       title: 'Select Git Repository',
       subtitle: 'Choose an existing git repository',
-      navigation: 'Click folder names to navigate • Use action buttons to select',
+      navigation:
+        'Click folder names to navigate • Use action buttons to select',
       enterPathManually: 'Enter path manually:',
       pathPlaceholder: '/path/to/your/project',
       go: 'Go',
@@ -620,7 +681,7 @@ const translations = {
       selectPath: 'Select Path',
       backToProjects: 'Back to Projects',
     },
-    
+
     // Project details
     projectDetails: {
       projectDetailsAndSettings: 'Project details and settings',
@@ -638,14 +699,14 @@ const translations = {
       createdAt: 'Created At',
       lastModified: 'Last Modified',
     },
-    
+
     // Coding agents
     codingAgent: {
       starting: 'Coding Agent Starting',
       initializingConversation: 'Initializing conversation...',
       noChangesDetected: 'No changes detected',
       noRelatedTasksFound: 'No related tasks found.',
-      noParentSubtasks: 'This task doesn\'t have any parent task or subtasks.',
+      noParentSubtasks: "This task doesn't have any parent task or subtasks.",
       continueWorking: 'Continue working on this task...',
       typeAtToSearch: 'Type @ to search files.',
       send: 'Send',
@@ -654,7 +715,8 @@ const translations = {
     // Create Attempt Component
     createAttemptComponent: {
       title: 'Create Attempt',
-      description: 'Each time you start an attempt, a new session is initiated with your selected coding agent, and a git worktree and corresponding task branch are created.',
+      description:
+        'Each time you start an attempt, a new session is initiated with your selected coding agent, and a git worktree and corresponding task branch are created.',
       baseBranch: 'Base branch',
       codingAgent: 'Coding agent',
       selectAgent: 'Select agent',
@@ -662,25 +724,30 @@ const translations = {
       start: 'Start',
       current: 'current',
       planRequired: 'Plan Required',
-      cannotStartAttempt: 'Cannot start attempt - no plan was generated in the last execution. Please generate a plan first.',
+      cannotStartAttempt:
+        'Cannot start attempt - no plan was generated in the last execution. Please generate a plan first.',
       planRequiredTooltip: 'Plan required before starting attempt',
       startNewAttemptTitle: 'Start New Attempt?',
-      startNewAttemptDescription: 'Are you sure you want to start a new attempt for this task? This will create a new session and branch.',
+      startNewAttemptDescription:
+        'Are you sure you want to start a new attempt for this task? This will create a new session and branch.',
       cancel: 'Cancel',
     },
 
     // GitHub Login Dialog
     githubLogin: {
       title: 'Sign in with GitHub',
-      description: 'Connect your GitHub account to create and manage pull requests directly from Vibe Kanban.',
+      description:
+        'Connect your GitHub account to create and manage pull requests directly from Vibe Kanban.',
       loading: 'Loading…',
       successfullyConnected: 'Successfully connected!',
       signedInAs: 'You are signed in as',
       completeAuthorization: 'Complete GitHub Authorization',
       goToGitHub: 'Go to GitHub Device Authorization',
       enterCode: 'Enter this code:',
-      codeWaitingMessage: 'Waiting for you to authorize this application on GitHub...',
-      codeCopiedMessage: 'Code copied to clipboard! Complete the authorization on GitHub.',
+      codeWaitingMessage:
+        'Waiting for you to authorize this application on GitHub...',
+      codeCopiedMessage:
+        'Code copied to clipboard! Complete the authorization on GitHub.',
       deviceCodeExpired: 'Device code expired. Please try again.',
       loginFailed: 'Login failed.',
       networkError: 'Network error',
@@ -688,14 +755,15 @@ const translations = {
       createPullRequests: 'Create pull requests',
       createPullRequestsDesc: 'Generate PRs directly from your task attempts',
       manageRepositories: 'Manage repositories',
-      manageRepositoriesDesc: 'Access your repos to push changes and create branches',
+      manageRepositoriesDesc:
+        'Access your repos to push changes and create branches',
       streamlineWorkflow: 'Streamline workflow',
       streamlineWorkflowDesc: 'Skip manual PR creation and focus on coding',
       signInWithGitHub: 'Sign in with GitHub',
       starting: 'Starting…',
     },
   },
-  
+
   'zh-TW': {
     // Navigation
     nav: {
@@ -705,7 +773,7 @@ const translations = {
       docs: '文檔',
       support: '支援',
     },
-    
+
     // Settings page
     settings: {
       title: '設定',
@@ -715,7 +783,7 @@ const translations = {
       saved: '✓ 設定儲存成功！',
       save: '儲存設定',
       saving: '設定已儲存！',
-      
+
       // Appearance settings
       appearance: {
         title: '外觀',
@@ -734,7 +802,7 @@ const translations = {
           red: '紅色',
         },
       },
-      
+
       // Language settings
       language: {
         title: '語言',
@@ -743,7 +811,7 @@ const translations = {
         languagePlaceholder: '選擇語言',
         languageDescription: '選擇您偏好的使用者介面語言。',
       },
-      
+
       // Task execution settings
       taskExecution: {
         title: '任務執行',
@@ -752,7 +820,7 @@ const translations = {
         executorPlaceholder: '選擇執行器',
         executorDescription: '選擇執行任務的預設執行器。',
       },
-      
+
       // Editor settings
       editor: {
         title: '編輯器',
@@ -762,25 +830,28 @@ const translations = {
         editorDescription: '選擇您偏好的程式碼編輯器來開啟任務嘗試。',
         customCommand: '自訂指令',
         customCommandPlaceholder: '例如：code, subl, vim',
-        customCommandDescription: '輸入執行自訂編輯器的指令。使用空格分隔參數（例如："code --wait"）。',
+        customCommandDescription:
+          '輸入執行自訂編輯器的指令。使用空格分隔參數（例如："code --wait"）。',
       },
-      
+
       // GitHub integration
       github: {
         title: 'GitHub 整合',
         subtitle: '配置 GitHub 設定以從任務嘗試建立拉取請求。',
         token: '個人存取權杖',
         tokenPlaceholder: 'ghp_xxxxxxxxxxxxxxxxxxxx',
-        tokenDescription: '具有 \'repo\' 權限的 GitHub 個人存取權杖。建立拉取請求時必需。',
+        tokenDescription:
+          "具有 'repo' 權限的 GitHub 個人存取權杖。建立拉取請求時必需。",
         createToken: '在此建立權杖',
         signedInAs: '登入身分',
         logOut: '登出',
         signIn: '使用 GitHub 登入',
         defaultPrBase: '預設 PR 基底分支',
         defaultPrBasePlaceholder: 'main',
-        defaultPrBaseDescription: '拉取請求的預設基底分支。如果未指定，預設為 \'main\'。',
+        defaultPrBaseDescription:
+          "拉取請求的預設基底分支。如果未指定，預設為 'main'。",
       },
-      
+
       // Notification settings
       notifications: {
         title: '通知',
@@ -793,21 +864,22 @@ const translations = {
         pushNotifications: '推播通知',
         pushNotificationsDescription: '任務嘗試完成執行時顯示系統通知。',
       },
-      
+
       // Privacy settings
       privacy: {
         title: '隱私',
         subtitle: '透過分享匿名使用資料幫助改善 Vibe-Kanban。',
         enableTelemetry: '啟用使用統計',
-        telemetryDescription: '啟用匿名使用事件追蹤以幫助改善應用程式。不會收集提示或專案資訊。',
+        telemetryDescription:
+          '啟用匿名使用事件追蹤以幫助改善應用程式。不會收集提示或專案資訊。',
       },
-      
+
       // Task templates
       taskTemplates: {
         title: '任務模板',
         subtitle: '管理可在所有專案中使用的全域任務模板。',
       },
-      
+
       // Security and disclaimer
       safety: {
         title: '安全性與免責聲明',
@@ -826,10 +898,11 @@ const translations = {
         telemetryAcknowledged: '您已確認使用統計通知。',
         telemetryNotAcknowledged: '尚未確認使用統計通知。',
         resetAcknowledgment: '重設確認',
-        resetAcknowledgmentDescription: '重設確認將要求您再次確認使用統計通知。',
+        resetAcknowledgmentDescription:
+          '重設確認將要求您再次確認使用統計通知。',
       },
     },
-    
+
     // Project management
     projects: {
       title: '專案',
@@ -840,7 +913,7 @@ const translations = {
       noProjectsDescription: '開始建立您的第一個專案吧。',
       loading: '載入專案中...',
       failed: '載入專案失敗',
-      
+
       // Project form
       form: {
         title: '建立專案',
@@ -865,7 +938,7 @@ const translations = {
         saveChanges: '儲存變更',
         editDescription: '在這裡修改您的專案設定。完成後點擊儲存。',
       },
-      
+
       // Project card
       card: {
         edit: '編輯',
@@ -878,7 +951,7 @@ const translations = {
         active: '啟用中',
       },
     },
-    
+
     // Task management
     tasks: {
       title: '任務',
@@ -889,7 +962,7 @@ const translations = {
       noTasksDescription: '開始建立您的第一個任務吧。',
       loading: '載入任務中...',
       failed: '載入任務失敗',
-      
+
       // Task page
       addTask: '新增任務',
       searchTasks: '搜尋任務...',
@@ -901,7 +974,7 @@ const translations = {
       noTasksFound: '找不到此專案的任務。',
       createFirstTask: '建立第一個任務',
       done: '完成',
-      
+
       // Error messages
       failedCreateTask: '建立任務失敗',
       failedCreateAndStartTask: '建立並啟動任務失敗',
@@ -911,7 +984,7 @@ const translations = {
       failedOpenIDE: '在編輯器中開啟專案失敗',
       failedLoadProject: '載入專案失敗',
       failedLoadTasks: '載入任務失敗',
-      
+
       // Task status
       status: {
         todo: '待辦',
@@ -920,7 +993,7 @@ const translations = {
         done: '已完成',
         cancelled: '已取消',
       },
-      
+
       // Task form
       form: {
         title: '建立任務',
@@ -940,7 +1013,7 @@ const translations = {
         creating: '建立中...',
         updating: '更新中...',
         starting: '啟動中...',
-        
+
         // Task form dialog
         createNewTask: '建立新任務',
         editTask: '編輯任務',
@@ -953,13 +1026,14 @@ const translations = {
         templateHelp: '模板可幫助您快速建立具有預定義內容的任務。',
         chooseTemplate: '選擇模板來預填此表單',
         noTemplate: '無模板',
-        
+
         // Plan related
         planRequired: '需要計劃',
-        planRequiredMessage: '上次執行嘗試中未生成計劃。在有計劃可用之前，任務建立功能已停用。請先生成計劃。',
+        planRequiredMessage:
+          '上次執行嘗試中未生成計劃。在有計劃可用之前，任務建立功能已停用。請先生成計劃。',
         planRequiredTooltip: '建立任務前需要計劃',
         planRequiredStartTooltip: '建立並啟動任務前需要計劃',
-        
+
         // Button text
         updateTask: '更新任務',
         createTask: '建立任務',
@@ -968,7 +1042,7 @@ const translations = {
         updatingTask: '更新中...',
         creatingAndStarting: '建立並啟動中...',
       },
-      
+
       // Task operations
       actions: {
         start: '開始',
@@ -980,9 +1054,7 @@ const translations = {
         confirmDelete: '您確定要刪除此任務嗎？此操作無法復原。',
       },
     },
-    
-    
-    
+
     // Common UI
     common: {
       save: '儲存',
@@ -1007,25 +1079,28 @@ const translations = {
       no: '否',
       general: '一般',
     },
-    
+
     // Privacy choice dialog
     privacyOptIn: {
       title: '意見回饋選擇',
-      description: '透過分享使用資料並允許我們在需要時聯繫您，幫助我們改善 Vibe Kanban。',
+      description:
+        '透過分享使用資料並允許我們在需要時聯繫您，幫助我們改善 Vibe Kanban。',
       whatDataCollect: '我們收集哪些資料？',
       githubProfile: 'GitHub 個人資料資訊',
-      githubProfileDesc: '使用者名稱和電子郵件地址，僅用於發送專案的重要更新。我們承諾不會濫用此資訊',
+      githubProfileDesc:
+        '使用者名稱和電子郵件地址，僅用於發送專案的重要更新。我們承諾不會濫用此資訊',
       usageMetrics: '高階使用統計',
       usageMetricsDesc: '建立的任務數量、管理的專案數量、功能使用情況',
       performanceData: '效能和錯誤資料',
       performanceDataDesc: '應用程式崩潰、回應時間、技術問題',
       doNotCollect: '我們不會收集',
       doNotCollectDesc: '任務內容、程式碼片段、專案名稱或其他個人資料',
-      settingsNote: '這有助於我們優先安排改進項目。您可以隨時在設定中變更此偏好設定。',
+      settingsNote:
+        '這有助於我們優先安排改進項目。您可以隨時在設定中變更此偏好設定。',
       noThanks: '不用了，謝謝',
       yesHelp: '是的，幫助改善 Vibe Kanban',
     },
-    
+
     // Task details
     taskDetails: {
       title: '任務詳情',
@@ -1064,7 +1139,7 @@ const translations = {
         failedToLoad: '載入流程詳情失敗。請重試。',
       },
     },
-    
+
     // Security warning dialog
     disclaimer: {
       title: '重要安全警告',
@@ -1085,14 +1160,16 @@ const translations = {
         backups: '使用此軟體前，您應妥善備份重要資料',
         consequences: '您了解授予無限制系統存取權限的潛在後果',
       },
-      checkboxLabel: '我理解並確認上述描述的風險。我知道程式碼代理擁有我電腦的完整存取權限，可能造成災難性損害。',
+      checkboxLabel:
+        '我理解並確認上述描述的風險。我知道程式碼代理擁有我電腦的完整存取權限，可能造成災難性損害。',
       acceptButton: '我接受風險並希望繼續',
     },
-    
+
     // Welcome setup dialog
     onboarding: {
       title: '歡迎使用 Vibe Kanban',
-      description: '讓我們設定您的程式開發偏好。您隨時可以在設定中變更這些選項。',
+      description:
+        '讓我們設定您的程式開發偏好。您隨時可以在設定中變更這些選項。',
       codingAgent: {
         title: '選擇您的程式碼代理',
         label: '預設執行器',
@@ -1113,11 +1190,12 @@ const translations = {
         description: '此編輯器將用於開啟任務嘗試和專案檔案。',
         customCommand: '自訂指令',
         customPlaceholder: '例如：code, subl, vim',
-        customDescription: '輸入執行自訂編輯器的指令。使用空格分隔參數（例如："code --wait"）。',
+        customDescription:
+          '輸入執行自訂編輯器的指令。使用空格分隔參數（例如："code --wait"）。',
       },
       continueButton: '繼續',
     },
-    
+
     // Task template manager
     templateManager: {
       title: '任務模板',
@@ -1148,45 +1226,48 @@ const translations = {
         failedToSave: '儲存模板失敗',
       },
     },
-    
+
     // MCP server configuration
     mcpServers: {
       title: 'MCP 伺服器',
       subtitle: '配置 MCP 伺服器以擴展執行器功能。',
       successMessage: '✓ MCP 配置儲存成功！',
-      
+
       configuration: {
         title: '配置',
-        description: '為不同的執行器配置 MCP 伺服器，以透過自訂工具和資源擴展其功能。',
+        description:
+          '為不同的執行器配置 MCP 伺服器，以透過自訂工具和資源擴展其功能。',
         label: 'MCP 伺服器配置',
-        placeholder: '{\n  "server-name": {\n    "type": "stdio",\n    "command": "your-command",\n    "args": ["arg1", "arg2"]\n  }\n}',
+        placeholder:
+          '{\n  "server-name": {\n    "type": "stdio",\n    "command": "your-command",\n    "args": ["arg1", "arg2"]\n  }\n}',
         loadingPlaceholder: '載入當前配置中...',
         loading: '載入中...',
         loadingText: '載入當前 MCP 伺服器配置中...',
         saveLocation: '變更將儲存至：',
       },
-      
+
       executor: {
         label: '執行器',
         placeholder: '選擇執行器',
         description: '選擇要為其配置 MCP 伺服器的執行器。',
       },
-      
+
       notSupported: {
         title: '不支援 MCP',
-        description: '要使用 MCP 伺服器，請選擇上方的不同執行器（Claude、Amp 或 Gemini）。',
+        description:
+          '要使用 MCP 伺服器，請選擇上方的不同執行器（Claude、Amp 或 Gemini）。',
       },
-      
+
       addVibeKanban: {
         button: '新增 Vibe-Kanban MCP',
         description: '自動新增 Vibe-Kanban MCP 伺服器。',
       },
-      
+
       saveButton: {
         save: '儲存設定',
         saved: '設定已儲存！',
       },
-      
+
       errors: {
         failedToLoadConfiguration: '載入配置失敗。',
         configurationError: 'MCP 配置錯誤：{error}',
@@ -1199,7 +1280,7 @@ const translations = {
         failedToApply: '應用 MCP 伺服器配置失敗',
       },
     },
-    
+
     // Task attempts and execution
     taskAttempt: {
       started: '已開始',
@@ -1216,11 +1297,12 @@ const translations = {
       merge: '合併',
       newAttempt: '新嘗試',
       createAttempt: '建立嘗試',
-      attemptDescription: '每次開始嘗試時，都會啟動一個新的會話與您選擇的程式碼代理，並建立一個 git worktree 和對應的任務分支。',
+      attemptDescription:
+        '每次開始嘗試時，都會啟動一個新的會話與您選擇的程式碼代理，並建立一個 git worktree 和對應的任務分支。',
       codingAgent: '程式碼代理',
       start: '開始',
     },
-    
+
     // Create attempt related translations
     createAttempt: {
       started: '已開始',
@@ -1264,7 +1346,7 @@ const translations = {
       confirmStopExecution: '您確定要停止目前的執行嗎？此動作無法復原。',
       stop: '停止',
     },
-    
+
     // Project creation
     projectCreation: {
       createProject: '建立專案',
@@ -1284,16 +1366,19 @@ const translations = {
       projectName: '專案名稱',
       projectNamePlaceholder: '輸入專案名稱',
       setupScript: '設定腳本（選填）',
-      setupScriptDescription: '此腳本將在建立 worktree 之後和執行器啟動之前執行。用於設定任務，如安裝依賴或準備環境。',
+      setupScriptDescription:
+        '此腳本將在建立 worktree 之後和執行器啟動之前執行。用於設定任務，如安裝依賴或準備環境。',
       devServerScript: '開發伺服器腳本（選填）',
-      devServerScriptDescription: '此腳本可從任務嘗試中執行以啟動開發伺服器。用於快速啟動專案的開發伺服器以測試變更。',
+      devServerScriptDescription:
+        '此腳本可從任務嘗試中執行以啟動開發伺服器。用於快速啟動專案的開發伺服器以測試變更。',
       cleanupScript: '清理腳本（選填）',
-      cleanupScriptDescription: '此腳本將在程式碼代理執行完成後執行。用於品質保證任務，如執行檢查器、格式化器、測試或其他驗證步驟。',
+      cleanupScriptDescription:
+        '此腳本將在程式碼代理執行完成後執行。用於品質保證任務，如執行檢查器、格式化器、測試或其他驗證步驟。',
       cancel: '取消',
       createProjectButton: '建立專案',
       close: '關閉',
     },
-    
+
     // Git repository selection
     gitRepoSelection: {
       title: '選擇 Git 存放庫',
@@ -1309,7 +1394,7 @@ const translations = {
       selectPath: '選擇路徑',
       backToProjects: '返回專案',
     },
-    
+
     // Project details
     projectDetails: {
       projectDetailsAndSettings: '專案詳情和設定',
@@ -1327,7 +1412,7 @@ const translations = {
       createdAt: '建立時間',
       lastModified: '最後修改',
     },
-    
+
     // Coding agent related
     codingAgent: {
       starting: 'Coding Agent 啟動中',
@@ -1337,18 +1422,18 @@ const translations = {
       failedMessage: 'Coding Agent 遇到錯誤。',
       stoppedMessage: 'Coding Agent 已被停止。',
     },
-    
+
     // Diff related
     diff: {
       noChangesDetected: '未偵測到變更',
     },
-    
+
     // Related tasks
     relatedTasks: {
       noRelatedTasksFound: '未找到相關任務。',
       noParentOrSubtasks: '此任務沒有任何父任務或子任務。',
     },
-    
+
     // Task follow-up
     taskFollowUp: {
       placeholder: '繼續處理此任務... 輸入 @ 搜尋檔案。',
@@ -1358,7 +1443,8 @@ const translations = {
     // Create Attempt Component
     createAttemptComponent: {
       title: '建立嘗試',
-      description: '每次開始嘗試時，都會啟動一個新的會話與您選擇的程式碼代理，並建立一個 git worktree 和對應的任務分支。',
+      description:
+        '每次開始嘗試時，都會啟動一個新的會話與您選擇的程式碼代理，並建立一個 git worktree 和對應的任務分支。',
       baseBranch: '基底分支',
       codingAgent: '程式碼代理',
       selectAgent: '選擇代理',
@@ -1369,14 +1455,16 @@ const translations = {
       cannotStartAttempt: '無法開始嘗試 - 上次執行中未產生計劃。請先產生計劃。',
       planRequiredTooltip: '開始嘗試前需要計劃',
       startNewAttemptTitle: '開始新嘗試？',
-      startNewAttemptDescription: '您確定要為此任務開始新嘗試嗎？這將建立新的會話和分支。',
+      startNewAttemptDescription:
+        '您確定要為此任務開始新嘗試嗎？這將建立新的會話和分支。',
       cancel: '取消',
     },
 
     // GitHub Login Dialog
     githubLogin: {
       title: '使用 GitHub 登入',
-      description: '連接您的 GitHub 帳戶，直接從 Vibe Kanban 建立和管理拉取請求。',
+      description:
+        '連接您的 GitHub 帳戶，直接從 Vibe Kanban 建立和管理拉取請求。',
       loading: '載入中…',
       successfullyConnected: '連接成功！',
       signedInAs: '您已登入為',
@@ -1417,62 +1505,78 @@ export function setLanguage(language: Language) {
   if (typeof window !== 'undefined') {
     localStorage.setItem('language', language);
     // Trigger custom event to notify language change
-    window.dispatchEvent(new CustomEvent('languageChange', { detail: language }));
+    window.dispatchEvent(
+      new CustomEvent('languageChange', { detail: language })
+    );
   }
 }
 
 // Get translation
 export function useTranslation() {
-  const [currentLanguage, setCurrentLanguage] = useState<Language>(getCurrentLanguage());
-  
+  const [currentLanguage, setCurrentLanguage] =
+    useState<Language>(getCurrentLanguage());
+
   useEffect(() => {
     const handleLanguageChange = (event: CustomEvent<Language>) => {
       setCurrentLanguage(event.detail);
     };
-    
-    window.addEventListener('languageChange', handleLanguageChange as EventListener);
+
+    window.addEventListener(
+      'languageChange',
+      handleLanguageChange as EventListener
+    );
     return () => {
-      window.removeEventListener('languageChange', handleLanguageChange as EventListener);
+      window.removeEventListener(
+        'languageChange',
+        handleLanguageChange as EventListener
+      );
     };
   }, []);
-  
-  const t = useCallback((key: string, params?: Record<string, string>) => {
-    const keys = key.split('.');
-    let value: any = translations[currentLanguage];
-    
-    for (const k of keys) {
-      if (value && typeof value === 'object' && k in value) {
-        value = value[k];
-      } else {
-        // If translation not found, fallback to English
-        value = translations.en;
-        for (const fallbackK of keys) {
-          if (value && typeof value === 'object' && fallbackK in value) {
-            value = value[fallbackK];
-          } else {
-            return key; // If English translation doesn't exist either, return key
+
+  const t = useCallback(
+    (key: string, params?: Record<string, string>) => {
+      const keys = key.split('.');
+      let value: any = translations[currentLanguage];
+
+      for (const k of keys) {
+        if (value && typeof value === 'object' && k in value) {
+          value = value[k];
+        } else {
+          // If translation not found, fallback to English
+          value = translations.en;
+          for (const fallbackK of keys) {
+            if (value && typeof value === 'object' && fallbackK in value) {
+              value = value[fallbackK];
+            } else {
+              return key; // If English translation doesn't exist either, return key
+            }
           }
+          break;
         }
-        break;
       }
-    }
-    
-    let result = typeof value === 'string' ? value : key;
-    
-    // Handle parameter substitution
-    if (params && typeof result === 'string') {
-      Object.entries(params).forEach(([paramKey, paramValue]) => {
-        result = result.replace(new RegExp(`{${paramKey}}`, 'g'), paramValue);
-      });
-    }
-    
-    return result;
-  }, [currentLanguage]);
-  
-  return { t, currentLanguage, setLanguage: (lang: Language) => {
-    setLanguage(lang);
-    setCurrentLanguage(lang);
-  }};
+
+      let result = typeof value === 'string' ? value : key;
+
+      // Handle parameter substitution
+      if (params && typeof result === 'string') {
+        Object.entries(params).forEach(([paramKey, paramValue]) => {
+          result = result.replace(new RegExp(`{${paramKey}}`, 'g'), paramValue);
+        });
+      }
+
+      return result;
+    },
+    [currentLanguage]
+  );
+
+  return {
+    t,
+    currentLanguage,
+    setLanguage: (lang: Language) => {
+      setLanguage(lang);
+      setCurrentLanguage(lang);
+    },
+  };
 }
 
 // React Hook
