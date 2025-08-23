@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { Navbar } from '@/components/layout/navbar';
-import { ProjectLayout } from '@/components/layout/project-layout';
 import { Projects } from '@/pages/projects';
 import { ProjectTasks } from '@/pages/project-tasks';
 import { TaskDetailsPage } from '@/pages/task-details';
@@ -167,29 +166,11 @@ function AppContent() {
               <Route path="/" element={<Projects />} />
               <Route path="/projects" element={<Projects />} />
               <Route path="/projects/:projectId" element={<Projects />} />
-              <Route path="/projects/:projectId/*" element={<ProjectLayout />}>
-                <Route
-                  path="tasks"
-                  element={<ProjectTasks />}
-                />
-                <Route
-                  path="tasks/:taskId/full"
-                  element={<TaskDetailsPage />}
-                />
-                <Route
-                  path="tasks/:taskId/attempts/:attemptId/full"
-                  element={<TaskDetailsPage />}
-                />
-                <Route
-                  path="tasks/:taskId/attempts/:attemptId"
-                  element={<ProjectTasks />}
-                />
-                <Route
-                  path="tasks/:taskId"
-                  element={<ProjectTasks />}
-                />
-              </Route>
-
+              <Route path="/projects/:projectId/tasks" element={<ProjectTasks />} />
+              <Route path="/projects/:projectId/tasks/:taskId/full" element={<TaskDetailsPage />} />
+              <Route path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full" element={<TaskDetailsPage />} />
+              <Route path="/projects/:projectId/tasks/:taskId/attempts/:attemptId" element={<ProjectTasks />} />
+              <Route path="/projects/:projectId/tasks/:taskId" element={<ProjectTasks />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/mcp-servers" element={<McpServers />} />
             </SentryRoutes>
