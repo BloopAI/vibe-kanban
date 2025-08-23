@@ -43,7 +43,7 @@ export const KanbanBoard = ({ id, children, className }: KanbanBoardProps) => {
     <div
       className={cn(
         'flex h-full min-h-40 flex-col bg-secondary',
-        isOver ? 'outline-primary' : 'outline-transparent',
+        isOver ? 'outline-primary' : 'outline-black',
         className
       )}
       ref={setNodeRef}
@@ -106,6 +106,11 @@ export const KanbanCard = ({
       tabIndex={tabIndex}
       onClick={onClick}
       onKeyDown={onKeyDown}
+      style={{
+        transform: transform
+          ? `translateX(${transform.x}px) translateY(${transform.y}px)`
+          : 'none',
+      }}
     >
       {children ?? <p className="m-0 font-medium text-sm">{name}</p>}
     </Card>
@@ -135,10 +140,10 @@ export const KanbanHeader = (props: KanbanHeaderProps) =>
   'children' in props ? (
     props.children
   ) : (
-    <Card className={cn('flex shrink-0 items-center gap-2 p-3 border-b', props.className)}>
+    <Card className={cn('flex shrink-0 items-center gap-2 p-3 border-b border-dashed', props.className)} style={{ backgroundColor: `hsl(var(${props.color}) / 0.03)` }}>
       <div
         className="h-2 w-2 rounded-full"
-        style={{ backgroundColor: props.color }}
+        style={{ backgroundColor: `hsl(var(${props.color}))` }}
       />
       <p className="m-0 text-sm">{props.name}</p>
     </Card>

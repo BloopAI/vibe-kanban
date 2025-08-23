@@ -43,11 +43,11 @@ const statusLabels: Record<TaskStatus, string> = {
 };
 
 const statusBoardColors: Record<TaskStatus, string> = {
-  todo: 'hsl(var(--neutral-foreground))',
-  inprogress: 'hsl(var(--info))',
-  inreview: 'hsl(var(--warning))',
-  done: 'hsl(var(--success))',
-  cancelled: 'hsl(var(--destructive))',
+  todo: '--neutral-foreground',
+  inprogress: '--info',
+  inreview: '--warning',
+  done: '--success',
+  cancelled: '--destructive',
 };
 
 function TaskKanbanBoard({

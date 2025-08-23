@@ -16,6 +16,7 @@ import {
   Menu,
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
+import { SearchBar } from '@/components/search-bar';
 
 const INTERNAL_NAV = [
   { label: 'Projects', icon: FolderOpen, to: '/projects' },
@@ -39,12 +40,14 @@ const EXTERNAL_LINKS = [
 export function Navbar() {
   const location = useLocation();
   return (
-    <div className="border-b">
+    <div className="border-b bg-secondary">
       <div className="w-full px-3">
-        <div className="flex items-center justify-between h-10">
+        <div className="flex items-center h-12 py-2">
           <Link to="/projects">
             <Logo />
           </Link>
+
+          <SearchBar className="hidden sm:flex mx-auto" />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
