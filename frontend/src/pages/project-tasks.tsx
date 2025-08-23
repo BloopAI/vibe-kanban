@@ -2,21 +2,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { FolderOpen, Plus, Settings, LibraryBig, Globe2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
-import { projectsApi, tasksApi, templatesApi } from '@/lib/api';
+import { projectsApi, tasksApi } from '@/lib/api';
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
 import { ProjectForm } from '@/components/projects/project-form';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
+import { useSearch } from '@/contexts/search-context';
+
 import {
   Dialog,
   DialogContent,
@@ -56,8 +50,7 @@ export function ProjectTasks() {
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isProjectSettingsOpen, setIsProjectSettingsOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
+  const { query: searchQuery } = useSearch();
   const [selectedTemplate, setSelectedTemplate] = useState<TaskTemplate | null>(
     null
   );
@@ -76,26 +69,12 @@ export function ProjectTasks() {
     setIsTaskDialogOpen(true);
   }, []);
 
-  // Handle template selection
-  const handleTemplateSelect = useCallback((template: TaskTemplate) => {
-    setEditingTask(null);
-    setSelectedTemplate(template);
-    setIsTaskDialogOpen(true);
-  }, []);
+
 
   // Full screen
   const [fullScreenTaskDetails, setFullScreenTaskDetails] = useState(false);
 
-  const handleOpenInIDE = useCallback(async () => {
-    if (!projectId) return;
 
-    try {
-      await projectsApi.openEditor(projectId);
-    } catch (error) {
-      console.error('Failed to open project in IDE:', error);
-      setError('Failed to open project in IDE');
-    }
-  }, [projectId]);
 
   const fetchProject = useCallback(async () => {
     try {
@@ -106,31 +85,13 @@ export function ProjectTasks() {
     }
   }, [projectId]);
 
-  const fetchTemplates = useCallback(async () => {
-    if (!projectId) return;
 
-    try {
-      const [projectTemplates, globalTemplates] = await Promise.all([
-        templatesApi.listByProject(projectId),
-        templatesApi.listGlobal(),
-      ]);
 
-      // Combine templates with project templates first
-      setTemplates([...projectTemplates, ...globalTemplates]);
-    } catch (err) {
-      console.error('Failed to fetch templates:', err);
-    }
-  }, [projectId]);
 
-  // Template management handlers
-  const handleOpenTemplateManager = useCallback(() => {
-    setIsTemplateManagerOpen(true);
-  }, []);
 
   const handleCloseTemplateManager = useCallback(() => {
     setIsTemplateManagerOpen(false);
-    fetchTemplates(); // Refresh templates list when closing
-  }, [fetchTemplates]);
+  }, []);
 
   const fetchTasks = useCallback(
     async (skipLoading = false) => {
@@ -338,7 +299,6 @@ export function ProjectTasks() {
     if (projectId) {
       fetchProject();
       fetchTasks();
-      fetchTemplates();
 
       // Set up polling to refresh tasks every 5 seconds
       const interval = setInterval(() => {

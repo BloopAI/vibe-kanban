@@ -79,7 +79,7 @@ export function TaskCard({
         <div className="flex items-start justify-between">
           <div className="flex-1 pr-2">
             <div className="mb-1">
-              <h4 className="font-medium text-sm break-words">{task.title}</h4>
+              <h4 className="font-light text-sm break-words">{task.title}</h4>
             </div>
           </div>
           <div className="flex items-center space-x-1">

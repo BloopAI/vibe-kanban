@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { Navbar } from '@/components/layout/navbar';
+import { ProjectLayout } from '@/components/layout/project-layout';
 import { Projects } from '@/pages/projects';
 import { ProjectTasks } from '@/pages/project-tasks';
 import { TaskDetailsPage } from '@/pages/task-details';
@@ -12,6 +13,7 @@ import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { PrivacyOptInDialog } from '@/components/PrivacyOptInDialog';
 import { ConfigProvider, useConfig } from '@/components/config-provider';
 import { ThemeProvider } from '@/components/theme-provider';
+import { SearchProvider } from '@/contexts/search-context';
 import type { EditorType, ProfileVariantLabel } from 'shared/types';
 import { ThemeMode } from 'shared/types';
 import { configApi } from '@/lib/api';
@@ -139,57 +141,61 @@ function AppContent() {
   return (
     <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
       <AppWithStyleOverride>
-        <div className="h-screen flex flex-col bg-background">
-          {/* Custom context menu and VS Code-friendly interactions when embedded in iframe */}
-          <WebviewContextMenu />
-          <GitHubLoginDialog
-            open={showGitHubLogin}
-            onOpenChange={handleGitHubLoginComplete}
-          />
-          <DisclaimerDialog
-            open={showDisclaimer}
-            onAccept={handleDisclaimerAccept}
-          />
-          <OnboardingDialog
-            open={showOnboarding}
-            onComplete={handleOnboardingComplete}
-          />
-          <PrivacyOptInDialog
-            open={showPrivacyOptIn}
-            onComplete={handlePrivacyOptInComplete}
-          />
-          {showNavbar && <Navbar />}
-          <div className="flex-1 overflow-y-scroll">
+        <SearchProvider>
+          <div className="h-screen flex flex-col bg-background">
+            {/* Custom context menu and VS Code-friendly interactions when embedded in iframe */}
+            <WebviewContextMenu />
+            <GitHubLoginDialog
+              open={showGitHubLogin}
+              onOpenChange={handleGitHubLoginComplete}
+            />
+            <DisclaimerDialog
+              open={showDisclaimer}
+              onAccept={handleDisclaimerAccept}
+            />
+            <OnboardingDialog
+              open={showOnboarding}
+              onComplete={handleOnboardingComplete}
+            />
+            <PrivacyOptInDialog
+              open={showPrivacyOptIn}
+              onComplete={handlePrivacyOptInComplete}
+            />
+            {showNavbar && <Navbar />}
+            <div className="flex-1 overflow-y-scroll">
             <SentryRoutes>
               <Route path="/" element={<Projects />} />
               <Route path="/projects" element={<Projects />} />
               <Route path="/projects/:projectId" element={<Projects />} />
-              <Route
-                path="/projects/:projectId/tasks"
-                element={<ProjectTasks />}
-              />
-              <Route
-                path="/projects/:projectId/tasks/:taskId/full"
-                element={<TaskDetailsPage />}
-              />
-              <Route
-                path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
-                element={<TaskDetailsPage />}
-              />
-              <Route
-                path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
-                element={<ProjectTasks />}
-              />
-              <Route
-                path="/projects/:projectId/tasks/:taskId"
-                element={<ProjectTasks />}
-              />
+              <Route path="/projects/:projectId/*" element={<ProjectLayout />}>
+                <Route
+                  path="tasks"
+                  element={<ProjectTasks />}
+                />
+                <Route
+                  path="tasks/:taskId/full"
+                  element={<TaskDetailsPage />}
+                />
+                <Route
+                  path="tasks/:taskId/attempts/:attemptId/full"
+                  element={<TaskDetailsPage />}
+                />
+                <Route
+                  path="tasks/:taskId/attempts/:attemptId"
+                  element={<ProjectTasks />}
+                />
+                <Route
+                  path="tasks/:taskId"
+                  element={<ProjectTasks />}
+                />
+              </Route>
 
               <Route path="/settings" element={<Settings />} />
               <Route path="/mcp-servers" element={<McpServers />} />
             </SentryRoutes>
+            </div>
           </div>
-        </div>
+        </SearchProvider>
       </AppWithStyleOverride>
     </ThemeProvider>
   );

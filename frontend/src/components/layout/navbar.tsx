@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { SearchBar } from '@/components/search-bar';
+import { useSearch } from '@/contexts/search-context';
 
 const INTERNAL_NAV = [
   { label: 'Projects', icon: FolderOpen, to: '/projects' },
@@ -39,6 +40,8 @@ const EXTERNAL_LINKS = [
 
 export function Navbar() {
   const location = useLocation();
+  const { query, setQuery, active, clear } = useSearch();
+
   return (
     <div className="border-b bg-secondary">
       <div className="w-full px-3">
@@ -47,7 +50,13 @@ export function Navbar() {
             <Logo />
           </Link>
 
-          <SearchBar className="hidden sm:flex mx-auto" />
+          <SearchBar 
+            className="hidden sm:flex mx-auto" 
+            value={query}
+            onChange={setQuery}
+            disabled={!active}
+            onClear={clear}
+          />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
