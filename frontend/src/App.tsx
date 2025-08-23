@@ -19,7 +19,6 @@ import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
 import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
 import { AppWithStyleOverride } from '@/utils/style-override';
-import { FullscreenHeaderProvider } from '@/contexts/FullscreenHeaderContext';
 import { WebviewContextMenu } from '@/vscode/ContextMenu';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
@@ -200,9 +199,7 @@ function App() {
   return (
     <BrowserRouter>
       <ConfigProvider>
-        <FullscreenHeaderProvider>
-          <AppContent />
-        </FullscreenHeaderProvider>
+        <AppContent />
       </ConfigProvider>
     </BrowserRouter>
   );

@@ -14,11 +14,9 @@ import ProcessesTab from '@/components/tasks/TaskDetails/ProcessesTab.tsx';
 import DeleteFileConfirmationDialog from '@/components/tasks/DeleteFileConfirmationDialog.tsx';
 import CreatePRDialog from '@/components/tasks/Toolbar/CreatePRDialog';
 import TabNavigation from '@/components/tasks/TaskDetails/TabNavigation.tsx';
-import { TaskAttemptActions } from '@/components/tasks/TaskAttemptActions';
 import TaskDetailsProvider from '../context/TaskDetailsContextProvider.tsx';
 import TaskDetailsToolbar from './TaskDetailsToolbar.tsx';
 import TodoPanel from '@/components/tasks/TodoPanel';
-import { Edit, Trash2 } from 'lucide-react';
 import { TabNavContext } from '@/contexts/TabNavigationContext';
 import { ProcessSelectionProvider } from '@/contexts/ProcessSelectionContext';
 import { projectsApi } from '@/lib/api';
@@ -36,7 +34,7 @@ interface TaskDetailsPanelProps {
   className?: string;
   hideHeader?: boolean;
   isFullScreen?: boolean;
-  onToggleFullScreen?: () => void;
+  setFullScreen?: (value: boolean) => void;
   forceCreateAttempt?: boolean;
   onLeaveForceCreateAttempt?: () => void;
   onNewAttempt?: () => void;
@@ -52,12 +50,10 @@ export function TaskDetailsPanel({
   isDialogOpen = false,
   hideBackdrop = false,
   className,
-  hideHeader = false,
-  isFullScreen = false,
-  onToggleFullScreen,
+  isFullScreen,
+  setFullScreen,
   forceCreateAttempt,
   onLeaveForceCreateAttempt,
-  onNewAttempt,
 }: TaskDetailsPanelProps) {
   const [showEditorDialog, setShowEditorDialog] = useState(false);
   const [showCreatePRDialog, setShowCreatePRDialog] = useState(false);
@@ -118,22 +114,27 @@ export function TaskDetailsPanel({
             <ProcessSelectionProvider>
               {/* Backdrop - only on smaller screens (overlay mode) */}
               {!hideBackdrop && (
-                <div className={getBackdropClasses()} onClick={onClose} />
+                <div
+                  className={getBackdropClasses(isFullScreen || false)}
+                  onClick={onClose}
+                />
               )}
 
               {/* Panel */}
-              <div className={className || getTaskPanelClasses()}>
+              <div
+                className={
+                  className || getTaskPanelClasses(isFullScreen || false)
+                }
+              >
                 <div className="flex flex-col h-full">
-                  {!hideHeader && (
-                    <TaskDetailsHeader
-                      onClose={onClose}
-                      onEditTask={onEditTask}
-                      onDeleteTask={onDeleteTask}
-                      hideCloseButton={hideBackdrop}
-                      isFullScreen={isFullScreen}
-                      onToggleFullScreen={onToggleFullScreen}
-                    />
-                  )}
+                  <TaskDetailsHeader
+                    onClose={onClose}
+                    onEditTask={onEditTask}
+                    onDeleteTask={onDeleteTask}
+                    hideCloseButton={hideBackdrop}
+                    isFullScreen={isFullScreen}
+                    setFullScreen={setFullScreen}
+                  />
 
                   {isFullScreen ? (
                     <div className="flex-1 min-h-0 flex">
@@ -151,48 +152,13 @@ export function TaskDetailsPanel({
                               <p className="italic">No description provided</p>
                             )}
                           </div>
-                          {/* Edit/Delete actions under description */}
-                          <div className="block">
-                            {(onEditTask || onDeleteTask) && (
-                              <div className="flex items-center gap-1">
-                                {onEditTask && (
-                                  <button
-                                    className="inline-flex items-center h-8 w-8 justify-center rounded-md hover:bg-accent"
-                                    onClick={() => onEditTask(task)}
-                                    title="Edit task"
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </button>
-                                )}
-                                {onDeleteTask && (
-                                  <button
-                                    className="inline-flex items-center h-8 w-8 justify-center rounded-md hover:bg-accent"
-                                    onClick={() => onDeleteTask(task.id)}
-                                    title="Delete task"
-                                  >
-                                    <Trash2 className="h-4 w-4 text-red-500" />
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </div>
                         </div>
 
                         {/* Current Attempt / Actions */}
                         <TaskDetailsToolbar
-                          variant="sidebar"
                           forceCreateAttempt={forceCreateAttempt}
                           onLeaveForceCreateAttempt={onLeaveForceCreateAttempt}
                           // hide actions in sidebar; moved to header in fullscreen
-                        />
-
-                        {/* Actions: moved from header to sidebar in fullscreen */}
-                        <TaskAttemptActions
-                          creatingPR={creatingPR}
-                          setShowCreatePRDialog={setShowCreatePRDialog}
-                          setError={setPrError}
-                          onNewAttempt={onNewAttempt}
-                          variant="sidebar"
                         />
 
                         {/* Task Breakdown (TODOs) */}
@@ -221,7 +187,9 @@ export function TaskDetailsPanel({
                     </div>
                   ) : (
                     <>
-                      <TaskDetailsToolbar />
+                      <div className="p-4 border-b">
+                        <TaskDetailsToolbar />
+                      </div>
 
                       <TabNavigation
                         activeTab={activeTab}

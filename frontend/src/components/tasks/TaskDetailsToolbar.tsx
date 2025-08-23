@@ -71,11 +71,9 @@ function uiReducer(state: UiState, action: UiAction): UiState {
 }
 
 function TaskDetailsToolbar({
-  variant = 'default',
   forceCreateAttempt,
   onLeaveForceCreateAttempt,
 }: {
-  variant?: 'default' | 'sidebar';
   forceCreateAttempt?: boolean;
   onLeaveForceCreateAttempt?: () => void;
 }) {
@@ -334,12 +332,9 @@ function TaskDetailsToolbar({
     [ui.creatingPR]
   );
 
-  const containerClasses =
-    variant === 'sidebar' ? 'p-0 border-0' : 'p-4 border-b';
-
   return (
     <>
-      <div className={containerClasses}>
+      <div>
         {/* Error Display */}
         {ui.error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -361,13 +356,7 @@ function TaskDetailsToolbar({
             availableProfiles={profiles}
           />
         ) : (
-          <div
-            className={
-              variant === 'sidebar'
-                ? 'space-y-3 p-3 bg-muted/20 rounded-lg border'
-                : 'space-y-3 p-3 bg-muted/20 rounded-lg border'
-            }
-          >
+          <div className="space-y-3 p-3 bg-muted/20 rounded-lg border">
             {/* Current Attempt Info */}
             <div className="space-y-2">
               {selectedAttempt ? (
@@ -381,8 +370,6 @@ function TaskDetailsToolbar({
                   handleEnterCreateAttemptMode={handleEnterCreateAttemptMode}
                   handleAttemptSelect={handleAttemptSelect}
                   branches={branches}
-                  layout={variant === 'sidebar' ? 'sidebar' : 'default'}
-                  hideActions={variant === 'sidebar'}
                 />
               ) : (
                 <div className="text-center py-8">
@@ -397,21 +384,18 @@ function TaskDetailsToolbar({
             </div>
 
             {/* Special Actions: show only in sidebar (non-fullscreen) */}
-            {!selectedAttempt &&
-              !isAttemptRunning &&
-              !isStopping &&
-              variant !== 'sidebar' && (
-                <div className="space-y-2 pt-3 border-t">
-                  <Button
-                    onClick={handleEnterCreateAttemptMode}
-                    size="sm"
-                    className="w-full gap-2 bg-black text-white hover:bg-black/90"
-                  >
-                    <Play className="h-4 w-4" />
-                    Start Attempt
-                  </Button>
-                </div>
-              )}
+            {!selectedAttempt && !isAttemptRunning && !isStopping && (
+              <div className="space-y-2 pt-3 border-t">
+                <Button
+                  onClick={handleEnterCreateAttemptMode}
+                  size="sm"
+                  className="w-full gap-2 bg-black text-white hover:bg-black/90"
+                >
+                  <Play className="h-4 w-4" />
+                  Start Attempt
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -25,7 +25,7 @@ interface TaskDetailsHeaderProps {
   onDeleteTask?: (taskId: string) => void;
   hideCloseButton?: boolean;
   isFullScreen?: boolean;
-  onToggleFullScreen?: () => void;
+  setFullScreen?: (isFullScreen: boolean) => void;
 }
 
 const statusLabels: Record<TaskStatus, string> = {
@@ -58,8 +58,8 @@ function TaskDetailsHeader({
   onEditTask,
   onDeleteTask,
   hideCloseButton = false,
-  isFullScreen = false,
-  onToggleFullScreen,
+  isFullScreen,
+  setFullScreen,
 }: TaskDetailsHeaderProps) {
   const { task } = useContext(TaskDetailsContext);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
@@ -67,18 +67,29 @@ function TaskDetailsHeader({
   return (
     <div>
       {/* Title and Task Actions */}
-      <div className={isFullScreen ? 'p-0' : 'p-4 pb-2'}>
+      <div className="p-4 pb-2 border-b-2 border-muted">
         {/* Top row: title and action icons */}
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0 flex items-start gap-2">
-            {onToggleFullScreen && !isFullScreen && (
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-bold mb-1 line-clamp-2">
+                {task.title}
+                <Chip
+                  className="ml-2 -mt-2 relative top-[-2px]"
+                  dotColor={getTaskStatusDotColor(task.status)}
+                >
+                  {statusLabels[task.status]}
+                </Chip>
+              </h2>
+            </div>
+            {setFullScreen && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={onToggleFullScreen}
+                      onClick={() => setFullScreen(!isFullScreen)}
                       aria-label={
                         isFullScreen
                           ? 'Collapse to sidebar'
@@ -102,15 +113,8 @@ function TaskDetailsHeader({
                 </Tooltip>
               </TooltipProvider>
             )}
-            {!isFullScreen && (
-              <div className="min-w-0 flex-1">
-                <h2 className="text-lg font-bold mb-1 line-clamp-2">
-                  {task.title}
-                </h2>
-              </div>
-            )}
             <div className="flex items-center gap-1">
-              {onEditTask && !isFullScreen && (
+              {onEditTask && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -128,7 +132,7 @@ function TaskDetailsHeader({
                   </Tooltip>
                 </TooltipProvider>
               )}
-              {onDeleteTask && !isFullScreen && (
+              {onDeleteTask && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -169,9 +173,6 @@ function TaskDetailsHeader({
           <div className="mt-2">
             <div className="p-2 bg-muted/20 rounded border-l-2 border-muted max-h-48 overflow-y-auto">
               <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                <Chip dotColor={getTaskStatusDotColor(task.status)}>
-                  {statusLabels[task.status]}
-                </Chip>
                 {task.description ? (
                   <div className="flex-1 min-w-0">
                     <p

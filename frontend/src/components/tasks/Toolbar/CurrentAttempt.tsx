@@ -1,8 +1,14 @@
 import {
   ExternalLink,
   GitBranch as GitBranchIcon,
+  GitPullRequest,
   History,
+  Play,
+  Plus,
+  RefreshCw,
   Settings,
+  StopCircle,
+  ScrollText,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -26,7 +32,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog.tsx';
 import BranchSelector from '@/components/tasks/BranchSelector.tsx';
-import { attemptsApi } from '@/lib/api.ts';
+import { attemptsApi, executionProcessesApi } from '@/lib/api.ts';
 import {
   Dispatch,
   SetStateAction,
@@ -44,7 +50,7 @@ import {
 import { useConfig } from '@/components/config-provider.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
-import { TaskAttemptActions } from '@/components/tasks/TaskAttemptActions';
+import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
 
 // Helper function to get the display name for different editor types
 function getEditorDisplayName(editorType: string): string {
@@ -78,8 +84,6 @@ type Props = {
   handleEnterCreateAttemptMode: () => void;
   handleAttemptSelect: (attempt: TaskAttempt) => void;
   branches: GitBranch[];
-  layout?: 'default' | 'sidebar';
-  hideActions?: boolean;
 };
 
 function CurrentAttempt({
@@ -92,22 +96,79 @@ function CurrentAttempt({
   handleEnterCreateAttemptMode,
   handleAttemptSelect,
   branches,
-  layout = 'default',
-  hideActions = false,
 }: Props) {
-  const { task, projectId, handleOpenInEditor } =
+  const { task, projectId, handleOpenInEditor, projectHasDevScript } =
     useContext(TaskDetailsContext);
   const { config } = useConfig();
   const { isStopping, setIsStopping } = useContext(TaskAttemptStoppingContext);
-  const { fetchAttemptData, isAttemptRunning, branchStatus } = useContext(
-    TaskAttemptDataContext
-  );
+  const { attemptData, fetchAttemptData, isAttemptRunning, branchStatus } =
+    useContext(TaskAttemptDataContext);
+  const { jumpToProcess } = useProcessSelection();
 
+  const [isStartingDevServer, setIsStartingDevServer] = useState(false);
+  const [merging, setMerging] = useState(false);
+  const [pushing, setPushing] = useState(false);
   const [rebasing, setRebasing] = useState(false);
   const [showRebaseDialog, setShowRebaseDialog] = useState(false);
   const [selectedRebaseBranch, setSelectedRebaseBranch] = useState<string>('');
   const [showStopConfirmation, setShowStopConfirmation] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [mergeSuccess, setMergeSuccess] = useState(false);
+  const [pushSuccess, setPushSuccess] = useState(false);
+
+  // Find running dev server in current project
+  const runningDevServer = useMemo(() => {
+    return attemptData.processes.find(
+      (process) =>
+        process.run_reason === 'devserver' && process.status === 'running'
+    );
+  }, [attemptData.processes]);
+
+  // Find latest dev server process (for logs viewing)
+  const latestDevServerProcess = useMemo(() => {
+    return [...attemptData.processes]
+      .filter((process) => process.run_reason === 'devserver')
+      .sort(
+        (a, b) =>
+          new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
+      )[0];
+  }, [attemptData.processes]);
+
+  const startDevServer = async () => {
+    if (!task || !selectedAttempt) return;
+
+    setIsStartingDevServer(true);
+
+    try {
+      await attemptsApi.startDevServer(selectedAttempt.id);
+      fetchAttemptData(selectedAttempt.id);
+    } catch (err) {
+      console.error('Failed to start dev server:', err);
+    } finally {
+      setIsStartingDevServer(false);
+    }
+  };
+
+  const stopDevServer = async () => {
+    if (!task || !selectedAttempt || !runningDevServer) return;
+
+    setIsStartingDevServer(true);
+
+    try {
+      await executionProcessesApi.stopExecutionProcess(runningDevServer.id);
+      fetchAttemptData(selectedAttempt.id);
+    } catch (err) {
+      console.error('Failed to stop dev server:', err);
+    } finally {
+      setIsStartingDevServer(false);
+    }
+  };
+
+  const handleViewDevServerLogs = () => {
+    if (latestDevServerProcess) {
+      jumpToProcess(latestDevServerProcess.id);
+    }
+  };
 
   const stopAllExecutions = useCallback(async () => {
     if (!task || !selectedAttempt || !isAttemptRunning) return;
@@ -152,6 +213,64 @@ function CurrentAttempt({
     [fetchAttemptData, handleAttemptSelect]
   );
 
+  const handleMergeClick = async () => {
+    if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
+
+    // Directly perform merge without checking branch status
+    await performMerge();
+  };
+
+  const handlePushClick = async () => {
+    if (!selectedAttempt?.id) return;
+    try {
+      setPushing(true);
+      await attemptsApi.push(selectedAttempt.id);
+      setError(null); // Clear any previous errors on success
+      setPushSuccess(true);
+      setTimeout(() => setPushSuccess(false), 2000);
+      fetchAttemptData(selectedAttempt.id);
+    } catch (error: any) {
+      console.error('Failed to push changes:', error);
+      setError(error.message || 'Failed to push changes');
+    } finally {
+      setPushing(false);
+    }
+  };
+
+  const performMerge = async () => {
+    if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
+
+    try {
+      setMerging(true);
+      await attemptsApi.merge(selectedAttempt.id);
+      setError(null); // Clear any previous errors on success
+      setMergeSuccess(true);
+      setTimeout(() => setMergeSuccess(false), 2000);
+      fetchAttemptData(selectedAttempt.id);
+    } catch (error) {
+      console.error('Failed to merge changes:', error);
+      // @ts-expect-error it is type ApiError
+      setError(error.message || 'Failed to merge changes');
+    } finally {
+      setMerging(false);
+    }
+  };
+
+  const handleRebaseClick = async () => {
+    if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
+
+    try {
+      setRebasing(true);
+      await attemptsApi.rebase(selectedAttempt.id, { new_base_branch: null });
+      setError(null); // Clear any previous errors on success
+      fetchAttemptData(selectedAttempt.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to rebase branch');
+    } finally {
+      setRebasing(false);
+    }
+  };
+
   const handleRebaseWithNewBranch = async (newBaseBranch: string) => {
     if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
 
@@ -179,6 +298,18 @@ function CurrentAttempt({
   const handleRebaseDialogOpen = () => {
     setSelectedRebaseBranch('');
     setShowRebaseDialog(true);
+  };
+
+  const handlePRButtonClick = async () => {
+    if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
+
+    // If PR already exists, push to it
+    if (mergeInfo.hasOpenPR) {
+      await handlePushClick();
+      return;
+    }
+
+    setShowCreatePRDialog(true);
   };
 
   // Get display name for selected branch
@@ -311,14 +442,8 @@ function CurrentAttempt({
   }, [mergeInfo, branchStatus]);
 
   return (
-    <div className="space-y-3">
-      <div
-        className={
-          layout === 'sidebar'
-            ? 'grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3'
-            : 'flex gap-6 items-start flex-wrap'
-        }
-      >
+    <div className="space-y-2">
+      <div className="flex gap-6 items-start">
         <div className="min-w-0">
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
             Profile
@@ -401,7 +526,7 @@ function CurrentAttempt({
         </div>
       </div>
 
-      <div className="col-span-4">
+      <div>
         <div className="flex items-center gap-1.5 mb-1">
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 pt-1">
             Path
@@ -439,57 +564,186 @@ function CurrentAttempt({
         </div>
       </div>
 
-      {!hideActions && (
-        <div className="col-span-4 flex items-center justify-between gap-2 flex-wrap">
-          <TaskAttemptActions
-            creatingPR={creatingPR}
-            setShowCreatePRDialog={setShowCreatePRDialog}
-            setError={setError}
-            onNewAttempt={handleEnterCreateAttemptMode}
-            variant="card"
-          />
+      <div className="@container">
+        <div className="grid grid-cols-2 gap-3 @md:flex @md:flex-wrap @md:items-center">
+          <div className="flex gap-2 @md:flex-none">
+            <Button
+              variant={runningDevServer ? 'destructive' : 'outline'}
+              size="xs"
+              onClick={runningDevServer ? stopDevServer : startDevServer}
+              disabled={isStartingDevServer || !projectHasDevScript}
+              className="gap-1 flex-1"
+            >
+              {runningDevServer ? (
+                <>
+                  <StopCircle className="h-3 w-3" />
+                  Stop Dev
+                </>
+              ) : (
+                <>
+                  <Play className="h-3 w-3" />
+                  Dev
+                </>
+              )}
+            </Button>
 
-          {taskAttempts.length > 1 && (
-            <DropdownMenu>
+            {/* View Dev Server Logs Button */}
+            {latestDevServerProcess && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="xs" className="gap-2">
-                        <History className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={handleViewDevServerLogs}
+                      className="gap-1"
+                    >
+                      <ScrollText className="h-3 w-3" />
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>View attempt history</p>
+                    <p>View dev server logs</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <DropdownMenuContent align="start" className="w-64">
-                {taskAttempts.map((attempt) => (
-                  <DropdownMenuItem
-                    key={attempt.id}
-                    onClick={() => handleAttemptChange(attempt)}
-                    className={
-                      selectedAttempt?.id === attempt.id ? 'bg-accent' : ''
-                    }
-                  >
-                    <div className="flex flex-col w-full">
-                      <span className="font-medium text-sm">
-                        {new Date(attempt.created_at).toLocaleDateString()}{' '}
-                        {new Date(attempt.created_at).toLocaleTimeString()}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {attempt.profile || 'Base Agent'}
-                      </span>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            )}
+          </div>
+          {/* Git Operations */}
+          {selectedAttempt && branchStatus && !mergeInfo.hasMergedPR && (
+            <>
+              {(branchStatus.commits_behind ?? 0) > 0 && (
+                <Button
+                  onClick={handleRebaseClick}
+                  disabled={rebasing || isAttemptRunning}
+                  variant="outline"
+                  size="xs"
+                  className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1"
+                >
+                  <RefreshCw
+                    className={`h-3 w-3 ${rebasing ? 'animate-spin' : ''}`}
+                  />
+                  {rebasing ? 'Rebasing...' : `Rebase`}
+                </Button>
+              )}
+              <>
+                <Button
+                  onClick={handlePRButtonClick}
+                  disabled={
+                    creatingPR ||
+                    pushing ||
+                    Boolean((branchStatus.commits_behind ?? 0) > 0) ||
+                    isAttemptRunning ||
+                    (mergeInfo.hasOpenPR &&
+                      branchStatus.remote_commits_ahead === 0) ||
+                    ((branchStatus.commits_ahead ?? 0) === 0 &&
+                      !pushSuccess &&
+                      !mergeSuccess)
+                  }
+                  variant="outline"
+                  size="xs"
+                  className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1 min-w-[120px]"
+                >
+                  <GitPullRequest className="h-3 w-3" />
+                  {mergeInfo.hasOpenPR
+                    ? pushSuccess
+                      ? 'Pushed!'
+                      : pushing
+                        ? 'Pushing...'
+                        : branchStatus.remote_commits_ahead === 0
+                          ? 'Push to PR'
+                          : branchStatus.remote_commits_ahead === 1
+                            ? 'Push 1 commit'
+                            : `Push ${branchStatus.remote_commits_ahead || 0} commits`
+                    : creatingPR
+                      ? 'Creating...'
+                      : 'Create PR'}
+                </Button>
+                <Button
+                  onClick={handleMergeClick}
+                  disabled={
+                    mergeInfo.hasOpenPR ||
+                    merging ||
+                    Boolean((branchStatus.commits_behind ?? 0) > 0) ||
+                    isAttemptRunning ||
+                    ((branchStatus.commits_ahead ?? 0) === 0 &&
+                      !pushSuccess &&
+                      !mergeSuccess)
+                  }
+                  size="xs"
+                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1 min-w-[120px]"
+                >
+                  <GitBranchIcon className="h-3 w-3" />
+                  {mergeSuccess ? 'Merged!' : merging ? 'Merging...' : 'Merge'}
+                </Button>
+              </>
+            </>
           )}
+
+          <div className="flex gap-2 @md:flex-none">
+            {isStopping || isAttemptRunning ? (
+              <Button
+                variant="destructive"
+                size="xs"
+                onClick={stopAllExecutions}
+                disabled={isStopping}
+                className="gap-1 flex-1"
+              >
+                <StopCircle className="h-4 w-4" />
+                {isStopping ? 'Stopping...' : 'Stop Attempt'}
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={handleEnterCreateAttemptMode}
+                className="gap-1 flex-1"
+              >
+                <Plus className="h-4 w-4" />
+                New Attempt
+              </Button>
+            )}
+            {taskAttempts.length > 1 && (
+              <DropdownMenu>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="xs" className="gap-1">
+                          <History className="h-3 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>View attempt history</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <DropdownMenuContent align="start" className="w-64">
+                  {taskAttempts.map((attempt) => (
+                    <DropdownMenuItem
+                      key={attempt.id}
+                      onClick={() => handleAttemptChange(attempt)}
+                      className={
+                        selectedAttempt?.id === attempt.id ? 'bg-accent' : ''
+                      }
+                    >
+                      <div className="flex flex-col w-full">
+                        <span className="font-medium text-sm">
+                          {new Date(attempt.created_at).toLocaleDateString()}{' '}
+                          {new Date(attempt.created_at).toLocaleTimeString()}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {attempt.profile || 'Base Agent'}
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </div>
-      )}
+      </div>
 
       {/* Rebase Dialog */}
       <Dialog open={showRebaseDialog} onOpenChange={setShowRebaseDialog}>

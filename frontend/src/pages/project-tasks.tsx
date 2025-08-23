@@ -3,14 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import {
-  FolderOpen,
-  Plus,
-  Settings,
-  LibraryBig,
-  Globe2,
-  Minimize2,
-} from 'lucide-react';
+import { FolderOpen, Plus, Settings, LibraryBig, Globe2 } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { projectsApi, tasksApi, templatesApi } from '@/lib/api';
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
@@ -47,8 +40,6 @@ import type {
 } from 'shared/types';
 import type { CreateTask } from 'shared/types';
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
-import { Chip } from '@/components/ui/chip';
-import { useFullscreenHeader } from '@/contexts/FullscreenHeaderContext';
 
 type Task = TaskWithAttemptStatus;
 
@@ -77,74 +68,6 @@ export function ProjectTasks() {
   // Panel state
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const [isPanelFullscreen, setIsPanelFullscreen] = useState(false);
-  const [forceCreateAttempt, setForceCreateAttempt] = useState(false);
-  const { active, setActive, setContent } = useFullscreenHeader();
-
-  // Map status to label and dot color (duplicated from TaskDetailsHeader)
-  const statusLabels: Record<TaskStatus, string> = {
-    todo: 'To Do',
-    inprogress: 'In Progress',
-    inreview: 'In Review',
-    done: 'Done',
-    cancelled: 'Cancelled',
-  };
-
-  const getTaskStatusDotColor = (status: TaskStatus): string => {
-    switch (status) {
-      case 'todo':
-        return 'bg-gray-400';
-      case 'inprogress':
-        return 'bg-blue-500';
-      case 'inreview':
-        return 'bg-yellow-500';
-      case 'done':
-        return 'bg-green-500';
-      case 'cancelled':
-        return 'bg-red-500';
-      default:
-        return 'bg-gray-400';
-    }
-  };
-
-  // Update the global header content when the panel enters fullscreen
-  useEffect(() => {
-    if (isPanelFullscreen && selectedTask) {
-      setActive(true);
-      setContent(
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center gap-3 min-w-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Collapse to sidebar"
-              onClick={() => setIsPanelFullscreen(false)}
-            >
-              <Minimize2 className="h-4 w-4" />
-            </Button>
-            <h2
-              className="text-lg font-bold truncate"
-              title={selectedTask.title}
-            >
-              {selectedTask.title}
-            </h2>
-            <Chip dotColor={getTaskStatusDotColor(selectedTask.status)}>
-              {statusLabels[selectedTask.status]}
-            </Chip>
-          </div>
-          {/* Actions intentionally minimal in fullscreen header; destructive actions live in sidebar */}
-        </div>
-      );
-    } else if (active) {
-      setActive(false);
-      setContent(null);
-    }
-    // Cleanup on unmount
-    return () => {
-      setActive(false);
-      setContent(null);
-    };
-  }, [isPanelFullscreen, selectedTask, setActive, setContent]);
 
   // Define task creation handler
   const handleCreateNewTask = useCallback(() => {
@@ -159,6 +82,9 @@ export function ProjectTasks() {
     setSelectedTemplate(template);
     setIsTaskDialogOpen(true);
   }, []);
+
+  // Full screen
+  const [fullScreenTaskDetails, setFullScreenTaskDetails] = useState(false);
 
   const handleOpenInIDE = useCallback(async () => {
     if (!projectId) return;
@@ -347,7 +273,6 @@ export function ProjectTasks() {
   );
 
   const handleClosePanel = useCallback(() => {
-    setIsPanelFullscreen(false);
     // setIsPanelOpen(false);
     // setSelectedTask(null);
     // Remove task ID from URL when closing panel
@@ -446,7 +371,6 @@ export function ProjectTasks() {
       // Close panel when no taskId in URL
       setIsPanelOpen(false);
       setSelectedTask(null);
-      setIsPanelFullscreen(false);
     }
   }, [taskId, tasks, loading, fetchTasks]);
 
@@ -458,15 +382,13 @@ export function ProjectTasks() {
     return <div className="text-center py-8 text-destructive">{error}</div>;
   }
 
-  const panelClassName = isPanelFullscreen
-    ? 'absolute inset-0 z-50 w-full h-full bg-background overflow-hidden'
-    : undefined;
-
   return (
-    <div className={`${getMainContainerClasses(isPanelOpen)} relative`}>
+    <div
+      className={getMainContainerClasses(isPanelOpen, fullScreenTaskDetails)}
+    >
       {/* Left Column - Kanban Section */}
       <div
-        className={getKanbanSectionClasses(isPanelOpen && !isPanelFullscreen)}
+        className={getKanbanSectionClasses(isPanelOpen, fullScreenTaskDetails)}
       >
         {/* Header */}
 
@@ -612,13 +534,8 @@ export function ProjectTasks() {
           onEditTask={handleEditTask}
           onDeleteTask={handleDeleteTask}
           isDialogOpen={isTaskDialogOpen || isProjectSettingsOpen}
-          hideBackdrop={isPanelFullscreen}
-          className={panelClassName}
-          isFullScreen={isPanelFullscreen}
-          onToggleFullScreen={() => setIsPanelFullscreen((v) => !v)}
-          forceCreateAttempt={forceCreateAttempt}
-          onLeaveForceCreateAttempt={() => setForceCreateAttempt(false)}
-          onNewAttempt={() => setForceCreateAttempt(true)}
+          isFullScreen={fullScreenTaskDetails}
+          setFullScreen={setFullScreenTaskDetails}
         />
       )}
 
