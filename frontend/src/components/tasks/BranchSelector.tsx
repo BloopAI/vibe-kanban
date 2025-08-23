@@ -112,7 +112,7 @@ function BranchSelector({
           size="sm"
           className={`w-full justify-between text-xs ${className}`}
         >
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 w-full">
             <GitBranchIcon className="h-3 w-3" />
             <span className="truncate">{displayName}</span>
           </div>
@@ -191,9 +191,8 @@ function BranchSelector({
                   }}
                   onMouseEnter={() => setHighlighted(idx)}
                   disabled={isCurrentAndExcluded}
-                  className={`${selectedBranch === branch.name ? 'bg-accent' : ''} ${
-                    isCurrentAndExcluded ? 'opacity-50 cursor-not-allowed' : ''
-                  } ${isHighlighted ? 'bg-muted' : ''}`}
+                  className={`${selectedBranch === branch.name ? 'bg-accent' : ''} ${isCurrentAndExcluded ? 'opacity-50 cursor-not-allowed' : ''
+                    } ${isHighlighted ? 'bg-muted' : ''}`}
                 >
                   <div className="flex items-center justify-between w-full">
                     <span className={branch.is_current ? 'font-medium' : ''}>
