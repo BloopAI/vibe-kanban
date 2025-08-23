@@ -74,7 +74,10 @@ function TaskDetailsHeader({
             <div className="min-w-0 flex-1">
               <h2 className="text-lg font-bold mb-1 line-clamp-2">
                 {task.title}
-                <Chip className="ml-2 -mt-2 relative top-[-2px]" dotColor={getTaskStatusDotColor(task.status)}>
+                <Chip
+                  className="ml-2 -mt-2 relative top-[-2px]"
+                  dotColor={getTaskStatusDotColor(task.status)}
+                >
                   {statusLabels[task.status]}
                 </Chip>
               </h2>
@@ -173,10 +176,11 @@ function TaskDetailsHeader({
                 {task.description ? (
                   <div className="flex-1 min-w-0">
                     <p
-                      className={`whitespace-pre-wrap ${!isDescriptionExpanded && task.description.length > 150
-                        ? 'line-clamp-3'
-                        : ''
-                        }`}
+                      className={`whitespace-pre-wrap ${
+                        !isDescriptionExpanded && task.description.length > 150
+                          ? 'line-clamp-3'
+                          : ''
+                      }`}
                     >
                       {task.description}
                     </p>

@@ -191,8 +191,9 @@ function BranchSelector({
                   }}
                   onMouseEnter={() => setHighlighted(idx)}
                   disabled={isCurrentAndExcluded}
-                  className={`${selectedBranch === branch.name ? 'bg-accent' : ''} ${isCurrentAndExcluded ? 'opacity-50 cursor-not-allowed' : ''
-                    } ${isHighlighted ? 'bg-muted' : ''}`}
+                  className={`${selectedBranch === branch.name ? 'bg-accent' : ''} ${
+                    isCurrentAndExcluded ? 'opacity-50 cursor-not-allowed' : ''
+                  } ${isHighlighted ? 'bg-muted' : ''}`}
                 >
                   <div className="flex items-center justify-between w-full">
                     <span className={branch.is_current ? 'font-medium' : ''}>

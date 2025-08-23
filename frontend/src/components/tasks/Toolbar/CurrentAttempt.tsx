@@ -38,11 +38,9 @@ import {
   SetStateAction,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
 } from 'react';
-import type { ExecutionProcess } from 'shared/types';
 import type { GitBranch, TaskAttempt } from 'shared/types';
 import {
   TaskAttemptDataContext,
@@ -111,23 +109,12 @@ function CurrentAttempt({
   const [merging, setMerging] = useState(false);
   const [pushing, setPushing] = useState(false);
   const [rebasing, setRebasing] = useState(false);
-  const [devServerDetails, setDevServerDetails] =
-    useState<ExecutionProcess | null>(null);
-  const [isHoveringDevServer, setIsHoveringDevServer] = useState(false);
   const [showRebaseDialog, setShowRebaseDialog] = useState(false);
   const [selectedRebaseBranch, setSelectedRebaseBranch] = useState<string>('');
   const [showStopConfirmation, setShowStopConfirmation] = useState(false);
   const [copied, setCopied] = useState(false);
   const [mergeSuccess, setMergeSuccess] = useState(false);
   const [pushSuccess, setPushSuccess] = useState(false);
-
-  const processedDevServerLogs = useMemo(() => {
-    if (!devServerDetails) return 'No output yet...';
-
-    // TODO: stdout/stderr fields need to be restored to ExecutionProcess type
-    // For now, show basic status information
-    return `Status: ${devServerDetails.status}\nStarted: ${devServerDetails.started_at}`;
-  }, [devServerDetails]);
 
   // Find running dev server in current project
   const runningDevServer = useMemo(() => {
@@ -146,30 +133,6 @@ function CurrentAttempt({
           new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
       )[0];
   }, [attemptData.processes]);
-
-  const fetchDevServerDetails = useCallback(async () => {
-    if (!runningDevServer || !task || !selectedAttempt) return;
-
-    try {
-      const result = await executionProcessesApi.getDetails(
-        runningDevServer.id
-      );
-      setDevServerDetails(result);
-    } catch (err) {
-      console.error('Failed to fetch dev server details:', err);
-    }
-  }, [runningDevServer, task, selectedAttempt, projectId]);
-
-  useEffect(() => {
-    if (!isHoveringDevServer || !runningDevServer) {
-      setDevServerDetails(null);
-      return;
-    }
-
-    fetchDevServerDetails();
-    const interval = setInterval(fetchDevServerDetails, 2000);
-    return () => clearInterval(interval);
-  }, [isHoveringDevServer, runningDevServer, fetchDevServerDetails]);
 
   const startDevServer = async () => {
     if (!task || !selectedAttempt) return;
@@ -233,7 +196,7 @@ function CurrentAttempt({
 
   useKeyboardShortcuts({
     stopExecution: () => setShowStopConfirmation(true),
-    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => { },
+    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => {},
     hasOpenDialog: showStopConfirmation,
     closeDialog: () => setShowStopConfirmation(false),
     onEnter: () => {
@@ -579,10 +542,11 @@ function CurrentAttempt({
           </Button>
         </div>
         <div
-          className={`text-xs font-mono px-2 py-1 rounded break-all cursor-pointer transition-all duration-300 flex items-center gap-2 ${copied
-            ? 'bg-green-100 text-green-800 border border-green-300'
-            : 'text-muted-foreground bg-muted hover:bg-muted/80'
-            }`}
+          className={`text-xs font-mono px-2 py-1 rounded break-all cursor-pointer transition-all duration-300 flex items-center gap-2 ${
+            copied
+              ? 'bg-green-100 text-green-800 border border-green-300'
+              : 'text-muted-foreground bg-muted hover:bg-muted/80'
+          }`}
           onClick={handleCopyWorktreePath}
           title={copied ? 'Copied!' : 'Click to copy worktree path'}
         >
@@ -642,8 +606,7 @@ function CurrentAttempt({
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-            )
-            }
+            )}
           </div>
           {/* Git Operations */}
           {selectedAttempt && branchStatus && !mergeInfo.hasMergedPR && (
@@ -717,7 +680,6 @@ function CurrentAttempt({
           )}
 
           <div className="flex gap-2 @md:flex-none">
-
             {isStopping || isAttemptRunning ? (
               <Button
                 variant="destructive"
@@ -779,7 +741,6 @@ function CurrentAttempt({
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-
           </div>
         </div>
       </div>

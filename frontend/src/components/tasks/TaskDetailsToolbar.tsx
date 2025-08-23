@@ -170,10 +170,10 @@ function TaskDetailsToolbar({
         const currentLatest =
           taskAttempts.length > 0
             ? taskAttempts.reduce((latest, current) =>
-              new Date(current.created_at) > new Date(latest.created_at)
-                ? current
-                : latest
-            )
+                new Date(current.created_at) > new Date(latest.created_at)
+                  ? current
+                  : latest
+              )
             : null;
 
         const newLatest = result.reduce((latest, current) =>
@@ -356,9 +356,7 @@ function TaskDetailsToolbar({
             availableProfiles={profiles}
           />
         ) : (
-          <div
-            className="space-y-3 p-3 bg-muted/20 rounded-lg border"
-          >
+          <div className="space-y-3 p-3 bg-muted/20 rounded-lg border">
             {/* Current Attempt Info */}
             <div className="space-y-2">
               {selectedAttempt ? (
@@ -386,20 +384,18 @@ function TaskDetailsToolbar({
             </div>
 
             {/* Special Actions: show only in sidebar (non-fullscreen) */}
-            {!selectedAttempt &&
-              !isAttemptRunning &&
-              !isStopping && (
-                <div className="space-y-2 pt-3 border-t">
-                  <Button
-                    onClick={handleEnterCreateAttemptMode}
-                    size="sm"
-                    className="w-full gap-2 bg-black text-white hover:bg-black/90"
-                  >
-                    <Play className="h-4 w-4" />
-                    Start Attempt
-                  </Button>
-                </div>
-              )}
+            {!selectedAttempt && !isAttemptRunning && !isStopping && (
+              <div className="space-y-2 pt-3 border-t">
+                <Button
+                  onClick={handleEnterCreateAttemptMode}
+                  size="sm"
+                  className="w-full gap-2 bg-black text-white hover:bg-black/90"
+                >
+                  <Play className="h-4 w-4" />
+                  Start Attempt
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>

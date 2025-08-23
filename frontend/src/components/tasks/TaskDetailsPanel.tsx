@@ -54,7 +54,6 @@ export function TaskDetailsPanel({
   setFullScreen,
   forceCreateAttempt,
   onLeaveForceCreateAttempt,
-  onNewAttempt,
 }: TaskDetailsPanelProps) {
   const [showEditorDialog, setShowEditorDialog] = useState(false);
   const [showCreatePRDialog, setShowCreatePRDialog] = useState(false);
@@ -159,7 +158,7 @@ export function TaskDetailsPanel({
                         <TaskDetailsToolbar
                           forceCreateAttempt={forceCreateAttempt}
                           onLeaveForceCreateAttempt={onLeaveForceCreateAttempt}
-                        // hide actions in sidebar; moved to header in fullscreen
+                          // hide actions in sidebar; moved to header in fullscreen
                         />
 
                         {/* Task Breakdown (TODOs) */}
