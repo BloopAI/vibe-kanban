@@ -158,7 +158,7 @@ export function TaskDetailsPanel({
                         <TaskDetailsToolbar
                           forceCreateAttempt={forceCreateAttempt}
                           onLeaveForceCreateAttempt={onLeaveForceCreateAttempt}
-                          // hide actions in sidebar; moved to header in fullscreen
+                        // hide actions in sidebar; moved to header in fullscreen
                         />
 
                         {/* Task Breakdown (TODOs) */}
@@ -166,7 +166,7 @@ export function TaskDetailsPanel({
                       </aside>
 
                       {/* Main content */}
-                      <main className="flex-1 min-h-0 flex flex-col">
+                      <main className="flex-1 min-h-0 min-w-0 flex flex-col">
                         <TabNavigation
                           activeTab={activeTab}
                           setActiveTab={setActiveTab}
