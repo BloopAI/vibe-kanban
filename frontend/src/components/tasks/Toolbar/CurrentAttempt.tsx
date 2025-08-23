@@ -196,7 +196,7 @@ function CurrentAttempt({
 
   useKeyboardShortcuts({
     stopExecution: () => setShowStopConfirmation(true),
-    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => {},
+    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => { },
     hasOpenDialog: showStopConfirmation,
     closeDialog: () => setShowStopConfirmation(false),
     onEnter: () => {
@@ -442,8 +442,9 @@ function CurrentAttempt({
   }, [mergeInfo, branchStatus]);
 
   return (
-    <div className="space-y-2">
-      <div className="flex gap-6 items-start">
+    <div className="space-y-2 @container">
+      {/* <div className="flex gap-6 items-start"> */}
+      <div className="grid grid-cols-2 gap-3 items-start @md:flex @md:items-start">
         <div className="min-w-0">
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
             Profile
@@ -501,7 +502,7 @@ function CurrentAttempt({
             {(() => {
               const statusInfo = getStatusInfo();
               return (
-                <div className="flex items-center gap-1.5">
+                <>
                   <div
                     className={`h-2 w-2 ${statusInfo.dotColor} rounded-full`}
                   />
@@ -514,12 +515,12 @@ function CurrentAttempt({
                     </button>
                   ) : (
                     <span
-                      className={`text-sm font-medium ${statusInfo.textColor}`}
+                      className={`text-sm font-medium ${statusInfo.textColor} truncate`}
                     >
                       {statusInfo.text}
                     </span>
                   )}
-                </div>
+                </>
               );
             })()}
           </div>
@@ -542,11 +543,10 @@ function CurrentAttempt({
           </Button>
         </div>
         <div
-          className={`text-xs font-mono px-2 py-1 rounded break-all cursor-pointer transition-all duration-300 flex items-center gap-2 ${
-            copied
-              ? 'bg-green-100 text-green-800 border border-green-300'
-              : 'text-muted-foreground bg-muted hover:bg-muted/80'
-          }`}
+          className={`text-xs font-mono px-2 py-1 rounded break-all cursor-pointer transition-all duration-300 flex items-center gap-2 ${copied
+            ? 'bg-green-100 text-green-800 border border-green-300'
+            : 'text-muted-foreground bg-muted hover:bg-muted/80'
+            }`}
           onClick={handleCopyWorktreePath}
           title={copied ? 'Copied!' : 'Click to copy worktree path'}
         >
@@ -564,7 +564,7 @@ function CurrentAttempt({
         </div>
       </div>
 
-      <div className="@container">
+      <div>
         <div className="grid grid-cols-2 gap-3 @md:flex @md:flex-wrap @md:items-center">
           <div className="flex gap-2 @md:flex-none">
             <Button
