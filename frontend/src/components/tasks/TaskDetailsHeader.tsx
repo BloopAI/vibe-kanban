@@ -44,12 +44,97 @@ function TaskDetailsHeader({
 
   return (
     <div>
-      <Card className="flex shrink-0 items-center gap-2 p-3 border-b border-dashed" style={{ backgroundColor: `hsl(var(${statusBoardColors[task.status]}) / 0.03)` }}>
-        <div
-          className="h-2 w-2 rounded-full"
-          style={{ backgroundColor: `hsl(var(${statusBoardColors[task.status]}))` }}
-        />
-        <p className="m-0 text-sm">{statusLabels[task.status]}</p>
+      <Card className="flex shrink-0 items-center gap-2 border-b border-dashed" style={{ backgroundColor: `hsl(var(${statusBoardColors[task.status]}) / 0.03)` }}>
+        <div className="p-3 flex flex-1 items-center truncate">
+          <div
+            className="h-2 w-2 rounded-full inline-block"
+            style={{ backgroundColor: `hsl(var(${statusBoardColors[task.status]}))` }}
+          />
+          <p className="ml-2 text-sm">{statusLabels[task.status]}</p>
+        </div>
+        <div className="mr-3">
+          {setFullScreen && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setFullScreen(!isFullScreen)}
+                    aria-label={
+                      isFullScreen
+                        ? 'Collapse to sidebar'
+                        : 'Expand to fullscreen'
+                    }
+                  >
+                    {isFullScreen ? (
+                      <Minimize2 className="h-4 w-4" />
+                    ) : (
+                      <Maximize2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>
+                    {isFullScreen
+                      ? 'Collapse to sidebar'
+                      : 'Expand to fullscreen'}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          {onEditTask && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onEditTask(task)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Edit task</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          {onDeleteTask && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onDeleteTask(task.id)}
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Delete task</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          {!hideCloseButton && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" onClick={onClose}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Close panel</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
       </Card>
 
       {/* Title and Task Actions */}
@@ -66,89 +151,6 @@ function TaskDetailsHeader({
                   {statusLabels[task.status]}
                 </Chip>
               </h2>
-            </div>
-            {setFullScreen && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setFullScreen(!isFullScreen)}
-                      aria-label={
-                        isFullScreen
-                          ? 'Collapse to sidebar'
-                          : 'Expand to fullscreen'
-                      }
-                    >
-                      {isFullScreen ? (
-                        <Minimize2 className="h-4 w-4" />
-                      ) : (
-                        <Maximize2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>
-                      {isFullScreen
-                        ? 'Collapse to sidebar'
-                        : 'Expand to fullscreen'}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-            <div className="flex items-center gap-1">
-              {onEditTask && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onEditTask(task)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Edit task</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-              {onDeleteTask && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onDeleteTask(task.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Delete task</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-              {!hideCloseButton && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" onClick={onClose}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Close panel</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
             </div>
           </div>
         </div>
