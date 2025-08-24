@@ -145,11 +145,6 @@ function TaskDetailsHeader({
             <div className="min-w-0 flex-1">
               <h2 className="text-lg font-bold mb-1 line-clamp-2">
                 {task.title}
-                <Chip
-                  className="ml-2 -mt-2 relative top-[-2px]"
-                >
-                  {statusLabels[task.status]}
-                </Chip>
               </h2>
             </div>
           </div>
@@ -158,13 +153,13 @@ function TaskDetailsHeader({
         {/* Description + Status (sidebar view only) lives below icons */}
         {!isFullScreen && (
           <div className="mt-2">
-            <div className="p-2 bg-muted/20 rounded border-l-2 border-muted max-h-48 overflow-y-auto">
-              <div className="flex items-start gap-2 text-xs text-muted-foreground">
+            <div className="p-2">
+              <div className="flex items-start gap-2 text-sm text-muted-foreground">
                 {task.description ? (
                   <div className="flex-1 min-w-0">
                     <p
-                      className={`whitespace-pre-wrap ${!isDescriptionExpanded && task.description.length > 150
-                        ? 'line-clamp-3'
+                      className={`whitespace-pre-wrap ${!isDescriptionExpanded && task.description.length > 350
+                        ? 'line-clamp-6'
                         : ''
                         }`}
                     >
