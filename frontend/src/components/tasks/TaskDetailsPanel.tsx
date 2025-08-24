@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import TaskDetailsHeader from './TaskDetailsHeader';
 import { TaskFollowUpSection } from './TaskFollowUpSection';
 import { EditorSelectionDialog } from './EditorSelectionDialog';
+import { TaskTitleDescription } from './TaskDetails/TaskTitleDescription';
 import {
   getBackdropClasses,
   getTaskPanelClasses,
@@ -21,6 +22,7 @@ import { TabNavContext } from '@/contexts/TabNavigationContext';
 import { ProcessSelectionProvider } from '@/contexts/ProcessSelectionContext';
 import { projectsApi } from '@/lib/api';
 import type { GitBranch } from 'shared/types';
+import { Card } from '../ui/card.tsx';
 
 interface TaskDetailsPanelProps {
   task: TaskWithAttemptStatus | null;
@@ -141,18 +143,9 @@ export function TaskDetailsPanel({
                     <div className="flex-1 min-h-0 flex">
                       {/* Sidebar */}
                       <aside className="w-[28rem] shrink-0 border-r overflow-y-auto p-4 space-y-4">
-                        {/* Fullscreen sidebar shows description only (no title) above edit/delete */}
+                        {/* Fullscreen sidebar shows title and description above edit/delete */}
                         <div className="space-y-2">
-                          {/* Description */}
-                          <div className="text-sm text-muted-foreground block">
-                            {task.description ? (
-                              <p className="whitespace-pre-wrap break-words">
-                                {task.description}
-                              </p>
-                            ) : (
-                              <p className="italic">No description provided</p>
-                            )}
-                          </div>
+                          <TaskTitleDescription task={task} />
                         </div>
 
                         {/* Current Attempt / Actions */}
@@ -188,17 +181,22 @@ export function TaskDetailsPanel({
                     </div>
                   ) : (
                     <>
-                      <div className="p-4 border-b">
+                      <Card className="flex shrink-0 items-center gap-2 border-b border-dashed bg-secondary">
+                        <div className="p-3 flex flex-1 items-center truncate">
+                          <p className="ml-2 text-sm">Attempt (1/3)</p>
+                        </div>
+                      </Card>
+                      {/* <div className="p-4 border-b">
                         <TaskDetailsToolbar />
-                      </div>
+                      </div> */}
 
-                      <TabNavigation
+                      {/* <TabNavigation
                         activeTab={activeTab}
                         setActiveTab={setActiveTab}
-                      />
+                      /> */}
 
                       {/* Tab Content */}
-                      <div className="flex-1 flex flex-col min-h-0">
+                      {/* <div className="flex-1 flex flex-col min-h-0">
                         {activeTab === 'diffs' ? (
                           <DiffTab />
                         ) : activeTab === 'processes' ? (
@@ -206,7 +204,7 @@ export function TaskDetailsPanel({
                         ) : (
                           <LogsTab />
                         )}
-                      </div>
+                      </div> */}
 
                       <TaskFollowUpSection />
                     </>

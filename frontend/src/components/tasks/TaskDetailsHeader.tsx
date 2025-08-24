@@ -1,7 +1,5 @@
-import { memo, useContext, useState } from 'react';
+import { memo, useContext } from 'react';
 import {
-  ChevronDown,
-  ChevronUp,
   Edit,
   Trash2,
   X,
@@ -9,17 +7,16 @@ import {
   Minimize2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Chip } from '@/components/ui/chip';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
+import type { TaskWithAttemptStatus } from 'shared/types';
 import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import { TaskTitleDescription } from './TaskDetails/TaskTitleDescription';
 import { Card } from '../ui/card';
-import { cn } from '@/lib/utils';
 import { statusBoardColors, statusLabels } from '@/utils/status-labels';
 
 interface TaskDetailsHeaderProps {
@@ -40,7 +37,6 @@ function TaskDetailsHeader({
   setFullScreen,
 }: TaskDetailsHeaderProps) {
   const { task } = useContext(TaskDetailsContext);
-  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   return (
     <div>
@@ -138,64 +134,11 @@ function TaskDetailsHeader({
       </Card>
 
       {/* Title and Task Actions */}
-      <div className="p-4 pb-2 border-b-2 border-muted">
-        {/* Top row: title and action icons */}
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0 flex items-start gap-2">
-            <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-bold mb-1 line-clamp-2">
-                {task.title}
-              </h2>
-            </div>
-          </div>
+      {!isFullScreen && (
+        <div className="p-4 pb-2 border-b-2 border-muted">
+          <TaskTitleDescription task={task} />
         </div>
-
-        {/* Description + Status (sidebar view only) lives below icons */}
-        {!isFullScreen && (
-          <div className="mt-2">
-            <div className="p-2">
-              <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                {task.description ? (
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className={`whitespace-pre-wrap ${!isDescriptionExpanded && task.description.length > 350
-                        ? 'line-clamp-6'
-                        : ''
-                        }`}
-                    >
-                      {task.description}
-                    </p>
-                    {task.description.length > 150 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          setIsDescriptionExpanded(!isDescriptionExpanded)
-                        }
-                        className="mt-1 p-0 h-auto text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        {isDescriptionExpanded ? (
-                          <>
-                            <ChevronUp className="h-3 w-3 mr-1" />
-                            Show less
-                          </>
-                        ) : (
-                          <>
-                            <ChevronDown className="h-3 w-3 mr-1" />
-                            Show more
-                          </>
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <p className="italic">No description provided</p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
