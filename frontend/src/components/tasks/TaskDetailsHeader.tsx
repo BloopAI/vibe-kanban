@@ -18,6 +18,9 @@ import {
 } from '@/components/ui/tooltip';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import { Card } from '../ui/card';
+import { cn } from '@/lib/utils';
+import { statusBoardColors, statusLabels } from '@/utils/status-labels';
 
 interface TaskDetailsHeaderProps {
   onClose: () => void;
@@ -27,31 +30,6 @@ interface TaskDetailsHeaderProps {
   isFullScreen?: boolean;
   setFullScreen?: (isFullScreen: boolean) => void;
 }
-
-const statusLabels: Record<TaskStatus, string> = {
-  todo: 'To Do',
-  inprogress: 'In Progress',
-  inreview: 'In Review',
-  done: 'Done',
-  cancelled: 'Cancelled',
-};
-
-const getTaskStatusDotColor = (status: TaskStatus): string => {
-  switch (status) {
-    case 'todo':
-      return 'bg-gray-400';
-    case 'inprogress':
-      return 'bg-blue-500';
-    case 'inreview':
-      return 'bg-yellow-500';
-    case 'done':
-      return 'bg-green-500';
-    case 'cancelled':
-      return 'bg-red-500';
-    default:
-      return 'bg-gray-400';
-  }
-};
 
 function TaskDetailsHeader({
   onClose,
@@ -66,6 +44,14 @@ function TaskDetailsHeader({
 
   return (
     <div>
+      <Card className="flex shrink-0 items-center gap-2 p-3 border-b border-dashed" style={{ backgroundColor: `hsl(var(${statusBoardColors[task.status]}) / 0.03)` }}>
+        <div
+          className="h-2 w-2 rounded-full"
+          style={{ backgroundColor: `hsl(var(${statusBoardColors[task.status]}))` }}
+        />
+        <p className="m-0 text-sm">{statusLabels[task.status]}</p>
+      </Card>
+
       {/* Title and Task Actions */}
       <div className="p-4 pb-2 border-b-2 border-muted">
         {/* Top row: title and action icons */}
@@ -76,7 +62,6 @@ function TaskDetailsHeader({
                 {task.title}
                 <Chip
                   className="ml-2 -mt-2 relative top-[-2px]"
-                  dotColor={getTaskStatusDotColor(task.status)}
                 >
                   {statusLabels[task.status]}
                 </Chip>
@@ -176,11 +161,10 @@ function TaskDetailsHeader({
                 {task.description ? (
                   <div className="flex-1 min-w-0">
                     <p
-                      className={`whitespace-pre-wrap ${
-                        !isDescriptionExpanded && task.description.length > 150
-                          ? 'line-clamp-3'
-                          : ''
-                      }`}
+                      className={`whitespace-pre-wrap ${!isDescriptionExpanded && task.description.length > 150
+                        ? 'line-clamp-3'
+                        : ''
+                        }`}
                     >
                       {task.description}
                     </p>

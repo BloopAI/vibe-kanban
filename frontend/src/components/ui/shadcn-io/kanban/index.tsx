@@ -174,7 +174,7 @@ export const KanbanProvider = ({
     >
       <div
         className={cn(
-          'grid w-full auto-cols-fr grid-flow-col divide-x border-x',
+          'grid w-full auto-cols-fr grid-flow-col divide-x',
           className
         )}
       >

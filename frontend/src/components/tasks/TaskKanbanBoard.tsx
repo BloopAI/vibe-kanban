@@ -13,6 +13,7 @@ import {
   useKeyboardShortcuts,
   useKanbanKeyboardNavigation,
 } from '@/lib/keyboard-shortcuts.ts';
+import { statusBoardColors, statusLabels } from '@/utils/status-labels';
 
 type Task = TaskWithAttemptStatus;
 
@@ -33,22 +34,6 @@ const allTaskStatuses: TaskStatus[] = [
   'done',
   'cancelled',
 ];
-
-const statusLabels: Record<TaskStatus, string> = {
-  todo: 'To Do',
-  inprogress: 'In Progress',
-  inreview: 'In Review',
-  done: 'Done',
-  cancelled: 'Cancelled',
-};
-
-const statusBoardColors: Record<TaskStatus, string> = {
-  todo: '--neutral-foreground',
-  inprogress: '--info',
-  inreview: '--warning',
-  done: '--success',
-  cancelled: '--destructive',
-};
 
 function TaskKanbanBoard({
   tasks,

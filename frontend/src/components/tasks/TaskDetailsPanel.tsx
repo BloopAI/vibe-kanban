@@ -126,15 +126,16 @@ export function TaskDetailsPanel({
                   className || getTaskPanelClasses(isFullScreen || false)
                 }
               >
+                <TaskDetailsHeader
+                  onClose={onClose}
+                  onEditTask={onEditTask}
+                  onDeleteTask={onDeleteTask}
+                  hideCloseButton={hideBackdrop}
+                  isFullScreen={isFullScreen}
+                  setFullScreen={setFullScreen}
+                />
                 <div className="flex flex-col h-full">
-                  <TaskDetailsHeader
-                    onClose={onClose}
-                    onEditTask={onEditTask}
-                    onDeleteTask={onDeleteTask}
-                    hideCloseButton={hideBackdrop}
-                    isFullScreen={isFullScreen}
-                    setFullScreen={setFullScreen}
-                  />
+
 
                   {isFullScreen ? (
                     <div className="flex-1 min-h-0 flex">
@@ -158,7 +159,7 @@ export function TaskDetailsPanel({
                         <TaskDetailsToolbar
                           forceCreateAttempt={forceCreateAttempt}
                           onLeaveForceCreateAttempt={onLeaveForceCreateAttempt}
-                          // hide actions in sidebar; moved to header in fullscreen
+                        // hide actions in sidebar; moved to header in fullscreen
                         />
 
                         {/* Task Breakdown (TODOs) */}
