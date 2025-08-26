@@ -463,14 +463,15 @@ pub async fn create_github_pr(
             .find_branch_type(&project.git_repo_path, &base_branch)?,
         BranchType::Remote
     ) {
-        // locally, a remote branch has {remote}/<branch>.
-        // For a PR, <branch> must be used directly.
+        // Remote branches are formatted as {remote}/{branch} locally.
+        // For PR APIs, we must provide just the branch name.
         let remote = deployment
             .git()
             .get_remote_name_from_branch_name(&workspace_path, &base_branch)?;
+        let remote_prefix = format!("{}/", remote);
         base_branch
-            .replace(remote.as_str(), "")
-            .trim_start_matches('/')
+            .strip_prefix(&remote_prefix)
+            .unwrap_or(&base_branch)
             .to_string()
     } else {
         base_branch
