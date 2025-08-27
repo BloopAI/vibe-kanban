@@ -496,7 +496,7 @@ impl ClaudeLogProcessor {
                 let task_description = if let Some(desc) = description {
                     desc.clone()
                 } else {
-                    prompt.clone()
+                    prompt.clone().unwrap_or_default()
                 };
                 ActionType::TaskCreate {
                     description: task_description,
@@ -520,11 +520,27 @@ impl ClaudeLogProcessor {
                     .collect(),
                 operation: "write".to_string(),
             },
+            ClaudeToolData::TodoRead { .. } => ActionType::TodoManagement {
+                todos: vec![],
+                operation: "read".to_string(),
+            },
             ClaudeToolData::Glob { pattern, path: _ } => ActionType::Search {
                 query: pattern.clone(),
             },
             ClaudeToolData::LS { .. } => ActionType::Other {
                 description: "List directory".to_string(),
+            },
+            ClaudeToolData::Oracle { .. } => ActionType::Other {
+                description: "Oracle".to_string(),
+            },
+            ClaudeToolData::Mermaid { .. } => ActionType::Other {
+                description: "Mermaid diagram".to_string(),
+            },
+            ClaudeToolData::CodebaseSearchAgent { .. } => ActionType::Other {
+                description: "Codebase search".to_string(),
+            },
+            ClaudeToolData::UndoEdit { .. } => ActionType::Other {
+                description: "Undo edit".to_string(),
             },
             ClaudeToolData::Unknown { .. } => ActionType::Other {
                 description: format!("Tool: {}", tool_data.get_name()),
@@ -544,7 +560,13 @@ impl ClaudeLogProcessor {
             ActionType::CommandRun { command } => format!("`{command}`"),
             ActionType::Search { query } => format!("`{query}`"),
             ActionType::WebFetch { url } => format!("`{url}`"),
-            ActionType::TaskCreate { description } => description.clone(),
+            ActionType::TaskCreate { description } => {
+                if description.is_empty() {
+                    "Task".to_string()
+                } else {
+                    format!("Task: `{description}`")
+                }
+            }
             ActionType::PlanPresentation { plan } => plan.clone(),
             ActionType::TodoManagement { .. } => "TODO list updated".to_string(),
             ActionType::Other { description: _ } => match tool_data {
@@ -565,6 +587,37 @@ impl ClaudeLogProcessor {
                         )
                     } else {
                         format!("Find files: `{pattern}`")
+                    }
+                }
+                ClaudeToolData::Oracle { task, .. } => {
+                    if let Some(t) = task {
+                        format!("Oracle: `{t}`")
+                    } else {
+                        "Oracle".to_string()
+                    }
+                }
+                ClaudeToolData::Mermaid { .. } => "Mermaid diagram".to_string(),
+                ClaudeToolData::CodebaseSearchAgent { query, path, .. } => {
+                    match (query.as_ref(), path.as_ref()) {
+                        (Some(q), Some(p)) if !q.is_empty() && !p.is_empty() => format!(
+                            "Codebase search: `{}` in `{}`",
+                            q,
+                            make_path_relative(p, worktree_path)
+                        ),
+                        (Some(q), _) if !q.is_empty() => format!("Codebase search: `{q}`"),
+                        _ => "Codebase search".to_string(),
+                    }
+                }
+                ClaudeToolData::UndoEdit { path, .. } => {
+                    if let Some(p) = path.as_ref() {
+                        let rel = make_path_relative(p, worktree_path);
+                        if rel.is_empty() {
+                            "Undo edit".to_string()
+                        } else {
+                            format!("Undo edit: `{rel}`")
+                        }
+                    } else {
+                        "Undo edit".to_string()
                     }
                 }
                 _ => tool_data.get_name().to_string(),
@@ -656,30 +709,38 @@ pub enum ClaudeContentItem {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[serde(tag = "name", content = "input")]
 pub enum ClaudeToolData {
+    #[serde(rename = "TodoWrite", alias = "todo_write")]
     TodoWrite {
         todos: Vec<ClaudeTodoItem>,
     },
+    #[serde(rename = "Task", alias = "task")]
     Task {
-        subagent_type: String,
+        subagent_type: Option<String>,
         description: Option<String>,
-        prompt: String,
+        prompt: Option<String>,
     },
+    #[serde(rename = "Glob", alias = "glob")]
     Glob {
         pattern: String,
         #[serde(default)]
         path: Option<String>,
     },
+    #[serde(rename = "LS", alias = "list_directory", alias = "ls")]
     LS {
         path: String,
     },
+    #[serde(rename = "Read", alias = "read")]
     Read {
         file_path: String,
     },
+    #[serde(rename = "Bash", alias = "bash")]
     Bash {
+        #[serde(alias = "cmd", alias = "command_line")]
         command: String,
         #[serde(default)]
         description: Option<String>,
     },
+    #[serde(rename = "Grep", alias = "grep")]
     Grep {
         pattern: String,
         #[serde(default)]
@@ -690,19 +751,28 @@ pub enum ClaudeToolData {
     ExitPlanMode {
         plan: String,
     },
+    #[serde(rename = "Edit", alias = "edit_file")]
     Edit {
+        #[serde(alias = "path")]
         file_path: String,
+        #[serde(alias = "old_str")]
         old_string: Option<String>,
+        #[serde(alias = "new_str")]
         new_string: Option<String>,
     },
+    #[serde(rename = "MultiEdit", alias = "multi_edit")]
     MultiEdit {
+        #[serde(alias = "path")]
         file_path: String,
         edits: Vec<ClaudeEditItem>,
     },
+    #[serde(rename = "Write", alias = "create_file", alias = "write_file")]
     Write {
+        #[serde(alias = "path")]
         file_path: String,
         content: String,
     },
+    #[serde(rename = "NotebookEdit", alias = "notebook_edit")]
     NotebookEdit {
         notebook_path: String,
         new_source: String,
@@ -710,14 +780,52 @@ pub enum ClaudeToolData {
         #[serde(default)]
         cell_id: Option<String>,
     },
+    #[serde(rename = "WebFetch", alias = "read_web_page")]
     WebFetch {
         url: String,
         #[serde(default)]
         prompt: Option<String>,
     },
+    #[serde(rename = "WebSearch", alias = "web_search")]
     WebSearch {
         query: String,
     },
+    // Amp-only utilities for better UX
+    #[serde(rename = "Oracle", alias = "oracle")]
+    Oracle {
+        #[serde(default)]
+        task: Option<String>,
+        #[serde(default)]
+        files: Option<Vec<String>>,
+        #[serde(default)]
+        context: Option<String>,
+    },
+    #[serde(rename = "Mermaid", alias = "mermaid")]
+    Mermaid {
+        code: String,
+    },
+    #[serde(rename = "CodebaseSearchAgent", alias = "codebase_search_agent")]
+    CodebaseSearchAgent {
+        #[serde(default)]
+        query: Option<String>,
+        #[serde(default)]
+        path: Option<String>,
+        #[serde(default)]
+        include: Option<Vec<String>>,
+        #[serde(default)]
+        exclude: Option<Vec<String>>,
+        #[serde(default)]
+        limit: Option<u32>,
+    },
+    #[serde(rename = "UndoEdit", alias = "undo_edit")]
+    UndoEdit {
+        #[serde(default, alias = "file_path")]
+        path: Option<String>,
+        #[serde(default)]
+        steps: Option<u32>,
+    },
+    #[serde(rename = "TodoRead", alias = "todo_read")]
+    TodoRead {},
     #[serde(untagged)]
     Unknown {
         #[serde(flatten)]
@@ -758,6 +866,11 @@ impl ClaudeToolData {
             ClaudeToolData::NotebookEdit { .. } => "NotebookEdit",
             ClaudeToolData::WebFetch { .. } => "WebFetch",
             ClaudeToolData::WebSearch { .. } => "WebSearch",
+            ClaudeToolData::TodoRead { .. } => "TodoRead",
+            ClaudeToolData::Oracle { .. } => "Oracle",
+            ClaudeToolData::Mermaid { .. } => "Mermaid",
+            ClaudeToolData::CodebaseSearchAgent { .. } => "CodebaseSearchAgent",
+            ClaudeToolData::UndoEdit { .. } => "UndoEdit",
             ClaudeToolData::Unknown { data } => data
                 .get("name")
                 .and_then(|v| v.as_str())
@@ -976,6 +1089,188 @@ mod tests {
             ClaudeLogProcessor::extract_session_id(&parsed_tool),
             Some("another-session".to_string())
         );
+    }
+
+    #[test]
+    fn test_amp_tool_aliases_create_file_and_edit_file() {
+        // Amp "create_file" should deserialize into Write with alias field "path"
+        let assistant_with_create = r#"{
+            "type":"assistant",
+            "message":{
+                "role":"assistant",
+                "content":[
+                    {"type":"tool_use","id":"t1","name":"create_file","input":{"path":"/tmp/work/src/new.txt","content":"hello"}}
+                ]
+            }
+        }"#;
+        let parsed: ClaudeJson = serde_json::from_str(assistant_with_create).unwrap();
+        let entries = ClaudeLogProcessor::new().to_normalized_entries(&parsed, "/tmp/work");
+        assert_eq!(entries.len(), 1);
+        match &entries[0].entry_type {
+            NormalizedEntryType::ToolUse { action_type, .. } => match action_type {
+                ActionType::FileEdit { path, .. } => assert_eq!(path, "src/new.txt"),
+                other => panic!("Expected FileEdit, got {:?}", other),
+            },
+            other => panic!("Expected ToolUse, got {:?}", other),
+        }
+
+        // Amp "edit_file" should deserialize into Edit with aliases for path/old_str/new_str
+        let assistant_with_edit = r#"{
+            "type":"assistant",
+            "message":{
+                "role":"assistant",
+                "content":[
+                    {"type":"tool_use","id":"t2","name":"edit_file","input":{"path":"/tmp/work/README.md","old_str":"foo","new_str":"bar"}}
+                ]
+            }
+        }"#;
+        let parsed_edit: ClaudeJson = serde_json::from_str(assistant_with_edit).unwrap();
+        let entries = ClaudeLogProcessor::new().to_normalized_entries(&parsed_edit, "/tmp/work");
+        assert_eq!(entries.len(), 1);
+        match &entries[0].entry_type {
+            NormalizedEntryType::ToolUse { action_type, .. } => match action_type {
+                ActionType::FileEdit { path, .. } => assert_eq!(path, "README.md"),
+                other => panic!("Expected FileEdit, got {:?}", other),
+            },
+            other => panic!("Expected ToolUse, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_amp_tool_aliases_oracle_mermaid_codebase_undo() {
+        // Oracle with task
+        let oracle_json = r#"{
+            "type":"assistant",
+            "message":{
+                "role":"assistant",
+                "content":[
+                    {"type":"tool_use","id":"t1","name":"oracle","input":{"task":"Assess project status"}}
+                ]
+            }
+        }"#;
+        let parsed: ClaudeJson = serde_json::from_str(oracle_json).unwrap();
+        let entries = ClaudeLogProcessor::new().to_normalized_entries(&parsed, "/tmp/work");
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].content, "Oracle: `Assess project status`");
+
+        // Mermaid with code
+        let mermaid_json = r#"{
+            "type":"assistant",
+            "message":{
+                "role":"assistant",
+                "content":[
+                    {"type":"tool_use","id":"t2","name":"mermaid","input":{"code":"graph TD; A-->B;"}}
+                ]
+            }
+        }"#;
+        let parsed: ClaudeJson = serde_json::from_str(mermaid_json).unwrap();
+        let entries = ClaudeLogProcessor::new().to_normalized_entries(&parsed, "/tmp/work");
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].content, "Mermaid diagram");
+
+        // CodebaseSearchAgent with query
+        let csa_json = r#"{
+            "type":"assistant",
+            "message":{
+                "role":"assistant",
+                "content":[
+                    {"type":"tool_use","id":"t3","name":"codebase_search_agent","input":{"query":"TODO markers"}}
+                ]
+            }
+        }"#;
+        let parsed: ClaudeJson = serde_json::from_str(csa_json).unwrap();
+        let entries = ClaudeLogProcessor::new().to_normalized_entries(&parsed, "/tmp/work");
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].content, "Codebase search: `TODO markers`");
+
+        // UndoEdit shows file path when available
+        let undo_json = r#"{
+            "type":"assistant",
+            "message":{
+                "role":"assistant",
+                "content":[
+                    {"type":"tool_use","id":"t4","name":"undo_edit","input":{"path":"README.md"}}
+                ]
+            }
+        }"#;
+        let parsed: ClaudeJson = serde_json::from_str(undo_json).unwrap();
+        let entries = ClaudeLogProcessor::new().to_normalized_entries(&parsed, "/tmp/work");
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].content, "Undo edit: `README.md`");
+    }
+
+    #[test]
+    fn test_amp_bash_and_task_content() {
+        // Bash with alias field cmd
+        let bash_json = r#"{
+            "type":"assistant",
+            "message":{
+                "role":"assistant",
+                "content":[
+                    {"type":"tool_use","id":"t1","name":"bash","input":{"cmd":"echo hello"}}
+                ]
+            }
+        }"#;
+        let parsed: ClaudeJson = serde_json::from_str(bash_json).unwrap();
+        let entries = ClaudeLogProcessor::new().to_normalized_entries(&parsed, "/tmp/work");
+        assert_eq!(entries.len(), 1);
+        // Content should display the command in backticks
+        assert_eq!(entries[0].content, "`echo hello`");
+
+        // Task content should include description/prompt wrapped in backticks
+        let task_json = r#"{
+            "type":"assistant",
+            "message":{
+                "role":"assistant",
+                "content":[
+                    {"type":"tool_use","id":"t2","name":"task","input":{"subagent_type":"Task","prompt":"Add header to README"}}
+                ]
+            }
+        }"#;
+        let parsed: ClaudeJson = serde_json::from_str(task_json).unwrap();
+        let entries = ClaudeLogProcessor::new().to_normalized_entries(&parsed, "/tmp/work");
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].content, "`Add header to README`");
+    }
+
+    #[test]
+    fn test_task_description_or_prompt_backticks() {
+        // When description present, use it
+        let with_desc = r#"{
+            "type":"assistant",
+            "message":{
+                "role":"assistant",
+                "content":[
+                    {"type":"tool_use","id":"t3","name":"Task","input":{
+                        "subagent_type":"Task",
+                        "prompt":"Fallback prompt",
+                        "description":"Primary description"
+                    }}
+                ]
+            }
+        }"#;
+        let parsed: ClaudeJson = serde_json::from_str(with_desc).unwrap();
+        let entries = ClaudeLogProcessor::new().to_normalized_entries(&parsed, "/tmp/work");
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].content, "`Primary description`");
+
+        // When description missing, fall back to prompt
+        let no_desc = r#"{
+            "type":"assistant",
+            "message":{
+                "role":"assistant",
+                "content":[
+                    {"type":"tool_use","id":"t4","name":"Task","input":{
+                        "subagent_type":"Task",
+                        "prompt":"Only prompt"
+                    }}
+                ]
+            }
+        }"#;
+        let parsed: ClaudeJson = serde_json::from_str(no_desc).unwrap();
+        let entries = ClaudeLogProcessor::new().to_normalized_entries(&parsed, "/tmp/work");
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].content, "`Only prompt`");
     }
 
     #[test]
