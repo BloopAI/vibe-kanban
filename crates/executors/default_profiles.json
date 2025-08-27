@@ -56,7 +56,7 @@
       "mcp_config_path": null,
       "AMP": {
         "command": {
-          "base": "npx -y @sourcegraph/amp@latest",
+          "base": "npx -y @sourcegraph/amp@0.0.1756065675-g0cf5a4",
           "params": [
             "--execute",
             "--stream-json",
