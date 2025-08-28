@@ -40,11 +40,11 @@ export const getTaskPanelClasses = (forceFullScreen: boolean) => {
         `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:w-[800px]`,
       ].join(' ');
 
-  return `fixed flex flex-col items-center inset-y-0 right-0 z-50 ${overlayClasses} ${sideBySideClasses} bg-muted border-l shadow-lg overflow-hidden `;
+  return `fixed flex flex-col items-center inset-y-0 right-0 z-50 ${overlayClasses} ${sideBySideClasses} bg-diagonal-lines shadow-lg overflow-hidden `;
 };
 
 export const getTaskPanelInnerClasses = () => {
-  return `flex-1 flex flex-col min-h-0 w-full max-w-[1400px] bg-background`;
+  return `flex-1 flex flex-col min-h-0 w-full max-w-[1400px] bg-muted border-x`;
 };
 
 // Generate classes for backdrop (only show in overlay mode)

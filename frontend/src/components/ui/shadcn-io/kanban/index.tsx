@@ -42,7 +42,7 @@ export const KanbanBoard = ({ id, children, className }: KanbanBoardProps) => {
   return (
     <div
       className={cn(
-        'flex h-full min-h-40 flex-col bg-secondary',
+        'flex h-full min-h-40 flex-col',
         isOver ? 'outline-primary' : 'outline-black',
         className
       )}
@@ -144,7 +144,7 @@ export const KanbanHeader = (props: KanbanHeaderProps) =>
     <Card
       className={cn(
         'sticky top-0 z-20 flex shrink-0 items-center gap-2 p-3 border-b border-dashed',
-        'bg-secondary',
+        'bg-background',
         props.className
       )}
       style={{

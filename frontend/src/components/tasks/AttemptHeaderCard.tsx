@@ -58,26 +58,24 @@ export function AttemptHeaderCard({
   };
 
   return (
-    <Card className="border-b border-dashed bg-secondary flex items-center text-sm text-muted-foreground">
+    <Card className="border-b border-dashed bg-background flex items-center text-sm">
       <div className="flex-1 flex gap-6 p-3">
         <p>
-          Attempt &middot;{' '}
-          <span className="text-primary">
-            {attemptNumber}/{totalAttempts}
-          </span>
+          <span className="text-secondary-foreground">Attempt &middot; </span>
+          {attemptNumber}/{totalAttempts}
         </p>
         <p>
-          Profile &middot;{' '}
-          <span className="text-primary">{selectedAttempt?.profile}</span>
+          <span className="text-secondary-foreground">Profile &middot; </span>
+          {selectedAttempt?.profile}
         </p>
         {selectedAttempt?.branch && (
           <p className="max-w-30 truncate">
-            Branch &middot;{' '}
-            <span className="text-primary">{selectedAttempt.branch}</span>
+            <span className="text-secondary-foreground">Branch &middot; </span>
+            {selectedAttempt.branch}
           </p>
         )}
         {fileCount > 0 && (
-          <p>
+          <p className="text-secondary-foreground">
             <Button
               variant="ghost"
               size="sm"
@@ -86,8 +84,8 @@ export function AttemptHeaderCard({
             >
               Diffs
             </Button>{' '}
-            &middot; <span className="text-green-600">+{added}</span>{' '}
-            <span className="text-red-600">-{deleted}</span>
+            &middot; <span className="text-success">+{added}</span>{' '}
+            <span className="text-destructive">-{deleted}</span>
           </p>
         )}
       </div>

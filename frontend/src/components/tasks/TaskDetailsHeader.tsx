@@ -36,7 +36,7 @@ function TaskDetailsHeader({
   return (
     <div>
       <Card
-        className="flex shrink-0 items-center gap-2 border-b border-dashed bg-secondary"
+        className="flex shrink-0 items-center gap-2 border-b border-dashed bg-background"
         style={{}}
       >
         <div className="p-3 flex flex-1 items-center truncate">
@@ -107,7 +107,7 @@ function TaskDetailsHeader({
                     size="icon"
                     onClick={() => onDeleteTask(task.id)}
                   >
-                    <Trash2 className="h-4 w-4 text-red-500" />
+                    <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>

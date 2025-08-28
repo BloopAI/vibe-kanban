@@ -243,7 +243,7 @@ export function FolderPicker({
                   >
                     {entry.is_directory ? (
                       entry.is_git_repo ? (
-                        <FolderOpen className="h-4 w-4 text-green-600 flex-shrink-0" />
+                        <FolderOpen className="h-4 w-4 text-success flex-shrink-0" />
                       ) : (
                         <Folder className="h-4 w-4 text-blue-600 flex-shrink-0" />
                       )
@@ -254,7 +254,7 @@ export function FolderPicker({
                       {entry.name}
                     </span>
                     {entry.is_git_repo && (
-                      <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded flex-shrink-0">
+                      <span className="text-xs text-success bg-green-100 px-2 py-1 rounded flex-shrink-0">
                         git repo
                       </span>
                     )}

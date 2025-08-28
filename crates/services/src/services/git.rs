@@ -880,6 +880,11 @@ impl GitService {
         let worktree_repo = Repository::open(worktree_path)?;
         let main_repo = self.open_repo(repo_path)?;
 
+        // Safety guard: never operate on a dirty worktree. This preserves any
+        // uncommitted changes to tracked files by failing fast instead of
+        // resetting or cherry-picking over them. Untracked files are allowed.
+        self.check_worktree_clean(&worktree_repo)?;
+
         // Check if there's an existing rebase in progress and abort it
         let state = worktree_repo.state();
         if state == git2::RepositoryState::Rebase

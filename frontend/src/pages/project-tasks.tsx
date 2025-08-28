@@ -329,7 +329,7 @@ export function ProjectTasks() {
             </Card>
           </div>
         ) : (
-          <div className="w-full h-full overflow-x-auto bg-secondary">
+          <div className="w-full h-full overflow-x-auto">
             <TaskKanbanBoard
               tasks={tasks}
               searchQuery={searchQuery}

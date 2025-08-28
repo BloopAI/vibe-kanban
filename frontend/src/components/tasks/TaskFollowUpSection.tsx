@@ -247,7 +247,7 @@ export function TaskFollowUpSection({
                 <div className="flex-1 flex gap-2">
                   {/* Image button */}
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                     className="h-10 w-10 p-0"
                     onClick={() => setShowImageUpload(!showImageUpload)}
@@ -273,7 +273,7 @@ export function TaskFollowUpSection({
                           <DropdownMenuTrigger asChild>
                             <Button
                               ref={variantButtonRef}
-                              variant="outline"
+                              variant="secondary"
                               size="sm"
                               className={cn(
                                 'h-10 w-24 px-2 flex items-center justify-between transition-all',

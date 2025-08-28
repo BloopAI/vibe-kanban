@@ -6,24 +6,20 @@
 @layer base {
   /* Light defaults */
   :root {
-    --_background: 0 0% 100%;
+    --_background: 48 33% 97%;
     --_foreground: 222.2 84% 4.9%;
-    --_card: 0 0% 100%;
-    --_card-foreground: 222.2 84% 4.9%;
-    --_popover: 0 0% 100%;
-    --_popover-foreground: 222.2 84% 4.9%;
-    --_primary: 222.2 47.4% 11.2%;
-    --_primary-foreground: 210 40% 98%;
-    --_secondary: 48, 33%, 97%;
-    --_secondary-foreground: 222.2 84% 4.9%;
-    --_muted: 210 40% 96%;
-    --_muted-foreground: 215.4 16.3% 46.9%;
-    --_accent: 210 40% 96%;
+    --_primary: var(--_muted);
+    --_primary-foreground: var(--_muted-foreground);
+    --_secondary: var(--_muted);
+    --_secondary-foreground: 215.4 16.3% 46.9%;
+    --_muted: 0 0% 100%;
+    --_muted-foreground: var(--_foreground);
+    --_accent: var(--_background);
     --_accent-foreground: 222.2 84% 4.9%;
     --_destructive: 0 84.2% 60.2%;
-    --_destructive-foreground: 210 40% 98%;
+    --_destructive-foreground: var(--_background);
     --_border: 214.3 31.8% 91.4%;
-    --_input: 214.3 31.8% 91.4%;
+    --_input: var(--_border);
     --_ring: 222.2 84% 4.9%;
     --_radius: 0.5rem;
 
@@ -46,24 +42,20 @@
 
   /* Dark defaults (used if no theme class but user prefers dark) */
   .dark {
-    --_background: 60, 2%, 18%;
-    --_foreground: 210 40% 98%;
-    --_card: 60, 2%, 18%;
-    --_card-foreground: 210 40% 98%;
-    --_popover: 222.2 84% 4.9%;
-    --_popover-foreground: 210 40% 98%;
-    --_primary: 210 40% 98%;
-    --_primary-foreground: 222.2 47.4% 11.2%;
-    --_secondary: 60, 3%, 15%;
-    --_secondary-foreground: 210 40% 98%;
-    --_muted: 30, 3%, 12%;
-    --_muted-foreground: 215 20.2% 65.1%;
-    --_accent: 217.2 32.6% 17.5%;
+    --_background: 60 2% 18%;
+    --_foreground: 48 7% 95%;
+    --_primary: var(--_muted);
+    --_primary-foreground: var(--_muted-foreground);
+    --_secondary: var(--_muted);
+    --_secondary-foreground: 48 7% 73%;
+    --_muted: 60 2% 20%;
+    --_muted-foreground: var(--_foreground);
+    --_accent: var(--_background);
     --_accent-foreground: 210 40% 98%;
-    --_destructive: 0 62.8% 30.6%;
-    --_destructive-foreground: 210 40% 98%;
-    --_border: 30, 3%, 12%;
-    --_input: 210 40% 98%;
+    --_destructive: 0 62.8% 50.6%;
+    --_destructive-foreground: var(--_background);
+    --_border: 60 2% 25%;
+    --_input: var(--_border);
     --_ring: 212.7 26.8% 83.9%;
 
     /* Status (dark) */
@@ -82,116 +74,6 @@
     --_console-success: 138.5 76.5% 47.7%;
     --_console-error: 0 84.2% 60.2%;
   }
-
-  .purple {
-    --_background: 266 100% 6%;
-    --_foreground: 266 20% 95%;
-    --_card: 266 100% 6%;
-    --_card-foreground: 266 20% 95%;
-    --_popover: 266 100% 6%;
-    --_popover-foreground: 266 20% 95%;
-    --_primary: 266 80% 75%;
-    --_primary-foreground: 266 100% 6%;
-    --_secondary: 266 20% 15%;
-    --_secondary-foreground: 266 20% 95%;
-    --_muted: 266 20% 15%;
-    --_muted-foreground: 266 15% 65%;
-    --_accent: 266 20% 15%;
-    --_accent-foreground: 266 20% 95%;
-    --_destructive: 0 62.8% 30.6%;
-    --_destructive-foreground: 266 20% 95%;
-    --_border: 266 20% 15%;
-    --_input: 266 20% 15%;
-    --_ring: 266 80% 75%;
-  }
-
-  .green {
-    --_background: 120 100% 6%;
-    --_foreground: 120 20% 95%;
-    --_card: 120 100% 6%;
-    --_card-foreground: 120 20% 95%;
-    --_popover: 120 100% 6%;
-    --_popover-foreground: 120 20% 95%;
-    --_primary: 120 80% 75%;
-    --_primary-foreground: 120 100% 6%;
-    --_secondary: 120 20% 15%;
-    --_secondary-foreground: 120 20% 95%;
-    --_muted: 120 20% 15%;
-    --_muted-foreground: 120 15% 65%;
-    --_accent: 120 20% 15%;
-    --_accent-foreground: 120 20% 95%;
-    --_destructive: 0 62.8% 30.6%;
-    --_destructive-foreground: 120 20% 95%;
-    --_border: 120 20% 15%;
-    --_input: 120 20% 15%;
-    --_ring: 120 80% 75%;
-  }
-
-  .blue {
-    --_background: 210 100% 6%;
-    --_foreground: 210 20% 95%;
-    --_card: 210 100% 6%;
-    --_card-foreground: 210 20% 95%;
-    --_popover: 210 100% 6%;
-    --_popover-foreground: 210 20% 95%;
-    --_primary: 210 80% 75%;
-    --_primary-foreground: 210 100% 6%;
-    --_secondary: 210 20% 15%;
-    --_secondary-foreground: 210 20% 95%;
-    --_muted: 210 20% 15%;
-    --_muted-foreground: 210 15% 65%;
-    --_accent: 210 20% 15%;
-    --_accent-foreground: 210 20% 95%;
-    --_destructive: 0 62.8% 30.6%;
-    --_destructive-foreground: 210 20% 95%;
-    --_border: 210 20% 15%;
-    --_input: 210 20% 15%;
-    --_ring: 210 80% 75%;
-  }
-
-  .orange {
-    --_background: 30 100% 6%;
-    --_foreground: 30 20% 95%;
-    --_card: 30 100% 6%;
-    --_card-foreground: 30 20% 95%;
-    --_popover: 30 100% 6%;
-    --_popover-foreground: 30 20% 95%;
-    --_primary: 30 80% 75%;
-    --_primary-foreground: 30 100% 6%;
-    --_secondary: 30 20% 15%;
-    --_secondary-foreground: 30 20% 95%;
-    --_muted: 30 20% 15%;
-    --_muted-foreground: 30 15% 65%;
-    --_accent: 30 20% 15%;
-    --_accent-foreground: 30 20% 95%;
-    --_destructive: 0 62.8% 30.6%;
-    --_destructive-foreground: 30 20% 95%;
-    --_border: 30 20% 15%;
-    --_input: 30 20% 15%;
-    --_ring: 30 80% 75%;
-  }
-
-  .red {
-    --_background: 0 100% 6%;
-    --_foreground: 0 20% 95%;
-    --_card: 0 100% 6%;
-    --_card-foreground: 0 20% 95%;
-    --_popover: 0 100% 6%;
-    --_popover-foreground: 0 20% 95%;
-    --_primary: 0 80% 75%;
-    --_primary-foreground: 0 100% 6%;
-    --_secondary: 0 20% 15%;
-    --_secondary-foreground: 0 20% 95%;
-    --_muted: 0 20% 15%;
-    --_muted-foreground: 0 15% 65%;
-    --_accent: 0 20% 15%;
-    --_accent-foreground: 0 20% 95%;
-    --_destructive: 0 62.8% 30.6%;
-    --_destructive-foreground: 0 20% 95%;
-    --_border: 0 20% 15%;
-    --_input: 0 20% 15%;
-    --_ring: 0 80% 75%;
-  }
 }
 
 /* 2) PUBLIC TOKENS: prefer VS Code, else fall back to theme tokens */
@@ -200,16 +82,10 @@
     --background: var(--vscode-editor-background, var(--_background));
     --foreground: var(--vscode-editor-foreground, var(--_foreground));
 
-    --card: var(--vscode-editorWidget-background, var(--_card));
-    --card-foreground: var(
-      --vscode-editorWidget-foreground,
-      var(--_card-foreground)
-    );
-    --popover: var(--vscode-editorWidget-background, var(--_popover));
-    --popover-foreground: var(
-      --vscode-editorWidget-foreground,
-      var(--_popover-foreground)
-    );
+    --card: var(--muted);
+    --card-foreground: var(--muted-foreground);
+    --popover: var(--background);
+    --popover-foreground: var(--foreground);
 
     --primary: var(--vscode-button-background, var(--_primary));
     --primary-foreground: var(

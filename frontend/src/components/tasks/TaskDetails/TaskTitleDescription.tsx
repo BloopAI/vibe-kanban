@@ -15,7 +15,7 @@ export function TaskTitleDescription({ task }: TaskTitleDescriptionProps) {
       <h2 className="text-lg font-medium mb-1 line-clamp-2">{task.title}</h2>
 
       <div className="mt-2">
-        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+        <div className="flex items-start gap-2 text-sm text-secondary-foreground">
           {task.description ? (
             <div className="flex-1 min-w-0">
               <p
@@ -34,7 +34,7 @@ export function TaskTitleDescription({ task }: TaskTitleDescriptionProps) {
                   onClick={() =>
                     setIsDescriptionExpanded(!isDescriptionExpanded)
                   }
-                  className="mt-1 p-0 h-auto text-xs text-muted-foreground hover:text-foreground"
+                  className="mt-1 p-0 h-auto text-sm text-secondary-foreground hover:text-foreground"
                 >
                   {isDescriptionExpanded ? (
                     <>

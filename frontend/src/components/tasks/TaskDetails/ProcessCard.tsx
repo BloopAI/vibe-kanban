@@ -41,7 +41,7 @@ function ProcessCard({ process }: ProcessCardProps) {
       case 'completed':
         return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'failed':
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
+        return <AlertCircle className="h-4 w-4 text-destructive" />;
       case 'killed':
         return <Square className="h-4 w-4 text-gray-500" />;
       default:
@@ -146,7 +146,9 @@ function ProcessCard({ process }: ProcessCardProps) {
 
         {showLogs && (
           <div className="mt-3">
-            {error && <div className="text-red-500 text-sm mb-2">{error}</div>}
+            {error && (
+              <div className="text-destructive text-sm mb-2">{error}</div>
+            )}
 
             {isCodingAgent ? (
               // Normalized conversation display for coding agents

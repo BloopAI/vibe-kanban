@@ -287,7 +287,7 @@ export function McpServers() {
                   minHeight={300}
                 />
                 {mcpError && !mcpError.includes('does not support MCP') && (
-                  <p className="text-sm text-red-600 dark:text-red-400">
+                  <p className="text-sm text-destructive dark:text-red-400">
                     {mcpError}
                   </p>
                 )}

@@ -35,7 +35,7 @@ const getEntryIcon = (entryType: NormalizedEntryType) => {
     return <User className="h-4 w-4 text-blue-600" />;
   }
   if (entryType.type === 'assistant_message') {
-    return <Bot className="h-4 w-4 text-green-600" />;
+    return <Bot className="h-4 w-4 text-success" />;
   }
   if (entryType.type === 'system_message') {
     return <Settings className="h-4 w-4 text-gray-600" />;
@@ -44,7 +44,7 @@ const getEntryIcon = (entryType: NormalizedEntryType) => {
     return <Brain className="h-4 w-4 text-purple-600" />;
   }
   if (entryType.type === 'error_message') {
-    return <AlertCircle className="h-4 w-4 text-red-600" />;
+    return <AlertCircle className="h-4 w-4 text-destructive" />;
   }
   if (entryType.type === 'tool_use') {
     const { action_type, tool_name } = entryType;
@@ -65,7 +65,7 @@ const getEntryIcon = (entryType: NormalizedEntryType) => {
     if (action_type.action === 'file_read') {
       return <Eye className="h-4 w-4 text-orange-600" />;
     } else if (action_type.action === 'file_edit') {
-      return <Edit className="h-4 w-4 text-red-600" />;
+      return <Edit className="h-4 w-4 text-destructive" />;
     } else if (action_type.action === 'command_run') {
       return <Terminal className="h-4 w-4 text-yellow-600" />;
     } else if (action_type.action === 'search') {
@@ -93,7 +93,7 @@ const getContentClassName = (entryType: NormalizedEntryType) => {
   }
 
   if (entryType.type === 'error_message') {
-    return `${baseClasses} text-red-600 font-mono bg-red-50 dark:bg-red-950/20 px-2 py-1 rounded`;
+    return `${baseClasses} text-destructive font-mono bg-red-50 dark:bg-red-950/20 px-2 py-1 rounded`;
   }
 
   // Special styling for TODO lists
@@ -144,11 +144,11 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
 
   const fileEdit =
     entry.entry_type.type === 'tool_use' &&
-    entry.entry_type.action_type.action === 'file_edit'
+      entry.entry_type.action_type.action === 'file_edit'
       ? (entry.entry_type.action_type as Extract<
-          ActionType,
-          { action: 'file_edit' }
-        >)
+        ActionType,
+        { action: 'file_edit' }
+      >)
       : null;
 
   // One-line collapsed UX for tool entries
@@ -227,7 +227,7 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
                     {entry.content.split('\n')[0]}
                     <button
                       onClick={() => setIsExpanded()}
-                      className="ml-2 inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                      className="ml-2 inline-flex items-center gap-1 text-xs text-destructive hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                     >
                       <ChevronRight className="h-3 w-3" />
                       Show more
@@ -238,7 +238,7 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
               {isExpanded && (
                 <button
                   onClick={() => setIsExpanded()}
-                  className="flex items-center gap-1 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                  className="flex items-center gap-1 text-xs text-destructive hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                 >
                   <ChevronUp className="h-3 w-3" />
                   Show less
@@ -346,8 +346,8 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
                             className={
                               'px-1.5 py-0.5 rounded text-[10px] border whitespace-nowrap ' +
                               (commandSuccess
-                                ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-900/40'
-                                : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/40')
+                                ? 'text-success'
+                                : 'text-destructive')
                             }
                             title={
                               typeof commandExitCode === 'number'

@@ -17,54 +17,42 @@ function TabNavigation({
   selectedAttempt,
 }: Props) {
   const { attemptData } = useAttemptExecution(selectedAttempt?.id);
-  return (
-    <div className="border-b border-dashed bg-secondary sticky top-0 z-10">
-      <div className="flex items-center px-4">
-        <button
-          onClick={() => {
-            setActiveTab('logs');
-          }}
-          className={`flex items-center px-4 py-2 text-sm font-medium ${
-            activeTab === 'logs'
-              ? 'text-primary bg-background'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-          }`}
-        >
-          <MessageSquare className="h-4 w-4 mr-2" />
-          Logs
-        </button>
 
-        <button
-          onClick={() => {
-            setActiveTab('diffs');
-          }}
-          className={`flex items-center px-4 py-2 text-sm font-medium ${
-            activeTab === 'diffs'
-              ? 'text-primary bg-background'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-          }`}
-        >
-          <GitCompare className="h-4 w-4 mr-2" />
-          Diffs
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('processes');
-          }}
-          className={`flex items-center px-4 py-2 text-sm font-medium ${
-            activeTab === 'processes'
-              ? 'text-primary bg-background'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-          }`}
-        >
-          <Cog className="h-4 w-4 mr-2" />
-          Processes
-          {attemptData.processes && attemptData.processes.length > 0 && (
-            <span className="ml-2 px-1.5 py-0.5 text-xs bg-primary/10 text-primary rounded-full">
-              {attemptData.processes.length}
-            </span>
-          )}
-        </button>
+  const tabs = [
+    { id: 'logs' as TabType, label: 'Logs', icon: MessageSquare },
+    { id: 'diffs' as TabType, label: 'Diffs', icon: GitCompare },
+    { id: 'processes' as TabType, label: 'Processes', icon: Cog },
+  ];
+
+  const getTabClassName = (tabId: TabType) => {
+    const baseClasses = 'flex items-center py-2 px-2 text-sm font-medium';
+    const activeClasses = 'text-primary-foreground';
+    const inactiveClasses =
+      'text-secondary-foreground hover:text-primary-foreground';
+
+    return `${baseClasses} ${activeTab === tabId ? activeClasses : inactiveClasses}`;
+  };
+
+  return (
+    <div className="border-b border-dashed bg-background sticky top-0 z-10">
+      <div className="flex items-center px-3 space-x-3">
+        {tabs.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setActiveTab(id)}
+            className={getTabClassName(id)}
+          >
+            <Icon className="h-4 w-4 mr-2" />
+            {label}
+            {id === 'processes' &&
+              attemptData.processes &&
+              attemptData.processes.length > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 text-xs bg-primary/10 text-primary rounded-full">
+                  {attemptData.processes.length}
+                </span>
+              )}
+          </button>
+        ))}
         <div className="ml-auto flex items-center">{rightContent}</div>
       </div>
     </div>

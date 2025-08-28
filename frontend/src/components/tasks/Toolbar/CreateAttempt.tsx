@@ -144,7 +144,7 @@ function CreateAttempt({
 
   return (
     <div className="">
-      <Card className="bg-secondary p-3 text-sm border-y border-dashed">
+      <Card className="bg-background p-3 text-sm border-y border-dashed">
         Create Attempt
       </Card>
       <div className="space-y-3 px-3">
@@ -172,7 +172,7 @@ function CreateAttempt({
           <div className="space-y-1">
             <div className="flex items-center gap-1.5">
               <label className="text-xs font-medium text-muted-foreground">
-                Base branch <span className="text-red-500">*</span>
+                Base branch <span className="text-destructive">*</span>
               </label>
             </div>
             <BranchSelector

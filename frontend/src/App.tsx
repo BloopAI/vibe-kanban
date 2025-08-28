@@ -28,6 +28,7 @@ import { configApi } from '@/lib/api';
 import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
 import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
+import { ReleaseNotesDialog } from '@/components/ReleaseNotesDialog';
 import { AppWithStyleOverride } from '@/utils/style-override';
 import { WebviewContextMenu } from '@/vscode/ContextMenu';
 
@@ -45,6 +46,7 @@ function AppContent() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showPrivacyOptIn, setShowPrivacyOptIn] = useState(false);
   const [showGitHubLogin, setShowGitHubLogin] = useState(false);
+  const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const showNavbar = !location.pathname.endsWith('/full');
 
   useEffect(() => {
@@ -57,6 +59,8 @@ function AppContent() {
             setShowGitHubLogin(true);
           } else if (!config.telemetry_acknowledged) {
             setShowPrivacyOptIn(true);
+          } else if (config.show_release_notes) {
+            setShowReleaseNotes(true);
           }
         }
       }
@@ -114,6 +118,9 @@ function AppContent() {
     try {
       await configApi.saveConfig(updatedConfig);
       setShowPrivacyOptIn(false);
+      if (updatedConfig.show_release_notes) {
+        setShowReleaseNotes(true);
+      }
     } catch (err) {
       console.error('Error saving config:', err);
     }
@@ -139,7 +146,27 @@ function AppContent() {
     } finally {
       if (!config?.telemetry_acknowledged) {
         setShowPrivacyOptIn(true);
+      } else if (config?.show_release_notes) {
+        setShowReleaseNotes(true);
       }
+    }
+  };
+
+  const handleReleaseNotesClose = async () => {
+    if (!config) return;
+
+    const updatedConfig = {
+      ...config,
+      show_release_notes: false,
+    };
+
+    updateConfig(updatedConfig);
+
+    try {
+      await configApi.saveConfig(updatedConfig);
+      setShowReleaseNotes(false);
+    } catch (err) {
+      console.error('Error saving config:', err);
     }
   };
 
@@ -173,6 +200,10 @@ function AppContent() {
             <PrivacyOptInDialog
               open={showPrivacyOptIn}
               onComplete={handlePrivacyOptInComplete}
+            />
+            <ReleaseNotesDialog
+              open={showReleaseNotes}
+              onClose={handleReleaseNotesClose}
             />
             <EditorSelectionDialog
               isOpen={editorDialogOpen}

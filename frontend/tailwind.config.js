@@ -31,6 +31,12 @@ module.exports = {
       },
     },
     extend: {
+      backgroundImage: {
+        'diagonal-lines': `
+          repeating-linear-gradient(-45deg, hsl(var(--border) / 0.4) 0 2px, transparent 1px 12px),
+          linear-gradient(hsl(var(--background)), hsl(var(--background)))
+        `,
+      },
       ringColor: {
         DEFAULT: 'hsl(var(--primary))', // e.g. Tailwind's blue-500
       },

@@ -363,7 +363,7 @@
 }
 
 .diff-tailwindcss-wrapper .diff-style-root {
-  --diff-border--: var(--background);
+  --diff-border--: var(--border);
   --diff-add-content--: hsl(var(--console-success) / 0.2);
   --diff-del-content--: hsl(var(--console-error) / 0.2);
   --diff-add-lineNumber--: color-mix(
@@ -372,19 +372,19 @@
     hsl(var(--background)) 80%
   );
   --diff-del-lineNumber--: hsl(var(--console-error) / 0.2);
-  --diff-plain-content--: hsl(var(--background));
-  --diff-expand-content--: hsl(var(--background));
-  --diff-plain-lineNumber--: hsl(var(--background));
-  --diff-expand-lineNumber--: hsl(var(--background));
+  --diff-plain-content--: hsl(var(--muted));
+  --diff-expand-content--: hsl(var(--muted));
+  --diff-plain-lineNumber--: hsl(var(--muted));
+  --diff-expand-lineNumber--: hsl(var(--muted));
   --diff-plain-lineNumber-color--: hsl(var(--muted-foreground) / 0.7);
   --diff-expand-lineNumber-color--: hsl(var(--muted-foreground) / 0.7);
-  --diff-hunk-content--: hsl(var(--background));
-  --diff-hunk-lineNumber--: hsl(var(--background));
+  --diff-hunk-content--: hsl(var(--muted));
+  --diff-hunk-lineNumber--: hsl(var(--muted));
   --diff-hunk-lineNumber-hover--: hsl(var(--muted-foreground) / 0.7);
   --diff-add-content-highlight--: hsl(var(--console-success) / 0.4);
   --diff-del-content-highlight--: hsl(var(--console-error) / 0.4);
   --diff-add-widget--: hsl(var(--muted-foreground) / 0.7);
-  --diff-add-widget-color--: hsl(var(--background));
+  --diff-add-widget-color--: hsl(var(--muted));
   --diff-empty-content--: hsl(var(--background));
   --diff-hunk-content-color--: hsl(var(--muted-foreground) / 0.7);
 }

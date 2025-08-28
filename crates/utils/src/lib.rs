@@ -14,6 +14,7 @@ pub mod sentry;
 pub mod shell;
 pub mod stream_lines;
 pub mod text;
+pub mod version;
 
 /// Cache for WSL2 detection result
 static WSL2_CACHE: OnceLock<bool> = OnceLock::new();
