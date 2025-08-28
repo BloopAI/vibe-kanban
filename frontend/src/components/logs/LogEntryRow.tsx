@@ -52,12 +52,12 @@ function LogEntryRow({
               <ProcessStartCard
                 payload={entry.payload as ProcessStartPayload}
                 isCollapsed={isCollapsed || false}
-                onToggle={onToggleCollapse || (() => {})}
+                onToggle={onToggleCollapse || (() => { })}
               />
             );
           default:
             return (
-              <div className="text-red-500 text-xs">
+              <div className="text-destructive text-xs">
                 Unknown log type: {entry.channel}
               </div>
             );

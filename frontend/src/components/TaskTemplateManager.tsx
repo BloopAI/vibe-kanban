@@ -314,7 +314,7 @@ export function TaskTemplateManager({
                 rows={4}
               />
             </div>
-            {error && <div className="text-sm text-red-600">{error}</div>}
+            {error && <div className="text-sm text-destructive">{error}</div>}
           </div>
           <DialogFooter>
             <Button

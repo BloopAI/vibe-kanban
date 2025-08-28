@@ -35,7 +35,7 @@ export function PrivacyOptInDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
+    <Dialog open={open} onOpenChange={() => { }}>
       <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -93,7 +93,7 @@ export function PrivacyOptInDialog({
                 </div>
               </div>
               <div className="flex items-start gap-2">
-                <XCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                <XCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
                 <div className="min-w-0">
                   <p className="text-sm font-medium">We do NOT collect</p>
                   <p className="text-xs text-muted-foreground">

@@ -54,7 +54,7 @@ export function SearchBar({
         onChange={(e) => onChange?.(e.target.value)}
         disabled={disabled}
         placeholder={project ? `Search ${project.name}...` : 'Search...'}
-        className="pl-8 pr-14 h-8"
+        className="pl-8 pr-14 h-8 bg-muted"
       />
       <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none select-none font-mono text-[10px] text-muted-foreground rounded border bg-muted px-1 py-0.5">
         ⌘S

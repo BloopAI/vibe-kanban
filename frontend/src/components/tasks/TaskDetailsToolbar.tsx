@@ -202,7 +202,7 @@ function TaskDetailsToolbar({
         {/* Error Display */}
         {ui.error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200">
-            <div className="text-red-600 text-sm">{ui.error}</div>
+            <div className="text-destructive text-sm">{ui.error}</div>
           </div>
         )}
 

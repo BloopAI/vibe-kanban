@@ -25,7 +25,7 @@ const RawLogText = memo(
       <Component
         className={clsx(
           'font-mono text-xs break-all whitespace-pre-wrap',
-          shouldApplyStderrFallback && 'text-red-600',
+          shouldApplyStderrFallback && 'text-destructive',
           className
         )}
       >

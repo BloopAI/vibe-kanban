@@ -90,7 +90,7 @@ export function TaskCard({
           )}
           {/* Failed Indicator */}
           {task.last_attempt_failed && !task.has_merged_attempt && (
-            <XCircle className="h-3 w-3 text-red-500" />
+            <XCircle className="h-3 w-3 text-destructive" />
           )}
           {/* Actions Menu */}
           <div
@@ -127,7 +127,7 @@ export function TaskCard({
         </div>
       </div>
       {task.description && (
-        <p className="flex-1 text-xs text-muted-foreground break-words">
+        <p className="flex-1 text-sm text-secondary-foreground break-words">
           {task.description.length > 130
             ? `${task.description.substring(0, 130)}...`
             : task.description}

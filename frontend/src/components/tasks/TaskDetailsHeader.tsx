@@ -107,7 +107,7 @@ function TaskDetailsHeader({
                     size="icon"
                     onClick={() => onDeleteTask(task.id)}
                   >
-                    <Trash2 className="h-4 w-4 text-red-500" />
+                    <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>

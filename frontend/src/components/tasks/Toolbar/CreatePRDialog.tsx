@@ -176,7 +176,7 @@ function CreatePrDialog() {
               </Select>
             </div>
             {error && (
-              <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+              <div className="text-sm text-destructive bg-red-50 p-2 rounded">
                 {error}
               </div>
             )}
