@@ -14,6 +14,7 @@ import {
   PencilLine,
   Copy,
   Key,
+  ExternalLink,
 } from 'lucide-react';
 import '@/styles/diff-style-overrides.css';
 import { attemptsApi } from '@/lib/api';
@@ -165,21 +166,7 @@ export default function DiffCard({
           title="Open in IDE"
           disabled={diff.change === 'deleted'}
         >
-          {/* Reuse default icon size */}
-          <svg
-            viewBox="0 0 24 24"
-            className="h-3 w-3"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
-            <path d="M14 2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8" />
-            <polyline points="14 2 20 2 20 8" />
-            <line x1="11" y1="13" x2="20" y2="4" />
-          </svg>
+          <ExternalLink className="h-3 w-3" aria-hidden />
         </Button>
       </div>
 
