@@ -9,7 +9,10 @@ use utils::{msg_store::MsgStore, shell::get_shell_command};
 
 use crate::{
     command::CommandBuilder,
-    executors::{ExecutorError, StandardCodingAgentExecutor, claude::ClaudeLogProcessor},
+    executors::{
+        ExecutorError, StandardCodingAgentExecutor,
+        claude::{ClaudeLogProcessor, HistoryStrategy},
+    },
     logs::{stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider},
 };
 
@@ -97,6 +100,7 @@ impl StandardCodingAgentExecutor for Amp {
             msg_store.clone(),
             current_dir,
             entry_index_provider.clone(),
+            HistoryStrategy::AmpResume,
         );
 
         // Process stderr logs using the standard stderr processor

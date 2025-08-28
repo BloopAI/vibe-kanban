@@ -119,6 +119,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             msg_store.clone(),
             current_dir,
             entry_index_provider.clone(),
+            HistoryStrategy::Default,
         );
 
         // Process stderr logs using the standard stderr processor
@@ -149,18 +150,34 @@ exit "$exit_code"
     )
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HistoryStrategy {
+    // Claude-code format
+    Default,
+    // Amp threads format which includes logs from previous executions
+    AmpResume,
+}
+
 /// Handles log processing and interpretation for Claude executor
 pub struct ClaudeLogProcessor {
     model_name: Option<String>,
     // Map tool_use_id -> structured info for follow-up ToolResult replacement
     tool_map: std::collections::HashMap<String, ClaudeToolCallInfo>,
+    // Strategy controlling how to handle history and user messages
+    strategy: HistoryStrategy,
 }
 
 impl ClaudeLogProcessor {
+    #[cfg(test)]
     fn new() -> Self {
+        Self::new_with_strategy(HistoryStrategy::Default)
+    }
+
+    fn new_with_strategy(strategy: HistoryStrategy) -> Self {
         Self {
             model_name: None,
             tool_map: std::collections::HashMap::new(),
+            strategy,
         }
     }
 
@@ -169,6 +186,7 @@ impl ClaudeLogProcessor {
         msg_store: Arc<MsgStore>,
         current_dir: &PathBuf,
         entry_index_provider: EntryIndexProvider,
+        strategy: HistoryStrategy,
     ) {
         let current_dir_clone = current_dir.clone();
         tokio::spawn(async move {
@@ -176,7 +194,7 @@ impl ClaudeLogProcessor {
             let mut buffer = String::new();
             let worktree_path = current_dir_clone.to_string_lossy().to_string();
             let mut session_id_extracted = false;
-            let mut processor = Self::new();
+            let mut processor = Self::new_with_strategy(strategy);
 
             while let Some(Ok(msg)) = stream.next().await {
                 let chunk = match msg {
@@ -304,6 +322,46 @@ impl ClaudeLogProcessor {
                                     }
                                 }
                                 ClaudeJson::User { message, .. } => {
+                                    // Amp resume hack: if AmpResume and the user message contains plain text,
+                                    // clear all previous entries so UI shows only fresh context, and emit user text.
+                                    if matches!(processor.strategy, HistoryStrategy::AmpResume)
+                                        && message
+                                            .content
+                                            .iter()
+                                            .any(|c| matches!(c, ClaudeContentItem::Text { .. }))
+                                    {
+                                        let cur = entry_index_provider.current();
+                                        if cur > 0 {
+                                            for _ in 0..cur {
+                                                msg_store.push_patch(
+                                                    ConversationPatch::remove_diff(0.to_string()),
+                                                );
+                                            }
+                                            entry_index_provider.reset();
+                                            // Also reset tool map to avoid mismatches with re-streamed tool_use/tool_result ids
+                                            processor.tool_map.clear();
+                                        }
+                                        // Emit user text messages after clearing
+                                        for item in &message.content {
+                                            if let ClaudeContentItem::Text { text } = item {
+                                                let entry = NormalizedEntry {
+                                                    timestamp: None,
+                                                    entry_type: NormalizedEntryType::UserMessage,
+                                                    content: text.clone(),
+                                                    metadata: Some(
+                                                        serde_json::to_value(item)
+                                                            .unwrap_or(serde_json::Value::Null),
+                                                    ),
+                                                };
+                                                let id = entry_index_provider.next();
+                                                msg_store.push_patch(
+                                                    ConversationPatch::add_normalized_entry(
+                                                        id, entry,
+                                                    ),
+                                                );
+                                            }
+                                        }
+                                    }
                                     for item in &message.content {
                                         if let ClaudeContentItem::ToolResult {
                                             tool_use_id,
@@ -342,7 +400,7 @@ impl ClaudeLogProcessor {
                                                     })
                                                 } else {
                                                     Some(crate::logs::CommandRunResult {
-                                                        exit_status: is_error.clone().map(|is_error| {
+                                                        exit_status: (*is_error).map(|is_error| {
                                                             crate::logs::CommandExitStatus::Success { success: !is_error }
                                                         }),
                                                         output: Some(content_str)
