@@ -15,7 +15,7 @@ use utils::{
 };
 
 use crate::{
-    command::CommandBuilder,
+    command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem,
@@ -64,6 +64,8 @@ pub struct ClaudeCode {
     pub variant: ClaudeCodeVariant,
     pub append_prompt: Option<String>,
     pub plan: bool,
+    #[serde(flatten)]
+    pub cmd: CmdOverrides,
 }
 
 #[async_trait]
@@ -74,7 +76,8 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = self.variant.build_command_builder(self.plan);
+        let command_builder =
+            apply_overrides(self.variant.build_command_builder(self.plan), &self.cmd);
         let claude_command = if self.plan {
             let base_command = command_builder.build_initial();
             create_watchkill_script(&base_command)
@@ -112,7 +115,8 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = self.variant.build_command_builder(self.plan);
+        let command_builder =
+            apply_overrides(self.variant.build_command_builder(self.plan), &self.cmd);
         // Build follow-up command with --resume {session_id}
         let claude_command = if self.plan {
             let base_command =

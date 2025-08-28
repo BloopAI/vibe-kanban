@@ -13,7 +13,7 @@ use ts_rs::TS;
 use utils::{msg_store::MsgStore, shell::get_shell_command};
 
 use crate::{
-    command::CommandBuilder,
+    command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
         NormalizedEntry, NormalizedEntryType, plain_text_processor::PlainTextLogProcessor,
@@ -55,6 +55,8 @@ impl GeminiModel {
 pub struct Gemini {
     pub model: GeminiModel,
     pub append_prompt: Option<String>,
+    #[serde(flatten)]
+    pub cmd: CmdOverrides,
 }
 
 #[async_trait]
@@ -65,7 +67,7 @@ impl StandardCodingAgentExecutor for Gemini {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = self.model.build_command_builder();
+        let command_builder = apply_overrides(self.model.build_command_builder(), &self.cmd);
         let gemini_command = command_builder.build_initial();
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
@@ -111,7 +113,7 @@ impl StandardCodingAgentExecutor for Gemini {
         let followup_prompt = self.build_followup_prompt(current_dir, prompt).await?;
 
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = self.model.build_command_builder();
+        let command_builder = apply_overrides(self.model.build_command_builder(), &self.cmd);
         let gemini_command = command_builder.build_follow_up(&[]);
 
         let mut command = Command::new(shell_cmd);

@@ -8,7 +8,7 @@ use ts_rs::TS;
 use utils::{msg_store::MsgStore, shell::get_shell_command};
 
 use crate::{
-    command::CommandBuilder,
+    command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{
         ExecutorError, StandardCodingAgentExecutor,
         claude::{ClaudeLogProcessor, HistoryStrategy},
@@ -20,6 +20,8 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Amp {
     pub append_prompt: Option<String>,
+    #[serde(flatten)]
+    pub cmd: CmdOverrides,
 }
 
 impl Amp {
@@ -40,7 +42,7 @@ impl StandardCodingAgentExecutor for Amp {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = Self::build_command_builder();
+        let command_builder = apply_overrides(Self::build_command_builder(), &self.cmd);
         let amp_command = command_builder.build_initial();
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
@@ -74,7 +76,7 @@ impl StandardCodingAgentExecutor for Amp {
     ) -> Result<AsyncGroupChild, ExecutorError> {
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = Self::build_command_builder();
+        let command_builder = apply_overrides(Self::build_command_builder(), &self.cmd);
         let amp_command = command_builder.build_follow_up(&[
             "threads".to_string(),
             "continue".to_string(),
