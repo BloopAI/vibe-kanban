@@ -33,7 +33,7 @@ module.exports = {
     extend: {
       backgroundImage: {
         'diagonal-lines': `
-          repeating-linear-gradient(-45deg, hsl(var(--border)) 0 1px, transparent 1px 12px),
+          repeating-linear-gradient(-45deg, hsl(var(--border) / 0.4) 0 2px, transparent 1px 12px),
           linear-gradient(hsl(var(--background)), hsl(var(--background)))
         `,
       },
