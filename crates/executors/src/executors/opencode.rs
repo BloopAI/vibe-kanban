@@ -717,6 +717,7 @@ impl ToolUtils {
             }
             Tool::Bash { command, .. } => ActionType::CommandRun {
                 command: command.clone(),
+                result: None,
             },
             Tool::Grep { pattern, .. } => ActionType::Search {
                 query: pattern.clone(),

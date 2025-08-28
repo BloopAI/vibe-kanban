@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,19 +15,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { EditorType } from 'shared/types';
-import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
+import { EditorType, TaskAttempt } from 'shared/types';
+import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 
 interface EditorSelectionDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  selectedAttempt: TaskAttempt | null;
 }
 
 export function EditorSelectionDialog({
   isOpen,
   onClose,
+  selectedAttempt,
 }: EditorSelectionDialogProps) {
-  const { handleOpenInEditor } = useContext(TaskDetailsContext);
+  const handleOpenInEditor = useOpenInEditor(selectedAttempt, onClose);
   const [selectedEditor, setSelectedEditor] = useState<EditorType>(
     EditorType.VS_CODE
   );

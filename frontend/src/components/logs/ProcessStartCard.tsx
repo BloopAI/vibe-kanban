@@ -61,7 +61,7 @@ function ProcessStartCard({
   return (
     <div className="px-4 pt-4 pb-2">
       <div
-        className="bg-muted/50 border border-border rounded-lg p-2 cursor-pointer select-none hover:bg-muted/70 transition-colors"
+        className="p-2 cursor-pointer select-none hover:bg-muted/70 transition-colors"
         role="button"
         tabIndex={0}
         onClick={handleClick}

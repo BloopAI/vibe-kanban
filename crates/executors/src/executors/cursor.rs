@@ -128,6 +128,10 @@ impl StandardCodingAgentExecutor for Cursor {
 
             let worktree_str = current_dir.to_string_lossy().to_string();
 
+            use std::collections::HashMap;
+            // Track tool call_id -> entry index
+            let mut call_index_map: HashMap<String, usize> = HashMap::new();
+
             while let Some(Ok(line)) = lines.next().await {
                 // Parse line as CursorJson
                 let cursor_json: CursorJson = match serde_json::from_str(&line) {
@@ -208,7 +212,10 @@ impl StandardCodingAgentExecutor for Cursor {
                     }
 
                     CursorJson::ToolCall {
-                        subtype, tool_call, ..
+                        subtype,
+                        call_id,
+                        tool_call,
+                        ..
                     } => {
                         // Only process "started" subtype (completed contains results we currently ignore)
                         if subtype
@@ -230,8 +237,125 @@ impl StandardCodingAgentExecutor for Cursor {
                                 metadata: None,
                             };
                             let id = entry_index_provider.next();
+                            if let Some(cid) = call_id.as_ref() {
+                                call_index_map.insert(cid.clone(), id);
+                            }
                             msg_store
                                 .push_patch(ConversationPatch::add_normalized_entry(id, entry));
+                        } else if subtype
+                            .as_deref()
+                            .map(|s| s.eq_ignore_ascii_case("completed"))
+                            .unwrap_or(false)
+                            && let Some(cid) = call_id.as_ref()
+                            && let Some(&idx) = call_index_map.get(cid)
+                        {
+                            // Compute base content and action again
+                            let (mut new_action, content_str) =
+                                tool_call.to_action_and_content(&worktree_str);
+                            if let CursorToolCall::Shell { args, result } = &tool_call {
+                                // Merge stdout/stderr and derive exit status when available using typed deserialization
+                                let (stdout_val, stderr_val, exit_code) = if let Some(res) = result
+                                {
+                                    match serde_json::from_value::<CursorShellResult>(res.clone()) {
+                                        Ok(r) => {
+                                            if let Some(out) = r.into_outcome() {
+                                                (out.stdout, out.stderr, out.exit_code)
+                                            } else {
+                                                (None, None, None)
+                                            }
+                                        }
+                                        Err(_) => (None, None, None),
+                                    }
+                                } else {
+                                    (None, None, None)
+                                };
+                                let output = match (stdout_val, stderr_val) {
+                                    (Some(sout), Some(serr)) => {
+                                        let st = sout.trim();
+                                        let se = serr.trim();
+                                        if st.is_empty() && se.is_empty() {
+                                            None
+                                        } else if st.is_empty() {
+                                            Some(serr)
+                                        } else if se.is_empty() {
+                                            Some(sout)
+                                        } else {
+                                            Some(format!("STDOUT:\n{st}\n\nSTDERR:\n{se}"))
+                                        }
+                                    }
+                                    (Some(sout), None) => {
+                                        if sout.trim().is_empty() {
+                                            None
+                                        } else {
+                                            Some(sout)
+                                        }
+                                    }
+                                    (None, Some(serr)) => {
+                                        if serr.trim().is_empty() {
+                                            None
+                                        } else {
+                                            Some(serr)
+                                        }
+                                    }
+                                    (None, None) => None,
+                                };
+                                let exit_status = exit_code
+                                    .map(|code| crate::logs::CommandExitStatus::ExitCode { code });
+                                new_action = ActionType::CommandRun {
+                                    command: args.command.clone(),
+                                    result: Some(crate::logs::CommandRunResult {
+                                        exit_status,
+                                        output,
+                                    }),
+                                };
+                            } else if let CursorToolCall::Mcp { args, result } = &tool_call {
+                                // Extract a human-readable text from content array using typed deserialization
+                                let md: Option<String> = if let Some(res) = result {
+                                    match serde_json::from_value::<CursorMcpResult>(res.clone()) {
+                                        Ok(r) => r.into_markdown(),
+                                        Err(_) => None,
+                                    }
+                                } else {
+                                    None
+                                };
+                                let provider = args.provider_identifier.as_deref().unwrap_or("mcp");
+                                let tname = args.tool_name.as_deref().unwrap_or(&args.name);
+                                let label = format!("mcp:{provider}:{tname}");
+                                new_action = ActionType::Tool {
+                                    tool_name: label.clone(),
+                                    arguments: Some(serde_json::json!({
+                                        "name": args.name,
+                                        "args": args.args,
+                                        "providerIdentifier": args.provider_identifier,
+                                        "toolName": args.tool_name,
+                                    })),
+                                    result: md.map(|s| crate::logs::ToolResult {
+                                        r#type: crate::logs::ToolResultValueType::Markdown,
+                                        value: serde_json::Value::String(s),
+                                    }),
+                                };
+                            }
+                            let entry = NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::ToolUse {
+                                    tool_name: match &tool_call {
+                                        CursorToolCall::Mcp { args, .. } => {
+                                            let provider = args
+                                                .provider_identifier
+                                                .as_deref()
+                                                .unwrap_or("mcp");
+                                            let tname =
+                                                args.tool_name.as_deref().unwrap_or(&args.name);
+                                            format!("mcp:{provider}:{tname}")
+                                        }
+                                        _ => tool_call.get_name().to_string(),
+                                    },
+                                    action_type: new_action,
+                                },
+                                content: content_str,
+                                metadata: None,
+                            };
+                            msg_store.push_patch(ConversationPatch::replace(idx, entry));
                         }
                     }
 
@@ -441,6 +565,12 @@ pub enum CursorToolCall {
         #[serde(default)]
         result: Option<serde_json::Value>,
     },
+    #[serde(rename = "mcpToolCall")]
+    Mcp {
+        args: CursorMcpArgs,
+        #[serde(default)]
+        result: Option<serde_json::Value>,
+    },
     /// Generic fallback for unknown tools (amp.rs pattern)
     #[serde(untagged)]
     Unknown {
@@ -461,6 +591,7 @@ impl CursorToolCall {
             CursorToolCall::Edit { .. } => "edit",
             CursorToolCall::Delete { .. } => "delete",
             CursorToolCall::Todo { .. } => "todo",
+            CursorToolCall::Mcp { .. } => "mcp",
             CursorToolCall::Unknown { data } => {
                 data.keys().next().map(|s| s.as_str()).unwrap_or("unknown")
             }
@@ -544,6 +675,7 @@ impl CursorToolCall {
                 (
                     ActionType::CommandRun {
                         command: cmd.clone(),
+                        result: None,
                     },
                     format!("`{cmd}`"),
                 )
@@ -614,12 +746,134 @@ impl CursorToolCall {
                     "TODO list updated".to_string(),
                 )
             }
+            CursorToolCall::Mcp { args, .. } => {
+                let provider = args.provider_identifier.as_deref().unwrap_or("mcp");
+                let tool_name = args.tool_name.as_deref().unwrap_or(&args.name);
+                let label = format!("mcp:{provider}:{tool_name}");
+                let summary = tool_name.to_string();
+                let mut arguments = serde_json::json!({
+                    "name": args.name,
+                    "args": args.args,
+                });
+                if let Some(p) = &args.provider_identifier {
+                    arguments["providerIdentifier"] = serde_json::Value::String(p.clone());
+                }
+                if let Some(tn) = &args.tool_name {
+                    arguments["toolName"] = serde_json::Value::String(tn.clone());
+                }
+                (
+                    ActionType::Tool {
+                        tool_name: label,
+                        arguments: Some(arguments),
+                        result: None,
+                    },
+                    summary,
+                )
+            }
             CursorToolCall::Unknown { .. } => (
                 ActionType::Other {
                     description: format!("Tool: {}", self.get_name()),
                 },
                 self.get_name().to_string(),
             ),
+        }
+    }
+}
+
+/* ===========================
+Typed tool results for Cursor
+=========================== */
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+pub struct CursorShellOutcome {
+    #[serde(default)]
+    pub stdout: Option<String>,
+    #[serde(default)]
+    pub stderr: Option<String>,
+    #[serde(default, rename = "exitCode")]
+    pub exit_code: Option<i32>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+pub struct CursorShellWrappedResult {
+    #[serde(default)]
+    pub success: Option<CursorShellOutcome>,
+    #[serde(default)]
+    pub failure: Option<CursorShellOutcome>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[serde(untagged)]
+pub enum CursorShellResult {
+    Wrapped(CursorShellWrappedResult),
+    Flat(CursorShellOutcome),
+    Unknown(serde_json::Value),
+}
+
+impl CursorShellResult {
+    pub fn into_outcome(self) -> Option<CursorShellOutcome> {
+        match self {
+            CursorShellResult::Flat(o) => Some(o),
+            CursorShellResult::Wrapped(w) => w.success.or(w.failure),
+            CursorShellResult::Unknown(_) => None,
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+pub struct CursorMcpTextInner {
+    pub text: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+pub struct CursorMcpContentItem {
+    #[serde(default)]
+    pub text: Option<CursorMcpTextInner>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+pub struct CursorMcpOutcome {
+    #[serde(default)]
+    pub content: Option<Vec<CursorMcpContentItem>>,
+    #[serde(default, rename = "isError")]
+    pub is_error: Option<bool>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+pub struct CursorMcpWrappedResult {
+    #[serde(default)]
+    pub success: Option<CursorMcpOutcome>,
+    #[serde(default)]
+    pub failure: Option<CursorMcpOutcome>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[serde(untagged)]
+pub enum CursorMcpResult {
+    Wrapped(CursorMcpWrappedResult),
+    Flat(CursorMcpOutcome),
+    Unknown(serde_json::Value),
+}
+
+impl CursorMcpResult {
+    pub fn into_markdown(self) -> Option<String> {
+        let outcome = match self {
+            CursorMcpResult::Flat(o) => Some(o),
+            CursorMcpResult::Wrapped(w) => w.success.or(w.failure),
+            CursorMcpResult::Unknown(_) => None,
+        }?;
+
+        let items = outcome.content.unwrap_or_default();
+        let mut parts: Vec<String> = Vec::new();
+        for item in items {
+            if let Some(t) = item.text {
+                parts.push(t.text);
+            }
+        }
+        if parts.is_empty() {
+            None
+        } else {
+            Some(parts.join("\n\n"))
         }
     }
 }
@@ -742,6 +996,17 @@ pub struct CursorDeleteArgs {
 pub struct CursorUpdateTodosArgs {
     #[serde(default)]
     pub todos: Option<Vec<CursorTodoItem>>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+pub struct CursorMcpArgs {
+    pub name: String,
+    #[serde(default)]
+    pub args: serde_json::Value,
+    #[serde(default, alias = "providerIdentifier")]
+    pub provider_identifier: Option<String>,
+    #[serde(default, alias = "toolName")]
+    pub tool_name: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]

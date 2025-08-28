@@ -112,7 +112,7 @@ function BranchSelector({
           size="sm"
           className={`w-full justify-between text-xs ${className}`}
         >
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 w-full">
             <GitBranchIcon className="h-3 w-3" />
             <span className="truncate">{displayName}</span>
           </div>

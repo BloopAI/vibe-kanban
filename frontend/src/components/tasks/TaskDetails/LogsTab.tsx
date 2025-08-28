@@ -1,21 +1,9 @@
-import {
-  useContext,
-  useRef,
-  useCallback,
-  useMemo,
-  useEffect,
-  useReducer,
-} from 'react';
+import { useRef, useCallback, useMemo, useEffect, useReducer } from 'react';
 import { Virtuoso } from 'react-virtuoso';
 import { Cog } from 'lucide-react';
-import {
-  TaskAttemptDataContext,
-  TaskSelectedAttemptContext,
-} from '@/components/context/taskDetailsContext.ts';
+import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useProcessesLogs } from '@/hooks/useProcessesLogs';
-import { usePinnedTodos } from '@/hooks/usePinnedTodos';
 import LogEntryRow from '@/components/logs/LogEntryRow';
-import { PinnedTodoBox } from '@/components/PinnedTodoBox';
 import {
   shouldShowInLogs,
   isAutoCollapsibleProcess,
@@ -24,7 +12,7 @@ import {
   getLatestCodingAgent,
   PROCESS_STATUSES,
 } from '@/constants/processes';
-import type { ExecutionProcessStatus } from 'shared/types';
+import type { ExecutionProcessStatus, TaskAttempt } from 'shared/types';
 
 // Helper functions
 function addAll<T>(set: Set<T>, items: T[]): Set<T> {
@@ -121,9 +109,12 @@ function reducer(state: LogsState, action: LogsAction): LogsState {
   }
 }
 
-function LogsTab() {
-  const { attemptData } = useContext(TaskAttemptDataContext);
-  const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
+type Props = {
+  selectedAttempt: TaskAttempt | null;
+};
+
+function LogsTab({ selectedAttempt }: Props) {
+  const { attemptData } = useAttemptExecution(selectedAttempt?.id);
   const virtuosoRef = useRef<any>(null);
 
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -138,9 +129,6 @@ function LogsTab() {
   );
 
   const { entries } = useProcessesLogs(filteredProcesses, true);
-
-  // Extract todos from entries using the usePinnedTodos hook
-  const { todos, lastUpdated } = usePinnedTodos(entries);
 
   // Combined collapsed processes (auto + user)
   const allCollapsedProcesses = useMemo(() => {
@@ -282,7 +270,6 @@ function LogsTab() {
 
   return (
     <div className="w-full h-full flex flex-col">
-      <PinnedTodoBox todos={todos} lastUpdated={lastUpdated} />
       <div className="flex-1">
         <Virtuoso
           ref={virtuosoRef}
@@ -293,7 +280,7 @@ function LogsTab() {
           increaseViewportBy={200}
           overscan={5}
           components={{
-            Footer: () => <div style={{ height: '50px' }} />,
+            Footer: () => <div className="pb-4" />,
           }}
         />
       </div>

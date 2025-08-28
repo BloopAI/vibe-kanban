@@ -1,17 +1,22 @@
 import { useDiffEntries } from '@/hooks/useDiffEntries';
-import { useMemo, useContext, useCallback, useState, useEffect } from 'react';
-import { TaskSelectedAttemptContext } from '@/components/context/taskDetailsContext.ts';
+import { useMemo, useCallback, useState, useEffect } from 'react';
 import { Loader } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
 import DiffCard from '@/components/DiffCard';
-import { generateDiffFile } from '@git-diff-view/file';
-import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
+import { useDiffSummary } from '@/hooks/useDiffSummary';
+import type { TaskAttempt } from 'shared/types';
 
-function DiffTab() {
-  const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
+interface DiffTabProps {
+  selectedAttempt: TaskAttempt | null;
+}
+
+function DiffTab({ selectedAttempt }: DiffTabProps) {
   const [loading, setLoading] = useState(true);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const { diffs, error } = useDiffEntries(selectedAttempt?.id ?? null, true);
+  const { fileCount, added, deleted } = useDiffSummary(
+    selectedAttempt?.id ?? null
+  );
 
   useEffect(() => {
     if (diffs.length > 0 && loading) {
@@ -37,36 +42,8 @@ function DiffTab() {
     if (initial.size > 0) setCollapsedIds(initial);
   }, [diffs, collapsedIds.size]);
 
-  const { totals, ids } = useMemo(() => {
-    const ids = diffs.map((d, i) => d.newPath || d.oldPath || String(i));
-    const totals = diffs.reduce(
-      (acc, d) => {
-        try {
-          const oldName = d.oldPath || d.newPath || 'old';
-          const newName = d.newPath || d.oldPath || 'new';
-          const oldContent = d.oldContent || '';
-          const newContent = d.newContent || '';
-          const oldLang = getHighLightLanguageFromPath(oldName) || 'plaintext';
-          const newLang = getHighLightLanguageFromPath(newName) || 'plaintext';
-          const file = generateDiffFile(
-            oldName,
-            oldContent,
-            newName,
-            newContent,
-            oldLang,
-            newLang
-          );
-          file.initRaw();
-          acc.added += file.additionLength ?? 0;
-          acc.deleted += file.deletionLength ?? 0;
-        } catch (e) {
-          console.error('Failed to compute totals for diff', e);
-        }
-        return acc;
-      },
-      { added: 0, deleted: 0 }
-    );
-    return { totals, ids };
+  const ids = useMemo(() => {
+    return diffs.map((d, i) => d.newPath || d.oldPath || String(i));
   }, [diffs]);
 
   const toggle = useCallback((id: string) => {
@@ -108,12 +85,12 @@ function DiffTab() {
               aria-live="polite"
               style={{ color: 'hsl(var(--muted-foreground) / 0.7)' }}
             >
-              {diffs.length} file{diffs.length === 1 ? '' : 's'} changed,{' '}
+              {fileCount} file{fileCount === 1 ? '' : 's'} changed,{' '}
               <span style={{ color: 'hsl(var(--console-success))' }}>
-                +{totals.added}
+                +{added}
               </span>{' '}
               <span style={{ color: 'hsl(var(--console-error))' }}>
-                -{totals.deleted}
+                -{deleted}
               </span>
             </span>
             <Button
@@ -136,6 +113,7 @@ function DiffTab() {
               diff={diff}
               expanded={!collapsedIds.has(id)}
               onToggle={() => toggle(id)}
+              selectedAttempt={selectedAttempt}
             />
           );
         })}

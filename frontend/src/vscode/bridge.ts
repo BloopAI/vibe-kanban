@@ -8,7 +8,7 @@
 // - Bridge clipboard reads/writes when navigator.clipboard is restricted.
 
 /** Returns true when running inside an iframe (vs top-level window). */
-function inIframe(): boolean {
+export function inIframe(): boolean {
   try {
     return window.self !== window.top;
   } catch {

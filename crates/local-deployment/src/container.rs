@@ -588,7 +588,10 @@ impl LocalContainerService {
                                     &task_branch,
                                     &base_branch,
                                     &changed_paths,
-                                ).map_err(|e| io::Error::other(e.to_string()))? {
+                                ).map_err(|e| {
+                                    tracing::error!("Error processing file changes: {}", e);
+                                    io::Error::other(e.to_string())
+                                })? {
                                     yield event;
                                 }
                             }
@@ -598,6 +601,7 @@ impl LocalContainerService {
                                 .map(|e| e.to_string())
                                 .collect::<Vec<_>>()
                                 .join("; ");
+                            tracing::error!("Filesystem watcher error: {}", error_msg);
                             Err(io::Error::other(error_msg))?;
                         }
                     }
@@ -624,6 +628,7 @@ impl LocalContainerService {
                     .ok()
                     .map(|p| p.to_string_lossy().replace('\\', "/"))
             })
+            .filter(|s| !s.is_empty())
             .collect()
     }
 
@@ -691,7 +696,6 @@ impl ContainerService for LocalContainerService {
     fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf {
         PathBuf::from(task_attempt.container_ref.clone().unwrap_or_default())
     }
-
     /// Create a container
     async fn create(&self, task_attempt: &TaskAttempt) -> Result<ContainerRef, ContainerError> {
         let task = task_attempt
@@ -712,7 +716,7 @@ impl ContainerService for LocalContainerService {
             &project.git_repo_path,
             &task_branch_name,
             &worktree_path,
-            Some(&task_attempt.base_branch),
+            &task_attempt.base_branch,
             true, // create new branch
         )
         .await?;
@@ -930,7 +934,7 @@ impl ContainerService for LocalContainerService {
                 task_attempt.id
             )))?;
 
-        let is_ahead = if let Ok((ahead, _)) = self.git().get_local_branch_status(
+        let is_ahead = if let Ok((ahead, _)) = self.git().get_branch_status(
             &project_repo_path,
             &task_branch,
             &task_attempt.base_branch,

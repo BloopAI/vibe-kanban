@@ -1,7 +1,7 @@
 import { Diff as Diff, ThemeMode } from 'shared/types';
 import { DiffModeEnum, DiffView } from '@git-diff-view/react';
 import { generateDiffFile } from '@git-diff-view/file';
-import { useMemo, useContext } from 'react';
+import { useMemo } from 'react';
 import { useConfig } from '@/components/config-provider';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import { Button } from '@/components/ui/button';
@@ -16,13 +16,14 @@ import {
   Key,
 } from 'lucide-react';
 import '@/styles/diff-style-overrides.css';
-import { TaskSelectedAttemptContext } from '@/components/context/taskDetailsContext';
 import { attemptsApi } from '@/lib/api';
+import type { TaskAttempt } from 'shared/types';
 
 type Props = {
   diff: Diff;
   expanded: boolean;
   onToggle: () => void;
+  selectedAttempt: TaskAttempt | null;
 };
 
 function labelAndIcon(diff: Diff) {
@@ -37,9 +38,13 @@ function labelAndIcon(diff: Diff) {
   return { label: undefined as string | undefined, Icon: PencilLine };
 }
 
-export default function DiffCard({ diff, expanded, onToggle }: Props) {
+export default function DiffCard({
+  diff,
+  expanded,
+  onToggle,
+  selectedAttempt,
+}: Props) {
   const { config } = useConfig();
-  const { selectedAttempt } = useContext(TaskSelectedAttemptContext);
   const theme = config?.theme === ThemeMode.DARK ? 'dark' : 'light';
 
   const oldName = diff.oldPath || undefined;

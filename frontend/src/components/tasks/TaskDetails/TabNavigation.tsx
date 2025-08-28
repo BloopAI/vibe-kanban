@@ -1,26 +1,33 @@
 import { GitCompare, MessageSquare, Cog } from 'lucide-react';
-import { useContext } from 'react';
-import { TaskAttemptDataContext } from '@/components/context/taskDetailsContext.ts';
+import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import type { TabType } from '@/types/tabs';
+import type { TaskAttempt } from 'shared/types';
 
 type Props = {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
+  rightContent?: React.ReactNode;
+  selectedAttempt: TaskAttempt | null;
 };
 
-function TabNavigation({ activeTab, setActiveTab }: Props) {
-  const { attemptData } = useContext(TaskAttemptDataContext);
+function TabNavigation({
+  activeTab,
+  setActiveTab,
+  rightContent,
+  selectedAttempt,
+}: Props) {
+  const { attemptData } = useAttemptExecution(selectedAttempt?.id);
   return (
-    <div className="border-b bg-muted/20">
-      <div className="flex px-4">
+    <div className="border-b border-dashed bg-secondary sticky top-0 z-10">
+      <div className="flex items-center px-4">
         <button
           onClick={() => {
             setActiveTab('logs');
           }}
-          className={`flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`flex items-center px-4 py-2 text-sm font-medium ${
             activeTab === 'logs'
-              ? 'border-primary text-primary bg-background'
-              : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              ? 'text-primary bg-background'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
           }`}
         >
           <MessageSquare className="h-4 w-4 mr-2" />
@@ -31,10 +38,10 @@ function TabNavigation({ activeTab, setActiveTab }: Props) {
           onClick={() => {
             setActiveTab('diffs');
           }}
-          className={`flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`flex items-center px-4 py-2 text-sm font-medium ${
             activeTab === 'diffs'
-              ? 'border-primary text-primary bg-background'
-              : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              ? 'text-primary bg-background'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
           }`}
         >
           <GitCompare className="h-4 w-4 mr-2" />
@@ -44,10 +51,10 @@ function TabNavigation({ activeTab, setActiveTab }: Props) {
           onClick={() => {
             setActiveTab('processes');
           }}
-          className={`flex items-center px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`flex items-center px-4 py-2 text-sm font-medium ${
             activeTab === 'processes'
-              ? 'border-primary text-primary bg-background'
-              : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              ? 'text-primary bg-background'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
           }`}
         >
           <Cog className="h-4 w-4 mr-2" />
@@ -58,6 +65,7 @@ function TabNavigation({ activeTab, setActiveTab }: Props) {
             </span>
           )}
         </button>
+        <div className="ml-auto flex items-center">{rightContent}</div>
       </div>
     </div>
   );

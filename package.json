@@ -1,6 +1,6 @@
 {
   "name": "vibe-kanban",
-  "version": "0.0.66",
+  "version": "0.0.69",
   "private": true,
   "bin": {
     "vibe-kanban": "npx-cli/bin/cli.js"
@@ -25,6 +25,7 @@
     "prepack": "npm run build:npx"
   },
   "devDependencies": {
+    "@tailwindcss/container-queries": "^0.1.1",
     "concurrently": "^8.2.2",
     "vite": "^6.3.5"
   },

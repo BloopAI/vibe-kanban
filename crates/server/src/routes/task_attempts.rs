@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -27,6 +29,7 @@ use executors::{
     profile::{ProfileConfigs, ProfileVariantLabel},
 };
 use futures_util::TryStreamExt;
+use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
@@ -105,12 +108,11 @@ pub async fn create_task_attempt(
                 profile_variant_label.profile
             )))
         })?;
-
     let task_attempt = TaskAttempt::create(
         &deployment.db().pool,
         &CreateTaskAttempt {
             profile: profile.default.label.clone(),
-            base_branch: payload.base_branch,
+            base_branch: payload.base_branch.clone(),
         },
         payload.task_id,
     )
@@ -266,13 +268,8 @@ pub async fn get_task_attempt_diff(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
     // ) -> Result<ResponseJson<ApiResponse<Diff>>, ApiError> {
-) -> Result<Sse<impl futures_util::Stream<Item = Result<Event, BoxError>>>, axum::http::StatusCode>
-{
-    let stream = deployment
-        .container()
-        .get_diff(&task_attempt)
-        .await
-        .map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+) -> Result<Sse<impl futures_util::Stream<Item = Result<Event, BoxError>>>, ApiError> {
+    let stream = deployment.container().get_diff(&task_attempt).await?;
 
     Ok(Sse::new(stream.map_err(|e| -> BoxError { e.into() })).keep_alive(KeepAlive::default()))
 }
@@ -360,24 +357,21 @@ pub async fn push_task_attempt_branch(
     let github_service = GitHubService::new(&github_token)?;
     github_service.check_token().await?;
 
-    let pool = &deployment.db().pool;
-    let task = task_attempt
-        .parent_task(pool)
-        .await?
-        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
-    let project = Project::find_by_id(pool, task.project_id)
-        .await?
-        .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
-
     let branch_name = task_attempt.branch.as_ref().ok_or_else(|| {
         ApiError::TaskAttempt(TaskAttemptError::ValidationError(
             "No branch found for task attempt".to_string(),
         ))
     })?;
+    let ws_path = PathBuf::from(
+        deployment
+            .container()
+            .ensure_container_exists(&task_attempt)
+            .await?,
+    );
 
     deployment
         .git()
-        .push_to_github(&project.git_repo_path, branch_name, &github_token)?;
+        .push_to_github(&ws_path, branch_name, &github_token)?;
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
@@ -435,12 +429,17 @@ pub async fn create_github_pr(
             "No branch found for task attempt".to_string(),
         ))
     })?;
+    let workspace_path = PathBuf::from(
+        deployment
+            .container()
+            .ensure_container_exists(&task_attempt)
+            .await?,
+    );
 
     // Push the branch to GitHub first
-    if let Err(e) =
-        deployment
-            .git()
-            .push_to_github(&project.git_repo_path, branch_name, &github_token)
+    if let Err(e) = deployment
+        .git()
+        .push_to_github(&workspace_path, branch_name, &github_token)
     {
         tracing::error!("Failed to push branch to GitHub: {}", e);
         let gh_e = GitHubServiceError::from(e);
@@ -452,12 +451,32 @@ pub async fn create_github_pr(
             )));
         }
     }
+
+    let norm_base_branch_name = if matches!(
+        deployment
+            .git()
+            .find_branch_type(&project.git_repo_path, &base_branch)?,
+        BranchType::Remote
+    ) {
+        // Remote branches are formatted as {remote}/{branch} locally.
+        // For PR APIs, we must provide just the branch name.
+        let remote = deployment
+            .git()
+            .get_remote_name_from_branch_name(&workspace_path, &base_branch)?;
+        let remote_prefix = format!("{}/", remote);
+        base_branch
+            .strip_prefix(&remote_prefix)
+            .unwrap_or(&base_branch)
+            .to_string()
+    } else {
+        base_branch
+    };
     // Create the PR using GitHub service
     let pr_request = CreatePrRequest {
         title: request.title.clone(),
         body: request.body.clone(),
         head_branch: branch_name.clone(),
-        base_branch: base_branch.clone(),
+        base_branch: norm_base_branch_name.clone(),
     };
 
     match github_service.create_pr(&repo_info, &pr_request).await {
@@ -466,7 +485,7 @@ pub async fn create_github_pr(
             if let Err(e) = Merge::create_pr(
                 pool,
                 task_attempt.id,
-                &base_branch,
+                &norm_base_branch_name,
                 pr_info.number,
                 &pr_info.url,
             )
@@ -598,26 +617,32 @@ pub async fn get_task_attempt_branch_status(
             .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
                 "No branch found for task attempt".to_string(),
             )))?;
+    let base_branch_type = deployment
+        .git()
+        .find_branch_type(&ctx.project.git_repo_path, &task_attempt.base_branch)?;
 
-    let (commits_ahead, commits_behind) = deployment.git().get_local_branch_status(
-        &ctx.project.git_repo_path,
-        &task_branch,
-        &task_attempt.base_branch,
-    )?;
+    let (commits_ahead, commits_behind) = if matches!(base_branch_type, BranchType::Local) {
+        let (a, b) = deployment.git().get_branch_status(
+            &ctx.project.git_repo_path,
+            &task_branch,
+            &task_attempt.base_branch,
+        )?;
+        (Some(a), Some(b))
+    } else {
+        (None, None)
+    };
     // Fetch merges for this task attempt and add to branch status
     let merges = Merge::find_by_task_attempt_id(pool, task_attempt.id).await?;
     let mut branch_status = BranchStatus {
-        commits_ahead: Some(commits_ahead),
-        commits_behind: Some(commits_behind),
+        commits_ahead,
+        commits_behind,
         has_uncommitted_changes,
         remote_commits_ahead: None,
         remote_commits_behind: None,
         merges,
         base_branch_name: task_attempt.base_branch.clone(),
     };
-
-    // check remote status if the attempt has an open PR
-    if branch_status.merges.first().is_some_and(|m| {
+    let has_open_pr = branch_status.merges.first().is_some_and(|m| {
         matches!(
             m,
             Merge::Pr(PrMerge {
@@ -628,14 +653,29 @@ pub async fn get_task_attempt_branch_status(
                 ..
             })
         )
-    }) {
+    });
+
+    // check remote status if the attempt has an open PR or the base_branch is a remote branch
+    if has_open_pr || base_branch_type == BranchType::Remote {
         let github_config = deployment.config().read().await.github.clone();
         let token = github_config
             .token()
             .ok_or(ApiError::GitHubService(GitHubServiceError::TokenInvalid))?;
-        let (remote_commits_ahead, remote_commits_behind) = deployment
-            .git()
-            .get_remote_branch_status(&ctx.project.git_repo_path, &task_branch, token)?;
+
+        // For an attempt with a remote base branch, we compare against that
+        // After opening a PR, the attempt has a remote branch itself, so we use that
+        let remote_base_branch = if base_branch_type == BranchType::Remote && !has_open_pr {
+            Some(task_attempt.base_branch)
+        } else {
+            None
+        };
+        let (remote_commits_ahead, remote_commits_behind) =
+            deployment.git().get_remote_branch_status(
+                &ctx.project.git_repo_path,
+                &task_branch,
+                remote_base_branch.as_deref(),
+                token,
+            )?;
         branch_status.remote_commits_ahead = Some(remote_commits_ahead);
         branch_status.remote_commits_behind = Some(remote_commits_behind);
     }
@@ -681,14 +721,12 @@ pub async fn rebase_task_attempt(
 
     if let Some(new_base_branch) = &effective_base_branch {
         if new_base_branch != &ctx.task_attempt.base_branch {
-            // for remote branches, store the local branch name in the database
-            let db_branch_name = if new_base_branch.starts_with("origin/") {
-                new_base_branch.strip_prefix("origin/").unwrap()
-            } else {
-                new_base_branch
-            };
-            TaskAttempt::update_base_branch(&deployment.db().pool, task_attempt.id, db_branch_name)
-                .await?;
+            TaskAttempt::update_base_branch(
+                &deployment.db().pool,
+                task_attempt.id,
+                new_base_branch,
+            )
+            .await?;
         }
     }
 

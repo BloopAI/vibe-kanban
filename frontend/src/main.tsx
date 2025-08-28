@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import './styles/index.css';
 import { ClickToComponent } from 'click-to-react-component';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Sentry from '@sentry/react';
 // Install VS Code iframe keyboard bridge when running inside an iframe
 import './vscode/bridge';
@@ -30,11 +31,23 @@ Sentry.init({
 });
 Sentry.setTag('source', 'frontend');
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <Sentry.ErrorBoundary fallback={<p>An error has occurred</p>} showDialog>
-      <ClickToComponent />
-      <App />
-    </Sentry.ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <Sentry.ErrorBoundary fallback={<p>An error has occurred</p>} showDialog>
+        <ClickToComponent />
+        <App />
+        {/* <ReactQueryDevtools initialIsOpen={false} /> */}
+      </Sentry.ErrorBoundary>
+    </QueryClientProvider>
   </React.StrictMode>
 );

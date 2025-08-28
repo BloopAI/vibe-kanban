@@ -19,52 +19,74 @@ export const PANEL_WIDTHS = {
 } as const;
 
 // Generate classes for TaskDetailsPanel
-export const getTaskPanelClasses = () => {
-  const overlayClasses = [
-    'fixed inset-y-0 right-0 z-50',
-    PANEL_WIDTHS.base,
-    PANEL_WIDTHS.sm,
-    PANEL_WIDTHS.md,
-    PANEL_WIDTHS.lg,
-    PANEL_WIDTHS.xl,
-  ].join(' ');
+export const getTaskPanelClasses = (forceFullScreen: boolean) => {
+  const overlayClasses = forceFullScreen
+    ? 'w-full'
+    : [
+        PANEL_WIDTHS.base,
+        PANEL_WIDTHS.sm,
+        PANEL_WIDTHS.md,
+        PANEL_WIDTHS.lg,
+        PANEL_WIDTHS.xl,
+      ].join(' ');
 
-  const sideBySideClasses = [
-    `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:relative`,
-    `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:inset-auto`,
-    `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:z-auto`,
-    `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:h-full`,
-    `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:w-[800px]`,
-  ].join(' ');
+  const sideBySideClasses = forceFullScreen
+    ? ''
+    : [
+        `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:relative`,
+        `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:inset-auto`,
+        `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:z-auto`,
+        `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:h-full`,
+        `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:w-[800px]`,
+      ].join(' ');
 
-  return `${overlayClasses} ${sideBySideClasses} bg-background border-l shadow-lg overflow-hidden`;
+  return `fixed flex flex-col items-center inset-y-0 right-0 z-50 ${overlayClasses} ${sideBySideClasses} bg-muted border-l shadow-lg overflow-hidden `;
+};
+
+export const getTaskPanelInnerClasses = () => {
+  return `flex-1 flex flex-col min-h-0 w-full max-w-[1400px] bg-background`;
 };
 
 // Generate classes for backdrop (only show in overlay mode)
-export const getBackdropClasses = () => {
-  return `fixed inset-0 z-40 bg-background/80 backdrop-blur-sm ${PANEL_SIDE_BY_SIDE_BREAKPOINT}:hidden`;
+export const getBackdropClasses = (forceFullScreen: boolean) => {
+  return `fixed inset-0 z-40 bg-background/80 backdrop-blur-sm ${PANEL_SIDE_BY_SIDE_BREAKPOINT}:hidden ${forceFullScreen ? '' : 'hidden'}`;
 };
 
 // Generate classes for main container (enable flex layout in side-by-side mode)
-export const getMainContainerClasses = (isPanelOpen: boolean) => {
-  if (!isPanelOpen) return 'w-full';
+export const getMainContainerClasses = (
+  isPanelOpen: boolean,
+  forceFullScreen: boolean
+) => {
+  const overlayClasses =
+    isPanelOpen && forceFullScreen
+      ? 'w-full h-full'
+      : `h-full ${PANEL_SIDE_BY_SIDE_BREAKPOINT}:flex`;
 
-  return `w-full ${PANEL_SIDE_BY_SIDE_BREAKPOINT}:flex ${PANEL_SIDE_BY_SIDE_BREAKPOINT}:h-full`;
+  return `${overlayClasses}`;
 };
 
 // Generate classes for kanban section
-export const getKanbanSectionClasses = (isPanelOpen: boolean) => {
-  if (!isPanelOpen) return 'w-full';
+export const getKanbanSectionClasses = (
+  isPanelOpen: boolean,
+  forceFullScreen: boolean
+) => {
+  const baseClasses = 'h-full w-full';
 
-  const overlayClasses = 'w-full opacity-50 pointer-events-none';
-  const sideBySideClasses = [
-    `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:flex-1`,
-    `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:min-w-0`,
-    `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:h-full`,
-    `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:overflow-y-auto`,
-    `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:opacity-100`,
-    `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:pointer-events-auto`,
-  ].join(' ');
+  if (!isPanelOpen) return baseClasses;
 
-  return `${overlayClasses} ${sideBySideClasses}`;
+  // const overlayClasses = 'w-full opacity-50 pointer-events-none';
+  const sideBySideClasses =
+    isPanelOpen && forceFullScreen
+      ? ''
+      : [
+          `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:flex-1`,
+          `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:min-w-0`,
+          `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:h-full`,
+          `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:overflow-y-auto`,
+          `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:opacity-100`,
+          `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:pointer-events-auto`,
+        ].join(' ');
+
+  // return `${overlayClasses} ${sideBySideClasses}`;
+  return `${baseClasses} ${sideBySideClasses}`;
 };

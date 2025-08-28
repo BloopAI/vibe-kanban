@@ -1,22 +1,17 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { FolderOpen, Plus, Settings, LibraryBig, Globe2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
-import { projectsApi, tasksApi, templatesApi } from '@/lib/api';
-import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
+import { projectsApi, tasksApi, attemptsApi } from '@/lib/api';
+import { useTaskDialog } from '@/contexts/task-dialog-context';
 import { ProjectForm } from '@/components/projects/project-form';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
+import { useSearch } from '@/contexts/search-context';
+import { useQuery } from '@tanstack/react-query';
+
 import {
   Dialog,
   DialogContent,
@@ -32,35 +27,27 @@ import {
 
 import TaskKanbanBoard from '@/components/tasks/TaskKanbanBoard';
 import { TaskDetailsPanel } from '@/components/tasks/TaskDetailsPanel';
-import type {
-  TaskStatus,
-  TaskWithAttemptStatus,
-  Project,
-  TaskTemplate,
-} from 'shared/types';
-import type { CreateTask } from 'shared/types';
+import type { TaskWithAttemptStatus, Project, TaskAttempt } from 'shared/types';
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 
 type Task = TaskWithAttemptStatus;
 
 export function ProjectTasks() {
-  const { projectId, taskId } = useParams<{
+  const { projectId, taskId, attemptId } = useParams<{
     projectId: string;
     taskId?: string;
+    attemptId?: string;
   }>();
   const navigate = useNavigate();
+  const location = useLocation();
+
   const [tasks, setTasks] = useState<Task[]>([]);
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const { openCreate, openEdit } = useTaskDialog();
   const [isProjectSettingsOpen, setIsProjectSettingsOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<TaskTemplate | null>(
-    null
-  );
+  const { query: searchQuery } = useSearch();
 
   // Template management state
   const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
@@ -69,30 +56,63 @@ export function ProjectTasks() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
+  // Fullscreen state from pathname
+  const isFullscreen = location.pathname.endsWith('/full');
+
+  // Attempts fetching (only when task is selected)
+  const { data: attempts = [] } = useQuery({
+    queryKey: ['taskAttempts', selectedTask?.id],
+    queryFn: () => attemptsApi.getAll(selectedTask!.id),
+    enabled: !!selectedTask?.id,
+  });
+
+  // Selected attempt logic
+  const selectedAttempt = useMemo(() => {
+    if (!attempts.length) return null;
+    if (attemptId) {
+      const found = attempts.find((a) => a.id === attemptId);
+      if (found) return found;
+    }
+    return attempts[0] || null; // Most recent fallback
+  }, [attempts, attemptId]);
+
+  // Navigation callback for attempt selection
+  const setSelectedAttempt = useCallback(
+    (attempt: TaskAttempt | null) => {
+      if (!selectedTask) return;
+
+      const baseUrl = `/projects/${projectId}/tasks/${selectedTask.id}`;
+      const attemptUrl = attempt ? `/attempts/${attempt.id}` : '';
+      const fullSuffix = isFullscreen ? '/full' : '';
+      const fullUrl = `${baseUrl}${attemptUrl}${fullSuffix}`;
+
+      navigate(fullUrl, { replace: true });
+    },
+    [navigate, projectId, selectedTask, isFullscreen]
+  );
+
+  // Sync selectedTask with URL params
+  useEffect(() => {
+    if (taskId && tasks.length > 0) {
+      const taskFromUrl = tasks.find((t) => t.id === taskId);
+      if (taskFromUrl && taskFromUrl !== selectedTask) {
+        setSelectedTask(taskFromUrl);
+        setIsPanelOpen(true);
+      }
+    } else if (!taskId && selectedTask) {
+      // Clear selection when no taskId in URL
+      setSelectedTask(null);
+      setIsPanelOpen(false);
+    }
+  }, [taskId, tasks, selectedTask]);
+
   // Define task creation handler
   const handleCreateNewTask = useCallback(() => {
-    setEditingTask(null);
-    setSelectedTemplate(null);
-    setIsTaskDialogOpen(true);
-  }, []);
-
-  // Handle template selection
-  const handleTemplateSelect = useCallback((template: TaskTemplate) => {
-    setEditingTask(null);
-    setSelectedTemplate(template);
-    setIsTaskDialogOpen(true);
-  }, []);
-
-  const handleOpenInIDE = useCallback(async () => {
     if (!projectId) return;
+    openCreate();
+  }, [projectId, openCreate]);
 
-    try {
-      await projectsApi.openEditor(projectId);
-    } catch (error) {
-      console.error('Failed to open project in IDE:', error);
-      setError('Failed to open project in IDE');
-    }
-  }, [projectId]);
+  // Full screen
 
   const fetchProject = useCallback(async () => {
     try {
@@ -103,31 +123,9 @@ export function ProjectTasks() {
     }
   }, [projectId]);
 
-  const fetchTemplates = useCallback(async () => {
-    if (!projectId) return;
-
-    try {
-      const [projectTemplates, globalTemplates] = await Promise.all([
-        templatesApi.listByProject(projectId),
-        templatesApi.listGlobal(),
-      ]);
-
-      // Combine templates with project templates first
-      setTemplates([...projectTemplates, ...globalTemplates]);
-    } catch (err) {
-      console.error('Failed to fetch templates:', err);
-    }
-  }, [projectId]);
-
-  // Template management handlers
-  const handleOpenTemplateManager = useCallback(() => {
-    setIsTemplateManagerOpen(true);
-  }, []);
-
   const handleCloseTemplateManager = useCallback(() => {
     setIsTemplateManagerOpen(false);
-    fetchTemplates(); // Refresh templates list when closing
-  }, [fetchTemplates]);
+  }, []);
 
   const fetchTasks = useCallback(
     async (skipLoading = false) => {
@@ -168,75 +166,6 @@ export function ProjectTasks() {
     [projectId]
   );
 
-  const handleCreateTask = useCallback(
-    async (title: string, description: string, imageIds?: string[]) => {
-      try {
-        const createdTask = await tasksApi.create({
-          project_id: projectId!,
-          title,
-          description: description || null,
-          parent_task_attempt: null,
-          image_ids: imageIds || null,
-        });
-        await fetchTasks();
-        // Open the newly created task in the details panel
-        navigate(`/projects/${projectId}/tasks/${createdTask.id}`, {
-          replace: true,
-        });
-      } catch (err) {
-        setError('Failed to create task');
-      }
-    },
-    [projectId, fetchTasks, navigate]
-  );
-
-  const handleCreateAndStartTask = useCallback(
-    async (title: string, description: string, imageIds?: string[]) => {
-      try {
-        const payload: CreateTask = {
-          project_id: projectId!,
-          title,
-          description: description || null,
-          parent_task_attempt: null,
-          image_ids: imageIds || null,
-        };
-        const result = await tasksApi.createAndStart(payload);
-        await fetchTasks();
-        // Open the newly created task in the details panel
-        handleViewTaskDetails(result);
-      } catch (err) {
-        setError('Failed to create and start task');
-      }
-    },
-    [projectId, fetchTasks]
-  );
-
-  const handleUpdateTask = useCallback(
-    async (
-      title: string,
-      description: string,
-      status: TaskStatus,
-      imageIds?: string[]
-    ) => {
-      if (!editingTask) return;
-
-      try {
-        await tasksApi.update(editingTask.id, {
-          title,
-          description: description || null,
-          status,
-          parent_task_attempt: null,
-          image_ids: imageIds || null,
-        });
-        await fetchTasks();
-        setEditingTask(null);
-      } catch (err) {
-        setError('Failed to update task');
-      }
-    },
-    [editingTask, fetchTasks]
-  );
-
   const handleDeleteTask = useCallback(
     async (taskId: string) => {
       if (!confirm('Are you sure you want to delete this task?')) return;
@@ -251,10 +180,12 @@ export function ProjectTasks() {
     [fetchTasks]
   );
 
-  const handleEditTask = useCallback((task: Task) => {
-    setEditingTask(task);
-    setIsTaskDialogOpen(true);
-  }, []);
+  const handleEditTask = useCallback(
+    (task: Task) => {
+      openEdit(task);
+    },
+    [openEdit]
+  );
 
   const handleViewTaskDetails = useCallback(
     (task: Task, attemptIdToShow?: string) => {
@@ -324,9 +255,8 @@ export function ProjectTasks() {
   useKeyboardShortcuts({
     navigate,
     currentPath: window.location.pathname,
-    hasOpenDialog:
-      isTaskDialogOpen || isTemplateManagerOpen || isProjectSettingsOpen,
-    closeDialog: () => setIsTaskDialogOpen(false),
+    hasOpenDialog: isTemplateManagerOpen || isProjectSettingsOpen,
+    closeDialog: () => {}, // No local dialog to close
     onC: handleCreateNewTask,
   });
 
@@ -335,7 +265,6 @@ export function ProjectTasks() {
     if (projectId) {
       fetchProject();
       fetchTasks();
-      fetchTemplates();
 
       // Set up polling to refresh tasks every 5 seconds
       const interval = setInterval(() => {
@@ -380,112 +309,11 @@ export function ProjectTasks() {
   }
 
   return (
-    <div className={getMainContainerClasses(isPanelOpen)}>
+    <div
+      className={`min-h-full ${getMainContainerClasses(isPanelOpen, isFullscreen)}`}
+    >
       {/* Left Column - Kanban Section */}
-      <div className={getKanbanSectionClasses(isPanelOpen)}>
-        {/* Header */}
-
-        <div className="px-8 my-12 flex flex-row">
-          <div className="w-full flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{project?.name || 'Project'}</h1>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleOpenInIDE}
-              className="h-8 w-8 p-0"
-              title="Open in IDE"
-            >
-              <FolderOpen className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsProjectSettingsOpen(true)}
-              className="h-8 w-8 p-0"
-              title="Project Settings"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="flex items-center gap-3">
-            <Input
-              type="text"
-              placeholder="Search tasks..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-64"
-            />
-            <Button onClick={handleCreateNewTask}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Task
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <LibraryBig className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[250px]">
-                <DropdownMenuItem onClick={handleOpenTemplateManager}>
-                  <Plus className="h-3 w-3 mr-2" />
-                  Manage Templates
-                </DropdownMenuItem>
-                {templates.length > 0 && <DropdownMenuSeparator />}
-
-                {/* Project Templates */}
-                {templates.filter((t) => t.project_id !== null).length > 0 && (
-                  <>
-                    <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-                      Project Templates
-                    </div>
-                    {templates
-                      .filter((t) => t.project_id !== null)
-                      .map((template) => (
-                        <DropdownMenuItem
-                          key={template.id}
-                          onClick={() => handleTemplateSelect(template)}
-                        >
-                          <span className="truncate">
-                            {template.template_name}
-                          </span>
-                        </DropdownMenuItem>
-                      ))}
-                  </>
-                )}
-
-                {/* Separator if both types exist */}
-                {templates.filter((t) => t.project_id !== null).length > 0 &&
-                  templates.filter((t) => t.project_id === null).length > 0 && (
-                    <DropdownMenuSeparator />
-                  )}
-
-                {/* Global Templates */}
-                {templates.filter((t) => t.project_id === null).length > 0 && (
-                  <>
-                    <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-                      Global Templates
-                    </div>
-                    {templates
-                      .filter((t) => t.project_id === null)
-                      .map((template) => (
-                        <DropdownMenuItem
-                          key={template.id}
-                          onClick={() => handleTemplateSelect(template)}
-                        >
-                          <Globe2 className="h-3 w-3 mr-2 text-muted-foreground" />
-                          <span className="truncate">
-                            {template.template_name}
-                          </span>
-                        </DropdownMenuItem>
-                      ))}
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        {/* Tasks View */}
+      <div className={getKanbanSectionClasses(isPanelOpen, isFullscreen)}>
         {tasks.length === 0 ? (
           <div className="max-w-7xl mx-auto">
             <Card>
@@ -501,18 +329,16 @@ export function ProjectTasks() {
             </Card>
           </div>
         ) : (
-          <div className="px-8 overflow-x-scroll my-4">
-            <div className="min-w-[900px] max-w-[2000px] relative py-1">
-              <TaskKanbanBoard
-                tasks={tasks}
-                searchQuery={searchQuery}
-                onDragEnd={handleDragEnd}
-                onEditTask={handleEditTask}
-                onDeleteTask={handleDeleteTask}
-                onViewTaskDetails={handleViewTaskDetails}
-                isPanelOpen={isPanelOpen}
-              />
-            </div>
+          <div className="w-full h-full overflow-x-auto bg-secondary">
+            <TaskKanbanBoard
+              tasks={tasks}
+              searchQuery={searchQuery}
+              onDragEnd={handleDragEnd}
+              onEditTask={handleEditTask}
+              onDeleteTask={handleDeleteTask}
+              onViewTaskDetails={handleViewTaskDetails}
+              isPanelOpen={isPanelOpen}
+            />
           </div>
         )}
       </div>
@@ -526,26 +352,24 @@ export function ProjectTasks() {
           onClose={handleClosePanel}
           onEditTask={handleEditTask}
           onDeleteTask={handleDeleteTask}
-          isDialogOpen={isTaskDialogOpen || isProjectSettingsOpen}
+          isDialogOpen={isProjectSettingsOpen}
+          isFullScreen={isFullscreen}
+          setFullScreen={
+            selectedAttempt
+              ? (fullscreen) => {
+                  const baseUrl = `/projects/${projectId}/tasks/${selectedTask!.id}/attempts/${selectedAttempt.id}`;
+                  const fullUrl = fullscreen ? `${baseUrl}/full` : baseUrl;
+                  navigate(fullUrl, { replace: true });
+                }
+              : undefined
+          }
+          selectedAttempt={selectedAttempt}
+          attempts={attempts}
+          setSelectedAttempt={setSelectedAttempt}
         />
       )}
 
       {/* Dialogs - rendered at main container level to avoid stacking issues */}
-      <TaskFormDialog
-        isOpen={isTaskDialogOpen}
-        onOpenChange={(open) => {
-          setIsTaskDialogOpen(open);
-          if (!open) {
-            setSelectedTemplate(null);
-          }
-        }}
-        task={editingTask}
-        projectId={projectId}
-        onCreateTask={handleCreateTask}
-        onCreateAndStartTask={handleCreateAndStartTask}
-        onUpdateTask={handleUpdateTask}
-        initialTemplate={selectedTemplate}
-      />
 
       <ProjectForm
         open={isProjectSettingsOpen}

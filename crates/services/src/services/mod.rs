@@ -7,6 +7,7 @@ pub mod file_ranker;
 pub mod filesystem;
 pub mod filesystem_watcher;
 pub mod git;
+pub mod git_cli;
 pub mod github_service;
 pub mod image;
 pub mod notification;
