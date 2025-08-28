@@ -11,10 +11,8 @@ use crate::{
     command::CommandBuilder,
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
-        stderr_processor::normalize_stderr_logs,
-        utils::EntryIndexProvider,
-        plain_text_processor::PlainTextLogProcessor,
-        NormalizedEntry, NormalizedEntryType,
+        NormalizedEntry, NormalizedEntryType, plain_text_processor::PlainTextLogProcessor,
+        stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider,
     },
 };
 
@@ -26,8 +24,7 @@ pub struct QwenCode {
 
 impl QwenCode {
     fn build_command_builder() -> CommandBuilder {
-        CommandBuilder::new("npx -y @qwen-code/qwen-code@latest")
-            .params(["--yolo"])
+        CommandBuilder::new("npx -y @qwen-code/qwen-code@latest").params(["--yolo"])
     }
 }
 
@@ -73,8 +70,8 @@ impl StandardCodingAgentExecutor for QwenCode {
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let command_builder = Self::build_command_builder();
-        let qwen_command = command_builder
-            .build_follow_up(&["--resume".to_string(), session_id.to_string()]);
+        let qwen_command =
+            command_builder.build_follow_up(&["--resume".to_string(), session_id.to_string()]);
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 

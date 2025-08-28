@@ -186,36 +186,61 @@ mod tests {
 
         // Test ClaudeCode variants
         let claude_code_agent = get_profile_agent("claude-code");
-        assert!(matches!(claude_code_agent, crate::executors::CodingAgent::ClaudeCode(claude) 
-            if matches!(claude.variant, crate::executors::claude::ClaudeCodeVariant::ClaudeCode) && !claude.plan));
+        assert!(
+            matches!(claude_code_agent, crate::executors::CodingAgent::ClaudeCode(claude) 
+            if matches!(claude.variant, crate::executors::claude::ClaudeCodeVariant::ClaudeCode) && !claude.plan)
+        );
 
         let claude_code_router_agent = get_profile_agent("claude-code-router");
-        assert!(matches!(claude_code_router_agent, crate::executors::CodingAgent::ClaudeCode(claude) 
-            if matches!(claude.variant, crate::executors::claude::ClaudeCodeVariant::ClaudeCodeRouter) && !claude.plan));
+        assert!(
+            matches!(claude_code_router_agent, crate::executors::CodingAgent::ClaudeCode(claude)
+            if matches!(claude.variant, crate::executors::claude::ClaudeCodeVariant::ClaudeCodeRouter) && !claude.plan)
+        );
 
         // Test simple executors have correct types
-        assert!(matches!(get_profile_agent("amp"), crate::executors::CodingAgent::Amp(_)));
-        assert!(matches!(get_profile_agent("codex"), crate::executors::CodingAgent::Codex(_)));
-        assert!(matches!(get_profile_agent("opencode"), crate::executors::CodingAgent::Opencode(_)));
-        assert!(matches!(get_profile_agent("cursor"), crate::executors::CodingAgent::Cursor(_)));
-        assert!(matches!(get_profile_agent("qwen-code"), crate::executors::CodingAgent::QwenCode(_)));
+        assert!(matches!(
+            get_profile_agent("amp"),
+            crate::executors::CodingAgent::Amp(_)
+        ));
+        assert!(matches!(
+            get_profile_agent("codex"),
+            crate::executors::CodingAgent::Codex(_)
+        ));
+        assert!(matches!(
+            get_profile_agent("opencode"),
+            crate::executors::CodingAgent::Opencode(_)
+        ));
+        assert!(matches!(
+            get_profile_agent("cursor"),
+            crate::executors::CodingAgent::Cursor(_)
+        ));
+        assert!(matches!(
+            get_profile_agent("qwen-code"),
+            crate::executors::CodingAgent::QwenCode(_)
+        ));
 
         // Test Gemini model variants
         let gemini_agent = get_profile_agent("gemini");
-        assert!(matches!(gemini_agent, crate::executors::CodingAgent::Gemini(gemini) 
-            if matches!(gemini.model, crate::executors::gemini::GeminiModel::Default)));
+        assert!(
+            matches!(gemini_agent, crate::executors::CodingAgent::Gemini(gemini)
+            if matches!(gemini.model, crate::executors::gemini::GeminiModel::Default))
+        );
 
         // Test that plan variant exists for claude-code
         let claude_profile = profiles.get_profile("claude-code").unwrap();
         let plan_variant = claude_profile.get_variant("plan").unwrap();
-        assert!(matches!(&plan_variant.agent, crate::executors::CodingAgent::ClaudeCode(claude) 
-            if matches!(claude.variant, crate::executors::claude::ClaudeCodeVariant::ClaudeCode) && claude.plan));
+        assert!(
+            matches!(&plan_variant.agent, crate::executors::CodingAgent::ClaudeCode(claude)
+            if matches!(claude.variant, crate::executors::claude::ClaudeCodeVariant::ClaudeCode) && claude.plan)
+        );
 
         // Test that flash variant exists for gemini
         let gemini_profile = profiles.get_profile("gemini").unwrap();
         let flash_variant = gemini_profile.get_variant("flash").unwrap();
-        assert!(matches!(&flash_variant.agent, crate::executors::CodingAgent::Gemini(gemini) 
-            if matches!(gemini.model, crate::executors::gemini::GeminiModel::Flash)));
+        assert!(
+            matches!(&flash_variant.agent, crate::executors::CodingAgent::Gemini(gemini)
+            if matches!(gemini.model, crate::executors::gemini::GeminiModel::Flash))
+        );
     }
 
     #[test]
@@ -251,7 +276,10 @@ mod tests {
         let claude_profile = profiles.get_profile("test-claude").unwrap();
         match &claude_profile.default.agent {
             crate::executors::CodingAgent::ClaudeCode(claude) => {
-                assert!(matches!(claude.variant, crate::executors::claude::ClaudeCodeVariant::ClaudeCode));
+                assert!(matches!(
+                    claude.variant,
+                    crate::executors::claude::ClaudeCodeVariant::ClaudeCode
+                ));
                 assert!(claude.plan);
             }
             _ => panic!("Expected ClaudeCode agent"),
@@ -261,7 +289,10 @@ mod tests {
         let gemini_profile = profiles.get_profile("test-gemini").unwrap();
         match &gemini_profile.default.agent {
             crate::executors::CodingAgent::Gemini(gemini) => {
-                assert!(matches!(gemini.model, crate::executors::gemini::GeminiModel::Flash));
+                assert!(matches!(
+                    gemini.model,
+                    crate::executors::gemini::GeminiModel::Flash
+                ));
             }
             _ => panic!("Expected Gemini agent"),
         }

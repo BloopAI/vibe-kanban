@@ -26,8 +26,8 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 #[serde(rename_all = "snake_case")]
 pub enum GeminiModel {
-    Default,  // no --model flag
-    Flash,    // --model gemini-2.5-flash
+    Default, // no --model flag
+    Flash,   // --model gemini-2.5-flash
 }
 
 impl GeminiModel {
@@ -37,17 +37,16 @@ impl GeminiModel {
 
     fn get_params(&self) -> Vec<&'static str> {
         let mut params = vec!["--yolo"];
-        
+
         if let GeminiModel::Flash = self {
             params.extend_from_slice(&["--model", "gemini-2.5-flash"]);
         }
-        
+
         params
     }
 
     fn build_command_builder(&self) -> CommandBuilder {
-        CommandBuilder::new(self.base_command())
-            .params(self.get_params())
+        CommandBuilder::new(self.base_command()).params(self.get_params())
     }
 }
 

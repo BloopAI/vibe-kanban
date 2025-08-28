@@ -112,8 +112,11 @@ pub struct Codex {
 
 impl Codex {
     fn build_command_builder() -> CommandBuilder {
-        CommandBuilder::new("npx -y @openai/codex exec")
-            .params(["--json", "--dangerously-bypass-approvals-and-sandbox", "--skip-git-repo-check"])
+        CommandBuilder::new("npx -y @openai/codex exec").params([
+            "--json",
+            "--dangerously-bypass-approvals-and-sandbox",
+            "--skip-git-repo-check",
+        ])
     }
 }
 

@@ -28,7 +28,7 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 #[serde(rename_all = "snake_case")]
 pub enum ClaudeCodeVariant {
-    ClaudeCode,      // @anthropic-ai/claude-code@latest
+    ClaudeCode,       // @anthropic-ai/claude-code@latest
     ClaudeCodeRouter, // @musistudio/claude-code-router code
 }
 
@@ -42,20 +42,19 @@ impl ClaudeCodeVariant {
 
     fn get_params(&self, plan: bool) -> Vec<&'static str> {
         let mut params = vec!["-p"];
-        
+
         if plan {
             params.push("--permission-mode=plan");
         } else {
             params.push("--dangerously-skip-permissions");
         }
-        
+
         params.extend_from_slice(&["--verbose", "--output-format=stream-json"]);
         params
     }
 
     fn build_command_builder(&self, plan: bool) -> CommandBuilder {
-        CommandBuilder::new(self.base_command())
-            .params(self.get_params(plan))
+        CommandBuilder::new(self.base_command()).params(self.get_params(plan))
     }
 }
 
@@ -116,12 +115,11 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         let command_builder = self.variant.build_command_builder(self.plan);
         // Build follow-up command with --resume {session_id}
         let claude_command = if self.plan {
-            let base_command = command_builder
-                .build_follow_up(&["--resume".to_string(), session_id.to_string()]);
+            let base_command =
+                command_builder.build_follow_up(&["--resume".to_string(), session_id.to_string()]);
             create_watchkill_script(&base_command)
         } else {
-            command_builder
-                .build_follow_up(&["--resume".to_string(), session_id.to_string()])
+            command_builder.build_follow_up(&["--resume".to_string(), session_id.to_string()])
         };
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
