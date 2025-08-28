@@ -18,17 +18,16 @@ function TabNavigation({
 }: Props) {
   const { attemptData } = useAttemptExecution(selectedAttempt?.id);
   return (
-    <div className="border-b border-dashed bg-secondary sticky top-0 z-10">
+    <div className="border-b border-dashed bg-background sticky top-0 z-10">
       <div className="flex items-center px-4">
         <button
           onClick={() => {
             setActiveTab('logs');
           }}
-          className={`flex items-center px-4 py-2 text-sm font-medium ${
-            activeTab === 'logs'
+          className={`flex items-center px-4 py-2 text-sm font-medium ${activeTab === 'logs'
               ? 'text-primary bg-background'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-          }`}
+            }`}
         >
           <MessageSquare className="h-4 w-4 mr-2" />
           Logs
@@ -38,11 +37,10 @@ function TabNavigation({
           onClick={() => {
             setActiveTab('diffs');
           }}
-          className={`flex items-center px-4 py-2 text-sm font-medium ${
-            activeTab === 'diffs'
+          className={`flex items-center px-4 py-2 text-sm font-medium ${activeTab === 'diffs'
               ? 'text-primary bg-background'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-          }`}
+            }`}
         >
           <GitCompare className="h-4 w-4 mr-2" />
           Diffs
@@ -51,11 +49,10 @@ function TabNavigation({
           onClick={() => {
             setActiveTab('processes');
           }}
-          className={`flex items-center px-4 py-2 text-sm font-medium ${
-            activeTab === 'processes'
+          className={`flex items-center px-4 py-2 text-sm font-medium ${activeTab === 'processes'
               ? 'text-primary bg-background'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-          }`}
+            }`}
         >
           <Cog className="h-4 w-4 mr-2" />
           Processes

@@ -23,28 +23,28 @@ export const getTaskPanelClasses = (forceFullScreen: boolean) => {
   const overlayClasses = forceFullScreen
     ? 'w-full'
     : [
-        PANEL_WIDTHS.base,
-        PANEL_WIDTHS.sm,
-        PANEL_WIDTHS.md,
-        PANEL_WIDTHS.lg,
-        PANEL_WIDTHS.xl,
-      ].join(' ');
+      PANEL_WIDTHS.base,
+      PANEL_WIDTHS.sm,
+      PANEL_WIDTHS.md,
+      PANEL_WIDTHS.lg,
+      PANEL_WIDTHS.xl,
+    ].join(' ');
 
   const sideBySideClasses = forceFullScreen
     ? ''
     : [
-        `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:relative`,
-        `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:inset-auto`,
-        `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:z-auto`,
-        `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:h-full`,
-        `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:w-[800px]`,
-      ].join(' ');
+      `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:relative`,
+      `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:inset-auto`,
+      `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:z-auto`,
+      `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:h-full`,
+      `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:w-[800px]`,
+    ].join(' ');
 
   return `fixed flex flex-col items-center inset-y-0 right-0 z-50 ${overlayClasses} ${sideBySideClasses} bg-muted border-l shadow-lg overflow-hidden `;
 };
 
 export const getTaskPanelInnerClasses = () => {
-  return `flex-1 flex flex-col min-h-0 w-full max-w-[1400px] bg-background`;
+  return `flex-1 flex flex-col min-h-0 w-full max-w-[1400px] bg-muted`;
 };
 
 // Generate classes for backdrop (only show in overlay mode)
@@ -79,13 +79,13 @@ export const getKanbanSectionClasses = (
     isPanelOpen && forceFullScreen
       ? ''
       : [
-          `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:flex-1`,
-          `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:min-w-0`,
-          `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:h-full`,
-          `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:overflow-y-auto`,
-          `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:opacity-100`,
-          `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:pointer-events-auto`,
-        ].join(' ');
+        `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:flex-1`,
+        `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:min-w-0`,
+        `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:h-full`,
+        `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:overflow-y-auto`,
+        `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:opacity-100`,
+        `${PANEL_SIDE_BY_SIDE_BREAKPOINT}:pointer-events-auto`,
+      ].join(' ');
 
   // return `${overlayClasses} ${sideBySideClasses}`;
   return `${baseClasses} ${sideBySideClasses}`;

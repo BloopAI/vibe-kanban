@@ -58,7 +58,7 @@ export function Navbar() {
   };
 
   return (
-    <div className="border-b bg-secondary">
+    <div className="border-b bg-background">
       <div className="w-full px-3">
         <div className="flex items-center h-12 py-2">
           <div className="flex-1">

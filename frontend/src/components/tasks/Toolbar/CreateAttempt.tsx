@@ -144,7 +144,7 @@ function CreateAttempt({
 
   return (
     <div className="">
-      <Card className="bg-secondary p-3 text-sm border-y border-dashed">
+      <Card className="bg-background p-3 text-sm border-y border-dashed">
         Create Attempt
       </Card>
       <div className="space-y-3 px-3">

@@ -4,20 +4,17 @@
 
 /* 1) THEME TOKENS (underscored): defaults + classes control these */
 @layer base {
+
   /* Light defaults */
   :root {
-    --_background: 0 0% 100%;
+    --_background: 48, 33%, 97%;
     --_foreground: 222.2 84% 4.9%;
-    --_card: 0 0% 100%;
-    --_card-foreground: 222.2 84% 4.9%;
-    --_popover: 0 0% 100%;
-    --_popover-foreground: 222.2 84% 4.9%;
-    --_primary: 222.2 47.4% 11.2%;
-    --_primary-foreground: 210 40% 98%;
-    --_secondary: 48, 33%, 97%;
-    --_secondary-foreground: 222.2 84% 4.9%;
-    --_muted: 210 40% 96%;
-    --_muted-foreground: 215.4 16.3% 46.9%;
+    --_primary: var(--_muted);
+    --_primary-foreground: var(--_muted-foreground);
+    --_secondary: var(--_muted);
+    --_secondary-foreground: 215.4 16.3% 46.9%;
+    --_muted: 0 0% 100%;
+    --_muted-foreground: 222.2 84% 4.9%;
     --_accent: 210 40% 96%;
     --_accent-foreground: 222.2 84% 4.9%;
     --_destructive: 0 84.2% 60.2%;
@@ -46,12 +43,8 @@
 
   /* Dark defaults (used if no theme class but user prefers dark) */
   .dark {
-    --_background: 60, 2%, 18%;
+    --_background: 60, 2%, 20%;
     --_foreground: 210 40% 98%;
-    --_card: 60, 2%, 18%;
-    --_card-foreground: 210 40% 98%;
-    --_popover: 222.2 84% 4.9%;
-    --_popover-foreground: 210 40% 98%;
     --_primary: 210 40% 98%;
     --_primary-foreground: 222.2 47.4% 11.2%;
     --_secondary: 60, 3%, 15%;
@@ -82,116 +75,6 @@
     --_console-success: 138.5 76.5% 47.7%;
     --_console-error: 0 84.2% 60.2%;
   }
-
-  .purple {
-    --_background: 266 100% 6%;
-    --_foreground: 266 20% 95%;
-    --_card: 266 100% 6%;
-    --_card-foreground: 266 20% 95%;
-    --_popover: 266 100% 6%;
-    --_popover-foreground: 266 20% 95%;
-    --_primary: 266 80% 75%;
-    --_primary-foreground: 266 100% 6%;
-    --_secondary: 266 20% 15%;
-    --_secondary-foreground: 266 20% 95%;
-    --_muted: 266 20% 15%;
-    --_muted-foreground: 266 15% 65%;
-    --_accent: 266 20% 15%;
-    --_accent-foreground: 266 20% 95%;
-    --_destructive: 0 62.8% 30.6%;
-    --_destructive-foreground: 266 20% 95%;
-    --_border: 266 20% 15%;
-    --_input: 266 20% 15%;
-    --_ring: 266 80% 75%;
-  }
-
-  .green {
-    --_background: 120 100% 6%;
-    --_foreground: 120 20% 95%;
-    --_card: 120 100% 6%;
-    --_card-foreground: 120 20% 95%;
-    --_popover: 120 100% 6%;
-    --_popover-foreground: 120 20% 95%;
-    --_primary: 120 80% 75%;
-    --_primary-foreground: 120 100% 6%;
-    --_secondary: 120 20% 15%;
-    --_secondary-foreground: 120 20% 95%;
-    --_muted: 120 20% 15%;
-    --_muted-foreground: 120 15% 65%;
-    --_accent: 120 20% 15%;
-    --_accent-foreground: 120 20% 95%;
-    --_destructive: 0 62.8% 30.6%;
-    --_destructive-foreground: 120 20% 95%;
-    --_border: 120 20% 15%;
-    --_input: 120 20% 15%;
-    --_ring: 120 80% 75%;
-  }
-
-  .blue {
-    --_background: 210 100% 6%;
-    --_foreground: 210 20% 95%;
-    --_card: 210 100% 6%;
-    --_card-foreground: 210 20% 95%;
-    --_popover: 210 100% 6%;
-    --_popover-foreground: 210 20% 95%;
-    --_primary: 210 80% 75%;
-    --_primary-foreground: 210 100% 6%;
-    --_secondary: 210 20% 15%;
-    --_secondary-foreground: 210 20% 95%;
-    --_muted: 210 20% 15%;
-    --_muted-foreground: 210 15% 65%;
-    --_accent: 210 20% 15%;
-    --_accent-foreground: 210 20% 95%;
-    --_destructive: 0 62.8% 30.6%;
-    --_destructive-foreground: 210 20% 95%;
-    --_border: 210 20% 15%;
-    --_input: 210 20% 15%;
-    --_ring: 210 80% 75%;
-  }
-
-  .orange {
-    --_background: 30 100% 6%;
-    --_foreground: 30 20% 95%;
-    --_card: 30 100% 6%;
-    --_card-foreground: 30 20% 95%;
-    --_popover: 30 100% 6%;
-    --_popover-foreground: 30 20% 95%;
-    --_primary: 30 80% 75%;
-    --_primary-foreground: 30 100% 6%;
-    --_secondary: 30 20% 15%;
-    --_secondary-foreground: 30 20% 95%;
-    --_muted: 30 20% 15%;
-    --_muted-foreground: 30 15% 65%;
-    --_accent: 30 20% 15%;
-    --_accent-foreground: 30 20% 95%;
-    --_destructive: 0 62.8% 30.6%;
-    --_destructive-foreground: 30 20% 95%;
-    --_border: 30 20% 15%;
-    --_input: 30 20% 15%;
-    --_ring: 30 80% 75%;
-  }
-
-  .red {
-    --_background: 0 100% 6%;
-    --_foreground: 0 20% 95%;
-    --_card: 0 100% 6%;
-    --_card-foreground: 0 20% 95%;
-    --_popover: 0 100% 6%;
-    --_popover-foreground: 0 20% 95%;
-    --_primary: 0 80% 75%;
-    --_primary-foreground: 0 100% 6%;
-    --_secondary: 0 20% 15%;
-    --_secondary-foreground: 0 20% 95%;
-    --_muted: 0 20% 15%;
-    --_muted-foreground: 0 15% 65%;
-    --_accent: 0 20% 15%;
-    --_accent-foreground: 0 20% 95%;
-    --_destructive: 0 62.8% 30.6%;
-    --_destructive-foreground: 0 20% 95%;
-    --_border: 0 20% 15%;
-    --_input: 0 20% 15%;
-    --_ring: 0 80% 75%;
-  }
 }
 
 /* 2) PUBLIC TOKENS: prefer VS Code, else fall back to theme tokens */
@@ -200,44 +83,28 @@
     --background: var(--vscode-editor-background, var(--_background));
     --foreground: var(--vscode-editor-foreground, var(--_foreground));
 
-    --card: var(--vscode-editorWidget-background, var(--_card));
-    --card-foreground: var(
-      --vscode-editorWidget-foreground,
-      var(--_card-foreground)
-    );
-    --popover: var(--vscode-editorWidget-background, var(--_popover));
-    --popover-foreground: var(
-      --vscode-editorWidget-foreground,
-      var(--_popover-foreground)
-    );
+    --card: var(--muted);
+    --card-foreground: var(--muted-foreground);
+    --popover: var(--background);
+    --popover-foreground: var(--foreground);
 
     --primary: var(--vscode-button-background, var(--_primary));
-    --primary-foreground: var(
-      --vscode-button-foreground,
-      var(--_primary-foreground)
-    );
+    --primary-foreground: var(--vscode-button-foreground,
+        var(--_primary-foreground));
     --secondary: var(--vscode-input-background, var(--_secondary));
-    --secondary-foreground: var(
-      --vscode-input-foreground,
-      var(--_secondary-foreground)
-    );
+    --secondary-foreground: var(--vscode-input-foreground,
+        var(--_secondary-foreground));
 
     --muted: var(--vscode-input-background, var(--_muted));
-    --muted-foreground: var(
-      --vscode-descriptionForeground,
-      var(--_muted-foreground)
-    );
+    --muted-foreground: var(--vscode-descriptionForeground,
+        var(--_muted-foreground));
     --accent: var(--vscode-focusBorder, var(--_accent));
-    --accent-foreground: var(
-      --vscode-editor-foreground,
-      var(--_accent-foreground)
-    );
+    --accent-foreground: var(--vscode-editor-foreground,
+        var(--_accent-foreground));
 
     --destructive: var(--vscode-errorForeground, var(--_destructive));
-    --destructive-foreground: var(
-      --vscode-button-foreground,
-      var(--_destructive-foreground)
-    );
+    --destructive-foreground: var(--vscode-button-foreground,
+        var(--_destructive-foreground));
 
     --border: var(--vscode-input-background, var(--_border));
     --input: var(--vscode-input-background, var(--_input));
@@ -247,36 +114,24 @@
 
     /* Status */
     --success: var(--vscode-testing-iconPassed, var(--_success));
-    --success-foreground: var(
-      --vscode-editor-foreground,
-      var(--_success-foreground)
-    );
+    --success-foreground: var(--vscode-editor-foreground,
+        var(--_success-foreground));
     --warning: var(--vscode-testing-iconQueued, var(--_warning));
-    --warning-foreground: var(
-      --vscode-descriptionForeground,
-      var(--_warning-foreground)
-    );
+    --warning-foreground: var(--vscode-descriptionForeground,
+        var(--_warning-foreground));
     --info: var(--vscode-focusBorder, var(--_info));
     --info-foreground: var(--vscode-editor-foreground, var(--_info-foreground));
     --neutral: var(--vscode-input-background, var(--_neutral));
-    --neutral-foreground: var(
-      --vscode-editor-foreground,
-      var(--_neutral-foreground)
-    );
+    --neutral-foreground: var(--vscode-editor-foreground,
+        var(--_neutral-foreground));
 
     /* Console/terminal */
-    --console-background: var(
-      --vscode-editor-background,
-      var(--_console-background)
-    );
-    --console-foreground: var(
-      --vscode-terminal-foreground,
-      var(--_console-foreground)
-    );
-    --console-success: var(
-      --vscode-testing-iconPassed,
-      var(--_console-success)
-    );
+    --console-background: var(--vscode-editor-background,
+        var(--_console-background));
+    --console-foreground: var(--vscode-terminal-foreground,
+        var(--_console-foreground));
+    --console-success: var(--vscode-testing-iconPassed,
+        var(--_console-success));
     --console-error: var(--vscode-terminal-ansiRed, var(--_console-error));
   }
 }

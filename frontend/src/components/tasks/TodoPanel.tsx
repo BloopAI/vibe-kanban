@@ -39,7 +39,7 @@ export function TodoPanel({ selectedAttempt }: TodoPanelProps) {
 
   return (
     <div>
-      <Card className="bg-secondary p-3 border border-dashed text-sm">
+      <Card className="bg-background p-3 border border-dashed text-sm">
         Todos
       </Card>
       <div className="p-3">

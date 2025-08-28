@@ -36,7 +36,7 @@ function TaskDetailsHeader({
   return (
     <div>
       <Card
-        className="flex shrink-0 items-center gap-2 border-b border-dashed bg-secondary"
+        className="flex shrink-0 items-center gap-2 border-b border-dashed bg-background"
         style={{}}
       >
         <div className="p-3 flex flex-1 items-center truncate">

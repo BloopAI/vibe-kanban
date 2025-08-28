@@ -222,7 +222,7 @@ function TaskDetailsToolbar({
           />
         ) : (
           <div className="">
-            <Card className="bg-secondary border-y border-dashed p-3 text-sm">
+            <Card className="bg-background border-y border-dashed p-3 text-sm">
               Actions
             </Card>
             <div className="p-3">
