@@ -20,8 +20,6 @@ const DEFAULT_PROFILES_JSON: &str = include_str!("../default_profiles.json");
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct VariantAgentConfig {
-    /// Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
-    pub label: String,
     /// The coding agent this profile is associated with
     #[serde(flatten)]
     pub agent: CodingAgent,
@@ -31,16 +29,19 @@ pub struct VariantAgentConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct ProfileConfig {
+    /// Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
+    pub label: String,
     #[serde(flatten)]
     /// default profile variant
     pub default: VariantAgentConfig,
     /// additional variants for this profile, e.g. plan, review, subagent
-    pub variants: Vec<VariantAgentConfig>,
+    #[serde(default)]
+    pub variants: HashMap<String, VariantAgentConfig>,
 }
 
 impl ProfileConfig {
     pub fn get_variant(&self, variant: &str) -> Option<&VariantAgentConfig> {
-        self.variants.iter().find(|m| m.label == variant)
+        self.variants.get(variant)
     }
 
     pub fn get_mcp_config_path(&self) -> Option<PathBuf> {
@@ -74,7 +75,7 @@ impl ProfileVariantLabel {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct ProfileConfigs {
-    pub profiles: Vec<ProfileConfig>,
+    pub profiles: HashMap<String, ProfileConfig>,
 }
 
 impl ProfileConfigs {
@@ -136,20 +137,16 @@ impl ProfileConfigs {
             )
         })?;
 
-        let default_labels: HashSet<String> = self
-            .profiles
-            .iter()
-            .map(|p| p.default.label.clone())
-            .collect();
+        let default_labels: HashSet<String> = self.profiles.keys().cloned().collect();
 
         // Only add user profiles with unique labels
-        for user_profile in user_profiles.profiles {
-            if !default_labels.contains(&user_profile.default.label) {
-                self.profiles.push(user_profile);
+        for (label, user_profile) in user_profiles.profiles {
+            if !default_labels.contains(&label) {
+                self.profiles.insert(label.clone(), user_profile);
             } else {
                 tracing::debug!(
                     "Skipping user profile '{}' - default with same label exists",
-                    user_profile.default.label
+                    label
                 );
             }
         }
@@ -158,14 +155,15 @@ impl ProfileConfigs {
     }
 
     pub fn get_profile(&self, label: &str) -> Option<&ProfileConfig> {
-        self.profiles.iter().find(|p| p.default.label == label)
+        self.profiles.get(label)
+    }
+
+    pub fn len(&self) -> usize {
+        self.profiles.len()
     }
 
     pub fn to_map(&self) -> HashMap<String, ProfileConfig> {
-        self.profiles
-            .iter()
-            .map(|p| (p.default.label.clone(), p.clone()))
-            .collect()
+        self.profiles.clone()
     }
 }
 
@@ -194,7 +192,7 @@ mod tests {
                 .unwrap_or_else(|| panic!("Profile not found: {label}"))
         };
         let profiles = ProfileConfigs::from_defaults();
-        assert!(profiles.profiles.len() == 8);
+        assert!(profiles.len() == 8);
 
         let claude_code_command = get_profile_command("claude-code");
         assert!(claude_code_command.contains("npx -y @anthropic-ai/claude-code@latest"));
@@ -236,8 +234,8 @@ mod tests {
     #[test]
     fn test_flattened_agent_deserialization() {
         let test_json = r#"{
-            "profiles": [
-                {
+            "profiles": {
+                "test-claude": {
                     "label": "test-claude",
                     "mcp_config_path": null,
                     "CLAUDE_CODE": {
@@ -247,9 +245,9 @@ mod tests {
                         },
                         "plan": true
                     },
-                    "variants": []
+                    "variants": {}
                 },
-                {
+                "test-gemini": {
                     "label": "test-gemini",
                     "mcp_config_path": null,
                     "GEMINI": {
@@ -258,13 +256,13 @@ mod tests {
                             "params": ["--test"]
                         }
                     },
-                    "variants": []
+                    "variants": {}
                 }
-            ]
+            }
         }"#;
 
         let profiles: ProfileConfigs = serde_json::from_str(test_json).expect("Should deserialize");
-        assert_eq!(profiles.profiles.len(), 2);
+        assert_eq!(profiles.len(), 2);
 
         // Test Claude profile
         let claude_profile = profiles.get_profile("test-claude").unwrap();

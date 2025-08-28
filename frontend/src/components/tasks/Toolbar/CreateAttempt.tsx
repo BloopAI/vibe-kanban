@@ -38,7 +38,7 @@ type Props = {
   setIsInCreateAttemptMode: Dispatch<SetStateAction<boolean>>;
   setCreateAttemptBranch: Dispatch<SetStateAction<string | null>>;
   setSelectedProfile: Dispatch<SetStateAction<ProfileVariantLabel | null>>;
-  availableProfiles: ProfileConfig[] | null;
+  availableProfiles: Record<string, ProfileConfig> | null;
   selectedAttempt: TaskAttempt | null;
 };
 
@@ -208,7 +208,10 @@ function CreateAttempt({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-full">
-                  {availableProfiles.map((profile) => (
+                  {availableProfiles &&
+                    Object.values(availableProfiles)
+                      .sort((a, b) => a.label.localeCompare(b.label))
+                      .map((profile) => (
                     <DropdownMenuItem
                       key={profile.label}
                       onClick={() => {
@@ -226,7 +229,7 @@ function CreateAttempt({
                       {profile.label}
                     </DropdownMenuItem>
                   ))}
-                </DropdownMenuContent>
+                  </DropdownMenuContent>
               </DropdownMenu>
             )}
           </div>
@@ -239,11 +242,11 @@ function CreateAttempt({
               </label>
             </div>
             {(() => {
-              const currentProfile = availableProfiles?.find(
-                (p) => p.label === selectedProfile?.profile
-              );
+              const currentProfile = availableProfiles?.[
+                selectedProfile?.profile || ''
+              ];
               const hasVariants =
-                currentProfile?.variants && currentProfile.variants.length > 0;
+                currentProfile?.variants && Object.keys(currentProfile.variants).length > 0;
 
               if (hasVariants && currentProfile) {
                 return (
@@ -274,24 +277,24 @@ function CreateAttempt({
                       >
                         Default
                       </DropdownMenuItem>
-                      {currentProfile.variants.map((variant) => (
+                      {Object.entries(currentProfile.variants).map(([variantLabel]) => (
                         <DropdownMenuItem
-                          key={variant.label}
+                          key={variantLabel}
                           onClick={() => {
                             if (selectedProfile) {
                               setSelectedProfile({
                                 ...selectedProfile,
-                                variant: variant.label,
+                                variant: variantLabel,
                               });
                             }
                           }}
                           className={
-                            selectedProfile?.variant === variant.label
+                            selectedProfile?.variant === variantLabel
                               ? 'bg-accent'
                               : ''
                           }
                         >
-                          {variant.label}
+                          {variantLabel}
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>

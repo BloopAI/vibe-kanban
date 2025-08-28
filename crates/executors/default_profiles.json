@@ -1,6 +1,6 @@
 {
-  "profiles": [
-    {
+  "profiles": {
+    "claude-code": {
       "label": "claude-code",
       "mcp_config_path": null,
       "CLAUDE_CODE": {
@@ -15,9 +15,8 @@
         },
         "plan": false
       },
-      "variants": [
-        {
-          "label": "plan",
+      "variants": {
+        "plan": {
           "mcp_config_path": null,
           "CLAUDE_CODE": {
             "command": {
@@ -32,9 +31,9 @@
             "plan": true
           }
         }
-      ]
+      }
     },
-    {
+    "claude-code-router": {
       "label": "claude-code-router",
       "mcp_config_path": null,
       "CLAUDE_CODE": {
@@ -49,9 +48,9 @@
         },
         "plan": false
       },
-      "variants": []
+      "variants": {}
     },
-    {
+    "amp": {
       "label": "amp",
       "mcp_config_path": null,
       "AMP": {
@@ -64,9 +63,9 @@
           ]
         }
       },
-      "variants": []
+      "variants": {}
     },
-    {
+    "gemini": {
       "label": "gemini",
       "mcp_config_path": null,
       "GEMINI": {
@@ -77,9 +76,8 @@
           ]
         }
       },
-      "variants": [
-        {
-          "label": "flash",
+      "variants": {
+        "flash": {
           "mcp_config_path": null,
           "GEMINI": {
             "command": {
@@ -92,9 +90,9 @@
             }
           }
         }
-      ]
+      }
     },
-    {
+    "codex": {
       "label": "codex",
       "mcp_config_path": null,
       "CODEX": {
@@ -107,9 +105,9 @@
           ]
         }
       },
-      "variants": []
+      "variants": {}
     },
-    {
+    "opencode": {
       "label": "opencode",
       "mcp_config_path": null,
       "OPENCODE": {
@@ -120,9 +118,9 @@
           ]
         }
       },
-      "variants": []
+      "variants": {}
     },
-    {
+    "qwen-code": {
       "label": "qwen-code",
       "mcp_config_path": "~/.qwen/settings.json",
       "GEMINI": {
@@ -133,9 +131,9 @@
           ]
         }
       },
-      "variants": []
+      "variants": {}
     },
-    {
+    "cursor": {
       "label": "cursor",
       "mcp_config_path": null,
       "CURSOR": {
@@ -148,7 +146,7 @@
           ]
         }
       },
-      "variants": []
+      "variants": {}
     }
-  ]
+  }
 }

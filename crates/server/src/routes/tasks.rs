@@ -109,7 +109,7 @@ pub async fn create_task_and_start(
         .get_current_branch(&project.git_repo_path)?;
     let profile_label = executors::profile::ProfileConfigs::get_cached()
         .get_profile(&default_profile_variant.profile)
-        .map(|profile| profile.default.label.clone())
+        .map(|profile| profile.label.clone())
         .ok_or_else(|| {
             ApiError::TaskAttempt(TaskAttemptError::ValidationError(format!(
                 "Profile not found: {:?}",

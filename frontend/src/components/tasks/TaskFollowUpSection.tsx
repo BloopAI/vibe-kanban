@@ -73,9 +73,9 @@ export function TaskFollowUpSection({
       return null;
     } else if (selectedAttemptProfile && profiles) {
       // No processes yet, check if profile has default variant
-      const profile = profiles.find((p) => p.label === selectedAttemptProfile);
-      if (profile?.variants && profile.variants.length > 0) {
-        return profile.variants[0].label;
+      const profile = profiles?.[selectedAttemptProfile];
+      if (profile?.variants && Object.keys(profile.variants).length > 0) {
+        return Object.keys(profile.variants)[0];
       }
     }
 
@@ -127,7 +127,7 @@ export function TaskFollowUpSection({
   ]);
   const currentProfile = useMemo(() => {
     if (!selectedProfile || !profiles) return null;
-    return profiles.find((p) => p.label === selectedProfile);
+    return profiles?.[selectedProfile];
   }, [selectedProfile, profiles]);
 
   // Update selectedVariant when defaultFollowUpVariant changes
@@ -265,7 +265,7 @@ export function TaskFollowUpSection({
                   {(() => {
                     const hasVariants =
                       currentProfile?.variants &&
-                      currentProfile.variants.length > 0;
+                      Object.keys(currentProfile.variants).length > 0;
 
                     if (hasVariants) {
                       return (
@@ -293,19 +293,19 @@ export function TaskFollowUpSection({
                             >
                               Default
                             </DropdownMenuItem>
-                            {currentProfile.variants.map((variant) => (
+                            {Object.entries(currentProfile.variants).map(([variantLabel]) => (
                               <DropdownMenuItem
-                                key={variant.label}
+                                key={variantLabel}
                                 onClick={() =>
-                                  setSelectedVariant(variant.label)
+                                  setSelectedVariant(variantLabel)
                                 }
                                 className={
-                                  selectedVariant === variant.label
+                                  selectedVariant === variantLabel
                                     ? 'bg-accent'
                                     : ''
                                 }
                               >
-                                {variant.label}
+                                {variantLabel}
                               </DropdownMenuItem>
                             ))}
                           </DropdownMenuContent>

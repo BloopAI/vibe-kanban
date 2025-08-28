@@ -54,7 +54,7 @@ export type CreateImage = { file_path: string, original_name: string, mime_type:
 
 export type ApiResponse<T, E = T> = { success: boolean, data: T | null, error_data: E | null, message: string | null, };
 
-export type UserSystemInfo = { config: Config, environment: Environment, profiles: Array<ProfileConfig>, };
+export type UserSystemInfo = { config: Config, environment: Environment, profiles: { [key in string]?: ProfileConfig }, };
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
 
@@ -116,13 +116,13 @@ export type ProfileVariantLabel = { profile: string, variant: string | null, };
 
 export type ProfileConfig = { 
 /**
- * additional variants for this profile, e.g. plan, review, subagent
- */
-variants: Array<VariantAgentConfig>, 
-/**
  * Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
  */
 label: string, 
+/**
+ * additional variants for this profile, e.g. plan, review, subagent
+ */
+variants: { [key in string]?: VariantAgentConfig }, 
 /**
  * Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
  */
@@ -130,15 +130,11 @@ mcp_config_path: string | null, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Am
 
 export type VariantAgentConfig = { 
 /**
- * Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
- */
-label: string, 
-/**
  * Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
  */
 mcp_config_path: string | null, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor });
 
-export type ProfileConfigs = { profiles: Array<ProfileConfig>, };
+export type ProfileConfigs = { profiles: { [key in string]?: ProfileConfig }, };
 
 export type ClaudeCode = { command: CommandBuilder, append_prompt: string | null, plan: boolean, };
 

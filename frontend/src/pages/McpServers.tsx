@@ -40,14 +40,12 @@ export function McpServers() {
   useEffect(() => {
     if (config?.profile && profiles && !selectedProfile) {
       // Find the current profile
-      const currentProfile = profiles.find(
-        (p) => p.label === config.profile.profile
-      );
+      const currentProfile = profiles[config.profile.profile];
       if (currentProfile) {
         setSelectedProfile(currentProfile);
-      } else if (profiles.length > 0) {
+      } else if (Object.keys(profiles).length > 0) {
         // Default to first profile if current profile not found
-        setSelectedProfile(profiles[0]);
+        setSelectedProfile(Object.values(profiles)[0]);
       }
     }
   }, [config?.profile, profiles, selectedProfile]);
@@ -233,7 +231,7 @@ export function McpServers() {
               <Select
                 value={selectedProfile?.label || ''}
                 onValueChange={(value: string) => {
-                  const profile = profiles?.find((p) => p.label === value);
+                  const profile = profiles?.[value];
                   if (profile) setSelectedProfile(profile);
                 }}
               >
@@ -241,11 +239,14 @@ export function McpServers() {
                   <SelectValue placeholder="Select executor" />
                 </SelectTrigger>
                 <SelectContent>
-                  {profiles?.map((profile) => (
-                    <SelectItem key={profile.label} value={profile.label}>
-                      {profile.label}
-                    </SelectItem>
-                  ))}
+                  {profiles &&
+                    Object.values(profiles)
+                      .sort((a, b) => a.label.localeCompare(b.label))
+                      .map((profile) => (
+                        <SelectItem key={profile.label} value={profile.label}>
+                          {profile.label}
+                        </SelectItem>
+                      ))}
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">

@@ -111,7 +111,7 @@ pub async fn create_task_attempt(
     let task_attempt = TaskAttempt::create(
         &deployment.db().pool,
         &CreateTaskAttempt {
-            profile: profile.default.label.clone(),
+            profile: profile.label.clone(),
             base_branch: payload.base_branch.clone(),
         },
         payload.task_id,
@@ -129,7 +129,7 @@ pub async fn create_task_attempt(
             serde_json::json!({
                 "task_id": task_attempt.task_id.to_string(),
                 "variant": &profile_variant_label.variant,
-                "profile": profile.default.label,
+                "profile": profile.label,
                 "attempt_id": task_attempt.id.to_string(),
             }),
         )

@@ -316,16 +316,8 @@ async fn get_profiles(
         match serde_json::from_str::<ProfileConfigs>(&user_content) {
             Ok(user_profiles) => {
                 // Override defaults with user profiles that have the same label
-                for user_profile in user_profiles.profiles {
-                    if let Some(default_profile) = profiles
-                        .profiles
-                        .iter_mut()
-                        .find(|p| p.default.label == user_profile.default.label)
-                    {
-                        *default_profile = user_profile;
-                    } else {
-                        profiles.profiles.push(user_profile);
-                    }
+                for (label, user_profile) in user_profiles.profiles {
+                    profiles.profiles.insert(label, user_profile);
                 }
             }
             Err(e) => {

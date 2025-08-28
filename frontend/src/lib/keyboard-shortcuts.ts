@@ -279,7 +279,7 @@ export function useVariantCyclingShortcut({
   setIsAnimating: (animating: boolean) => void;
 }) {
   useEffect(() => {
-    if (!currentProfile?.variants || currentProfile.variants.length === 0) {
+    if (!currentProfile?.variants || Object.keys(currentProfile.variants).length === 0) {
       return;
     }
 
@@ -290,7 +290,7 @@ export function useVariantCyclingShortcut({
 
         // Build the variant cycle: null (Default) → variant1 → variant2 → ... → null
         const variants = currentProfile.variants;
-        const variantLabels = variants.map((v) => v.label);
+        const variantLabels = Object.keys(variants);
         const allOptions = [null, ...variantLabels];
 
         // Find current index and cycle to next
