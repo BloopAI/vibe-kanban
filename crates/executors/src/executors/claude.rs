@@ -24,10 +24,45 @@ use crate::{
     },
 };
 
+/// Variant of Claude Code to use
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[serde(rename_all = "snake_case")]
+pub enum ClaudeCodeVariant {
+    ClaudeCode,      // @anthropic-ai/claude-code@latest
+    ClaudeCodeRouter, // @musistudio/claude-code-router code
+}
+
+impl ClaudeCodeVariant {
+    fn base_command(&self) -> &'static str {
+        match self {
+            ClaudeCodeVariant::ClaudeCode => "npx -y @anthropic-ai/claude-code@latest",
+            ClaudeCodeVariant::ClaudeCodeRouter => "npx -y @musistudio/claude-code-router code",
+        }
+    }
+
+    fn get_params(&self, plan: bool) -> Vec<&'static str> {
+        let mut params = vec!["-p"];
+        
+        if plan {
+            params.push("--permission-mode=plan");
+        } else {
+            params.push("--dangerously-skip-permissions");
+        }
+        
+        params.extend_from_slice(&["--verbose", "--output-format=stream-json"]);
+        params
+    }
+
+    fn build_command_builder(&self, plan: bool) -> CommandBuilder {
+        CommandBuilder::new(self.base_command())
+            .params(self.get_params(plan))
+    }
+}
+
 /// An executor that uses Claude CLI to process tasks
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct ClaudeCode {
-    pub command: CommandBuilder,
+    pub variant: ClaudeCodeVariant,
     pub append_prompt: Option<String>,
     pub plan: bool,
 }
@@ -40,11 +75,12 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
+        let command_builder = self.variant.build_command_builder(self.plan);
         let claude_command = if self.plan {
-            let base_command = self.command.build_initial();
+            let base_command = command_builder.build_initial();
             create_watchkill_script(&base_command)
         } else {
-            self.command.build_initial()
+            command_builder.build_initial()
         };
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
@@ -77,14 +113,14 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
+        let command_builder = self.variant.build_command_builder(self.plan);
         // Build follow-up command with --resume {session_id}
         let claude_command = if self.plan {
-            let base_command = self
-                .command
+            let base_command = command_builder
                 .build_follow_up(&["--resume".to_string(), session_id.to_string()]);
             create_watchkill_script(&base_command)
         } else {
-            self.command
+            command_builder
                 .build_follow_up(&["--resume".to_string(), session_id.to_string()])
         };
 
@@ -1455,7 +1491,7 @@ mod tests {
         use utils::msg_store::MsgStore;
 
         let executor = ClaudeCode {
-            command: CommandBuilder::new(""),
+            variant: ClaudeCodeVariant::ClaudeCode,
             plan: false,
             append_prompt: None,
         };

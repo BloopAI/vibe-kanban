@@ -171,64 +171,51 @@ impl ProfileConfigs {
 mod tests {
     use super::*;
     #[test]
-    fn default_profiles_have_expected_base_and_noninteractive_or_json_flags() {
+    fn default_profiles_have_expected_agents_and_variants() {
         // Build default profiles and make lookup by label easy
         let profiles = ProfileConfigs::from_defaults().to_map();
 
-        let get_profile_command = |label: &str| {
+        let get_profile_agent = |label: &str| {
             profiles
                 .get(label)
-                .map(|p| {
-                    use crate::executors::CodingAgent;
-                    match &p.default.agent {
-                        CodingAgent::ClaudeCode(claude) => claude.command.build_initial(),
-                        CodingAgent::Amp(amp) => amp.command.build_initial(),
-                        CodingAgent::Gemini(gemini) => gemini.command.build_initial(),
-                        CodingAgent::Codex(codex) => codex.command.build_initial(),
-                        CodingAgent::Opencode(opencode) => opencode.command.build_initial(),
-                        CodingAgent::Cursor(cursor) => cursor.command.build_initial(),
-                    }
-                })
+                .map(|p| &p.default.agent)
                 .unwrap_or_else(|| panic!("Profile not found: {label}"))
         };
         let profiles = ProfileConfigs::from_defaults();
-        assert!(profiles.len() == 8);
+        assert_eq!(profiles.len(), 8);
 
-        let claude_code_command = get_profile_command("claude-code");
-        assert!(claude_code_command.contains("npx -y @anthropic-ai/claude-code@latest"));
-        assert!(claude_code_command.contains("-p"));
-        assert!(claude_code_command.contains("--dangerously-skip-permissions"));
+        // Test ClaudeCode variants
+        let claude_code_agent = get_profile_agent("claude-code");
+        assert!(matches!(claude_code_agent, crate::executors::CodingAgent::ClaudeCode(claude) 
+            if matches!(claude.variant, crate::executors::claude::ClaudeCodeVariant::ClaudeCode) && !claude.plan));
 
-        let claude_code_router_command = get_profile_command("claude-code-router");
-        assert!(claude_code_router_command.contains("npx -y @musistudio/claude-code-router code"));
-        assert!(claude_code_router_command.contains("-p"));
-        assert!(claude_code_router_command.contains("--dangerously-skip-permissions"));
+        let claude_code_router_agent = get_profile_agent("claude-code-router");
+        assert!(matches!(claude_code_router_agent, crate::executors::CodingAgent::ClaudeCode(claude) 
+            if matches!(claude.variant, crate::executors::claude::ClaudeCodeVariant::ClaudeCodeRouter) && !claude.plan));
 
-        let amp_command = get_profile_command("amp");
-        assert!(amp_command.contains("npx -y @sourcegraph/amp@latest"));
-        assert!(amp_command.contains("--execute"));
-        assert!(amp_command.contains("--stream-json"));
+        // Test simple executors have correct types
+        assert!(matches!(get_profile_agent("amp"), crate::executors::CodingAgent::Amp(_)));
+        assert!(matches!(get_profile_agent("codex"), crate::executors::CodingAgent::Codex(_)));
+        assert!(matches!(get_profile_agent("opencode"), crate::executors::CodingAgent::Opencode(_)));
+        assert!(matches!(get_profile_agent("cursor"), crate::executors::CodingAgent::Cursor(_)));
+        assert!(matches!(get_profile_agent("qwen-code"), crate::executors::CodingAgent::QwenCode(_)));
 
-        let gemini_command = get_profile_command("gemini");
-        assert!(gemini_command.contains("npx -y @google/gemini-cli@latest"));
-        assert!(gemini_command.contains("--yolo"));
+        // Test Gemini model variants
+        let gemini_agent = get_profile_agent("gemini");
+        assert!(matches!(gemini_agent, crate::executors::CodingAgent::Gemini(gemini) 
+            if matches!(gemini.model, crate::executors::gemini::GeminiModel::Default)));
 
-        let codex_command = get_profile_command("codex");
-        assert!(codex_command.contains("npx -y @openai/codex exec"));
-        assert!(codex_command.contains("--json"));
+        // Test that plan variant exists for claude-code
+        let claude_profile = profiles.get_profile("claude-code").unwrap();
+        let plan_variant = claude_profile.get_variant("plan").unwrap();
+        assert!(matches!(&plan_variant.agent, crate::executors::CodingAgent::ClaudeCode(claude) 
+            if matches!(claude.variant, crate::executors::claude::ClaudeCodeVariant::ClaudeCode) && claude.plan));
 
-        let qwen_code_command = get_profile_command("qwen-code");
-        assert!(qwen_code_command.contains("npx -y @qwen-code/qwen-code@latest"));
-        assert!(qwen_code_command.contains("--yolo"));
-
-        let opencode_command = get_profile_command("opencode");
-        assert!(opencode_command.contains("npx -y opencode-ai@latest run"));
-        assert!(opencode_command.contains("--print-logs"));
-
-        let cursor_command = get_profile_command("cursor");
-        assert!(cursor_command.contains("cursor-agent"));
-        assert!(cursor_command.contains("-p"));
-        assert!(cursor_command.contains("--output-format=stream-json"));
+        // Test that flash variant exists for gemini
+        let gemini_profile = profiles.get_profile("gemini").unwrap();
+        let flash_variant = gemini_profile.get_variant("flash").unwrap();
+        assert!(matches!(&flash_variant.agent, crate::executors::CodingAgent::Gemini(gemini) 
+            if matches!(gemini.model, crate::executors::gemini::GeminiModel::Flash)));
     }
 
     #[test]
@@ -239,11 +226,9 @@ mod tests {
                     "label": "test-claude",
                     "mcp_config_path": null,
                     "CLAUDE_CODE": {
-                        "command": {
-                            "base": "npx claude",
-                            "params": ["--test"]
-                        },
-                        "plan": true
+                        "variant": "claude_code",
+                        "plan": true,
+                        "append_prompt": null
                     },
                     "variants": {}
                 },
@@ -251,10 +236,8 @@ mod tests {
                     "label": "test-gemini",
                     "mcp_config_path": null,
                     "GEMINI": {
-                        "command": {
-                            "base": "npx gemini",
-                            "params": ["--test"]
-                        }
+                        "model": "flash",
+                        "append_prompt": null
                     },
                     "variants": {}
                 }
@@ -268,8 +251,7 @@ mod tests {
         let claude_profile = profiles.get_profile("test-claude").unwrap();
         match &claude_profile.default.agent {
             crate::executors::CodingAgent::ClaudeCode(claude) => {
-                assert_eq!(claude.command.base, "npx claude");
-                assert_eq!(claude.command.params.as_ref().unwrap()[0], "--test");
+                assert!(matches!(claude.variant, crate::executors::claude::ClaudeCodeVariant::ClaudeCode));
                 assert!(claude.plan);
             }
             _ => panic!("Expected ClaudeCode agent"),
@@ -279,8 +261,7 @@ mod tests {
         let gemini_profile = profiles.get_profile("test-gemini").unwrap();
         match &gemini_profile.default.agent {
             crate::executors::CodingAgent::Gemini(gemini) => {
-                assert_eq!(gemini.command.base, "npx gemini");
-                assert_eq!(gemini.command.params.as_ref().unwrap()[0], "--test");
+                assert!(matches!(gemini.model, crate::executors::gemini::GeminiModel::Flash));
             }
             _ => panic!("Expected Gemini agent"),
         }

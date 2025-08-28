@@ -126,27 +126,33 @@ variants: { [key in string]?: VariantAgentConfig },
 /**
  * Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
  */
-mcp_config_path: string | null, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor });
+mcp_config_path: string | null, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor } | { "QWEN_CODE": QwenCode });
 
 export type VariantAgentConfig = { 
 /**
  * Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
  */
-mcp_config_path: string | null, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor });
+mcp_config_path: string | null, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor } | { "QWEN_CODE": QwenCode });
 
 export type ProfileConfigs = { profiles: { [key in string]?: ProfileConfig }, };
 
-export type ClaudeCode = { command: CommandBuilder, append_prompt: string | null, plan: boolean, };
+export type ClaudeCode = { variant: ClaudeCodeVariant, append_prompt: string | null, plan: boolean, };
 
-export type Gemini = { command: CommandBuilder, append_prompt: string | null, };
+export type ClaudeCodeVariant = "claude_code" | "claude_code_router";
 
-export type Amp = { command: CommandBuilder, append_prompt: string | null, };
+export type Gemini = { model: GeminiModel, append_prompt: string | null, };
 
-export type Codex = { command: CommandBuilder, append_prompt: string | null, };
+export type GeminiModel = "default" | "flash";
 
-export type Cursor = { command: CommandBuilder, append_prompt: string | null, };
+export type Amp = { append_prompt: string | null, };
 
-export type Opencode = { command: CommandBuilder, append_prompt: string | null, };
+export type Codex = { append_prompt: string | null, };
+
+export type Cursor = { append_prompt: string | null, };
+
+export type Opencode = { append_prompt: string | null, };
+
+export type QwenCode = { append_prompt: string | null, };
 
 export type CodingAgentInitialRequest = { prompt: string, profile_variant_label: ProfileVariantLabel, };
 

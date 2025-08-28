@@ -107,8 +107,14 @@ impl SessionHandler {
 /// An executor that uses Codex CLI to process tasks
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Codex {
-    pub command: CommandBuilder,
     pub append_prompt: Option<String>,
+}
+
+impl Codex {
+    fn build_command_builder() -> CommandBuilder {
+        CommandBuilder::new("npx -y @openai/codex exec")
+            .params(["--json", "--dangerously-bypass-approvals-and-sandbox", "--skip-git-repo-check"])
+    }
 }
 
 #[async_trait]
@@ -119,7 +125,8 @@ impl StandardCodingAgentExecutor for Codex {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let codex_command = self.command.build_initial();
+        let command_builder = Self::build_command_builder();
+        let codex_command = command_builder.build_initial();
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
@@ -159,7 +166,8 @@ impl StandardCodingAgentExecutor for Codex {
             })?;
 
         let (shell_cmd, shell_arg) = get_shell_command();
-        let codex_command = self.command.build_follow_up(&[
+        let command_builder = Self::build_command_builder();
+        let codex_command = command_builder.build_follow_up(&[
             "-c".to_string(),
             format!("experimental_resume={}", rollout_file_path.display()),
         ]);

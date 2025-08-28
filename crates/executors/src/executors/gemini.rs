@@ -22,10 +22,39 @@ use crate::{
     stdout_dup,
 };
 
+/// Model variant of Gemini to use
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[serde(rename_all = "snake_case")]
+pub enum GeminiModel {
+    Default,  // no --model flag
+    Flash,    // --model gemini-2.5-flash
+}
+
+impl GeminiModel {
+    fn base_command(&self) -> &'static str {
+        "npx -y @google/gemini-cli@latest"
+    }
+
+    fn get_params(&self) -> Vec<&'static str> {
+        let mut params = vec!["--yolo"];
+        
+        if let GeminiModel::Flash = self {
+            params.extend_from_slice(&["--model", "gemini-2.5-flash"]);
+        }
+        
+        params
+    }
+
+    fn build_command_builder(&self) -> CommandBuilder {
+        CommandBuilder::new(self.base_command())
+            .params(self.get_params())
+    }
+}
+
 /// An executor that uses Gemini to process tasks
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Gemini {
-    pub command: CommandBuilder,
+    pub model: GeminiModel,
     pub append_prompt: Option<String>,
 }
 
@@ -37,7 +66,8 @@ impl StandardCodingAgentExecutor for Gemini {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let gemini_command = self.command.build_initial();
+        let command_builder = self.model.build_command_builder();
+        let gemini_command = command_builder.build_initial();
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
@@ -82,7 +112,8 @@ impl StandardCodingAgentExecutor for Gemini {
         let followup_prompt = self.build_followup_prompt(current_dir, prompt).await?;
 
         let (shell_cmd, shell_arg) = get_shell_command();
-        let gemini_command = self.command.build_follow_up(&[]);
+        let command_builder = self.model.build_command_builder();
+        let gemini_command = command_builder.build_follow_up(&[]);
 
         let mut command = Command::new(shell_cmd);
 

@@ -19,8 +19,17 @@ use crate::{
 /// An executor that uses Amp to process tasks
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Amp {
-    pub command: CommandBuilder,
     pub append_prompt: Option<String>,
+}
+
+impl Amp {
+    fn build_command_builder() -> CommandBuilder {
+        CommandBuilder::new("npx -y @sourcegraph/amp@latest").params([
+            "--execute",
+            "--stream-json",
+            "--dangerously-allow-all",
+        ])
+    }
 }
 
 #[async_trait]
@@ -31,7 +40,9 @@ impl StandardCodingAgentExecutor for Amp {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let amp_command = self.command.build_initial();
+        let command_builder = Self::build_command_builder();
+        let amp_command = command_builder.build_initial();
+
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
         let mut command = Command::new(shell_cmd);
@@ -63,7 +74,8 @@ impl StandardCodingAgentExecutor for Amp {
     ) -> Result<AsyncGroupChild, ExecutorError> {
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
-        let amp_command = self.command.build_follow_up(&[
+        let command_builder = Self::build_command_builder();
+        let amp_command = command_builder.build_follow_up(&[
             "threads".to_string(),
             "continue".to_string(),
             session_id.to_string(),

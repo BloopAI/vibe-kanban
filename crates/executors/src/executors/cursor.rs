@@ -30,8 +30,14 @@ use crate::{
 /// Executor for running Cursor CLI and normalizing its JSONL stream
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Cursor {
-    pub command: CommandBuilder,
     pub append_prompt: Option<String>,
+}
+
+impl Cursor {
+    fn build_command_builder() -> CommandBuilder {
+        CommandBuilder::new("cursor-agent")
+            .params(["-p", "--output-format=stream-json", "--force"])
+    }
 }
 
 #[async_trait]
@@ -42,7 +48,8 @@ impl StandardCodingAgentExecutor for Cursor {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let agent_cmd = self.command.build_initial();
+        let command_builder = Self::build_command_builder();
+        let agent_cmd = command_builder.build_initial();
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
@@ -73,8 +80,8 @@ impl StandardCodingAgentExecutor for Cursor {
         session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let agent_cmd = self
-            .command
+        let command_builder = Self::build_command_builder();
+        let agent_cmd = command_builder
             .build_follow_up(&["--resume".to_string(), session_id.to_string()]);
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
@@ -1039,7 +1046,7 @@ mod tests {
     async fn test_cursor_streaming_patch_generation() {
         // Avoid relying on feature flag in tests; construct with a dummy command
         let executor = Cursor {
-            command: CommandBuilder::new(""),
+            // No command field needed anymore
             append_prompt: None,
         };
         let msg_store = Arc::new(MsgStore::new());

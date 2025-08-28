@@ -4,31 +4,17 @@
       "label": "claude-code",
       "mcp_config_path": null,
       "CLAUDE_CODE": {
-        "command": {
-          "base": "npx -y @anthropic-ai/claude-code@latest",
-          "params": [
-            "-p",
-            "--dangerously-skip-permissions",
-            "--verbose",
-            "--output-format=stream-json"
-          ]
-        },
-        "plan": false
+        "variant": "claude_code",
+        "plan": false,
+        "append_prompt": null
       },
       "variants": {
         "plan": {
           "mcp_config_path": null,
           "CLAUDE_CODE": {
-            "command": {
-              "base": "npx -y @anthropic-ai/claude-code@latest",
-              "params": [
-                "-p",
-                "--permission-mode=plan",
-                "--verbose",
-                "--output-format=stream-json"
-              ]
-            },
-            "plan": true
+            "variant": "claude_code",
+            "plan": true,
+            "append_prompt": null
           }
         }
       }
@@ -37,16 +23,9 @@
       "label": "claude-code-router",
       "mcp_config_path": null,
       "CLAUDE_CODE": {
-        "command": {
-          "base": "npx -y @musistudio/claude-code-router code",
-          "params": [
-            "-p",
-            "--dangerously-skip-permissions",
-            "--verbose",
-            "--output-format=stream-json"
-          ]
-        },
-        "plan": false
+        "variant": "claude_code_router",
+        "plan": false,
+        "append_prompt": null
       },
       "variants": {}
     },
@@ -54,14 +33,7 @@
       "label": "amp",
       "mcp_config_path": null,
       "AMP": {
-        "command": {
-          "base": "npx -y @sourcegraph/amp@latest",
-          "params": [
-            "--execute",
-            "--stream-json",
-            "--dangerously-allow-all"
-          ]
-        }
+        "append_prompt": null
       },
       "variants": {}
     },
@@ -69,25 +41,15 @@
       "label": "gemini",
       "mcp_config_path": null,
       "GEMINI": {
-        "command": {
-          "base": "npx -y @google/gemini-cli@latest",
-          "params": [
-            "--yolo"
-          ]
-        }
+        "model": "default",
+        "append_prompt": null
       },
       "variants": {
         "flash": {
           "mcp_config_path": null,
           "GEMINI": {
-            "command": {
-              "base": "npx -y @google/gemini-cli@latest",
-              "params": [
-                "--yolo",
-                "--model",
-                "gemini-2.5-flash"
-              ]
-            }
+            "model": "flash",
+            "append_prompt": null
           }
         }
       }
@@ -96,14 +58,7 @@
       "label": "codex",
       "mcp_config_path": null,
       "CODEX": {
-        "command": {
-          "base": "npx -y @openai/codex exec",
-          "params": [
-            "--json",
-            "--dangerously-bypass-approvals-and-sandbox",
-            "--skip-git-repo-check"
-          ]
-        }
+        "append_prompt": null
       },
       "variants": {}
     },
@@ -111,25 +66,15 @@
       "label": "opencode",
       "mcp_config_path": null,
       "OPENCODE": {
-        "command": {
-          "base": "npx -y opencode-ai@latest run",
-          "params": [
-            "--print-logs"
-          ]
-        }
+        "append_prompt": null
       },
       "variants": {}
     },
     "qwen-code": {
       "label": "qwen-code",
       "mcp_config_path": "~/.qwen/settings.json",
-      "GEMINI": {
-        "command": {
-          "base": "npx -y @qwen-code/qwen-code@latest",
-          "params": [
-            "--yolo"
-          ]
-        }
+      "QWEN_CODE": {
+        "append_prompt": null
       },
       "variants": {}
     },
@@ -137,14 +82,7 @@
       "label": "cursor",
       "mcp_config_path": null,
       "CURSOR": {
-        "command": {
-          "base": "cursor-agent",
-          "params": [
-            "-p",
-            "--output-format=stream-json",
-            "--force"
-          ]
-        }
+        "append_prompt": null
       },
       "variants": {}
     }
