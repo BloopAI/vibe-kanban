@@ -293,21 +293,23 @@ export function TaskFollowUpSection({
                             >
                               Default
                             </DropdownMenuItem>
-                            {Object.entries(currentProfile.variants).map(([variantLabel]) => (
-                              <DropdownMenuItem
-                                key={variantLabel}
-                                onClick={() =>
-                                  setSelectedVariant(variantLabel)
-                                }
-                                className={
-                                  selectedVariant === variantLabel
-                                    ? 'bg-accent'
-                                    : ''
-                                }
-                              >
-                                {variantLabel}
-                              </DropdownMenuItem>
-                            ))}
+                            {Object.entries(currentProfile.variants).map(
+                              ([variantLabel]) => (
+                                <DropdownMenuItem
+                                  key={variantLabel}
+                                  onClick={() =>
+                                    setSelectedVariant(variantLabel)
+                                  }
+                                  className={
+                                    selectedVariant === variantLabel
+                                      ? 'bg-accent'
+                                      : ''
+                                  }
+                                >
+                                  {variantLabel}
+                                </DropdownMenuItem>
+                              )
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       );

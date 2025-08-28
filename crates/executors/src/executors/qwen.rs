@@ -9,11 +9,8 @@ use utils::{msg_store::MsgStore, shell::get_shell_command};
 
 use crate::{
     command::CommandBuilder,
-    executors::{ExecutorError, StandardCodingAgentExecutor},
-    logs::{
-        NormalizedEntry, NormalizedEntryType, plain_text_processor::PlainTextLogProcessor,
-        stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider,
-    },
+    executors::{ExecutorError, StandardCodingAgentExecutor, gemini::Gemini},
+    logs::{stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider},
 };
 
 /// An executor that uses QwenCode CLI to process tasks
@@ -98,7 +95,7 @@ impl StandardCodingAgentExecutor for QwenCode {
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &PathBuf) {
         // QwenCode has similar output format to Gemini CLI
-        // Use same log processing approach as Gemini
+        // Use Gemini's proven sentence-break formatting instead of simple replace
         let entry_index_counter = EntryIndexProvider::start_from(&msg_store);
         normalize_stderr_logs(msg_store.clone(), entry_index_counter.clone());
 
@@ -111,25 +108,13 @@ impl StandardCodingAgentExecutor for QwenCode {
                 .to_string(),
         );
 
-        // Normalize QwenCode logs similar to Gemini
+        // Use Gemini's log processor for consistent formatting
         tokio::spawn(async move {
             use futures::StreamExt;
             let mut stdout = msg_store.stdout_chunked_stream();
 
-            // Create a processor with QwenCode-specific formatting (similar to Gemini)
-            let mut processor = PlainTextLogProcessor::builder()
-                .normalized_entry_producer(Box::new(|content: String| NormalizedEntry {
-                    timestamp: None,
-                    entry_type: NormalizedEntryType::AssistantMessage,
-                    content,
-                    metadata: None,
-                }))
-                .format_chunk(Box::new(|_partial_line: Option<&str>, chunk: String| {
-                    // Format similar to Gemini: add line breaks on period-to-capital transitions
-                    chunk.replace(". ", ".\n")
-                }))
-                .index_provider(entry_index_counter)
-                .build();
+            // Use Gemini's proven sentence-break heuristics
+            let mut processor = Gemini::create_gemini_style_processor(entry_index_counter);
 
             while let Some(Ok(chunk)) = stdout.next().await {
                 for patch in processor.process(chunk) {

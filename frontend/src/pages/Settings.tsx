@@ -294,21 +294,23 @@ export function Settings() {
                     </SelectTrigger>
                     <SelectContent>
                       {profiles &&
-                      Object.values(profiles)
-                      .sort((a, b) => a.label.localeCompare(b.label))
-                        .map((profile) => (
-                            <SelectItem key={profile.label} value={profile.label}>
-                          {profile.label}
-                        </SelectItem>
-                      ))}
+                        Object.values(profiles)
+                          .sort((a, b) => a.label.localeCompare(b.label))
+                          .map((profile) => (
+                            <SelectItem
+                              key={profile.label}
+                              value={profile.label}
+                            >
+                              {profile.label}
+                            </SelectItem>
+                          ))}
                     </SelectContent>
                   </Select>
 
                   {/* Show variant selector if selected profile has variants */}
                   {(() => {
-                    const selectedProfile = profiles?.[
-                      config.profile?.profile || ''
-                    ];
+                    const selectedProfile =
+                      profiles?.[config.profile?.profile || ''];
                     const hasVariants =
                       selectedProfile?.variants &&
                       Object.keys(selectedProfile.variants).length > 0;
@@ -342,25 +344,27 @@ export function Settings() {
                             >
                               Default
                             </DropdownMenuItem>
-                            {Object.entries(selectedProfile.variants).map(([variantLabel]) => (
-                              <DropdownMenuItem
-                                key={variantLabel}
-                                onClick={() => {
-                                  const newProfile: ProfileVariantLabel = {
-                                    profile: config.profile?.profile || '',
-                                    variant: variantLabel,
-                                  };
-                                  updateConfig({ profile: newProfile });
-                                }}
-                                className={
-                                  config.profile?.variant === variantLabel
-                                    ? 'bg-accent'
-                                    : ''
-                                }
-                              >
-                                {variantLabel}
-                              </DropdownMenuItem>
-                            ))}
+                            {Object.entries(selectedProfile.variants).map(
+                              ([variantLabel]) => (
+                                <DropdownMenuItem
+                                  key={variantLabel}
+                                  onClick={() => {
+                                    const newProfile: ProfileVariantLabel = {
+                                      profile: config.profile?.profile || '',
+                                      variant: variantLabel,
+                                    };
+                                    updateConfig({ profile: newProfile });
+                                  }}
+                                  className={
+                                    config.profile?.variant === variantLabel
+                                      ? 'bg-accent'
+                                      : ''
+                                  }
+                                >
+                                  {variantLabel}
+                                </DropdownMenuItem>
+                              )
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       );

@@ -182,24 +182,7 @@ impl StandardCodingAgentExecutor for Gemini {
             let mut stdout = msg_store.stdout_chunked_stream();
 
             // Create a processor with Gemini-specific formatting
-            let mut processor = PlainTextLogProcessor::builder()
-                .normalized_entry_producer(Box::new(|content: String| NormalizedEntry {
-                    timestamp: None,
-                    entry_type: NormalizedEntryType::AssistantMessage,
-                    content,
-                    metadata: None,
-                }))
-                .format_chunk(Box::new(|partial_line: Option<&str>, chunk: String| {
-                    Self::format_stdout_chunk(&chunk, partial_line.unwrap_or(""))
-                }))
-                // Gemini CLI sometimes prints a non-conversational noise
-                .transform_lines({
-                    Box::new(move |lines: &mut Vec<String>| {
-                        lines.retain(|line| line != "Data collection is disabled.\n");
-                    })
-                })
-                .index_provider(entry_index_counter)
-                .build();
+            let mut processor = Self::create_gemini_style_processor(entry_index_counter);
 
             while let Some(Ok(chunk)) = stdout.next().await {
                 for patch in processor.process(chunk) {
@@ -211,6 +194,30 @@ impl StandardCodingAgentExecutor for Gemini {
 }
 
 impl Gemini {
+    /// Creates a PlainTextLogProcessor that applies Gemini's sentence-break heuristics.
+    ///
+    /// This processor formats chunks by inserting line breaks at period-to-capital transitions
+    /// and filters out Gemini CLI noise messages.
+    pub(crate) fn create_gemini_style_processor(
+        index_provider: EntryIndexProvider,
+    ) -> PlainTextLogProcessor {
+        PlainTextLogProcessor::builder()
+            .normalized_entry_producer(Box::new(|content: String| NormalizedEntry {
+                timestamp: None,
+                entry_type: NormalizedEntryType::AssistantMessage,
+                content,
+                metadata: None,
+            }))
+            .format_chunk(Box::new(|partial, chunk| {
+                Self::format_stdout_chunk(&chunk, partial.unwrap_or(""))
+            }))
+            .transform_lines(Box::new(|lines: &mut Vec<String>| {
+                lines.retain(|l| l != "Data collection is disabled.\n");
+            }))
+            .index_provider(index_provider)
+            .build()
+    }
+
     /// Make Gemini output more readable by inserting line breaks where periods are directly
     /// followed by capital letters (common Gemini CLI formatting issue).
     /// Handles both intra-chunk and cross-chunk period-to-capital transitions.

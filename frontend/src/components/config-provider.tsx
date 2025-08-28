@@ -58,7 +58,10 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
   // Split state for performance - independent re-renders
   const [config, setConfig] = useState<Config | null>(null);
   const [environment, setEnvironment] = useState<Environment | null>(null);
-  const [profiles, setProfiles] = useState<Record<string, ProfileConfig> | null>(null);
+  const [profiles, setProfiles] = useState<Record<
+    string,
+    ProfileConfig
+  > | null>(null);
   const [loading, setLoading] = useState(true);
   const [githubTokenInvalid, setGithubTokenInvalid] = useState(false);
 
@@ -68,7 +71,9 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
         const userSystemInfo: UserSystemInfo = await configApi.getConfig();
         setConfig(userSystemInfo.config);
         setEnvironment(userSystemInfo.environment);
-        setProfiles(userSystemInfo.profiles as Record<string, ProfileConfig> | null);
+        setProfiles(
+          userSystemInfo.profiles as Record<string, ProfileConfig> | null
+        );
       } catch (err) {
         console.error('Error loading user system:', err);
       } finally {
@@ -142,7 +147,9 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       const userSystemInfo: UserSystemInfo = await configApi.getConfig();
       setConfig(userSystemInfo.config);
       setEnvironment(userSystemInfo.environment);
-      setProfiles(userSystemInfo.profiles as Record<string, ProfileConfig> | null);
+      setProfiles(
+        userSystemInfo.profiles as Record<string, ProfileConfig> | null
+      );
     } catch (err) {
       console.error('Error reloading user system:', err);
     } finally {

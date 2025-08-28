@@ -212,24 +212,24 @@ function CreateAttempt({
                     Object.values(availableProfiles)
                       .sort((a, b) => a.label.localeCompare(b.label))
                       .map((profile) => (
-                    <DropdownMenuItem
-                      key={profile.label}
-                      onClick={() => {
-                        setSelectedProfile({
-                          profile: profile.label,
-                          variant: null,
-                        });
-                      }}
-                      className={
-                        selectedProfile?.profile === profile.label
-                          ? 'bg-accent'
-                          : ''
-                      }
-                    >
-                      {profile.label}
-                    </DropdownMenuItem>
-                  ))}
-                  </DropdownMenuContent>
+                        <DropdownMenuItem
+                          key={profile.label}
+                          onClick={() => {
+                            setSelectedProfile({
+                              profile: profile.label,
+                              variant: null,
+                            });
+                          }}
+                          className={
+                            selectedProfile?.profile === profile.label
+                              ? 'bg-accent'
+                              : ''
+                          }
+                        >
+                          {profile.label}
+                        </DropdownMenuItem>
+                      ))}
+                </DropdownMenuContent>
               </DropdownMenu>
             )}
           </div>
@@ -242,11 +242,11 @@ function CreateAttempt({
               </label>
             </div>
             {(() => {
-              const currentProfile = availableProfiles?.[
-                selectedProfile?.profile || ''
-              ];
+              const currentProfile =
+                availableProfiles?.[selectedProfile?.profile || ''];
               const hasVariants =
-                currentProfile?.variants && Object.keys(currentProfile.variants).length > 0;
+                currentProfile?.variants &&
+                Object.keys(currentProfile.variants).length > 0;
 
               if (hasVariants && currentProfile) {
                 return (
@@ -277,26 +277,28 @@ function CreateAttempt({
                       >
                         Default
                       </DropdownMenuItem>
-                      {Object.entries(currentProfile.variants).map(([variantLabel]) => (
-                        <DropdownMenuItem
-                          key={variantLabel}
-                          onClick={() => {
-                            if (selectedProfile) {
-                              setSelectedProfile({
-                                ...selectedProfile,
-                                variant: variantLabel,
-                              });
+                      {Object.entries(currentProfile.variants).map(
+                        ([variantLabel]) => (
+                          <DropdownMenuItem
+                            key={variantLabel}
+                            onClick={() => {
+                              if (selectedProfile) {
+                                setSelectedProfile({
+                                  ...selectedProfile,
+                                  variant: variantLabel,
+                                });
+                              }
+                            }}
+                            className={
+                              selectedProfile?.variant === variantLabel
+                                ? 'bg-accent'
+                                : ''
                             }
-                          }}
-                          className={
-                            selectedProfile?.variant === variantLabel
-                              ? 'bg-accent'
-                              : ''
-                          }
-                        >
-                          {variantLabel}
-                        </DropdownMenuItem>
-                      ))}
+                          >
+                            {variantLabel}
+                          </DropdownMenuItem>
+                        )
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 );

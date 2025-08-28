@@ -279,7 +279,10 @@ export function useVariantCyclingShortcut({
   setIsAnimating: (animating: boolean) => void;
 }) {
   useEffect(() => {
-    if (!currentProfile?.variants || Object.keys(currentProfile.variants).length === 0) {
+    if (
+      !currentProfile?.variants ||
+      Object.keys(currentProfile.variants).length === 0
+    ) {
       return;
     }
 
