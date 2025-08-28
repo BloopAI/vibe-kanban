@@ -35,7 +35,7 @@ export function PrivacyOptInDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={() => { }}>
+    <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
           <div className="flex items-center gap-3">

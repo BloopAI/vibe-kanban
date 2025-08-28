@@ -256,7 +256,7 @@ export function ProjectTasks() {
     navigate,
     currentPath: window.location.pathname,
     hasOpenDialog: isTemplateManagerOpen || isProjectSettingsOpen,
-    closeDialog: () => { }, // No local dialog to close
+    closeDialog: () => {}, // No local dialog to close
     onC: handleCreateNewTask,
   });
 
@@ -357,10 +357,10 @@ export function ProjectTasks() {
           setFullScreen={
             selectedAttempt
               ? (fullscreen) => {
-                const baseUrl = `/projects/${projectId}/tasks/${selectedTask!.id}/attempts/${selectedAttempt.id}`;
-                const fullUrl = fullscreen ? `${baseUrl}/full` : baseUrl;
-                navigate(fullUrl, { replace: true });
-              }
+                  const baseUrl = `/projects/${projectId}/tasks/${selectedTask!.id}/attempts/${selectedAttempt.id}`;
+                  const fullUrl = fullscreen ? `${baseUrl}/full` : baseUrl;
+                  navigate(fullUrl, { replace: true });
+                }
               : undefined
           }
           selectedAttempt={selectedAttempt}

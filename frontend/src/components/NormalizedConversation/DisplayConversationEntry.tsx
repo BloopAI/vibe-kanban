@@ -144,11 +144,11 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
 
   const fileEdit =
     entry.entry_type.type === 'tool_use' &&
-      entry.entry_type.action_type.action === 'file_edit'
+    entry.entry_type.action_type.action === 'file_edit'
       ? (entry.entry_type.action_type as Extract<
-        ActionType,
-        { action: 'file_edit' }
-      >)
+          ActionType,
+          { action: 'file_edit' }
+        >)
       : null;
 
   // One-line collapsed UX for tool entries

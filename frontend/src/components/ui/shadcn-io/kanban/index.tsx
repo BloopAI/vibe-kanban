@@ -129,13 +129,13 @@ export const KanbanCards = ({ children, className }: KanbanCardsProps) => (
 
 export type KanbanHeaderProps =
   | {
-    children: ReactNode;
-  }
+      children: ReactNode;
+    }
   | {
-    name: Status['name'];
-    color: Status['color'];
-    className?: string;
-  };
+      name: Status['name'];
+      color: Status['color'];
+      className?: string;
+    };
 
 export const KanbanHeader = (props: KanbanHeaderProps) =>
   'children' in props ? (

@@ -61,14 +61,17 @@ export function AttemptHeaderCard({
     <Card className="border-b border-dashed bg-background flex items-center text-sm">
       <div className="flex-1 flex gap-6 p-3">
         <p>
-          <span className="text-secondary-foreground">Attempt &middot;{' '}</span>{attemptNumber}/{totalAttempts}
+          <span className="text-secondary-foreground">Attempt &middot; </span>
+          {attemptNumber}/{totalAttempts}
         </p>
         <p>
-          <span className="text-secondary-foreground">Profile &middot;{' '}</span>{selectedAttempt?.profile}
+          <span className="text-secondary-foreground">Profile &middot; </span>
+          {selectedAttempt?.profile}
         </p>
         {selectedAttempt?.branch && (
           <p className="max-w-30 truncate">
-            <span className="text-secondary-foreground">Branch &middot;{' '}</span>{selectedAttempt.branch}
+            <span className="text-secondary-foreground">Branch &middot; </span>
+            {selectedAttempt.branch}
           </p>
         )}
         {fileCount > 0 && (
@@ -133,6 +136,6 @@ export function AttemptHeaderCard({
           </DropdownMenuItem> */}
         </DropdownMenuContent>
       </DropdownMenu>
-    </Card >
+    </Card>
   );
 }

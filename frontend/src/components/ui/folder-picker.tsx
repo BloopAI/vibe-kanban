@@ -233,8 +233,9 @@ export function FolderPicker({
                 {filteredEntries.map((entry, index) => (
                   <div
                     key={index}
-                    className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-accent ${!entry.is_directory ? 'opacity-50 cursor-not-allowed' : ''
-                      }`}
+                    className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-accent ${
+                      !entry.is_directory ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                     onClick={() =>
                       entry.is_directory && handleFolderClick(entry)
                     }

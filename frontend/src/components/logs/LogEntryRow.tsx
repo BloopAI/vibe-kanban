@@ -52,7 +52,7 @@ function LogEntryRow({
               <ProcessStartCard
                 payload={entry.payload as ProcessStartPayload}
                 isCollapsed={isCollapsed || false}
-                onToggle={onToggleCollapse || (() => { })}
+                onToggle={onToggleCollapse || (() => {})}
               />
             );
           default:

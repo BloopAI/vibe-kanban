@@ -19,10 +19,11 @@ export function TaskTitleDescription({ task }: TaskTitleDescriptionProps) {
           {task.description ? (
             <div className="flex-1 min-w-0">
               <p
-                className={`whitespace-pre-wrap break-words ${!isDescriptionExpanded && task.description.length > 350
-                  ? 'line-clamp-6'
-                  : ''
-                  }`}
+                className={`whitespace-pre-wrap break-words ${
+                  !isDescriptionExpanded && task.description.length > 350
+                    ? 'line-clamp-6'
+                    : ''
+                }`}
               >
                 {task.description}
               </p>
