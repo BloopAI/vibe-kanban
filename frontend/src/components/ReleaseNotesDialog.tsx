@@ -30,8 +30,8 @@ export function ReleaseNotesDialog({ open, onClose }: ReleaseNotesDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent className="w-full h-full max-w-none max-h-none p-0 gap-0 grid grid-rows-[auto_1fr_auto] max-h-[calc(100dvh-2rem)]">
-        <DialogHeader className="p-6 pb-0 flex-shrink-0">
+      <DialogContent className="w-[95vw] max-w-7xl max-h-[calc(100dvh-1rem)] p-0 gap-0 grid grid-rows-[auto_1fr_auto] sm:rounded-lg">
+        <DialogHeader className="p-4 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-semibold">
               What's New in Vibe Kanban
@@ -41,13 +41,14 @@ export function ReleaseNotesDialog({ open, onClose }: ReleaseNotesDialogProps) {
               size="icon"
               onClick={onClose}
               className="h-6 w-6"
+              aria-label="Close"
             >
               <X className="h-4 w-4" />
             </Button>
           </div>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 px-6">
+        <div className="flex-1 overflow-hidden p-4">
           {iframeError ? (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
               <AlertCircle className="h-12 w-12 text-muted-foreground" />
@@ -86,16 +87,11 @@ export function ReleaseNotesDialog({ open, onClose }: ReleaseNotesDialogProps) {
           )}
         </div>
 
-        <DialogFooter className="p-6 pt-0 flex-shrink-0">
-          <div className="flex w-full gap-2">
-            <Button variant="outline" onClick={handleOpenInBrowser} className="flex-1">
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Open in Browser
-            </Button>
-            <Button onClick={onClose} className="flex-1">
-              Continue to Vibe Kanban
-            </Button>
-          </div>
+        <DialogFooter className="p-4 border-t flex-shrink-0">
+          <Button variant="outline" onClick={handleOpenInBrowser}>
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Open in Browser
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
