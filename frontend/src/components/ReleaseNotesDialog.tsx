@@ -66,7 +66,7 @@ export function ReleaseNotesDialog({ open, onClose }: ReleaseNotesDialogProps) {
             <iframe
               src={RELEASE_NOTES_URL}
               className="w-full h-full border-0 rounded"
-              sandbox="allow-scripts allow-popups"
+              sandbox="allow-scripts allow-same-origin allow-popups"
               referrerPolicy="no-referrer"
               title="Release Notes"
               onError={handleIframeError}
