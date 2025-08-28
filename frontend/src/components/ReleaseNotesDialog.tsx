@@ -41,9 +41,12 @@ export function ReleaseNotesDialog({ open, onClose }: ReleaseNotesDialogProps) {
           <div className="flex flex-col items-center justify-center flex-1 text-center space-y-4 p-4">
             <AlertCircle className="h-12 w-12 text-muted-foreground" />
             <div className="space-y-2">
-              <h3 className="text-lg font-medium">Unable to load release notes</h3>
+              <h3 className="text-lg font-medium">
+                Unable to load release notes
+              </h3>
               <p className="text-sm text-muted-foreground max-w-md">
-                We couldn't display the release notes in this window. Click below to view them in your browser.
+                We couldn't display the release notes in this window. Click
+                below to view them in your browser.
               </p>
             </div>
             <Button onClick={handleOpenInBrowser} className="mt-4">
