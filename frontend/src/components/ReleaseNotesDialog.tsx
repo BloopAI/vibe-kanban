@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X, ExternalLink, AlertCircle } from 'lucide-react';
+import { ExternalLink, AlertCircle } from 'lucide-react';
 
 interface ReleaseNotesDialogProps {
   open: boolean;
@@ -29,23 +29,12 @@ export function ReleaseNotesDialog({ open, onClose }: ReleaseNotesDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
+    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="flex flex-col w-full h-full max-w-7xl max-h-[calc(100dvh-1rem)] p-0">
         <DialogHeader className="p-4 border-b flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-semibold">
-              What's New in Vibe Kanban
-            </DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-6 w-6"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <DialogTitle className="text-xl font-semibold">
+            What's New in Vibe Kanban
+          </DialogTitle>
         </DialogHeader>
 
         {iframeError ? (
