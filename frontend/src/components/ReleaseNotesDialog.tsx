@@ -33,7 +33,7 @@ export function ReleaseNotesDialog({ open, onClose }: ReleaseNotesDialogProps) {
       <DialogContent className="flex flex-col w-full h-full max-w-7xl max-h-[calc(100dvh-1rem)] p-0">
         <DialogHeader className="p-4 border-b flex-shrink-0">
           <DialogTitle className="text-xl font-semibold">
-            What's New in Vibe Kanban
+            We've updated Vibe Kanban! Check out what's new...
           </DialogTitle>
         </DialogHeader>
 
@@ -54,7 +54,7 @@ export function ReleaseNotesDialog({ open, onClose }: ReleaseNotesDialogProps) {
         ) : (
           <iframe
             src={RELEASE_NOTES_URL}
-            className="flex-1 w-full border-0"
+            className="flex-1 w-full border-0 min-h-[600px]"
             sandbox="allow-scripts allow-same-origin allow-popups"
             referrerPolicy="no-referrer"
             title="Release Notes"
