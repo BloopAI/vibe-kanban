@@ -43,7 +43,6 @@ pub struct LocalDeployment {
 impl Deployment for LocalDeployment {
     async fn new() -> Result<Self, DeploymentError> {
         let mut raw_config = load_config_from_file(&config_path()).await;
-        let mut config_changed = false;
 
         // Check if app version has changed and set release notes flag
         {
@@ -54,17 +53,11 @@ impl Deployment for LocalDeployment {
                 // Show release notes only if this is an upgrade (not first install)
                 raw_config.show_release_notes = stored_version.is_some();
                 raw_config.last_app_version = Some(current_version.to_string());
-                config_changed = true;
             }
         }
 
-        // Save config if migrated or version changed
-        if config_changed {
-            save_config_to_file(&raw_config, &config_path()).await?;
-        } else {
-            // Save immediately as it may have just been migrated
-            save_config_to_file(&raw_config, &config_path()).await?;
-        }
+        // Always save config (may have been migrated or version updated)
+        save_config_to_file(&raw_config, &config_path()).await?;
 
         let config = Arc::new(RwLock::new(raw_config));
         let sentry = SentryService::new();
