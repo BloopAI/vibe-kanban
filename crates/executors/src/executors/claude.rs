@@ -40,27 +40,22 @@ impl ClaudeCodeVariant {
         }
     }
 
-    fn get_params(&self, plan: bool) -> Vec<&'static str> {
-        let mut params = vec!["-p"];
-
+    fn build_command_builder(
+        &self,
+        plan: bool,
+        dangerously_skip_permissions: bool,
+    ) -> CommandBuilder {
+        let mut params: Vec<&'static str> = vec!["-p"];
         if plan {
             params.push("--permission-mode=plan");
-        } else {
+        }
+        if dangerously_skip_permissions {
             params.push("--dangerously-skip-permissions");
         }
-
         params.extend_from_slice(&["--verbose", "--output-format=stream-json"]);
-        params
-    }
 
-    fn build_command_builder(&self, plan: bool) -> CommandBuilder {
-        CommandBuilder::new(self.base_command()).params(self.get_params(plan))
+        CommandBuilder::new(self.base_command()).params(params)
     }
-}
-
-// Helper function for clean serialization of bool fields
-fn is_false(b: &bool) -> bool {
-    !*b
 }
 
 /// An executor that uses Claude CLI to process tasks
@@ -69,10 +64,24 @@ pub struct ClaudeCode {
     pub variant: ClaudeCodeVariant,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,
-    #[serde(default, skip_serializing_if = "is_false")]
-    pub plan: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plan: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dangerously_skip_permissions: Option<bool>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
+}
+
+impl ClaudeCode {
+    fn build_command_builder(&self) -> CommandBuilder {
+        apply_overrides(
+            self.variant.build_command_builder(
+                self.plan.unwrap_or(false),
+                self.dangerously_skip_permissions.unwrap_or(false),
+            ),
+            &self.cmd,
+        )
+    }
 }
 
 #[async_trait]
@@ -83,13 +92,12 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder =
-            apply_overrides(self.variant.build_command_builder(self.plan), &self.cmd);
-        let claude_command = if self.plan {
-            let base_command = command_builder.build_initial();
+        let command_builder = self.build_command_builder();
+        let base_command = command_builder.build_initial();
+        let claude_command = if self.plan.unwrap_or(false) {
             create_watchkill_script(&base_command)
         } else {
-            command_builder.build_initial()
+            base_command
         };
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
@@ -122,15 +130,14 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder =
-            apply_overrides(self.variant.build_command_builder(self.plan), &self.cmd);
+        let command_builder = self.build_command_builder();
         // Build follow-up command with --resume {session_id}
-        let claude_command = if self.plan {
-            let base_command =
-                command_builder.build_follow_up(&["--resume".to_string(), session_id.to_string()]);
+        let base_command =
+            command_builder.build_follow_up(&["--resume".to_string(), session_id.to_string()]);
+        let claude_command = if self.plan.unwrap_or(false) {
             create_watchkill_script(&base_command)
         } else {
-            command_builder.build_follow_up(&["--resume".to_string(), session_id.to_string()])
+            base_command
         };
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
@@ -173,7 +180,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 }
 
 fn create_watchkill_script(command: &str) -> String {
-    let claude_plan_stop_indicator = concat!("Exit ", "plan mode?"); // Use concat!() as a workaround to avoid killing plan mode when this file is read.
+    let claude_plan_stop_indicator = concat!("Exit ", "plan mode?");
     format!(
         r#"#!/usr/bin/env bash
 set -euo pipefail

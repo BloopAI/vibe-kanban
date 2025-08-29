@@ -21,17 +21,20 @@ use crate::{
 pub struct Amp {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dangerously_allow_all: Option<bool>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
 }
 
 impl Amp {
-    fn build_command_builder() -> CommandBuilder {
-        CommandBuilder::new("npx -y @sourcegraph/amp@latest").params([
-            "--execute",
-            "--stream-json",
-            "--dangerously-allow-all",
-        ])
+    fn build_command_builder(&self) -> CommandBuilder {
+        let mut builder = CommandBuilder::new("npx -y @sourcegraph/amp@latest")
+            .params(["--execute", "--stream-json"]);
+        if self.dangerously_allow_all.unwrap_or(false) {
+            builder = builder.params(["--dangerously-allow-all"]);
+        }
+        apply_overrides(builder, &self.cmd)
     }
 }
 
@@ -43,8 +46,7 @@ impl StandardCodingAgentExecutor for Amp {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = apply_overrides(Self::build_command_builder(), &self.cmd);
-        let amp_command = command_builder.build_initial();
+        let amp_command = self.build_command_builder().build_initial();
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
@@ -77,8 +79,7 @@ impl StandardCodingAgentExecutor for Amp {
     ) -> Result<AsyncGroupChild, ExecutorError> {
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = apply_overrides(Self::build_command_builder(), &self.cmd);
-        let amp_command = command_builder.build_follow_up(&[
+        let amp_command = self.build_command_builder().build_follow_up(&[
             "threads".to_string(),
             "continue".to_string(),
             session_id.to_string(),

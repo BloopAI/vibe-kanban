@@ -35,18 +35,17 @@ impl GeminiModel {
         "npx -y @google/gemini-cli@latest"
     }
 
-    fn get_params(&self) -> Vec<&'static str> {
-        let mut params = vec!["--yolo"];
+    fn build_command_builder(&self, yolo: bool) -> CommandBuilder {
+        let mut params: Vec<&'static str> = vec![];
+        if yolo {
+            params.push("--yolo");
+        }
 
         if let GeminiModel::Flash = self {
             params.extend_from_slice(&["--model", "gemini-2.5-flash"]);
         }
 
-        params
-    }
-
-    fn build_command_builder(&self) -> CommandBuilder {
-        CommandBuilder::new(self.base_command()).params(self.get_params())
+        CommandBuilder::new(self.base_command()).params(params)
     }
 }
 
@@ -56,8 +55,19 @@ pub struct Gemini {
     pub model: GeminiModel,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub yolo: Option<bool>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
+}
+
+impl Gemini {
+    fn build_command_builder(&self) -> CommandBuilder {
+        apply_overrides(
+            self.model.build_command_builder(self.yolo.unwrap_or(false)),
+            &self.cmd,
+        )
+    }
 }
 
 #[async_trait]
@@ -68,8 +78,7 @@ impl StandardCodingAgentExecutor for Gemini {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = apply_overrides(self.model.build_command_builder(), &self.cmd);
-        let gemini_command = command_builder.build_initial();
+        let gemini_command = self.build_command_builder().build_initial();
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
@@ -114,8 +123,7 @@ impl StandardCodingAgentExecutor for Gemini {
         let followup_prompt = self.build_followup_prompt(current_dir, prompt).await?;
 
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = apply_overrides(self.model.build_command_builder(), &self.cmd);
-        let gemini_command = command_builder.build_follow_up(&[]);
+        let gemini_command = self.build_command_builder().build_follow_up(&[]);
 
         let mut command = Command::new(shell_cmd);
 

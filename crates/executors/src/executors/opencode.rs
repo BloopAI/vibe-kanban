@@ -32,7 +32,7 @@ pub struct Opencode {
 }
 
 impl Opencode {
-    fn build_command_builder() -> CommandBuilder {
+    fn build_command_builder(&self) -> CommandBuilder {
         CommandBuilder::new("npx -y opencode-ai@latest run").params(["--print-logs"])
     }
 }
@@ -45,8 +45,7 @@ impl StandardCodingAgentExecutor for Opencode {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = Self::build_command_builder();
-        let opencode_command = command_builder.build_initial();
+        let opencode_command = self.build_command_builder().build_initial();
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
@@ -79,9 +78,9 @@ impl StandardCodingAgentExecutor for Opencode {
         session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = Self::build_command_builder();
-        let opencode_command =
-            command_builder.build_follow_up(&["--session".to_string(), session_id.to_string()]);
+        let opencode_command = self
+            .build_command_builder()
+            .build_follow_up(&["--session".to_string(), session_id.to_string()]);
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 

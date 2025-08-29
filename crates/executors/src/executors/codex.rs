@@ -109,15 +109,21 @@ impl SessionHandler {
 pub struct Codex {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dangerously_bypass_approvals_and_sandbox: Option<bool>,
 }
 
 impl Codex {
-    fn build_command_builder() -> CommandBuilder {
-        CommandBuilder::new("npx -y @openai/codex exec").params([
-            "--json",
-            "--dangerously-bypass-approvals-and-sandbox",
-            "--skip-git-repo-check",
-        ])
+    fn build_command_builder(&self) -> CommandBuilder {
+        let mut builder = CommandBuilder::new("npx -y @openai/codex exec")
+            .params(["--json", "--skip-git-repo-check"]);
+        if self
+            .dangerously_bypass_approvals_and_sandbox
+            .unwrap_or(false)
+        {
+            builder = builder.params(["--dangerously-bypass-approvals-and-sandbox"]);
+        }
+        builder
     }
 }
 
@@ -129,8 +135,7 @@ impl StandardCodingAgentExecutor for Codex {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = Self::build_command_builder();
-        let codex_command = command_builder.build_initial();
+        let codex_command = self.build_command_builder().build_initial();
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
@@ -170,8 +175,7 @@ impl StandardCodingAgentExecutor for Codex {
             })?;
 
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = Self::build_command_builder();
-        let codex_command = command_builder.build_follow_up(&[
+        let codex_command = self.build_command_builder().build_follow_up(&[
             "-c".to_string(),
             format!("experimental_resume={}", rollout_file_path.display()),
         ]);

@@ -491,16 +491,22 @@ mod tests {
 
         // Test ClaudeCode variants
         let claude_code_agent = get_profile_agent("claude-code");
-        assert!(
-            matches!(claude_code_agent, crate::executors::CodingAgent::ClaudeCode(claude) 
-            if matches!(claude.variant, crate::executors::claude::ClaudeCodeVariant::ClaudeCode) && !claude.plan)
-        );
+        assert!(matches!(
+            claude_code_agent,
+            crate::executors::CodingAgent::ClaudeCode(claude)
+                if matches!(claude.variant, crate::executors::claude::ClaudeCodeVariant::ClaudeCode)
+                    && !claude.plan.unwrap_or(false)
+        ));
 
         let claude_code_router_agent = get_profile_agent("claude-code-router");
-        assert!(
-            matches!(claude_code_router_agent, crate::executors::CodingAgent::ClaudeCode(claude)
-            if matches!(claude.variant, crate::executors::claude::ClaudeCodeVariant::ClaudeCodeRouter) && !claude.plan)
-        );
+        assert!(matches!(
+            claude_code_router_agent,
+            crate::executors::CodingAgent::ClaudeCode(claude)
+                if matches!(
+                    claude.variant,
+                    crate::executors::claude::ClaudeCodeVariant::ClaudeCodeRouter
+                ) && !claude.plan.unwrap_or(false)
+        ));
 
         // Test simple executors have correct types
         assert!(matches!(
@@ -534,10 +540,12 @@ mod tests {
         // Test that plan variant exists for claude-code
         let claude_profile = profiles.get_profile("claude-code").unwrap();
         let plan_variant = claude_profile.get_variant("plan").unwrap();
-        assert!(
-            matches!(&plan_variant.agent, crate::executors::CodingAgent::ClaudeCode(claude)
-            if matches!(claude.variant, crate::executors::claude::ClaudeCodeVariant::ClaudeCode) && claude.plan)
-        );
+        assert!(matches!(
+            &plan_variant.agent,
+            crate::executors::CodingAgent::ClaudeCode(claude)
+                if matches!(claude.variant, crate::executors::claude::ClaudeCodeVariant::ClaudeCode)
+                    && claude.plan.unwrap_or(false)
+        ));
 
         // Test that flash variant exists for gemini
         let gemini_profile = profiles.get_profile("gemini").unwrap();
@@ -585,7 +593,7 @@ mod tests {
                     claude.variant,
                     crate::executors::claude::ClaudeCodeVariant::ClaudeCode
                 ));
-                assert!(claude.plan);
+                assert!(claude.plan.unwrap_or(false));
             }
             _ => panic!("Expected ClaudeCode agent"),
         }

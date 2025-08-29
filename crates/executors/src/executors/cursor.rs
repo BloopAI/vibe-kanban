@@ -32,11 +32,18 @@ use crate::{
 pub struct Cursor {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub force: Option<bool>,
 }
 
 impl Cursor {
-    fn build_command_builder() -> CommandBuilder {
-        CommandBuilder::new("cursor-agent").params(["-p", "--output-format=stream-json", "--force"])
+    fn build_command_builder(&self) -> CommandBuilder {
+        let mut builder =
+            CommandBuilder::new("cursor-agent").params(["-p", "--output-format=stream-json"]);
+        if self.force.unwrap_or(false) {
+            builder = builder.params(["--force"]);
+        }
+        builder
     }
 }
 
@@ -48,8 +55,7 @@ impl StandardCodingAgentExecutor for Cursor {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = Self::build_command_builder();
-        let agent_cmd = command_builder.build_initial();
+        let agent_cmd = self.build_command_builder().build_initial();
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
@@ -80,9 +86,9 @@ impl StandardCodingAgentExecutor for Cursor {
         session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = Self::build_command_builder();
-        let agent_cmd =
-            command_builder.build_follow_up(&["--resume".to_string(), session_id.to_string()]);
+        let agent_cmd = self
+            .build_command_builder()
+            .build_follow_up(&["--resume".to_string(), session_id.to_string()]);
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 

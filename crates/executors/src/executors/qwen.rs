@@ -18,11 +18,17 @@ use crate::{
 pub struct QwenCode {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub yolo: Option<bool>,
 }
 
 impl QwenCode {
-    fn build_command_builder() -> CommandBuilder {
-        CommandBuilder::new("npx -y @qwen-code/qwen-code@latest").params(["--yolo"])
+    fn build_command_builder(&self) -> CommandBuilder {
+        let mut builder = CommandBuilder::new("npx -y @qwen-code/qwen-code@latest");
+        if self.yolo.unwrap_or(false) {
+            builder = builder.params(["--yolo"]);
+        }
+        builder
     }
 }
 
@@ -34,8 +40,7 @@ impl StandardCodingAgentExecutor for QwenCode {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = Self::build_command_builder();
-        let qwen_command = command_builder.build_initial();
+        let qwen_command = self.build_command_builder().build_initial();
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
@@ -67,9 +72,9 @@ impl StandardCodingAgentExecutor for QwenCode {
         session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = Self::build_command_builder();
-        let qwen_command =
-            command_builder.build_follow_up(&["--resume".to_string(), session_id.to_string()]);
+        let qwen_command = self
+            .build_command_builder()
+            .build_follow_up(&["--resume".to_string(), session_id.to_string()]);
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
