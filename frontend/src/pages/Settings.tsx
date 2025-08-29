@@ -100,8 +100,8 @@ export function Settings() {
       try {
         const parsed = JSON.parse(value);
         // Basic structure validation
-        if (!parsed.profiles || !Array.isArray(parsed.profiles)) {
-          setProfilesError('Invalid structure: must have a "profiles" array');
+        if (!parsed.profiles) {
+          setProfilesError('Invalid structure: must have a "profiles" object');
         }
       } catch (err) {
         if (err instanceof SyntaxError) {
@@ -293,22 +293,24 @@ export function Settings() {
                       <SelectValue placeholder="Select profile" />
                     </SelectTrigger>
                     <SelectContent>
-                      {profiles?.map((profile) => (
-                        <SelectItem key={profile.label} value={profile.label}>
-                          {profile.label}
-                        </SelectItem>
-                      ))}
+                      {profiles &&
+                        Object.entries(profiles)
+                          .sort((a, b) => a[0].localeCompare(b[0]))
+                          .map(([profileKey]) => (
+                            <SelectItem key={profileKey} value={profileKey}>
+                              {profileKey}
+                            </SelectItem>
+                          ))}
                     </SelectContent>
                   </Select>
 
                   {/* Show variant selector if selected profile has variants */}
                   {(() => {
-                    const selectedProfile = profiles?.find(
-                      (p) => p.label === config.profile?.profile
-                    );
+                    const selectedProfile =
+                      profiles?.[config.profile?.profile || ''];
                     const hasVariants =
                       selectedProfile?.variants &&
-                      selectedProfile.variants.length > 0;
+                      Object.keys(selectedProfile.variants).length > 0;
 
                     if (hasVariants) {
                       return (
@@ -339,25 +341,27 @@ export function Settings() {
                             >
                               Default
                             </DropdownMenuItem>
-                            {selectedProfile.variants.map((variant) => (
-                              <DropdownMenuItem
-                                key={variant.label}
-                                onClick={() => {
-                                  const newProfile: ProfileVariantLabel = {
-                                    profile: config.profile?.profile || '',
-                                    variant: variant.label,
-                                  };
-                                  updateConfig({ profile: newProfile });
-                                }}
-                                className={
-                                  config.profile?.variant === variant.label
-                                    ? 'bg-accent'
-                                    : ''
-                                }
-                              >
-                                {variant.label}
-                              </DropdownMenuItem>
-                            ))}
+                            {Object.entries(selectedProfile.variants).map(
+                              ([variantLabel]) => (
+                                <DropdownMenuItem
+                                  key={variantLabel}
+                                  onClick={() => {
+                                    const newProfile: ProfileVariantLabel = {
+                                      profile: config.profile?.profile || '',
+                                      variant: variantLabel,
+                                    };
+                                    updateConfig({ profile: newProfile });
+                                  }}
+                                  className={
+                                    config.profile?.variant === variantLabel
+                                      ? 'bg-accent'
+                                      : ''
+                                  }
+                                >
+                                  {variantLabel}
+                                </DropdownMenuItem>
+                              )
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       );

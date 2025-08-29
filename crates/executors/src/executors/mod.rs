@@ -12,7 +12,7 @@ use utils::msg_store::MsgStore;
 use crate::{
     executors::{
         amp::Amp, claude::ClaudeCode, codex::Codex, cursor::Cursor, gemini::Gemini,
-        opencode::Opencode,
+        opencode::Opencode, qwen::QwenCode,
     },
     mcp_config::McpConfig,
     profile::{ProfileConfigs, ProfileVariantLabel},
@@ -24,6 +24,7 @@ pub mod codex;
 pub mod cursor;
 pub mod gemini;
 pub mod opencode;
+pub mod qwen;
 
 #[derive(Debug, Error)]
 pub enum ExecutorError {
@@ -53,6 +54,7 @@ pub enum CodingAgent {
     Codex,
     Opencode,
     Cursor,
+    QwenCode,
 }
 
 impl CodingAgent {
@@ -164,6 +166,9 @@ impl CodingAgent {
                 dirs::home_dir().map(|home| home.join(".gemini").join("settings.json"))
             }
             Self::Cursor(_) => dirs::home_dir().map(|home| home.join(".cursor").join("mcp.json")),
+            Self::QwenCode(_) => {
+                dirs::home_dir().map(|home| home.join(".qwen").join("settings.json"))
+            }
         }
     }
 }

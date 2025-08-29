@@ -13,7 +13,7 @@ use ts_rs::TS;
 use utils::{msg_store::MsgStore, shell::get_shell_command};
 
 use crate::{
-    command::CommandBuilder,
+    command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
         NormalizedEntry, NormalizedEntryType, plain_text_processor::PlainTextLogProcessor,
@@ -22,11 +22,52 @@ use crate::{
     stdout_dup,
 };
 
+/// Model variant of Gemini to use
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[serde(rename_all = "snake_case")]
+pub enum GeminiModel {
+    Default, // no --model flag
+    Flash,   // --model gemini-2.5-flash
+}
+
+impl GeminiModel {
+    fn base_command(&self) -> &'static str {
+        "npx -y @google/gemini-cli@latest"
+    }
+
+    fn build_command_builder(&self, yolo: bool) -> CommandBuilder {
+        let mut params: Vec<&'static str> = vec![];
+        if yolo {
+            params.push("--yolo");
+        }
+
+        if let GeminiModel::Flash = self {
+            params.extend_from_slice(&["--model", "gemini-2.5-flash"]);
+        }
+
+        CommandBuilder::new(self.base_command()).params(params)
+    }
+}
+
 /// An executor that uses Gemini to process tasks
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Gemini {
-    pub command: CommandBuilder,
+    pub model: GeminiModel,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub yolo: Option<bool>,
+    #[serde(flatten)]
+    pub cmd: CmdOverrides,
+}
+
+impl Gemini {
+    fn build_command_builder(&self) -> CommandBuilder {
+        apply_overrides(
+            self.model.build_command_builder(self.yolo.unwrap_or(false)),
+            &self.cmd,
+        )
+    }
 }
 
 #[async_trait]
@@ -37,7 +78,7 @@ impl StandardCodingAgentExecutor for Gemini {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let gemini_command = self.command.build_initial();
+        let gemini_command = self.build_command_builder().build_initial();
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
@@ -82,7 +123,7 @@ impl StandardCodingAgentExecutor for Gemini {
         let followup_prompt = self.build_followup_prompt(current_dir, prompt).await?;
 
         let (shell_cmd, shell_arg) = get_shell_command();
-        let gemini_command = self.command.build_follow_up(&[]);
+        let gemini_command = self.build_command_builder().build_follow_up(&[]);
 
         let mut command = Command::new(shell_cmd);
 
@@ -152,24 +193,7 @@ impl StandardCodingAgentExecutor for Gemini {
             let mut stdout = msg_store.stdout_chunked_stream();
 
             // Create a processor with Gemini-specific formatting
-            let mut processor = PlainTextLogProcessor::builder()
-                .normalized_entry_producer(Box::new(|content: String| NormalizedEntry {
-                    timestamp: None,
-                    entry_type: NormalizedEntryType::AssistantMessage,
-                    content,
-                    metadata: None,
-                }))
-                .format_chunk(Box::new(|partial_line: Option<&str>, chunk: String| {
-                    Self::format_stdout_chunk(&chunk, partial_line.unwrap_or(""))
-                }))
-                // Gemini CLI sometimes prints a non-conversational noise
-                .transform_lines({
-                    Box::new(move |lines: &mut Vec<String>| {
-                        lines.retain(|line| line != "Data collection is disabled.\n");
-                    })
-                })
-                .index_provider(entry_index_counter)
-                .build();
+            let mut processor = Self::create_gemini_style_processor(entry_index_counter);
 
             while let Some(Ok(chunk)) = stdout.next().await {
                 for patch in processor.process(chunk) {
@@ -181,6 +205,30 @@ impl StandardCodingAgentExecutor for Gemini {
 }
 
 impl Gemini {
+    /// Creates a PlainTextLogProcessor that applies Gemini's sentence-break heuristics.
+    ///
+    /// This processor formats chunks by inserting line breaks at period-to-capital transitions
+    /// and filters out Gemini CLI noise messages.
+    pub(crate) fn create_gemini_style_processor(
+        index_provider: EntryIndexProvider,
+    ) -> PlainTextLogProcessor {
+        PlainTextLogProcessor::builder()
+            .normalized_entry_producer(Box::new(|content: String| NormalizedEntry {
+                timestamp: None,
+                entry_type: NormalizedEntryType::AssistantMessage,
+                content,
+                metadata: None,
+            }))
+            .format_chunk(Box::new(|partial, chunk| {
+                Self::format_stdout_chunk(&chunk, partial.unwrap_or(""))
+            }))
+            .transform_lines(Box::new(|lines: &mut Vec<String>| {
+                lines.retain(|l| l != "Data collection is disabled.\n");
+            }))
+            .index_provider(index_provider)
+            .build()
+    }
+
     /// Make Gemini output more readable by inserting line breaks where periods are directly
     /// followed by capital letters (common Gemini CLI formatting issue).
     /// Handles both intra-chunk and cross-chunk period-to-capital transitions.

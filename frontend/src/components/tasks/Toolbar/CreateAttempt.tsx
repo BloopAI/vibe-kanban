@@ -38,7 +38,7 @@ type Props = {
   setIsInCreateAttemptMode: Dispatch<SetStateAction<boolean>>;
   setCreateAttemptBranch: Dispatch<SetStateAction<string | null>>;
   setSelectedProfile: Dispatch<SetStateAction<ProfileVariantLabel | null>>;
-  availableProfiles: ProfileConfig[] | null;
+  availableProfiles: Record<string, ProfileConfig> | null;
   selectedAttempt: TaskAttempt | null;
 };
 
@@ -208,24 +208,27 @@ function CreateAttempt({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-full">
-                  {availableProfiles.map((profile) => (
-                    <DropdownMenuItem
-                      key={profile.label}
-                      onClick={() => {
-                        setSelectedProfile({
-                          profile: profile.label,
-                          variant: null,
-                        });
-                      }}
-                      className={
-                        selectedProfile?.profile === profile.label
-                          ? 'bg-accent'
-                          : ''
-                      }
-                    >
-                      {profile.label}
-                    </DropdownMenuItem>
-                  ))}
+                  {availableProfiles &&
+                    Object.entries(availableProfiles)
+                      .sort((a, b) => a[0].localeCompare(b[0]))
+                      .map(([profileKey]) => (
+                        <DropdownMenuItem
+                          key={profileKey}
+                          onClick={() => {
+                            setSelectedProfile({
+                              profile: profileKey,
+                              variant: null,
+                            });
+                          }}
+                          className={
+                            selectedProfile?.profile === profileKey
+                              ? 'bg-accent'
+                              : ''
+                          }
+                        >
+                          {profileKey}
+                        </DropdownMenuItem>
+                      ))}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -239,11 +242,11 @@ function CreateAttempt({
               </label>
             </div>
             {(() => {
-              const currentProfile = availableProfiles?.find(
-                (p) => p.label === selectedProfile?.profile
-              );
+              const currentProfile =
+                availableProfiles?.[selectedProfile?.profile || ''];
               const hasVariants =
-                currentProfile?.variants && currentProfile.variants.length > 0;
+                currentProfile?.variants &&
+                Object.keys(currentProfile.variants).length > 0;
 
               if (hasVariants && currentProfile) {
                 return (
@@ -274,26 +277,28 @@ function CreateAttempt({
                       >
                         Default
                       </DropdownMenuItem>
-                      {currentProfile.variants.map((variant) => (
-                        <DropdownMenuItem
-                          key={variant.label}
-                          onClick={() => {
-                            if (selectedProfile) {
-                              setSelectedProfile({
-                                ...selectedProfile,
-                                variant: variant.label,
-                              });
+                      {Object.entries(currentProfile.variants).map(
+                        ([variantLabel]) => (
+                          <DropdownMenuItem
+                            key={variantLabel}
+                            onClick={() => {
+                              if (selectedProfile) {
+                                setSelectedProfile({
+                                  ...selectedProfile,
+                                  variant: variantLabel,
+                                });
+                              }
+                            }}
+                            className={
+                              selectedProfile?.variant === variantLabel
+                                ? 'bg-accent'
+                                : ''
                             }
-                          }}
-                          className={
-                            selectedProfile?.variant === variant.label
-                              ? 'bg-accent'
-                              : ''
-                          }
-                        >
-                          {variant.label}
-                        </DropdownMenuItem>
-                      ))}
+                          >
+                            {variantLabel}
+                          </DropdownMenuItem>
+                        )
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 );

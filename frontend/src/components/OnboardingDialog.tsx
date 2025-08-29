@@ -63,7 +63,7 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
     (editorType === EditorType.CUSTOM && customCommand.trim() !== '');
 
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
+    <Dialog open={open} onOpenChange={() => { }}>
       <DialogContent className="sm:max-w-[600px] space-y-4">
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -93,9 +93,9 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
                   <SelectValue placeholder="Select your preferred coding agent" />
                 </SelectTrigger>
                 <SelectContent>
-                  {profiles?.map((profile) => (
-                    <SelectItem key={profile.label} value={profile.label}>
-                      {profile.label}
+                  {profiles && Object.keys(profiles).map((profile) => (
+                    <SelectItem key={profile} value={profile}>
+                      {profile}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -103,12 +103,10 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
 
               {/* Show variant selector if selected profile has variants */}
               {(() => {
-                const selectedProfile = profiles?.find(
-                  (p) => p.label === profile.profile
-                );
+                const selectedProfile = profiles?.[profile.profile];
                 const hasVariants =
                   selectedProfile?.variants &&
-                  selectedProfile.variants.length > 0;
+                  Object.keys(selectedProfile.variants).length > 0;
 
                 if (hasVariants) {
                   return (
@@ -133,22 +131,22 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
                         >
                           Default
                         </DropdownMenuItem>
-                        {selectedProfile.variants.map((variant) => (
+                        {Object.keys(selectedProfile.variants).map((variant) => (
                           <DropdownMenuItem
-                            key={variant.label}
+                            key={variant}
                             onClick={() =>
                               setProfile({
                                 ...profile,
-                                variant: variant.label,
+                                variant: variant,
                               })
                             }
                             className={
-                              profile.variant === variant.label
+                              profile.variant === variant
                                 ? 'bg-accent'
                                 : ''
                             }
                           >
-                            {variant.label}
+                            {variant}
                           </DropdownMenuItem>
                         ))}
                       </DropdownMenuContent>

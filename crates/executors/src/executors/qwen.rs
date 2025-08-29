@@ -8,45 +8,39 @@ use ts_rs::TS;
 use utils::{msg_store::MsgStore, shell::get_shell_command};
 
 use crate::{
-    command::{CmdOverrides, CommandBuilder, apply_overrides},
-    executors::{
-        ExecutorError, StandardCodingAgentExecutor,
-        claude::{ClaudeLogProcessor, HistoryStrategy},
-    },
+    command::CommandBuilder,
+    executors::{ExecutorError, StandardCodingAgentExecutor, gemini::Gemini},
     logs::{stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider},
 };
 
-/// An executor that uses Amp to process tasks
+/// An executor that uses QwenCode CLI to process tasks
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-pub struct Amp {
+pub struct QwenCode {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub dangerously_allow_all: Option<bool>,
-    #[serde(flatten)]
-    pub cmd: CmdOverrides,
+    pub yolo: Option<bool>,
 }
 
-impl Amp {
+impl QwenCode {
     fn build_command_builder(&self) -> CommandBuilder {
-        let mut builder = CommandBuilder::new("npx -y @sourcegraph/amp@latest")
-            .params(["--execute", "--stream-json"]);
-        if self.dangerously_allow_all.unwrap_or(false) {
-            builder = builder.params(["--dangerously-allow-all"]);
+        let mut builder = CommandBuilder::new("npx -y @qwen-code/qwen-code@latest");
+        if self.yolo.unwrap_or(false) {
+            builder = builder.params(["--yolo"]);
         }
-        apply_overrides(builder, &self.cmd)
+        builder
     }
 }
 
 #[async_trait]
-impl StandardCodingAgentExecutor for Amp {
+impl StandardCodingAgentExecutor for QwenCode {
     async fn spawn(
         &self,
         current_dir: &PathBuf,
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let amp_command = self.build_command_builder().build_initial();
+        let qwen_command = self.build_command_builder().build_initial();
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
@@ -58,11 +52,11 @@ impl StandardCodingAgentExecutor for Amp {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .arg(shell_arg)
-            .arg(&amp_command);
+            .arg(&qwen_command);
 
         let mut child = command.group_spawn()?;
 
-        // Feed the prompt in, then close the pipe so amp sees EOF
+        // Feed the prompt in, then close the pipe
         if let Some(mut stdin) = child.inner().stdin.take() {
             stdin.write_all(combined_prompt.as_bytes()).await?;
             stdin.shutdown().await?;
@@ -77,13 +71,10 @@ impl StandardCodingAgentExecutor for Amp {
         prompt: &str,
         session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
-        // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
-        let amp_command = self.build_command_builder().build_follow_up(&[
-            "threads".to_string(),
-            "continue".to_string(),
-            session_id.to_string(),
-        ]);
+        let qwen_command = self
+            .build_command_builder()
+            .build_follow_up(&["--resume".to_string(), session_id.to_string()]);
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
@@ -95,11 +86,11 @@ impl StandardCodingAgentExecutor for Amp {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .arg(shell_arg)
-            .arg(&amp_command);
+            .arg(&qwen_command);
 
         let mut child = command.group_spawn()?;
 
-        // Feed the prompt in, then close the pipe so amp sees EOF
+        // Feed the followup prompt in, then close the pipe
         if let Some(mut stdin) = child.inner().stdin.take() {
             stdin.write_all(combined_prompt.as_bytes()).await?;
             stdin.shutdown().await?;
@@ -109,17 +100,33 @@ impl StandardCodingAgentExecutor for Amp {
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &PathBuf) {
-        let entry_index_provider = EntryIndexProvider::start_from(&msg_store);
+        // QwenCode has similar output format to Gemini CLI
+        // Use Gemini's proven sentence-break formatting instead of simple replace
+        let entry_index_counter = EntryIndexProvider::start_from(&msg_store);
+        normalize_stderr_logs(msg_store.clone(), entry_index_counter.clone());
 
-        // Process stdout logs (Amp's stream JSON output) using Claude's log processor
-        ClaudeLogProcessor::process_logs(
-            msg_store.clone(),
-            current_dir,
-            entry_index_provider.clone(),
-            HistoryStrategy::AmpResume,
+        // Send session ID to msg_store to enable follow-ups
+        msg_store.push_session_id(
+            current_dir
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string(),
         );
 
-        // Process stderr logs using the standard stderr processor
-        normalize_stderr_logs(msg_store, entry_index_provider);
+        // Use Gemini's log processor for consistent formatting
+        tokio::spawn(async move {
+            use futures::StreamExt;
+            let mut stdout = msg_store.stdout_chunked_stream();
+
+            // Use Gemini's proven sentence-break heuristics
+            let mut processor = Gemini::create_gemini_style_processor(entry_index_counter);
+
+            while let Some(Ok(chunk)) = stdout.next().await {
+                for patch in processor.process(chunk) {
+                    msg_store.push_patch(patch);
+                }
+            }
+        });
     }
 }
