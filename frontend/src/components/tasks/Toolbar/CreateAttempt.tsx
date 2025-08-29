@@ -147,7 +147,7 @@ function CreateAttempt({
       <Card className="bg-background p-3 text-sm border-y border-dashed">
         Create Attempt
       </Card>
-      <div className="space-y-3 px-3">
+      <div className="space-y-3 p-3">
         <div className="flex items-center justify-between">
           {taskAttempts.length > 0 && (
             <Button
