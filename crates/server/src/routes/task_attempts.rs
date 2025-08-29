@@ -100,7 +100,7 @@ pub async fn create_task_attempt(
         .unwrap_or(deployment.config().read().await.profile.clone());
 
     let profiles = ProfileConfigs::get_cached();
-    let profile = profiles
+    let _profile = profiles
         .get_profile(&profile_variant_label.profile)
         .ok_or_else(|| {
             ApiError::TaskAttempt(TaskAttemptError::ValidationError(format!(
@@ -111,7 +111,7 @@ pub async fn create_task_attempt(
     let task_attempt = TaskAttempt::create(
         &deployment.db().pool,
         &CreateTaskAttempt {
-            profile: profile.label.clone(),
+            profile: profile_variant_label.profile.clone(),
             base_branch: payload.base_branch.clone(),
         },
         payload.task_id,
@@ -129,7 +129,7 @@ pub async fn create_task_attempt(
             serde_json::json!({
                 "task_id": task_attempt.task_id.to_string(),
                 "variant": &profile_variant_label.variant,
-                "profile": profile.label,
+                "profile": profile_variant_label.profile,
                 "attempt_id": task_attempt.id.to_string(),
             }),
         )

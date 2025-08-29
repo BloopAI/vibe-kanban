@@ -209,24 +209,24 @@ function CreateAttempt({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-full">
                   {availableProfiles &&
-                    Object.values(availableProfiles)
-                      .sort((a, b) => a.label.localeCompare(b.label))
-                      .map((profile) => (
+                    Object.entries(availableProfiles)
+                      .sort((a, b) => a[0].localeCompare(b[0]))
+                      .map(([profileKey]) => (
                         <DropdownMenuItem
-                          key={profile.label}
+                          key={profileKey}
                           onClick={() => {
                             setSelectedProfile({
-                              profile: profile.label,
+                              profile: profileKey,
                               variant: null,
                             });
                           }}
                           className={
-                            selectedProfile?.profile === profile.label
+                            selectedProfile?.profile === profileKey
                               ? 'bg-accent'
                               : ''
                           }
                         >
-                          {profile.label}
+                          {profileKey}
                         </DropdownMenuItem>
                       ))}
                 </DropdownMenuContent>

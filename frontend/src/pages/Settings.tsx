@@ -100,8 +100,8 @@ export function Settings() {
       try {
         const parsed = JSON.parse(value);
         // Basic structure validation
-        if (!parsed.profiles || !Array.isArray(parsed.profiles)) {
-          setProfilesError('Invalid structure: must have a "profiles" array');
+        if (!parsed.profiles) {
+          setProfilesError('Invalid structure: must have a "profiles" object');
         }
       } catch (err) {
         if (err instanceof SyntaxError) {
@@ -294,14 +294,11 @@ export function Settings() {
                     </SelectTrigger>
                     <SelectContent>
                       {profiles &&
-                        Object.values(profiles)
-                          .sort((a, b) => a.label.localeCompare(b.label))
-                          .map((profile) => (
-                            <SelectItem
-                              key={profile.label}
-                              value={profile.label}
-                            >
-                              {profile.label}
+                        Object.entries(profiles)
+                          .sort((a, b) => a[0].localeCompare(b[0]))
+                          .map(([profileKey]) => (
+                            <SelectItem key={profileKey} value={profileKey}>
+                              {profileKey}
                             </SelectItem>
                           ))}
                     </SelectContent>

@@ -311,20 +311,8 @@ async fn get_profiles(
 ) -> ResponseJson<ApiResponse<ProfilesContent>> {
     let profiles_path = utils::assets::profiles_path();
 
-    let mut profiles = ProfileConfigs::from_defaults();
-    if let Ok(user_content) = std::fs::read_to_string(&profiles_path) {
-        match serde_json::from_str::<ProfileConfigs>(&user_content) {
-            Ok(user_profiles) => {
-                // Override defaults with user profiles that have the same label
-                for (label, user_profile) in user_profiles.profiles {
-                    profiles.profiles.insert(label, user_profile);
-                }
-            }
-            Err(e) => {
-                tracing::error!("Failed to parse profiles.json: {}", e);
-            }
-        }
-    }
+    // Use cached data to ensure consistency with runtime and PUT updates
+    let profiles = ProfileConfigs::get_cached();
 
     let content = serde_json::to_string_pretty(&profiles).unwrap_or_else(|e| {
         tracing::error!("Failed to serialize profiles to JSON: {}", e);
@@ -342,31 +330,27 @@ async fn update_profiles(
     State(_deployment): State<DeploymentImpl>,
     body: String,
 ) -> ResponseJson<ApiResponse<String>> {
-    let profiles: ProfileConfigs = match serde_json::from_str(&body) {
-        Ok(p) => p,
-        Err(e) => {
-            return ResponseJson(ApiResponse::error(&format!(
-                "Invalid profiles format: {}",
-                e
-            )))
-        }
-    };
-
-    let profiles_path = utils::assets::profiles_path();
-
-    // Simply save all profiles as provided by the user
-    let formatted = serde_json::to_string_pretty(&profiles).unwrap();
-    match fs::write(&profiles_path, formatted).await {
-        Ok(_) => {
-            tracing::info!("All profiles saved to {:?}", profiles_path);
-            // Reload the cached profiles
-            ProfileConfigs::reload();
-            ResponseJson(ApiResponse::success(
-                "Profiles updated successfully".to_string(),
-            ))
+    // Try to parse as full ProfileConfigs first (legacy clients)
+    match serde_json::from_str::<ProfileConfigs>(&body) {
+        Ok(full_profiles) => {
+            // Save as partial format (diffs from defaults)
+            match full_profiles.save_as_diffs() {
+                Ok(_) => {
+                    tracing::info!("Full profiles converted and saved as partials");
+                    // Reload the cached profiles
+                    ProfileConfigs::reload();
+                    ResponseJson(ApiResponse::success(
+                        "Profiles updated successfully".to_string(),
+                    ))
+                }
+                Err(e) => ResponseJson(ApiResponse::error(&format!(
+                    "Failed to save profiles as diffs: {}",
+                    e
+                ))),
+            }
         }
         Err(e) => ResponseJson(ApiResponse::error(&format!(
-            "Failed to save profiles: {}",
+            "Invalid profiles format: {}",
             e
         ))),
     }

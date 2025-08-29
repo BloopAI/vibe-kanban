@@ -19,6 +19,7 @@ use crate::{
 /// An executor that uses Amp to process tasks
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Amp {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,

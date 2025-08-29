@@ -58,11 +58,18 @@ impl ClaudeCodeVariant {
     }
 }
 
+// Helper function for clean serialization of bool fields
+fn is_false(b: &bool) -> bool {
+    !*b
+}
+
 /// An executor that uses Claude CLI to process tasks
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct ClaudeCode {
     pub variant: ClaudeCodeVariant,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "is_false")]
     pub plan: bool,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
@@ -1496,6 +1503,10 @@ mod tests {
             variant: ClaudeCodeVariant::ClaudeCode,
             plan: false,
             append_prompt: None,
+            cmd: crate::command::CmdOverrides {
+                base_command_override: None,
+                additional_params: None,
+            },
         };
         let msg_store = Arc::new(MsgStore::new());
         let current_dir = std::path::PathBuf::from("/tmp/test-worktree");

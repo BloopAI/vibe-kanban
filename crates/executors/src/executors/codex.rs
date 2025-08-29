@@ -107,6 +107,7 @@ impl SessionHandler {
 /// An executor that uses Codex CLI to process tasks
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Codex {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,
 }
 

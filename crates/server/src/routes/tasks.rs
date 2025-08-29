@@ -9,7 +9,7 @@ use db::models::{
     image::TaskImage,
     project::Project,
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
-    task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptError},
+    task_attempt::{CreateTaskAttempt, TaskAttempt},
 };
 use deployment::Deployment;
 use serde::Deserialize;
@@ -107,15 +107,7 @@ pub async fn create_task_and_start(
     let branch = deployment
         .git()
         .get_current_branch(&project.git_repo_path)?;
-    let profile_label = executors::profile::ProfileConfigs::get_cached()
-        .get_profile(&default_profile_variant.profile)
-        .map(|profile| profile.label.clone())
-        .ok_or_else(|| {
-            ApiError::TaskAttempt(TaskAttemptError::ValidationError(format!(
-                "Profile not found: {:?}",
-                default_profile_variant
-            )))
-        })?;
+    let profile_label = default_profile_variant.profile.clone();
 
     let task_attempt = TaskAttempt::create(
         &deployment.db().pool,

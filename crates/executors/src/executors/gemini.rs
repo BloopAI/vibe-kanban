@@ -54,6 +54,7 @@ impl GeminiModel {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Gemini {
     pub model: GeminiModel,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,

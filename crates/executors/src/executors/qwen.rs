@@ -16,6 +16,7 @@ use crate::{
 /// An executor that uses QwenCode CLI to process tasks
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct QwenCode {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,
 }
 

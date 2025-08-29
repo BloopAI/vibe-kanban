@@ -5,6 +5,7 @@ use std::{
     sync::RwLock,
 };
 
+use chrono::Utc;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -24,13 +25,12 @@ pub struct VariantAgentConfig {
     #[serde(flatten)]
     pub agent: CodingAgent,
     /// Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mcp_config_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct ProfileConfig {
-    /// Unique identifier for this profile (e.g., "MyClaudeCode", "FastAmp")
-    pub label: String,
     #[serde(flatten)]
     /// default profile variant
     pub default: VariantAgentConfig,
@@ -73,6 +73,22 @@ impl ProfileVariantLabel {
     }
 }
 
+// Type alias for variant differences - None means delete, Some means add/change, absent means unchanged
+pub type VariantDiff = HashMap<String, Option<VariantAgentConfig>>;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+pub struct PartialProfileConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default: Option<VariantAgentConfig>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub variants: VariantDiff,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+pub struct PartialProfileConfigs {
+    pub profiles: HashMap<String, PartialProfileConfig>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct ProfileConfigs {
     pub profiles: HashMap<String, ProfileConfig>,
@@ -88,10 +104,180 @@ impl ProfileConfigs {
         *cache = Self::load();
     }
 
+    /// Create a partial profile by computing differences from defaults
+    pub fn create_partial_profile(
+        default: &ProfileConfig,
+        modified: &ProfileConfig,
+    ) -> PartialProfileConfig {
+        let mut partial = PartialProfileConfig {
+            default: None,
+            variants: HashMap::new(),
+        };
+
+        // Check if default variant changed
+        if default.default != modified.default {
+            partial.default = Some(modified.default.clone());
+        }
+
+        // Compute variants diff
+        partial.variants = Self::variants_diff(&default.variants, &modified.variants);
+
+        partial
+    }
+
+    /// Compute differences between two variant maps
+    fn variants_diff(
+        default: &HashMap<String, VariantAgentConfig>,
+        modified: &HashMap<String, VariantAgentConfig>,
+    ) -> VariantDiff {
+        let mut diff = HashMap::new();
+
+        // Find changed or added variants
+        for (k, mod_v) in modified {
+            match default.get(k) {
+                Some(def_v) if def_v == mod_v => {
+                    // Unchanged, don't include in diff
+                }
+                _ => {
+                    // Changed or added
+                    diff.insert(k.clone(), Some(mod_v.clone()));
+                }
+            }
+        }
+
+        // Find removed variants
+        for k in default.keys() {
+            if !modified.contains_key(k) {
+                diff.insert(k.clone(), None);
+            }
+        }
+
+        diff
+    }
+
+    /// Load profiles from partial format and merge with defaults
+    pub fn load_from_partials(partials: &PartialProfileConfigs) -> ProfileConfigs {
+        let mut defaults = Self::from_defaults();
+        Self::apply_partials(&mut defaults, partials);
+        defaults
+    }
+
+    /// Apply partial configurations to a base ProfileConfigs
+    fn apply_partials(base: &mut ProfileConfigs, partials: &PartialProfileConfigs) {
+        for (profile_label, partial) in &partials.profiles {
+            match base.profiles.get_mut(profile_label) {
+                Some(existing_profile) => {
+                    // Apply changes to existing profile
+                    Self::apply_partial_to_profile(existing_profile, partial);
+                }
+                None => {
+                    // Create new profile from partial
+                    if let Some(new_profile) =
+                        Self::create_profile_from_partial(profile_label, partial)
+                    {
+                        base.profiles.insert(profile_label.clone(), new_profile);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Apply a partial configuration to an existing profile
+    fn apply_partial_to_profile(profile: &mut ProfileConfig, partial: &PartialProfileConfig) {
+        // Update default variant if specified
+        if let Some(new_default) = &partial.default {
+            profile.default = new_default.clone();
+        }
+
+        // Apply variant changes
+        for (variant_key, variant_change) in &partial.variants {
+            match variant_change {
+                Some(new_variant) => {
+                    // Add or update variant
+                    profile
+                        .variants
+                        .insert(variant_key.clone(), new_variant.clone());
+                }
+                None => {
+                    // Remove variant
+                    profile.variants.remove(variant_key);
+                }
+            }
+        }
+    }
+
+    /// Create a new profile from a partial configuration
+    fn create_profile_from_partial(
+        _profile_label: &str,
+        partial: &PartialProfileConfig,
+    ) -> Option<ProfileConfig> {
+        // For completely new profiles, we need at least a default variant
+        let default = partial.default.as_ref()?.clone();
+
+        let mut profile = ProfileConfig {
+            default,
+            variants: HashMap::new(),
+        };
+
+        // Apply variant changes
+        for (variant_key, variant_change) in &partial.variants {
+            if let Some(variant) = variant_change {
+                profile
+                    .variants
+                    .insert(variant_key.clone(), variant.clone());
+            }
+        }
+
+        Some(profile)
+    }
+
+    /// Save profiles as partial configurations (diffs from defaults)
+    pub fn save_as_diffs(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let defaults = Self::from_defaults();
+        let mut partials = PartialProfileConfigs {
+            profiles: HashMap::new(),
+        };
+
+        // Generate partials for each profile
+        for (profile_label, profile) in &self.profiles {
+            if let Some(default_profile) = defaults.profiles.get(profile_label) {
+                // Profile exists in defaults, compute diff
+                let partial = Self::create_partial_profile(default_profile, profile);
+
+                // Only save if there are actual differences
+                if partial.default.is_some() || !partial.variants.is_empty() {
+                    partials.profiles.insert(profile_label.clone(), partial);
+                }
+            } else {
+                // New profile, save as complete partial
+                let partial = PartialProfileConfig {
+                    default: Some(profile.default.clone()),
+                    variants: profile
+                        .variants
+                        .iter()
+                        .map(|(k, v)| (k.clone(), Some(v.clone())))
+                        .collect(),
+                };
+                partials.profiles.insert(profile_label.clone(), partial);
+            }
+        }
+
+        // Save to file
+        let profiles_path = utils::assets::profiles_path();
+        let content = serde_json::to_string_pretty(&partials)?;
+        fs::write(&profiles_path, content)?;
+
+        tracing::info!(
+            "Saved profiles as partial configurations to {:?}",
+            profiles_path
+        );
+        Ok(())
+    }
+
     fn load() -> Self {
         let profiles_path = utils::assets::profiles_path();
 
-        // load from profiles.json if it exists, otherwise use defaults
+        // Load from profiles.json if it exists, otherwise use defaults
         let content = match fs::read_to_string(&profiles_path) {
             Ok(content) => content,
             Err(e) => {
@@ -100,16 +286,54 @@ impl ProfileConfigs {
             }
         };
 
-        match serde_json::from_str::<Self>(&content) {
-            Ok(profiles) => {
-                tracing::info!("Loaded all profiles from profiles.json");
-                profiles
+        // First try to parse as full ProfileConfigs (legacy format)
+        if let Ok(full_profiles) = serde_json::from_str::<Self>(&content) {
+            tracing::info!("Loaded full profiles from profiles.json (legacy format)");
+
+            // Auto-migrate to partial format
+            if let Err(e) = Self::migrate_to_partial_format(&full_profiles) {
+                tracing::error!("Failed to migrate profiles to partial format: {}", e);
+            }
+
+            return full_profiles;
+        }
+
+        // Try to parse as PartialProfileConfigs (new format)
+        match serde_json::from_str::<PartialProfileConfigs>(&content) {
+            Ok(partials) => {
+                tracing::info!("Loaded partial profiles from profiles.json");
+                Self::load_from_partials(&partials)
             }
             Err(e) => {
-                tracing::warn!("Failed to parse profiles.json: {}, using defaults", e);
+                tracing::warn!(
+                    "Failed to parse profiles.json as either format: {}, using defaults",
+                    e
+                );
                 Self::from_defaults()
             }
         }
+    }
+
+    /// Migrate full profiles to partial format with backup
+    fn migrate_to_partial_format(
+        full_profiles: &ProfileConfigs,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let profiles_path = utils::assets::profiles_path();
+
+        // Create backup with timestamp
+        let timestamp = Utc::now().format("%Y%m%d_%H%M%S");
+        let backup_path = profiles_path.with_extension(format!("json.bak-{timestamp}"));
+
+        if let Ok(original_content) = fs::read_to_string(&profiles_path) {
+            fs::write(&backup_path, original_content)?;
+            tracing::info!("Created backup at {:?}", backup_path);
+        }
+
+        // Save as partial format
+        full_profiles.save_as_diffs()?;
+        tracing::info!("Successfully migrated profiles to partial format");
+
+        Ok(())
     }
 
     pub fn from_defaults() -> Self {
@@ -169,7 +393,88 @@ impl ProfileConfigs {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use super::*;
+
+    #[test]
+    fn test_partial_profile_structures() {
+        // Test that PartialProfileConfig structures serialize correctly
+        let partial = PartialProfileConfig {
+            default: None,
+            variants: HashMap::new(),
+        };
+
+        // Should serialize to JSON without panicking
+        let json = serde_json::to_string(&partial);
+        assert!(json.is_ok());
+
+        let partials = PartialProfileConfigs {
+            profiles: {
+                let mut profiles = HashMap::new();
+                profiles.insert("test".to_string(), partial);
+                profiles
+            },
+        };
+
+        // Should serialize to JSON without panicking
+        let json = serde_json::to_string(&partials);
+        assert!(json.is_ok());
+    }
+
+    #[test]
+    fn test_load_from_empty_partials() {
+        let partials = PartialProfileConfigs {
+            profiles: HashMap::new(),
+        };
+
+        let result = ProfileConfigs::load_from_partials(&partials);
+        let defaults = ProfileConfigs::from_defaults();
+
+        // Should be identical to defaults when no partials provided
+        assert_eq!(result.profiles.len(), defaults.profiles.len());
+    }
+
+    #[test]
+    fn test_no_null_values_in_serialization() {
+        use crate::{
+            command::CmdOverrides,
+            executors::claude::{ClaudeCode, ClaudeCodeVariant},
+        };
+
+        // Test that None values are omitted from JSON serialization
+        let variant = VariantAgentConfig {
+            agent: CodingAgent::ClaudeCode(ClaudeCode {
+                variant: ClaudeCodeVariant::ClaudeCode,
+                append_prompt: None,
+                plan: false, // Should be omitted when false
+                cmd: CmdOverrides {
+                    base_command_override: None,
+                    additional_params: None,
+                },
+            }),
+            mcp_config_path: None, // This should be omitted
+        };
+
+        let json = serde_json::to_string(&variant).unwrap();
+        assert!(!json.contains("null"));
+        assert!(!json.contains("mcp_config_path"));
+        assert!(!json.contains("plan")); // Should be omitted when false
+
+        // Test PartialProfileConfig with all None values
+        let partial = PartialProfileConfig {
+            default: None,
+            variants: HashMap::new(),
+        };
+
+        let json = serde_json::to_string(&partial).unwrap();
+        assert!(!json.contains("null"));
+        assert!(!json.contains("label"));
+        assert!(!json.contains("default"));
+        // Empty variants HashMap should be omitted entirely, resulting in empty object
+        assert_eq!(json, r#"{}"#);
+    }
+
     #[test]
     fn default_profiles_have_expected_agents_and_variants() {
         // Build default profiles and make lookup by label easy

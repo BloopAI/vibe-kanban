@@ -61,8 +61,16 @@ export function McpServers() {
 
       try {
         // Load MCP servers for the selected profile/agent
+        // Find the key for this profile
+        const profileKey = profiles
+          ? Object.keys(profiles).find((key) => profiles[key] === profile)
+          : null;
+        if (!profileKey) {
+          throw new Error('Profile key not found');
+        }
+
         const result = await mcpServersApi.load({
-          profile: profile.label,
+          profile: profileKey,
         });
         // Store the McpConfig from backend
         setMcpConfig(result.mcp_config);
@@ -151,9 +159,19 @@ export function McpServers() {
               fullConfig
             );
 
+          // Find the key for the selected profile
+          const selectedProfileKey = profiles
+            ? Object.keys(profiles).find(
+                (key) => profiles[key] === selectedProfile
+              )
+            : null;
+          if (!selectedProfileKey) {
+            throw new Error('Selected profile key not found');
+          }
+
           await mcpServersApi.save(
             {
-              profile: selectedProfile.label,
+              profile: selectedProfileKey,
             },
             { servers: mcpServersConfig }
           );
@@ -229,7 +247,13 @@ export function McpServers() {
             <div className="space-y-2">
               <Label htmlFor="mcp-executor">Profile</Label>
               <Select
-                value={selectedProfile?.label || ''}
+                value={
+                  selectedProfile
+                    ? Object.keys(profiles || {}).find(
+                        (key) => profiles![key] === selectedProfile
+                      ) || ''
+                    : ''
+                }
                 onValueChange={(value: string) => {
                   const profile = profiles?.[value];
                   if (profile) setSelectedProfile(profile);
@@ -240,11 +264,11 @@ export function McpServers() {
                 </SelectTrigger>
                 <SelectContent>
                   {profiles &&
-                    Object.values(profiles)
-                      .sort((a, b) => a.label.localeCompare(b.label))
-                      .map((profile) => (
-                        <SelectItem key={profile.label} value={profile.label}>
-                          {profile.label}
+                    Object.entries(profiles)
+                      .sort((a, b) => a[0].localeCompare(b[0]))
+                      .map(([profileKey]) => (
+                        <SelectItem key={profileKey} value={profileKey}>
+                          {profileKey}
                         </SelectItem>
                       ))}
                 </SelectContent>

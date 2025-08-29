@@ -1,7 +1,6 @@
 {
   "profiles": {
     "claude-code": {
-      "label": "claude-code",
       "mcp_config_path": null,
       "CLAUDE_CODE": {
         "variant": "claude_code",
@@ -20,7 +19,6 @@
       }
     },
     "claude-code-router": {
-      "label": "claude-code-router",
       "mcp_config_path": null,
       "CLAUDE_CODE": {
         "variant": "claude_code_router",
@@ -30,7 +28,6 @@
       "variants": {}
     },
     "amp": {
-      "label": "amp",
       "mcp_config_path": null,
       "AMP": {
         "append_prompt": null
@@ -38,7 +35,6 @@
       "variants": {}
     },
     "gemini": {
-      "label": "gemini",
       "mcp_config_path": null,
       "GEMINI": {
         "model": "default",
@@ -55,7 +51,6 @@
       }
     },
     "codex": {
-      "label": "codex",
       "mcp_config_path": null,
       "CODEX": {
         "append_prompt": null
@@ -63,7 +58,6 @@
       "variants": {}
     },
     "opencode": {
-      "label": "opencode",
       "mcp_config_path": null,
       "OPENCODE": {
         "append_prompt": null
@@ -71,7 +65,6 @@
       "variants": {}
     },
     "qwen-code": {
-      "label": "qwen-code",
       "mcp_config_path": "~/.qwen/settings.json",
       "QWEN_CODE": {
         "append_prompt": null
@@ -79,7 +72,6 @@
       "variants": {}
     },
     "cursor": {
-      "label": "cursor",
       "mcp_config_path": null,
       "CURSOR": {
         "append_prompt": null

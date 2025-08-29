@@ -27,6 +27,7 @@ use crate::{
 /// An executor that uses OpenCode to process tasks
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct Opencode {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,
 }
 
