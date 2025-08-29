@@ -143,7 +143,15 @@ export function TaskDialogProvider({ children }: TaskDialogProviderProps) {
       close,
       handleSuccess,
     }),
-    [dialogState, openCreate, openEdit, openFromTemplate, openDuplicate, close, handleSuccess]
+    [
+      dialogState,
+      openCreate,
+      openEdit,
+      openFromTemplate,
+      openDuplicate,
+      close,
+      handleSuccess,
+    ]
   );
 
   return (

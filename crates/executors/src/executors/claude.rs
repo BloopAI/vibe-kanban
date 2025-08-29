@@ -1525,9 +1525,9 @@ mod tests {
         match &entries[0].entry_type {
             NormalizedEntryType::ToolUse { action_type, .. } => match action_type {
                 ActionType::FileEdit { path, .. } => assert_eq!(path, "src/new.txt"),
-                other => panic!("Expected FileEdit, got {:?}", other),
+                other => panic!("Expected FileEdit, got {other:?}"),
             },
-            other => panic!("Expected ToolUse, got {:?}", other),
+            other => panic!("Expected ToolUse, got {other:?}"),
         }
 
         // Amp "edit_file" should deserialize into Edit with aliases for path/old_str/new_str
@@ -1546,9 +1546,9 @@ mod tests {
         match &entries[0].entry_type {
             NormalizedEntryType::ToolUse { action_type, .. } => match action_type {
                 ActionType::FileEdit { path, .. } => assert_eq!(path, "README.md"),
-                other => panic!("Expected FileEdit, got {:?}", other),
+                other => panic!("Expected FileEdit, got {other:?}"),
             },
-            other => panic!("Expected ToolUse, got {:?}", other),
+            other => panic!("Expected ToolUse, got {other:?}"),
         }
     }
 
