@@ -60,7 +60,7 @@ pub fn create_unified_diff_hunk(old: &str, new: &str) -> String {
     let old_count = diff.old_slices().len();
     let new_count = diff.new_slices().len();
 
-    out.push_str(&format!("@@ -0,{old_count} +0,{new_count} @@\n"));
+    out.push_str(&format!("@@ -1,{old_count} +1,{new_count} @@\n"));
 
     for change in diff.iter_all_changes() {
         let sign = match change.tag() {
@@ -109,7 +109,7 @@ pub fn extract_unified_diff_hunks(unified_diff: &str) -> Vec<String> {
         return if hunk.is_empty() {
             vec![]
         } else {
-            vec![format!("@@ -0,{old_count} +0,{new_count} @@\n{hunk}")]
+            vec![format!("@@ -1,{old_count} +1,{new_count} @@\n{hunk}")]
         };
     }
 
@@ -188,7 +188,7 @@ fn fix_hunk_headers(hunks: Vec<String>) -> Vec<String> {
                 .iter()
                 .filter(|line| line.starts_with(['+', ' ']))
                 .count();
-            let new_header = format!("@@ -0,{old_count} +0,{new_count} @@");
+            let new_header = format!("@@ -1,{old_count} +1,{new_count} @@");
             lines.insert(0, new_header);
             new_hunks.push(lines.join(""));
         } else {
