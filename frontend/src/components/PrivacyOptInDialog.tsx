@@ -8,7 +8,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Shield, CheckCircle, XCircle, Settings } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useConfig } from '@/components/config-provider';
 
 interface PrivacyOptInDialogProps {
@@ -35,7 +34,7 @@ export function PrivacyOptInDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={() => { }}>
+    <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -49,9 +48,7 @@ export function PrivacyOptInDialog({
         </DialogHeader>
 
         <div className="space-y-3">
-          <h2>
-            What data do we collect?
-          </h2>
+          <h2>What data do we collect?</h2>
           <div>
             {isGitHubAuthenticated && (
               <div className="flex items-start gap-2">
@@ -70,9 +67,7 @@ export function PrivacyOptInDialog({
             <div className="flex items-start gap-2">
               <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
               <div className="min-w-0">
-                <p className="text-sm font-medium">
-                  High-level usage metrics
-                </p>
+                <p className="text-sm font-medium">High-level usage metrics</p>
                 <p className="text-xs text-muted-foreground">
                   Number of tasks created, projects managed, feature usage
                 </p>
@@ -94,8 +89,8 @@ export function PrivacyOptInDialog({
               <div className="min-w-0">
                 <p className="text-sm font-medium">We do NOT collect</p>
                 <p className="text-xs text-muted-foreground">
-                  Task contents, code snippets, project names, or other
-                  personal data
+                  Task contents, code snippets, project names, or other personal
+                  data
                 </p>
               </div>
             </div>

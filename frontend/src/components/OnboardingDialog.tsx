@@ -23,7 +23,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sparkles, Code, ChevronDown, HandMetal } from 'lucide-react';
 import { EditorType, ProfileVariantLabel } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
@@ -64,7 +63,7 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
     (editorType === EditorType.CUSTOM && customCommand.trim() !== '');
 
   return (
-    <Dialog open={open} onOpenChange={() => { }}>
+    <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-[600px] space-y-4">
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -173,7 +172,6 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
               })()}
             </div>
           </div>
-
         </div>
 
         <div className="space-y-2">
@@ -200,8 +198,7 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">
-              This editor will be used to open task attempts and project
-              files.
+              This editor will be used to open task attempts and project files.
             </p>
 
             {editorType === EditorType.CUSTOM && (
@@ -232,6 +229,6 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
           </Button>
         </DialogFooter>
       </DialogContent>
-    </Dialog >
+    </Dialog>
   );
 }
