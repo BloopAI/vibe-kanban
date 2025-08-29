@@ -38,6 +38,8 @@ pub enum GitServiceError {
     InvalidFilePaths(String),
     #[error("No GitHub token available.")]
     TokenUnavailable,
+    #[error("Rebase in progress; resolve or abort it before retrying")]
+    RebaseInProgress,
 }
 
 /// Service for managing Git operations in task execution workflows
@@ -97,6 +99,33 @@ impl GitService {
         Repository::open(repo_path).map_err(GitServiceError::from)
     }
 
+    /// Ensure local (repo-scoped) identity exists for CLI commits.
+    /// Sets user.name/email only if missing in the repo config.
+    fn ensure_cli_commit_identity(&self, repo_path: &Path) -> Result<(), GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        let cfg = repo.config()?;
+        let has_name = cfg.get_string("user.name").is_ok();
+        let has_email = cfg.get_string("user.email").is_ok();
+        if !(has_name && has_email) {
+            let mut cfg = repo.config()?;
+            cfg.set_str("user.name", "Vibe Kanban")?;
+            cfg.set_str("user.email", "noreply@vibekanban.com")?;
+        }
+        Ok(())
+    }
+
+    /// Get a signature for libgit2 commits with a safe fallback identity.
+    fn signature_with_fallback<'a>(
+        &self,
+        repo: &'a Repository,
+    ) -> Result<git2::Signature<'a>, GitServiceError> {
+        match repo.signature() {
+            Ok(sig) => Ok(sig),
+            Err(_) => git2::Signature::now("Vibe Kanban", "noreply@vibekanban.com")
+                .map_err(GitServiceError::from),
+        }
+    }
+
     pub fn default_remote_name(&self, repo: &Repository) -> String {
         if let Ok(repos) = repo.remotes() {
             repos
@@ -147,11 +176,7 @@ impl GitService {
     }
 
     pub fn create_initial_commit(&self, repo: &Repository) -> Result<(), GitServiceError> {
-        let signature = repo.signature().unwrap_or_else(|_| {
-            // Fallback if no Git config is set
-            git2::Signature::now("Vibe Kanban", "noreply@vibekanban.com")
-                .expect("Failed to create fallback signature")
-        });
+        let signature = self.signature_with_fallback(repo)?;
 
         let tree_id = {
             let tree_builder = repo.treebuilder(None)?;
@@ -188,6 +213,8 @@ impl GitService {
 
         git.add_all(path)
             .map_err(|e| GitServiceError::InvalidRepository(format!("git add failed: {e}")))?;
+        // Only ensure identity once we know we're about to commit
+        self.ensure_cli_commit_identity(path)?;
         git.commit(path, message)
             .map_err(|e| GitServiceError::InvalidRepository(format!("git commit failed: {e}")))?;
         Ok(true)
@@ -561,28 +588,54 @@ impl GitService {
         base_branch_name: &str,
         commit_message: &str,
     ) -> Result<String, GitServiceError> {
-        // Open the worktree repository
+        // Open the repositories
         let worktree_repo = self.open_repo(worktree_path)?;
         let main_repo = self.open_repo(repo_path)?;
 
-        // Check if worktree is dirty before proceeding
-        self.check_worktree_clean(&worktree_repo)?;
-        self.check_worktree_clean(&main_repo)?;
+        // If main repo is currently on the base branch, perform a safe CLI
+        // squash merge directly in the main working tree, provided there are
+        // no staged changes (to avoid accidental inclusion).
+        if let Ok(head) = main_repo.head()
+            && let Some(cur) = head.shorthand()
+            && cur == base_branch_name
+        {
+            let git = GitCli::new();
+            if git.has_staged_changes(repo_path).map_err(|e| {
+                GitServiceError::InvalidRepository(format!("git diff --cached failed: {e}"))
+            })? {
+                return Err(GitServiceError::WorktreeDirty(
+                    base_branch_name.to_string(),
+                    "staged changes present".to_string(),
+                ));
+            }
+            // This path updates both ref and working tree safely (git will refuse if unsafe)
+            // Ensure identity for the CLI commit
+            self.ensure_cli_commit_identity(repo_path)?;
+            let sha = git
+                .merge_squash_commit(repo_path, base_branch_name, branch_name, commit_message)
+                .map_err(|e| {
+                    GitServiceError::InvalidRepository(format!("git merge --squash failed: {e}"))
+                })?;
+            // Also update task branch ref to merged commit for continuity
+            let task_refname = format!("refs/heads/{branch_name}");
+            git.update_ref(repo_path, &task_refname, &sha)
+                .map_err(|e| {
+                    GitServiceError::InvalidRepository(format!("git update-ref failed: {e}"))
+                })?;
+            return Ok(sha);
+        }
 
-        // Verify the task branch exists in the worktree
+        // Otherwise, fall back to libgit2 in-memory squash commit (no working tree changes)
+        // Locate branches in the shared repository (common.git across worktrees)
         let task_branch = Self::find_branch(&worktree_repo, branch_name)?;
-
-        // Get the base branch from the worktree
         let base_branch = Self::find_branch(&worktree_repo, base_branch_name)?;
 
-        // Get commits
+        // Resolve commits
         let base_commit = base_branch.get().peel_to_commit()?;
         let task_commit = task_branch.get().peel_to_commit()?;
 
-        // Get the signature for the merge commit
-        let signature = worktree_repo.signature()?;
-
-        // Perform a squash merge - create a single commit with all changes
+        // Create the squash commit in-memory (no checkout) and update the base branch ref
+        let signature = self.signature_with_fallback(&worktree_repo)?;
         let squash_commit_id = self.perform_squash_merge(
             &worktree_repo,
             &base_commit,
@@ -592,29 +645,15 @@ impl GitService {
             base_branch_name,
         )?;
 
-        // Reset the task branch to point to the squash commit
-        // This allows follow-up work to continue from the merged state without conflicts
+        // Optionally update the task branch to the new squash commit so follow-up
+        // work can continue from the merged state without conflicts.
         let task_refname = format!("refs/heads/{branch_name}");
         main_repo.reference(
             &task_refname,
             squash_commit_id,
             true,
-            "Reset task branch after merge in main repo",
+            "Reset task branch after squash merge",
         )?;
-
-        // Fix: Update main repo's HEAD if it's pointing to the base branch
-        let refname = format!("refs/heads/{base_branch_name}");
-
-        if let Ok(main_head) = main_repo.head()
-            && let Some(branch_name) = main_head.shorthand()
-            && branch_name == base_branch_name
-        {
-            // Only update main repo's HEAD if it's currently on the base branch
-            main_repo.set_head(&refname)?;
-            let mut co = CheckoutBuilder::new();
-            co.force();
-            main_repo.checkout_head(Some(&mut co))?;
-        }
 
         Ok(squash_commit_id.to_string())
     }
@@ -762,6 +801,135 @@ impl GitService {
         }
     }
 
+    /// Get the commit OID (as hex string) for a given branch without modifying HEAD
+    pub fn get_branch_oid(
+        &self,
+        repo_path: &Path,
+        branch_name: &str,
+    ) -> Result<String, GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        let branch = Self::find_branch(&repo, branch_name)?;
+        let oid = branch.get().peel_to_commit()?.id().to_string();
+        Ok(oid)
+    }
+
+    /// Get the author name and email for the given commit OID (hex)
+    pub fn get_commit_author(
+        &self,
+        repo_path: &Path,
+        commit_sha: &str,
+    ) -> Result<(Option<String>, Option<String>), GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        let oid = git2::Oid::from_str(commit_sha)
+            .map_err(|_| GitServiceError::InvalidRepository("Invalid commit SHA".into()))?;
+        let commit = repo.find_commit(oid)?;
+        let author = commit.author();
+        Ok((
+            author.name().map(|s| s.to_string()),
+            author.email().map(|s| s.to_string()),
+        ))
+    }
+
+    /// Convenience: Get author of HEAD commit
+    pub fn get_head_author(
+        &self,
+        repo_path: &Path,
+    ) -> Result<(Option<String>, Option<String>), GitServiceError> {
+        let head = self.get_head_info(repo_path)?;
+        self.get_commit_author(repo_path, &head.oid)
+    }
+
+    /// Configure local user identity for committing via CLI
+    pub fn configure_user(
+        &self,
+        repo_path: &Path,
+        name: &str,
+        email: &str,
+    ) -> Result<(), GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        let mut cfg = repo.config()?;
+        cfg.set_str("user.name", name)?;
+        cfg.set_str("user.email", email)?;
+        Ok(())
+    }
+
+    /// Create a local branch at the current HEAD
+    pub fn create_branch(
+        &self,
+        repo_path: &Path,
+        branch_name: &str,
+    ) -> Result<(), GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        let head_commit = repo.head()?.peel_to_commit()?;
+        repo.branch(branch_name, &head_commit, true)?;
+        Ok(())
+    }
+
+    /// Checkout a local branch in the given working tree
+    pub fn checkout_branch(
+        &self,
+        repo_path: &Path,
+        branch_name: &str,
+    ) -> Result<(), GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        let refname = format!("refs/heads/{branch_name}");
+        repo.set_head(&refname)?;
+        let mut co = CheckoutBuilder::new();
+        co.force();
+        repo.checkout_head(Some(&mut co))?;
+        Ok(())
+    }
+
+    /// Add a worktree for a branch, optionally creating the branch
+    pub fn add_worktree(
+        &self,
+        repo_path: &Path,
+        worktree_path: &Path,
+        branch: &str,
+        create_branch: bool,
+    ) -> Result<(), GitServiceError> {
+        let git = GitCli::new();
+        git.worktree_add(repo_path, worktree_path, branch, create_branch)
+            .map_err(|e| GitServiceError::InvalidRepository(e.to_string()))?;
+        Ok(())
+    }
+
+    /// Set or add a remote URL
+    pub fn set_remote(
+        &self,
+        repo_path: &Path,
+        name: &str,
+        url: &str,
+    ) -> Result<(), GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        match repo.find_remote(name) {
+            Ok(_) => repo.remote_set_url(name, url)?,
+            Err(_) => {
+                repo.remote(name, url)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Stage a specific path (wrapper over git add)
+    pub fn add_path(&self, repo_path: &Path, path: &str) -> Result<(), GitServiceError> {
+        let git = GitCli::new();
+        git.git(repo_path, ["add", path])
+            .map(|_| ())
+            .map_err(|e| GitServiceError::InvalidRepository(e.to_string()))
+    }
+
+    /// Detach HEAD to the current commit (for testing commit on detached HEAD)
+    pub fn detach_head_current(&self, repo_path: &Path) -> Result<(), GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        let oid = repo
+            .head()?
+            .target()
+            .ok_or_else(|| GitServiceError::InvalidRepository("HEAD has no target".into()))?;
+        repo.set_head_detached(oid)?;
+        Ok(())
+    }
+
     pub fn get_all_branches(&self, repo_path: &Path) -> Result<Vec<GitBranch>, git2::Error> {
         let repo = Repository::open(repo_path)?;
         let current_branch = self.get_current_branch(repo_path).unwrap_or_default();
@@ -836,8 +1004,11 @@ impl GitService {
         commit_message: &str,
         base_branch_name: &str,
     ) -> Result<git2::Oid, GitServiceError> {
-        // Attempt an in-memory merge to detect conflicts
-        let merge_opts = git2::MergeOptions::new();
+        // In-memory merge to detect conflicts without touching the working tree
+        let mut merge_opts = git2::MergeOptions::new();
+        // Safety and correctness options
+        merge_opts.find_renames(true); // improve rename handling
+        merge_opts.fail_on_conflict(true); // bail out instead of generating conflicted index
         let mut index = repo.merge_commits(base_commit, task_commit, Some(&merge_opts))?;
 
         // If there are conflicts, return an error
@@ -885,17 +1056,11 @@ impl GitService {
         // resetting or cherry-picking over them. Untracked files are allowed.
         self.check_worktree_clean(&worktree_repo)?;
 
-        // Check if there's an existing rebase in progress and abort it
-        let state = worktree_repo.state();
-        if state == git2::RepositoryState::Rebase
-            || state == git2::RepositoryState::RebaseInteractive
-            || state == git2::RepositoryState::RebaseMerge
-        {
-            tracing::warn!("Existing rebase in progress, aborting it first");
-            // Try to abort the existing rebase
-            if let Ok(mut existing_rebase) = worktree_repo.open_rebase(None) {
-                let _ = existing_rebase.abort();
-            }
+        // If a rebase is already in progress, refuse to proceed instead of
+        // aborting (which might destroy user changes mid-rebase).
+        let git = GitCli::new();
+        if git.is_rebase_in_progress(worktree_path).unwrap_or(false) {
+            return Err(GitServiceError::RebaseInProgress);
         }
 
         // Get the target base branch reference
@@ -908,69 +1073,24 @@ impl GitService {
                 .unwrap_or_else(|| "main".to_string()),
         };
         let nbr = Self::find_branch(&main_repo, &new_base_branch_name)?.into_reference();
-        let new_base_commit_id = if nbr.is_remote() {
+        // If the target base is remote, update it first so CLI sees latest
+        if nbr.is_remote() {
             let github_token = github_token.ok_or(GitServiceError::TokenUnavailable)?;
             let remote = self.get_remote_from_branch_ref(&main_repo, &nbr)?;
             // First, fetch the latest changes from remote
             self.fetch_from_remote(&main_repo, &github_token, &remote)?;
-            // Try to find the remote branch after fetch
-            let remote_branch = Self::find_branch(&main_repo, &new_base_branch_name)?;
-            remote_branch.into_reference().peel_to_commit()?.id()
-            // Use the local branch name for rebase
-        } else {
-            nbr.peel_to_commit()?.id()
-        };
-
-        // Remember the original task-branch commit before we touch anything
-        let original_head_oid = worktree_repo.head()?.peel_to_commit()?.id();
-        // Get the HEAD commit of the worktree (the changes to rebase)
-        let task_branch_commit_id = worktree_repo.head()?.peel_to_commit()?.id();
-
-        let signature = worktree_repo.signature()?;
-        let old_base_commit_id = Self::find_branch(&main_repo, old_base_branch)?
-            .into_reference()
-            .peel_to_commit()?
-            .id();
-
-        // Find commits unique to the task branch
-        let unique_commits = Self::find_unique_commits(
-            &worktree_repo,
-            task_branch_commit_id,
-            old_base_commit_id,
-            new_base_commit_id,
-        )?;
-
-        // Attempt the rebase operation
-        let rebase_result = if !unique_commits.is_empty() {
-            // Reset HEAD to the new base branch
-            let new_base_commit = worktree_repo.find_commit(new_base_commit_id)?;
-            worktree_repo.reset(new_base_commit.as_object(), git2::ResetType::Hard, None)?;
-
-            // Cherry-pick the unique commits
-            Self::cherry_pick_commits(&worktree_repo, &unique_commits, &signature)
-        } else {
-            // No unique commits to rebase, just reset to new base
-            let new_base_commit = worktree_repo.find_commit(new_base_commit_id)?;
-            worktree_repo.reset(new_base_commit.as_object(), git2::ResetType::Hard, None)?;
-            Ok(())
-        };
-
-        // Handle rebase failure by restoring original state
-        if let Err(e) = rebase_result {
-            // Clean up any cherry-pick state
-            let _ = worktree_repo.cleanup_state();
-
-            // Restore original task branch state
-            if let Ok(orig_commit) = worktree_repo.find_commit(original_head_oid) {
-                let _ = worktree_repo.reset(orig_commit.as_object(), git2::ResetType::Hard, None);
-            }
-
-            return Err(e);
         }
 
-        // Get the final commit ID after rebase
-        let final_commit = worktree_repo.head()?.peel_to_commit()?;
+        // Ensure identity for any commits produced by rebase
+        self.ensure_cli_commit_identity(worktree_path)?;
+        // Use git CLI rebase to carry out the operation safely
+        git.rebase_onto(worktree_path, &new_base_branch_name, old_base_branch)
+            .map_err(|e| {
+                GitServiceError::InvalidRepository(format!("git rebase --onto failed: {e}"))
+            })?;
 
+        // Return resulting HEAD commit
+        let final_commit = worktree_repo.head()?.peel_to_commit()?;
         Ok(final_commit.id().to_string())
     }
 
@@ -1036,7 +1156,7 @@ impl GitService {
         index.write()?;
 
         // Create a commit for the file deletion
-        let signature = repo.signature()?;
+        let signature = self.signature_with_fallback(&repo)?;
         let tree_id = index.write_tree()?;
         let tree = repo.find_tree(tree_id)?;
 

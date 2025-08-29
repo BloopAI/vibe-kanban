@@ -1,4 +1,25 @@
-use std::{path::Path, process::Command};
+//! Why we prefer the Git CLI here
+//!
+//! - Safer working-tree semantics: the `git` CLI refuses to clobber uncommitted
+//!   tracked changes and untracked files during checkout/merge/rebase unless you
+//!   explicitly force it. libgit2 does not enforce those protections by default,
+//!   which means callers must re‑implement a lot of safety checks to avoid data loss.
+//! - Sparse‑checkout correctness: the CLI natively respects sparse‑checkout.
+//!   libgit2 does not yet support sparse‑checkout semantics the same way, which
+//!   led to incorrect diffs and staging in our workflows.
+//! - Cross‑platform stability: we observed libgit2 corrupt repositories shared
+//!   between WSL and Windows in scenarios where the `git` CLI did not. Delegating
+//!   working‑tree mutations to the CLI has proven more reliable in practice.
+//!
+//! Given these reasons, this module centralizes destructive or working‑tree‑
+//! touching operations (rebase, merge, checkout, add/commit, etc.) through the
+//! `git` CLI, while keeping libgit2 for read‑only graph queries and credentialed
+//! network operations when useful.
+use std::{
+    ffi::{OsStr, OsString},
+    path::Path,
+    process::Command,
+};
 
 use thiserror::Error;
 use utils::shell::resolve_executable_path;
@@ -9,6 +30,8 @@ pub enum GitCliError {
     NotAvailable,
     #[error("git command failed: {0}")]
     CommandFailed(String),
+    #[error("rebase in progress in this worktree")]
+    RebaseInProgress,
 }
 
 #[derive(Clone, Default)]
@@ -45,20 +68,6 @@ impl GitCli {
         Self {}
     }
 
-    /// Ensure `git` is available on PATH
-    pub fn ensure_available(&self) -> Result<(), GitCliError> {
-        let git = resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?;
-        let out = Command::new(&git)
-            .arg("--version")
-            .output()
-            .map_err(|_| GitCliError::NotAvailable)?;
-        if out.status.success() {
-            Ok(())
-        } else {
-            Err(GitCliError::NotAvailable)
-        }
-    }
-
     /// Run `git -C <repo> worktree add <path> <branch>` (optionally creating the branch with -b)
     pub fn worktree_add(
         &self,
@@ -69,31 +78,18 @@ impl GitCli {
     ) -> Result<(), GitCliError> {
         self.ensure_available()?;
 
-        let git = resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?;
-        let mut cmd = Command::new(&git);
-        cmd.arg("-C").arg(repo_path);
-        cmd.arg("worktree").arg("add");
+        let mut args: Vec<OsString> = vec!["worktree".into(), "add".into()];
         if create_branch {
-            cmd.arg("-b").arg(branch);
+            args.push("-b".into());
+            args.push(OsString::from(branch));
         }
-        cmd.arg(worktree_path).arg(branch);
-
-        let out = cmd
-            .output()
-            .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
-        if !out.status.success() {
-            let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
-            return Err(GitCliError::CommandFailed(stderr));
-        }
+        args.push(worktree_path.as_os_str().into());
+        args.push(OsString::from(branch));
+        self.git(repo_path, args)?;
 
         // Good practice: reapply sparse-checkout in the new worktree to ensure materialization matches
         // Non-fatal if it fails or not configured.
-        let _ = Command::new(&git)
-            .arg("-C")
-            .arg(worktree_path)
-            .arg("sparse-checkout")
-            .arg("reapply")
-            .output();
+        let _ = self.git(worktree_path, ["sparse-checkout", "reapply"]);
 
         Ok(())
     }
@@ -106,59 +102,25 @@ impl GitCli {
         force: bool,
     ) -> Result<(), GitCliError> {
         self.ensure_available()?;
-        let git = resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?;
-        let mut cmd = Command::new(&git);
-        cmd.arg("-C").arg(repo_path);
-        cmd.arg("worktree").arg("remove");
+        let mut args: Vec<OsString> = vec!["worktree".into(), "remove".into()];
         if force {
-            cmd.arg("--force");
+            args.push("--force".into());
         }
-        cmd.arg(worktree_path);
-
-        let out = cmd
-            .output()
-            .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
-        if !out.status.success() {
-            let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
-            return Err(GitCliError::CommandFailed(stderr));
-        }
+        args.push(worktree_path.as_os_str().into());
+        self.git(repo_path, args)?;
         Ok(())
     }
 
     /// Prune stale worktree metadata
     pub fn worktree_prune(&self, repo_path: &Path) -> Result<(), GitCliError> {
-        self.ensure_available()?;
-        let git = resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?;
-        let out = Command::new(&git)
-            .arg("-C")
-            .arg(repo_path)
-            .arg("worktree")
-            .arg("prune")
-            .output()
-            .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
-        if !out.status.success() {
-            let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
-            return Err(GitCliError::CommandFailed(stderr));
-        }
+        self.git(repo_path, ["worktree", "prune"])?;
         Ok(())
     }
 
     /// Return true if there are any changes in the working tree (staged or unstaged).
     pub fn has_changes(&self, worktree_path: &Path) -> Result<bool, GitCliError> {
-        self.ensure_available()?;
-        let git = resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?;
-        let out = Command::new(&git)
-            .arg("-C")
-            .arg(worktree_path)
-            .arg("status")
-            .arg("--porcelain")
-            .output()
-            .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
-        if !out.status.success() {
-            let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
-            return Err(GitCliError::CommandFailed(stderr));
-        }
-        Ok(!out.stdout.is_empty())
+        let out = self.git(worktree_path, ["status", "--porcelain"])?;
+        Ok(!out.is_empty())
     }
 
     /// Diff status vs a base branch using a temporary index (always includes untracked).
@@ -169,56 +131,31 @@ impl GitCli {
         base_branch: &str,
         opts: StatusDiffOptions,
     ) -> Result<Vec<StatusDiffEntry>, GitCliError> {
-        self.ensure_available()?;
-        let git = resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?;
-
         // Create a temp index file
         let tmp_dir = tempfile::TempDir::new()
             .map_err(|e| GitCliError::CommandFailed(format!("temp dir create failed: {e}")))?;
         let tmp_index = tmp_dir.path().join("index");
+        let envs = vec![(
+            OsString::from("GIT_INDEX_FILE"),
+            tmp_index.as_os_str().to_os_string(),
+        )];
 
         // Use a temp index from HEAD to accurately track renames in untracked files
-        let seed_out = Command::new(&git)
-            .env("GIT_INDEX_FILE", &tmp_index)
-            .arg("-C")
-            .arg(worktree_path)
-            .arg("read-tree")
-            .arg("HEAD")
-            .output()
-            .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
-        if !seed_out.status.success() {
-            let stderr = String::from_utf8_lossy(&seed_out.stderr).trim().to_string();
-            return Err(GitCliError::CommandFailed(format!(
-                "git read-tree failed: {stderr}"
-            )));
-        }
+        let _ = self.git_with_env(worktree_path, ["read-tree", "HEAD"], &envs)?;
 
         // Stage all in temp index
-        let add_out = Command::new(&git)
-            .env("GIT_INDEX_FILE", &tmp_index)
-            .arg("-C")
-            .arg(worktree_path)
-            .arg("add")
-            .arg("-A")
-            .output()
-            .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
-        if !add_out.status.success() {
-            let stderr = String::from_utf8_lossy(&add_out.stderr).trim().to_string();
-            return Err(GitCliError::CommandFailed(stderr));
-        }
+        let _ = self.git_with_env(worktree_path, ["add", "-A"], &envs)?;
 
         // git diff --cached
-        let mut cmd = Command::new(&git);
-        cmd.env("GIT_INDEX_FILE", &tmp_index)
-            .arg("-C")
-            .arg(worktree_path)
-            .arg("-c")
-            .arg("core.quotepath=false")
-            .arg("diff")
-            .arg("--cached")
-            .arg("-M")
-            .arg("--name-status")
-            .arg(base_branch);
+        let mut args: Vec<OsString> = vec![
+            "-c".into(),
+            "core.quotepath=false".into(),
+            "diff".into(),
+            "--cached".into(),
+            "-M".into(),
+            "--name-status".into(),
+            OsString::from(base_branch),
+        ];
         if let Some(paths) = &opts.path_filter {
             let non_empty_paths: Vec<&str> = paths
                 .iter()
@@ -226,58 +163,25 @@ impl GitCli {
                 .filter(|p| !p.trim().is_empty())
                 .collect();
             if !non_empty_paths.is_empty() {
-                cmd.arg("--");
+                args.push("--".into());
                 for p in non_empty_paths {
-                    cmd.arg(p);
+                    args.push(OsString::from(p));
                 }
             }
         }
-        let diff_out = cmd
-            .output()
-            .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
-        if !diff_out.status.success() {
-            let stderr = String::from_utf8_lossy(&diff_out.stderr).trim().to_string();
-            return Err(GitCliError::CommandFailed(stderr));
-        }
-        Ok(Self::parse_name_status(&String::from_utf8_lossy(
-            &diff_out.stdout,
-        )))
+        let out = self.git_with_env(worktree_path, args, &envs)?;
+        Ok(Self::parse_name_status(&out))
     }
 
     /// Stage all changes in the working tree (respects sparse-checkout semantics).
     pub fn add_all(&self, worktree_path: &Path) -> Result<(), GitCliError> {
-        self.ensure_available()?;
-        let git = resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?;
-        let out = Command::new(&git)
-            .arg("-C")
-            .arg(worktree_path)
-            .arg("add")
-            .arg("-A")
-            .output()
-            .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
-        if !out.status.success() {
-            let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
-            return Err(GitCliError::CommandFailed(stderr));
-        }
+        self.git(worktree_path, ["add", "-A"])?;
         Ok(())
     }
 
     /// Commit staged changes with the given message.
     pub fn commit(&self, worktree_path: &Path, message: &str) -> Result<(), GitCliError> {
-        self.ensure_available()?;
-        let git = resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?;
-        let out = Command::new(&git)
-            .arg("-C")
-            .arg(worktree_path)
-            .arg("commit")
-            .arg("-m")
-            .arg(message)
-            .output()
-            .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
-        if !out.status.success() {
-            let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
-            return Err(GitCliError::CommandFailed(stderr));
-        }
+        self.git(worktree_path, ["commit", "-m", message])?;
         Ok(())
     }
 
@@ -325,5 +229,164 @@ impl GitCli {
             }
         }
         out
+    }
+
+    /// Perform `git rebase --onto <new_base> <old_base>` on the current branch in `worktree_path`.
+    pub fn rebase_onto(
+        &self,
+        worktree_path: &Path,
+        new_base: &str,
+        old_base: &str,
+    ) -> Result<(), GitCliError> {
+        // If a rebase is in progress, refuse to proceed. The caller can
+        // choose to abort or continue; we avoid destructive actions here.
+        if self.is_rebase_in_progress(worktree_path).unwrap_or(false) {
+            return Err(GitCliError::RebaseInProgress);
+        }
+        self.git(worktree_path, ["rebase", "--onto", new_base, old_base])?;
+        Ok(())
+    }
+
+    /// Return true if there is a rebase in progress in this worktree.
+    pub fn is_rebase_in_progress(&self, worktree_path: &Path) -> Result<bool, GitCliError> {
+        match self.git(worktree_path, ["rev-parse", "--verify", "REBASE_HEAD"]) {
+            Ok(_) => Ok(true),
+            Err(GitCliError::CommandFailed(_)) => Ok(false),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Return true if there are staged changes (index differs from HEAD)
+    pub fn has_staged_changes(&self, repo_path: &Path) -> Result<bool, GitCliError> {
+        // `git diff --cached --quiet` returns exit code 1 if there are differences
+        let out = Command::new(resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?)
+            .arg("-C")
+            .arg(repo_path)
+            .arg("diff")
+            .arg("--cached")
+            .arg("--quiet")
+            .output()
+            .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
+        match out.status.code() {
+            Some(0) => Ok(false),
+            Some(1) => Ok(true),
+            _ => Err(GitCliError::CommandFailed(
+                String::from_utf8_lossy(&out.stderr).trim().to_string(),
+            )),
+        }
+    }
+
+    /// Reset index to HEAD (mixed reset). Does not modify working tree.
+    pub fn reset(&self, repo_path: &Path) -> Result<(), GitCliError> {
+        self.git(repo_path, ["reset"]).map(|_| ())
+    }
+
+    /// Checkout base branch, squash-merge from_branch, and commit with message. Returns new HEAD sha.
+    pub fn merge_squash_commit(
+        &self,
+        repo_path: &Path,
+        base_branch: &str,
+        from_branch: &str,
+        message: &str,
+    ) -> Result<String, GitCliError> {
+        self.git(repo_path, ["checkout", base_branch]).map(|_| ())?;
+        self.git(repo_path, ["merge", "--squash", "--no-commit", from_branch])
+            .map(|_| ())?;
+        self.git(repo_path, ["commit", "-m", message]).map(|_| ())?;
+        let sha = self
+            .git(repo_path, ["rev-parse", "HEAD"])?
+            .trim()
+            .to_string();
+        Ok(sha)
+    }
+
+    /// Update a ref to a specific sha in the repo.
+    pub fn update_ref(
+        &self,
+        repo_path: &Path,
+        refname: &str,
+        sha: &str,
+    ) -> Result<(), GitCliError> {
+        self.git(repo_path, ["update-ref", refname, sha])
+            .map(|_| ())
+    }
+}
+
+// Private methods
+impl GitCli {
+    /// Ensure `git` is available on PATH
+    fn ensure_available(&self) -> Result<(), GitCliError> {
+        let git = resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?;
+        let out = Command::new(&git)
+            .arg("--version")
+            .output()
+            .map_err(|_| GitCliError::NotAvailable)?;
+        if out.status.success() {
+            Ok(())
+        } else {
+            Err(GitCliError::NotAvailable)
+        }
+    }
+
+    /// Run `git -C <repo_path> <args...>` and return stdout on success.
+    /// Caller may ignore the output; errors surface via Result.
+    ///
+    /// About `OsStr`/`OsString` usage:
+    /// - `Command` and `Path` operate on `OsStr` to support non‑UTF‑8 paths and
+    ///   arguments across platforms. Using `String` would force lossy conversion
+    ///   or partial failures. This API accepts anything that implements
+    ///   `AsRef<OsStr>` so typical call sites can still pass `&str` literals or
+    ///   owned `String`s without friction.
+    pub fn git<I, S>(&self, repo_path: &Path, args: I) -> Result<String, GitCliError>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        self.ensure_available()?;
+        let git = resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?;
+        let mut cmd = Command::new(&git);
+        cmd.arg("-C").arg(repo_path);
+        for a in args {
+            cmd.arg(a);
+        }
+        let out = cmd
+            .output()
+            .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
+        if !out.status.success() {
+            let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+            return Err(GitCliError::CommandFailed(stderr));
+        }
+        Ok(String::from_utf8_lossy(&out.stdout).to_string())
+    }
+
+    /// Like `git`, but allows passing additional environment variables.
+    fn git_with_env<I, S>(
+        &self,
+        repo_path: &Path,
+        args: I,
+        envs: &[(OsString, OsString)],
+    ) -> Result<String, GitCliError>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        self.ensure_available()?;
+        let git = resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?;
+        let mut cmd = Command::new(&git);
+        cmd.arg("-C").arg(repo_path);
+        for (k, v) in envs {
+            cmd.env(k, v);
+        }
+        for a in args {
+            cmd.arg(a);
+        }
+        let out = cmd
+            .output()
+            .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
+        if !out.status.success() {
+            let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+            return Err(GitCliError::CommandFailed(stderr));
+        }
+        Ok(String::from_utf8_lossy(&out.stdout).to_string())
     }
 }
