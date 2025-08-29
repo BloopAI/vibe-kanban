@@ -37,6 +37,7 @@ interface TaskFormDialogProps {
   task?: Task | null; // Optional for create mode
   projectId?: string; // For file search functionality
   initialTemplate?: TaskTemplate | null; // For pre-filling from template
+  initialTask?: Task | null; // For duplicating an existing task
   onCreateTask?: (
     title: string,
     description: string,
@@ -61,6 +62,7 @@ export function TaskFormDialog({
   task,
   projectId,
   initialTemplate,
+  initialTask,
   onCreateTask,
   onCreateAndStartTask,
   onUpdateTask,
@@ -132,6 +134,14 @@ export function TaskFormDialog({
             setImages([]);
           });
       }
+    } else if (initialTask) {
+      // Duplicate mode - pre-fill from existing task but reset status to 'todo' and no images
+      setTitle(initialTask.title);
+      setDescription(initialTask.description || '');
+      setStatus('todo'); // Always start duplicated tasks as 'todo'
+      setSelectedTemplate('');
+      setImages([]);
+      setNewlyUploadedImageIds([]);
     } else if (initialTemplate) {
       // Create mode with template - pre-fill from template
       setTitle(initialTemplate.title);
@@ -147,7 +157,7 @@ export function TaskFormDialog({
       setImages([]);
       setNewlyUploadedImageIds([]);
     }
-  }, [task, initialTemplate, isOpen]);
+  }, [task, initialTask, initialTemplate, isOpen]);
 
   // Fetch templates when dialog opens in create mode
   useEffect(() => {

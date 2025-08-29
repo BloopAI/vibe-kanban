@@ -27,6 +27,7 @@ interface TaskDialogState {
   mode: 'create' | 'edit';
   task: Task | null;
   initialTemplate: TaskTemplate | null;
+  initialTask: Task | null;
   afterSubmit?: (task: Task) => void;
 }
 
@@ -41,6 +42,7 @@ interface TaskDialogAPI {
     template: TaskTemplate,
     options?: TaskDialogOptions
   ) => void;
+  openDuplicate: (task: Task, options?: TaskDialogOptions) => void;
   close: () => void;
 
   // For dialog component to call after successful operations
@@ -59,6 +61,7 @@ export function TaskDialogProvider({ children }: TaskDialogProviderProps) {
     mode: 'create',
     task: null,
     initialTemplate: null,
+    initialTask: null,
     afterSubmit: undefined,
   });
 
@@ -68,6 +71,7 @@ export function TaskDialogProvider({ children }: TaskDialogProviderProps) {
       mode: 'create',
       task: null,
       initialTemplate: null,
+      initialTask: null,
       afterSubmit: options?.onSuccess,
     });
   }, []);
@@ -78,6 +82,7 @@ export function TaskDialogProvider({ children }: TaskDialogProviderProps) {
       mode: 'edit',
       task,
       initialTemplate: null,
+      initialTask: null,
       afterSubmit: options?.onSuccess,
     });
   }, []);
@@ -89,6 +94,21 @@ export function TaskDialogProvider({ children }: TaskDialogProviderProps) {
         mode: 'create',
         task: null,
         initialTemplate: template,
+        initialTask: null,
+        afterSubmit: options?.onSuccess,
+      });
+    },
+    []
+  );
+
+  const openDuplicate = useCallback(
+    (sourceTask: Task, options?: TaskDialogOptions) => {
+      setDialogState({
+        isOpen: true,
+        mode: 'create',
+        task: null,
+        initialTemplate: null,
+        initialTask: sourceTask,
         afterSubmit: options?.onSuccess,
       });
     },
@@ -119,10 +139,11 @@ export function TaskDialogProvider({ children }: TaskDialogProviderProps) {
       openCreate,
       openEdit,
       openFromTemplate,
+      openDuplicate,
       close,
       handleSuccess,
     }),
-    [dialogState, openCreate, openEdit, openFromTemplate, close, handleSuccess]
+    [dialogState, openCreate, openEdit, openFromTemplate, openDuplicate, close, handleSuccess]
   );
 
   return (

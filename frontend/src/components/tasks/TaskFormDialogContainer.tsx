@@ -129,6 +129,7 @@ export function TaskFormDialogContainer() {
       task={dialogState.task}
       projectId={projectId || undefined}
       initialTemplate={dialogState.initialTemplate}
+      initialTask={dialogState.initialTask}
       onCreateTask={handleCreateTask}
       onCreateAndStartTask={handleCreateAndStartTask}
       onUpdateTask={handleUpdateTask}

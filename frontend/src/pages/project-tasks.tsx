@@ -45,7 +45,7 @@ export function ProjectTasks() {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { openCreate, openEdit } = useTaskDialog();
+  const { openCreate, openEdit, openDuplicate } = useTaskDialog();
   const [isProjectSettingsOpen, setIsProjectSettingsOpen] = useState(false);
   const { query: searchQuery } = useSearch();
 
@@ -185,6 +185,13 @@ export function ProjectTasks() {
       openEdit(task);
     },
     [openEdit]
+  );
+
+  const handleDuplicateTask = useCallback(
+    (task: Task) => {
+      openDuplicate(task);
+    },
+    [openDuplicate]
   );
 
   const handleViewTaskDetails = useCallback(
@@ -336,6 +343,7 @@ export function ProjectTasks() {
               onDragEnd={handleDragEnd}
               onEditTask={handleEditTask}
               onDeleteTask={handleDeleteTask}
+              onDuplicateTask={handleDuplicateTask}
               onViewTaskDetails={handleViewTaskDetails}
               isPanelOpen={isPanelOpen}
             />

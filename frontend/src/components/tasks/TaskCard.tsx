@@ -9,6 +9,7 @@ import {
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
 import {
   CheckCircle,
+  Copy,
   Edit,
   Loader2,
   MoreHorizontal,
@@ -25,6 +26,7 @@ interface TaskCardProps {
   status: string;
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
+  onDuplicate?: (task: Task) => void;
   onViewDetails: (task: Task) => void;
   isFocused: boolean;
   tabIndex?: number;
@@ -36,6 +38,7 @@ export function TaskCard({
   status,
   onEdit,
   onDelete,
+  onDuplicate,
   onViewDetails,
   isFocused,
   tabIndex = -1,
@@ -114,6 +117,12 @@ export function TaskCard({
                   <Edit className="h-4 w-4 mr-2" />
                   Edit
                 </DropdownMenuItem>
+                {onDuplicate && (
+                  <DropdownMenuItem onClick={() => onDuplicate(task)}>
+                    <Copy className="h-4 w-4 mr-2" />
+                    Duplicate
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onClick={() => onDelete(task.id)}
                   className="text-destructive"

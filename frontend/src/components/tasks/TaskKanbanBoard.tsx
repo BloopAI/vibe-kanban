@@ -23,6 +23,7 @@ interface TaskKanbanBoardProps {
   onDragEnd: (event: DragEndEvent) => void;
   onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
+  onDuplicateTask?: (task: Task) => void;
   onViewTaskDetails: (task: Task) => void;
   isPanelOpen: boolean;
 }
@@ -41,6 +42,7 @@ function TaskKanbanBoard({
   onDragEnd,
   onEditTask,
   onDeleteTask,
+  onDuplicateTask,
   onViewTaskDetails,
   isPanelOpen,
 }: TaskKanbanBoardProps) {
@@ -150,6 +152,7 @@ function TaskKanbanBoard({
                 status={status}
                 onEdit={onEditTask}
                 onDelete={onDeleteTask}
+                onDuplicate={onDuplicateTask}
                 onViewDetails={onViewTaskDetails}
                 isFocused={focusedTaskId === task.id}
                 tabIndex={focusedTaskId === task.id ? 0 : -1}
