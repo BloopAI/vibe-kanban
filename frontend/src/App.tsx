@@ -31,6 +31,7 @@ import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
 import { ReleaseNotesDialog } from '@/components/ReleaseNotesDialog';
 import { AppWithStyleOverride } from '@/utils/style-override';
 import { WebviewContextMenu } from '@/vscode/ContextMenu';
+import { DevBanner } from '@/components/DevBanner';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
@@ -212,6 +213,7 @@ function AppContent() {
             />
             <CreatePRDialog />
             <TaskFormDialogContainer />
+            {showNavbar && <DevBanner />}
             {showNavbar && <Navbar />}
             <div className="flex-1 h-full overflow-y-scroll">
               <SentryRoutes>
