@@ -96,7 +96,7 @@ export const KanbanCard = ({
   return (
     <Card
       className={cn(
-        'p-3 focus:ring-2 outline-none border-b flex-col space-y-2',
+        'p-3 focus:ring-2 ring-secondary-foreground outline-none border-b flex-col space-y-2',
         isDragging && 'cursor-grabbing',
         className
       )}

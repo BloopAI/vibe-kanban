@@ -315,7 +315,7 @@ export function ProjectTasks() {
       {/* Left Column - Kanban Section */}
       <div className={getKanbanSectionClasses(isPanelOpen, isFullscreen)}>
         {tasks.length === 0 ? (
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-7xl mx-auto mt-8">
             <Card>
               <CardContent className="text-center py-8">
                 <p className="text-muted-foreground">
