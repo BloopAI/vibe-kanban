@@ -11,7 +11,7 @@ use crate::services::config::versions::{v4::ProfileVariantLabel, v5};
 pub struct Config {
     pub config_version: String,
     pub theme: ThemeMode,
-    pub profile: ExecutorProfileId,
+    pub executor_profile: ExecutorProfileId,
     pub disclaimer_acknowledged: bool,
     pub onboarding_acknowledged: bool,
     pub github_login_acknowledged: bool,
@@ -26,10 +26,6 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn get_executor_profile_id(&self) -> ExecutorProfileId {
-        self.profile.clone()
-    }
-
     pub fn from_previous_version(raw_config: &str) -> Result<Self, Error> {
         let old_config = match serde_json::from_str::<v5::Config>(raw_config) {
             Ok(cfg) => cfg,
@@ -64,7 +60,7 @@ impl Config {
         let configs = ExecutorProfileConfigs::from_defaults_v3();
         let executor_upper = old_config.profile.profile.to_uppercase();
 
-        let (profile, onboarding_acknowledged) = if let Some(executor_profile) =
+        let (executor_profile, onboarding_acknowledged) = if let Some(executor_profile) =
             configs.get_executor_profile(&executor_upper)
         {
             // Check if variant exists for this executor
@@ -120,7 +116,7 @@ impl Config {
         Ok(Self {
             config_version: "v6".to_string(),
             theme: old_config.theme,
-            profile,
+            executor_profile,
             disclaimer_acknowledged: old_config.disclaimer_acknowledged,
             onboarding_acknowledged,
             github_login_acknowledged: old_config.github_login_acknowledged,
@@ -162,7 +158,7 @@ impl Default for Config {
         Self {
             config_version: "v6".to_string(),
             theme: ThemeMode::System,
-            profile: ExecutorProfileId::new("CLAUDE_CODE".to_string()),
+            executor_profile: ExecutorProfileId::new("CLAUDE_CODE".to_string()),
             disclaimer_acknowledged: false,
             onboarding_acknowledged: false,
             github_login_acknowledged: false,

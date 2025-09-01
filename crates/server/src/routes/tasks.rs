@@ -100,7 +100,7 @@ pub async fn create_task_and_start(
         .await;
 
     // use the default executor profile and the current branch for the task attempt
-    let executor_profile_id = deployment.config().read().await.get_executor_profile_id();
+    let executor_profile_id = deployment.config().read().await.executor_profile.clone();
     let project = Project::find_by_id(&deployment.db().pool, payload.project_id)
         .await?
         .ok_or(ApiError::Database(SqlxError::RowNotFound))?;
