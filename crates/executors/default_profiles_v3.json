@@ -40,7 +40,7 @@
           "yolo": true
         }
       },
-      "flash": {
+      "FLASH": {
         "GEMINI": {
           "model": "flash",
           "append_prompt": null,
