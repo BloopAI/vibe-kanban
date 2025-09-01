@@ -3,31 +3,24 @@
     "CLAUDE_CODE": {
       "DEFAULT": {
         "CLAUDE_CODE": {
-          "plan": false,
-          "dangerously_skip_permissions": true,
-          "append_prompt": null
+          "dangerously_skip_permissions": true
         }
       },
       "PLAN": {
         "CLAUDE_CODE": {
-          "plan": true,
-          "dangerously_skip_permissions": false,
-          "append_prompt": null
+          "plan": true
         }
       },
       "ROUTER": {
         "CLAUDE_CODE": {
           "claude_code_router": true,
-          "plan": false,
-          "dangerously_skip_permissions": true,
-          "append_prompt": null
+          "dangerously_skip_permissions": true
         }
       }
     },
     "AMP": {
       "DEFAULT": {
         "AMP": {
-          "append_prompt": null,
           "dangerously_allow_all": true
         }
       }
@@ -36,14 +29,12 @@
       "DEFAULT": {
         "GEMINI": {
           "model": "default",
-          "append_prompt": null,
           "yolo": true
         }
       },
       "FLASH": {
         "GEMINI": {
           "model": "flash",
-          "append_prompt": null,
           "yolo": true
         }
       }
@@ -51,22 +42,18 @@
     "CODEX": {
       "DEFAULT": {
         "CODEX": {
-          "append_prompt": null,
           "dangerously_bypass_approvals_and_sandbox": true
         }
       }
     },
     "OPENCODE": {
       "DEFAULT": {
-        "OPENCODE": {
-          "append_prompt": null
-        }
+        "OPENCODE": {}
       }
     },
     "QWEN_CODE": {
       "DEFAULT": {
         "QWEN_CODE": {
-          "append_prompt": null,
           "yolo": true
         }
       }
@@ -74,7 +61,6 @@
     "CURSOR": {
       "DEFAULT": {
         "CURSOR": {
-          "append_prompt": null,
           "force": true
         }
       }
