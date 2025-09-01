@@ -14,7 +14,7 @@ use db::models::project::{
 use deployment::Deployment;
 use ignore::WalkBuilder;
 use services::services::{file_ranker::FileRanker, git::GitBranch};
-use utils::response::ApiResponse;
+use utils::{path::expand_tilde, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{error::ApiError, middleware::load_project_middleware, DeploymentImpl};
@@ -64,7 +64,9 @@ pub async fn create_project(
     }
 
     // Validate and setup git repository
-    let path = std::path::Path::new(&payload.git_repo_path);
+    // Expand tilde in git repo path if present
+    let expanded_path = expand_tilde(&payload.git_repo_path);
+    let path = expanded_path.as_path();
 
     if payload.use_existing_repo {
         // For existing repos, validate that the path exists and is a git repository
