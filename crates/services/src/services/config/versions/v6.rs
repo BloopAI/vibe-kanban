@@ -5,7 +5,7 @@ use ts_rs::TS;
 use utils;
 pub use v5::{EditorConfig, EditorType, GitHubConfig, NotificationConfig, SoundFile, ThemeMode};
 
-use crate::services::config::versions::{v4::ProfileVariantLabel, v5};
+use crate::services::config::versions::v5;
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct Config {
