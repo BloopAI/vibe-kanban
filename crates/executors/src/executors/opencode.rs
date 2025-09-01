@@ -157,6 +157,18 @@ impl StandardCodingAgentExecutor for Opencode {
             msg_store,
         ));
     }
+
+    // MCP configuration methods
+    fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
+        #[cfg(unix)]
+        {
+            xdg::BaseDirectories::with_prefix("opencode").get_config_file("opencode.json")
+        }
+        #[cfg(not(unix))]
+        {
+            dirs::config_dir().map(|config| config.join("opencode").join("opencode.json"))
+        }
+    }
 }
 impl Opencode {
     async fn process_opencode_log_lines(

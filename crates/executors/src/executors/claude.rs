@@ -177,6 +177,11 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         // Process stderr logs using the standard stderr processor
         normalize_stderr_logs(msg_store, entry_index_provider);
     }
+
+    // MCP configuration methods
+    fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
+        dirs::home_dir().map(|home| home.join(".claude.json"))
+    }
 }
 
 fn create_watchkill_script(command: &str) -> String {

@@ -122,4 +122,9 @@ impl StandardCodingAgentExecutor for Amp {
         // Process stderr logs using the standard stderr processor
         normalize_stderr_logs(msg_store, entry_index_provider);
     }
+
+    // MCP configuration methods
+    fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
+        dirs::config_dir().map(|config| config.join("amp").join("settings.json"))
+    }
 }

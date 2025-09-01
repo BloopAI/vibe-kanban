@@ -1,7 +1,6 @@
 {
   "profiles": {
     "claude-code": {
-      "mcp_config_path": null,
       "CLAUDE_CODE": {
         "plan": false,
         "dangerously_skip_permissions": true,
@@ -9,7 +8,6 @@
       },
       "variants": {
         "plan": {
-          "mcp_config_path": null,
           "CLAUDE_CODE": {
             "plan": true,
             "dangerously_skip_permissions": false,
@@ -19,7 +17,6 @@
       }
     },
     "claude-code-router": {
-      "mcp_config_path": null,
       "CLAUDE_CODE": {
         "claude_code_router": true,
         "plan": false,
@@ -29,7 +26,6 @@
       "variants": {}
     },
     "amp": {
-      "mcp_config_path": null,
       "AMP": {
         "append_prompt": null,
         "dangerously_allow_all": true
@@ -37,7 +33,6 @@
       "variants": {}
     },
     "gemini": {
-      "mcp_config_path": null,
       "GEMINI": {
         "model": "default",
         "append_prompt": null,
@@ -45,7 +40,6 @@
       },
       "variants": {
         "flash": {
-          "mcp_config_path": null,
           "GEMINI": {
             "model": "flash",
             "append_prompt": null,
@@ -55,7 +49,6 @@
       }
     },
     "codex": {
-      "mcp_config_path": null,
       "CODEX": {
         "append_prompt": null,
         "dangerously_bypass_approvals_and_sandbox": true
@@ -63,14 +56,12 @@
       "variants": {}
     },
     "opencode": {
-      "mcp_config_path": null,
       "OPENCODE": {
         "append_prompt": null
       },
       "variants": {}
     },
     "qwen-code": {
-      "mcp_config_path": "~/.qwen/settings.json",
       "QWEN_CODE": {
         "append_prompt": null,
         "yolo": true
@@ -78,7 +69,6 @@
       "variants": {}
     },
     "cursor": {
-      "mcp_config_path": null,
       "CURSOR": {
         "append_prompt": null,
         "force": true

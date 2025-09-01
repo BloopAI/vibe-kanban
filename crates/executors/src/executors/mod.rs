@@ -85,10 +85,6 @@ impl CodingAgent {
         }
     }
 
-    pub fn supports_mcp(&self) -> bool {
-        self.default_mcp_config_path().is_some()
-    }
-
     pub fn get_mcp_config(&self) -> McpConfig {
         match self {
             Self::Codex(_) => McpConfig::new(
@@ -142,34 +138,18 @@ impl CodingAgent {
 
     pub fn default_mcp_config_path(&self) -> Option<PathBuf> {
         match self {
-            //ExecutorConfig::CharmOpencode => {
-            //dirs::home_dir().map(|home| home.join(".opencode.json"))
-            //}
-            Self::ClaudeCode(_) => dirs::home_dir().map(|home| home.join(".claude.json")),
-            //ExecutorConfig::ClaudePlan => dirs::home_dir().map(|home| home.join(".claude.json")),
-            Self::Opencode(_) => {
-                #[cfg(unix)]
-                {
-                    xdg::BaseDirectories::with_prefix("opencode").get_config_file("opencode.json")
-                }
-                #[cfg(not(unix))]
-                {
-                    dirs::config_dir().map(|config| config.join("opencode").join("opencode.json"))
-                }
-            }
-            //ExecutorConfig::Aider => None,
-            Self::Codex(_) => dirs::home_dir().map(|home| home.join(".codex").join("config.toml")),
-            Self::Amp(_) => {
-                dirs::config_dir().map(|config| config.join("amp").join("settings.json"))
-            }
-            Self::Gemini(_) => {
-                dirs::home_dir().map(|home| home.join(".gemini").join("settings.json"))
-            }
-            Self::Cursor(_) => dirs::home_dir().map(|home| home.join(".cursor").join("mcp.json")),
-            Self::QwenCode(_) => {
-                dirs::home_dir().map(|home| home.join(".qwen").join("settings.json"))
-            }
+            Self::ClaudeCode(agent) => agent.default_mcp_config_path(),
+            Self::Amp(agent) => agent.default_mcp_config_path(),
+            Self::Gemini(agent) => agent.default_mcp_config_path(),
+            Self::Codex(agent) => agent.default_mcp_config_path(),
+            Self::Opencode(agent) => agent.default_mcp_config_path(),
+            Self::Cursor(agent) => agent.default_mcp_config_path(),
+            Self::QwenCode(agent) => agent.default_mcp_config_path(),
         }
+    }
+
+    pub fn supports_mcp(&self) -> bool {
+        self.default_mcp_config_path().is_some()
     }
 }
 
@@ -188,4 +168,7 @@ pub trait StandardCodingAgentExecutor {
         session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError>;
     fn normalize_logs(&self, _raw_logs_event_store: Arc<MsgStore>, _worktree_path: &PathBuf);
+
+    // MCP configuration methods
+    fn default_mcp_config_path(&self) -> Option<std::path::PathBuf>;
 }

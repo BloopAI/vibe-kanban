@@ -390,6 +390,11 @@ impl StandardCodingAgentExecutor for Cursor {
             }
         });
     }
+
+    // MCP configuration methods
+    fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
+        dirs::home_dir().map(|home| home.join(".cursor").join("mcp.json"))
+    }
 }
 
 fn strip_cursor_ascii_art_banner(line: String) -> String {

@@ -437,6 +437,11 @@ impl StandardCodingAgentExecutor for Codex {
             }
         });
     }
+
+    // MCP configuration methods
+    fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
+        dirs::home_dir().map(|home| home.join(".codex").join("config.toml"))
+    }
 }
 
 // Data structures for parsing Codex's JSON output format

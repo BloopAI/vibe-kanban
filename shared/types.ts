@@ -118,17 +118,9 @@ export type ProfileConfig = {
 /**
  * additional variants for this profile, e.g. plan, review, subagent
  */
-variants: { [key in string]?: VariantAgentConfig }, 
-/**
- * Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
- */
-mcp_config_path?: string | null, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor } | { "QWEN_CODE": QwenCode });
+variants: { [key in string]?: VariantAgentConfig }, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor } | { "QWEN_CODE": QwenCode });
 
-export type VariantAgentConfig = { 
-/**
- * Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
- */
-mcp_config_path?: string | null, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor } | { "QWEN_CODE": QwenCode });
+export type VariantAgentConfig = { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor } | { "QWEN_CODE": QwenCode };
 
 export type ProfileConfigs = { profiles: { [key in string]?: ProfileConfig }, };
 

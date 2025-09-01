@@ -24,9 +24,6 @@ pub struct VariantAgentConfig {
     /// The coding agent this profile is associated with
     #[serde(flatten)]
     pub agent: CodingAgent,
-    /// Optional profile-specific MCP config file path (absolute; supports leading ~). Overrides the default `BaseCodingAgent` config path
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub mcp_config_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
@@ -45,10 +42,7 @@ impl ProfileConfig {
     }
 
     pub fn get_mcp_config_path(&self) -> Option<PathBuf> {
-        match self.default.mcp_config_path.as_ref() {
-            Some(path) => Some(PathBuf::from(path)),
-            None => self.default.agent.default_mcp_config_path(),
-        }
+        self.default.agent.default_mcp_config_path()
     }
 }
 
@@ -451,12 +445,10 @@ mod tests {
                     additional_params: None,
                 },
             }),
-            mcp_config_path: None, // This should be omitted
         };
 
         let json = serde_json::to_string(&variant).unwrap();
         assert!(!json.contains("null"));
-        assert!(!json.contains("mcp_config_path"));
         assert!(!json.contains("plan")); // Should be omitted when false
 
         // Test PartialProfileConfig with all None values
@@ -557,7 +549,6 @@ mod tests {
             "profiles": {
                 "test-claude": {
                     "label": "test-claude",
-                    "mcp_config_path": null,
                     "CLAUDE_CODE": {
                         "variant": "claude_code",
                         "plan": true,
@@ -567,7 +558,6 @@ mod tests {
                 },
                 "test-gemini": {
                     "label": "test-gemini",
-                    "mcp_config_path": null,
                     "GEMINI": {
                         "model": "flash",
                         "append_prompt": null

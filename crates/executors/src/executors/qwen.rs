@@ -129,4 +129,9 @@ impl StandardCodingAgentExecutor for QwenCode {
             }
         });
     }
+
+    // MCP configuration methods
+    fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
+        dirs::home_dir().map(|home| home.join(".qwen").join("settings.json"))
+    }
 }

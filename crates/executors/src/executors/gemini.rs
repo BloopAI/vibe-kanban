@@ -202,6 +202,11 @@ impl StandardCodingAgentExecutor for Gemini {
             }
         });
     }
+
+    // MCP configuration methods
+    fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
+        dirs::home_dir().map(|home| home.join(".gemini").join("settings.json"))
+    }
 }
 
 impl Gemini {
