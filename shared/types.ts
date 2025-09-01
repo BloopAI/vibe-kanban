@@ -54,7 +54,7 @@ export type CreateImage = { file_path: string, original_name: string, mime_type:
 
 export type ApiResponse<T, E = T> = { success: boolean, data: T | null, error_data: E | null, message: string | null, };
 
-export type UserSystemInfo = { config: Config, environment: Environment, profiles: { [key in string]?: ProfileConfig }, };
+export type UserSystemInfo = { config: Config, environment: Environment, executors: { [key in string]?: ExecutorProfile }, };
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
 
@@ -72,7 +72,11 @@ export type ImageResponse = { id: string, file_path: string, original_name: stri
 
 export enum GitHubServiceError { TOKEN_INVALID = "TOKEN_INVALID", INSUFFICIENT_PERMISSIONS = "INSUFFICIENT_PERMISSIONS", REPO_NOT_FOUND_OR_NO_ACCESS = "REPO_NOT_FOUND_OR_NO_ACCESS" }
 
-export type Config = { config_version: string, theme: ThemeMode, profile: ProfileVariantLabel, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, github_login_acknowledged: boolean, telemetry_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean | null, workspace_dir: string | null, last_app_version: string | null, show_release_notes: boolean, };
+export type Config = { config_version: string, theme: ThemeMode, 
+/**
+ * Executor profile specification
+ */
+executor_profile: ExecutorProfileId, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, github_login_acknowledged: boolean, telemetry_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean | null, workspace_dir: string | null, last_app_version: string | null, show_release_notes: boolean, };
 
 export type NotificationConfig = { sound_enabled: boolean, push_enabled: boolean, sound_file: SoundFile, };
 
@@ -112,17 +116,21 @@ base: string,
  */
 params: Array<string> | null, };
 
-export type ProfileVariantLabel = { profile: string, variant: string | null, };
-
-export type ProfileConfig = { 
+export type ExecutorProfileId = { 
 /**
- * additional variants for this profile, e.g. plan, review, subagent
+ * The executor type (e.g., "CLAUDE_CODE", "AMP")
  */
-variants: { [key in string]?: VariantAgentConfig }, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor } | { "QWEN_CODE": QwenCode });
+executor: string, 
+/**
+ * Optional variant name (e.g., "plan", "router")
+ */
+variant: string | null, };
+
+export type ExecutorProfile = { [key in string]: VariantAgentConfig };
 
 export type VariantAgentConfig = { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor } | { "QWEN_CODE": QwenCode };
 
-export type ProfileConfigs = { profiles: { [key in string]?: ProfileConfig }, };
+export type ExecutorConfigs = { executors: { [key in string]?: ExecutorProfile }, };
 
 export type ClaudeCode = { claude_code_router?: boolean | null, append_prompt?: string | null, plan?: boolean | null, dangerously_skip_permissions?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, };
 
@@ -140,11 +148,23 @@ export type Opencode = { append_prompt?: string | null, };
 
 export type QwenCode = { append_prompt?: string | null, yolo?: boolean | null, };
 
-export type CodingAgentInitialRequest = { prompt: string, profile_variant_label: ProfileVariantLabel, };
+export type CodingAgentInitialRequest = { prompt: string, 
+/**
+ * Executor profile specification
+ */
+executor_profile_id: ExecutorProfileId, };
 
-export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, profile_variant_label: ProfileVariantLabel, };
+export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, 
+/**
+ * Executor profile specification
+ */
+executor_profile_id: ExecutorProfileId, };
 
-export type CreateTaskAttemptBody = { task_id: string, profile_variant_label: ProfileVariantLabel | null, base_branch: string, };
+export type CreateTaskAttemptBody = { task_id: string, 
+/**
+ * Executor profile specification
+ */
+executor_profile_id: ExecutorProfileId, base_branch: string, };
 
 export type RebaseTaskAttemptRequest = { new_base_branch: string | null, };
 

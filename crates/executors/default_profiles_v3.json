@@ -1,0 +1,83 @@
+{
+  "executors": {
+    "CLAUDE_CODE": {
+      "DEFAULT": {
+        "CLAUDE_CODE": {
+          "plan": false,
+          "dangerously_skip_permissions": true,
+          "append_prompt": null
+        }
+      },
+      "PLAN": {
+        "CLAUDE_CODE": {
+          "plan": true,
+          "dangerously_skip_permissions": false,
+          "append_prompt": null
+        }
+      },
+      "ROUTER": {
+        "CLAUDE_CODE": {
+          "claude_code_router": true,
+          "plan": false,
+          "dangerously_skip_permissions": true,
+          "append_prompt": null
+        }
+      }
+    },
+    "AMP": {
+      "DEFAULT": {
+        "AMP": {
+          "append_prompt": null,
+          "dangerously_allow_all": true
+        }
+      }
+    },
+    "GEMINI": {
+      "DEFAULT": {
+        "GEMINI": {
+          "model": "default",
+          "append_prompt": null,
+          "yolo": true
+        }
+      },
+      "flash": {
+        "GEMINI": {
+          "model": "flash",
+          "append_prompt": null,
+          "yolo": true
+        }
+      }
+    },
+    "CODEX": {
+      "DEFAULT": {
+        "CODEX": {
+          "append_prompt": null,
+          "dangerously_bypass_approvals_and_sandbox": true
+        }
+      }
+    },
+    "OPENCODE": {
+      "DEFAULT": {
+        "OPENCODE": {
+          "append_prompt": null
+        }
+      }
+    },
+    "QWEN_CODE": {
+      "DEFAULT": {
+        "QWEN_CODE": {
+          "append_prompt": null,
+          "yolo": true
+        }
+      }
+    },
+    "CURSOR": {
+      "DEFAULT": {
+        "CURSOR": {
+          "append_prompt": null,
+          "force": true
+        }
+      }
+    }
+  }
+}

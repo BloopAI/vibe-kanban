@@ -11,7 +11,7 @@ use axum::{
 use deployment::{Deployment, DeploymentError};
 use executors::{
     mcp_config::{read_agent_config, write_agent_config, McpConfig},
-    profile::ProfileConfigs,
+    profile::{ExecutorConfigs, ExecutorProfileConfigs},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -61,7 +61,7 @@ impl Environment {
 pub struct UserSystemInfo {
     pub config: Config,
     #[serde(flatten)]
-    pub profiles: ProfileConfigs,
+    pub profiles: ExecutorProfileConfigs,
     pub environment: Environment,
 }
 
@@ -74,7 +74,7 @@ async fn get_user_system_info(
 
     let user_system_info = UserSystemInfo {
         config: config.clone(),
-        profiles: ProfileConfigs::get_cached(),
+        profiles: ExecutorProfileConfigs::get_cached(),
         environment: Environment::new(),
     };
 
@@ -133,15 +133,20 @@ async fn get_mcp_servers(
     State(_deployment): State<DeploymentImpl>,
     Query(query): Query<McpServerQuery>,
 ) -> Result<ResponseJson<ApiResponse<GetMcpServerResponse>>, ApiError> {
-    let profiles = ProfileConfigs::get_cached();
-    let profile = profiles.get_profile(&query.profile).ok_or_else(|| {
-        ApiError::Config(ConfigError::ValidationError(format!(
-            "Profile not found: {}",
-            query.profile
-        )))
-    })?;
+    let profiles = ExecutorProfileConfigs::get_cached();
+    let profile = profiles
+        .get_executor_profile(&query.profile)
+        .ok_or_else(|| {
+            ApiError::Config(ConfigError::ValidationError(format!(
+                "Executor profile not found: {}",
+                query.profile
+            )))
+        })?;
 
-    if !profile.default.agent.supports_mcp() {
+    if !profile
+        .get_default()
+        .is_some_and(|config| config.agent.supports_mcp())
+    {
         return Ok(ResponseJson(ApiResponse::error(
             "This executor does not support MCP servers",
         )));
@@ -157,7 +162,7 @@ async fn get_mcp_servers(
         }
     };
 
-    let mut mcpc = profile.default.agent.get_mcp_config();
+    let mut mcpc = profile.get_default().unwrap().agent.get_mcp_config();
     let raw_config = read_agent_config(&config_path, &mcpc).await?;
     let servers = get_mcp_servers_from_config_path(&raw_config, &mcpc.servers_path);
     mcpc.set_servers(servers);
@@ -172,16 +177,17 @@ async fn update_mcp_servers(
     Query(query): Query<McpServerQuery>,
     Json(payload): Json<UpdateMcpServersBody>,
 ) -> Result<ResponseJson<ApiResponse<String>>, ApiError> {
-    let profiles = ProfileConfigs::get_cached();
+    let profiles = ExecutorProfileConfigs::get_cached();
     let agent = &profiles
-        .get_profile(&query.profile)
+        .get_executor_profile(&query.profile)
         .ok_or_else(|| {
             ApiError::Config(ConfigError::ValidationError(format!(
-                "Profile not found: {}",
+                "Executor profile not found: {}",
                 query.profile
             )))
         })?
-        .default
+        .get_default()
+        .unwrap()
         .agent;
 
     if !agent.supports_mcp() {
@@ -192,7 +198,7 @@ async fn update_mcp_servers(
 
     // Resolve supplied config path or agent default
     let config_path = match agent.default_mcp_config_path() {
-        Some(path) => path,
+        Some(path) => path.to_path_buf(),
         None => {
             return Ok(ResponseJson(ApiResponse::error(
                 "Could not determine config file path",
@@ -312,11 +318,11 @@ async fn get_profiles(
     let profiles_path = utils::assets::profiles_path();
 
     // Use cached data to ensure consistency with runtime and PUT updates
-    let profiles = ProfileConfigs::get_cached();
+    let profiles = ExecutorProfileConfigs::get_cached();
 
     let content = serde_json::to_string_pretty(&profiles).unwrap_or_else(|e| {
         tracing::error!("Failed to serialize profiles to JSON: {}", e);
-        serde_json::to_string_pretty(&ProfileConfigs::from_defaults())
+        serde_json::to_string_pretty(&ExecutorConfigs::from_defaults_v3())
             .unwrap_or_else(|_| "{}".to_string())
     });
 
@@ -330,27 +336,30 @@ async fn update_profiles(
     State(_deployment): State<DeploymentImpl>,
     body: String,
 ) -> ResponseJson<ApiResponse<String>> {
-    // Try to parse as full ProfileConfigs first (legacy clients)
-    match serde_json::from_str::<ProfileConfigs>(&body) {
-        Ok(full_profiles) => {
-            // Save as partial format (diffs from defaults)
-            match full_profiles.save_as_diffs() {
+    // Try to parse as ExecutorProfileConfigs format
+    match serde_json::from_str::<ExecutorProfileConfigs>(&body) {
+        Ok(executor_profiles) => {
+            // Save the profiles to file
+            match executor_profiles.save_overrides() {
                 Ok(_) => {
-                    tracing::info!("Full profiles converted and saved as partials");
+                    tracing::info!("Executor profiles saved successfully");
                     // Reload the cached profiles
-                    ProfileConfigs::reload();
+                    ExecutorProfileConfigs::reload();
                     ResponseJson(ApiResponse::success(
-                        "Profiles updated successfully".to_string(),
+                        "Executor profiles updated successfully".to_string(),
                     ))
                 }
-                Err(e) => ResponseJson(ApiResponse::error(&format!(
-                    "Failed to save profiles as diffs: {}",
-                    e
-                ))),
+                Err(e) => {
+                    tracing::error!("Failed to save executor profiles: {}", e);
+                    ResponseJson(ApiResponse::error(&format!(
+                        "Failed to save executor profiles: {}",
+                        e
+                    )))
+                }
             }
         }
         Err(e) => ResponseJson(ApiResponse::error(&format!(
-            "Invalid profiles format: {}",
+            "Invalid executor profiles format: {}",
             e
         ))),
     }

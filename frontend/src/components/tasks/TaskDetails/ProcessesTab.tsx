@@ -13,6 +13,7 @@ import { ProfileVariantBadge } from '@/components/common/ProfileVariantBadge.tsx
 import { useAttemptExecution } from '@/hooks';
 import ProcessLogsViewer from './ProcessLogsViewer';
 import type { ExecutionProcessStatus, ExecutionProcess } from 'shared/types';
+
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
 
 interface ProcessesTabProps {
@@ -157,8 +158,7 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
                             'CodingAgentFollowUpRequest' ? (
                             <ProfileVariantBadge
                               profileVariant={
-                                process.executor_action.typ
-                                  .profile_variant_label
+                                process.executor_action.typ.executor_profile_id
                               }
                             />
                           ) : null}

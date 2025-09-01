@@ -61,7 +61,7 @@ export function TaskFollowUpSection({
           process.executor_action?.typ.type === 'CodingAgentInitialRequest' ||
           process.executor_action?.typ.type === 'CodingAgentFollowUpRequest'
         ) {
-          return process.executor_action?.typ.profile_variant_label;
+          return process.executor_action?.typ.executor_profile_id;
         }
         return undefined;
       })
@@ -74,8 +74,8 @@ export function TaskFollowUpSection({
     } else if (selectedAttemptProfile && profiles) {
       // No processes yet, check if profile has default variant
       const profile = profiles?.[selectedAttemptProfile];
-      if (profile?.variants && Object.keys(profile.variants).length > 0) {
-        return Object.keys(profile.variants)[0];
+      if (profile && Object.keys(profile).length > 0) {
+        return Object.keys(profile)[0];
       }
     }
 
@@ -264,8 +264,7 @@ export function TaskFollowUpSection({
                   {/* Variant selector */}
                   {(() => {
                     const hasVariants =
-                      currentProfile?.variants &&
-                      Object.keys(currentProfile.variants).length > 0;
+                      currentProfile && Object.keys(currentProfile).length > 0;
 
                     if (hasVariants) {
                       return (
@@ -281,19 +280,13 @@ export function TaskFollowUpSection({
                               )}
                             >
                               <span className="text-xs truncate flex-1 text-left">
-                                {selectedVariant || 'Default'}
+                                {selectedVariant || 'DEFAULT'}
                               </span>
                               <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
-                            <DropdownMenuItem
-                              onClick={() => setSelectedVariant(null)}
-                              className={!selectedVariant ? 'bg-accent' : ''}
-                            >
-                              Default
-                            </DropdownMenuItem>
-                            {Object.entries(currentProfile.variants).map(
+                            {Object.entries(currentProfile).map(
                               ([variantLabel]) => (
                                 <DropdownMenuItem
                                   key={variantLabel}

@@ -1,8 +1,8 @@
-import type { ProfileVariantLabel } from 'shared/types';
+import type { ExecutorProfileId } from 'shared/types';
 import { cn } from '@/lib/utils';
 
 interface ProfileVariantBadgeProps {
-  profileVariant: ProfileVariantLabel | null;
+  profileVariant: ExecutorProfileId | null;
   className?: string;
 }
 
@@ -16,7 +16,7 @@ export function ProfileVariantBadge({
 
   return (
     <span className={cn('text-xs text-muted-foreground', className)}>
-      {profileVariant.profile}
+      {profileVariant.executor}
       {profileVariant.variant && (
         <>
           <span className="mx-1">/</span>

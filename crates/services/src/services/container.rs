@@ -31,7 +31,7 @@ use executors::{
     },
     executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
     logs::{NormalizedEntry, NormalizedEntryType, utils::patch::ConversationPatch},
-    profile::ProfileVariantLabel,
+    profile::ExecutorProfileId,
 };
 use futures::{StreamExt, TryStreamExt, future};
 use sqlx::Error as SqlxError;
@@ -321,7 +321,7 @@ pub trait ContainerService {
             match executor_action.typ() {
                 ExecutorActionType::CodingAgentInitialRequest(request) => {
                     if let Ok(executor) =
-                        CodingAgent::from_profile_variant_label(&request.profile_variant_label)
+                        CodingAgent::from_executor_profile_id(&request.get_executor_profile_id())
                     {
                         // Inject the initial user prompt before normalization (DB fallback path)
                         let user_entry = create_user_message(request.prompt.clone());
@@ -332,13 +332,13 @@ pub trait ContainerService {
                     } else {
                         tracing::error!(
                             "Failed to resolve profile '{:?}' for normalization",
-                            request.profile_variant_label
+                            request.get_executor_profile_id()
                         );
                     }
                 }
                 ExecutorActionType::CodingAgentFollowUpRequest(request) => {
                     if let Ok(executor) =
-                        CodingAgent::from_profile_variant_label(&request.profile_variant_label)
+                        CodingAgent::from_executor_profile_id(&request.get_executor_profile_id())
                     {
                         // Inject the follow-up user prompt before normalization (DB fallback path)
                         let user_entry = create_user_message(request.prompt.clone());
@@ -349,7 +349,7 @@ pub trait ContainerService {
                     } else {
                         tracing::error!(
                             "Failed to resolve profile '{:?}' for normalization",
-                            request.profile_variant_label
+                            request.get_executor_profile_id()
                         );
                     }
                 }
@@ -451,7 +451,7 @@ pub trait ContainerService {
     async fn start_attempt(
         &self,
         task_attempt: &TaskAttempt,
-        profile_variant_label: ProfileVariantLabel,
+        executor_profile_id: ExecutorProfileId,
     ) -> Result<ExecutionProcess, ContainerError> {
         // Create container
         self.create(task_attempt).await?;
@@ -505,7 +505,7 @@ pub trait ContainerService {
                 Some(Box::new(ExecutorAction::new(
                     ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                         prompt,
-                        profile_variant_label,
+                        executor_profile_id: executor_profile_id.clone(),
                     }),
                     cleanup_action,
                 ))),
@@ -521,7 +521,7 @@ pub trait ContainerService {
             let executor_action = ExecutorAction::new(
                 ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                     prompt,
-                    profile_variant_label,
+                    executor_profile_id: executor_profile_id.clone(),
                 }),
                 cleanup_action,
             );
@@ -597,7 +597,7 @@ pub trait ContainerService {
             ExecutorActionType::CodingAgentInitialRequest(request) => {
                 if let Some(msg_store) = self.get_msg_store_by_id(&execution_process.id).await {
                     if let Ok(executor) =
-                        CodingAgent::from_profile_variant_label(&request.profile_variant_label)
+                        CodingAgent::from_executor_profile_id(&request.get_executor_profile_id())
                     {
                         // Prepend the initial user prompt as a normalized entry
                         let user_entry = create_user_message(request.prompt.clone());
@@ -611,7 +611,7 @@ pub trait ContainerService {
                     } else {
                         tracing::error!(
                             "Failed to resolve profile '{:?}' for normalization",
-                            request.profile_variant_label
+                            request.get_executor_profile_id()
                         );
                     }
                 }
@@ -619,7 +619,7 @@ pub trait ContainerService {
             ExecutorActionType::CodingAgentFollowUpRequest(request) => {
                 if let Some(msg_store) = self.get_msg_store_by_id(&execution_process.id).await {
                     if let Ok(executor) =
-                        CodingAgent::from_profile_variant_label(&request.profile_variant_label)
+                        CodingAgent::from_executor_profile_id(&request.get_executor_profile_id())
                     {
                         // Prepend the follow-up user prompt as a normalized entry
                         let user_entry = create_user_message(request.prompt.clone());
@@ -633,7 +633,7 @@ pub trait ContainerService {
                     } else {
                         tracing::error!(
                             "Failed to resolve profile '{:?}' for normalization",
-                            request.profile_variant_label
+                            request.get_executor_profile_id()
                         );
                     }
                 }

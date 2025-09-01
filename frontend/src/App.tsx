@@ -22,8 +22,9 @@ import CreatePRDialog from '@/components/tasks/Toolbar/CreatePRDialog';
 import { TaskDialogProvider } from '@/contexts/task-dialog-context';
 import { TaskFormDialogContainer } from '@/components/tasks/TaskFormDialogContainer';
 import { ProjectProvider } from '@/contexts/project-context';
-import type { EditorType, ProfileVariantLabel } from 'shared/types';
+import type { EditorType } from 'shared/types';
 import { ThemeMode } from 'shared/types';
+import type { ExecutorProfileId } from 'shared/types';
 import { configApi } from '@/lib/api';
 import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
@@ -83,7 +84,7 @@ function AppContent() {
   };
 
   const handleOnboardingComplete = async (onboardingConfig: {
-    profile: ProfileVariantLabel;
+    profile: ExecutorProfileId;
     editor: { editor_type: EditorType; custom_command: string | null };
   }) => {
     if (!config) return;
@@ -91,7 +92,7 @@ function AppContent() {
     const updatedConfig = {
       ...config,
       onboarding_acknowledged: true,
-      profile: onboardingConfig.profile,
+      executor_profile: onboardingConfig.profile,
       editor: onboardingConfig.editor,
     };
 

@@ -1,5 +1,5 @@
 use anyhow::Error;
-use executors::profile::ProfileVariantLabel;
+use executors::profile::ExecutorProfileId;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 pub use v4::{EditorConfig, EditorType, GitHubConfig, NotificationConfig, SoundFile, ThemeMode};
@@ -10,7 +10,8 @@ use crate::services::config::versions::v4;
 pub struct Config {
     pub config_version: String,
     pub theme: ThemeMode,
-    pub profile: ProfileVariantLabel,
+    /// Executor profile specification
+    pub executor_profile: ExecutorProfileId,
     pub disclaimer_acknowledged: bool,
     pub onboarding_acknowledged: bool,
     pub github_login_acknowledged: bool,
@@ -25,6 +26,16 @@ pub struct Config {
 }
 
 impl Config {
+    /// Get the executor profile ID
+    pub fn get_executor_profile_id(&self) -> ExecutorProfileId {
+        self.executor_profile.clone()
+    }
+
+    /// Set executor profile ID
+    pub fn set_executor_profile_id(&mut self, executor_id: ExecutorProfileId) {
+        self.executor_profile = executor_id;
+    }
+
     pub fn from_previous_version(raw_config: &str) -> Result<Self, Error> {
         let old_config = match serde_json::from_str::<v4::Config>(raw_config) {
             Ok(cfg) => cfg,
@@ -35,10 +46,12 @@ impl Config {
             }
         };
 
+        let executor_profile_id = old_config.profile.clone();
+
         Ok(Self {
             config_version: "v5".to_string(),
             theme: old_config.theme,
-            profile: old_config.profile,
+            executor_profile: executor_profile_id,
             disclaimer_acknowledged: old_config.disclaimer_acknowledged,
             onboarding_acknowledged: old_config.onboarding_acknowledged,
             github_login_acknowledged: old_config.github_login_acknowledged,
@@ -77,10 +90,12 @@ impl From<String> for Config {
 
 impl Default for Config {
     fn default() -> Self {
+        let default_executor_id = ExecutorProfileId::new("CLAUDE_CODE".to_string());
+
         Self {
             config_version: "v5".to_string(),
             theme: ThemeMode::System,
-            profile: ProfileVariantLabel::default("claude-code".to_string()),
+            executor_profile: default_executor_id,
             disclaimer_acknowledged: false,
             onboarding_acknowledged: false,
             github_login_acknowledged: false,

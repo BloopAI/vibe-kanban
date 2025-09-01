@@ -7,12 +7,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
-import type {
-  ProfileConfig,
-  GitBranch,
-  ProfileVariantLabel,
-  Task,
-} from 'shared/types';
+import type { GitBranch, Task } from 'shared/types';
+import type { ExecutorProfile } from 'shared/types';
+import type { ExecutorProfileId } from 'shared/types';
 import type { TaskAttempt } from 'shared/types';
 import { useAttemptCreation } from '@/hooks/useAttemptCreation';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
@@ -33,12 +30,12 @@ type Props = {
   branches: GitBranch[];
   taskAttempts: TaskAttempt[];
   createAttemptBranch: string | null;
-  selectedProfile: ProfileVariantLabel | null;
+  selectedProfile: ExecutorProfileId | null;
   selectedBranch: string | null;
   setIsInCreateAttemptMode: Dispatch<SetStateAction<boolean>>;
   setCreateAttemptBranch: Dispatch<SetStateAction<string | null>>;
-  setSelectedProfile: Dispatch<SetStateAction<ProfileVariantLabel | null>>;
-  availableProfiles: Record<string, ProfileConfig> | null;
+  setSelectedProfile: Dispatch<SetStateAction<ExecutorProfileId | null>>;
+  availableProfiles: Record<string, ExecutorProfile> | null;
   selectedAttempt: TaskAttempt | null;
 };
 
@@ -67,7 +64,7 @@ function CreateAttempt({
 
   // Create attempt logic
   const actuallyCreateAttempt = useCallback(
-    async (profile: ProfileVariantLabel, baseBranch?: string) => {
+    async (profile: ExecutorProfileId, baseBranch?: string) => {
       const effectiveBaseBranch = baseBranch || selectedBranch;
 
       if (!effectiveBaseBranch) {
@@ -85,7 +82,7 @@ function CreateAttempt({
   // Handler for Enter key or Start button
   const onCreateNewAttempt = useCallback(
     (
-      profile: ProfileVariantLabel,
+      profile: ExecutorProfileId,
       baseBranch?: string,
       isKeyTriggered?: boolean
     ) => {
@@ -201,7 +198,7 @@ function CreateAttempt({
                     <div className="flex items-center gap-1.5">
                       <Settings2 className="h-3 w-3" />
                       <span className="truncate">
-                        {selectedProfile?.profile || 'Select profile'}
+                        {selectedProfile?.executor || 'Select profile'}
                       </span>
                     </div>
                     <ArrowDown className="h-3 w-3" />
@@ -216,12 +213,12 @@ function CreateAttempt({
                           key={profileKey}
                           onClick={() => {
                             setSelectedProfile({
-                              profile: profileKey,
+                              executor: profileKey,
                               variant: null,
                             });
                           }}
                           className={
-                            selectedProfile?.profile === profileKey
+                            selectedProfile?.executor === profileKey
                               ? 'bg-accent'
                               : ''
                           }
@@ -243,10 +240,9 @@ function CreateAttempt({
             </div>
             {(() => {
               const currentProfile =
-                availableProfiles?.[selectedProfile?.profile || ''];
+                availableProfiles?.[selectedProfile?.executor || ''];
               const hasVariants =
-                currentProfile?.variants &&
-                Object.keys(currentProfile.variants).length > 0;
+                currentProfile && Object.keys(currentProfile).length > 0;
 
               if (hasVariants && currentProfile) {
                 return (
@@ -258,47 +254,32 @@ function CreateAttempt({
                         className="w-full px-2 flex items-center justify-between text-xs"
                       >
                         <span className="truncate flex-1 text-left">
-                          {selectedProfile?.variant || 'Default'}
+                          {selectedProfile?.variant || 'DEFAULT'}
                         </span>
                         <ArrowDown className="h-3 w-3 ml-1 flex-shrink-0" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-full">
-                      <DropdownMenuItem
-                        onClick={() => {
-                          if (selectedProfile) {
-                            setSelectedProfile({
-                              ...selectedProfile,
-                              variant: null,
-                            });
-                          }
-                        }}
-                        className={!selectedProfile?.variant ? 'bg-accent' : ''}
-                      >
-                        Default
-                      </DropdownMenuItem>
-                      {Object.entries(currentProfile.variants).map(
-                        ([variantLabel]) => (
-                          <DropdownMenuItem
-                            key={variantLabel}
-                            onClick={() => {
-                              if (selectedProfile) {
-                                setSelectedProfile({
-                                  ...selectedProfile,
-                                  variant: variantLabel,
-                                });
-                              }
-                            }}
-                            className={
-                              selectedProfile?.variant === variantLabel
-                                ? 'bg-accent'
-                                : ''
+                      {Object.entries(currentProfile).map(([variantLabel]) => (
+                        <DropdownMenuItem
+                          key={variantLabel}
+                          onClick={() => {
+                            if (selectedProfile) {
+                              setSelectedProfile({
+                                ...selectedProfile,
+                                variant: variantLabel,
+                              });
                             }
-                          >
-                            {variantLabel}
-                          </DropdownMenuItem>
-                        )
-                      )}
+                          }}
+                          className={
+                            selectedProfile?.variant === variantLabel
+                              ? 'bg-accent'
+                              : ''
+                          }
+                        >
+                          {variantLabel}
+                        </DropdownMenuItem>
+                      ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 );

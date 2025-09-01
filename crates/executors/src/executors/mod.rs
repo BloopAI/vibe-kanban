@@ -5,6 +5,7 @@ use command_group::AsyncGroupChild;
 use enum_dispatch::enum_dispatch;
 use futures_io::Error as FuturesIoError;
 use serde::{Deserialize, Serialize};
+use strum_macros::{Display, VariantNames};
 use thiserror::Error;
 use ts_rs::TS;
 use utils::msg_store::MsgStore;
@@ -15,7 +16,7 @@ use crate::{
         opencode::Opencode, qwen::QwenCode,
     },
     mcp_config::McpConfig,
-    profile::{ProfileConfigs, ProfileVariantLabel},
+    profile::{ExecutorProfileConfigs, ExecutorProfileId},
 };
 
 pub mod amp;
@@ -45,8 +46,9 @@ pub enum ExecutorError {
 }
 
 #[enum_dispatch]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, Display, VariantNames)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum CodingAgent {
     ClaudeCode,
     Amp,
@@ -58,31 +60,17 @@ pub enum CodingAgent {
 }
 
 impl CodingAgent {
-    /// Create a CodingAgent from a profile variant
-    /// Loads profile from AgentProfiles (both default and custom profiles)
-    pub fn from_profile_variant_label(
-        profile_variant_label: &ProfileVariantLabel,
+    /// Create a CodingAgent from an executor profile ID
+    pub fn from_executor_profile_id(
+        executor_profile_id: &ExecutorProfileId,
     ) -> Result<Self, ExecutorError> {
-        if let Some(profile_config) =
-            ProfileConfigs::get_cached().get_profile(&profile_variant_label.profile)
-        {
-            if let Some(variant_name) = &profile_variant_label.variant {
-                if let Some(variant) = profile_config.get_variant(variant_name) {
-                    Ok(variant.agent.clone())
-                } else {
-                    Err(ExecutorError::UnknownExecutorType(format!(
-                        "Unknown mode: {variant_name}"
-                    )))
-                }
-            } else {
-                Ok(profile_config.default.agent.clone())
-            }
-        } else {
-            Err(ExecutorError::UnknownExecutorType(format!(
-                "Unknown profile: {}",
-                profile_variant_label.profile
-            )))
-        }
+        ExecutorProfileConfigs::get_cached()
+            .get_agent_by_id(executor_profile_id)
+            .ok_or_else(|| {
+                ExecutorError::UnknownExecutorType(format!(
+                    "Unknown executor profile: {executor_profile_id}"
+                ))
+            })
     }
 
     pub fn get_mcp_config(&self) -> McpConfig {

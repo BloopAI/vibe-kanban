@@ -24,7 +24,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Sparkles, Code, ChevronDown, HandMetal } from 'lucide-react';
-import { EditorType, ProfileVariantLabel } from 'shared/types';
+import { EditorType } from 'shared/types';
+import type { ExecutorProfileId } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
 
 import { toPrettyCase } from '@/utils/string';
@@ -32,14 +33,14 @@ import { toPrettyCase } from '@/utils/string';
 interface OnboardingDialogProps {
   open: boolean;
   onComplete: (config: {
-    profile: ProfileVariantLabel;
+    profile: ExecutorProfileId;
     editor: { editor_type: EditorType; custom_command: string | null };
   }) => void;
 }
 
 export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
-  const [profile, setProfile] = useState<ProfileVariantLabel>({
-    profile: 'claude-code',
+  const [profile, setProfile] = useState<ExecutorProfileId>({
+    executor: 'CLAUDE_CODE',
     variant: null,
   });
   const [editorType, setEditorType] = useState<EditorType>(EditorType.VS_CODE);
@@ -84,9 +85,9 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
             <Label htmlFor="profile">Default Profile</Label>
             <div className="flex gap-2">
               <Select
-                value={profile.profile}
+                value={profile.executor}
                 onValueChange={(value) =>
-                  setProfile({ profile: value, variant: null })
+                  setProfile({ executor: value, variant: null })
                 }
               >
                 <SelectTrigger id="profile" className="flex-1">
@@ -104,10 +105,9 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
 
               {/* Show variant selector if selected profile has variants */}
               {(() => {
-                const selectedProfile = profiles?.[profile.profile];
+                const selectedProfile = profiles?.[profile.executor];
                 const hasVariants =
-                  selectedProfile?.variants &&
-                  Object.keys(selectedProfile.variants).length > 0;
+                  selectedProfile && Object.keys(selectedProfile).length > 0;
 
                 if (hasVariants) {
                   return (
@@ -118,38 +118,28 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
                           className="w-24 px-2 flex items-center justify-between"
                         >
                           <span className="text-xs truncate flex-1 text-left">
-                            {profile.variant || 'Default'}
+                            {profile.variant || 'DEFAULT'}
                           </span>
                           <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem
-                          onClick={() =>
-                            setProfile({ ...profile, variant: null })
-                          }
-                          className={!profile.variant ? 'bg-accent' : ''}
-                        >
-                          Default
-                        </DropdownMenuItem>
-                        {Object.keys(selectedProfile.variants).map(
-                          (variant) => (
-                            <DropdownMenuItem
-                              key={variant}
-                              onClick={() =>
-                                setProfile({
-                                  ...profile,
-                                  variant: variant,
-                                })
-                              }
-                              className={
-                                profile.variant === variant ? 'bg-accent' : ''
-                              }
-                            >
-                              {variant}
-                            </DropdownMenuItem>
-                          )
-                        )}
+                        {Object.keys(selectedProfile).map((variant) => (
+                          <DropdownMenuItem
+                            key={variant}
+                            onClick={() =>
+                              setProfile({
+                                ...profile,
+                                variant: variant,
+                              })
+                            }
+                            className={
+                              profile.variant === variant ? 'bg-accent' : ''
+                            }
+                          >
+                            {variant}
+                          </DropdownMenuItem>
+                        ))}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   );

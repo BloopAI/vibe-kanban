@@ -26,12 +26,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { JSONEditor } from '@/components/ui/json-editor';
 import { ChevronDown, Key, Loader2, Volume2 } from 'lucide-react';
-import {
-  ThemeMode,
-  EditorType,
-  SoundFile,
-  ProfileVariantLabel,
-} from 'shared/types';
+import { ThemeMode, EditorType, SoundFile } from 'shared/types';
+import type { ExecutorProfileId } from 'shared/types';
 
 import { toPrettyCase } from '@/utils/string';
 import { useTheme } from '@/components/theme-provider';
@@ -100,8 +96,8 @@ export function Settings() {
       try {
         const parsed = JSON.parse(value);
         // Basic structure validation
-        if (!parsed.profiles) {
-          setProfilesError('Invalid structure: must have a "profiles" object');
+        if (!parsed.executors) {
+          setProfilesError('Invalid structure: must have a "executors" object');
         }
       } catch (err) {
         if (err instanceof SyntaxError) {
@@ -277,16 +273,18 @@ export function Settings() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="executor">Default Profile</Label>
+                <Label htmlFor="executor">Default Executor Profile</Label>
                 <div className="grid grid-cols-2 gap-2">
                   <Select
-                    value={config.profile?.profile || ''}
+                    value={config.executor_profile?.executor ?? ''}
                     onValueChange={(value: string) => {
-                      const newProfile: ProfileVariantLabel = {
-                        profile: value,
+                      const newProfile: ExecutorProfileId = {
+                        executor: value,
                         variant: null,
                       };
-                      updateConfig({ profile: newProfile });
+                      updateConfig({
+                        executor_profile: newProfile,
+                      });
                     }}
                   >
                     <SelectTrigger id="executor">
@@ -306,11 +304,12 @@ export function Settings() {
 
                   {/* Show variant selector if selected profile has variants */}
                   {(() => {
+                    const currentProfileVariant = config.executor_profile;
                     const selectedProfile =
-                      profiles?.[config.profile?.profile || ''];
+                      profiles?.[currentProfileVariant?.executor || ''];
                     const hasVariants =
-                      selectedProfile?.variants &&
-                      Object.keys(selectedProfile.variants).length > 0;
+                      selectedProfile &&
+                      Object.keys(selectedProfile).length > 0;
 
                     if (hasVariants) {
                       return (
@@ -321,39 +320,29 @@ export function Settings() {
                               className="w-full h-10 px-2 flex items-center justify-between"
                             >
                               <span className="text-sm truncate flex-1 text-left">
-                                {config.profile?.variant || 'Default'}
+                                {currentProfileVariant?.variant || 'DEFAULT'}
                               </span>
                               <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                const newProfile: ProfileVariantLabel = {
-                                  profile: config.profile?.profile || '',
-                                  variant: null,
-                                };
-                                updateConfig({ profile: newProfile });
-                              }}
-                              className={
-                                !config.profile?.variant ? 'bg-accent' : ''
-                              }
-                            >
-                              Default
-                            </DropdownMenuItem>
-                            {Object.entries(selectedProfile.variants).map(
+                            {Object.entries(selectedProfile).map(
                               ([variantLabel]) => (
                                 <DropdownMenuItem
                                   key={variantLabel}
                                   onClick={() => {
-                                    const newProfile: ProfileVariantLabel = {
-                                      profile: config.profile?.profile || '',
+                                    const newProfile: ExecutorProfileId = {
+                                      executor:
+                                        currentProfileVariant?.executor || '',
                                       variant: variantLabel,
                                     };
-                                    updateConfig({ profile: newProfile });
+                                    updateConfig({
+                                      executor_profile: newProfile,
+                                    });
                                   }}
                                   className={
-                                    config.profile?.variant === variantLabel
+                                    currentProfileVariant?.variant ===
+                                    variantLabel
                                       ? 'bg-accent'
                                       : ''
                                   }
@@ -383,8 +372,8 @@ export function Settings() {
                   })()}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Choose the default profile to use when creating a task
-                  attempt.
+                  Choose the default executor profile to use when creating a
+                  task attempt.
                 </p>
               </div>
             </CardContent>

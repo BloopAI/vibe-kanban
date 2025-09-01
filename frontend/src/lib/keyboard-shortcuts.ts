@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import type { ProfileConfig } from 'shared/types';
+import type { ExecutorProfile } from 'shared/types';
 
 // Define available keyboard shortcuts
 export interface KeyboardShortcut {
@@ -273,16 +273,13 @@ export function useVariantCyclingShortcut({
   setSelectedVariant,
   setIsAnimating,
 }: {
-  currentProfile: ProfileConfig | null | undefined;
+  currentProfile: ExecutorProfile | null | undefined;
   selectedVariant: string | null;
   setSelectedVariant: (variant: string | null) => void;
   setIsAnimating: (animating: boolean) => void;
 }) {
   useEffect(() => {
-    if (
-      !currentProfile?.variants ||
-      Object.keys(currentProfile.variants).length === 0
-    ) {
+    if (!currentProfile || Object.keys(currentProfile).length === 0) {
       return;
     }
 
@@ -292,7 +289,7 @@ export function useVariantCyclingShortcut({
         e.preventDefault();
 
         // Build the variant cycle: null (Default) → variant1 → variant2 → ... → null
-        const variants = currentProfile.variants;
+        const variants = currentProfile;
         const variantLabels = Object.keys(variants);
         const allOptions = [null, ...variantLabels];
 

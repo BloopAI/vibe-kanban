@@ -26,7 +26,7 @@ use executors::{
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
         ExecutorAction, ExecutorActionType,
     },
-    profile::{ProfileConfigs, ProfileVariantLabel},
+    profile::{ExecutorProfileConfigs, ExecutorProfileId},
 };
 use futures_util::TryStreamExt;
 use git2::BranchType;
@@ -86,8 +86,16 @@ pub async fn get_task_attempt(
 #[derive(Debug, Deserialize, ts_rs::TS)]
 pub struct CreateTaskAttemptBody {
     pub task_id: Uuid,
-    pub profile_variant_label: Option<ProfileVariantLabel>,
+    /// Executor profile specification
+    pub executor_profile_id: ExecutorProfileId,
     pub base_branch: String,
+}
+
+impl CreateTaskAttemptBody {
+    /// Get the executor profile ID
+    pub fn get_executor_profile_id(&self) -> ExecutorProfileId {
+        self.executor_profile_id.clone()
+    }
 }
 
 #[axum::debug_handler]
@@ -95,23 +103,21 @@ pub async fn create_task_attempt(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateTaskAttemptBody>,
 ) -> Result<ResponseJson<ApiResponse<TaskAttempt>>, ApiError> {
-    let profile_variant_label = payload
-        .profile_variant_label
-        .unwrap_or(deployment.config().read().await.profile.clone());
+    let executor_profile_id = payload.get_executor_profile_id();
 
-    let profiles = ProfileConfigs::get_cached();
-    let _profile = profiles
-        .get_profile(&profile_variant_label.profile)
+    let executor_profiles = ExecutorProfileConfigs::get_cached();
+    let _profile = executor_profiles
+        .get_executor_profile(&executor_profile_id.executor)
         .ok_or_else(|| {
             ApiError::TaskAttempt(TaskAttemptError::ValidationError(format!(
-                "Profile not found: {}",
-                profile_variant_label.profile
+                "Executor profile not found: {}",
+                executor_profile_id.executor
             )))
         })?;
     let task_attempt = TaskAttempt::create(
         &deployment.db().pool,
         &CreateTaskAttempt {
-            profile: profile_variant_label.profile.clone(),
+            profile: executor_profile_id.executor.clone(),
             base_branch: payload.base_branch.clone(),
         },
         payload.task_id,
@@ -120,7 +126,7 @@ pub async fn create_task_attempt(
 
     let execution_process = deployment
         .container()
-        .start_attempt(&task_attempt, profile_variant_label.clone())
+        .start_attempt(&task_attempt, executor_profile_id.clone())
         .await?;
 
     deployment
@@ -128,8 +134,8 @@ pub async fn create_task_attempt(
             "task_attempt_started",
             serde_json::json!({
                 "task_id": task_attempt.task_id.to_string(),
-                "variant": &profile_variant_label.variant,
-                "profile": profile_variant_label.profile,
+                "variant": &executor_profile_id.variant,
+                "executor": &executor_profile_id.executor,
                 "attempt_id": task_attempt.id.to_string(),
             }),
         )
@@ -180,24 +186,24 @@ pub async fn follow_up(
     .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
         "Couldn't find initial coding agent process, has it run yet?".to_string(),
     )))?;
-    let initial_profile_variant_label = match &latest_execution_process
+    let initial_executor_profile_id = match &latest_execution_process
         .executor_action()
         .map_err(|e| ApiError::TaskAttempt(TaskAttemptError::ValidationError(e.to_string())))?
         .typ
     {
         ExecutorActionType::CodingAgentInitialRequest(request) => {
-            Ok(request.profile_variant_label.clone())
+            Ok(request.get_executor_profile_id())
         }
         ExecutorActionType::CodingAgentFollowUpRequest(request) => {
-            Ok(request.profile_variant_label.clone())
+            Ok(request.get_executor_profile_id())
         }
         _ => Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
             "Couldn't find profile from initial request".to_string(),
         ))),
     }?;
 
-    let profile_variant_label = ProfileVariantLabel {
-        profile: initial_profile_variant_label.profile,
+    let executor_profile_id = ExecutorProfileId {
+        executor: initial_executor_profile_id.executor,
         variant: payload.variant,
     };
 
@@ -244,7 +250,7 @@ pub async fn follow_up(
     let follow_up_request = CodingAgentFollowUpRequest {
         prompt,
         session_id,
-        profile_variant_label,
+        executor_profile_id,
     };
 
     let follow_up_action = ExecutorAction::new(

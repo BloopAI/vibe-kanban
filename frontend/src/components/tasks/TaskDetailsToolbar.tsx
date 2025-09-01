@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button';
 import { projectsApi } from '@/lib/api';
 import type {
   GitBranch,
-  ProfileVariantLabel,
   TaskAttempt,
   TaskWithAttemptStatus,
 } from 'shared/types';
+import type { ExecutorProfileId } from 'shared/types';
 
 import { useAttemptExecution } from '@/hooks';
 import { useTaskStopping } from '@/stores/useTaskDetailsUiStore';
@@ -94,7 +94,7 @@ function TaskDetailsToolbar({
   const [branches, setBranches] = useState<GitBranch[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
   const [selectedProfile, setSelectedProfile] =
-    useState<ProfileVariantLabel | null>(null);
+    useState<ExecutorProfileId | null>(null);
   // const { attemptId: urlAttemptId } = useParams<{ attemptId?: string }>();
   const { system, profiles } = useUserSystem();
 
@@ -143,10 +143,10 @@ function TaskDetailsToolbar({
 
   // Set default executor from config
   useEffect(() => {
-    if (system.config?.profile) {
-      setSelectedProfile(system.config.profile);
+    if (system.config?.executor_profile) {
+      setSelectedProfile(system.config.executor_profile);
     }
-  }, [system.config?.profile]);
+  }, [system.config?.executor_profile]);
 
   // Simplified - hooks handle data fetching and navigation
   // const fetchTaskAttempts = useCallback(() => {

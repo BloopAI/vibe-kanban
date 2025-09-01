@@ -100,14 +100,14 @@ pub async fn create_task_and_start(
         .await;
 
     // use the default executor profile and the current branch for the task attempt
-    let default_profile_variant = deployment.config().read().await.profile.clone();
+    let executor_profile_id = deployment.config().read().await.get_executor_profile_id();
     let project = Project::find_by_id(&deployment.db().pool, payload.project_id)
         .await?
         .ok_or(ApiError::Database(SqlxError::RowNotFound))?;
     let branch = deployment
         .git()
         .get_current_branch(&project.git_repo_path)?;
-    let profile_label = default_profile_variant.profile.clone();
+    let profile_label = executor_profile_id.executor.clone();
 
     let task_attempt = TaskAttempt::create(
         &deployment.db().pool,
@@ -120,15 +120,15 @@ pub async fn create_task_and_start(
     .await?;
     let execution_process = deployment
         .container()
-        .start_attempt(&task_attempt, default_profile_variant.clone())
+        .start_attempt(&task_attempt, executor_profile_id.clone())
         .await?;
     deployment
         .track_if_analytics_allowed(
             "task_attempt_started",
             serde_json::json!({
                 "task_id": task.id.to_string(),
-                "profile": &profile_label,
-                "variant": &default_profile_variant,
+                "executor": &executor_profile_id.executor,
+                "variant": &executor_profile_id.variant,
                 "attempt_id": task_attempt.id.to_string(),
             }),
         )

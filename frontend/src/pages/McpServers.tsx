@@ -18,7 +18,8 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { JSONEditor } from '@/components/ui/json-editor';
 import { Loader2 } from 'lucide-react';
-import { ProfileConfig, McpConfig } from 'shared/types';
+import { McpConfig } from 'shared/types';
+import type { ExecutorProfile } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
 import { mcpServersApi } from '../lib/api';
 import { McpConfigStrategyGeneral } from '../lib/mcp-strategies';
@@ -29,18 +30,17 @@ export function McpServers() {
   const [mcpConfig, setMcpConfig] = useState<McpConfig | null>(null);
   const [mcpError, setMcpError] = useState<string | null>(null);
   const [mcpLoading, setMcpLoading] = useState(true);
-  const [selectedProfile, setSelectedProfile] = useState<ProfileConfig | null>(
-    null
-  );
+  const [selectedProfile, setSelectedProfile] =
+    useState<ExecutorProfile | null>(null);
   const [mcpApplying, setMcpApplying] = useState(false);
   const [mcpConfigPath, setMcpConfigPath] = useState<string>('');
   const [success, setSuccess] = useState(false);
 
   // Initialize selected profile when config loads
   useEffect(() => {
-    if (config?.profile && profiles && !selectedProfile) {
+    if (config?.executor_profile && profiles && !selectedProfile) {
       // Find the current profile
-      const currentProfile = profiles[config.profile.profile];
+      const currentProfile = profiles[config.executor_profile.executor];
       if (currentProfile) {
         setSelectedProfile(currentProfile);
       } else if (Object.keys(profiles).length > 0) {
@@ -48,11 +48,11 @@ export function McpServers() {
         setSelectedProfile(Object.values(profiles)[0]);
       }
     }
-  }, [config?.profile, profiles, selectedProfile]);
+  }, [config?.executor_profile, profiles, selectedProfile]);
 
   // Load existing MCP configuration when selected profile changes
   useEffect(() => {
-    const loadMcpServersForProfile = async (profile: ProfileConfig) => {
+    const loadMcpServersForProfile = async (profile: ExecutorProfile) => {
       // Reset state when loading
       setMcpLoading(true);
       setMcpError(null);

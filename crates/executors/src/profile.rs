@@ -1,23 +1,98 @@
-use std::{
-    collections::{HashMap, HashSet},
-    fs,
-    path::PathBuf,
-    sync::RwLock,
-};
+use std::{collections::HashMap, fs, path::PathBuf, sync::RwLock};
 
-use chrono::Utc;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
+use strum::VariantNames;
+use thiserror::Error;
 use ts_rs::TS;
 
 use crate::executors::CodingAgent;
 
-lazy_static! {
-    static ref PROFILES_CACHE: RwLock<ProfileConfigs> = RwLock::new(ProfileConfigs::load());
+#[derive(Error, Debug)]
+pub enum ProfileError {
+    #[error("Built-in executor '{executor}' cannot be deleted")]
+    CannotDeleteExecutor { executor: String },
+
+    #[error("Built-in configuration '{executor}:{variant}' cannot be deleted")]
+    CannotDeleteBuiltInConfig { executor: String, variant: String },
+
+    #[error("Validation error: {0}")]
+    Validation(String),
+
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+
+    #[error(transparent)]
+    Serde(#[from] serde_json::Error),
 }
 
-// Default profiels embedded at compile time
-const DEFAULT_PROFILES_JSON: &str = include_str!("../default_profiles.json");
+lazy_static! {
+    static ref EXECUTOR_PROFILES_CACHE: RwLock<ExecutorConfigs> =
+        RwLock::new(ExecutorConfigs::load());
+}
+
+// New format default profiles (v3 - flattened)
+const DEFAULT_PROFILES_V3_JSON: &str = include_str!("../default_profiles_v3.json");
+
+// Executor-centric profile identifier
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, Hash, Eq)]
+pub struct ExecutorProfileId {
+    /// The executor type (e.g., "CLAUDE_CODE", "AMP")
+    pub executor: String,
+    /// Optional variant name (e.g., "plan", "router")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub variant: Option<String>,
+}
+
+impl ExecutorProfileId {
+    /// Create a new executor profile ID with default variant
+    pub fn new(executor: String) -> Self {
+        Self {
+            executor,
+            variant: None,
+        }
+    }
+
+    /// Create a new executor profile ID with specific variant
+    pub fn with_variant(executor: String, variant: String) -> Self {
+        Self {
+            executor,
+            variant: Some(variant),
+        }
+    }
+
+    /// Get cache key for this executor profile
+    pub fn cache_key(&self) -> String {
+        match &self.variant {
+            Some(variant) => format!("{}:{}", self.executor, variant),
+            None => self.executor.clone(),
+        }
+    }
+}
+
+impl std::fmt::Display for ExecutorProfileId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.variant {
+            Some(variant) => write!(f, "{}:{}", self.executor, variant),
+            None => write!(f, "{}", self.executor),
+        }
+    }
+}
+
+impl std::str::FromStr for ExecutorProfileId {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Some((executor, variant)) = s.split_once(':') {
+            Ok(Self::with_variant(
+                executor.to_string(),
+                variant.to_string(),
+            ))
+        } else {
+            Ok(Self::new(s.to_string()))
+        }
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct VariantAgentConfig {
@@ -26,420 +101,391 @@ pub struct VariantAgentConfig {
     pub agent: CodingAgent,
 }
 
+// New executor-centric data structures (v3 - flattened)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-pub struct ProfileConfig {
+#[ts(export, type = "{ [key in string]: VariantAgentConfig }")]
+pub struct ExecutorProfile {
+    /// All configurations for this executor (default + variants)
+    /// Key "default" is reserved for the default configuration
     #[serde(flatten)]
-    /// default profile variant
-    pub default: VariantAgentConfig,
-    /// additional variants for this profile, e.g. plan, review, subagent
-    #[serde(default)]
-    pub variants: HashMap<String, VariantAgentConfig>,
+    pub configurations: HashMap<String, VariantAgentConfig>,
 }
 
-impl ProfileConfig {
+impl ExecutorProfile {
+    /// Get variant configuration by name, or None if not found
     pub fn get_variant(&self, variant: &str) -> Option<&VariantAgentConfig> {
-        self.variants.get(variant)
+        self.configurations.get(variant)
     }
 
+    /// Get the default configuration for this executor
+    pub fn get_default(&self) -> Option<&VariantAgentConfig> {
+        self.configurations.get("default")
+    }
+
+    /// Get MCP config path from default configuration
     pub fn get_mcp_config_path(&self) -> Option<PathBuf> {
-        self.default.agent.default_mcp_config_path()
+        self.get_default()?.agent.default_mcp_config_path()
     }
-}
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-pub struct ProfileVariantLabel {
-    pub profile: String,
-    pub variant: Option<String>,
-}
+    /// Create a new executor profile with just a default configuration
+    pub fn new_with_default(default_config: VariantAgentConfig) -> Self {
+        let mut configurations = HashMap::new();
+        configurations.insert("default".to_string(), default_config);
+        Self { configurations }
+    }
 
-impl ProfileVariantLabel {
-    pub fn default(profile: String) -> Self {
-        Self {
-            profile,
-            variant: None,
+    /// Add or update a variant configuration
+    pub fn set_variant(
+        &mut self,
+        variant_name: String,
+        config: VariantAgentConfig,
+    ) -> Result<(), &'static str> {
+        if variant_name == "default" {
+            return Err(
+                "Cannot override 'default' variant using set_variant, use set_default instead",
+            );
         }
+        self.configurations.insert(variant_name, config);
+        Ok(())
     }
-    pub fn with_variant(profile: String, mode: String) -> Self {
-        Self {
-            profile,
-            variant: Some(mode),
-        }
+
+    /// Set the default configuration
+    pub fn set_default(&mut self, config: VariantAgentConfig) {
+        self.configurations.insert("default".to_string(), config);
     }
-}
 
-// Type alias for variant differences - None means delete, Some means add/change, absent means unchanged
-pub type VariantDiff = HashMap<String, Option<VariantAgentConfig>>;
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-pub struct PartialProfileConfig {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub default: Option<VariantAgentConfig>,
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub variants: VariantDiff,
+    /// Get all variant names (excluding "default")
+    pub fn variant_names(&self) -> Vec<&String> {
+        self.configurations
+            .keys()
+            .filter(|k| *k != "default")
+            .collect()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-pub struct PartialProfileConfigs {
-    pub profiles: HashMap<String, PartialProfileConfig>,
+pub struct ExecutorConfigs {
+    pub executors: HashMap<String, ExecutorProfile>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-pub struct ProfileConfigs {
-    pub profiles: HashMap<String, ProfileConfig>,
-}
+// Type alias for backwards compatibility during transition
+pub type ExecutorProfileConfigs = ExecutorConfigs;
 
-impl ProfileConfigs {
-    pub fn get_cached() -> ProfileConfigs {
-        PROFILES_CACHE.read().unwrap().clone()
+impl ExecutorConfigs {
+    /// Get cached executor profiles
+    pub fn get_cached() -> ExecutorConfigs {
+        EXECUTOR_PROFILES_CACHE.read().unwrap().clone()
     }
 
+    /// Reload executor profiles cache
     pub fn reload() {
-        let mut cache = PROFILES_CACHE.write().unwrap();
+        let mut cache = EXECUTOR_PROFILES_CACHE.write().unwrap();
         *cache = Self::load();
     }
 
-    /// Create a partial profile by computing differences from defaults
-    pub fn create_partial_profile(
-        default: &ProfileConfig,
-        modified: &ProfileConfig,
-    ) -> PartialProfileConfig {
-        let mut partial = PartialProfileConfig {
-            default: None,
-            variants: HashMap::new(),
-        };
-
-        // Check if default variant changed
-        if default.default != modified.default {
-            partial.default = Some(modified.default.clone());
-        }
-
-        // Compute variants diff
-        partial.variants = Self::variants_diff(&default.variants, &modified.variants);
-
-        partial
-    }
-
-    /// Compute differences between two variant maps
-    fn variants_diff(
-        default: &HashMap<String, VariantAgentConfig>,
-        modified: &HashMap<String, VariantAgentConfig>,
-    ) -> VariantDiff {
-        let mut diff = HashMap::new();
-
-        // Find changed or added variants
-        for (k, mod_v) in modified {
-            match default.get(k) {
-                Some(def_v) if def_v == mod_v => {
-                    // Unchanged, don't include in diff
-                }
-                _ => {
-                    // Changed or added
-                    diff.insert(k.clone(), Some(mod_v.clone()));
-                }
-            }
-        }
-
-        // Find removed variants
-        for k in default.keys() {
-            if !modified.contains_key(k) {
-                diff.insert(k.clone(), None);
-            }
-        }
-
-        diff
-    }
-
-    /// Load profiles from partial format and merge with defaults
-    pub fn load_from_partials(partials: &PartialProfileConfigs) -> ProfileConfigs {
-        let mut defaults = Self::from_defaults();
-        Self::apply_partials(&mut defaults, partials);
-        defaults
-    }
-
-    /// Apply partial configurations to a base ProfileConfigs
-    fn apply_partials(base: &mut ProfileConfigs, partials: &PartialProfileConfigs) {
-        for (profile_label, partial) in &partials.profiles {
-            match base.profiles.get_mut(profile_label) {
-                Some(existing_profile) => {
-                    // Apply changes to existing profile
-                    Self::apply_partial_to_profile(existing_profile, partial);
-                }
-                None => {
-                    // Create new profile from partial
-                    if let Some(new_profile) =
-                        Self::create_profile_from_partial(profile_label, partial)
-                    {
-                        base.profiles.insert(profile_label.clone(), new_profile);
-                    }
-                }
-            }
-        }
-    }
-
-    /// Apply a partial configuration to an existing profile
-    fn apply_partial_to_profile(profile: &mut ProfileConfig, partial: &PartialProfileConfig) {
-        // Update default variant if specified
-        if let Some(new_default) = &partial.default {
-            profile.default = new_default.clone();
-        }
-
-        // Apply variant changes
-        for (variant_key, variant_change) in &partial.variants {
-            match variant_change {
-                Some(new_variant) => {
-                    // Add or update variant
-                    profile
-                        .variants
-                        .insert(variant_key.clone(), new_variant.clone());
-                }
-                None => {
-                    // Remove variant
-                    profile.variants.remove(variant_key);
-                }
-            }
-        }
-    }
-
-    /// Create a new profile from a partial configuration
-    fn create_profile_from_partial(
-        _profile_label: &str,
-        partial: &PartialProfileConfig,
-    ) -> Option<ProfileConfig> {
-        // For completely new profiles, we need at least a default variant
-        let default = partial.default.as_ref()?.clone();
-
-        let mut profile = ProfileConfig {
-            default,
-            variants: HashMap::new(),
-        };
-
-        // Apply variant changes
-        for (variant_key, variant_change) in &partial.variants {
-            if let Some(variant) = variant_change {
-                profile
-                    .variants
-                    .insert(variant_key.clone(), variant.clone());
-            }
-        }
-
-        Some(profile)
-    }
-
-    /// Save profiles as partial configurations (diffs from defaults)
-    pub fn save_as_diffs(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let defaults = Self::from_defaults();
-        let mut partials = PartialProfileConfigs {
-            profiles: HashMap::new(),
-        };
-
-        // Generate partials for each profile
-        for (profile_label, profile) in &self.profiles {
-            if let Some(default_profile) = defaults.profiles.get(profile_label) {
-                // Profile exists in defaults, compute diff
-                let partial = Self::create_partial_profile(default_profile, profile);
-
-                // Only save if there are actual differences
-                if partial.default.is_some() || !partial.variants.is_empty() {
-                    partials.profiles.insert(profile_label.clone(), partial);
-                }
-            } else {
-                // New profile, save as complete partial
-                let partial = PartialProfileConfig {
-                    default: Some(profile.default.clone()),
-                    variants: profile
-                        .variants
-                        .iter()
-                        .map(|(k, v)| (k.clone(), Some(v.clone())))
-                        .collect(),
-                };
-                partials.profiles.insert(profile_label.clone(), partial);
-            }
-        }
-
-        // Save to file
-        let profiles_path = utils::assets::profiles_path();
-        let content = serde_json::to_string_pretty(&partials)?;
-        fs::write(&profiles_path, content)?;
-
-        tracing::info!(
-            "Saved profiles as partial configurations to {:?}",
-            profiles_path
-        );
-        Ok(())
-    }
-
-    fn load() -> Self {
+    /// Load executor profiles from file or defaults
+    pub fn load() -> Self {
         let profiles_path = utils::assets::profiles_path();
 
-        // Load from profiles.json if it exists, otherwise use defaults
+        // Load defaults first
+        let defaults = Self::from_defaults_v3();
+
+        // Try to load user overrides
         let content = match fs::read_to_string(&profiles_path) {
             Ok(content) => content,
-            Err(e) => {
-                tracing::warn!("Failed to read profiles.json: {}, using defaults", e);
-                return Self::from_defaults();
+            Err(_) => {
+                tracing::info!("No user profiles.json found, using defaults only");
+                return defaults;
             }
         };
 
-        // First try to parse as full ProfileConfigs (legacy format)
-        if let Ok(full_profiles) = serde_json::from_str::<Self>(&content) {
-            tracing::info!("Loaded full profiles from profiles.json (legacy format)");
-
-            // Auto-migrate to partial format
-            if let Err(e) = Self::migrate_to_partial_format(&full_profiles) {
-                tracing::error!("Failed to migrate profiles to partial format: {}", e);
-            }
-
-            return full_profiles;
-        }
-
-        // Try to parse as PartialProfileConfigs (new format)
-        match serde_json::from_str::<PartialProfileConfigs>(&content) {
-            Ok(partials) => {
-                tracing::info!("Loaded partial profiles from profiles.json");
-                Self::load_from_partials(&partials)
+        // Parse user overrides
+        match serde_json::from_str::<Self>(&content) {
+            Ok(user_overrides) => {
+                tracing::info!("Loaded user profile overrides from profiles.json");
+                Self::merge_with_defaults(defaults, user_overrides)
             }
             Err(e) => {
                 tracing::warn!(
-                    "Failed to parse profiles.json as either format: {}, using defaults",
+                    "Failed to parse user profiles.json: {}, using defaults only",
                     e
                 );
-                Self::from_defaults()
+                defaults
             }
         }
     }
 
-    /// Migrate full profiles to partial format with backup
-    fn migrate_to_partial_format(
-        full_profiles: &ProfileConfigs,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    /// Save user profile overrides to file (only saves what differs from defaults)
+    pub fn save_overrides(&self) -> Result<(), ProfileError> {
         let profiles_path = utils::assets::profiles_path();
+        let defaults = Self::from_defaults_v3();
 
-        // Create backup with timestamp
-        let timestamp = Utc::now().format("%Y%m%d_%H%M%S");
-        let backup_path = profiles_path.with_extension(format!("json.bak-{timestamp}"));
+        // Compute differences from defaults
+        let overrides = Self::compute_overrides(&defaults, self)?;
 
-        if let Ok(original_content) = fs::read_to_string(&profiles_path) {
-            fs::write(&backup_path, original_content)?;
-            tracing::info!("Created backup at {:?}", backup_path);
-        }
+        // Validate the merged result would be valid
+        let merged = Self::merge_with_defaults(defaults, overrides.clone());
+        Self::validate_merged(&merged)?;
 
-        // Save as partial format
-        full_profiles.save_as_diffs()?;
-        tracing::info!("Successfully migrated profiles to partial format");
+        // Write overrides directly to file
+        let content = serde_json::to_string_pretty(&overrides)?;
+        fs::write(&profiles_path, content)?;
 
+        tracing::info!("Saved profile overrides to {:?}", profiles_path);
         Ok(())
     }
 
-    pub fn from_defaults() -> Self {
-        serde_json::from_str(DEFAULT_PROFILES_JSON).unwrap_or_else(|e| {
-            tracing::error!("Failed to parse embedded default_profiles.json: {}", e);
-            panic!("Default profiles JSON is invalid")
+    /// Deep merge defaults with user overrides
+    fn merge_with_defaults(mut defaults: Self, overrides: Self) -> Self {
+        for (executor_key, override_profile) in overrides.executors {
+            match defaults.executors.get_mut(&executor_key) {
+                Some(default_profile) => {
+                    // Merge configurations (user configs override defaults, new ones are added)
+                    for (config_name, config) in override_profile.configurations {
+                        default_profile.configurations.insert(config_name, config);
+                    }
+                }
+                None => {
+                    // New executor, add completely
+                    defaults.executors.insert(executor_key, override_profile);
+                }
+            }
+        }
+        defaults
+    }
+
+    /// Compute what overrides are needed to transform defaults into current config
+    fn compute_overrides(defaults: &Self, current: &Self) -> Result<Self, ProfileError> {
+        let mut overrides = Self {
+            executors: HashMap::new(),
+        };
+
+        // Fast scan for any illegal deletions BEFORE allocating/cloning
+        for (executor_key, default_profile) in &defaults.executors {
+            // Check if executor was removed entirely
+            if !current.executors.contains_key(executor_key) {
+                return Err(ProfileError::CannotDeleteExecutor {
+                    executor: executor_key.clone(),
+                });
+            }
+
+            let current_profile = &current.executors[executor_key];
+
+            // Check if ANY built-in configuration was removed
+            for config_name in default_profile.configurations.keys() {
+                if !current_profile.configurations.contains_key(config_name) {
+                    return Err(ProfileError::CannotDeleteBuiltInConfig {
+                        executor: executor_key.clone(),
+                        variant: config_name.clone(),
+                    });
+                }
+            }
+        }
+
+        for (executor_key, current_profile) in &current.executors {
+            if let Some(default_profile) = defaults.executors.get(executor_key) {
+                let mut override_configurations = HashMap::new();
+
+                // Check each configuration in current profile
+                for (config_name, current_config) in &current_profile.configurations {
+                    if let Some(default_config) = default_profile.configurations.get(config_name) {
+                        // Only include if different from default
+                        if current_config != default_config {
+                            override_configurations
+                                .insert(config_name.clone(), current_config.clone());
+                        }
+                    } else {
+                        // New configuration, always include
+                        override_configurations.insert(config_name.clone(), current_config.clone());
+                    }
+                }
+
+                // Only include executor if there are actual differences
+                if !override_configurations.is_empty() {
+                    overrides.executors.insert(
+                        executor_key.clone(),
+                        ExecutorProfile {
+                            configurations: override_configurations,
+                        },
+                    );
+                }
+            } else {
+                // New executor, include completely
+                overrides
+                    .executors
+                    .insert(executor_key.clone(), current_profile.clone());
+            }
+        }
+
+        Ok(overrides)
+    }
+
+    /// Validate that merged profiles are consistent and valid
+    fn validate_merged(merged: &Self) -> Result<(), ProfileError> {
+        let valid_executor_keys = CodingAgent::VARIANTS;
+
+        for (executor_key, profile) in &merged.executors {
+            // Validate executor key is a known CodingAgent variant
+            if !valid_executor_keys.contains(&executor_key.as_str()) {
+                return Err(ProfileError::Validation(format!(
+                    "Unknown executor key '{executor_key}'. Valid keys: {valid_executor_keys:?}"
+                )));
+            }
+
+            // Ensure default configuration exists
+            let default_config = profile.configurations.get("default").ok_or_else(|| {
+                ProfileError::Validation(format!(
+                    "Executor '{executor_key}' is missing required 'default' configuration"
+                ))
+            })?;
+
+            // Validate that the default agent type matches the executor key
+            if default_config.agent.to_string() != *executor_key {
+                return Err(ProfileError::Validation(format!(
+                    "Executor key '{executor_key}' does not match the agent variant '{}'",
+                    default_config.agent
+                )));
+            }
+
+            // Ensure configuration names don't conflict with reserved words
+            for config_name in profile.configurations.keys() {
+                if config_name.starts_with("__") {
+                    return Err(ProfileError::Validation(format!(
+                        "Configuration name '{config_name}' is reserved (starts with '__')"
+                    )));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Get agent by executor profile ID
+    pub fn get_agent_by_id(&self, id: &ExecutorProfileId) -> Option<CodingAgent> {
+        self.get_agent(&id.executor, id.variant.as_deref())
+    }
+
+    /// Load from the new v3 defaults
+    pub fn from_defaults_v3() -> Self {
+        serde_json::from_str(DEFAULT_PROFILES_V3_JSON).unwrap_or_else(|e| {
+            tracing::error!("Failed to parse embedded default_profiles_v3.json: {}", e);
+            panic!("Default profiles v3 JSON is invalid")
         })
     }
 
-    pub fn extend_from_file(&mut self) -> Result<(), std::io::Error> {
-        let profiles_path = utils::assets::profiles_path();
-        if !profiles_path.exists() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!("Profiles file not found at {profiles_path:?}"),
-            ));
+    // Alias for backwards compatibility
+    pub fn from_defaults_v2() -> Self {
+        Self::from_defaults_v3()
+    }
+
+    /// Get profile by executor key
+    pub fn get_executor_profile(&self, executor_key: &str) -> Option<&ExecutorProfile> {
+        self.executors.get(executor_key)
+    }
+
+    /// Get agent by executor key and optional variant
+    pub fn get_agent(&self, executor_key: &str, variant: Option<&str>) -> Option<CodingAgent> {
+        if let Some(profile) = self.get_executor_profile(executor_key) {
+            let variant_name = variant.unwrap_or("default");
+            profile.get_variant(variant_name).map(|v| v.agent.clone())
+        } else {
+            None
         }
-
-        let content = fs::read_to_string(&profiles_path)?;
-
-        let user_profiles: Self = serde_json::from_str(&content).map_err(|e| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Failed to parse profiles.json: {e}"),
-            )
-        })?;
-
-        let default_labels: HashSet<String> = self.profiles.keys().cloned().collect();
-
-        // Only add user profiles with unique labels
-        for (label, user_profile) in user_profiles.profiles {
-            if !default_labels.contains(&label) {
-                self.profiles.insert(label.clone(), user_profile);
-            } else {
-                tracing::debug!(
-                    "Skipping user profile '{}' - default with same label exists",
-                    label
-                );
-            }
-        }
-
-        Ok(())
     }
 
-    pub fn get_profile(&self, label: &str) -> Option<&ProfileConfig> {
-        self.profiles.get(label)
-    }
-
-    pub fn len(&self) -> usize {
-        self.profiles.len()
-    }
-
-    pub fn to_map(&self) -> HashMap<String, ProfileConfig> {
-        self.profiles.clone()
+    /// Get profile by executor key, create with default config if not found
+    pub fn get_mcp_config_path(&self, executor_key: &str) -> Option<PathBuf> {
+        self.get_executor_profile(executor_key)?
+            .get_mcp_config_path()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use super::*;
 
     #[test]
-    fn test_partial_profile_structures() {
-        // Test that PartialProfileConfig structures serialize correctly
-        let partial = PartialProfileConfig {
-            default: None,
-            variants: HashMap::new(),
-        };
+    fn test_executor_profiles_v3() {
+        // Test loading from v3 defaults
+        let executor_profiles = ExecutorConfigs::from_defaults_v3();
 
-        // Should serialize to JSON without panicking
-        let json = serde_json::to_string(&partial);
-        assert!(json.is_ok());
+        // Should have all the expected executor types
+        assert!(
+            executor_profiles
+                .get_executor_profile("CLAUDE_CODE")
+                .is_some()
+        );
+        assert!(executor_profiles.get_executor_profile("AMP").is_some());
+        assert!(executor_profiles.get_executor_profile("GEMINI").is_some());
+        assert!(executor_profiles.get_executor_profile("CODEX").is_some());
+        assert!(executor_profiles.get_executor_profile("OPENCODE").is_some());
+        assert!(
+            executor_profiles
+                .get_executor_profile("QWEN_CODE")
+                .is_some()
+        );
+        assert!(executor_profiles.get_executor_profile("CURSOR").is_some());
 
-        let partials = PartialProfileConfigs {
-            profiles: {
-                let mut profiles = HashMap::new();
-                profiles.insert("test".to_string(), partial);
-                profiles
-            },
-        };
+        // Test CLAUDE_CODE profile has expected configurations
+        let claude_profile = executor_profiles
+            .get_executor_profile("CLAUDE_CODE")
+            .unwrap();
+        assert!(claude_profile.get_variant("default").is_some());
+        assert!(claude_profile.get_variant("plan").is_some());
+        assert!(claude_profile.get_variant("router").is_some());
 
-        // Should serialize to JSON without panicking
-        let json = serde_json::to_string(&partials);
-        assert!(json.is_ok());
+        // Test getting agents by executor key and variant
+        let default_claude = executor_profiles.get_agent("CLAUDE_CODE", None).unwrap();
+        let plan_claude = executor_profiles
+            .get_agent("CLAUDE_CODE", Some("plan"))
+            .unwrap();
+
+        // They should be different configurations
+        assert_ne!(default_claude, plan_claude);
+
+        // Test GEMINI profile has flash variant
+        let flash_gemini = executor_profiles
+            .get_agent("GEMINI", Some("flash"))
+            .unwrap();
+        assert!(matches!(flash_gemini, CodingAgent::Gemini(_)));
     }
 
     #[test]
-    fn test_load_from_empty_partials() {
-        let partials = PartialProfileConfigs {
-            profiles: HashMap::new(),
-        };
+    fn test_executor_profile_id() {
+        // Test ExecutorProfileId functionality
+        let id1 = ExecutorProfileId::new("CLAUDE_CODE".to_string());
+        let id2 = ExecutorProfileId::with_variant("CLAUDE_CODE".to_string(), "plan".to_string());
 
-        let result = ProfileConfigs::load_from_partials(&partials);
-        let defaults = ProfileConfigs::from_defaults();
+        assert_eq!(id1.cache_key(), "CLAUDE_CODE");
+        assert_eq!(id2.cache_key(), "CLAUDE_CODE:plan");
 
-        // Should be identical to defaults when no partials provided
-        assert_eq!(result.profiles.len(), defaults.profiles.len());
+        // Test Display trait
+        assert_eq!(format!("{id1}"), "CLAUDE_CODE");
+        assert_eq!(format!("{id2}"), "CLAUDE_CODE:plan");
+
+        // Test FromStr trait
+        let parsed1: ExecutorProfileId = "GEMINI".parse().unwrap();
+        let parsed2: ExecutorProfileId = "GEMINI:flash".parse().unwrap();
+
+        assert_eq!(parsed1.executor, "GEMINI");
+        assert_eq!(parsed1.variant, None);
+        assert_eq!(parsed2.executor, "GEMINI");
+        assert_eq!(parsed2.variant, Some("flash".to_string()));
     }
 
     #[test]
-    fn test_no_null_values_in_serialization() {
+    fn test_save_and_load_overrides() {
         use crate::{command::CmdOverrides, executors::claude::ClaudeCode};
 
-        // Test that None values are omitted from JSON serialization
-        let variant = VariantAgentConfig {
+        // Create a custom profile configuration
+        let mut custom_profiles = ExecutorConfigs::from_defaults_v3();
+
+        // Add a custom variant to CLAUDE_CODE
+        let custom_variant = VariantAgentConfig {
             agent: CodingAgent::ClaudeCode(ClaudeCode {
+                plan: Some(true),
+                dangerously_skip_permissions: Some(false),
                 claude_code_router: Some(false),
-                append_prompt: None,
-                plan: None, // Should be omitted when None
-                dangerously_skip_permissions: None,
+                append_prompt: Some("Custom prompt".to_string()),
                 cmd: CmdOverrides {
                     base_command_override: None,
                     additional_params: None,
@@ -447,149 +493,257 @@ mod tests {
             }),
         };
 
-        let json = serde_json::to_string(&variant).unwrap();
-        assert!(!json.contains("null"));
-        assert!(!json.contains("plan")); // Should be omitted when false
+        custom_profiles
+            .executors
+            .get_mut("CLAUDE_CODE")
+            .unwrap()
+            .configurations
+            .insert("custom".to_string(), custom_variant);
 
-        // Test PartialProfileConfig with all None values
-        let partial = PartialProfileConfig {
-            default: None,
-            variants: HashMap::new(),
-        };
+        // Test computing overrides
+        let defaults = ExecutorConfigs::from_defaults_v3();
+        let overrides = ExecutorConfigs::compute_overrides(&defaults, &custom_profiles).unwrap();
 
-        let json = serde_json::to_string(&partial).unwrap();
-        assert!(!json.contains("null"));
-        assert!(!json.contains("label"));
-        assert!(!json.contains("default"));
-        // Empty variants HashMap should be omitted entirely, resulting in empty object
-        assert_eq!(json, r#"{}"#);
+        // Should only contain the new custom variant
+        assert!(overrides.executors.contains_key("CLAUDE_CODE"));
+        let claude_overrides = &overrides.executors["CLAUDE_CODE"];
+        assert!(claude_overrides.configurations.contains_key("custom"));
+        assert!(!claude_overrides.configurations.contains_key("plan")); // plan is already in defaults
+
+        // Test merging
+        let merged = ExecutorConfigs::merge_with_defaults(defaults.clone(), overrides);
+        assert!(
+            merged
+                .executors
+                .get("CLAUDE_CODE")
+                .unwrap()
+                .configurations
+                .contains_key("custom")
+        );
+        assert!(
+            merged
+                .executors
+                .get("CLAUDE_CODE")
+                .unwrap()
+                .configurations
+                .contains_key("plan")
+        ); // from defaults
+
+        // Test validation
+        assert!(ExecutorConfigs::validate_merged(&merged).is_ok());
     }
 
     #[test]
-    fn default_profiles_have_expected_agents_and_variants() {
-        // Build default profiles and make lookup by label easy
-        let profiles = ProfileConfigs::from_defaults().to_map();
+    fn test_validation_errors() {
+        let mut invalid_profiles = ExecutorConfigs::from_defaults_v3();
 
-        let get_profile_agent = |label: &str| {
-            profiles
-                .get(label)
-                .map(|p| &p.default.agent)
-                .unwrap_or_else(|| panic!("Profile not found: {label}"))
-        };
-        let profiles = ProfileConfigs::from_defaults();
-        assert_eq!(profiles.len(), 8);
-
-        // Test ClaudeCode variants
-        let claude_code_agent = get_profile_agent("claude-code");
-        assert!(matches!(
-            claude_code_agent,
-            crate::executors::CodingAgent::ClaudeCode(claude)
-                if !claude.claude_code_router.unwrap_or(false)
-                    && !claude.plan.unwrap_or(false)
-        ));
-
-        let claude_code_router_agent = get_profile_agent("claude-code-router");
-        assert!(matches!(
-            claude_code_router_agent,
-            crate::executors::CodingAgent::ClaudeCode(claude)
-                if claude.claude_code_router.unwrap_or(false) && !claude.plan.unwrap_or(false)
-        ));
-
-        // Test simple executors have correct types
-        assert!(matches!(
-            get_profile_agent("amp"),
-            crate::executors::CodingAgent::Amp(_)
-        ));
-        assert!(matches!(
-            get_profile_agent("codex"),
-            crate::executors::CodingAgent::Codex(_)
-        ));
-        assert!(matches!(
-            get_profile_agent("opencode"),
-            crate::executors::CodingAgent::Opencode(_)
-        ));
-        assert!(matches!(
-            get_profile_agent("cursor"),
-            crate::executors::CodingAgent::Cursor(_)
-        ));
-        assert!(matches!(
-            get_profile_agent("qwen-code"),
-            crate::executors::CodingAgent::QwenCode(_)
-        ));
-
-        // Test Gemini model variants
-        let gemini_agent = get_profile_agent("gemini");
-        assert!(
-            matches!(gemini_agent, crate::executors::CodingAgent::Gemini(gemini)
-            if matches!(gemini.model, crate::executors::gemini::GeminiModel::Default))
+        // Add invalid configuration name
+        let claude_profile = invalid_profiles.executors.get_mut("CLAUDE_CODE").unwrap();
+        claude_profile.configurations.insert(
+            "__reserved".to_string(),
+            claude_profile.get_default().unwrap().clone(),
         );
 
-        // Test that plan variant exists for claude-code
-        let claude_profile = profiles.get_profile("claude-code").unwrap();
-        let plan_variant = claude_profile.get_variant("plan").unwrap();
-        assert!(matches!(
-            &plan_variant.agent,
-            crate::executors::CodingAgent::ClaudeCode(claude)
-                if !claude.claude_code_router.unwrap_or(false)
-                    && claude.plan.unwrap_or(false)
-        ));
+        // Should fail validation
+        assert!(ExecutorConfigs::validate_merged(&invalid_profiles).is_err());
 
-        // Test that flash variant exists for gemini
-        let gemini_profile = profiles.get_profile("gemini").unwrap();
-        let flash_variant = gemini_profile.get_variant("flash").unwrap();
-        assert!(
-            matches!(&flash_variant.agent, crate::executors::CodingAgent::Gemini(gemini)
-            if matches!(gemini.model, crate::executors::gemini::GeminiModel::Flash))
-        );
+        // Test invalid executor key validation
+        let mut invalid_executor = ExecutorConfigs::from_defaults_v3();
+        let claude_profile = invalid_executor.executors.remove("CLAUDE_CODE").unwrap();
+        invalid_executor
+            .executors
+            .insert("INVALID_EXECUTOR".to_string(), claude_profile);
+
+        // Should fail validation due to unknown executor key
+        assert!(ExecutorConfigs::validate_merged(&invalid_executor).is_err());
     }
 
     #[test]
-    fn test_flattened_agent_deserialization() {
+    fn test_agent_retrieval() {
+        let executor_profiles = ExecutorConfigs::from_defaults_v3();
+
+        // Test basic agent retrieval
+        let claude = executor_profiles.get_agent("CLAUDE_CODE", None);
+        assert!(claude.is_some());
+        let claude_agent = claude.as_ref().unwrap();
+        assert!(matches!(claude_agent, CodingAgent::ClaudeCode(_)));
+
+        // Test variant retrieval
+        let claude_plan = executor_profiles.get_agent("CLAUDE_CODE", Some("plan"));
+        assert!(claude_plan.is_some());
+
+        // Test via ExecutorProfileId
+        let id = ExecutorProfileId::new("CLAUDE_CODE".to_string());
+        let claude_by_id = executor_profiles.get_agent_by_id(&id);
+        assert!(claude_by_id.is_some());
+        assert_eq!(claude, claude_by_id);
+    }
+
+    #[test]
+    fn test_flattened_structure() {
+        // Test that the flattened structure works correctly
         let test_json = r#"{
-            "profiles": {
-                "test-claude": {
-                    "label": "test-claude",
-                    "CLAUDE_CODE": {
-                        "variant": "claude_code",
-                        "plan": true,
-                        "append_prompt": null
+            "executors": {
+                "CLAUDE_CODE": {
+                    "default": {
+                        "CLAUDE_CODE": {
+                            "plan": false,
+                            "dangerously_skip_permissions": true,
+                            "append_prompt": null
+                        }
                     },
-                    "variants": {}
-                },
-                "test-gemini": {
-                    "label": "test-gemini",
-                    "GEMINI": {
-                        "model": "flash",
-                        "append_prompt": null
-                    },
-                    "variants": {}
+                    "plan": {
+                        "CLAUDE_CODE": {
+                            "plan": true,
+                            "dangerously_skip_permissions": false,
+                            "append_prompt": null
+                        }
+                    }
                 }
             }
         }"#;
 
-        let profiles: ProfileConfigs = serde_json::from_str(test_json).expect("Should deserialize");
-        assert_eq!(profiles.len(), 2);
+        let parsed: ExecutorConfigs = serde_json::from_str(test_json).expect("JSON should parse");
+        let claude_profile = parsed.get_executor_profile("CLAUDE_CODE").unwrap();
 
-        // Test Claude profile
-        let claude_profile = profiles.get_profile("test-claude").unwrap();
-        match &claude_profile.default.agent {
-            crate::executors::CodingAgent::ClaudeCode(claude) => {
-                assert!(!claude.claude_code_router.unwrap_or(false));
-                assert!(claude.plan.unwrap_or(false));
+        // Should have both default and plan configurations
+        assert!(claude_profile.get_variant("default").is_some());
+        assert!(claude_profile.get_variant("plan").is_some());
+
+        // Variant names should work correctly
+        let variant_names = claude_profile.variant_names();
+        assert_eq!(variant_names.len(), 1); // Only "plan", not "default"
+        assert!(variant_names.contains(&&"plan".to_string()));
+    }
+
+    #[test]
+    fn test_strum_integration() {
+        // Test that VARIANTS array contains expected values
+        let variants = CodingAgent::VARIANTS;
+        assert!(variants.contains(&"CLAUDE_CODE"));
+        assert!(variants.contains(&"AMP"));
+        assert!(variants.contains(&"GEMINI"));
+        assert!(variants.contains(&"CODEX"));
+        assert!(variants.contains(&"OPENCODE"));
+        assert!(variants.contains(&"QWEN_CODE"));
+        assert!(variants.contains(&"CURSOR"));
+        assert!(!variants.contains(&"INVALID_EXECUTOR"));
+
+        // Test that Display works correctly
+        let claude = ExecutorConfigs::from_defaults_v3()
+            .get_agent("CLAUDE_CODE", None)
+            .unwrap();
+        assert_eq!(claude.to_string(), "CLAUDE_CODE");
+    }
+
+    #[test]
+    fn test_cannot_delete_default_config() {
+        let defaults = ExecutorConfigs::from_defaults_v3();
+        let mut invalid_config = defaults.clone();
+
+        // Remove default configuration from CLAUDE_CODE
+        invalid_config
+            .executors
+            .get_mut("CLAUDE_CODE")
+            .unwrap()
+            .configurations
+            .remove("default");
+
+        // Should fail with CannotDeleteBuiltInConfig error
+        match ExecutorConfigs::compute_overrides(&defaults, &invalid_config) {
+            Err(ProfileError::CannotDeleteBuiltInConfig { executor, variant }) => {
+                assert_eq!(executor, "CLAUDE_CODE");
+                assert_eq!(variant, "default");
             }
-            _ => panic!("Expected ClaudeCode agent"),
+            _ => panic!("Expected CannotDeleteBuiltInConfig error"),
+        }
+    }
+
+    #[test]
+    fn test_cannot_delete_other_builtin_configs() {
+        let defaults = ExecutorConfigs::from_defaults_v3();
+
+        // Test removing plan configuration from CLAUDE_CODE
+        let mut invalid_config = defaults.clone();
+        invalid_config
+            .executors
+            .get_mut("CLAUDE_CODE")
+            .unwrap()
+            .configurations
+            .remove("plan");
+
+        match ExecutorConfigs::compute_overrides(&defaults, &invalid_config) {
+            Err(ProfileError::CannotDeleteBuiltInConfig { executor, variant }) => {
+                assert_eq!(executor, "CLAUDE_CODE");
+                assert_eq!(variant, "plan");
+            }
+            _ => panic!("Expected CannotDeleteBuiltInConfig error for plan"),
         }
 
-        // Test Gemini profile
-        let gemini_profile = profiles.get_profile("test-gemini").unwrap();
-        match &gemini_profile.default.agent {
-            crate::executors::CodingAgent::Gemini(gemini) => {
-                assert!(matches!(
-                    gemini.model,
-                    crate::executors::gemini::GeminiModel::Flash
-                ));
+        // Test removing flash configuration from GEMINI
+        let mut invalid_config2 = defaults.clone();
+        invalid_config2
+            .executors
+            .get_mut("GEMINI")
+            .unwrap()
+            .configurations
+            .remove("flash");
+
+        match ExecutorConfigs::compute_overrides(&defaults, &invalid_config2) {
+            Err(ProfileError::CannotDeleteBuiltInConfig { executor, variant }) => {
+                assert_eq!(executor, "GEMINI");
+                assert_eq!(variant, "flash");
             }
-            _ => panic!("Expected Gemini agent"),
+            _ => panic!("Expected CannotDeleteBuiltInConfig error for flash"),
+        }
+    }
+
+    #[test]
+    fn test_can_add_custom_config() {
+        use crate::{command::CmdOverrides, executors::claude::ClaudeCode};
+
+        let defaults = ExecutorConfigs::from_defaults_v3();
+        let mut config_with_custom = defaults.clone();
+
+        // Add a custom variant to CLAUDE_CODE
+        let custom_variant = VariantAgentConfig {
+            agent: CodingAgent::ClaudeCode(ClaudeCode {
+                plan: Some(true),
+                dangerously_skip_permissions: Some(false),
+                claude_code_router: Some(false),
+                append_prompt: Some("Custom prompt".to_string()),
+                cmd: CmdOverrides {
+                    base_command_override: None,
+                    additional_params: None,
+                },
+            }),
+        };
+
+        config_with_custom
+            .executors
+            .get_mut("CLAUDE_CODE")
+            .unwrap()
+            .configurations
+            .insert("my_custom".to_string(), custom_variant);
+
+        // Should succeed - adding custom configs is allowed
+        assert!(ExecutorConfigs::compute_overrides(&defaults, &config_with_custom).is_ok());
+    }
+
+    #[test]
+    fn test_cannot_delete_executor() {
+        let defaults = ExecutorConfigs::from_defaults_v3();
+        let mut invalid_config = defaults.clone();
+
+        // Remove entire CLAUDE_CODE executor
+        invalid_config.executors.remove("CLAUDE_CODE");
+
+        // Should fail with CannotDeleteExecutor error
+        match ExecutorConfigs::compute_overrides(&defaults, &invalid_config) {
+            Err(ProfileError::CannotDeleteExecutor { executor }) => {
+                assert_eq!(executor, "CLAUDE_CODE");
+            }
+            _ => panic!("Expected CannotDeleteExecutor error"),
         }
     }
 }

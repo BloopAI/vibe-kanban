@@ -1,5 +1,5 @@
 use anyhow::Error;
-use executors::profile::ProfileVariantLabel;
+use executors::profile::ExecutorProfileId;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 pub use v3::{EditorConfig, EditorType, GitHubConfig, NotificationConfig, SoundFile, ThemeMode};
@@ -10,7 +10,7 @@ use crate::services::config::versions::v3;
 pub struct Config {
     pub config_version: String,
     pub theme: ThemeMode,
-    pub profile: ProfileVariantLabel,
+    pub profile: ExecutorProfileId,
     pub disclaimer_acknowledged: bool,
     pub onboarding_acknowledged: bool,
     pub github_login_acknowledged: bool,
@@ -34,21 +34,21 @@ impl Config {
         };
         let mut onboarding_acknowledged = old_config.onboarding_acknowledged;
         let profile = match old_config.profile.as_str() {
-            "claude-code" => ProfileVariantLabel::default("claude-code".to_string()),
+            "claude-code" => ExecutorProfileId::new("CLAUDE_CODE".to_string()),
             "claude-code-plan" => {
-                ProfileVariantLabel::with_variant("claude-code".to_string(), "plan".to_string())
+                ExecutorProfileId::with_variant("CLAUDE_CODE".to_string(), "plan".to_string())
             }
             "claude-code-router" => {
-                ProfileVariantLabel::with_variant("claude-code".to_string(), "router".to_string())
+                ExecutorProfileId::with_variant("CLAUDE_CODE".to_string(), "router".to_string())
             }
-            "amp" => ProfileVariantLabel::default("amp".to_string()),
-            "gemini" => ProfileVariantLabel::default("gemini".to_string()),
-            "codex" => ProfileVariantLabel::default("codex".to_string()),
-            "opencode" => ProfileVariantLabel::default("opencode".to_string()),
-            "qwen-code" => ProfileVariantLabel::default("qwen-code".to_string()),
+            "amp" => ExecutorProfileId::new("AMP".to_string()),
+            "gemini" => ExecutorProfileId::new("GEMINI".to_string()),
+            "codex" => ExecutorProfileId::new("CODEX".to_string()),
+            "opencode" => ExecutorProfileId::new("OPENCODE".to_string()),
+            "qwen-code" => ExecutorProfileId::new("QWEN_CODE".to_string()),
             _ => {
                 onboarding_acknowledged = false; // Reset the user's onboarding if executor is not supported
-                ProfileVariantLabel::default("claude-code".to_string())
+                ExecutorProfileId::new("CLAUDE_CODE".to_string())
             }
         };
 
@@ -95,7 +95,7 @@ impl Default for Config {
         Self {
             config_version: "v4".to_string(),
             theme: ThemeMode::System,
-            profile: ProfileVariantLabel::default("claude-code".to_string()),
+            profile: ExecutorProfileId::new("CLAUDE_CODE".to_string()),
             disclaimer_acknowledged: false,
             onboarding_acknowledged: false,
             github_login_acknowledged: false,

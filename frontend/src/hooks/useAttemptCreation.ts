@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { attemptsApi } from '@/lib/api';
-import type { ProfileVariantLabel, TaskAttempt } from 'shared/types';
+import type { TaskAttempt } from 'shared/types';
+import type { ExecutorProfileId } from 'shared/types';
 
 export function useAttemptCreation(taskId: string) {
   const queryClient = useQueryClient();
@@ -13,12 +14,12 @@ export function useAttemptCreation(taskId: string) {
       profile,
       baseBranch,
     }: {
-      profile: ProfileVariantLabel;
+      profile: ExecutorProfileId;
       baseBranch: string;
     }) =>
       attemptsApi.create({
         task_id: taskId,
-        profile_variant_label: profile,
+        executor_profile_id: profile,
         base_branch: baseBranch,
       }),
     onSuccess: (newAttempt: TaskAttempt) => {
