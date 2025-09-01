@@ -1,10 +1,11 @@
 use anyhow::Error;
+use executors::profile::{ExecutorProfileConfigs, ExecutorProfileId};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
+use utils;
 pub use v5::{EditorConfig, EditorType, GitHubConfig, NotificationConfig, SoundFile, ThemeMode};
 
 use crate::services::config::versions::{v4::ProfileVariantLabel, v5};
-use executors::profile::{ExecutorProfileConfigs, ExecutorProfileId};
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct Config {
@@ -42,13 +43,15 @@ impl Config {
         // Backup custom profiles.json if it exists (v6 migration may break compatibility)
         let profiles_path = utils::assets::profiles_path();
         if profiles_path.exists() {
-            let backup_name = format!("profiles_v5_backup_{}.json", 
+            let backup_name = format!(
+                "profiles_v5_backup_{}.json",
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap()
-                    .as_secs());
+                    .as_secs()
+            );
             let backup_path = profiles_path.parent().unwrap().join(backup_name);
-            
+
             if let Err(e) = std::fs::rename(&profiles_path, &backup_path) {
                 tracing::warn!("Failed to backup profiles.json: {}", e);
             } else {
@@ -60,33 +63,58 @@ impl Config {
         // Validate and convert ProfileVariantLabel to ExecutorProfileId
         let configs = ExecutorProfileConfigs::from_defaults_v3();
         let executor_upper = old_config.profile.profile.to_uppercase();
-        
-        let (profile, onboarding_acknowledged) = if let Some(executor_profile) = configs.get_executor_profile(&executor_upper) {
+
+        let (profile, onboarding_acknowledged) = if let Some(executor_profile) =
+            configs.get_executor_profile(&executor_upper)
+        {
             // Check if variant exists for this executor
-            let variant_upper = old_config.profile.variant.as_ref().map(|v| v.to_uppercase());
-            
-            if variant_upper.is_none() || executor_profile.configurations.contains_key(variant_upper.as_ref().unwrap()) {
+            let variant_upper = old_config
+                .profile
+                .variant
+                .as_ref()
+                .map(|v| v.to_uppercase());
+
+            if variant_upper.is_none()
+                || executor_profile
+                    .configurations
+                    .contains_key(variant_upper.as_ref().unwrap())
+            {
                 // Valid combination
-                (ExecutorProfileId { 
-                    executor: executor_upper, 
-                    variant: variant_upper 
-                }, old_config.onboarding_acknowledged)
+                (
+                    ExecutorProfileId {
+                        executor: executor_upper,
+                        variant: variant_upper,
+                    },
+                    old_config.onboarding_acknowledged,
+                )
             } else {
                 // Invalid variant → fallback + reset onboarding
-                tracing::warn!("Invalid executor variant '{}' for executor '{}', falling back to CLAUDE_CODE", 
-                    variant_upper.as_ref().unwrap(), executor_upper);
-                (ExecutorProfileId { 
-                    executor: "CLAUDE_CODE".to_string(), 
-                    variant: None 
-                }, false)
+                tracing::warn!(
+                    "Invalid executor variant '{}' for executor '{}', falling back to CLAUDE_CODE",
+                    variant_upper.as_ref().unwrap(),
+                    executor_upper
+                );
+                (
+                    ExecutorProfileId {
+                        executor: "CLAUDE_CODE".to_string(),
+                        variant: None,
+                    },
+                    false,
+                )
             }
         } else {
             // Invalid executor → fallback + reset onboarding
-            tracing::warn!("Invalid executor '{}', falling back to CLAUDE_CODE", executor_upper);
-            (ExecutorProfileId { 
-                executor: "CLAUDE_CODE".to_string(), 
-                variant: None 
-            }, false)
+            tracing::warn!(
+                "Invalid executor '{}', falling back to CLAUDE_CODE",
+                executor_upper
+            );
+            (
+                ExecutorProfileId {
+                    executor: "CLAUDE_CODE".to_string(),
+                    variant: None,
+                },
+                false,
+            )
         };
 
         Ok(Self {
