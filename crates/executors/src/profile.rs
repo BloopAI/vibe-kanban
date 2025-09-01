@@ -428,12 +428,14 @@ impl ExecutorConfigs {
     /// Get agent by executor key and optional variant
     pub fn get_agent(&self, executor_key: &str, variant: Option<&str>) -> Option<CodingAgent> {
         let uppercase_key = executor_key.to_uppercase(); // Backwards compatibility with old ProfileVariant
-        if let Some(profile) = self.get_executor_profile(&uppercase_key) {
-            let variant_name = variant.unwrap_or("DEFAULT");
-            profile.get_variant(variant_name).map(|v| v.agent.clone())
-        } else {
-            None
-        }
+        self.get_executor_profile(&uppercase_key)
+            .and_then(|profile| {
+                let variant_name = variant.unwrap_or("DEFAULT");
+                profile
+                    .get_variant(variant_name)
+                    .or_else(|| profile.get_variant("DEFAULT"))
+                    .map(|v| v.agent.clone())
+            })
     }
 
     /// Get profile by executor key, create with default config if not found
