@@ -1,4 +1,3 @@
-export { useExecutionProcesses } from './useExecutionProcesses';
 export { useBranchStatus } from './useBranchStatus';
 export { useAttemptExecution } from './useAttemptExecution';
 export { useOpenInEditor } from './useOpenInEditor';
