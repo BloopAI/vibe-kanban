@@ -39,7 +39,7 @@ const DEFAULT_PROFILES_V3_JSON: &str = include_str!("../default_profiles_v3.json
 pub struct ExecutorProfileId {
     /// The executor type (e.g., "CLAUDE_CODE", "AMP")
     pub executor: String,
-    /// Optional variant name (e.g., "plan", "router")
+    /// Optional variant name (e.g., "PLAN", "ROUTER")
     #[serde(skip_serializing_if = "Option::is_none")]
     pub variant: Option<String>,
 }
@@ -106,7 +106,7 @@ pub struct VariantAgentConfig {
 #[ts(export, type = "{ [key in string]: VariantAgentConfig }")]
 pub struct ExecutorProfile {
     /// All configurations for this executor (default + variants)
-    /// Key "default" is reserved for the default configuration
+    /// Key "DEFAULT" is reserved for the default configuration
     #[serde(flatten)]
     pub configurations: HashMap<String, VariantAgentConfig>,
 }
@@ -119,7 +119,7 @@ impl ExecutorProfile {
 
     /// Get the default configuration for this executor
     pub fn get_default(&self) -> Option<&VariantAgentConfig> {
-        self.configurations.get("default")
+        self.configurations.get("DEFAULT")
     }
 
     /// Get MCP config path from default configuration
@@ -130,7 +130,7 @@ impl ExecutorProfile {
     /// Create a new executor profile with just a default configuration
     pub fn new_with_default(default_config: VariantAgentConfig) -> Self {
         let mut configurations = HashMap::new();
-        configurations.insert("default".to_string(), default_config);
+        configurations.insert("DEFAULT".to_string(), default_config);
         Self { configurations }
     }
 
@@ -140,7 +140,7 @@ impl ExecutorProfile {
         variant_name: String,
         config: VariantAgentConfig,
     ) -> Result<(), &'static str> {
-        if variant_name == "default" {
+        if variant_name == "DEFAULT" {
             return Err(
                 "Cannot override 'default' variant using set_variant, use set_default instead",
             );
@@ -151,14 +151,14 @@ impl ExecutorProfile {
 
     /// Set the default configuration
     pub fn set_default(&mut self, config: VariantAgentConfig) {
-        self.configurations.insert("default".to_string(), config);
+        self.configurations.insert("DEFAULT".to_string(), config);
     }
 
-    /// Get all variant names (excluding "default")
+    /// Get all variant names (excluding "DEFAULT")
     pub fn variant_names(&self) -> Vec<&String> {
         self.configurations
             .keys()
-            .filter(|k| *k != "default")
+            .filter(|k| *k != "DEFAULT")
             .collect()
     }
 }
@@ -333,7 +333,7 @@ impl ExecutorConfigs {
             }
 
             // Ensure default configuration exists
-            let default_config = profile.configurations.get("default").ok_or_else(|| {
+            let default_config = profile.configurations.get("DEFAULT").ok_or_else(|| {
                 ProfileError::Validation(format!(
                     "Executor '{executor_key}' is missing required 'default' configuration"
                 ))
@@ -385,7 +385,7 @@ impl ExecutorConfigs {
     /// Get agent by executor key and optional variant
     pub fn get_agent(&self, executor_key: &str, variant: Option<&str>) -> Option<CodingAgent> {
         if let Some(profile) = self.get_executor_profile(executor_key) {
-            let variant_name = variant.unwrap_or("default");
+            let variant_name = variant.unwrap_or("DEFAULT");
             profile.get_variant(variant_name).map(|v| v.agent.clone())
         } else {
             None
@@ -429,47 +429,47 @@ mod tests {
         let claude_profile = executor_profiles
             .get_executor_profile("CLAUDE_CODE")
             .unwrap();
-        assert!(claude_profile.get_variant("default").is_some());
-        assert!(claude_profile.get_variant("plan").is_some());
-        assert!(claude_profile.get_variant("router").is_some());
+        assert!(claude_profile.get_variant("DEFAULT").is_some());
+        assert!(claude_profile.get_variant("PLAN").is_some());
+        assert!(claude_profile.get_variant("ROUTER").is_some());
 
         // Test getting agents by executor key and variant
         let default_claude = executor_profiles.get_agent("CLAUDE_CODE", None).unwrap();
         let plan_claude = executor_profiles
-            .get_agent("CLAUDE_CODE", Some("plan"))
+            .get_agent("CLAUDE_CODE", Some("PLAN"))
             .unwrap();
 
         // They should be different configurations
         assert_ne!(default_claude, plan_claude);
 
-        // Test GEMINI profile has flash variant
-        let flash_gemini = executor_profiles
-            .get_agent("GEMINI", Some("flash"))
+        // Test GEMINI profile has FLASH variant
+        let FLASH_gemini = executor_profiles
+            .get_agent("GEMINI", Some("FLASH"))
             .unwrap();
-        assert!(matches!(flash_gemini, CodingAgent::Gemini(_)));
+        assert!(matches!(FLASH_gemini, CodingAgent::Gemini(_)));
     }
 
     #[test]
     fn test_executor_profile_id() {
         // Test ExecutorProfileId functionality
         let id1 = ExecutorProfileId::new("CLAUDE_CODE".to_string());
-        let id2 = ExecutorProfileId::with_variant("CLAUDE_CODE".to_string(), "plan".to_string());
+        let id2 = ExecutorProfileId::with_variant("CLAUDE_CODE".to_string(), "PLAN".to_string());
 
         assert_eq!(id1.cache_key(), "CLAUDE_CODE");
-        assert_eq!(id2.cache_key(), "CLAUDE_CODE:plan");
+        assert_eq!(id2.cache_key(), "CLAUDE_CODE:PLAN");
 
         // Test Display trait
         assert_eq!(format!("{id1}"), "CLAUDE_CODE");
-        assert_eq!(format!("{id2}"), "CLAUDE_CODE:plan");
+        assert_eq!(format!("{id2}"), "CLAUDE_CODE:PLAN");
 
         // Test FromStr trait
         let parsed1: ExecutorProfileId = "GEMINI".parse().unwrap();
-        let parsed2: ExecutorProfileId = "GEMINI:flash".parse().unwrap();
+        let parsed2: ExecutorProfileId = "GEMINI:FLASH".parse().unwrap();
 
         assert_eq!(parsed1.executor, "GEMINI");
         assert_eq!(parsed1.variant, None);
         assert_eq!(parsed2.executor, "GEMINI");
-        assert_eq!(parsed2.variant, Some("flash".to_string()));
+        assert_eq!(parsed2.variant, Some("FLASH".to_string()));
     }
 
     #[test]
@@ -498,7 +498,7 @@ mod tests {
             .get_mut("CLAUDE_CODE")
             .unwrap()
             .configurations
-            .insert("custom".to_string(), custom_variant);
+            .insert("CUSTOM".to_string(), custom_variant);
 
         // Test computing overrides
         let defaults = ExecutorConfigs::from_defaults_v3();
@@ -507,8 +507,8 @@ mod tests {
         // Should only contain the new custom variant
         assert!(overrides.executors.contains_key("CLAUDE_CODE"));
         let claude_overrides = &overrides.executors["CLAUDE_CODE"];
-        assert!(claude_overrides.configurations.contains_key("custom"));
-        assert!(!claude_overrides.configurations.contains_key("plan")); // plan is already in defaults
+        assert!(claude_overrides.configurations.contains_key("CUSTOM"));
+        assert!(!claude_overrides.configurations.contains_key("PLAN")); // plan is already in defaults
 
         // Test merging
         let merged = ExecutorConfigs::merge_with_defaults(defaults.clone(), overrides);
@@ -518,7 +518,7 @@ mod tests {
                 .get("CLAUDE_CODE")
                 .unwrap()
                 .configurations
-                .contains_key("custom")
+                .contains_key("CUSTOM")
         );
         assert!(
             merged
@@ -526,7 +526,7 @@ mod tests {
                 .get("CLAUDE_CODE")
                 .unwrap()
                 .configurations
-                .contains_key("plan")
+                .contains_key("PLAN")
         ); // from defaults
 
         // Test validation
@@ -569,7 +569,7 @@ mod tests {
         assert!(matches!(claude_agent, CodingAgent::ClaudeCode(_)));
 
         // Test variant retrieval
-        let claude_plan = executor_profiles.get_agent("CLAUDE_CODE", Some("plan"));
+        let claude_plan = executor_profiles.get_agent("CLAUDE_CODE", Some("PLAN"));
         assert!(claude_plan.is_some());
 
         // Test via ExecutorProfileId
@@ -585,16 +585,16 @@ mod tests {
         let test_json = r#"{
             "executors": {
                 "CLAUDE_CODE": {
-                    "default": {
+                    "DEFAULT": {
                         "CLAUDE_CODE": {
-                            "plan": false,
+                            "PLAN": false,
                             "dangerously_skip_permissions": true,
                             "append_prompt": null
                         }
                     },
-                    "plan": {
+                    "PLAN": {
                         "CLAUDE_CODE": {
-                            "plan": true,
+                            "PLAN": true,
                             "dangerously_skip_permissions": false,
                             "append_prompt": null
                         }
@@ -607,13 +607,13 @@ mod tests {
         let claude_profile = parsed.get_executor_profile("CLAUDE_CODE").unwrap();
 
         // Should have both default and plan configurations
-        assert!(claude_profile.get_variant("default").is_some());
-        assert!(claude_profile.get_variant("plan").is_some());
+        assert!(claude_profile.get_variant("DEFAULT").is_some());
+        assert!(claude_profile.get_variant("PLAN").is_some());
 
         // Variant names should work correctly
         let variant_names = claude_profile.variant_names();
-        assert_eq!(variant_names.len(), 1); // Only "plan", not "default"
-        assert!(variant_names.contains(&&"plan".to_string()));
+        assert_eq!(variant_names.len(), 1); // Only "PLAN", not "DEFAULT"
+        assert!(variant_names.contains(&&"PLAN".to_string()));
     }
 
     #[test]
@@ -647,13 +647,13 @@ mod tests {
             .get_mut("CLAUDE_CODE")
             .unwrap()
             .configurations
-            .remove("default");
+            .remove("DEFAULT");
 
         // Should fail with CannotDeleteBuiltInConfig error
         match ExecutorConfigs::compute_overrides(&defaults, &invalid_config) {
             Err(ProfileError::CannotDeleteBuiltInConfig { executor, variant }) => {
                 assert_eq!(executor, "CLAUDE_CODE");
-                assert_eq!(variant, "default");
+                assert_eq!(variant, "DEFAULT");
             }
             _ => panic!("Expected CannotDeleteBuiltInConfig error"),
         }
@@ -670,31 +670,31 @@ mod tests {
             .get_mut("CLAUDE_CODE")
             .unwrap()
             .configurations
-            .remove("plan");
+            .remove("PLAN");
 
         match ExecutorConfigs::compute_overrides(&defaults, &invalid_config) {
             Err(ProfileError::CannotDeleteBuiltInConfig { executor, variant }) => {
                 assert_eq!(executor, "CLAUDE_CODE");
-                assert_eq!(variant, "plan");
+                assert_eq!(variant, "PLAN");
             }
             _ => panic!("Expected CannotDeleteBuiltInConfig error for plan"),
         }
 
-        // Test removing flash configuration from GEMINI
+        // Test removing FLASH configuration from GEMINI
         let mut invalid_config2 = defaults.clone();
         invalid_config2
             .executors
             .get_mut("GEMINI")
             .unwrap()
             .configurations
-            .remove("flash");
+            .remove("FLASH");
 
         match ExecutorConfigs::compute_overrides(&defaults, &invalid_config2) {
             Err(ProfileError::CannotDeleteBuiltInConfig { executor, variant }) => {
                 assert_eq!(executor, "GEMINI");
-                assert_eq!(variant, "flash");
+                assert_eq!(variant, "FLASH");
             }
-            _ => panic!("Expected CannotDeleteBuiltInConfig error for flash"),
+            _ => panic!("Expected CannotDeleteBuiltInConfig error for FLASH"),
         }
     }
 
@@ -724,7 +724,7 @@ mod tests {
             .get_mut("CLAUDE_CODE")
             .unwrap()
             .configurations
-            .insert("my_custom".to_string(), custom_variant);
+            .insert("MY_CUSTOM".to_string(), custom_variant);
 
         // Should succeed - adding custom configs is allowed
         assert!(ExecutorConfigs::compute_overrides(&defaults, &config_with_custom).is_ok());
