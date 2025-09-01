@@ -24,44 +24,36 @@ use crate::{
     },
 };
 
-/// Variant of Claude Code to use
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-#[serde(rename_all = "snake_case")]
-pub enum ClaudeCodeVariant {
-    ClaudeCode,       // @anthropic-ai/claude-code@latest
-    ClaudeCodeRouter, // @musistudio/claude-code-router code
+fn base_command(claude_code_router: bool) -> &'static str {
+    if claude_code_router {
+        "npx -y @musistudio/claude-code-router code"
+    } else {
+        "npx -y @anthropic-ai/claude-code@latest"
+    }
 }
 
-impl ClaudeCodeVariant {
-    fn base_command(&self) -> &'static str {
-        match self {
-            ClaudeCodeVariant::ClaudeCode => "npx -y @anthropic-ai/claude-code@latest",
-            ClaudeCodeVariant::ClaudeCodeRouter => "npx -y @musistudio/claude-code-router code",
-        }
+fn build_command_builder(
+    claude_code_router: bool,
+    plan: bool,
+    dangerously_skip_permissions: bool,
+) -> CommandBuilder {
+    let mut params: Vec<&'static str> = vec!["-p"];
+    if plan {
+        params.push("--permission-mode=plan");
     }
-
-    fn build_command_builder(
-        &self,
-        plan: bool,
-        dangerously_skip_permissions: bool,
-    ) -> CommandBuilder {
-        let mut params: Vec<&'static str> = vec!["-p"];
-        if plan {
-            params.push("--permission-mode=plan");
-        }
-        if dangerously_skip_permissions {
-            params.push("--dangerously-skip-permissions");
-        }
-        params.extend_from_slice(&["--verbose", "--output-format=stream-json"]);
-
-        CommandBuilder::new(self.base_command()).params(params)
+    if dangerously_skip_permissions {
+        params.push("--dangerously-skip-permissions");
     }
+    params.extend_from_slice(&["--verbose", "--output-format=stream-json"]);
+
+    CommandBuilder::new(base_command(claude_code_router)).params(params)
 }
 
 /// An executor that uses Claude CLI to process tasks
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct ClaudeCode {
-    pub variant: ClaudeCodeVariant,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub claude_code_router: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -74,8 +66,16 @@ pub struct ClaudeCode {
 
 impl ClaudeCode {
     fn build_command_builder(&self) -> CommandBuilder {
+        // If base_command_override is provided and claude_code_router is also set, log a warning
+        if self.cmd.base_command_override.is_some() && self.claude_code_router.is_some() {
+            tracing::warn!(
+                "base_command_override is set, this will override the claude_code_router setting"
+            );
+        }
+
         apply_overrides(
-            self.variant.build_command_builder(
+            build_command_builder(
+                self.claude_code_router.unwrap_or(false),
                 self.plan.unwrap_or(false),
                 self.dangerously_skip_permissions.unwrap_or(false),
             ),
@@ -1507,9 +1507,10 @@ mod tests {
         use utils::msg_store::MsgStore;
 
         let executor = ClaudeCode {
-            variant: ClaudeCodeVariant::ClaudeCode,
-            plan: false,
+            claude_code_router: Some(false),
+            plan: None,
             append_prompt: None,
+            dangerously_skip_permissions: None,
             cmd: crate::command::CmdOverrides {
                 base_command_override: None,
                 additional_params: None,

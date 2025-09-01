@@ -63,7 +63,7 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
     (editorType === EditorType.CUSTOM && customCommand.trim() !== '');
 
   return (
-    <Dialog open={open} onOpenChange={() => { }}>
+    <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-[600px] space-y-4">
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -93,11 +93,12 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
                   <SelectValue placeholder="Select your preferred coding agent" />
                 </SelectTrigger>
                 <SelectContent>
-                  {profiles && Object.keys(profiles).map((profile) => (
-                    <SelectItem key={profile} value={profile}>
-                      {profile}
-                    </SelectItem>
-                  ))}
+                  {profiles &&
+                    Object.keys(profiles).map((profile) => (
+                      <SelectItem key={profile} value={profile}>
+                        {profile}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
 
@@ -131,24 +132,24 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
                         >
                           Default
                         </DropdownMenuItem>
-                        {Object.keys(selectedProfile.variants).map((variant) => (
-                          <DropdownMenuItem
-                            key={variant}
-                            onClick={() =>
-                              setProfile({
-                                ...profile,
-                                variant: variant,
-                              })
-                            }
-                            className={
-                              profile.variant === variant
-                                ? 'bg-accent'
-                                : ''
-                            }
-                          >
-                            {variant}
-                          </DropdownMenuItem>
-                        ))}
+                        {Object.keys(selectedProfile.variants).map(
+                          (variant) => (
+                            <DropdownMenuItem
+                              key={variant}
+                              onClick={() =>
+                                setProfile({
+                                  ...profile,
+                                  variant: variant,
+                                })
+                              }
+                              className={
+                                profile.variant === variant ? 'bg-accent' : ''
+                              }
+                            >
+                              {variant}
+                            </DropdownMenuItem>
+                          )
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   );

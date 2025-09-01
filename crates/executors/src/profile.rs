@@ -437,17 +437,15 @@ mod tests {
 
     #[test]
     fn test_no_null_values_in_serialization() {
-        use crate::{
-            command::CmdOverrides,
-            executors::claude::{ClaudeCode, ClaudeCodeVariant},
-        };
+        use crate::{command::CmdOverrides, executors::claude::ClaudeCode};
 
         // Test that None values are omitted from JSON serialization
         let variant = VariantAgentConfig {
             agent: CodingAgent::ClaudeCode(ClaudeCode {
-                variant: ClaudeCodeVariant::ClaudeCode,
+                claude_code_router: Some(false),
                 append_prompt: None,
-                plan: false, // Should be omitted when false
+                plan: None, // Should be omitted when None
+                dangerously_skip_permissions: None,
                 cmd: CmdOverrides {
                     base_command_override: None,
                     additional_params: None,
@@ -494,7 +492,7 @@ mod tests {
         assert!(matches!(
             claude_code_agent,
             crate::executors::CodingAgent::ClaudeCode(claude)
-                if matches!(claude.variant, crate::executors::claude::ClaudeCodeVariant::ClaudeCode)
+                if !claude.claude_code_router.unwrap_or(false)
                     && !claude.plan.unwrap_or(false)
         ));
 
@@ -502,10 +500,7 @@ mod tests {
         assert!(matches!(
             claude_code_router_agent,
             crate::executors::CodingAgent::ClaudeCode(claude)
-                if matches!(
-                    claude.variant,
-                    crate::executors::claude::ClaudeCodeVariant::ClaudeCodeRouter
-                ) && !claude.plan.unwrap_or(false)
+                if claude.claude_code_router.unwrap_or(false) && !claude.plan.unwrap_or(false)
         ));
 
         // Test simple executors have correct types
@@ -543,7 +538,7 @@ mod tests {
         assert!(matches!(
             &plan_variant.agent,
             crate::executors::CodingAgent::ClaudeCode(claude)
-                if matches!(claude.variant, crate::executors::claude::ClaudeCodeVariant::ClaudeCode)
+                if !claude.claude_code_router.unwrap_or(false)
                     && claude.plan.unwrap_or(false)
         ));
 
@@ -589,10 +584,7 @@ mod tests {
         let claude_profile = profiles.get_profile("test-claude").unwrap();
         match &claude_profile.default.agent {
             crate::executors::CodingAgent::ClaudeCode(claude) => {
-                assert!(matches!(
-                    claude.variant,
-                    crate::executors::claude::ClaudeCodeVariant::ClaudeCode
-                ));
+                assert!(!claude.claude_code_router.unwrap_or(false));
                 assert!(claude.plan.unwrap_or(false));
             }
             _ => panic!("Expected ClaudeCode agent"),

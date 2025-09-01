@@ -132,23 +132,21 @@ mcp_config_path?: string | null, } & ({ "CLAUDE_CODE": ClaudeCode } | { "AMP": A
 
 export type ProfileConfigs = { profiles: { [key in string]?: ProfileConfig }, };
 
-export type ClaudeCode = { variant: ClaudeCodeVariant, append_prompt?: string | null, plan?: boolean, base_command_override?: string | null, additional_params?: Array<string> | null, };
+export type ClaudeCode = { claude_code_router?: boolean | null, append_prompt?: string | null, plan?: boolean | null, dangerously_skip_permissions?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, };
 
-export type ClaudeCodeVariant = "claude_code" | "claude_code_router";
-
-export type Gemini = { model: GeminiModel, append_prompt?: string | null, base_command_override?: string | null, additional_params?: Array<string> | null, };
+export type Gemini = { model: GeminiModel, append_prompt?: string | null, yolo?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, };
 
 export type GeminiModel = "default" | "flash";
 
-export type Amp = { append_prompt?: string | null, base_command_override?: string | null, additional_params?: Array<string> | null, };
+export type Amp = { append_prompt?: string | null, dangerously_allow_all?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, };
 
-export type Codex = { append_prompt?: string | null, };
+export type Codex = { append_prompt?: string | null, dangerously_bypass_approvals_and_sandbox?: boolean | null, };
 
-export type Cursor = { append_prompt?: string | null, };
+export type Cursor = { append_prompt?: string | null, force?: boolean | null, };
 
 export type Opencode = { append_prompt?: string | null, };
 
-export type QwenCode = { append_prompt?: string | null, };
+export type QwenCode = { append_prompt?: string | null, yolo?: boolean | null, };
 
 export type CodingAgentInitialRequest = { prompt: string, profile_variant_label: ProfileVariantLabel, };
 

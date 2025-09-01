@@ -3,7 +3,6 @@
     "claude-code": {
       "mcp_config_path": null,
       "CLAUDE_CODE": {
-        "variant": "claude_code",
         "plan": false,
         "dangerously_skip_permissions": true,
         "append_prompt": null
@@ -12,7 +11,6 @@
         "plan": {
           "mcp_config_path": null,
           "CLAUDE_CODE": {
-            "variant": "claude_code",
             "plan": true,
             "dangerously_skip_permissions": false,
             "append_prompt": null
@@ -23,7 +21,7 @@
     "claude-code-router": {
       "mcp_config_path": null,
       "CLAUDE_CODE": {
-        "variant": "claude_code_router",
+        "claude_code_router": true,
         "plan": false,
         "dangerously_skip_permissions": true,
         "append_prompt": null

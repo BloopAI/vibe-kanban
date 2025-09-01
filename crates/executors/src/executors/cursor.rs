@@ -1054,6 +1054,7 @@ mod tests {
         let executor = Cursor {
             // No command field needed anymore
             append_prompt: None,
+            force: None,
         };
         let msg_store = Arc::new(MsgStore::new());
         let current_dir = std::path::PathBuf::from("/tmp/test-worktree");
