@@ -46,7 +46,7 @@ lazy_static! {
 }
 
 // New format default profiles (v3 - flattened)
-const DEFAULT_PROFILES_V3_JSON: &str = include_str!("../default_profiles_v3.json");
+const DEFAULT_PROFILES_JSON: &str = include_str!("../default_profiles.json");
 
 // Executor-centric profile identifier
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, Hash, Eq)]
@@ -407,8 +407,8 @@ impl ExecutorConfigs {
 
     /// Load from the new v3 defaults
     pub fn from_defaults_v3() -> Self {
-        serde_json::from_str(DEFAULT_PROFILES_V3_JSON).unwrap_or_else(|e| {
-            tracing::error!("Failed to parse embedded default_profiles_v3.json: {}", e);
+        serde_json::from_str(DEFAULT_PROFILES_JSON).unwrap_or_else(|e| {
+            tracing::error!("Failed to parse embedded default_profiles.json: {}", e);
             panic!("Default profiles v3 JSON is invalid")
         })
     }
