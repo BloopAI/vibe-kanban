@@ -512,7 +512,9 @@ function CurrentAttempt({
             <Button
               variant={runningDevServer ? 'destructive' : 'outline'}
               size="xs"
-              onClick={runningDevServer ? stopDevServer : startDevServer}
+              onClick={() =>
+                runningDevServer ? stopDevServer() : startDevServer()
+              }
               disabled={isStartingDevServer || !projectHasDevScript}
               className="gap-1 flex-1"
             >
