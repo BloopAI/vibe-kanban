@@ -16,6 +16,8 @@ pub struct CodingAgentFollowUpRequest {
     pub prompt: String,
     pub session_id: String,
     /// Executor profile specification
+    #[serde(alias = "profile_variant_label")]
+    // Backwards compatability with ProfileVariantIds, esp stored in DB under ExecutorAction
     pub executor_profile_id: ExecutorProfileId,
 }
 

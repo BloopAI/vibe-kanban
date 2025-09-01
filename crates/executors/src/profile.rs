@@ -52,6 +52,8 @@ const DEFAULT_PROFILES_JSON: &str = include_str!("../default_profiles.json");
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, Hash, Eq)]
 pub struct ExecutorProfileId {
     /// The executor type (e.g., "CLAUDE_CODE", "AMP")
+    #[serde(alias = "profile")]
+    // Backwards compatability with ProfileVariantIds, esp stored in DB under ExecutorAction
     pub executor: String,
     /// Optional variant name (e.g., "PLAN", "ROUTER")
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -425,7 +427,8 @@ impl ExecutorConfigs {
 
     /// Get agent by executor key and optional variant
     pub fn get_agent(&self, executor_key: &str, variant: Option<&str>) -> Option<CodingAgent> {
-        if let Some(profile) = self.get_executor_profile(executor_key) {
+        let uppercase_key = executor_key.to_uppercase(); // Backwards compatibility with old ProfileVariant
+        if let Some(profile) = self.get_executor_profile(&uppercase_key) {
             let variant_name = variant.unwrap_or("DEFAULT");
             profile.get_variant(variant_name).map(|v| v.agent.clone())
         } else {
