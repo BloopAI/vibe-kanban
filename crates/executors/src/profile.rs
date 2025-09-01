@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fs, path::PathBuf, sync::RwLock};
 
+use convert_case::{Case, Casing};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use strum::VariantNames;
@@ -7,6 +8,19 @@ use thiserror::Error;
 use ts_rs::TS;
 
 use crate::executors::CodingAgent;
+
+/// Return the canonical form for variant keys.
+/// – "DEFAULT" is kept as-is  
+/// – everything else is converted to SCREAMING_SNAKE_CASE
+pub fn canonical_variant_key<S: AsRef<str>>(raw: S) -> String {
+    let key = raw.as_ref();
+    if key.eq_ignore_ascii_case("DEFAULT") {
+        "DEFAULT".to_string()
+    } else {
+        // Convert to SCREAMING_SNAKE_CASE by first going to snake_case then uppercase
+        key.to_case(Case::Snake).to_case(Case::ScreamingSnake)
+    }
+}
 
 #[derive(Error, Debug)]
 pub enum ProfileError {
@@ -140,12 +154,13 @@ impl ExecutorProfile {
         variant_name: String,
         config: VariantAgentConfig,
     ) -> Result<(), &'static str> {
-        if variant_name == "DEFAULT" {
+        let key = canonical_variant_key(&variant_name);
+        if key == "DEFAULT" {
             return Err(
-                "Cannot override 'default' variant using set_variant, use set_default instead",
+                "Cannot override 'DEFAULT' variant using set_variant, use set_default instead",
             );
         }
-        self.configurations.insert(variant_name, config);
+        self.configurations.insert(key, config);
         Ok(())
     }
 
@@ -172,6 +187,25 @@ pub struct ExecutorConfigs {
 pub type ExecutorProfileConfigs = ExecutorConfigs;
 
 impl ExecutorConfigs {
+    /// Normalise all variant keys in-place
+    fn canonicalise(&mut self) {
+        for profile in self.executors.values_mut() {
+            let mut replacements = Vec::new();
+            for key in profile.configurations.keys().cloned().collect::<Vec<_>>() {
+                let canon = canonical_variant_key(&key);
+                if canon != key {
+                    replacements.push((key, canon));
+                }
+            }
+            for (old, new) in replacements {
+                if let Some(cfg) = profile.configurations.remove(&old) {
+                    // If both lowercase and canonical forms existed, keep canonical one
+                    profile.configurations.entry(new).or_insert(cfg);
+                }
+            }
+        }
+    }
+
     /// Get cached executor profiles
     pub fn get_cached() -> ExecutorConfigs {
         EXECUTOR_PROFILES_CACHE.read().unwrap().clone()
@@ -188,7 +222,8 @@ impl ExecutorConfigs {
         let profiles_path = utils::assets::profiles_path();
 
         // Load defaults first
-        let defaults = Self::from_defaults_v3();
+        let mut defaults = Self::from_defaults_v3();
+        defaults.canonicalise();
 
         // Try to load user overrides
         let content = match fs::read_to_string(&profiles_path) {
@@ -201,8 +236,9 @@ impl ExecutorConfigs {
 
         // Parse user overrides
         match serde_json::from_str::<Self>(&content) {
-            Ok(user_overrides) => {
+            Ok(mut user_overrides) => {
                 tracing::info!("Loaded user profile overrides from profiles.json");
+                user_overrides.canonicalise();
                 Self::merge_with_defaults(defaults, user_overrides)
             }
             Err(e) => {
@@ -218,10 +254,15 @@ impl ExecutorConfigs {
     /// Save user profile overrides to file (only saves what differs from defaults)
     pub fn save_overrides(&self) -> Result<(), ProfileError> {
         let profiles_path = utils::assets::profiles_path();
-        let defaults = Self::from_defaults_v3();
+        let mut defaults = Self::from_defaults_v3();
+        defaults.canonicalise();
+
+        // Canonicalise current config before computing overrides
+        let mut self_clone = self.clone();
+        self_clone.canonicalise();
 
         // Compute differences from defaults
-        let overrides = Self::compute_overrides(&defaults, self)?;
+        let overrides = Self::compute_overrides(&defaults, &self_clone)?;
 
         // Validate the merged result would be valid
         let merged = Self::merge_with_defaults(defaults, overrides.clone());
@@ -443,10 +484,10 @@ mod tests {
         assert_ne!(default_claude, plan_claude);
 
         // Test GEMINI profile has FLASH variant
-        let FLASH_gemini = executor_profiles
+        let flash_gemini = executor_profiles
             .get_agent("GEMINI", Some("FLASH"))
             .unwrap();
-        assert!(matches!(FLASH_gemini, CodingAgent::Gemini(_)));
+        assert!(matches!(flash_gemini, CodingAgent::Gemini(_)));
     }
 
     #[test]
@@ -745,5 +786,126 @@ mod tests {
             }
             _ => panic!("Expected CannotDeleteExecutor error"),
         }
+    }
+
+    #[test]
+    fn test_canonical_variant_key() {
+        use crate::profile::canonical_variant_key;
+
+        // DEFAULT should remain unchanged regardless of case
+        assert_eq!(canonical_variant_key("DEFAULT"), "DEFAULT");
+        assert_eq!(canonical_variant_key("default"), "DEFAULT");
+        assert_eq!(canonical_variant_key("Default"), "DEFAULT");
+
+        // Other keys should be converted to SCREAMING_SNAKE_CASE
+        assert_eq!(canonical_variant_key("plan"), "PLAN");
+        assert_eq!(canonical_variant_key("PLAN"), "PLAN");
+        assert_eq!(canonical_variant_key("router"), "ROUTER");
+        assert_eq!(canonical_variant_key("flash"), "FLASH");
+        assert_eq!(canonical_variant_key("myCustom"), "MY_CUSTOM");
+        assert_eq!(canonical_variant_key("my_custom"), "MY_CUSTOM");
+        assert_eq!(canonical_variant_key("MY_CUSTOM"), "MY_CUSTOM");
+    }
+
+    #[test]
+    fn test_set_variant_canonicalises() {
+        use crate::{command::CmdOverrides, executors::claude::ClaudeCode};
+
+        let mut profile = ExecutorProfile::new_with_default(VariantAgentConfig {
+            agent: CodingAgent::ClaudeCode(ClaudeCode {
+                plan: Some(false),
+                dangerously_skip_permissions: Some(true),
+                claude_code_router: Some(false),
+                append_prompt: None,
+                cmd: CmdOverrides {
+                    base_command_override: None,
+                    additional_params: None,
+                },
+            }),
+        });
+
+        let custom_variant = VariantAgentConfig {
+            agent: CodingAgent::ClaudeCode(ClaudeCode {
+                plan: Some(true),
+                dangerously_skip_permissions: Some(false),
+                claude_code_router: Some(false),
+                append_prompt: Some("Custom prompt".to_string()),
+                cmd: CmdOverrides {
+                    base_command_override: None,
+                    additional_params: None,
+                },
+            }),
+        };
+
+        // Setting variant with lowercase should canonicalise the key
+        profile
+            .set_variant("myCustom".to_string(), custom_variant.clone())
+            .unwrap();
+
+        // Should be stored under canonical key
+        assert!(profile.configurations.contains_key("MY_CUSTOM"));
+        assert!(!profile.configurations.contains_key("myCustom"));
+        assert_eq!(profile.get_variant("MY_CUSTOM").unwrap(), &custom_variant);
+    }
+
+    #[test]
+    fn test_lower_case_variant_canonicalized() {
+        use crate::{command::CmdOverrides, executors::claude::ClaudeCode};
+
+        let mut configs = ExecutorConfigs::from_defaults_v3();
+
+        // Add a custom variant with lowercase name
+        let custom_variant = VariantAgentConfig {
+            agent: CodingAgent::ClaudeCode(ClaudeCode {
+                plan: Some(true),
+                dangerously_skip_permissions: Some(false),
+                claude_code_router: Some(false),
+                append_prompt: Some("Custom prompt".to_string()),
+                cmd: CmdOverrides {
+                    base_command_override: None,
+                    additional_params: None,
+                },
+            }),
+        };
+
+        // Set a variant with mixed case
+        configs
+            .executors
+            .get_mut("CLAUDE_CODE")
+            .unwrap()
+            .set_variant("myCustomVariant".to_string(), custom_variant.clone())
+            .unwrap();
+
+        // Test that the variant was canonicalized when saved
+        let defaults = ExecutorConfigs::from_defaults_v3();
+        let mut config_clone = configs.clone();
+        config_clone.canonicalise();
+
+        let overrides = ExecutorConfigs::compute_overrides(&defaults, &config_clone).unwrap();
+
+        // Serialize to JSON to check the format
+        let json = serde_json::to_string_pretty(&overrides).unwrap();
+
+        // Should contain canonical form
+        assert!(json.contains("\"MY_CUSTOM_VARIANT\""));
+        assert!(!json.contains("\"myCustomVariant\""));
+
+        // Should be able to find the variant under canonical key
+        assert!(
+            configs
+                .executors
+                .get("CLAUDE_CODE")
+                .unwrap()
+                .configurations
+                .contains_key("MY_CUSTOM_VARIANT")
+        );
+        assert!(
+            !configs
+                .executors
+                .get("CLAUDE_CODE")
+                .unwrap()
+                .configurations
+                .contains_key("myCustomVariant")
+        );
     }
 }
