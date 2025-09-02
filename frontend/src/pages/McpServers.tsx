@@ -19,7 +19,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { JSONEditor } from '@/components/ui/json-editor';
 import { Loader2 } from 'lucide-react';
 import { McpConfig } from 'shared/types';
-import type { BaseCodingAgent, ExecutorProfile } from 'shared/types';
+import type { BaseCodingAgent, ExecutorConfig } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
 import { mcpServersApi } from '../lib/api';
 import { McpConfigStrategyGeneral } from '../lib/mcp-strategies';
@@ -31,7 +31,7 @@ export function McpServers() {
   const [mcpError, setMcpError] = useState<string | null>(null);
   const [mcpLoading, setMcpLoading] = useState(true);
   const [selectedProfile, setSelectedProfile] =
-    useState<ExecutorProfile | null>(null);
+    useState<ExecutorConfig | null>(null);
   const [mcpApplying, setMcpApplying] = useState(false);
   const [mcpConfigPath, setMcpConfigPath] = useState<string>('');
   const [success, setSuccess] = useState(false);
@@ -52,7 +52,7 @@ export function McpServers() {
 
   // Load existing MCP configuration when selected profile changes
   useEffect(() => {
-    const loadMcpServersForProfile = async (profile: ExecutorProfile) => {
+    const loadMcpServersForProfile = async (profile: ExecutorConfig) => {
       // Reset state when loading
       setMcpLoading(true);
       setMcpError(null);
@@ -162,8 +162,8 @@ export function McpServers() {
           // Find the key for the selected profile
           const selectedProfileKey = profiles
             ? Object.keys(profiles).find(
-                (key) => profiles[key] === selectedProfile
-              )
+              (key) => profiles[key] === selectedProfile
+            )
             : null;
           if (!selectedProfileKey) {
             throw new Error('Selected profile key not found');
@@ -250,8 +250,8 @@ export function McpServers() {
                 value={
                   selectedProfile
                     ? Object.keys(profiles || {}).find(
-                        (key) => profiles![key] === selectedProfile
-                      ) || ''
+                      (key) => profiles![key] === selectedProfile
+                    ) || ''
                     : ''
                 }
                 onValueChange={(value: string) => {

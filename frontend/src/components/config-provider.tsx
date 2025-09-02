@@ -13,13 +13,13 @@ import {
   type UserSystemInfo,
   CheckTokenResponse,
 } from 'shared/types';
-import type { ExecutorProfile } from 'shared/types';
+import type { ExecutorConfig } from 'shared/types';
 import { configApi, githubAuthApi } from '../lib/api';
 
 interface UserSystemState {
   config: Config | null;
   environment: Environment | null;
-  profiles: Record<string, ExecutorProfile> | null;
+  profiles: Record<string, ExecutorConfig> | null;
 }
 
 interface UserSystemContextType {
@@ -34,9 +34,9 @@ interface UserSystemContextType {
 
   // System data access
   environment: Environment | null;
-  profiles: Record<string, ExecutorProfile> | null;
+  profiles: Record<string, ExecutorConfig> | null;
   setEnvironment: (env: Environment | null) => void;
-  setProfiles: (profiles: Record<string, ExecutorProfile> | null) => void;
+  setProfiles: (profiles: Record<string, ExecutorConfig> | null) => void;
 
   // Reload system data
   reloadSystem: () => Promise<void>;
@@ -60,7 +60,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
   const [environment, setEnvironment] = useState<Environment | null>(null);
   const [profiles, setProfiles] = useState<Record<
     string,
-    ExecutorProfile
+    ExecutorConfig
   > | null>(null);
   const [loading, setLoading] = useState(true);
   const [githubTokenInvalid, setGithubTokenInvalid] = useState(false);
@@ -72,7 +72,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
         setConfig(userSystemInfo.config);
         setEnvironment(userSystemInfo.environment);
         setProfiles(
-          userSystemInfo.executors as Record<string, ExecutorProfile> | null
+          userSystemInfo.executors as Record<string, ExecutorConfig> | null
         );
       } catch (err) {
         console.error('Error loading user system:', err);
@@ -148,7 +148,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       setConfig(userSystemInfo.config);
       setEnvironment(userSystemInfo.environment);
       setProfiles(
-        userSystemInfo.executors as Record<string, ExecutorProfile> | null
+        userSystemInfo.executors as Record<string, ExecutorConfig> | null
       );
     } catch (err) {
       console.error('Error reloading user system:', err);

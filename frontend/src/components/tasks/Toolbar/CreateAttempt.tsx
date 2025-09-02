@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
 import type { BaseCodingAgent, GitBranch, Task } from 'shared/types';
-import type { ExecutorProfile } from 'shared/types';
+import type { ExecutorConfig } from 'shared/types';
 import type { ExecutorProfileId } from 'shared/types';
 import type { TaskAttempt } from 'shared/types';
 import { useAttemptCreation } from '@/hooks/useAttemptCreation';
@@ -35,7 +35,7 @@ type Props = {
   setIsInCreateAttemptMode: Dispatch<SetStateAction<boolean>>;
   setCreateAttemptBranch: Dispatch<SetStateAction<string | null>>;
   setSelectedProfile: Dispatch<SetStateAction<ExecutorProfileId | null>>;
-  availableProfiles: Record<string, ExecutorProfile> | null;
+  availableProfiles: Record<string, ExecutorConfig> | null;
   selectedAttempt: TaskAttempt | null;
 };
 

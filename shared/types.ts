@@ -58,7 +58,7 @@ export type CreateImage = { file_path: string, original_name: string, mime_type:
 
 export type ApiResponse<T, E = T> = { success: boolean, data: T | null, error_data: E | null, message: string | null, };
 
-export type UserSystemInfo = { config: Config, environment: Environment, executors: { [key in BaseCodingAgent]?: ExecutorProfile }, };
+export type UserSystemInfo = { config: Config, environment: Environment, executors: { [key in BaseCodingAgent]?: ExecutorConfig }, };
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
 
@@ -126,7 +126,7 @@ executor: BaseCodingAgent,
  */
 variant: string | null, };
 
-export type ExecutorProfile = { configurations: { [key in string]?: CodingAgent }, };
+export type ExecutorConfig = { [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor } | { "QWEN_CODE": QwenCode } };
 
 export type ClaudeCode = { claude_code_router?: boolean | null, append_prompt?: string | null, plan?: boolean | null, dangerously_skip_permissions?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, };
 

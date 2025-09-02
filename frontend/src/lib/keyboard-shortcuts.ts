@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import type { ExecutorProfile } from 'shared/types';
+import type { ExecutorConfig } from 'shared/types';
 
 // Define available keyboard shortcuts
 export interface KeyboardShortcut {
@@ -273,7 +273,7 @@ export function useVariantCyclingShortcut({
   setSelectedVariant,
   setIsAnimating,
 }: {
-  currentProfile: ExecutorProfile | null | undefined;
+  currentProfile: ExecutorConfig | null | undefined;
   selectedVariant: string | null;
   setSelectedVariant: (variant: string | null) => void;
   setIsAnimating: (animating: boolean) => void;
