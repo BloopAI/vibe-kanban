@@ -107,12 +107,11 @@ pub async fn create_task_and_start(
     let branch = deployment
         .git()
         .get_current_branch(&project.git_repo_path)?;
-    let profile_label = executor_profile_id.executor.clone();
 
     let task_attempt = TaskAttempt::create(
         &deployment.db().pool,
         &CreateTaskAttempt {
-            profile: profile_label.clone(),
+            executor: executor_profile_id.executor.clone(),
             base_branch: branch,
         },
         task.id,
@@ -151,7 +150,7 @@ pub async fn create_task_and_start(
         has_in_progress_attempt: true,
         has_merged_attempt: false,
         last_attempt_failed: false,
-        profile: task_attempt.profile,
+        executor: task_attempt.executor,
     })))
 }
 

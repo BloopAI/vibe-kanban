@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use executors::executors::BaseCodingAgent;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool, Type};
 use thiserror::Error;
@@ -40,7 +41,7 @@ pub struct TaskAttempt {
     pub container_ref: Option<String>, // Path to a worktree (local), or cloud container id
     pub branch: Option<String>,        // Git branch name for this task attempt
     pub base_branch: String,           // Base branch this attempt is based on
-    pub profile: String, // Name of the base coding agent to use ("AMP", "CLAUDE_CODE",
+    pub executor: String, // Name of the base coding agent to use ("AMP", "CLAUDE_CODE",
     // "GEMINI", etc.)
     pub worktree_deleted: bool, // Flag indicating if worktree has been cleaned up
     pub setup_completed_at: Option<DateTime<Utc>>, // When setup script was last completed
@@ -80,7 +81,7 @@ pub struct TaskAttemptContext {
 
 #[derive(Debug, Deserialize, TS)]
 pub struct CreateTaskAttempt {
-    pub profile: String,
+    pub executor: BaseCodingAgent,
     pub base_branch: String,
 }
 
@@ -102,7 +103,7 @@ impl TaskAttempt {
                               container_ref,
                               branch,
                               base_branch,
-                              profile AS "profile!",
+                              executor AS "executor!",
                               worktree_deleted AS "worktree_deleted!: bool",
                               setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                               created_at AS "created_at!: DateTime<Utc>",
@@ -122,7 +123,7 @@ impl TaskAttempt {
                               container_ref,
                               branch,
                               base_branch,
-                              profile AS "profile!",
+                              executor AS "executor!",
                               worktree_deleted AS "worktree_deleted!: bool",
                               setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                               created_at AS "created_at!: DateTime<Utc>",
@@ -153,7 +154,7 @@ impl TaskAttempt {
                        ta.container_ref,
                        ta.branch,
                        ta.base_branch,
-                       ta.profile AS "profile!",
+                       ta.executor AS "executor!",
                        ta.worktree_deleted  AS "worktree_deleted!: bool",
                        ta.setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                        ta.created_at        AS "created_at!: DateTime<Utc>",
@@ -243,7 +244,7 @@ impl TaskAttempt {
                        container_ref,
                        branch,
                        base_branch,
-                       profile AS "profile!",
+                       executor AS "executor!",
                        worktree_deleted  AS "worktree_deleted!: bool",
                        setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                        created_at        AS "created_at!: DateTime<Utc>",
@@ -264,7 +265,7 @@ impl TaskAttempt {
                        container_ref,
                        branch,
                        base_branch,
-                       profile AS "profile!",
+                       executor AS "executor!",
                        worktree_deleted  AS "worktree_deleted!: bool",
                        setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                        created_at        AS "created_at!: DateTime<Utc>",
@@ -387,15 +388,15 @@ impl TaskAttempt {
         // Insert the record into the database
         Ok(sqlx::query_as!(
             TaskAttempt,
-            r#"INSERT INTO task_attempts (id, task_id, container_ref, branch, base_branch, profile, worktree_deleted, setup_completed_at)
+            r#"INSERT INTO task_attempts (id, task_id, container_ref, branch, base_branch, executor, worktree_deleted, setup_completed_at)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, base_branch, profile as "profile!",  worktree_deleted as "worktree_deleted!: bool", setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, base_branch, executor as "executor!",  worktree_deleted as "worktree_deleted!: bool", setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             attempt_id,
             task_id,
             Option::<String>::None, // Container isn't known yet
             Option::<String>::None, // branch name isn't known yet
             data.base_branch,
-            data.profile,
+            data.executor,
             false, // worktree_deleted is false during creation
             Option::<DateTime<Utc>>::None // setup_completed_at is None during creation
         )

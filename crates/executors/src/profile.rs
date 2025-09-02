@@ -113,11 +113,6 @@ impl ExecutorProfile {
         self.configurations.get("DEFAULT")
     }
 
-    /// Get MCP config path from default configuration
-    pub fn get_mcp_config_path(&self) -> Option<PathBuf> {
-        self.get_default()?.default_mcp_config_path()
-    }
-
     /// Create a new executor profile with just a default configuration
     pub fn new_with_default(default_config: CodingAgent) -> Self {
         let mut configurations = HashMap::new();
@@ -160,9 +155,6 @@ pub struct ExecutorConfigs {
     pub executors: HashMap<BaseCodingAgent, ExecutorProfile>,
 }
 
-// Type alias for backwards compatibility during transition
-pub type ExecutorProfileConfigs = ExecutorConfigs;
-
 impl ExecutorConfigs {
     /// Normalise all variant keys in-place
     fn canonicalise(&mut self) {
@@ -199,7 +191,7 @@ impl ExecutorConfigs {
         let profiles_path = utils::assets::profiles_path();
 
         // Load defaults first
-        let mut defaults = Self::from_defaults_v3();
+        let mut defaults = Self::from_defaults();
         defaults.canonicalise();
 
         // Try to load user overrides
@@ -231,7 +223,7 @@ impl ExecutorConfigs {
     /// Save user profile overrides to file (only saves what differs from defaults)
     pub fn save_overrides(&self) -> Result<(), ProfileError> {
         let profiles_path = utils::assets::profiles_path();
-        let mut defaults = Self::from_defaults_v3();
+        let mut defaults = Self::from_defaults();
         defaults.canonicalise();
 
         // Canonicalise current config before computing overrides
@@ -369,16 +361,11 @@ impl ExecutorConfigs {
     }
 
     /// Load from the new v3 defaults
-    pub fn from_defaults_v3() -> Self {
+    pub fn from_defaults() -> Self {
         serde_json::from_str(DEFAULT_PROFILES_JSON).unwrap_or_else(|e| {
             tracing::error!("Failed to parse embedded default_profiles.json: {}", e);
             panic!("Default profiles v3 JSON is invalid")
         })
-    }
-
-    // Alias for backwards compatibility
-    pub fn from_defaults_v2() -> Self {
-        Self::from_defaults_v3()
     }
 
     pub fn get_coding_agent(&self, executor_profile_id: &ExecutorProfileId) -> Option<CodingAgent> {

@@ -5,7 +5,8 @@ use command_group::AsyncGroupChild;
 use enum_dispatch::enum_dispatch;
 use futures_io::Error as FuturesIoError;
 use serde::{Deserialize, Serialize};
-use strum_macros::{Display, EnumDiscriminants, VariantNames};
+use sqlx::Type;
+use strum_macros::{Display, EnumDiscriminants, EnumString, VariantNames};
 use thiserror::Error;
 use ts_rs::TS;
 use utils::msg_store::MsgStore;
@@ -16,7 +17,6 @@ use crate::{
         opencode::Opencode, qwen::QwenCode,
     },
     mcp_config::McpConfig,
-    profile::{ExecutorProfileConfigs, ExecutorProfileId},
 };
 
 pub mod amp;
@@ -54,10 +54,11 @@ pub enum ExecutorError {
 #[strum_discriminants(
     name(BaseCodingAgent),
     // Only add Hash; Eq/PartialEq are already provided by EnumDiscriminants.
-    derive(Hash, strum_macros::Display, Serialize, Deserialize, TS),
+    derive(EnumString, Hash, strum_macros::Display, Serialize, Deserialize, TS, Type),
     strum(serialize_all = "SCREAMING_SNAKE_CASE"),
     ts(use_ts_enum),
-    serde(rename_all = "SCREAMING_SNAKE_CASE")
+    serde(rename_all = "SCREAMING_SNAKE_CASE"),
+    sqlx(type_name = "TEXT")
 )]
 pub enum CodingAgent {
     ClaudeCode,
@@ -118,18 +119,6 @@ impl CodingAgent {
                 }),
                 false,
             ),
-        }
-    }
-
-    pub fn default_mcp_config_path(&self) -> Option<PathBuf> {
-        match self {
-            Self::ClaudeCode(agent) => agent.default_mcp_config_path(),
-            Self::Amp(agent) => agent.default_mcp_config_path(),
-            Self::Gemini(agent) => agent.default_mcp_config_path(),
-            Self::Codex(agent) => agent.default_mcp_config_path(),
-            Self::Opencode(agent) => agent.default_mcp_config_path(),
-            Self::Cursor(agent) => agent.default_mcp_config_path(),
-            Self::QwenCode(agent) => agent.default_mcp_config_path(),
         }
     }
 

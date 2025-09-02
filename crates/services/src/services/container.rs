@@ -29,9 +29,9 @@ use executors::{
         coding_agent_initial::CodingAgentInitialRequest,
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
-    executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
+    executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{NormalizedEntry, NormalizedEntryType, utils::patch::ConversationPatch},
-    profile::ExecutorProfileId,
+    profile::{ExecutorConfigs, ExecutorProfileId},
 };
 use futures::{StreamExt, TryStreamExt, future};
 use sqlx::Error as SqlxError;
@@ -320,9 +320,10 @@ pub trait ContainerService {
             // Spawn normalizer on populated store
             match executor_action.typ() {
                 ExecutorActionType::CodingAgentInitialRequest(request) => {
-                    if let Ok(executor) =
-                        CodingAgent::from_executor_profile_id(&request.get_executor_profile_id())
-                    {
+                    let executor_profile = ExecutorConfigs::get_cached()
+                        .get_coding_agent(&request.executor_profile_id);
+
+                    if let Some(executor) = executor_profile {
                         // Inject the initial user prompt before normalization (DB fallback path)
                         let user_entry = create_user_message(request.prompt.clone());
                         temp_store
@@ -332,13 +333,13 @@ pub trait ContainerService {
                     } else {
                         tracing::error!(
                             "Failed to resolve profile '{:?}' for normalization",
-                            request.get_executor_profile_id()
+                            request.executor_profile_id
                         );
                     }
                 }
                 ExecutorActionType::CodingAgentFollowUpRequest(request) => {
-                    if let Ok(executor) =
-                        CodingAgent::from_executor_profile_id(&request.get_executor_profile_id())
+                    if let Some(executor) =
+                        ExecutorConfigs::get_cached().get_coding_agent(&request.executor_profile_id)
                     {
                         // Inject the follow-up user prompt before normalization (DB fallback path)
                         let user_entry = create_user_message(request.prompt.clone());
@@ -349,7 +350,7 @@ pub trait ContainerService {
                     } else {
                         tracing::error!(
                             "Failed to resolve profile '{:?}' for normalization",
-                            request.get_executor_profile_id()
+                            request.executor_profile_id
                         );
                     }
                 }
@@ -596,8 +597,8 @@ pub trait ContainerService {
         match executor_action.typ() {
             ExecutorActionType::CodingAgentInitialRequest(request) => {
                 if let Some(msg_store) = self.get_msg_store_by_id(&execution_process.id).await {
-                    if let Ok(executor) =
-                        CodingAgent::from_executor_profile_id(&request.get_executor_profile_id())
+                    if let Some(executor) =
+                        ExecutorConfigs::get_cached().get_coding_agent(&request.executor_profile_id)
                     {
                         // Prepend the initial user prompt as a normalized entry
                         let user_entry = create_user_message(request.prompt.clone());
@@ -611,15 +612,15 @@ pub trait ContainerService {
                     } else {
                         tracing::error!(
                             "Failed to resolve profile '{:?}' for normalization",
-                            request.get_executor_profile_id()
+                            request.executor_profile_id
                         );
                     }
                 }
             }
             ExecutorActionType::CodingAgentFollowUpRequest(request) => {
                 if let Some(msg_store) = self.get_msg_store_by_id(&execution_process.id).await {
-                    if let Ok(executor) =
-                        CodingAgent::from_executor_profile_id(&request.get_executor_profile_id())
+                    if let Some(executor) =
+                        ExecutorConfigs::get_cached().get_coding_agent(&request.executor_profile_id)
                     {
                         // Prepend the follow-up user prompt as a normalized entry
                         let user_entry = create_user_message(request.prompt.clone());

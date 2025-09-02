@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT  id                AS \"id!: Uuid\",\n                       task_id           AS \"task_id!: Uuid\",\n                       container_ref,\n                       branch,\n                       base_branch,\n                       profile AS \"profile!\",\n                       worktree_deleted  AS \"worktree_deleted!: bool\",\n                       setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                       created_at        AS \"created_at!: DateTime<Utc>\",\n                       updated_at        AS \"updated_at!: DateTime<Utc>\"\n               FROM    task_attempts\n               WHERE   rowid = $1",
+  "query": "SELECT  id                AS \"id!: Uuid\",\n                       task_id           AS \"task_id!: Uuid\",\n                       container_ref,\n                       branch,\n                       base_branch,\n                       executor AS \"executor!\",\n                       worktree_deleted  AS \"worktree_deleted!: bool\",\n                       setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                       created_at        AS \"created_at!: DateTime<Utc>\",\n                       updated_at        AS \"updated_at!: DateTime<Utc>\"\n               FROM    task_attempts\n               WHERE   rowid = $1",
   "describe": {
     "columns": [
       {
@@ -29,7 +29,7 @@
         "type_info": "Text"
       },
       {
-        "name": "profile!",
+        "name": "executor!",
         "ordinal": 5,
         "type_info": "Text"
       },
@@ -70,5 +70,5 @@
       false
     ]
   },
-  "hash": "94535d0c0e4eac82202f5420b62781ab774616c6d6c5ffd58b5b344c75104a0a"
+  "hash": "a2a728b99b3bd2dfd2e7d9ce57c10e0b37f187025c1e5ac567ca4fbd43b9d9be"
 }

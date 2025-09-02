@@ -42,7 +42,7 @@ pub struct TaskWithAttemptStatus {
     pub has_in_progress_attempt: bool,
     pub has_merged_attempt: bool,
     pub last_attempt_failed: bool,
-    pub profile: String,
+    pub executor: String,
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -114,12 +114,12 @@ impl Task {
   ) IN ('failed','killed') THEN 1 ELSE 0 END
                                  AS "last_attempt_failed!: i64",
 
-  ( SELECT ta.profile
+  ( SELECT ta.executor
       FROM task_attempts ta
       WHERE ta.task_id = t.id
      ORDER BY ta.created_at DESC
       LIMIT 1
-    )                               AS "profile!: String"
+    )                               AS "executor!: String"
 
 FROM tasks t
 WHERE t.project_id = $1
@@ -143,7 +143,7 @@ ORDER BY t.created_at DESC"#,
                 has_in_progress_attempt: rec.has_in_progress_attempt != 0,
                 has_merged_attempt: false, // TODO use merges table
                 last_attempt_failed: rec.last_attempt_failed != 0,
-                profile: rec.profile,
+                executor: rec.executor,
             })
             .collect();
 

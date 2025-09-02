@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!: Uuid\",\n                              task_id AS \"task_id!: Uuid\",\n                              container_ref,\n                              branch,\n                              base_branch,\n                              profile AS \"profile!\",\n                              worktree_deleted AS \"worktree_deleted!: bool\",\n                              setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                              created_at AS \"created_at!: DateTime<Utc>\",\n                              updated_at AS \"updated_at!: DateTime<Utc>\"\n                       FROM task_attempts\n                       ORDER BY created_at DESC",
+  "query": "INSERT INTO task_attempts (id, task_id, container_ref, branch, base_branch, executor, worktree_deleted, setup_completed_at)\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)\n               RETURNING id as \"id!: Uuid\", task_id as \"task_id!: Uuid\", container_ref, branch, base_branch, executor as \"executor!\",  worktree_deleted as \"worktree_deleted!: bool\", setup_completed_at as \"setup_completed_at: DateTime<Utc>\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -29,7 +29,7 @@
         "type_info": "Text"
       },
       {
-        "name": "profile!",
+        "name": "executor!",
         "ordinal": 5,
         "type_info": "Text"
       },
@@ -55,7 +55,7 @@
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 8
     },
     "nullable": [
       true,
@@ -70,5 +70,5 @@
       false
     ]
   },
-  "hash": "7e7f701c7e56081684128df131135cad9e4d5633f5f1d95ed9186379fcb099b4"
+  "hash": "c952513c0d53c8a15d8b0c212fa754f2817e3a810ebe4199dd0d85eedc640164"
 }

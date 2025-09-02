@@ -26,7 +26,7 @@ use executors::{
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
         ExecutorAction, ExecutorActionType,
     },
-    profile::{ExecutorProfileConfigs, ExecutorProfileId},
+    profile::{ExecutorConfigs, ExecutorProfileId},
 };
 use futures_util::TryStreamExt;
 use git2::BranchType;
@@ -105,19 +105,10 @@ pub async fn create_task_attempt(
 ) -> Result<ResponseJson<ApiResponse<TaskAttempt>>, ApiError> {
     let executor_profile_id = payload.get_executor_profile_id();
 
-    let executor_profiles = ExecutorProfileConfigs::get_cached();
-    let _profile = executor_profiles
-        .get_executor_profile(&executor_profile_id.executor)
-        .ok_or_else(|| {
-            ApiError::TaskAttempt(TaskAttemptError::ValidationError(format!(
-                "Executor profile not found: {}",
-                executor_profile_id.executor
-            )))
-        })?;
     let task_attempt = TaskAttempt::create(
         &deployment.db().pool,
         &CreateTaskAttempt {
-            profile: executor_profile_id.executor.clone(),
+            executor: executor_profile_id.executor,
             base_branch: payload.base_branch.clone(),
         },
         payload.task_id,
@@ -192,10 +183,10 @@ pub async fn follow_up(
         .typ
     {
         ExecutorActionType::CodingAgentInitialRequest(request) => {
-            Ok(request.get_executor_profile_id())
+            Ok(request.executor_profile_id.clone())
         }
         ExecutorActionType::CodingAgentFollowUpRequest(request) => {
-            Ok(request.get_executor_profile_id())
+            Ok(request.executor_profile_id.clone())
         }
         _ => Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
             "Couldn't find profile from initial request".to_string(),
