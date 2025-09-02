@@ -132,7 +132,7 @@ export function GitHubLoginDialog({
       <DialogContent>
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <Github className="h-6 w-6 text-primary" />
+            <Github className="h-6 w-6" />
             <DialogTitle>Sign in with GitHub</DialogTitle>
           </div>
           <DialogDescription className="text-left pt-1">
@@ -165,66 +165,57 @@ export function GitHubLoginDialog({
             </DialogFooter>
           </div>
         ) : deviceState ? (
-          <div className="space-y-4 py-3">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">
-                  Complete GitHub Authorization
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 pt-0">
-                <div className="flex items-start gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 bg-primary/10 text-primary rounded-full flex items-center justify-center text-sm font-semibold">
-                    1
-                  </span>
-                  <div>
-                    <p className="text-sm font-medium mb-1">
-                      Go to GitHub Device Authorization
-                    </p>
-                    <a
-                      href={deviceState.verification_uri}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:text-primary/80 text-sm underline"
-                    >
-                      {deviceState.verification_uri}
-                    </a>
-                  </div>
-                </div>
+          <div className="space-y-4">
+            <div className="flex items-start gap-3">
+              <span className="flex-shrink-0 w-10 h-10 bg-background border rounded-full flex items-center justify-center text-lg font-semibold">
+                1
+              </span>
+              <div>
+                <p className="text-sm font-medium mb-1">
+                  Go to GitHub Device Authorization
+                </p>
+                <a
+                  href={deviceState.verification_uri}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm underline"
+                >
+                  {deviceState.verification_uri}
+                </a>
+              </div>
+            </div>
 
-                <div className="flex items-start gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 bg-primary/10 text-primary rounded-full flex items-center justify-center text-sm font-semibold">
-                    2
+            <div className="flex items-start gap-3">
+              <span className="flex-shrink-0 w-10 h-10 bg-background border rounded-full flex items-center justify-center text-lg font-semibold">
+                2
+              </span>
+              <div className="flex-1">
+                <p className="text-sm font-medium mb-3">Enter this code:</p>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-mono font-bold tracking-[0.2em] bg-muted border flex h-9 px-2 items-center">
+                    <span>{deviceState.user_code}</span>
                   </span>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium mb-3">Enter this code:</p>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl font-mono font-bold tracking-[0.2em] bg-muted border rounded-lg px-4 py-2">
-                        {deviceState.user_code}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyToClipboard(deviceState.user_code)}
-                        disabled={copied}
-                      >
-                        {copied ? (
-                          <>
-                            <Check className="w-4 h-4 mr-1" />
-                            Copied
-                          </>
-                        ) : (
-                          <>
-                            <Clipboard className="w-4 h-4 mr-1" />
-                            Copy
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(deviceState.user_code)}
+                    disabled={copied}
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="w-4 h-4 mr-1" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Clipboard className="w-4 h-4 mr-1" />
+                        Copy
+                      </>
+                    )}
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 p-2 rounded-lg">
               <Github className="h-3 w-3 flex-shrink-0" />
