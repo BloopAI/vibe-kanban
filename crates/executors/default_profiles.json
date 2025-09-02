@@ -42,7 +42,7 @@
     "CODEX": {
       "DEFAULT": {
         "CODEX": {
-          "dangerously_bypass_approvals_and_sandbox": true
+          "sandbox": "danger-full-access"
         }
       }
     },

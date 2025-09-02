@@ -5,6 +5,7 @@ use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use futures::StreamExt;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use strum_macros::AsRefStr;
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
 use utils::{
@@ -22,6 +23,16 @@ use crate::{
         utils::{EntryIndexProvider, patch::ConversationPatch},
     },
 };
+
+/// Sandbox policy modes for Codex
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, AsRefStr)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum SandboxMode {
+    ReadOnly,
+    WorkspaceWrite,
+    DangerFullAccess,
+}
 
 /// Handles session management for Codex executor
 pub struct SessionHandler;
@@ -110,19 +121,24 @@ pub struct Codex {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub dangerously_bypass_approvals_and_sandbox: Option<bool>,
+    pub sandbox: Option<SandboxMode>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub oss: Option<bool>,
 }
 
 impl Codex {
     fn build_command_builder(&self) -> CommandBuilder {
         let mut builder = CommandBuilder::new("npx -y @openai/codex exec")
             .params(["--json", "--skip-git-repo-check"]);
-        if self
-            .dangerously_bypass_approvals_and_sandbox
-            .unwrap_or(false)
-        {
-            builder = builder.extend_params(["--dangerously-bypass-approvals-and-sandbox"]);
+
+        if let Some(sandbox) = &self.sandbox {
+            builder = builder.extend_params(["--sandbox", sandbox.as_ref()]);
         }
+
+        if self.oss.unwrap_or(false) {
+            builder = builder.extend_params(["--oss"]);
+        }
+
         builder
     }
 }
