@@ -48,8 +48,6 @@ impl StandardCodingAgentExecutor for Amp {
         let (shell_cmd, shell_arg) = get_shell_command();
         let amp_command = self.build_command_builder().build_initial();
 
-        tracing::info!("amp command {:?}", amp_command);
-
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 
         let mut command = Command::new(shell_cmd);
