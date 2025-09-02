@@ -32,23 +32,6 @@ fn base_command(claude_code_router: bool) -> &'static str {
     }
 }
 
-fn build_command_builder(
-    claude_code_router: bool,
-    plan: bool,
-    dangerously_skip_permissions: bool,
-) -> CommandBuilder {
-    let mut params: Vec<&'static str> = vec!["-p"];
-    if plan {
-        params.push("--permission-mode=plan");
-    }
-    if dangerously_skip_permissions {
-        params.push("--dangerously-skip-permissions");
-    }
-    params.extend_from_slice(&["--verbose", "--output-format=stream-json"]);
-
-    CommandBuilder::new(base_command(claude_code_router)).params(params)
-}
-
 /// An executor that uses Claude CLI to process tasks
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct ClaudeCode {
@@ -73,14 +56,19 @@ impl ClaudeCode {
             );
         }
 
-        apply_overrides(
-            build_command_builder(
-                self.claude_code_router.unwrap_or(false),
-                self.plan.unwrap_or(false),
-                self.dangerously_skip_permissions.unwrap_or(false),
-            ),
-            &self.cmd,
-        )
+        let mut builder =
+            CommandBuilder::new(base_command(self.claude_code_router.unwrap_or(false)))
+                .params(["-p"]);
+
+        if self.plan.unwrap_or(false) {
+            builder = builder.extend_params(["--permission-mode=plan"]);
+        }
+        if self.dangerously_skip_permissions.unwrap_or(false) {
+            builder = builder.extend_params(["--dangerously-skip-permissions"]);
+        }
+        builder = builder.extend_params(["--verbose", "--output-format=stream-json"]);
+
+        apply_overrides(builder, &self.cmd)
     }
 }
 

@@ -41,7 +41,7 @@ impl Cursor {
         let mut builder =
             CommandBuilder::new("cursor-agent").params(["-p", "--output-format=stream-json"]);
         if self.force.unwrap_or(false) {
-            builder = builder.params(["--force"]);
+            builder = builder.extend_params(["--force"]);
         }
         builder
     }

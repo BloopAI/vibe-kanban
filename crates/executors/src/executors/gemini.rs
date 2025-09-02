@@ -35,17 +35,14 @@ impl GeminiModel {
         "npx -y @google/gemini-cli@latest"
     }
 
-    fn build_command_builder(&self, yolo: bool) -> CommandBuilder {
-        let mut params: Vec<&'static str> = vec![];
-        if yolo {
-            params.push("--yolo");
-        }
+    fn build_command_builder(&self) -> CommandBuilder {
+        let mut builder = CommandBuilder::new(self.base_command());
 
         if let GeminiModel::Flash = self {
-            params.extend_from_slice(&["--model", "gemini-2.5-flash"]);
+            builder = builder.extend_params(["--model", "gemini-2.5-flash"]);
         }
 
-        CommandBuilder::new(self.base_command()).params(params)
+        builder
     }
 }
 
@@ -63,10 +60,13 @@ pub struct Gemini {
 
 impl Gemini {
     fn build_command_builder(&self) -> CommandBuilder {
-        apply_overrides(
-            self.model.build_command_builder(self.yolo.unwrap_or(false)),
-            &self.cmd,
-        )
+        let mut builder = self.model.build_command_builder();
+
+        if self.yolo.unwrap_or(false) {
+            builder = builder.extend_params(["--yolo"]);
+        }
+
+        apply_overrides(builder, &self.cmd)
     }
 }
 

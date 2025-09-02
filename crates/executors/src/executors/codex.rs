@@ -121,7 +121,7 @@ impl Codex {
             .dangerously_bypass_approvals_and_sandbox
             .unwrap_or(false)
         {
-            builder = builder.params(["--dangerously-bypass-approvals-and-sandbox"]);
+            builder = builder.extend_params(["--dangerously-bypass-approvals-and-sandbox"]);
         }
         builder
     }

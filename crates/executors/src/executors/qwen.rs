@@ -25,9 +25,11 @@ pub struct QwenCode {
 impl QwenCode {
     fn build_command_builder(&self) -> CommandBuilder {
         let mut builder = CommandBuilder::new("npx -y @qwen-code/qwen-code@latest");
+
         if self.yolo.unwrap_or(false) {
-            builder = builder.params(["--yolo"]);
+            builder = builder.extend_params(["--yolo"]);
         }
+
         builder
     }
 }

@@ -32,7 +32,7 @@ impl Amp {
         let mut builder = CommandBuilder::new("npx -y @sourcegraph/amp@latest")
             .params(["--execute", "--stream-json"]);
         if self.dangerously_allow_all.unwrap_or(false) {
-            builder = builder.params(["--dangerously-allow-all"]);
+            builder = builder.extend_params(["--dangerously-allow-all"]);
         }
         apply_overrides(builder, &self.cmd)
     }
@@ -47,6 +47,8 @@ impl StandardCodingAgentExecutor for Amp {
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let amp_command = self.build_command_builder().build_initial();
+
+        tracing::info!("amp command {:?}", amp_command);
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
 

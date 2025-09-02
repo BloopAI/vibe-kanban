@@ -29,11 +29,26 @@ use crate::{
 pub struct Opencode {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<String>,
 }
 
 impl Opencode {
     fn build_command_builder(&self) -> CommandBuilder {
-        CommandBuilder::new("npx -y opencode-ai@latest run").params(["--print-logs"])
+        let mut builder =
+            CommandBuilder::new("npx -y opencode-ai@latest run").params(["--print-logs"]);
+
+        if let Some(model) = &self.model {
+            builder = builder.extend_params(["--model", model]);
+        }
+
+        if let Some(agent) = &self.agent {
+            builder = builder.extend_params(["--agent", agent]);
+        }
+
+        builder
     }
 }
 
