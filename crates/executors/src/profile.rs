@@ -98,11 +98,12 @@ impl std::fmt::Display for ExecutorProfileId {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-pub struct ExecutorProfile {
+pub struct ExecutorConfig {
+    #[serde(flatten)]
     pub configurations: HashMap<String, CodingAgent>,
 }
 
-impl ExecutorProfile {
+impl ExecutorConfig {
     /// Get variant configuration by name, or None if not found
     pub fn get_variant(&self, variant: &str) -> Option<&CodingAgent> {
         self.configurations.get(variant)
@@ -152,7 +153,7 @@ impl ExecutorProfile {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct ExecutorConfigs {
-    pub executors: HashMap<BaseCodingAgent, ExecutorProfile>,
+    pub executors: HashMap<BaseCodingAgent, ExecutorConfig>,
 }
 
 impl ExecutorConfigs {
@@ -314,7 +315,7 @@ impl ExecutorConfigs {
                 if !override_configurations.is_empty() {
                     overrides.executors.insert(
                         *executor_key,
-                        ExecutorProfile {
+                        ExecutorConfig {
                             configurations: override_configurations,
                         },
                     );
