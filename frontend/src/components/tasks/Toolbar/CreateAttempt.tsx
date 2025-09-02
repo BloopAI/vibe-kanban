@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
-import type { GitBranch, Task } from 'shared/types';
+import type { BaseCodingAgent, GitBranch, Task } from 'shared/types';
 import type { ExecutorProfile } from 'shared/types';
 import type { ExecutorProfileId } from 'shared/types';
 import type { TaskAttempt } from 'shared/types';
@@ -213,7 +213,7 @@ function CreateAttempt({
                           key={profileKey}
                           onClick={() => {
                             setSelectedProfile({
-                              executor: profileKey,
+                              executor: profileKey as BaseCodingAgent,
                               variant: null,
                             });
                           }}

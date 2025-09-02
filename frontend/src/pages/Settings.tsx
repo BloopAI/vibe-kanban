@@ -27,7 +27,7 @@ import { Input } from '@/components/ui/input';
 import { JSONEditor } from '@/components/ui/json-editor';
 import { ChevronDown, Key, Loader2, Volume2 } from 'lucide-react';
 import { ThemeMode, EditorType, SoundFile } from 'shared/types';
-import type { ExecutorProfileId } from 'shared/types';
+import type { BaseCodingAgent, ExecutorProfileId } from 'shared/types';
 
 import { toPrettyCase } from '@/utils/string';
 import { useTheme } from '@/components/theme-provider';
@@ -279,7 +279,7 @@ export function Settings() {
                     value={config.executor_profile?.executor ?? ''}
                     onValueChange={(value: string) => {
                       const newProfile: ExecutorProfileId = {
-                        executor: value,
+                        executor: value as BaseCodingAgent,
                         variant: null,
                       };
                       updateConfig({
@@ -342,7 +342,7 @@ export function Settings() {
                                   }}
                                   className={
                                     currentProfileVariant?.variant ===
-                                    variantLabel
+                                      variantLabel
                                       ? 'bg-accent'
                                       : ''
                                   }

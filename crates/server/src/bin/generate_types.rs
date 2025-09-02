@@ -23,6 +23,8 @@ fn generate_types_content() -> String {
         executors::actions::script::ScriptContext::decl(),
         executors::actions::script::ScriptRequest::decl(),
         executors::actions::script::ScriptRequestLanguage::decl(),
+        executors::executors::BaseCodingAgent::decl(),
+        executors::executors::CodingAgent::decl(),
         db::models::task_template::TaskTemplate::decl(),
         db::models::task_template::CreateTaskTemplate::decl(),
         db::models::task_template::UpdateTaskTemplate::decl(),

@@ -19,7 +19,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { JSONEditor } from '@/components/ui/json-editor';
 import { Loader2 } from 'lucide-react';
 import { McpConfig } from 'shared/types';
-import type { ExecutorProfile } from 'shared/types';
+import type { BaseCodingAgent, ExecutorProfile } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
 import { mcpServersApi } from '../lib/api';
 import { McpConfigStrategyGeneral } from '../lib/mcp-strategies';
@@ -70,7 +70,7 @@ export function McpServers() {
         }
 
         const result = await mcpServersApi.load({
-          profile: profileKey,
+          executor: profileKey as BaseCodingAgent,
         });
         // Store the McpConfig from backend
         setMcpConfig(result.mcp_config);
@@ -162,8 +162,8 @@ export function McpServers() {
           // Find the key for the selected profile
           const selectedProfileKey = profiles
             ? Object.keys(profiles).find(
-                (key) => profiles[key] === selectedProfile
-              )
+              (key) => profiles[key] === selectedProfile
+            )
             : null;
           if (!selectedProfileKey) {
             throw new Error('Selected profile key not found');
@@ -171,7 +171,7 @@ export function McpServers() {
 
           await mcpServersApi.save(
             {
-              profile: selectedProfileKey,
+              executor: selectedProfileKey as BaseCodingAgent,
             },
             { servers: mcpServersConfig }
           );
@@ -250,8 +250,8 @@ export function McpServers() {
                 value={
                   selectedProfile
                     ? Object.keys(profiles || {}).find(
-                        (key) => profiles![key] === selectedProfile
-                      ) || ''
+                      (key) => profiles![key] === selectedProfile
+                    ) || ''
                     : ''
                 }
                 onValueChange={(value: string) => {
