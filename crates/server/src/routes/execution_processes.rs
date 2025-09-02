@@ -27,26 +27,11 @@ pub async fn get_execution_processes(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ExecutionProcessQuery>,
 ) -> Result<ResponseJson<ApiResponse<Vec<ExecutionProcess>>>, ApiError> {
-    // Get execution processes
     let pool = &deployment.db().pool;
     let execution_processes =
         ExecutionProcess::find_by_task_attempt_id(pool, query.task_attempt_id).await?;
 
     Ok(ResponseJson(ApiResponse::success(execution_processes)))
-}
-
-pub async fn stream_execution_processes(
-    State(deployment): State<DeploymentImpl>,
-    Query(query): Query<ExecutionProcessQuery>,
-) -> Result<Sse<impl futures_util::Stream<Item = Result<Event, BoxError>>>, axum::http::StatusCode>
-{
-    let stream = deployment
-        .events()
-        .stream_execution_processes_for_attempt(query.task_attempt_id)
-        .await
-        .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    Ok(Sse::new(stream.map_err(|e| -> BoxError { e.into() })).keep_alive(KeepAlive::default()))
 }
 
 pub async fn get_execution_process_by_id(
@@ -111,7 +96,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 
     let task_attempts_router = Router::new()
         .route("/", get(get_execution_processes))
-        .route("/stream", get(stream_execution_processes))
         .nest("/{id}", task_attempt_id_router);
 
     Router::new().nest("/execution-processes", task_attempts_router)
