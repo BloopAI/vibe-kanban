@@ -64,7 +64,7 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
     (editorType === EditorType.CUSTOM && customCommand.trim() !== '');
 
   return (
-    <Dialog open={open} onOpenChange={() => { }}>
+    <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-[600px] space-y-4">
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -95,11 +95,13 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
                 </SelectTrigger>
                 <SelectContent>
                   {profiles &&
-                    (Object.keys(profiles) as BaseCodingAgent[]).map((agent) => (
-                      <SelectItem key={agent} value={agent}>
-                        {agent}
-                      </SelectItem>
-                    ))}
+                    (Object.keys(profiles) as BaseCodingAgent[]).map(
+                      (agent) => (
+                        <SelectItem key={agent} value={agent}>
+                          {agent}
+                        </SelectItem>
+                      )
+                    )}
                 </SelectContent>
               </Select>
 

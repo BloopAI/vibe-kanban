@@ -342,7 +342,7 @@ export function Settings() {
                                   }}
                                   className={
                                     currentProfileVariant?.variant ===
-                                      variantLabel
+                                    variantLabel
                                       ? 'bg-accent'
                                       : ''
                                   }

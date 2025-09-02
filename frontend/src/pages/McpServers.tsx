@@ -162,8 +162,8 @@ export function McpServers() {
           // Find the key for the selected profile
           const selectedProfileKey = profiles
             ? Object.keys(profiles).find(
-              (key) => profiles[key] === selectedProfile
-            )
+                (key) => profiles[key] === selectedProfile
+              )
             : null;
           if (!selectedProfileKey) {
             throw new Error('Selected profile key not found');
@@ -250,8 +250,8 @@ export function McpServers() {
                 value={
                   selectedProfile
                     ? Object.keys(profiles || {}).find(
-                      (key) => profiles![key] === selectedProfile
-                    ) || ''
+                        (key) => profiles![key] === selectedProfile
+                      ) || ''
                     : ''
                 }
                 onValueChange={(value: string) => {

@@ -158,7 +158,7 @@ export function TaskDetailsPanel({
                         attempts={attempts}
                         selectedAttempt={selectedAttempt}
                         setSelectedAttempt={setSelectedAttempt}
-                      // hide actions in sidebar; moved to header in fullscreen
+                        // hide actions in sidebar; moved to header in fullscreen
                       />
 
                       {/* Task Breakdown (TODOs) */}
@@ -203,7 +203,7 @@ export function TaskDetailsPanel({
                         attempts={attempts}
                         selectedAttempt={selectedAttempt}
                         setSelectedAttempt={setSelectedAttempt}
-                      // hide actions in sidebar; moved to header in fullscreen
+                        // hide actions in sidebar; moved to header in fullscreen
                       />
                     ) : (
                       <>
@@ -226,8 +226,7 @@ export function TaskDetailsPanel({
                           task={task}
                           projectId={projectId}
                           selectedAttemptId={selectedAttempt?.id}
-                          selectedAttemptProfile={selectedAttempt?.executor
-                          }
+                          selectedAttemptProfile={selectedAttempt?.executor}
                         />
                       </>
                     )}
