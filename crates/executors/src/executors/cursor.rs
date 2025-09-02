@@ -34,15 +34,23 @@ pub struct Cursor {
     pub append_prompt: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub force: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
 }
 
 impl Cursor {
     fn build_command_builder(&self) -> CommandBuilder {
         let mut builder =
             CommandBuilder::new("cursor-agent").params(["-p", "--output-format=stream-json"]);
+        
         if self.force.unwrap_or(false) {
             builder = builder.extend_params(["--force"]);
         }
+        
+        if let Some(model) = &self.model {
+            builder = builder.extend_params(["--model", model]);
+        }
+        
         builder
     }
 }
@@ -1060,6 +1068,7 @@ mod tests {
             // No command field needed anymore
             append_prompt: None,
             force: None,
+            model: None,
         };
         let msg_store = Arc::new(MsgStore::new());
         let current_dir = std::path::PathBuf::from("/tmp/test-worktree");
