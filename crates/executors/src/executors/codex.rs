@@ -16,7 +16,7 @@ use utils::{
 };
 
 use crate::{
-    command::CommandBuilder,
+    command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryType,
@@ -124,6 +124,10 @@ pub struct Codex {
     pub sandbox: Option<SandboxMode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub oss: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(flatten)]
+    pub cmd: CmdOverrides,
 }
 
 impl Codex {
@@ -139,7 +143,11 @@ impl Codex {
             builder = builder.extend_params(["--oss"]);
         }
 
-        builder
+        if let Some(model) = &self.model {
+            builder = builder.extend_params(["--model", model]);
+        }
+
+        apply_overrides(builder, &self.cmd)
     }
 }
 

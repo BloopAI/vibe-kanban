@@ -18,7 +18,7 @@ use utils::{
 };
 
 use crate::{
-    command::CommandBuilder,
+    command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem,
@@ -36,22 +36,24 @@ pub struct Cursor {
     pub force: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
+    #[serde(flatten)]
+    pub cmd: CmdOverrides,
 }
 
 impl Cursor {
     fn build_command_builder(&self) -> CommandBuilder {
         let mut builder =
             CommandBuilder::new("cursor-agent").params(["-p", "--output-format=stream-json"]);
-        
+
         if self.force.unwrap_or(false) {
             builder = builder.extend_params(["--force"]);
         }
-        
+
         if let Some(model) = &self.model {
             builder = builder.extend_params(["--model", model]);
         }
-        
-        builder
+
+        apply_overrides(builder, &self.cmd)
     }
 }
 
@@ -1069,6 +1071,7 @@ mod tests {
             append_prompt: None,
             force: None,
             model: None,
+            cmd: Default::default(),
         };
         let msg_store = Arc::new(MsgStore::new());
         let current_dir = std::path::PathBuf::from("/tmp/test-worktree");

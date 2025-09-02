@@ -15,7 +15,7 @@ use utils::{
 };
 
 use crate::{
-    command::CommandBuilder,
+    command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem,
@@ -33,6 +33,8 @@ pub struct Opencode {
     pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent: Option<String>,
+    #[serde(flatten)]
+    pub cmd: CmdOverrides,
 }
 
 impl Opencode {
@@ -48,7 +50,7 @@ impl Opencode {
             builder = builder.extend_params(["--agent", agent]);
         }
 
-        builder
+        apply_overrides(builder, &self.cmd)
     }
 }
 
