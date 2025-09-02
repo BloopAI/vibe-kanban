@@ -1,4 +1,12 @@
-import { Clock, Cog, Play, Terminal, Code, ChevronDown } from 'lucide-react';
+import {
+  Clock,
+  Cog,
+  Play,
+  Terminal,
+  Code,
+  ChevronDown,
+  History,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ProcessStartPayload } from '@/types/logs';
 
@@ -6,12 +14,20 @@ interface ProcessStartCardProps {
   payload: ProcessStartPayload;
   isCollapsed: boolean;
   onToggle: (processId: string) => void;
+  onRestore?: (processId: string) => void;
+  restoreProcessId?: string; // explicit id if payload lacks it in future
+  restoreDisabled?: boolean;
+  restoreDisabledReason?: string;
 }
 
 function ProcessStartCard({
   payload,
   isCollapsed,
   onToggle,
+  onRestore,
+  restoreProcessId,
+  restoreDisabled,
+  restoreDisabledReason,
 }: ProcessStartCardProps) {
   const getProcessIcon = (runReason: string) => {
     switch (runReason) {
@@ -78,6 +94,33 @@ function ProcessStartCard({
             <Clock className="h-3 w-3" />
             <span>{formatTime(payload.startedAt)}</span>
           </div>
+          {onRestore && payload.runReason === 'codingagent' && (
+            <button
+              className={cn(
+                'ml-2 group w-20 flex items-center gap-1 px-1.5 py-1 rounded transition-colors',
+                restoreDisabled
+                  ? 'cursor-not-allowed text-muted-foreground/60 bg-muted/40'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+              )}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (restoreDisabled) return;
+                onRestore(restoreProcessId || payload.processId);
+              }}
+              title={
+                restoreDisabled
+                  ? restoreDisabledReason || 'Restore is currently unavailable.'
+                  : 'Restore to this checkpoint (deletes later history)'
+              }
+              aria-label="Restore to this checkpoint"
+              disabled={!!restoreDisabled}
+            >
+              <History className="h-4 w-4" />
+              <span className="text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                Restore
+              </span>
+            </button>
+          )}
           <div
             className={`ml-auto text-xs px-2 py-1 rounded-full ${
               payload.status === 'running'

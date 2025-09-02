@@ -173,6 +173,62 @@ impl GitCli {
         Ok(Self::parse_name_status(&out))
     }
 
+    /// Return `git status --porcelain` parsed into a structured summary
+    pub fn get_worktree_status(&self, worktree_path: &Path) -> Result<WorktreeStatus, GitCliError> {
+        let out = self.git(worktree_path, ["status", "--porcelain"])?;
+        let mut entries: Vec<StatusEntry> = Vec::new();
+        let mut uncommitted_tracked = 0usize;
+        let mut untracked = 0usize;
+        for line in out.lines() {
+            let l = line.trim_end();
+            if l.is_empty() {
+                continue;
+            }
+            // Two columns (XY) + space + path(s), or '?? path' for untracked
+            if let Some(rest) = l.strip_prefix("?? ") {
+                untracked += 1;
+                entries.push(StatusEntry {
+                    staged: '?',
+                    unstaged: '?',
+                    path: rest.to_string(),
+                    orig_path: None,
+                    is_untracked: true,
+                });
+                continue;
+            }
+            // At least 3 chars (X, Y, space)
+            let (xy, tail) = l.split_at(2);
+            let (_, pathspec) = tail.split_at(1); // skip the space
+            let staged = xy.chars().nth(0).unwrap_or(' ');
+            let unstaged = xy.chars().nth(1).unwrap_or(' ');
+            // Rename shows as 'R ' with `old -> new`
+            let (path, orig_path) = if pathspec.contains(" -> ") {
+                let mut parts = pathspec.splitn(2, " -> ");
+                let oldp = parts.next().unwrap_or("").to_string();
+                let newp = parts.next().unwrap_or("").to_string();
+                (newp, Some(oldp))
+            } else {
+                (pathspec.to_string(), None)
+            };
+            // Count as tracked change if either column indicates a change
+            if staged != ' ' || unstaged != ' ' {
+                uncommitted_tracked += 1;
+            }
+            entries.push(StatusEntry {
+                staged,
+                unstaged,
+                path,
+                orig_path,
+                is_untracked: false,
+            });
+        }
+        Ok(WorktreeStatus {
+            uncommitted_tracked,
+            untracked,
+            entries,
+        })
+    }
+
     /// Stage all changes in the working tree (respects sparse-checkout semantics).
     pub fn add_all(&self, worktree_path: &Path) -> Result<(), GitCliError> {
         self.git(worktree_path, ["add", "-A"])?;
@@ -329,7 +385,11 @@ impl GitCli {
     }
 
     /// Run `git -C <repo_path> <args...>` and return stdout on success.
-    /// Caller may ignore the output; errors surface via Result.
+    /// Prefer adding specific helpers (e.g. `get_worktree_status`, `diff_status`)
+    /// instead of calling this directly, so all parsing and command choices are
+    /// centralized here. This makes it easier to change the underlying commands
+    /// without adjusting callers. Use this low-level method directly only in
+    /// tests or when no dedicated helper exists yet.
     ///
     /// About `OsStr`/`OsString` usage:
     /// - `Command` and `Path` operate on `OsStr` to support non‑UTF‑8 paths and
@@ -389,4 +449,26 @@ impl GitCli {
         }
         Ok(String::from_utf8_lossy(&out.stdout).to_string())
     }
+}
+/// Parsed entry from `git status --porcelain`
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StatusEntry {
+    /// Single-letter staged status (column X) or '?' for untracked
+    pub staged: char,
+    /// Single-letter unstaged status (column Y) or '?' for untracked
+    pub unstaged: char,
+    /// Current path
+    pub path: String,
+    /// Original path (for renames)
+    pub orig_path: Option<String>,
+    /// True if this entry is untracked ("??")
+    pub is_untracked: bool,
+}
+
+/// Summary + entries for a working tree status
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorktreeStatus {
+    pub uncommitted_tracked: usize,
+    pub untracked: usize,
+    pub entries: Vec<StatusEntry>,
 }

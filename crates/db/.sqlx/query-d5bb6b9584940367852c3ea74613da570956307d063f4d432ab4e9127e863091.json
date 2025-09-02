@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE execution_processes \n               SET after_head_commit = $1 \n               WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "d5bb6b9584940367852c3ea74613da570956307d063f4d432ab4e9127e863091"
+}

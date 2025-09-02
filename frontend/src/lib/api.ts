@@ -5,6 +5,7 @@ import {
   BranchStatus,
   CheckTokenResponse,
   Config,
+  CommitInfo,
   CreateFollowUpAttempt,
   CreateGitHubPrRequest,
   CreateTask,
@@ -35,6 +36,8 @@ import {
   UpdateMcpServersBody,
   GetMcpServerResponse,
   ImageResponse,
+  RestoreAttemptRequest,
+  RestoreAttemptResult,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -314,6 +317,26 @@ export const attemptsApi = {
     return handleApiResponse<void>(response);
   },
 
+  restore: async (
+    attemptId: string,
+    processId: string,
+    opts?: { forceWhenDirty?: boolean; performGitReset?: boolean }
+  ): Promise<RestoreAttemptResult> => {
+    const body: RestoreAttemptRequest = {
+      process_id: processId,
+      force_when_dirty: opts?.forceWhenDirty ?? false,
+      perform_git_reset: opts?.performGitReset ?? true,
+    } as any;
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/restore`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }
+    );
+    return handleApiResponse<RestoreAttemptResult>(response);
+  },
+
   followUp: async (
     attemptId: string,
     data: CreateFollowUpAttempt
@@ -421,6 +444,35 @@ export const attemptsApi = {
       }
     );
     return handleApiResponse<void>(response);
+  },
+};
+
+// Extra helpers
+export const commitsApi = {
+  getInfo: async (attemptId: string, sha: string): Promise<CommitInfo> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/commit-info?sha=${encodeURIComponent(
+        sha
+      )}`
+    );
+    return handleApiResponse<CommitInfo>(response);
+  },
+  compareToHead: async (
+    attemptId: string,
+    sha: string
+  ): Promise<{
+    head_oid: string;
+    target_oid: string;
+    ahead_from_head: number;
+    behind_from_head: number;
+    is_linear: boolean;
+  }> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/commit-compare?sha=${encodeURIComponent(
+        sha
+      )}`
+    );
+    return handleApiResponse(response);
   },
 };
 

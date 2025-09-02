@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE execution_processes\n               SET dropped = 1\n             WHERE task_attempt_id = $1\n               AND created_at > (SELECT created_at FROM execution_processes WHERE id = $2)\n               AND dropped = 0\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "453c1691f4f8109931a4b0dc95e2153645bbc2d315d76f371612a7b6262a1c21"
+}

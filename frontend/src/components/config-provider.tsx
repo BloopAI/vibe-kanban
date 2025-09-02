@@ -11,6 +11,7 @@ import {
   type Config,
   type Environment,
   type UserSystemInfo,
+  type BaseAgentCapability,
   CheckTokenResponse,
 } from 'shared/types';
 import type { ExecutorConfig } from 'shared/types';
@@ -20,6 +21,7 @@ interface UserSystemState {
   config: Config | null;
   environment: Environment | null;
   profiles: Record<string, ExecutorConfig> | null;
+  capabilities: Record<string, BaseAgentCapability[]> | null;
 }
 
 interface UserSystemContextType {
@@ -35,8 +37,10 @@ interface UserSystemContextType {
   // System data access
   environment: Environment | null;
   profiles: Record<string, ExecutorConfig> | null;
+  capabilities: Record<string, BaseAgentCapability[]> | null;
   setEnvironment: (env: Environment | null) => void;
   setProfiles: (profiles: Record<string, ExecutorConfig> | null) => void;
+  setCapabilities: (caps: Record<string, BaseAgentCapability[]> | null) => void;
 
   // Reload system data
   reloadSystem: () => Promise<void>;
@@ -62,6 +66,10 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
     string,
     ExecutorConfig
   > | null>(null);
+  const [capabilities, setCapabilities] = useState<Record<
+    string,
+    BaseAgentCapability[]
+  > | null>(null);
   const [loading, setLoading] = useState(true);
   const [githubTokenInvalid, setGithubTokenInvalid] = useState(false);
 
@@ -73,6 +81,12 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
         setEnvironment(userSystemInfo.environment);
         setProfiles(
           userSystemInfo.executors as Record<string, ExecutorConfig> | null
+        );
+        setCapabilities(
+          (userSystemInfo.capabilities || null) as Record<
+            string,
+            BaseAgentCapability[]
+          > | null
         );
       } catch (err) {
         console.error('Error loading user system:', err);
@@ -150,6 +164,12 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       setProfiles(
         userSystemInfo.executors as Record<string, ExecutorConfig> | null
       );
+      setCapabilities(
+        (userSystemInfo.capabilities || null) as Record<
+          string,
+          BaseAgentCapability[]
+        > | null
+      );
     } catch (err) {
       console.error('Error reloading user system:', err);
     } finally {
@@ -160,15 +180,17 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo<UserSystemContextType>(
     () => ({
-      system: { config, environment, profiles },
+      system: { config, environment, profiles, capabilities },
       config,
       environment,
       profiles,
+      capabilities,
       updateConfig,
       saveConfig,
       updateAndSaveConfig,
       setEnvironment,
       setProfiles,
+      setCapabilities,
       reloadSystem,
       loading,
       githubTokenInvalid,
@@ -177,6 +199,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       config,
       environment,
       profiles,
+      capabilities,
       updateConfig,
       saveConfig,
       updateAndSaveConfig,

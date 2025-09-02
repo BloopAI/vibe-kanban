@@ -344,6 +344,8 @@ impl LocalContainerService {
                             tracing::warn!("Failed to update executor session summary: {}", e);
                         }
 
+                        // (moved) capture after-head commit occurs later, after commit/next-action handling
+
                         if matches!(
                             ctx.execution_process.status,
                             ExecutionProcessStatus::Completed
@@ -412,6 +414,24 @@ impl LocalContainerService {
                                     "execution_success": matches!(ctx.execution_process.status, ExecutionProcessStatus::Completed),
                                     "exit_code": ctx.execution_process.exit_code,
                                 })));
+                        }
+                    }
+
+                    // Now that commit/next-action/finalization steps for this process are complete,
+                    // capture the HEAD OID as the definitive "after" state (best-effort).
+                    if let Ok(ctx) = ExecutionProcess::load_context(&db.pool, exec_id).await {
+                        let worktree_dir = container.task_attempt_to_current_dir(&ctx.task_attempt);
+                        if let Ok(head) = container.git().get_head_info(&worktree_dir)
+                            && let Err(e) = ExecutionProcess::update_after_head_commit(
+                                &db.pool, exec_id, &head.oid,
+                            )
+                            .await
+                        {
+                            tracing::warn!(
+                                "Failed to update after_head_commit for {}: {}",
+                                exec_id,
+                                e
+                            );
                         }
                     }
 
@@ -911,6 +931,19 @@ impl ContainerService for LocalContainerService {
             "Execution process {} stopped successfully",
             execution_process.id
         );
+
+        // Record after-head commit OID (best-effort)
+        if let Ok(ctx) = ExecutionProcess::load_context(&self.db.pool, execution_process.id).await {
+            let worktree = self.task_attempt_to_current_dir(&ctx.task_attempt);
+            if let Ok(head) = self.git().get_head_info(&worktree) {
+                let _ = ExecutionProcess::update_after_head_commit(
+                    &self.db.pool,
+                    execution_process.id,
+                    &head.oid,
+                )
+                .await;
+            }
+        }
 
         Ok(())
     }

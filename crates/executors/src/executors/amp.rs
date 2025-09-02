@@ -79,10 +79,43 @@ impl StandardCodingAgentExecutor for Amp {
     ) -> Result<AsyncGroupChild, ExecutorError> {
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
-        let amp_command = self.build_command_builder().build_follow_up(&[
+
+        // 1) Fork the thread synchronously to obtain new thread id
+        let fork_cmd = self.build_command_builder().build_follow_up(&[
+            "threads".to_string(),
+            "fork".to_string(),
+            session_id.to_string(),
+        ]);
+        let fork_output = Command::new(shell_cmd)
+            .kill_on_drop(true)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .current_dir(current_dir)
+            .arg(shell_arg)
+            .arg(&fork_cmd)
+            .output()
+            .await?;
+        let stdout_str = String::from_utf8_lossy(&fork_output.stdout);
+        let new_thread_id = stdout_str
+            .lines()
+            .rev()
+            .find(|l| !l.trim().is_empty())
+            .unwrap_or("")
+            .trim()
+            .to_string();
+        if new_thread_id.is_empty() {
+            return Err(ExecutorError::Io(std::io::Error::other(
+                "AMP threads fork did not return a thread id",
+            )));
+        }
+
+        tracing::debug!("AMP threads fork -> new thread id: {}", new_thread_id);
+
+        // 2) Continue using the new thread id
+        let continue_cmd = self.build_command_builder().build_follow_up(&[
             "threads".to_string(),
             "continue".to_string(),
-            session_id.to_string(),
+            new_thread_id.clone(),
         ]);
 
         let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
@@ -95,7 +128,7 @@ impl StandardCodingAgentExecutor for Amp {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .arg(shell_arg)
-            .arg(&amp_command);
+            .arg(&continue_cmd);
 
         let mut child = command.group_spawn()?;
 

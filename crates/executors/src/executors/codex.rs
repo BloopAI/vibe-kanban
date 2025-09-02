@@ -117,6 +117,77 @@ impl SessionHandler {
             "Could not find rollout file for session_id: {session_id}"
         ))
     }
+
+    /// Fork a Codex rollout file by copying it to a temp location and assigning a new session id.
+    /// Returns (new_rollout_path, new_session_id).
+    pub fn fork_rollout_file(session_id: &str) -> Result<(PathBuf, String), String> {
+        use std::io::{BufRead, BufReader, Write};
+
+        let original = Self::find_rollout_file_path(session_id)?;
+
+        let file = std::fs::File::open(&original)
+            .map_err(|e| format!("Failed to open rollout file {}: {e}", original.display()))?;
+        let mut reader = BufReader::new(file);
+
+        let mut first_line = String::new();
+        reader
+            .read_line(&mut first_line)
+            .map_err(|e| format!("Failed to read first line from {}: {e}", original.display()))?;
+
+        let mut meta: serde_json::Value = serde_json::from_str(first_line.trim()).map_err(|e| {
+            format!(
+                "Failed to parse first line JSON in {}: {e}",
+                original.display()
+            )
+        })?;
+
+        // Generate new UUID for forked session
+        let new_id = uuid::Uuid::new_v4().to_string();
+        if let serde_json::Value::Object(ref mut map) = meta {
+            map.insert("id".to_string(), serde_json::Value::String(new_id.clone()));
+        } else {
+            return Err("First line of rollout file is not a JSON object".to_string());
+        }
+
+        // Prepare destination path in the same directory, following Codex rollout naming convention:
+        // rollout-<YYYY>-<MM>-<DD>T<HH>-<mm>-<ss>-<session_id>.jsonl
+        let parent_dir = original
+            .parent()
+            .ok_or_else(|| format!("Unexpected path with no parent: {}", original.display()))?;
+        let filename = original
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("rollout.jsonl");
+        let new_filename = if filename.starts_with("rollout-") && filename.ends_with(".jsonl") {
+            let stem = &filename[..filename.len() - ".jsonl".len()];
+            if let Some(idx) = stem.rfind('-') {
+                // Replace the trailing session id with the new id, keep timestamp intact
+                format!("{}-{}.jsonl", &stem[..idx], new_id)
+            } else {
+                format!("rollout-{new_id}.jsonl")
+            }
+        } else {
+            format!("rollout-{new_id}.jsonl")
+        };
+        let dest = parent_dir.join(new_filename);
+
+        // Write new file with modified first line and copy the rest as-is
+        let mut writer = std::fs::File::create(&dest)
+            .map_err(|e| format!("Failed to create forked rollout {}: {e}", dest.display()))?;
+        let meta_line = serde_json::to_string(&meta)
+            .map_err(|e| format!("Failed to serialize modified meta: {e}"))?;
+        writeln!(writer, "{meta_line}")
+            .map_err(|e| format!("Failed to write meta to {}: {e}", dest.display()))?;
+
+        for line in reader.lines() {
+            let line =
+                line.map_err(|e| format!("I/O error reading {}: {e}", original.display()))?;
+            writeln!(writer, "{line}")
+                .map_err(|e| format!("Failed to write to {}: {e}", dest.display()))?;
+        }
+
+        Ok((dest, new_id))
+    }
 }
 
 /// An executor that uses Codex CLI to process tasks
@@ -196,11 +267,9 @@ impl StandardCodingAgentExecutor for Codex {
         prompt: &str,
         session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
-        // Find the rollout file for the given session_id using SessionHandler
-        let rollout_file_path =
-            SessionHandler::find_rollout_file_path(session_id).map_err(|e| {
-                ExecutorError::SpawnError(std::io::Error::new(std::io::ErrorKind::NotFound, e))
-            })?;
+        // Fork rollout: copy and assign a new session id so each execution has a unique session
+        let (rollout_file_path, _new_session_id) = SessionHandler::fork_rollout_file(session_id)
+            .map_err(|e| ExecutorError::SpawnError(std::io::Error::other(e)))?;
 
         let (shell_cmd, shell_arg) = get_shell_command();
         let codex_command = self.build_command_builder().build_follow_up(&[

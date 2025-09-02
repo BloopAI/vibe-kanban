@@ -13,6 +13,10 @@ interface LogEntryRowProps {
   setRowHeight?: (index: number, height: number) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: (processId: string) => void;
+  onRestore?: (processId: string) => void;
+  restoreProcessId?: string;
+  restoreDisabled?: boolean;
+  restoreDisabledReason?: string;
 }
 
 function LogEntryRow({
@@ -22,6 +26,10 @@ function LogEntryRow({
   setRowHeight,
   isCollapsed,
   onToggleCollapse,
+  onRestore,
+  restoreProcessId,
+  restoreDisabled,
+  restoreDisabledReason,
 }: LogEntryRowProps) {
   const rowRef = useRef<HTMLDivElement>(null);
 
@@ -53,6 +61,10 @@ function LogEntryRow({
                 payload={entry.payload as ProcessStartPayload}
                 isCollapsed={isCollapsed || false}
                 onToggle={onToggleCollapse || (() => {})}
+                onRestore={onRestore}
+                restoreProcessId={restoreProcessId}
+                restoreDisabled={restoreDisabled}
+                restoreDisabledReason={restoreDisabledReason}
               />
             );
           default:

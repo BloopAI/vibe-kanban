@@ -27,6 +27,12 @@ pub mod gemini;
 pub mod opencode;
 pub mod qwen;
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum BaseAgentCapability {
+    RestoreCheckpoint,
+}
+
 #[derive(Debug, Error)]
 pub enum ExecutorError {
     #[error("Follow-up is not supported: {0}")]
@@ -124,6 +130,15 @@ impl CodingAgent {
 
     pub fn supports_mcp(&self) -> bool {
         self.default_mcp_config_path().is_some()
+    }
+
+    pub fn capabilities(&self) -> Vec<BaseAgentCapability> {
+        match self {
+            Self::ClaudeCode(_) => vec![BaseAgentCapability::RestoreCheckpoint],
+            Self::Amp(_) => vec![BaseAgentCapability::RestoreCheckpoint],
+            Self::Codex(_) => vec![BaseAgentCapability::RestoreCheckpoint],
+            Self::Gemini(_) | Self::Opencode(_) | Self::Cursor(_) | Self::QwenCode(_) => vec![],
+        }
     }
 }
 
