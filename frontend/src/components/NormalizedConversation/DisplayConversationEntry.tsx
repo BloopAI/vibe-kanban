@@ -22,7 +22,7 @@ import {
 } from 'shared/types.ts';
 import FileChangeRenderer from './FileChangeRenderer';
 import ToolDetails from './ToolDetails';
-import { Braces, FileText, MoreHorizontal } from 'lucide-react';
+import { Braces, FileText } from 'lucide-react';
 
 type Props = {
   entry: NormalizedEntry;
@@ -255,10 +255,7 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
                     title={toolExpanded ? 'Hide details' : 'Show details'}
                   >
                     <span className="flex items-center gap-1 min-w-0">
-                      <span
-                        className="text-sm truncate whitespace-nowrap overflow-hidden text-ellipsis"
-                        title={entry.content}
-                      >
+                      <span className="text-sm break-words">
                         {shouldRenderMarkdown(entry.entry_type) ? (
                           <MarkdownRenderer
                             content={entry.content}
@@ -301,9 +298,7 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
                                   ? `output: ${outputMeta.lineCount} lines · ${outputMeta.sizeStr}`
                                   : 'output'
                               }
-                            >
-                              <FileText className="h-3.5 w-3.5 text-zinc-500" />
-                            </span>
+                            ></span>
                           )}
                         </>
                       ) : (
@@ -320,16 +315,10 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
                         </>
                       )}
                     </span>
-                    <MoreHorizontal className="ml-auto h-4 w-4 text-zinc-400 group-hover:text-zinc-600" />
                   </button>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <div
-                      className={
-                        'text-sm truncate whitespace-nowrap overflow-hidden text-ellipsis'
-                      }
-                      title={entry.content}
-                    >
+                    <div className={'text-sm break-words'}>
                       {shouldRenderMarkdown(entry.entry_type) ? (
                         <MarkdownRenderer
                           content={entry.content}
@@ -341,29 +330,6 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
                     </div>
                     {isCommand ? (
                       <>
-                        {typeof commandSuccess === 'boolean' && (
-                          <span
-                            className={
-                              'px-1.5 py-0.5 rounded text-[10px] border whitespace-nowrap ' +
-                              (commandSuccess
-                                ? 'text-success'
-                                : 'text-destructive')
-                            }
-                            title={
-                              typeof commandExitCode === 'number'
-                                ? `exit code: ${commandExitCode}`
-                                : commandSuccess
-                                  ? 'success'
-                                  : 'failed'
-                            }
-                          >
-                            {typeof commandExitCode === 'number'
-                              ? `exit ${commandExitCode}`
-                              : commandSuccess
-                                ? 'ok'
-                                : 'fail'}
-                          </span>
-                        )}
                         {commandOutput && (
                           <span
                             title={
