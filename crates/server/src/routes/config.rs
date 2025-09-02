@@ -12,7 +12,7 @@ use deployment::{Deployment, DeploymentError};
 use executors::{
     executors::{BaseCodingAgent, StandardCodingAgentExecutor},
     mcp_config::{McpConfig, read_agent_config, write_agent_config},
-    profile::{ExecutorConfigs, ExecutorProfileConfigs, ExecutorProfileId},
+    profile::{ExecutorConfigs, ExecutorProfileId},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

@@ -12,12 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FolderPicker } from '@/components/ui/folder-picker';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 import { ProjectFormFields } from './project-form-fields';
-import {
-  CreateProject,
-  Project,
-  UpdateProject,
-  DirectoryEntry,
-} from 'shared/types';
+import { CreateProject, Project, UpdateProject } from 'shared/types';
 import { projectsApi } from '@/lib/api';
 import { generateProjectNameFromPath } from '@/utils/string';
 
@@ -48,9 +43,7 @@ export function ProjectForm({
   const [repoMode, setRepoMode] = useState<'existing' | 'new'>('existing');
   const [parentPath, setParentPath] = useState('');
   const [folderName, setFolderName] = useState('');
-  const [manualRepo, setManualRepo] = useState<DirectoryEntry | undefined>(
-    undefined
-  );
+  // Removed manual repo preview flow; quick-create on selection instead
 
   const isEditing = !!project;
 
@@ -79,27 +72,43 @@ export function ProjectForm({
 
     // Only auto-populate name for new projects
     if (!isEditing && path) {
-      // Extract the last part of the path (directory name)
-      const dirName = path.split('/').filter(Boolean).pop() || '';
-      if (dirName) {
-        // Clean up the directory name for a better project name
-        const cleanName = dirName
-          .replace(/[-_]/g, ' ') // Replace hyphens and underscores with spaces
-          .replace(/\b\w/g, (l) => l.toUpperCase()); // Capitalize first letter of each word
-        setName(cleanName);
-      }
+      const cleanName = generateProjectNameFromPath(path);
+      if (cleanName) setName(cleanName);
     }
   };
 
-  // Handle repo selection from recent repos list - just pre-fill fields
-  const handleRepoSelect = (path: string, suggestedName: string) => {
-    setGitRepoPath(path);
-    // Clear manual repo since user selected from recent list
-    setManualRepo(undefined);
-    // Don't change repoMode automatically - user is already on existing tab
-    // setRepoMode('existing'); // Remove this line
-    setName(suggestedName);
-    // User still needs to click "Create Project" button to proceed
+  // Handle direct project creation from repo selection
+  const handleDirectCreate = async (path: string, suggestedName: string) => {
+    setError('');
+    setLoading(true);
+
+    try {
+      const createData: CreateProject = {
+        name: suggestedName,
+        git_repo_path: path,
+        use_existing_repo: true,
+        setup_script: null,
+        dev_script: null,
+        cleanup_script: null,
+        copy_files: null,
+      };
+
+      await projectsApi.create(createData);
+      onSuccess();
+      // Reset form
+      setName('');
+      setGitRepoPath('');
+      setSetupScript('');
+      setDevScript('');
+      setCleanupScript('');
+      setCopyFiles('');
+      setParentPath('');
+      setFolderName('');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -108,22 +117,20 @@ export function ProjectForm({
     setLoading(true);
 
     try {
+      let finalGitRepoPath = gitRepoPath;
+      if (repoMode === 'new') {
+        // Use home directory (~) if parentPath is empty
+        const effectiveParentPath = parentPath.trim() || '~';
+        finalGitRepoPath = `${effectiveParentPath}/${folderName}`.replace(
+          /\/+/g,
+          '/'
+        );
+      }
+      // Auto-populate name from git repo path if not provided
+      const finalName =
+        name.trim() || generateProjectNameFromPath(finalGitRepoPath);
+
       if (isEditing) {
-        // Editing existing project (local mode only)
-        let finalGitRepoPath = gitRepoPath;
-        if (repoMode === 'new') {
-          // Use home directory (~) if parentPath is empty
-          const effectiveParentPath = parentPath.trim() || '~';
-          finalGitRepoPath = `${effectiveParentPath}/${folderName}`.replace(
-            /\/+/g,
-            '/'
-          );
-        }
-
-        // Auto-populate name from git repo path if not provided
-        const finalName =
-          name.trim() || generateProjectNameFromPath(finalGitRepoPath);
-
         const updateData: UpdateProject = {
           name: finalName,
           git_repo_path: finalGitRepoPath,
@@ -155,29 +162,14 @@ export function ProjectForm({
 
         //   await githubApi.createProjectFromRepository(githubData);
         // } else {
-        // Local mode: Create local project
-        let finalGitRepoPath = gitRepoPath;
-        if (repoMode === 'new') {
-          // Use home directory (~) if parentPath is empty
-          const effectiveParentPath = parentPath.trim() || '~';
-          finalGitRepoPath = `${effectiveParentPath}/${folderName}`.replace(
-            /\/+/g,
-            '/'
-          );
-        }
-
-        // Auto-populate name from git repo path if not provided
-        const finalName =
-          name.trim() || generateProjectNameFromPath(finalGitRepoPath);
-
         const createData: CreateProject = {
           name: finalName,
           git_repo_path: finalGitRepoPath,
           use_existing_repo: repoMode === 'existing',
-          setup_script: setupScript.trim() || null,
-          dev_script: devScript.trim() || null,
-          cleanup_script: cleanupScript.trim() || null,
-          copy_files: copyFiles.trim() || null,
+          setup_script: null,
+          dev_script: null,
+          cleanup_script: null,
+          copy_files: null,
         };
 
         await projectsApi.create(createData);
@@ -223,9 +215,7 @@ export function ProjectForm({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent
-        className={isEditing ? 'sm:max-w-[600px]' : 'sm:max-w-[500px]'}
-      >
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>
             {isEditing ? 'Edit Project' : 'Create Project'}
@@ -266,19 +256,10 @@ export function ProjectForm({
                   copyFiles={copyFiles}
                   setCopyFiles={setCopyFiles}
                   error={error}
+                  setError={setError}
                   projectId={project ? project.id : undefined}
-                  selectedPath={gitRepoPath}
-                  manualRepo={manualRepo}
                 />
                 <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleClose}
-                    disabled={loading}
-                  >
-                    Cancel
-                  </Button>
                   <Button
                     type="submit"
                     disabled={loading || !gitRepoPath.trim()}
@@ -380,33 +361,18 @@ export function ProjectForm({
               copyFiles={copyFiles}
               setCopyFiles={setCopyFiles}
               error={error}
+              setError={setError}
               projectId={(project as Project | null | undefined)?.id}
-              onSelectRepo={handleRepoSelect}
-              selectedPath={gitRepoPath}
-              manualRepo={manualRepo}
+              onCreateProject={handleDirectCreate}
             />
             {/* )} */}
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleClose}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={
-                  loading ||
-                  (repoMode === 'existing'
-                    ? !gitRepoPath.trim()
-                    : !folderName.trim())
-                }
-              >
-                {loading ? 'Creating...' : 'Create Project'}
-              </Button>
-            </DialogFooter>
+            {repoMode === 'new' && (
+              <DialogFooter>
+                <Button type="submit" disabled={loading || !folderName.trim()}>
+                  {loading ? 'Creating...' : 'Create Project'}
+                </Button>
+              </DialogFooter>
+            )}
           </form>
         )}
       </DialogContent>
@@ -416,18 +382,14 @@ export function ProjectForm({
         onClose={() => setShowFolderPicker(false)}
         onSelect={(path) => {
           if (repoMode === 'existing' || isEditing) {
-            // Create DirectoryEntry for manual selection
-            const folderName = path.split('/').pop() || 'Unknown';
-            const manualRepoEntry: DirectoryEntry = {
-              name: folderName,
-              path: path,
-              is_directory: true,
-              is_git_repo: true, // Assume it's a git repo since user is selecting it
-              last_modified: null,
-            };
-
-            setManualRepo(manualRepoEntry);
-            handleGitRepoPathChange(path);
+            if (isEditing) {
+              // For editing, just set the path
+              handleGitRepoPathChange(path);
+            } else {
+              // For creating, immediately attempt to create project (same as quick select)
+              const projectName = generateProjectNameFromPath(path);
+              handleDirectCreate(path, projectName);
+            }
           } else {
             setParentPath(path);
           }

@@ -183,7 +183,7 @@ pub async fn update_project(
     } = payload;
     // If git_repo_path is being changed, check if the new path is already used by another project
     let git_repo_path = if let Some(new_git_repo_path) = git_repo_path.map(|s| expand_tilde(&s))
-        && new_git_repo_path.eq(&existing_project.git_repo_path)
+        && new_git_repo_path != existing_project.git_repo_path
     {
         match Project::find_by_git_repo_path_excluding_id(
             &deployment.db().pool,
@@ -197,10 +197,7 @@ pub async fn update_project(
                     "A project with this git repository path already exists",
                 )));
             }
-            Ok(None) => {
-                // Path is available, continue
-                new_git_repo_path
-            }
+            Ok(None) => new_git_repo_path,
             Err(e) => {
                 tracing::error!("Failed to check for existing git repo path: {}", e);
                 return Err(StatusCode::INTERNAL_SERVER_ERROR);
