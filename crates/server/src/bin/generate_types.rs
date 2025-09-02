@@ -59,7 +59,6 @@ fn generate_types_content() -> String {
         utils::diff::FileDiffDetails::decl(),
         services::services::github_service::RepositoryInfo::decl(),
         executors::command::CommandBuilder::decl(),
-        // New executor profile types
         executors::profile::ExecutorProfileId::decl(),
         executors::profile::ExecutorProfile::decl(),
         executors::profile::VariantAgentConfig::decl(),
@@ -69,6 +68,7 @@ fn generate_types_content() -> String {
         executors::executors::gemini::GeminiModel::decl(),
         executors::executors::amp::Amp::decl(),
         executors::executors::codex::Codex::decl(),
+        executors::executors::codex::SandboxMode::decl(),
         executors::executors::cursor::Cursor::decl(),
         executors::executors::opencode::Opencode::decl(),
         executors::executors::qwen::QwenCode::decl(),
