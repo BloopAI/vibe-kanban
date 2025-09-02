@@ -54,6 +54,7 @@ pub enum RecordTypes {
     DeletedTask {
         rowid: i64,
         project_id: Option<Uuid>,
+        task_id: Option<Uuid>,
     },
     DeletedTaskAttempt {
         rowid: i64,
@@ -119,13 +120,14 @@ impl EventService {
                         runtime_handle.spawn(async move {
                             let record_type: RecordTypes = match (table, hook.operation.clone()) {
                                 (HookTables::Tasks, SqliteOperation::Delete) => {
-                                    // Try to get task before deletion to capture project_id
-                                    let project_id = Task::find_by_rowid(&db.pool, rowid)
-                                        .await
-                                        .ok()
-                                        .flatten()
-                                        .map(|task| task.project_id);
-                                    RecordTypes::DeletedTask { rowid, project_id }
+                                    // Try to get task before deletion to capture project_id and task_id
+                                    let task_info =
+                                        Task::find_by_rowid(&db.pool, rowid).await.ok().flatten();
+                                    RecordTypes::DeletedTask {
+                                        rowid,
+                                        project_id: task_info.as_ref().map(|t| t.project_id),
+                                        task_id: task_info.as_ref().map(|t| t.id),
+                                    }
                                 }
                                 (HookTables::TaskAttempts, SqliteOperation::Delete) => {
                                     // Try to get task_attempt before deletion to capture task_id
@@ -155,6 +157,7 @@ impl EventService {
                                         Ok(None) => RecordTypes::DeletedTask {
                                             rowid,
                                             project_id: None,
+                                            task_id: None,
                                         },
                                         Err(e) => {
                                             tracing::error!("Failed to fetch task: {:?}", e);
@@ -196,12 +199,6 @@ impl EventService {
                                 }
                             };
 
-                            let next_entry_count = {
-                                let mut entry_count = entry_count_for_hook.write().await;
-                                *entry_count += 1;
-                                *entry_count
-                            };
-
                             let db_op: &str = match hook.operation {
                                 SqliteOperation::Insert => "insert",
                                 SqliteOperation::Delete => "delete",
@@ -209,9 +206,104 @@ impl EventService {
                                 SqliteOperation::Unknown(_) => "unknown",
                             };
 
+                            let (op, path) = match &record_type {
+                                RecordTypes::Task(task) => {
+                                    let op = match hook.operation {
+                                        SqliteOperation::Insert => "add",
+                                        SqliteOperation::Update => "replace",
+                                        _ => "replace", // fallback
+                                    };
+                                    (op, format!("/tasks/{}", task.id))
+                                }
+                                RecordTypes::DeletedTask {
+                                    task_id: Some(task_id),
+                                    ..
+                                } => ("remove", format!("/tasks/{task_id}")),
+                                RecordTypes::TaskAttempt(attempt) => {
+                                    // Task attempts don't directly go in the tasks stream, they should update the parent task
+                                    // We need to fetch the updated task and use that instead
+                                    if let Ok(Some(updated_task)) =
+                                        Task::find_by_id(&db.pool, attempt.task_id).await
+                                    {
+                                        // Create a new patch for the updated task
+                                        let task_record = RecordTypes::Task(updated_task);
+                                        let event_patch = EventPatch {
+                                            op: "replace".to_string(),
+                                            path: format!("/tasks/{}", attempt.task_id),
+                                            value: EventPatchInner {
+                                                db_op: db_op.to_string(),
+                                                record: task_record,
+                                            },
+                                        };
+
+                                        let patch =
+                                            serde_json::from_value(json!([serde_json::to_value(
+                                                event_patch
+                                            )
+                                            .unwrap()]))
+                                            .unwrap();
+
+                                        msg_store_for_hook.push_patch(patch);
+                                        return;
+                                    }
+                                    // Fallback: use the old entries format
+                                    let next_entry_count = {
+                                        let mut entry_count = entry_count_for_hook.write().await;
+                                        *entry_count += 1;
+                                        *entry_count
+                                    };
+                                    ("add", format!("/entries/{next_entry_count}"))
+                                }
+                                RecordTypes::DeletedTaskAttempt {
+                                    task_id: Some(task_id),
+                                    ..
+                                } => {
+                                    // Task attempt deletion should update the parent task with fresh data
+                                    if let Ok(Some(updated_task)) =
+                                        Task::find_by_id(&db.pool, *task_id).await
+                                    {
+                                        let task_record = RecordTypes::Task(updated_task);
+                                        let event_patch = EventPatch {
+                                            op: "replace".to_string(),
+                                            path: format!("/tasks/{task_id}"),
+                                            value: EventPatchInner {
+                                                db_op: db_op.to_string(),
+                                                record: task_record,
+                                            },
+                                        };
+
+                                        let patch =
+                                            serde_json::from_value(json!([serde_json::to_value(
+                                                event_patch
+                                            )
+                                            .unwrap()]))
+                                            .unwrap();
+
+                                        msg_store_for_hook.push_patch(patch);
+                                        return;
+                                    }
+                                    // Fallback: use the old entries format
+                                    let next_entry_count = {
+                                        let mut entry_count = entry_count_for_hook.write().await;
+                                        *entry_count += 1;
+                                        *entry_count
+                                    };
+                                    ("add", format!("/entries/{next_entry_count}"))
+                                }
+                                _ => {
+                                    // For other record types, use the old entries format temporarily
+                                    let next_entry_count = {
+                                        let mut entry_count = entry_count_for_hook.write().await;
+                                        *entry_count += 1;
+                                        *entry_count
+                                    };
+                                    ("add", format!("/entries/{next_entry_count}"))
+                                }
+                            };
+
                             let event_patch: EventPatch = EventPatch {
-                                op: "add".to_string(),
-                                path: format!("/entries/{next_entry_count}"),
+                                op: op.to_string(),
+                                path,
                                 value: EventPatchInner {
                                     db_op: db_op.to_string(),
                                     record: record_type,
@@ -246,10 +338,17 @@ impl EventService {
     {
         // Get initial snapshot of tasks
         let tasks = Task::find_by_project_id_with_attempt_status(&self.db.pool, project_id).await?;
+
+        // Convert task array to object keyed by task ID
+        let tasks_map: serde_json::Map<String, serde_json::Value> = tasks
+            .into_iter()
+            .map(|task| (task.id.to_string(), serde_json::to_value(task).unwrap()))
+            .collect();
+
         let initial_patch = json!([{
             "op": "replace",
-            "path": "/",
-            "value": { "tasks": tasks }
+            "path": "/tasks",
+            "value": tasks_map
         }]);
         let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
 

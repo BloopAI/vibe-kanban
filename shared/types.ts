@@ -190,7 +190,7 @@ export type EventPatch = { op: string, path: string, value: EventPatchInner, };
 
 export type EventPatchInner = { db_op: string, record: RecordTypes, };
 
-export type RecordTypes = { "type": "TASK", "data": Task } | { "type": "TASK_ATTEMPT", "data": TaskAttempt } | { "type": "EXECUTION_PROCESS", "data": ExecutionProcess } | { "type": "DELETED_TASK", "data": { rowid: bigint, } } | { "type": "DELETED_TASK_ATTEMPT", "data": { rowid: bigint, } } | { "type": "DELETED_EXECUTION_PROCESS", "data": { rowid: bigint, } };
+export type RecordTypes = { "type": "TASK", "data": Task } | { "type": "TASK_ATTEMPT", "data": TaskAttempt } | { "type": "EXECUTION_PROCESS", "data": ExecutionProcess } | { "type": "DELETED_TASK", "data": { rowid: bigint, project_id: string | null, task_id: string | null, } } | { "type": "DELETED_TASK_ATTEMPT", "data": { rowid: bigint, task_id: string | null, } } | { "type": "DELETED_EXECUTION_PROCESS", "data": { rowid: bigint, task_attempt_id: string | null, } };
 
 export type CommandExitStatus = { "type": "exit_code", code: number, } | { "type": "success", success: boolean, };
 

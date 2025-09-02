@@ -511,8 +511,7 @@ fn rebase_refuses_to_abort_existing_rebase() {
             "old-base",
             None,
         )
-        .err()
-        .expect("first rebase should error and leave in-progress state");
+        .expect_err("first rebase should error and leave in-progress state");
 
     // Our service should refuse to proceed and not abort the user's rebase
     let service = GitService::new();
