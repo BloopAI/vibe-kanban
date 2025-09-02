@@ -7,8 +7,8 @@ use ts_rs::TS;
 
 use crate::{
     actions::Executable,
-    executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
-    profile::ExecutorProfileId,
+    executors::{ExecutorError, StandardCodingAgentExecutor},
+    profile::{ExecutorConfigs, ExecutorProfileId},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
@@ -20,18 +20,16 @@ pub struct CodingAgentInitialRequest {
     pub executor_profile_id: ExecutorProfileId,
 }
 
-impl CodingAgentInitialRequest {
-    /// Get the executor profile ID
-    pub fn get_executor_profile_id(&self) -> ExecutorProfileId {
-        self.executor_profile_id.clone()
-    }
-}
-
 #[async_trait]
 impl Executable for CodingAgentInitialRequest {
     async fn spawn(&self, current_dir: &PathBuf) -> Result<AsyncGroupChild, ExecutorError> {
-        let executor_profile_id = self.get_executor_profile_id();
-        let agent = CodingAgent::from_executor_profile_id(&executor_profile_id)?;
+        let executor_profile_id = self.executor_profile_id.clone();
+        let agent = ExecutorConfigs::get_cached()
+            .get_coding_agent(&executor_profile_id)
+            .ok_or(ExecutorError::UnknownExecutorType(
+                executor_profile_id.to_string(),
+            ))?;
+
         agent.spawn(current_dir, &self.prompt).await
     }
 }

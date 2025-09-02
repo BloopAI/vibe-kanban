@@ -5,7 +5,7 @@ use command_group::AsyncGroupChild;
 use enum_dispatch::enum_dispatch;
 use futures_io::Error as FuturesIoError;
 use serde::{Deserialize, Serialize};
-use strum_macros::{Display, VariantNames};
+use strum_macros::{Display, EnumDiscriminants, VariantNames};
 use thiserror::Error;
 use ts_rs::TS;
 use utils::msg_store::MsgStore;
@@ -46,9 +46,19 @@ pub enum ExecutorError {
 }
 
 #[enum_dispatch]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, Display, VariantNames)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, TS, Display, EnumDiscriminants, VariantNames,
+)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
+#[strum_discriminants(
+    name(BaseCodingAgent),
+    // Only add Hash; Eq/PartialEq are already provided by EnumDiscriminants.
+    derive(Hash, strum_macros::Display, Serialize, Deserialize, TS),
+    strum(serialize_all = "SCREAMING_SNAKE_CASE"),
+    ts(use_ts_enum),
+    serde(rename_all = "SCREAMING_SNAKE_CASE")
+)]
 pub enum CodingAgent {
     ClaudeCode,
     Amp,
@@ -60,19 +70,6 @@ pub enum CodingAgent {
 }
 
 impl CodingAgent {
-    /// Create a CodingAgent from an executor profile ID
-    pub fn from_executor_profile_id(
-        executor_profile_id: &ExecutorProfileId,
-    ) -> Result<Self, ExecutorError> {
-        ExecutorProfileConfigs::get_cached()
-            .get_agent_by_id(executor_profile_id)
-            .ok_or_else(|| {
-                ExecutorError::UnknownExecutorType(format!(
-                    "Unknown executor profile: {executor_profile_id}"
-                ))
-            })
-    }
-
     pub fn get_mcp_config(&self) -> McpConfig {
         match self {
             Self::Codex(_) => McpConfig::new(
