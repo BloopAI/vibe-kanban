@@ -468,8 +468,11 @@ pub trait ContainerService {
                                     // Check if this line would exceed DB limit
                                     if total_db_bytes + line_bytes > utils::logs_limits::DB_LIMIT {
                                         // Write final truncation marker and stop
-                                        let truncated_msg = LogMsg::Stdout("[truncated-overall]\n".into());
-                                        if let Ok(jsonl_line) = serde_json::to_string(&truncated_msg) {
+                                        let truncated_msg =
+                                            LogMsg::Stdout("[truncated-overall]\n".into());
+                                        if let Ok(jsonl_line) =
+                                            serde_json::to_string(&truncated_msg)
+                                        {
                                             let jsonl_line_with_newline = format!("{jsonl_line}\n");
                                             let _ = ExecutionProcessLogs::append_log_line(
                                                 &db.pool,

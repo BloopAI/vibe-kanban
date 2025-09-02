@@ -1,13 +1,14 @@
 use std::io;
 
 use futures::{Stream, StreamExt};
-use tokio::time::{sleep_until, Duration, Instant};
+use tokio::time::{Duration, Instant, sleep_until};
 
-use crate::{log_msg::LogMsg, logs_limits::{WINDOW_LIMIT, WINDOW_MS}};
+use crate::{
+    log_msg::LogMsg,
+    logs_limits::{WINDOW_LIMIT, WINDOW_MS},
+};
 
-pub fn debounce_logs<S>(
-    input: S,
-) -> impl Stream<Item = Result<LogMsg, io::Error>>
+pub fn debounce_logs<S>(input: S) -> impl Stream<Item = Result<LogMsg, io::Error>>
 where
     S: Stream<Item = Result<LogMsg, io::Error>> + Unpin,
 {
@@ -35,12 +36,11 @@ where
                     match &msg {
                         LogMsg::Stdout(s) => {
                             // Flush buffer if switching stream types
-                            if let Some(false) = current_stream_type {
-                                if !buf.is_empty() {
+                            if let Some(false) = current_stream_type
+                                && !buf.is_empty() {
                                     yield Ok(LogMsg::Stderr(String::from_utf8_lossy(&buf).into_owned()));
                                     buf.clear();
                                 }
-                            }
                             current_stream_type = Some(true);
 
                             // Check if this chunk would overflow the window
@@ -50,7 +50,7 @@ where
                                     yield Ok(LogMsg::Stdout(String::from_utf8_lossy(&buf).into_owned()));
                                     buf.clear();
                                 }
-                                
+
                                 // If single chunk is huge, truncate it
                                 if s.len() > WINDOW_LIMIT {
                                     let truncated = String::from_utf8_lossy(&s.as_bytes()[..WINDOW_LIMIT]);
@@ -59,7 +59,7 @@ where
                                 } else {
                                     yield Ok(LogMsg::Stdout(s.clone()));
                                 }
-                                
+
                                 timer = Instant::now() + Duration::from_millis(WINDOW_MS);
                                 continue;
                             }
@@ -67,12 +67,11 @@ where
                         }
                         LogMsg::Stderr(s) => {
                             // Flush buffer if switching stream types
-                            if let Some(true) = current_stream_type {
-                                if !buf.is_empty() {
+                            if let Some(true) = current_stream_type
+                                && !buf.is_empty() {
                                     yield Ok(LogMsg::Stdout(String::from_utf8_lossy(&buf).into_owned()));
                                     buf.clear();
                                 }
-                            }
                             current_stream_type = Some(false);
 
                             // Check if this chunk would overflow the window
@@ -82,7 +81,7 @@ where
                                     yield Ok(LogMsg::Stderr(String::from_utf8_lossy(&buf).into_owned()));
                                     buf.clear();
                                 }
-                                
+
                                 // If single chunk is huge, truncate it
                                 if s.len() > WINDOW_LIMIT {
                                     let truncated = String::from_utf8_lossy(&s.as_bytes()[..WINDOW_LIMIT]);
@@ -91,7 +90,7 @@ where
                                 } else {
                                     yield Ok(LogMsg::Stderr(s.clone()));
                                 }
-                                
+
                                 timer = Instant::now() + Duration::from_millis(WINDOW_MS);
                                 continue;
                             }
