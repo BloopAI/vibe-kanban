@@ -249,7 +249,6 @@ export function TaskFollowUpSection({
                   <Button
                     variant="secondary"
                     size="sm"
-                    className="h-10 w-10 p-0"
                     onClick={() => setShowImageUpload(!showImageUpload)}
                     disabled={!canSendFollowUp}
                   >
@@ -275,7 +274,7 @@ export function TaskFollowUpSection({
                               variant="secondary"
                               size="sm"
                               className={cn(
-                                'h-10 w-24 px-2 flex items-center justify-between transition-all',
+                                'w-24 px-2 flex items-center justify-between transition-all',
                                 isAnimating && 'scale-105 bg-accent'
                               )}
                             >
