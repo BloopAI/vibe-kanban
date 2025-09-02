@@ -98,7 +98,7 @@
       var(--_secondary-foreground)
     );
 
-    --muted: var(--vscode-input-background, var(--_muted));
+    --muted: var(--vscode-editor-background, var(--_muted));
     --muted-foreground: var(
       --vscode-descriptionForeground,
       var(--_muted-foreground)
