@@ -1,6 +1,6 @@
 use axum::{
-    routing::{get, IntoMakeService},
     Router,
+    routing::{IntoMakeService, get},
 };
 
 use crate::DeploymentImpl;

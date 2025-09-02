@@ -1,27 +1,27 @@
 use std::collections::HashMap;
 
 use axum::{
+    Json, Router,
     body::Body,
     extract::{Path, Query, State},
     http,
     response::{Json as ResponseJson, Response},
     routing::{get, put},
-    Json, Router,
 };
 use deployment::{Deployment, DeploymentError};
 use executors::{
     executors::{BaseCodingAgent, StandardCodingAgentExecutor},
-    mcp_config::{read_agent_config, write_agent_config, McpConfig},
-    profile::{ExecutorConfigs, ExecutorProfileId},
+    mcp_config::{McpConfig, read_agent_config, write_agent_config},
+    profile::{ExecutorConfigs, ExecutorProfileConfigs, ExecutorProfileId},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use services::services::config::{save_config_to_file, Config, ConfigError, SoundFile};
+use services::services::config::{Config, ConfigError, SoundFile, save_config_to_file};
 use tokio::fs;
 use ts_rs::TS;
 use utils::{assets::config_path, response::ApiResponse};
 
-use crate::{error::ApiError, DeploymentImpl};
+use crate::{DeploymentImpl, error::ApiError};
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
@@ -190,7 +190,7 @@ async fn update_mcp_servers(
         None => {
             return Ok(ResponseJson(ApiResponse::error(
                 "Could not determine config file path",
-            )))
+            )));
         }
     };
 

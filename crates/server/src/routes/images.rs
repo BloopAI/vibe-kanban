@@ -1,10 +1,10 @@
 use axum::{
+    Router,
     body::Body,
     extract::{DefaultBodyLimit, Multipart, Path, State},
-    http::{header, StatusCode},
+    http::{StatusCode, header},
     response::{Json as ResponseJson, Response},
     routing::{delete, get, post},
-    Router,
 };
 use chrono::{DateTime, Utc};
 use db::models::image::Image;
@@ -17,7 +17,7 @@ use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{error::ApiError, DeploymentImpl};
+use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ImageResponse {

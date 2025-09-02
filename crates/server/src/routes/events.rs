@@ -1,11 +1,11 @@
 use axum::{
+    BoxError, Router,
     extract::State,
     response::{
-        sse::{Event, KeepAlive},
         Sse,
+        sse::{Event, KeepAlive},
     },
     routing::get,
-    BoxError, Router,
 };
 use deployment::Deployment;
 use futures_util::TryStreamExt;

@@ -5,11 +5,12 @@ use db::models::{
     task::{CreateTask, Task, TaskStatus},
 };
 use rmcp::{
+    ErrorData, ServerHandler,
     handler::server::tool::{Parameters, ToolRouter},
     model::{
         CallToolResult, Content, Implementation, ProtocolVersion, ServerCapabilities, ServerInfo,
     },
-    schemars, tool, tool_handler, tool_router, ErrorData, ServerHandler,
+    schemars, tool, tool_handler, tool_router,
 };
 use serde::{Deserialize, Serialize};
 use serde_json;

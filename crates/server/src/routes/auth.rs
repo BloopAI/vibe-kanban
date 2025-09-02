@@ -1,10 +1,10 @@
 use axum::{
+    Router,
     extract::{Request, State},
     http::StatusCode,
-    middleware::{from_fn_with_state, Next},
+    middleware::{Next, from_fn_with_state},
     response::{Json as ResponseJson, Response},
     routing::{get, post},
-    Router,
 };
 use deployment::Deployment;
 use octocrab::auth::Continue;
@@ -16,7 +16,7 @@ use services::services::{
 };
 use utils::response::ApiResponse;
 
-use crate::{error::ApiError, DeploymentImpl};
+use crate::{DeploymentImpl, error::ApiError};
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     Router::new()

@@ -1,15 +1,15 @@
 use axum::{
+    Router,
     extract::{Query, State},
     response::Json as ResponseJson,
     routing::get,
-    Router,
 };
 use deployment::Deployment;
 use serde::Deserialize;
 use services::services::filesystem::{DirectoryEntry, DirectoryListResponse, FilesystemError};
 use utils::response::ApiResponse;
 
-use crate::{error::ApiError, DeploymentImpl};
+use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Deserialize)]
 pub struct ListDirectoryQuery {

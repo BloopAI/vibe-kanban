@@ -1,9 +1,9 @@
 use axum::{
+    BoxError, Extension, Json, Router,
     extract::{Query, State},
     middleware::from_fn_with_state,
-    response::{sse::KeepAlive, Json as ResponseJson, Sse},
+    response::{Json as ResponseJson, Sse, sse::KeepAlive},
     routing::{get, post},
-    BoxError, Extension, Json, Router,
 };
 use db::models::{
     image::TaskImage,
@@ -19,7 +19,7 @@ use sqlx::Error as SqlxError;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{error::ApiError, middleware::load_task_middleware, DeploymentImpl};
+use crate::{DeploymentImpl, error::ApiError, middleware::load_task_middleware};
 
 #[derive(Debug, Deserialize)]
 pub struct TaskQuery {

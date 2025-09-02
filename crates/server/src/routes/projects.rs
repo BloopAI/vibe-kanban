@@ -1,12 +1,12 @@
 use std::{collections::HashMap, path::Path};
 
 use axum::{
+    Extension, Json, Router,
     extract::{Query, State},
     http::StatusCode,
     middleware::from_fn_with_state,
     response::Json as ResponseJson,
     routing::{get, post},
-    Extension, Json, Router,
 };
 use db::models::project::{
     CreateProject, Project, ProjectError, SearchMatchType, SearchResult, UpdateProject,
@@ -17,7 +17,7 @@ use services::services::{file_ranker::FileRanker, git::GitBranch};
 use utils::{path::expand_tilde, response::ApiResponse};
 use uuid::Uuid;
 
-use crate::{error::ApiError, middleware::load_project_middleware, DeploymentImpl};
+use crate::{DeploymentImpl, error::ApiError, middleware::load_project_middleware};
 
 pub async fn get_projects(
     State(deployment): State<DeploymentImpl>,
@@ -45,11 +45,24 @@ pub async fn create_project(
     Json(payload): Json<CreateProject>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
     let id = Uuid::new_v4();
+    let CreateProject {
+        name,
+        git_repo_path,
+        setup_script,
+        dev_script,
+        cleanup_script,
+        copy_files,
+        use_existing_repo,
+    } = payload;
+    tracing::debug!("Creating project '{}'", name);
 
-    tracing::debug!("Creating project '{}'", payload.name);
-
+    // Validate and setup git repository
+    // Expand tilde in git repo path if present
+    let path = expand_tilde(&git_repo_path);
     // Check if git repo path is already used by another project
-    match Project::find_by_git_repo_path(&deployment.db().pool, &payload.git_repo_path).await {
+    match Project::find_by_git_repo_path(&deployment.db().pool, path.to_string_lossy().as_ref())
+        .await
+    {
         Ok(Some(_)) => {
             return Ok(ResponseJson(ApiResponse::error(
                 "A project with this git repository path already exists",
@@ -63,12 +76,7 @@ pub async fn create_project(
         }
     }
 
-    // Validate and setup git repository
-    // Expand tilde in git repo path if present
-    let expanded_path = expand_tilde(&payload.git_repo_path);
-    let path = expanded_path.as_path();
-
-    if payload.use_existing_repo {
+    if use_existing_repo {
         // For existing repos, validate that the path exists and is a git repository
         if !path.exists() {
             return Ok(ResponseJson(ApiResponse::error(
@@ -89,7 +97,7 @@ pub async fn create_project(
         }
 
         // Ensure existing repo has a main branch if it's empty
-        if let Err(e) = deployment.git().ensure_main_branch_exists(path) {
+        if let Err(e) = deployment.git().ensure_main_branch_exists(&path) {
             tracing::error!("Failed to ensure main branch exists: {}", e);
             return Ok(ResponseJson(ApiResponse::error(&format!(
                 "Failed to ensure main branch exists: {}",
@@ -101,7 +109,7 @@ pub async fn create_project(
 
         // Create directory if it doesn't exist
         if !path.exists() {
-            if let Err(e) = std::fs::create_dir_all(path) {
+            if let Err(e) = std::fs::create_dir_all(&path) {
                 tracing::error!("Failed to create directory: {}", e);
                 return Ok(ResponseJson(ApiResponse::error(&format!(
                     "Failed to create directory: {}",
@@ -112,7 +120,7 @@ pub async fn create_project(
 
         // Check if it's already a git repo, if not initialize it
         if !path.join(".git").exists() {
-            if let Err(e) = deployment.git().initialize_repo_with_main_branch(path) {
+            if let Err(e) = deployment.git().initialize_repo_with_main_branch(&path) {
                 tracing::error!("Failed to initialize git repository: {}", e);
                 return Ok(ResponseJson(ApiResponse::error(&format!(
                     "Failed to initialize git repository: {}",
@@ -122,7 +130,21 @@ pub async fn create_project(
         }
     }
 
-    match Project::create(&deployment.db().pool, &payload, id).await {
+    match Project::create(
+        &deployment.db().pool,
+        &CreateProject {
+            name,
+            git_repo_path: path.to_string_lossy().to_string(),
+            use_existing_repo,
+            setup_script,
+            dev_script,
+            cleanup_script,
+            copy_files,
+        },
+        id,
+    )
+    .await
+    {
         Ok(project) => {
             // Track project creation event
             deployment
@@ -130,9 +152,9 @@ pub async fn create_project(
                     "project_created",
                     serde_json::json!({
                         "project_id": project.id.to_string(),
-                        "use_existing_repo": payload.use_existing_repo,
-                        "has_setup_script": payload.setup_script.is_some(),
-                        "has_dev_script": payload.dev_script.is_some(),
+                        "use_existing_repo": use_existing_repo,
+                        "has_setup_script": project.setup_script.is_some(),
+                        "has_dev_script": project.dev_script.is_some(),
                     }),
                 )
                 .await;
@@ -148,32 +170,6 @@ pub async fn update_project(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<UpdateProject>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, StatusCode> {
-    // If git_repo_path is being changed, check if the new path is already used by another project
-    if let Some(new_git_repo_path) = &payload.git_repo_path {
-        if new_git_repo_path != &existing_project.git_repo_path.to_string_lossy() {
-            match Project::find_by_git_repo_path_excluding_id(
-                &deployment.db().pool,
-                new_git_repo_path,
-                existing_project.id,
-            )
-            .await
-            {
-                Ok(Some(_)) => {
-                    return Ok(ResponseJson(ApiResponse::error(
-                        "A project with this git repository path already exists",
-                    )));
-                }
-                Ok(None) => {
-                    // Path is available, continue
-                }
-                Err(e) => {
-                    tracing::error!("Failed to check for existing git repo path: {}", e);
-                    return Err(StatusCode::INTERNAL_SERVER_ERROR);
-                }
-            }
-        }
-    }
-
     // Destructure payload to handle field updates.
     // This allows us to treat `None` from the payload as an explicit `null` to clear a field,
     // as the frontend currently sends all fields on update.
@@ -185,16 +181,40 @@ pub async fn update_project(
         cleanup_script,
         copy_files,
     } = payload;
-
-    let name = name.unwrap_or(existing_project.name);
-    let git_repo_path =
-        git_repo_path.unwrap_or(existing_project.git_repo_path.to_string_lossy().to_string());
+    // If git_repo_path is being changed, check if the new path is already used by another project
+    let git_repo_path = if let Some(new_git_repo_path) = git_repo_path.map(|s| expand_tilde(&s))
+        && new_git_repo_path.eq(&existing_project.git_repo_path)
+    {
+        match Project::find_by_git_repo_path_excluding_id(
+            &deployment.db().pool,
+            new_git_repo_path.to_string_lossy().as_ref(),
+            existing_project.id,
+        )
+        .await
+        {
+            Ok(Some(_)) => {
+                return Ok(ResponseJson(ApiResponse::error(
+                    "A project with this git repository path already exists",
+                )));
+            }
+            Ok(None) => {
+                // Path is available, continue
+                new_git_repo_path
+            }
+            Err(e) => {
+                tracing::error!("Failed to check for existing git repo path: {}", e);
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        }
+    } else {
+        existing_project.git_repo_path
+    };
 
     match Project::update(
         &deployment.db().pool,
         existing_project.id,
-        name,
-        git_repo_path,
+        name.unwrap_or(existing_project.name),
+        git_repo_path.to_string_lossy().to_string(),
         setup_script,
         dev_script,
         cleanup_script,

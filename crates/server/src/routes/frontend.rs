@@ -3,7 +3,7 @@ use axum::{
     http::HeaderValue,
     response::{IntoResponse, Response},
 };
-use reqwest::{header, StatusCode};
+use reqwest::{StatusCode, header};
 use rust_embed::RustEmbed;
 
 #[derive(RustEmbed)]
@@ -19,7 +19,7 @@ pub async fn serve_frontend_root() -> impl IntoResponse {
     serve_file("index.html").await
 }
 
-async fn serve_file(path: &str) -> impl IntoResponse {
+async fn serve_file(path: &str) -> impl IntoResponse + use<> {
     let file = Assets::get(path);
 
     match file {

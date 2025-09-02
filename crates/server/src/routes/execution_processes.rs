@@ -1,12 +1,12 @@
 use axum::{
+    BoxError, Extension, Router,
     extract::{Path, Query, State},
     middleware::from_fn_with_state,
     response::{
-        sse::{Event, KeepAlive},
         Json as ResponseJson, Sse,
+        sse::{Event, KeepAlive},
     },
     routing::{get, post},
-    BoxError, Extension, Router,
 };
 use db::models::execution_process::ExecutionProcess;
 use deployment::Deployment;
@@ -16,7 +16,7 @@ use services::services::container::ContainerService;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{error::ApiError, middleware::load_execution_process_middleware, DeploymentImpl};
+use crate::{DeploymentImpl, error::ApiError, middleware::load_execution_process_middleware};
 
 #[derive(Debug, Deserialize)]
 pub struct ExecutionProcessQuery {

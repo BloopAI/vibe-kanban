@@ -129,9 +129,6 @@ fn main() {
 
     println!("Generating TypeScript types…");
 
-    // 2. Let ts-rs write its per-type files here (handy for debugging)
-    env::set_var("TS_RS_EXPORT_DIR", shared_path.to_str().unwrap());
-
     let generated = generate_types_content();
     let types_path = shared_path.join("types.ts");
 
@@ -142,7 +139,9 @@ fn main() {
             println!("✅ shared/types.ts is up to date.");
             std::process::exit(0);
         } else {
-            eprintln!("❌ shared/types.ts is not up to date. Please run 'npm run generate-types' and commit the changes.");
+            eprintln!(
+                "❌ shared/types.ts is not up to date. Please run 'npm run generate-types' and commit the changes."
+            );
             std::process::exit(1);
         }
     } else {

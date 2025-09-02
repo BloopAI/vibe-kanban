@@ -1,9 +1,9 @@
 use axum::{
+    Extension, Json, Router,
     extract::{Query, State},
     middleware::from_fn_with_state,
     response::Json as ResponseJson,
     routing::get,
-    Extension, Json, Router,
 };
 use db::models::task_template::{CreateTaskTemplate, TaskTemplate, UpdateTaskTemplate};
 use deployment::Deployment;
@@ -12,7 +12,7 @@ use sqlx::Error as SqlxError;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{error::ApiError, middleware::load_task_template_middleware, DeploymentImpl};
+use crate::{DeploymentImpl, error::ApiError, middleware::load_task_template_middleware};
 
 #[derive(Debug, Deserialize)]
 pub struct TaskTemplateQuery {
