@@ -30,8 +30,9 @@ export function McpServers() {
   const [mcpConfig, setMcpConfig] = useState<McpConfig | null>(null);
   const [mcpError, setMcpError] = useState<string | null>(null);
   const [mcpLoading, setMcpLoading] = useState(true);
-  const [selectedProfile, setSelectedProfile] =
-    useState<ExecutorConfig | null>(null);
+  const [selectedProfile, setSelectedProfile] = useState<ExecutorConfig | null>(
+    null
+  );
   const [mcpApplying, setMcpApplying] = useState(false);
   const [mcpConfigPath, setMcpConfigPath] = useState<string>('');
   const [success, setSuccess] = useState(false);
@@ -162,8 +163,8 @@ export function McpServers() {
           // Find the key for the selected profile
           const selectedProfileKey = profiles
             ? Object.keys(profiles).find(
-              (key) => profiles[key] === selectedProfile
-            )
+                (key) => profiles[key] === selectedProfile
+              )
             : null;
           if (!selectedProfileKey) {
             throw new Error('Selected profile key not found');
@@ -250,8 +251,8 @@ export function McpServers() {
                 value={
                   selectedProfile
                     ? Object.keys(profiles || {}).find(
-                      (key) => profiles![key] === selectedProfile
-                    ) || ''
+                        (key) => profiles![key] === selectedProfile
+                      ) || ''
                     : ''
                 }
                 onValueChange={(value: string) => {
