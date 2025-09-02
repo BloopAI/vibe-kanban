@@ -1,18 +1,22 @@
 use std::{str::FromStr, sync::Arc};
 
 use anyhow::Error as AnyhowError;
+use axum::response::sse::Event;
 use db::{
     DBService,
     models::{execution_process::ExecutionProcess, task::Task, task_attempt::TaskAttempt},
 };
-use serde::Serialize;
+use futures::{StreamExt, TryStreamExt};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{Error as SqlxError, sqlite::SqliteOperation};
 use strum_macros::{Display, EnumString};
 use thiserror::Error;
 use tokio::sync::RwLock;
+use tokio_stream::wrappers::BroadcastStream;
 use ts_rs::TS;
-use utils::msg_store::MsgStore;
+use utils::{log_msg::LogMsg, msg_store::MsgStore};
+use uuid::Uuid;
 
 #[derive(Debug, Error)]
 pub enum EventError {
@@ -41,24 +45,33 @@ enum HookTables {
     ExecutionProcesses,
 }
 
-#[derive(Serialize, TS)]
+#[derive(Serialize, Deserialize, TS)]
 #[serde(tag = "type", content = "data", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum RecordTypes {
     Task(Task),
     TaskAttempt(TaskAttempt),
     ExecutionProcess(ExecutionProcess),
-    DeletedTask { rowid: i64 },
-    DeletedTaskAttempt { rowid: i64 },
-    DeletedExecutionProcess { rowid: i64 },
+    DeletedTask {
+        rowid: i64,
+        project_id: Option<Uuid>,
+    },
+    DeletedTaskAttempt {
+        rowid: i64,
+        task_id: Option<Uuid>,
+    },
+    DeletedExecutionProcess {
+        rowid: i64,
+        task_attempt_id: Option<Uuid>,
+    },
 }
 
-#[derive(Serialize, TS)]
+#[derive(Serialize, Deserialize, TS)]
 pub struct EventPatchInner {
     db_op: String,
     record: RecordTypes,
 }
 
-#[derive(Serialize, TS)]
+#[derive(Serialize, Deserialize, TS)]
 pub struct EventPatch {
     op: String,
     path: String,
@@ -106,18 +119,43 @@ impl EventService {
                         runtime_handle.spawn(async move {
                             let record_type: RecordTypes = match (table, hook.operation.clone()) {
                                 (HookTables::Tasks, SqliteOperation::Delete) => {
-                                    RecordTypes::DeletedTask { rowid }
+                                    // Try to get task before deletion to capture project_id
+                                    let project_id = Task::find_by_rowid(&db.pool, rowid)
+                                        .await
+                                        .ok()
+                                        .flatten()
+                                        .map(|task| task.project_id);
+                                    RecordTypes::DeletedTask { rowid, project_id }
                                 }
                                 (HookTables::TaskAttempts, SqliteOperation::Delete) => {
-                                    RecordTypes::DeletedTaskAttempt { rowid }
+                                    // Try to get task_attempt before deletion to capture task_id
+                                    let task_id = TaskAttempt::find_by_rowid(&db.pool, rowid)
+                                        .await
+                                        .ok()
+                                        .flatten()
+                                        .map(|attempt| attempt.task_id);
+                                    RecordTypes::DeletedTaskAttempt { rowid, task_id }
                                 }
                                 (HookTables::ExecutionProcesses, SqliteOperation::Delete) => {
-                                    RecordTypes::DeletedExecutionProcess { rowid }
+                                    // Try to get execution_process before deletion to capture task_attempt_id
+                                    let task_attempt_id =
+                                        ExecutionProcess::find_by_rowid(&db.pool, rowid)
+                                            .await
+                                            .ok()
+                                            .flatten()
+                                            .map(|process| process.task_attempt_id);
+                                    RecordTypes::DeletedExecutionProcess {
+                                        rowid,
+                                        task_attempt_id,
+                                    }
                                 }
                                 (HookTables::Tasks, _) => {
                                     match Task::find_by_rowid(&db.pool, rowid).await {
                                         Ok(Some(task)) => RecordTypes::Task(task),
-                                        Ok(None) => RecordTypes::DeletedTask { rowid },
+                                        Ok(None) => RecordTypes::DeletedTask {
+                                            rowid,
+                                            project_id: None,
+                                        },
                                         Err(e) => {
                                             tracing::error!("Failed to fetch task: {:?}", e);
                                             return;
@@ -127,7 +165,10 @@ impl EventService {
                                 (HookTables::TaskAttempts, _) => {
                                     match TaskAttempt::find_by_rowid(&db.pool, rowid).await {
                                         Ok(Some(attempt)) => RecordTypes::TaskAttempt(attempt),
-                                        Ok(None) => RecordTypes::DeletedTaskAttempt { rowid },
+                                        Ok(None) => RecordTypes::DeletedTaskAttempt {
+                                            rowid,
+                                            task_id: None,
+                                        },
                                         Err(e) => {
                                             tracing::error!(
                                                 "Failed to fetch task_attempt: {:?}",
@@ -140,7 +181,10 @@ impl EventService {
                                 (HookTables::ExecutionProcesses, _) => {
                                     match ExecutionProcess::find_by_rowid(&db.pool, rowid).await {
                                         Ok(Some(process)) => RecordTypes::ExecutionProcess(process),
-                                        Ok(None) => RecordTypes::DeletedExecutionProcess { rowid },
+                                        Ok(None) => RecordTypes::DeletedExecutionProcess {
+                                            rowid,
+                                            task_attempt_id: None,
+                                        },
                                         Err(e) => {
                                             tracing::error!(
                                                 "Failed to fetch execution_process: {:?}",
@@ -192,5 +236,154 @@ impl EventService {
 
     pub fn msg_store(&self) -> &Arc<MsgStore> {
         &self.msg_store
+    }
+
+    /// Stream tasks for a specific project with initial snapshot
+    pub async fn stream_tasks_for_project(
+        &self,
+        project_id: Uuid,
+    ) -> Result<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>, EventError>
+    {
+        // Get initial snapshot of tasks
+        let tasks = Task::find_by_project_id_with_attempt_status(&self.db.pool, project_id).await?;
+        let initial_patch = json!([{
+            "op": "replace",
+            "path": "/",
+            "value": { "tasks": tasks }
+        }]);
+        let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
+
+        // Clone necessary data for the async filter
+        let db_pool = self.db.pool.clone();
+
+        // Get filtered event stream
+        let filtered_stream =
+            BroadcastStream::new(self.msg_store.get_receiver()).filter_map(move |msg_result| {
+                let db_pool = db_pool.clone();
+                async move {
+                    match msg_result {
+                        Ok(LogMsg::JsonPatch(patch)) => {
+                            // Filter events based on project_id
+                            if let Some(event_patch_op) = patch.0.first()
+                                && let Ok(event_patch_value) = serde_json::to_value(event_patch_op)
+                                && let Ok(event_patch) =
+                                    serde_json::from_value::<EventPatch>(event_patch_value)
+                            {
+                                match &event_patch.value.record {
+                                    RecordTypes::Task(task) => {
+                                        if task.project_id == project_id {
+                                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                                        }
+                                    }
+                                    RecordTypes::DeletedTask {
+                                        project_id: Some(deleted_project_id),
+                                        ..
+                                    } => {
+                                        if *deleted_project_id == project_id {
+                                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                                        }
+                                    }
+                                    RecordTypes::TaskAttempt(attempt) => {
+                                        // Check if this task_attempt belongs to a task in our project
+                                        if let Ok(Some(task)) =
+                                            Task::find_by_id(&db_pool, attempt.task_id).await
+                                            && task.project_id == project_id
+                                        {
+                                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                                        }
+                                    }
+                                    RecordTypes::DeletedTaskAttempt {
+                                        task_id: Some(deleted_task_id),
+                                        ..
+                                    } => {
+                                        // Check if deleted attempt belonged to a task in our project
+                                        if let Ok(Some(task)) =
+                                            Task::find_by_id(&db_pool, *deleted_task_id).await
+                                            && task.project_id == project_id
+                                        {
+                                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            None
+                        }
+                        Ok(other) => Some(Ok(other)), // Pass through non-patch messages
+                        Err(_) => None,               // Filter out broadcast errors
+                    }
+                }
+            });
+
+        // Start with initial snapshot, then live updates
+        let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
+        let combined_stream = initial_stream
+            .chain(filtered_stream)
+            .map_ok(|msg| msg.to_sse_event())
+            .boxed();
+
+        Ok(combined_stream)
+    }
+
+    /// Stream execution processes for a specific task attempt with initial snapshot  
+    pub async fn stream_execution_processes_for_attempt(
+        &self,
+        task_attempt_id: Uuid,
+    ) -> Result<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>, EventError>
+    {
+        // Get initial snapshot of execution processes
+        let processes =
+            ExecutionProcess::find_by_task_attempt_id(&self.db.pool, task_attempt_id).await?;
+        let initial_patch = json!([{
+            "op": "replace",
+            "path": "/",
+            "value": { "execution_processes": processes }
+        }]);
+        let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
+
+        // Get filtered event stream
+        let filtered_stream = BroadcastStream::new(self.msg_store.get_receiver()).filter_map(
+            move |msg_result| async move {
+                match msg_result {
+                    Ok(LogMsg::JsonPatch(patch)) => {
+                        // Filter events based on task_attempt_id
+                        if let Some(event_patch_op) = patch.0.first()
+                            && let Ok(event_patch_value) = serde_json::to_value(event_patch_op)
+                            && let Ok(event_patch) =
+                                serde_json::from_value::<EventPatch>(event_patch_value)
+                        {
+                            match &event_patch.value.record {
+                                RecordTypes::ExecutionProcess(process) => {
+                                    if process.task_attempt_id == task_attempt_id {
+                                        return Some(Ok(LogMsg::JsonPatch(patch)));
+                                    }
+                                }
+                                RecordTypes::DeletedExecutionProcess {
+                                    task_attempt_id: Some(deleted_attempt_id),
+                                    ..
+                                } => {
+                                    if *deleted_attempt_id == task_attempt_id {
+                                        return Some(Ok(LogMsg::JsonPatch(patch)));
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                        None
+                    }
+                    Ok(other) => Some(Ok(other)), // Pass through non-patch messages
+                    Err(_) => None,               // Filter out broadcast errors
+                }
+            },
+        );
+
+        // Start with initial snapshot, then live updates
+        let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
+        let combined_stream = initial_stream
+            .chain(filtered_stream)
+            .map_ok(|msg| msg.to_sse_event())
+            .boxed();
+
+        Ok(combined_stream)
     }
 }
