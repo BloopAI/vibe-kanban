@@ -1,4 +1,4 @@
-import type { NormalizedEntry } from 'shared/types';
+import type { NormalizedEntry, ExecutorAction } from 'shared/types';
 
 export interface UnifiedLogEntry {
   id: string;
@@ -14,4 +14,5 @@ export interface ProcessStartPayload {
   runReason: string;
   startedAt: string;
   status: string;
+  action?: ExecutorAction;
 }

@@ -1,14 +1,6 @@
-import {
-  Clock,
-  Cog,
-  Play,
-  Terminal,
-  Code,
-  ChevronDown,
-  History,
-} from 'lucide-react';
+import { Cog, Play, Terminal, ChevronDown, User, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { ProcessStartPayload } from '@/types/logs';
+import type { ProcessStartPayload, ExecutorAction } from '@/types/logs';
 
 interface ProcessStartCardProps {
   payload: ProcessStartPayload;
@@ -19,6 +11,16 @@ interface ProcessStartCardProps {
   restoreDisabled?: boolean;
   restoreDisabledReason?: string;
 }
+
+const extractPromptFromAction = (
+  action?: ExecutorAction | null
+): string | null => {
+  console.log(action);
+  if (!action) return null;
+  const t = action.typ as any;
+  if (t && typeof t.prompt === 'string' && t.prompt.trim()) return t.prompt;
+  return null;
+};
 
 function ProcessStartCard({
   payload,
@@ -36,7 +38,7 @@ function ProcessStartCard({
       case 'cleanupscript':
         return <Terminal className="h-4 w-4" />;
       case 'codingagent':
-        return <Code className="h-4 w-4" />;
+        return <User className="h-4 w-4" />;
       case 'devserver':
         return <Play className="h-4 w-4" />;
       default:
@@ -44,23 +46,21 @@ function ProcessStartCard({
     }
   };
 
-  const getProcessLabel = (runReason: string) => {
-    switch (runReason) {
+  const getProcessLabel = (p: ProcessStartPayload) => {
+    if (p.runReason === 'codingagent') {
+      const prompt = extractPromptFromAction(p.action);
+      return prompt || 'Coding Agent';
+    }
+    switch (p.runReason) {
       case 'setupscript':
         return 'Setup Script';
       case 'cleanupscript':
         return 'Cleanup Script';
-      case 'codingagent':
-        return 'Coding Agent';
       case 'devserver':
         return 'Dev Server';
       default:
-        return runReason;
+        return p.runReason;
     }
-  };
-
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString();
   };
 
   const handleClick = () => {
@@ -74,25 +74,32 @@ function ProcessStartCard({
     }
   };
 
+  const label = getProcessLabel(payload);
+  const shouldTruncate = isCollapsed && payload.runReason === 'codingagent';
+
   return (
     <div className="px-4 pt-4 pb-2">
       <div
-        className="p-2 cursor-pointer select-none hover:bg-muted/70 transition-colors"
+        className="p-2 cursor-pointer select-none hover:bg-muted/70 transition-colors border rounded-md"
         role="button"
         tabIndex={0}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
       >
         <div className="flex items-center gap-2 text-sm">
-          <div className="flex items-center gap-2 text-foreground">
-            {getProcessIcon(payload.runReason)}
-            <span className="font-medium">
-              {getProcessLabel(payload.runReason)}
+          <div className="flex items-center gap-2 text-foreground min-w-0 flex-1">
+            <div className="flex-shrink-0">
+              {getProcessIcon(payload.runReason)}
+            </div>
+            <span
+              className={cn(
+                'font-medium',
+                shouldTruncate ? 'truncate' : 'whitespace-normal break-words'
+              )}
+              title={shouldTruncate ? label : undefined}
+            >
+              {label}
             </span>
-          </div>
-          <div className="flex items-center gap-1 text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            <span>{formatTime(payload.startedAt)}</span>
           </div>
           {onRestore && payload.runReason === 'codingagent' && (
             <button
@@ -121,8 +128,10 @@ function ProcessStartCard({
               </span>
             </button>
           )}
+
           <div
-            className={`ml-auto text-xs px-2 py-1 rounded-full ${
+            className={cn(
+              'ml-auto text-xs px-2 py-1 rounded-full',
               payload.status === 'running'
                 ? 'bg-blue-100 text-blue-700'
                 : payload.status === 'completed'
@@ -130,10 +139,11 @@ function ProcessStartCard({
                   : payload.status === 'failed'
                     ? 'bg-red-100 text-red-700'
                     : 'bg-gray-100 text-gray-700'
-            }`}
+            )}
           >
             {payload.status}
           </div>
+
           <ChevronDown
             className={cn(
               'h-4 w-4 text-muted-foreground transition-transform',
