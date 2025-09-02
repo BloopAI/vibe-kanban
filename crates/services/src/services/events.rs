@@ -4,9 +4,14 @@ use anyhow::Error as AnyhowError;
 use axum::response::sse::Event;
 use db::{
     DBService,
-    models::{execution_process::ExecutionProcess, task::Task, task_attempt::TaskAttempt},
+    models::{
+        execution_process::ExecutionProcess,
+        task::{Task, TaskWithAttemptStatus},
+        task_attempt::TaskAttempt,
+    },
 };
 use futures::{StreamExt, TryStreamExt};
+use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation, ReplaceOperation};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{Error as SqlxError, sqlite::SqliteOperation};
@@ -26,6 +31,50 @@ pub enum EventError {
     Parse(#[from] serde_json::Error),
     #[error(transparent)]
     Other(#[from] AnyhowError), // Catches any unclassified errors
+}
+
+/// Helper functions for creating task-specific patches
+pub mod task_patch {
+    use super::*;
+
+    /// Escape JSON Pointer special characters
+    fn escape_pointer_segment(s: &str) -> String {
+        s.replace('~', "~0").replace('/', "~1")
+    }
+
+    /// Create path for task operation
+    fn task_path(task_id: Uuid) -> String {
+        format!("/tasks/{}", escape_pointer_segment(&task_id.to_string()))
+    }
+
+    /// Create patch for adding a new task
+    pub fn add(task: &TaskWithAttemptStatus) -> Patch {
+        Patch(vec![PatchOperation::Add(AddOperation {
+            path: task_path(task.id)
+                .try_into()
+                .expect("Task path should be valid"),
+            value: serde_json::to_value(task).expect("Task serialization should not fail"),
+        })])
+    }
+
+    /// Create patch for updating an existing task
+    pub fn replace(task: &TaskWithAttemptStatus) -> Patch {
+        Patch(vec![PatchOperation::Replace(ReplaceOperation {
+            path: task_path(task.id)
+                .try_into()
+                .expect("Task path should be valid"),
+            value: serde_json::to_value(task).expect("Task serialization should not fail"),
+        })])
+    }
+
+    /// Create patch for removing a task
+    pub fn remove(task_id: Uuid) -> Patch {
+        Patch(vec![PatchOperation::Remove(RemoveOperation {
+            path: task_path(task_id)
+                .try_into()
+                .expect("Task path should be valid"),
+        })])
+    }
 }
 
 #[derive(Clone)]
@@ -206,104 +255,93 @@ impl EventService {
                                 SqliteOperation::Unknown(_) => "unknown",
                             };
 
-                            let (op, path) = match &record_type {
+                            // Handle task-related operations with direct patches
+                            match &record_type {
                                 RecordTypes::Task(task) => {
-                                    let op = match hook.operation {
-                                        SqliteOperation::Insert => "add",
-                                        SqliteOperation::Update => "replace",
-                                        _ => "replace", // fallback
-                                    };
-                                    (op, format!("/tasks/{}", task.id))
+                                    // Convert Task to TaskWithAttemptStatus
+                                    if let Ok(task_list) =
+                                        Task::find_by_project_id_with_attempt_status(
+                                            &db.pool,
+                                            task.project_id,
+                                        )
+                                        .await
+                                        && let Some(task_with_status) =
+                                            task_list.into_iter().find(|t| t.id == task.id)
+                                        {
+                                            let patch = match hook.operation {
+                                                SqliteOperation::Insert => {
+                                                    task_patch::add(&task_with_status)
+                                                }
+                                                SqliteOperation::Update => {
+                                                    task_patch::replace(&task_with_status)
+                                                }
+                                                _ => task_patch::replace(&task_with_status), // fallback
+                                            };
+                                            msg_store_for_hook.push_patch(patch);
+                                            return;
+                                        }
                                 }
                                 RecordTypes::DeletedTask {
                                     task_id: Some(task_id),
                                     ..
-                                } => ("remove", format!("/tasks/{task_id}")),
+                                } => {
+                                    let patch = task_patch::remove(*task_id);
+                                    msg_store_for_hook.push_patch(patch);
+                                    return;
+                                }
                                 RecordTypes::TaskAttempt(attempt) => {
-                                    // Task attempts don't directly go in the tasks stream, they should update the parent task
-                                    // We need to fetch the updated task and use that instead
-                                    if let Ok(Some(updated_task)) =
+                                    // Task attempts should update the parent task with fresh data
+                                    if let Ok(Some(task)) =
                                         Task::find_by_id(&db.pool, attempt.task_id).await
-                                    {
-                                        // Create a new patch for the updated task
-                                        let task_record = RecordTypes::Task(updated_task);
-                                        let event_patch = EventPatch {
-                                            op: "replace".to_string(),
-                                            path: format!("/tasks/{}", attempt.task_id),
-                                            value: EventPatchInner {
-                                                db_op: db_op.to_string(),
-                                                record: task_record,
-                                            },
-                                        };
-
-                                        let patch =
-                                            serde_json::from_value(json!([serde_json::to_value(
-                                                event_patch
+                                        && let Ok(task_list) =
+                                            Task::find_by_project_id_with_attempt_status(
+                                                &db.pool,
+                                                task.project_id,
                                             )
-                                            .unwrap()]))
-                                            .unwrap();
-
-                                        msg_store_for_hook.push_patch(patch);
-                                        return;
-                                    }
-                                    // Fallback: use the old entries format
-                                    let next_entry_count = {
-                                        let mut entry_count = entry_count_for_hook.write().await;
-                                        *entry_count += 1;
-                                        *entry_count
-                                    };
-                                    ("add", format!("/entries/{next_entry_count}"))
+                                            .await
+                                            && let Some(task_with_status) = task_list
+                                                .into_iter()
+                                                .find(|t| t.id == attempt.task_id)
+                                            {
+                                                let patch = task_patch::replace(&task_with_status);
+                                                msg_store_for_hook.push_patch(patch);
+                                                return;
+                                            }
                                 }
                                 RecordTypes::DeletedTaskAttempt {
                                     task_id: Some(task_id),
                                     ..
                                 } => {
                                     // Task attempt deletion should update the parent task with fresh data
-                                    if let Ok(Some(updated_task)) =
+                                    if let Ok(Some(task)) =
                                         Task::find_by_id(&db.pool, *task_id).await
-                                    {
-                                        let task_record = RecordTypes::Task(updated_task);
-                                        let event_patch = EventPatch {
-                                            op: "replace".to_string(),
-                                            path: format!("/tasks/{task_id}"),
-                                            value: EventPatchInner {
-                                                db_op: db_op.to_string(),
-                                                record: task_record,
-                                            },
-                                        };
-
-                                        let patch =
-                                            serde_json::from_value(json!([serde_json::to_value(
-                                                event_patch
+                                        && let Ok(task_list) =
+                                            Task::find_by_project_id_with_attempt_status(
+                                                &db.pool,
+                                                task.project_id,
                                             )
-                                            .unwrap()]))
-                                            .unwrap();
+                                            .await
+                                            && let Some(task_with_status) =
+                                                task_list.into_iter().find(|t| t.id == *task_id)
+                                            {
+                                                let patch = task_patch::replace(&task_with_status);
+                                                msg_store_for_hook.push_patch(patch);
+                                                return;
+                                            }
+                                }
+                                _ => {}
+                            }
 
-                                        msg_store_for_hook.push_patch(patch);
-                                        return;
-                                    }
-                                    // Fallback: use the old entries format
-                                    let next_entry_count = {
-                                        let mut entry_count = entry_count_for_hook.write().await;
-                                        *entry_count += 1;
-                                        *entry_count
-                                    };
-                                    ("add", format!("/entries/{next_entry_count}"))
-                                }
-                                _ => {
-                                    // For other record types, use the old entries format temporarily
-                                    let next_entry_count = {
-                                        let mut entry_count = entry_count_for_hook.write().await;
-                                        *entry_count += 1;
-                                        *entry_count
-                                    };
-                                    ("add", format!("/entries/{next_entry_count}"))
-                                }
+                            // Fallback: use the old entries format for other record types
+                            let next_entry_count = {
+                                let mut entry_count = entry_count_for_hook.write().await;
+                                *entry_count += 1;
+                                *entry_count
                             };
 
                             let event_patch: EventPatch = EventPatch {
-                                op: op.to_string(),
-                                path,
+                                op: "add".to_string(),
+                                path: format!("/entries/{next_entry_count}"),
                                 value: EventPatchInner {
                                     db_op: db_op.to_string(),
                                     record: record_type,
@@ -363,47 +401,81 @@ impl EventService {
                     match msg_result {
                         Ok(LogMsg::JsonPatch(patch)) => {
                             // Filter events based on project_id
-                            if let Some(event_patch_op) = patch.0.first()
-                                && let Ok(event_patch_value) = serde_json::to_value(event_patch_op)
-                                && let Ok(event_patch) =
-                                    serde_json::from_value::<EventPatch>(event_patch_value)
-                            {
-                                match &event_patch.value.record {
-                                    RecordTypes::Task(task) => {
-                                        if task.project_id == project_id {
+                            if let Some(patch_op) = patch.0.first() {
+                                // Check if this is a direct task patch (new format)
+                                if patch_op.path().starts_with("/tasks/") {
+                                    match patch_op {
+                                        json_patch::PatchOperation::Add(op) => {
+                                            // Parse task data directly from value
+                                            if let Ok(task) =
+                                                serde_json::from_value::<TaskWithAttemptStatus>(
+                                                    op.value.clone(),
+                                                )
+                                                && task.project_id == project_id {
+                                                    return Some(Ok(LogMsg::JsonPatch(patch)));
+                                                }
+                                        }
+                                        json_patch::PatchOperation::Replace(op) => {
+                                            // Parse task data directly from value
+                                            if let Ok(task) =
+                                                serde_json::from_value::<TaskWithAttemptStatus>(
+                                                    op.value.clone(),
+                                                )
+                                                && task.project_id == project_id {
+                                                    return Some(Ok(LogMsg::JsonPatch(patch)));
+                                                }
+                                        }
+                                        json_patch::PatchOperation::Remove(_) => {
+                                            // For remove operations, we need to check project membership differently
+                                            // We could cache this information or let it pass through for now
+                                            // Since we don't have the task data, we'll allow all removals
+                                            // and let the client handle filtering
                                             return Some(Ok(LogMsg::JsonPatch(patch)));
                                         }
+                                        _ => {}
                                     }
-                                    RecordTypes::DeletedTask {
-                                        project_id: Some(deleted_project_id),
-                                        ..
-                                    } => {
-                                        if *deleted_project_id == project_id {
-                                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                                } else if let Ok(event_patch_value) = serde_json::to_value(patch_op)
+                                    && let Ok(event_patch) =
+                                        serde_json::from_value::<EventPatch>(event_patch_value)
+                                {
+                                    // Handle old EventPatch format for non-task records
+                                    match &event_patch.value.record {
+                                        RecordTypes::Task(task) => {
+                                            if task.project_id == project_id {
+                                                return Some(Ok(LogMsg::JsonPatch(patch)));
+                                            }
                                         }
-                                    }
-                                    RecordTypes::TaskAttempt(attempt) => {
-                                        // Check if this task_attempt belongs to a task in our project
-                                        if let Ok(Some(task)) =
-                                            Task::find_by_id(&db_pool, attempt.task_id).await
-                                            && task.project_id == project_id
-                                        {
-                                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                                        RecordTypes::DeletedTask {
+                                            project_id: Some(deleted_project_id),
+                                            ..
+                                        } => {
+                                            if *deleted_project_id == project_id {
+                                                return Some(Ok(LogMsg::JsonPatch(patch)));
+                                            }
                                         }
-                                    }
-                                    RecordTypes::DeletedTaskAttempt {
-                                        task_id: Some(deleted_task_id),
-                                        ..
-                                    } => {
-                                        // Check if deleted attempt belonged to a task in our project
-                                        if let Ok(Some(task)) =
-                                            Task::find_by_id(&db_pool, *deleted_task_id).await
-                                            && task.project_id == project_id
-                                        {
-                                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                                        RecordTypes::TaskAttempt(attempt) => {
+                                            // Check if this task_attempt belongs to a task in our project
+                                            if let Ok(Some(task)) =
+                                                Task::find_by_id(&db_pool, attempt.task_id).await
+                                                && task.project_id == project_id
+                                            {
+                                                return Some(Ok(LogMsg::JsonPatch(patch)));
+                                            }
                                         }
+                                        RecordTypes::DeletedTaskAttempt {
+                                            task_id: Some(deleted_task_id),
+                                            ..
+                                        } => {
+                                            // Check if deleted attempt belonged to a task in our project
+                                            if let Ok(Some(task)) =
+                                                Task::find_by_id(&db_pool, *deleted_task_id).await
+                                                && task.project_id == project_id
+                                            {
+                                                return Some(Ok(LogMsg::JsonPatch(patch)));
+                                            }
+                                        }
+                                        _ => {}
                                     }
-                                    _ => {}
                                 }
                             }
                             None
