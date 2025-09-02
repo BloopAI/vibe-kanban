@@ -511,7 +511,7 @@ export function TaskFormDialog({
               ) : (
                 <>
                   <Button
-                    variant="secondary"
+                    variant="outline"
                     onClick={handleSubmit}
                     disabled={
                       isSubmitting || isSubmittingAndStart || !title.trim()
