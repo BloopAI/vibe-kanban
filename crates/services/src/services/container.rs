@@ -438,14 +438,48 @@ pub trait ContainerService {
 
             if let Some(store) = store {
                 let mut stream = store.history_plus_stream();
+                let mut total_db_bytes = 0usize;
 
                 while let Some(Ok(msg)) = stream.next().await {
                     match &msg {
                         LogMsg::Stdout(_) | LogMsg::Stderr(_) => {
+                            // Check DB size limit before processing
+                            if total_db_bytes >= utils::logs_limits::DB_LIMIT {
+                                // Write final truncation marker and stop
+                                let truncated_msg = LogMsg::Stdout("[truncated-overall]\n".into());
+                                if let Ok(jsonl_line) = serde_json::to_string(&truncated_msg) {
+                                    let jsonl_line_with_newline = format!("{jsonl_line}\n");
+                                    let _ = ExecutionProcessLogs::append_log_line(
+                                        &db.pool,
+                                        execution_id,
+                                        &jsonl_line_with_newline,
+                                    )
+                                    .await;
+                                }
+                                break;
+                            }
+
                             // Serialize this individual message as a JSONL line
                             match serde_json::to_string(&msg) {
                                 Ok(jsonl_line) => {
                                     let jsonl_line_with_newline = format!("{jsonl_line}\n");
+                                    let line_bytes = jsonl_line_with_newline.len();
+
+                                    // Check if this line would exceed DB limit
+                                    if total_db_bytes + line_bytes > utils::logs_limits::DB_LIMIT {
+                                        // Write final truncation marker and stop
+                                        let truncated_msg = LogMsg::Stdout("[truncated-overall]\n".into());
+                                        if let Ok(jsonl_line) = serde_json::to_string(&truncated_msg) {
+                                            let jsonl_line_with_newline = format!("{jsonl_line}\n");
+                                            let _ = ExecutionProcessLogs::append_log_line(
+                                                &db.pool,
+                                                execution_id,
+                                                &jsonl_line_with_newline,
+                                            )
+                                            .await;
+                                        }
+                                        break;
+                                    }
 
                                     // Append this line to the database
                                     if let Err(e) = ExecutionProcessLogs::append_log_line(
@@ -460,6 +494,8 @@ pub trait ContainerService {
                                             execution_id,
                                             e
                                         );
+                                    } else {
+                                        total_db_bytes += line_bytes;
                                     }
                                 }
                                 Err(e) => {
