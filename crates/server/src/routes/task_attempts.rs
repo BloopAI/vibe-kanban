@@ -26,7 +26,7 @@ use executors::{
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
         ExecutorAction, ExecutorActionType,
     },
-    profile::{ExecutorConfigs, ExecutorProfileId},
+    profile::ExecutorProfileId,
 };
 use futures_util::TryStreamExt;
 use git2::BranchType;

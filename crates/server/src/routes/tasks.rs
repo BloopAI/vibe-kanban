@@ -111,7 +111,7 @@ pub async fn create_task_and_start(
     let task_attempt = TaskAttempt::create(
         &deployment.db().pool,
         &CreateTaskAttempt {
-            executor: executor_profile_id.executor.clone(),
+            executor: executor_profile_id.executor,
             base_branch: branch,
         },
         task.id,

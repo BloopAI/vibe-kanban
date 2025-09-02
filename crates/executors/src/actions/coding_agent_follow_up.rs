@@ -7,7 +7,7 @@ use ts_rs::TS;
 
 use crate::{
     actions::Executable,
-    executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor},
+    executors::{ExecutorError, StandardCodingAgentExecutor},
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
 

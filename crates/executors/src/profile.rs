@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, path::PathBuf, sync::RwLock};
+use std::{collections::HashMap, fs, sync::RwLock};
 
 use convert_case::{Case, Casing};
 use lazy_static::lazy_static;
@@ -275,7 +275,7 @@ impl ExecutorConfigs {
             // Check if executor was removed entirely
             if !current.executors.contains_key(executor_key) {
                 return Err(ProfileError::CannotDeleteExecutor {
-                    executor: executor_key.clone(),
+                    executor: *executor_key,
                 });
             }
 
@@ -285,7 +285,7 @@ impl ExecutorConfigs {
             for config_name in default_profile.configurations.keys() {
                 if !current_profile.configurations.contains_key(config_name) {
                     return Err(ProfileError::CannotDeleteBuiltInConfig {
-                        executor: executor_key.clone(),
+                        executor: *executor_key,
                         variant: config_name.clone(),
                     });
                 }
@@ -313,7 +313,7 @@ impl ExecutorConfigs {
                 // Only include executor if there are actual differences
                 if !override_configurations.is_empty() {
                     overrides.executors.insert(
-                        executor_key.clone(),
+                        *executor_key,
                         ExecutorProfile {
                             configurations: override_configurations,
                         },
@@ -323,7 +323,7 @@ impl ExecutorConfigs {
                 // New executor, include completely
                 overrides
                     .executors
-                    .insert(executor_key.clone(), current_profile.clone());
+                    .insert(*executor_key, current_profile.clone());
             }
         }
 
@@ -343,8 +343,7 @@ impl ExecutorConfigs {
             // Validate that the default agent type matches the executor key
             if BaseCodingAgent::from(default_config) != *executor_key {
                 return Err(ProfileError::Validation(format!(
-                    "Executor key '{executor_key}' does not match the agent variant '{}'",
-                    default_config
+                    "Executor key '{executor_key}' does not match the agent variant '{default_config}'"
                 )));
             }
 
