@@ -267,19 +267,19 @@ impl EventService {
                                         .await
                                         && let Some(task_with_status) =
                                             task_list.into_iter().find(|t| t.id == task.id)
-                                        {
-                                            let patch = match hook.operation {
-                                                SqliteOperation::Insert => {
-                                                    task_patch::add(&task_with_status)
-                                                }
-                                                SqliteOperation::Update => {
-                                                    task_patch::replace(&task_with_status)
-                                                }
-                                                _ => task_patch::replace(&task_with_status), // fallback
-                                            };
-                                            msg_store_for_hook.push_patch(patch);
-                                            return;
-                                        }
+                                    {
+                                        let patch = match hook.operation {
+                                            SqliteOperation::Insert => {
+                                                task_patch::add(&task_with_status)
+                                            }
+                                            SqliteOperation::Update => {
+                                                task_patch::replace(&task_with_status)
+                                            }
+                                            _ => task_patch::replace(&task_with_status), // fallback
+                                        };
+                                        msg_store_for_hook.push_patch(patch);
+                                        return;
+                                    }
                                 }
                                 RecordTypes::DeletedTask {
                                     task_id: Some(task_id),
@@ -299,14 +299,13 @@ impl EventService {
                                                 task.project_id,
                                             )
                                             .await
-                                            && let Some(task_with_status) = task_list
-                                                .into_iter()
-                                                .find(|t| t.id == attempt.task_id)
-                                            {
-                                                let patch = task_patch::replace(&task_with_status);
-                                                msg_store_for_hook.push_patch(patch);
-                                                return;
-                                            }
+                                        && let Some(task_with_status) =
+                                            task_list.into_iter().find(|t| t.id == attempt.task_id)
+                                    {
+                                        let patch = task_patch::replace(&task_with_status);
+                                        msg_store_for_hook.push_patch(patch);
+                                        return;
+                                    }
                                 }
                                 RecordTypes::DeletedTaskAttempt {
                                     task_id: Some(task_id),
@@ -321,13 +320,13 @@ impl EventService {
                                                 task.project_id,
                                             )
                                             .await
-                                            && let Some(task_with_status) =
-                                                task_list.into_iter().find(|t| t.id == *task_id)
-                                            {
-                                                let patch = task_patch::replace(&task_with_status);
-                                                msg_store_for_hook.push_patch(patch);
-                                                return;
-                                            }
+                                        && let Some(task_with_status) =
+                                            task_list.into_iter().find(|t| t.id == *task_id)
+                                    {
+                                        let patch = task_patch::replace(&task_with_status);
+                                        msg_store_for_hook.push_patch(patch);
+                                        return;
+                                    }
                                 }
                                 _ => {}
                             }
@@ -411,9 +410,10 @@ impl EventService {
                                                 serde_json::from_value::<TaskWithAttemptStatus>(
                                                     op.value.clone(),
                                                 )
-                                                && task.project_id == project_id {
-                                                    return Some(Ok(LogMsg::JsonPatch(patch)));
-                                                }
+                                                && task.project_id == project_id
+                                            {
+                                                return Some(Ok(LogMsg::JsonPatch(patch)));
+                                            }
                                         }
                                         json_patch::PatchOperation::Replace(op) => {
                                             // Parse task data directly from value
@@ -421,9 +421,10 @@ impl EventService {
                                                 serde_json::from_value::<TaskWithAttemptStatus>(
                                                     op.value.clone(),
                                                 )
-                                                && task.project_id == project_id {
-                                                    return Some(Ok(LogMsg::JsonPatch(patch)));
-                                                }
+                                                && task.project_id == project_id
+                                            {
+                                                return Some(Ok(LogMsg::JsonPatch(patch)));
+                                            }
                                         }
                                         json_patch::PatchOperation::Remove(_) => {
                                             // For remove operations, we need to check project membership differently

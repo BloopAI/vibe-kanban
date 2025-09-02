@@ -14,7 +14,7 @@ use db::models::{
 use deployment::Deployment;
 use futures_util::TryStreamExt;
 use serde::Deserialize;
-use services::services::container::ContainerService;
+use services::services::{container::ContainerService, events::task_patch};
 use sqlx::Error as SqlxError;
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -231,6 +231,9 @@ pub async fn delete_task(
     if rows_affected == 0 {
         Err(ApiError::Database(SqlxError::RowNotFound))
     } else {
+        // Emit remove patch so SSE task streams update immediately
+        let patch = task_patch::remove(task.id);
+        deployment.events().msg_store().push_patch(patch);
         Ok(ResponseJson(ApiResponse::success(())))
     }
 }
