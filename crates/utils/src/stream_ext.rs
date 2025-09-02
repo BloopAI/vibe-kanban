@@ -3,10 +3,10 @@ use std::io;
 use futures::{Stream, StreamExt};
 use tokio::time::{Duration, Instant, sleep_until};
 
-use crate::{
-    log_msg::LogMsg,
-    logs_limits::{WINDOW_LIMIT, WINDOW_MS},
-};
+use crate::log_msg::LogMsg;
+
+const WINDOW_MS: u64 = 200;
+const WINDOW_LIMIT: usize = 10 * 1024; // 10 KiB per window
 
 pub fn debounce_logs<S>(input: S) -> impl Stream<Item = Result<LogMsg, io::Error>>
 where

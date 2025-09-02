@@ -6,7 +6,6 @@ pub mod assets;
 pub mod browser;
 pub mod diff;
 pub mod log_msg;
-pub mod logs_limits;
 pub mod msg_store;
 pub mod path;
 pub mod port_file;
