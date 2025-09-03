@@ -21,6 +21,7 @@ use services::services::{
     config::{Config, ConfigError},
     container::{ContainerError, ContainerService},
     events::{EventError, EventService},
+    file_search_cache::FileSearchCache,
     filesystem::{FilesystemError, FilesystemService},
     filesystem_watcher::FilesystemWatcherError,
     git::{GitService, GitServiceError},
@@ -97,6 +98,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn msg_stores(&self) -> &Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>;
 
     fn events(&self) -> &EventService;
+
+    fn file_search_cache(&self) -> &Arc<FileSearchCache>;
 
     async fn update_sentry_scope(&self) -> Result<(), DeploymentError> {
         let user_id = self.user_id();

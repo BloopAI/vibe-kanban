@@ -13,7 +13,7 @@ use db::models::project::{
 };
 use deployment::Deployment;
 use ignore::WalkBuilder;
-use services::services::{file_ranker::FileRanker, git::GitBranch};
+use services::services::{file_ranker::FileRanker, file_search_cache::CacheError, git::GitBranch};
 use utils::{path::expand_tilde, response::ApiResponse};
 use uuid::Uuid;
 
@@ -277,6 +277,7 @@ pub async fn open_project_in_editor(
 }
 
 pub async fn search_project_files(
+    State(deployment): State<DeploymentImpl>,
     Extension(project): Extension<Project>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<ResponseJson<ApiResponse<Vec<SearchResult>>>, StatusCode> {
@@ -289,12 +290,36 @@ pub async fn search_project_files(
         }
     };
 
-    // Search files in the project repository
-    match search_files_in_repo(&project.git_repo_path.to_string_lossy(), query).await {
-        Ok(results) => Ok(ResponseJson(ApiResponse::success(results))),
-        Err(e) => {
-            tracing::error!("Failed to search files: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+    let repo_path = &project.git_repo_path;
+    let file_search_cache = deployment.file_search_cache();
+
+    // Try cache first
+    match file_search_cache.search(repo_path, query).await {
+        Ok(results) => {
+            tracing::debug!("Cache hit for repo {:?}, query: {}", repo_path, query);
+            Ok(ResponseJson(ApiResponse::success(results)))
+        }
+        Err(CacheError::Miss) => {
+            // Cache miss - fall back to filesystem search
+            tracing::debug!("Cache miss for repo {:?}, query: {}", repo_path, query);
+            match search_files_in_repo(&project.git_repo_path.to_string_lossy(), query).await {
+                Ok(results) => Ok(ResponseJson(ApiResponse::success(results))),
+                Err(e) => {
+                    tracing::error!("Failed to search files: {}", e);
+                    Err(StatusCode::INTERNAL_SERVER_ERROR)
+                }
+            }
+        }
+        Err(CacheError::BuildError(e)) => {
+            tracing::error!("Cache build error for repo {:?}: {}", repo_path, e);
+            // Fall back to filesystem search
+            match search_files_in_repo(&project.git_repo_path.to_string_lossy(), query).await {
+                Ok(results) => Ok(ResponseJson(ApiResponse::success(results))),
+                Err(e) => {
+                    tracing::error!("Failed to search files: {}", e);
+                    Err(StatusCode::INTERNAL_SERVER_ERROR)
+                }
+            }
         }
     }
 }

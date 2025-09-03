@@ -45,6 +45,7 @@ const RECENCY_WEIGHT: i64 = 2;
 const FREQUENCY_WEIGHT: i64 = 1;
 
 /// Service for ranking files based on git history
+#[derive(Clone)]
 pub struct FileRanker {
     git_service: GitService,
 }

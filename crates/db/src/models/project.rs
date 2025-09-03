@@ -99,7 +99,7 @@ pub struct SearchResult {
     pub match_type: SearchMatchType,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS)]
 pub enum SearchMatchType {
     FileName,
     DirectoryName,
@@ -111,6 +111,28 @@ impl Project {
         sqlx::query_as!(
             Project,
             r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects ORDER BY created_at DESC"#
+        )
+        .fetch_all(pool)
+        .await
+    }
+
+    /// Find the most actively used projects based on recent task activity
+    pub async fn find_most_active(pool: &SqlitePool, limit: i32) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Project,
+            r#"
+            SELECT p.id as "id!: Uuid", p.name, p.git_repo_path, p.setup_script, p.dev_script, p.cleanup_script, p.copy_files, 
+                   p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
+            FROM projects p
+            WHERE p.id IN (
+                SELECT DISTINCT t.project_id
+                FROM tasks t
+                INNER JOIN task_attempts ta ON ta.task_id = t.id
+                ORDER BY ta.updated_at DESC
+            )
+            LIMIT $1
+            "#,
+            limit
         )
         .fetch_all(pool)
         .await

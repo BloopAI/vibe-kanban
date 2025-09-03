@@ -10,6 +10,7 @@ use services::services::{
     config::{Config, load_config_from_file, save_config_to_file},
     container::ContainerService,
     events::EventService,
+    file_search_cache::FileSearchCache,
     filesystem::FilesystemService,
     git::GitService,
     image::ImageService,
@@ -38,6 +39,7 @@ pub struct LocalDeployment {
     image: ImageService,
     filesystem: FilesystemService,
     events: EventService,
+    file_search_cache: Arc<FileSearchCache>,
 }
 
 #[async_trait]
@@ -118,6 +120,7 @@ impl Deployment for LocalDeployment {
         container.spawn_worktree_cleanup().await;
 
         let events = EventService::new(db.clone(), events_msg_store, events_entry_count);
+        let file_search_cache = Arc::new(FileSearchCache::new());
 
         Ok(Self {
             config,
@@ -132,6 +135,7 @@ impl Deployment for LocalDeployment {
             image,
             filesystem,
             events,
+            file_search_cache,
         })
     }
 
@@ -184,5 +188,9 @@ impl Deployment for LocalDeployment {
 
     fn events(&self) -> &EventService {
         &self.events
+    }
+
+    fn file_search_cache(&self) -> &Arc<FileSearchCache> {
+        &self.file_search_cache
     }
 }
