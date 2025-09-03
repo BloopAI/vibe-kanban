@@ -84,6 +84,46 @@ pub trait ContainerService {
         self.delete_inner(task_attempt).await
     }
 
+    /// Check if a task has any running execution processes
+    async fn has_running_processes(&self, task_id: Uuid) -> Result<bool, ContainerError> {
+        let attempts = TaskAttempt::fetch_all(&self.db().pool, Some(task_id)).await?;
+        
+        for attempt in attempts {
+            if let Ok(processes) = ExecutionProcess::find_by_task_attempt_id(&self.db().pool, attempt.id).await {
+                for process in processes {
+                    if process.status == ExecutionProcessStatus::Running {
+                        return Ok(true);
+                    }
+                }
+            }
+        }
+        
+        Ok(false)
+    }
+
+    /// Stop execution processes for task attempts without cleanup 
+    async fn stop_task_processes(&self, task_attempts: &[TaskAttempt]) -> Result<(), ContainerError> {
+        for attempt in task_attempts {
+            self.try_stop(attempt).await;
+        }
+        Ok(())
+    }
+
+    /// Cleanup worktrees for task attempts (slow operation for background processing)
+    async fn cleanup_worktrees(&self, task_attempts: &[TaskAttempt]) -> Result<(), ContainerError> {
+        for attempt in task_attempts {
+            if let Err(e) = self.delete_inner(attempt).await {
+                tracing::error!(
+                    "Failed to cleanup worktree for task attempt {}: {}",
+                    attempt.id,
+                    e
+                );
+                // Continue with other attempts even if one fails
+            }
+        }
+        Ok(())
+    }
+
     async fn try_stop(&self, task_attempt: &TaskAttempt) {
         // stop all execution processes for this attempt
         if let Ok(processes) =
