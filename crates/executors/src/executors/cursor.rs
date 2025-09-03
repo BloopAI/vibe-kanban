@@ -14,7 +14,7 @@ use utils::{
     },
     msg_store::MsgStore,
     path::make_path_relative,
-    shell::get_shell_command,
+    shell::{get_shell_command, resolve_executable_path},
 };
 
 use crate::{
@@ -404,6 +404,10 @@ impl StandardCodingAgentExecutor for Cursor {
     // MCP configuration methods
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
         dirs::home_dir().map(|home| home.join(".cursor").join("mcp.json"))
+    }
+
+    async fn check_availability(&self) -> bool {
+        resolve_executable_path("cursor-agent").is_some()
     }
 }
 

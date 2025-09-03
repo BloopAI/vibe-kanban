@@ -138,4 +138,10 @@ impl StandardCodingAgentExecutor for QwenCode {
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
         dirs::home_dir().map(|home| home.join(".qwen").join("settings.json"))
     }
+
+    async fn check_availability(&self) -> bool {
+        self.default_mcp_config_path()
+            .map(|path| path.exists())
+            .unwrap_or(false)
+    }
 }

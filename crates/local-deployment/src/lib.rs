@@ -4,8 +4,8 @@ use async_trait::async_trait;
 use db::DBService;
 use deployment::{Deployment, DeploymentError};
 use executors::{
-    executors::{CodingAgent, StandardCodingAgentExecutor},
-    profile::{ExecutorProfileConfigs, ExecutorProfileId},
+    executors::{BaseCodingAgent, StandardCodingAgentExecutor},
+    profile::{ExecutorConfigs, ExecutorProfileId},
 };
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
@@ -18,7 +18,6 @@ use services::services::{
     image::ImageService,
     sentry::SentryService,
 };
-use strum::VariantNames;
 use tokio::sync::RwLock;
 use utils::{assets::config_path, msg_store::MsgStore};
 use uuid::Uuid;
@@ -197,21 +196,24 @@ impl Deployment for LocalDeployment {
 
 /// Get the recommended executor profile based on availability for new users
 async fn get_recommended_executor_profile() -> Result<ExecutorProfileId, DeploymentError> {
-    let profiles = ExecutorProfileConfigs::get_cached();
+    let profiles = ExecutorConfigs::get_cached();
 
-    for variant_name in CodingAgent::VARIANTS {
-        if let Some(profile) = profiles.get_executor_profile(variant_name) {
-            if let Some(config) = profile.get_default() {
-                let is_available = config.agent.check_availability().await;
-                if is_available {
-                    tracing::info!("Detected available executor: {}", variant_name);
-                    return Ok(ExecutorProfileId::new(variant_name.to_string()));
-                }
+    for &base_agent in profiles.executors.keys() {
+        let profile_id = ExecutorProfileId::new(base_agent);
+        if let Some(coding_agent) = profiles.get_coding_agent(&profile_id) {
+            let is_available = coding_agent.check_availability().await;
+            if is_available {
+                tracing::info!("Detected available executor: {}", base_agent);
+                return Ok(profile_id);
             }
         }
     }
 
-    let fallback = ExecutorProfileId::new(CodingAgent::VARIANTS[0].to_string());
+    let fallback_base_agent = profiles.executors.keys()
+        .next()
+        .copied()
+        .unwrap_or(BaseCodingAgent::ClaudeCode);
+    let fallback = ExecutorProfileId::new(fallback_base_agent);
     tracing::info!(
         "No executors detected, using fallback: {}",
         fallback.executor
