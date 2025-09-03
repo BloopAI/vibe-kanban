@@ -163,7 +163,7 @@ export function Navbar() {
           </div>
         </div>
       </div>
-      
+
       <ProjectForm
         open={isProjectSettingsOpen}
         onClose={() => setIsProjectSettingsOpen(false)}
