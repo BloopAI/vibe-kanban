@@ -1,6 +1,6 @@
 use std::{env, fs, path::Path};
 
-use schemars::{JsonSchema, schema_for};
+use schemars::{JsonSchema, Schema, SchemaGenerator, generate::SchemaSettings, schema_for};
 use ts_rs::TS;
 
 fn generate_types_content() -> String {
@@ -128,12 +128,17 @@ fn generate_types_content() -> String {
 
 fn write_schema<T: JsonSchema>(
     name: &str,
-    schemas_dir: &Path,
+    schemas_dir: &std::path::Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let schema = schema_for!(T);
+    // Draft-07, inline everything (no $defs)
+    let mut settings = SchemaSettings::draft07();
+    settings.inline_subschemas = true;
+
+    let generator: SchemaGenerator = settings.into_generator();
+    let schema: Schema = generator.into_root_schema_for::<T>();
+
     let schema_json = serde_json::to_string_pretty(&schema)?;
-    let file_path = schemas_dir.join(format!("{}.json", name));
-    fs::write(file_path, schema_json)?;
+    std::fs::write(schemas_dir.join(format!("{name}.json")), schema_json)?;
     Ok(())
 }
 

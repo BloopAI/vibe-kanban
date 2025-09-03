@@ -1,8 +1,37 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Gemini",
   "type": "object",
   "properties": {
+    "model": {
+      "type": "string",
+      "enum": [
+        "default",
+        "flash"
+      ]
+    },
+    "append_prompt": {
+      "title": "Append Prompt",
+      "description": "Extra text appended to the prompt",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "yolo": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "base_command_override": {
+      "title": "Base Command Override",
+      "description": "Override the base command with a custom command",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "additional_params": {
       "title": "Additional Parameters",
       "description": "Additional parameters to append to the base command",
@@ -13,47 +42,10 @@
       "items": {
         "type": "string"
       }
-    },
-    "append_prompt": {
-      "$ref": "#/$defs/AppendPrompt"
-    },
-    "base_command_override": {
-      "title": "Base Command Override",
-      "description": "Override the base command with a custom command",
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "model": {
-      "$ref": "#/$defs/GeminiModel"
-    },
-    "yolo": {
-      "type": [
-        "boolean",
-        "null"
-      ]
     }
   },
   "required": [
     "model",
     "append_prompt"
-  ],
-  "$defs": {
-    "AppendPrompt": {
-      "title": "Append Prompt",
-      "description": "Extra text appended to the prompt",
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "GeminiModel": {
-      "type": "string",
-      "enum": [
-        "default",
-        "flash"
-      ]
-    }
-  }
+  ]
 }

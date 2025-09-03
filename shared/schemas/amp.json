@@ -1,25 +1,11 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Amp",
   "type": "object",
   "properties": {
-    "additional_params": {
-      "title": "Additional Parameters",
-      "description": "Additional parameters to append to the base command",
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "type": "string"
-      }
-    },
     "append_prompt": {
-      "$ref": "#/$defs/AppendPrompt"
-    },
-    "base_command_override": {
-      "title": "Base Command Override",
-      "description": "Override the base command with a custom command",
+      "title": "Append Prompt",
+      "description": "Extra text appended to the prompt",
       "type": [
         "string",
         "null"
@@ -32,19 +18,28 @@
         "boolean",
         "null"
       ]
-    }
-  },
-  "required": [
-    "append_prompt"
-  ],
-  "$defs": {
-    "AppendPrompt": {
-      "title": "Append Prompt",
-      "description": "Extra text appended to the prompt",
+    },
+    "base_command_override": {
+      "title": "Base Command Override",
+      "description": "Override the base command with a custom command",
       "type": [
         "string",
         "null"
       ]
+    },
+    "additional_params": {
+      "title": "Additional Parameters",
+      "description": "Additional parameters to append to the base command",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      }
     }
-  }
+  },
+  "required": [
+    "append_prompt"
+  ]
 }

@@ -210,6 +210,8 @@ export function ExecutorConfigForm({
     );
   }
 
+  console.log(validationErrors);
+
   return (
     <div className="space-y-6">
       <Card>

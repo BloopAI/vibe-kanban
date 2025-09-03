@@ -1,8 +1,16 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CmdOverrides",
   "type": "object",
   "properties": {
+    "base_command_override": {
+      "title": "Base Command Override",
+      "description": "Override the base command with a custom command",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "additional_params": {
       "title": "Additional Parameters",
       "description": "Additional parameters to append to the base command",
@@ -13,14 +21,6 @@
       "items": {
         "type": "string"
       }
-    },
-    "base_command_override": {
-      "title": "Base Command Override",
-      "description": "Override the base command with a custom command",
-      "type": [
-        "string",
-        "null"
-      ]
     }
   }
 }

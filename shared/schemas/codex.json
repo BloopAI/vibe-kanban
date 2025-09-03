@@ -1,8 +1,49 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Codex",
   "type": "object",
   "properties": {
+    "append_prompt": {
+      "title": "Append Prompt",
+      "description": "Extra text appended to the prompt",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sandbox": {
+      "description": "Sandbox policy modes for Codex",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "read-only",
+        "workspace-write",
+        "danger-full-access",
+        null
+      ]
+    },
+    "oss": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "model": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "base_command_override": {
+      "title": "Base Command Override",
+      "description": "Override the base command with a custom command",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "additional_params": {
       "title": "Additional Parameters",
       "description": "Additional parameters to append to the base command",
@@ -13,61 +54,9 @@
       "items": {
         "type": "string"
       }
-    },
-    "append_prompt": {
-      "$ref": "#/$defs/AppendPrompt"
-    },
-    "base_command_override": {
-      "title": "Base Command Override",
-      "description": "Override the base command with a custom command",
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "model": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "oss": {
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
-    "sandbox": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/SandboxMode"
-        },
-        {
-          "type": "null"
-        }
-      ]
     }
   },
   "required": [
     "append_prompt"
-  ],
-  "$defs": {
-    "AppendPrompt": {
-      "title": "Append Prompt",
-      "description": "Extra text appended to the prompt",
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "SandboxMode": {
-      "description": "Sandbox policy modes for Codex",
-      "type": "string",
-      "enum": [
-        "read-only",
-        "workspace-write",
-        "danger-full-access"
-      ]
-    }
-  }
+  ]
 }
