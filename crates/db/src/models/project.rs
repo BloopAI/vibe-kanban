@@ -107,16 +107,13 @@ pub enum SearchMatchType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Default)]
 pub enum SearchMode {
-    TaskForm,    // Default: exclude ignored files
-    Settings,    // Include ignored files (for project config)
+    #[default]
+    TaskForm, // Default: exclude ignored files
+    Settings, // Include ignored files (for project config)
 }
 
-impl Default for SearchMode {
-    fn default() -> Self {
-        SearchMode::TaskForm
-    }
-}
 
 impl Project {
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {

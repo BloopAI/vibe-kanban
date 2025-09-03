@@ -26,7 +26,7 @@ struct IndexedFile {
     pub is_file: bool,
     pub match_type: SearchMatchType,
     pub path_lowercase: Arc<str>,
-    pub is_ignored: bool,  // Track if file is gitignored
+    pub is_ignored: bool, // Track if file is gitignored
 }
 
 /// Cached repository data with FST index and git stats
@@ -103,10 +103,11 @@ impl FileSearchCache {
         // Check if we have a valid cache entry
         if let Some(cached) = self.cache.get(&repo_path_buf).await
             && let Ok(head_info) = self.git_service.get_head_info(&repo_path_buf)
-                && head_info.oid == cached.head_sha {
-                    // Cache hit - perform fast search with mode-based filtering
-                    return Ok(self.search_in_cache(&cached, query, mode).await);
-                }
+            && head_info.oid == cached.head_sha
+        {
+            // Cache hit - perform fast search with mode-based filtering
+            return Ok(self.search_in_cache(&cached, query, mode).await);
+        }
 
         // Cache miss - trigger background refresh and return error
         if let Err(e) = self.build_queue.send(repo_path_buf) {
@@ -130,7 +131,12 @@ impl FileSearchCache {
     }
 
     /// Search within cached index with mode-based filtering
-    async fn search_in_cache(&self, cached: &CachedRepo, query: &str, mode: SearchMode) -> Vec<SearchResult> {
+    async fn search_in_cache(
+        &self,
+        cached: &CachedRepo,
+        query: &str,
+        mode: SearchMode,
+    ) -> Vec<SearchResult> {
         let query_lower = query.to_lowercase();
         let mut results = Vec::new();
 
@@ -201,92 +207,91 @@ impl FileSearchCache {
 
     /// Build FST index from filesystem traversal using superset approach
     fn build_file_index(
-    repo_path: &Path,
+        repo_path: &Path,
     ) -> Result<(Vec<IndexedFile>, Map<Vec<u8>>), Box<dyn std::error::Error + Send + Sync>> {
-    let mut indexed_files = Vec::new();
-    let mut fst_keys = Vec::new();
+        let mut indexed_files = Vec::new();
+        let mut fst_keys = Vec::new();
 
-    // Build superset walker - include ignored files but exclude .git and performance killers
-    let mut builder = WalkBuilder::new(repo_path);
-    builder
-    .git_ignore(false)        // Include all files initially
-    .git_global(false)        
-    .git_exclude(false)       
-    .hidden(false)            // Show hidden files like .env
+        // Build superset walker - include ignored files but exclude .git and performance killers
+        let mut builder = WalkBuilder::new(repo_path);
+        builder
+            .git_ignore(false) // Include all files initially
+            .git_global(false)
+            .git_exclude(false)
+            .hidden(false) // Show hidden files like .env
             .filter_entry(|entry| {
-            let name = entry.file_name().to_string_lossy();
-        // Always exclude .git directories
-        if name == ".git" {
+                let name = entry.file_name().to_string_lossy();
+                // Always exclude .git directories
+                if name == ".git" {
                     return false;
-        }
-    // Exclude performance killers even when including ignored files
-        if name == "node_modules" || name == "target" || name == "dist" || name == "build" {
+                }
+                // Exclude performance killers even when including ignored files
+                if name == "node_modules" || name == "target" || name == "dist" || name == "build" {
                     return false;
-        }
+                }
                 true
-    });
+            });
 
-    let walker = builder.build();
+        let walker = builder.build();
 
-    // Create a second walker for checking ignore status
-    let ignore_walker = WalkBuilder::new(repo_path)
-    .git_ignore(true)         // This will tell us what's ignored
+        // Create a second walker for checking ignore status
+        let ignore_walker = WalkBuilder::new(repo_path)
+            .git_ignore(true) // This will tell us what's ignored
             .git_global(true)
-    .git_exclude(true)
-    .hidden(false)
-    .filter_entry(|entry| {
-        let name = entry.file_name().to_string_lossy();
-        name != ".git"
-    })
-    .build();
+            .git_exclude(true)
+            .hidden(false)
+            .filter_entry(|entry| {
+                let name = entry.file_name().to_string_lossy();
+                name != ".git"
+            })
+            .build();
 
-    // Collect paths from ignore-aware walker to know what's NOT ignored
-    let mut non_ignored_paths = std::collections::HashSet::new();
-    for result in ignore_walker {
-    if let Ok(entry) = result {
-                if let Ok(relative_path) = entry.path().strip_prefix(repo_path) {
-            non_ignored_paths.insert(relative_path.to_path_buf());
+        // Collect paths from ignore-aware walker to know what's NOT ignored
+        let mut non_ignored_paths = std::collections::HashSet::new();
+        for result in ignore_walker {
+            if let Ok(entry) = result
+                && let Ok(relative_path) = entry.path().strip_prefix(repo_path) {
+                    non_ignored_paths.insert(relative_path.to_path_buf());
+                }
         }
-    }
-    }
 
-    // Now walk all files and determine their ignore status
-    for result in walker {
-    let entry = result?;
-    let path = entry.path();
+        // Now walk all files and determine their ignore status
+        for result in walker {
+            let entry = result?;
+            let path = entry.path();
 
-    if path == repo_path {
-        continue;
-    }
-
-            let relative_path = path.strip_prefix(repo_path)?;
-    let relative_path_str = relative_path.to_string_lossy().to_string();
-    let relative_path_lower = relative_path_str.to_lowercase();
-    
-    // Skip empty paths
-    if relative_path_lower.is_empty() {
-        continue;
+            if path == repo_path {
+                continue;
             }
 
-    // Determine if this file is ignored
-    let is_ignored = !non_ignored_paths.contains(relative_path);
+            let relative_path = path.strip_prefix(repo_path)?;
+            let relative_path_str = relative_path.to_string_lossy().to_string();
+            let relative_path_lower = relative_path_str.to_lowercase();
 
-        let file_name = path
+            // Skip empty paths
+            if relative_path_lower.is_empty() {
+                continue;
+            }
+
+            // Determine if this file is ignored
+            let is_ignored = !non_ignored_paths.contains(relative_path);
+
+            let file_name = path
                 .file_name()
-            .map(|name| name.to_string_lossy().to_lowercase())
-            .unwrap_or_default();
+                .map(|name| name.to_string_lossy().to_lowercase())
+                .unwrap_or_default();
 
-        // Determine match type
-        let match_type = if !file_name.is_empty() {
+            // Determine match type
+            let match_type = if !file_name.is_empty() {
                 SearchMatchType::FileName
-        } else if path
-            .parent()
-            .and_then(|p| p.file_name())
-        .map(|name| name.to_string_lossy().to_lowercase())
-            .unwrap_or_default()
+            } else if path
+                .parent()
+                .and_then(|p| p.file_name())
+                .map(|name| name.to_string_lossy().to_lowercase())
+                .unwrap_or_default()
                 != relative_path_lower
-        {
-            SearchMatchType::DirectoryName
+            {
+                SearchMatchType::DirectoryName
             } else {
                 SearchMatchType::FullPath
             };

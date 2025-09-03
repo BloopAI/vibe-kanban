@@ -74,9 +74,14 @@ export function MultiFileSearchTextarea({
       abortControllerRef.current = abortController;
 
       try {
-        const result = await projectsApi.searchFiles(projectId, searchQuery, 'settings', {
-          signal: abortController.signal,
-        });
+        const result = await projectsApi.searchFiles(
+          projectId,
+          searchQuery,
+          'settings',
+          {
+            signal: abortController.signal,
+          }
+        );
 
         // Only process if this request wasn't aborted
         if (!abortController.signal.aborted) {

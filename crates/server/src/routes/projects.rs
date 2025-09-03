@@ -293,9 +293,9 @@ pub async fn search_project_files(
     // Parse mode parameter (defaults to TaskForm)
     let mode = params
         .get("mode")
-        .and_then(|m| match m.as_str() {
-            "settings" => Some(SearchMode::Settings),
-            "task_form" | _ => Some(SearchMode::TaskForm),
+        .map(|m| match m.as_str() {
+            "settings" => SearchMode::Settings,
+            "task_form" | _ => SearchMode::TaskForm,
         })
         .unwrap_or_default();
 
@@ -303,15 +303,29 @@ pub async fn search_project_files(
     let file_search_cache = deployment.file_search_cache();
 
     // Try cache first
-    match file_search_cache.search(repo_path, query, mode.clone()).await {
+    match file_search_cache
+        .search(repo_path, query, mode.clone())
+        .await
+    {
         Ok(results) => {
-            tracing::debug!("Cache hit for repo {:?}, query: {}, mode: {:?}", repo_path, query, mode);
+            tracing::debug!(
+                "Cache hit for repo {:?}, query: {}, mode: {:?}",
+                repo_path,
+                query,
+                mode
+            );
             Ok(ResponseJson(ApiResponse::success(results)))
         }
         Err(CacheError::Miss) => {
             // Cache miss - fall back to filesystem search
-            tracing::debug!("Cache miss for repo {:?}, query: {}, mode: {:?}", repo_path, query, mode);
-            match search_files_in_repo(&project.git_repo_path.to_string_lossy(), query, mode).await {
+            tracing::debug!(
+                "Cache miss for repo {:?}, query: {}, mode: {:?}",
+                repo_path,
+                query,
+                mode
+            );
+            match search_files_in_repo(&project.git_repo_path.to_string_lossy(), query, mode).await
+            {
                 Ok(results) => Ok(ResponseJson(ApiResponse::success(results))),
                 Err(e) => {
                     tracing::error!("Failed to search files: {}", e);
@@ -322,7 +336,8 @@ pub async fn search_project_files(
         Err(CacheError::BuildError(e)) => {
             tracing::error!("Cache build error for repo {:?}: {}", repo_path, e);
             // Fall back to filesystem search
-            match search_files_in_repo(&project.git_repo_path.to_string_lossy(), query, mode).await {
+            match search_files_in_repo(&project.git_repo_path.to_string_lossy(), query, mode).await
+            {
                 Ok(results) => Ok(ResponseJson(ApiResponse::success(results))),
                 Err(e) => {
                     tracing::error!("Failed to search files: {}", e);
@@ -352,25 +367,28 @@ async fn search_files_in_repo(
         SearchMode::Settings => {
             // Settings mode: Include ignored files but exclude performance killers
             WalkBuilder::new(repo_path)
-                .git_ignore(false)    // Include ignored files like .env
+                .git_ignore(false) // Include ignored files like .env
                 .git_global(false)
                 .git_exclude(false)
                 .hidden(false)
                 .filter_entry(|entry| {
                     let name = entry.file_name().to_string_lossy();
                     // Always exclude .git directories and performance killers
-                    name != ".git" && name != "node_modules" && name != "target" 
-                        && name != "dist" && name != "build"
+                    name != ".git"
+                        && name != "node_modules"
+                        && name != "target"
+                        && name != "dist"
+                        && name != "build"
                 })
                 .build()
         }
         SearchMode::TaskForm => {
             // Task form mode: Respect gitignore (cleaner results)
             WalkBuilder::new(repo_path)
-                .git_ignore(true)     // Respect .gitignore
-                .git_global(true)     // Respect global .gitignore
-                .git_exclude(true)    // Respect .git/info/exclude
-                .hidden(false)        // Still show hidden files like .env (if not gitignored)
+                .git_ignore(true) // Respect .gitignore
+                .git_global(true) // Respect global .gitignore
+                .git_exclude(true) // Respect .git/info/exclude
+                .hidden(false) // Still show hidden files like .env (if not gitignored)
                 .filter_entry(|entry| {
                     let name = entry.file_name().to_string_lossy();
                     name != ".git"
