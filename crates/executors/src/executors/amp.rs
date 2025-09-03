@@ -161,6 +161,6 @@ impl StandardCodingAgentExecutor for Amp {
 
     // MCP configuration methods
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
-        dirs::config_dir().map(|config| config.join("amp").join("settings.json"))
+        dirs::home_dir().map(|home| home.join(".config").join("amp").join("settings.json"))
     }
 }
