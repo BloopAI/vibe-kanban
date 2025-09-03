@@ -21,11 +21,9 @@ import { JSONEditor } from '@/components/ui/json-editor';
 import { Loader2 } from 'lucide-react';
 
 import { ExecutorConfigForm } from '@/components/ExecutorConfigForm';
-import { useUserSystem } from '@/components/config-provider';
 import { profilesApi } from '@/lib/api';
 
 export function ExecutorsSettings() {
-  const { reloadSystem } = useUserSystem();
   
   // Profiles editor state
   const [profilesContent, setProfilesContent] = useState('');
@@ -116,8 +114,6 @@ export function ExecutorsSettings() {
         : profilesContent;
 
       await profilesApi.save(contentToSave);
-      // Reload the system to get the updated profiles
-      await reloadSystem();
       setProfilesSuccess(true);
       setIsDirty(false);
       setTimeout(() => setProfilesSuccess(false), 3000);
@@ -186,8 +182,6 @@ export function ExecutorsSettings() {
       const contentToSave = JSON.stringify(updatedProfiles, null, 2);
       
       await profilesApi.save(contentToSave);
-      // Reload the system to get the updated profiles
-      await reloadSystem();
       setProfilesSuccess(true);
       setIsDirty(false);
       setTimeout(() => setProfilesSuccess(false), 3000);
