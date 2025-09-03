@@ -183,19 +183,12 @@ impl StandardCodingAgentExecutor for Opencode {
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
         #[cfg(unix)]
         {
-            xdg::BaseDirectories::with_prefix("opencode")
-                .get_config_file("opencode.json")
+            xdg::BaseDirectories::with_prefix("opencode").get_config_file("opencode.json")
         }
         #[cfg(not(unix))]
         {
             dirs::config_dir().map(|config| config.join("opencode").join("opencode.json"))
         }
-    }
-
-    async fn check_availability(&self) -> bool {
-        self.default_mcp_config_path()
-            .map(|path| path.exists())
-            .unwrap_or(false)
     }
 }
 impl Opencode {

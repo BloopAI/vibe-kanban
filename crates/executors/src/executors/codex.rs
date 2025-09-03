@@ -470,12 +470,6 @@ impl StandardCodingAgentExecutor for Codex {
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
         dirs::home_dir().map(|home| home.join(".codex").join("config.toml"))
     }
-
-    async fn check_availability(&self) -> bool {
-        dirs::home_dir()
-            .map(|home| home.join(".codex").join("config.toml").exists())
-            .unwrap_or(false)
-    }
 }
 
 // Data structures for parsing Codex's JSON output format

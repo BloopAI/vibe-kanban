@@ -209,7 +209,9 @@ async fn get_recommended_executor_profile() -> Result<ExecutorProfileId, Deploym
         }
     }
 
-    let fallback_base_agent = profiles.executors.keys()
+    let fallback_base_agent = profiles
+        .executors
+        .keys()
         .next()
         .copied()
         .unwrap_or(BaseCodingAgent::ClaudeCode);

@@ -127,10 +127,4 @@ impl StandardCodingAgentExecutor for Amp {
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
         dirs::config_dir().map(|config| config.join("amp").join("settings.json"))
     }
-
-    async fn check_availability(&self) -> bool {
-        dirs::config_dir()
-            .map(|config| config.join("amp").join("settings.json").exists())
-            .unwrap_or(false)
-    }
 }
