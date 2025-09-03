@@ -130,8 +130,6 @@ export function TaskFollowUpSection({
     return profiles?.[selectedProfile];
   }, [selectedProfile, profiles]);
 
-  console.log("DEBUG", selectedProfile, selectedAttemptProfile);
-
   // Update selectedVariant when defaultFollowUpVariant changes
   useEffect(() => {
     setSelectedVariant(defaultFollowUpVariant);
