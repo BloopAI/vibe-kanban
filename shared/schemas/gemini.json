@@ -1,6 +1,9 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Gemini",
+  "required": [
+    "model",
+    "append_prompt"
+  ],
   "type": "object",
   "properties": {
     "model": {
@@ -43,9 +46,5 @@
         "type": "string"
       }
     }
-  },
-  "required": [
-    "model",
-    "append_prompt"
-  ]
+  }
 }

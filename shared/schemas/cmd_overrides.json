@@ -1,7 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CmdOverrides",
-  "type": "object",
   "properties": {
     "base_command_override": {
       "title": "Base Command Override",
@@ -22,5 +20,6 @@
         "type": "string"
       }
     }
-  }
+  },
+  "type": "object"
 }

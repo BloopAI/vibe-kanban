@@ -1,6 +1,6 @@
 use std::{env, fs, path::Path};
 
-use schemars::{JsonSchema, Schema, SchemaGenerator, generate::SchemaSettings, schema_for};
+use schemars::{JsonSchema, Schema, SchemaGenerator, generate::SchemaSettings};
 use ts_rs::TS;
 
 fn generate_types_content() -> String {
@@ -75,6 +75,7 @@ fn generate_types_content() -> String {
         executors::executors::cursor::Cursor::decl(),
         executors::executors::opencode::Opencode::decl(),
         executors::executors::qwen::QwenCode::decl(),
+        executors::executors::AppendPrompt::decl(),
         executors::actions::coding_agent_initial::CodingAgentInitialRequest::decl(),
         executors::actions::coding_agent_follow_up::CodingAgentFollowUpRequest::decl(),
         server::routes::task_attempts::CreateTaskAttemptBody::decl(),
@@ -137,7 +138,15 @@ fn write_schema<T: JsonSchema>(
     let generator: SchemaGenerator = settings.into_generator();
     let schema: Schema = generator.into_root_schema_for::<T>();
 
-    let schema_json = serde_json::to_string_pretty(&schema)?;
+    // Convert to JSON value to manipulate it
+    let mut schema_value: serde_json::Value = serde_json::to_value(&schema)?;
+    
+    // Remove the title from root schema to prevent RJSF from creating an outer field container
+    if let Some(obj) = schema_value.as_object_mut() {
+        obj.remove("title");
+    }
+
+    let schema_json = serde_json::to_string_pretty(&schema_value)?;
     std::fs::write(schemas_dir.join(format!("{name}.json")), schema_json)?;
     Ok(())
 }

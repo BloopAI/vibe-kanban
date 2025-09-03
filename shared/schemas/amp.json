@@ -1,6 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Amp",
+  "required": [
+    "append_prompt"
+  ],
   "type": "object",
   "properties": {
     "append_prompt": {
@@ -38,8 +40,5 @@
         "type": "string"
       }
     }
-  },
-  "required": [
-    "append_prompt"
-  ]
+  }
 }

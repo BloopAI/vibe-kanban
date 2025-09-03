@@ -158,6 +158,8 @@ export type Opencode = { append_prompt: AppendPrompt, model?: string | null, age
 
 export type QwenCode = { append_prompt: AppendPrompt, yolo?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, };
 
+export type AppendPrompt = string | null;
+
 export type CodingAgentInitialRequest = {
     prompt: string,
     /**
