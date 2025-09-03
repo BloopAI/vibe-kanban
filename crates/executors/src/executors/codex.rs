@@ -543,7 +543,7 @@ impl StandardCodingAgentExecutor for Codex {
                     let entry = NormalizedEntry {
                         timestamp: None,
                         entry_type: NormalizedEntryType::SystemMessage,
-                        content: format!("Raw output: {trimmed}"),
+                        content: trimmed.to_string(),
                         metadata: None,
                     };
 
@@ -977,7 +977,7 @@ mod tests {
                 entries.push(NormalizedEntry {
                     timestamp: None,
                     entry_type: NormalizedEntryType::SystemMessage,
-                    content: format!("Raw output: {trimmed}"),
+                    content: trimmed.to_string(),
                     metadata: None,
                 });
             }
@@ -1076,11 +1076,7 @@ invalid json line here
             entries[0].entry_type,
             NormalizedEntryType::SystemMessage
         ));
-        assert!(
-            entries[0]
-                .content
-                .contains("Raw output: invalid json line here")
-        );
+        assert!(entries[0].content.contains("invalid json line here"));
     }
 
     #[test]

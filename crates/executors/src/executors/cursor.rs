@@ -390,7 +390,7 @@ impl StandardCodingAgentExecutor for Cursor {
                         let entry = NormalizedEntry {
                             timestamp: None,
                             entry_type: NormalizedEntryType::SystemMessage,
-                            content: format!("Raw output: `{line}`"),
+                            content: line,
                             metadata: None,
                         };
                         let id = entry_index_provider.next();

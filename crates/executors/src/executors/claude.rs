@@ -564,7 +564,7 @@ impl ClaudeLogProcessor {
                                 let entry = NormalizedEntry {
                                     timestamp: None,
                                     entry_type: NormalizedEntryType::SystemMessage,
-                                    content: format!("Raw output: {trimmed}"),
+                                    content: trimmed.to_string(),
                                     metadata: None,
                                 };
 
@@ -586,7 +586,7 @@ impl ClaudeLogProcessor {
                 let entry = NormalizedEntry {
                     timestamp: None,
                     entry_type: NormalizedEntryType::SystemMessage,
-                    content: format!("Raw output: {}", buffer.trim()),
+                    content: buffer.trim().to_string(),
                     metadata: None,
                 };
 
