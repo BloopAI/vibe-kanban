@@ -6,7 +6,7 @@ use serde::{Deserialize, Deserializer, Serialize, de::Error as DeError};
 use thiserror::Error;
 use ts_rs::TS;
 
-use crate::executors::{BaseCodingAgent, CodingAgent};
+use crate::executors::{BaseCodingAgent, CodingAgent, StandardCodingAgentExecutor};
 
 /// Return the canonical form for variant keys.
 /// – "DEFAULT" is kept as-is  
@@ -40,6 +40,9 @@ pub enum ProfileError {
 
     #[error(transparent)]
     Serde(#[from] serde_json::Error),
+
+    #[error("No available executor profile")]
+    NoAvailableExecutorProfile,
 }
 
 lazy_static! {
@@ -405,5 +408,20 @@ impl ExecutorConfigs {
                 self.get_coding_agent(&default_executor_profile_id)
                     .expect("No default variant found")
             })
+    }
+    /// Get the first available executor profile for new users
+    pub async fn get_recommended_executor_profile(
+        &self,
+    ) -> Result<ExecutorProfileId, ProfileError> {
+        for &base_agent in self.executors.keys() {
+            let profile_id = ExecutorProfileId::new(base_agent);
+            if let Some(coding_agent) = self.get_coding_agent(&profile_id)
+                && coding_agent.check_availability().await
+            {
+                tracing::info!("Detected available executor: {}", base_agent);
+                return Ok(profile_id);
+            }
+        }
+        Err(ProfileError::NoAvailableExecutorProfile)
     }
 }

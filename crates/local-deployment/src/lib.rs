@@ -3,10 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use async_trait::async_trait;
 use db::DBService;
 use deployment::{Deployment, DeploymentError};
-use executors::{
-    executors::{BaseCodingAgent, StandardCodingAgentExecutor},
-    profile::{ExecutorConfigs, ExecutorProfileId},
-};
+use executors::profile::ExecutorConfigs;
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
     auth::AuthService,
@@ -48,15 +45,11 @@ impl Deployment for LocalDeployment {
     async fn new() -> Result<Self, DeploymentError> {
         let mut raw_config = load_config_from_file(&config_path()).await;
 
-        // Set smart defaults for new users (before they go through onboarding)
-        if !raw_config.onboarding_acknowledged {
-            if let Ok(recommended_executor) = get_recommended_executor_profile().await {
-                raw_config.executor_profile = recommended_executor;
-                tracing::info!(
-                    "Set smart default executor for new user: {}",
-                    raw_config.executor_profile.executor
-                );
-            }
+        let profiles = ExecutorConfigs::get_cached();
+        if !raw_config.onboarding_acknowledged
+            && let Ok(recommended_executor) = profiles.get_recommended_executor_profile().await
+        {
+            raw_config.executor_profile = recommended_executor;
         }
 
         // Check if app version has changed and set release notes flag
@@ -192,33 +185,4 @@ impl Deployment for LocalDeployment {
     fn events(&self) -> &EventService {
         &self.events
     }
-}
-
-/// Get the recommended executor profile based on availability for new users
-async fn get_recommended_executor_profile() -> Result<ExecutorProfileId, DeploymentError> {
-    let profiles = ExecutorConfigs::get_cached();
-
-    for &base_agent in profiles.executors.keys() {
-        let profile_id = ExecutorProfileId::new(base_agent);
-        if let Some(coding_agent) = profiles.get_coding_agent(&profile_id) {
-            let is_available = coding_agent.check_availability().await;
-            if is_available {
-                tracing::info!("Detected available executor: {}", base_agent);
-                return Ok(profile_id);
-            }
-        }
-    }
-
-    let fallback_base_agent = profiles
-        .executors
-        .keys()
-        .next()
-        .copied()
-        .unwrap_or(BaseCodingAgent::ClaudeCode);
-    let fallback = ExecutorProfileId::new(fallback_base_agent);
-    tracing::info!(
-        "No executors detected, using fallback: {}",
-        fallback.executor
-    );
-    Ok(fallback)
 }
