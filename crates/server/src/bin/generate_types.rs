@@ -140,7 +140,7 @@ fn write_schema<T: JsonSchema>(
 
     // Convert to JSON value to manipulate it
     let mut schema_value: serde_json::Value = serde_json::to_value(&schema)?;
-    
+
     // Remove the title from root schema to prevent RJSF from creating an outer field container
     if let Some(obj) = schema_value.as_object_mut() {
         obj.remove("title");
