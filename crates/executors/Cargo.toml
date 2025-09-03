@@ -8,7 +8,7 @@ utils = { path = "../utils" }
 tokio = { workspace = true }
 tokio-util = { version = "0.7", features = ["io"] }
 bytes = "1.0"
-serde = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tracing = { workspace = true }
 toml = "0.8"
