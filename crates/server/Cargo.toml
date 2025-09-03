@@ -47,7 +47,6 @@ mime_guess = "2.0"
 rust-embed = "8.2"
 octocrab = "0.44"
 dirs = "5.0"
-strum = "0.27.2"
 
 [dev-dependencies]
 tempfile = "3.8"

@@ -42,7 +42,10 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
   const { profiles, config } = useUserSystem();
 
   const [profile, setProfile] = useState<ExecutorProfileId>(
-    config?.executor_profile || { executor: BaseCodingAgent.CLAUDE_CODE, variant: null }
+    config?.executor_profile || {
+      executor: BaseCodingAgent.CLAUDE_CODE,
+      variant: null,
+    }
   );
   const [editorType, setEditorType] = useState<EditorType>(EditorType.VS_CODE);
   const [customCommand, setCustomCommand] = useState<string>('');
@@ -63,7 +66,7 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
     (editorType === EditorType.CUSTOM && customCommand.trim() !== '');
 
   return (
-    <Dialog open={open} onOpenChange={() => { }}>
+    <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-[600px] space-y-4">
         <DialogHeader>
           <div className="flex items-center gap-3">
