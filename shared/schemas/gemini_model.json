@@ -1,0 +1,10 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GeminiModel",
+  "description": "Model variant of Gemini to use",
+  "type": "string",
+  "enum": [
+    "default",
+    "flash"
+  ]
+}

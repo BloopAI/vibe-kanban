@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CmdOverrides",
+  "type": "object",
+  "properties": {
+    "additional_params": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      }
+    },
+    "base_command_override": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

@@ -34,6 +34,7 @@ import { useTheme } from '@/components/theme-provider';
 import { useUserSystem } from '@/components/config-provider';
 import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
+import { ExecutorConfigForm } from '@/components/ExecutorConfigForm';
 import { profilesApi } from '@/lib/api';
 
 export function Settings() {
@@ -60,6 +61,11 @@ export function Settings() {
   const [profilesSaving, setProfilesSaving] = useState(false);
   const [profilesSuccess, setProfilesSuccess] = useState(false);
 
+  // Form-based editor state
+  const [useFormEditor, setUseFormEditor] = useState(false);
+  const [selectedExecutorType, setSelectedExecutorType] = useState<string>('AMP');
+  const [parsedProfiles, setParsedProfiles] = useState<any>(null);
+
   // Load profiles content on mount
   useEffect(() => {
     const loadProfiles = async () => {
@@ -68,6 +74,15 @@ export function Settings() {
         const result = await profilesApi.load();
         setProfilesContent(result.content);
         setProfilesPath(result.path);
+        
+        // Try to parse the JSON for form editor
+        try {
+          const parsed = JSON.parse(result.content);
+          setParsedProfiles(parsed);
+        } catch (parseErr) {
+          console.warn('Failed to parse profiles JSON:', parseErr);
+          setParsedProfiles(null);
+        }
       } catch (err) {
         console.error('Failed to load profiles:', err);
         setProfilesError('Failed to load profiles');
@@ -115,16 +130,40 @@ export function Settings() {
     setProfilesSuccess(false);
 
     try {
-      await profilesApi.save(profilesContent);
+      const contentToSave = useFormEditor && parsedProfiles 
+        ? JSON.stringify(parsedProfiles, null, 2)
+        : profilesContent;
+      
+      await profilesApi.save(contentToSave);
       // Reload the system to get the updated profiles
       await reloadSystem();
       setProfilesSuccess(true);
       setTimeout(() => setProfilesSuccess(false), 3000);
+      
+      // Update the raw content if using form editor
+      if (useFormEditor && parsedProfiles) {
+        setProfilesContent(contentToSave);
+      }
     } catch (err: any) {
       setProfilesError(err.message || 'Failed to save profiles');
     } finally {
       setProfilesSaving(false);
     }
+  };
+
+  const handleExecutorConfigSubmit = (executorType: string, formData: any) => {
+    if (!parsedProfiles || !parsedProfiles.executors) return;
+
+    // Update the parsed profiles with the new config
+    const updatedProfiles = {
+      ...parsedProfiles,
+      executors: {
+        ...parsedProfiles.executors,
+        [executorType]: formData
+      }
+    };
+    
+    setParsedProfiles(updatedProfiles);
   };
 
   const handleSave = async () => {
@@ -699,23 +738,70 @@ export function Settings() {
               )}
 
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="profiles-editor">
-                    Profiles Configuration
-                  </Label>
-                  <JSONEditor
-                    id="profiles-editor"
-                    placeholder={
-                      profilesLoading
-                        ? 'Loading profiles...'
-                        : '{\n  "profiles": [\n    {\n      "label": "my-custom-profile",\n      "agent": "ClaudeCode",\n      "command": {...}\n    }\n  ]\n}'
-                    }
-                    value={profilesLoading ? 'Loading...' : profilesContent}
-                    onChange={handleProfilesChange}
-                    disabled={profilesLoading}
-                    minHeight={300}
+                {/* Editor type toggle */}
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="use-form-editor"
+                    checked={useFormEditor}
+                    onCheckedChange={(checked) => setUseFormEditor(!!checked)}
+                    disabled={profilesLoading || !parsedProfiles}
                   />
+                  <Label htmlFor="use-form-editor">
+                    Use visual form editor
+                  </Label>
                 </div>
+
+                {useFormEditor && parsedProfiles && parsedProfiles.executors ? (
+                  // Form-based editor
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="executor-type">Executor Type</Label>
+                      <Select
+                        value={selectedExecutorType}
+                        onValueChange={setSelectedExecutorType}
+                      >
+                        <SelectTrigger id="executor-type">
+                          <SelectValue placeholder="Select executor type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.keys(parsedProfiles.executors).map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <ExecutorConfigForm
+                      executor={selectedExecutorType as any}
+                      value={parsedProfiles.executors[selectedExecutorType] || {}}
+                      onSubmit={(formData) => 
+                        handleExecutorConfigSubmit(selectedExecutorType, formData)
+                      }
+                      disabled={profilesSaving}
+                    />
+                  </div>
+                ) : (
+                  // JSON editor (existing)
+                  <div className="space-y-2">
+                    <Label htmlFor="profiles-editor">
+                      Profiles Configuration
+                    </Label>
+                    <JSONEditor
+                      id="profiles-editor"
+                      placeholder={
+                        profilesLoading
+                          ? 'Loading profiles...'
+                          : '{\n  "executors": {\n    "amp": {\n      "append_prompt": null,\n      "dangerously_allow_all": null\n    }\n  }\n}'
+                      }
+                      value={profilesLoading ? 'Loading...' : profilesContent}
+                      onChange={handleProfilesChange}
+                      disabled={profilesLoading}
+                      minHeight={300}
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   {!profilesError && profilesPath && (
@@ -725,8 +811,10 @@ export function Settings() {
                     </p>
                   )}
                   <p className="text-sm text-muted-foreground">
-                    Edit coding agent profiles. Each profile needs a unique
-                    label, agent type, and command configuration.
+                    {useFormEditor 
+                      ? 'Use the form above to configure executor settings visually, or switch back to JSON mode for advanced editing.'
+                      : 'Edit coding agent profiles. Each profile needs a unique label, agent type, and command configuration. Enable "visual form editor" for a better experience.'
+                    }
                   </p>
                 </div>
 

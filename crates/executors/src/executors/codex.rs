@@ -8,6 +8,7 @@ use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use futures::StreamExt;
 use regex::Regex;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strum_macros::AsRefStr;
 use tokio::{io::AsyncWriteExt, process::Command};
@@ -29,7 +30,7 @@ use crate::{
 };
 
 /// Sandbox policy modes for Codex
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, AsRefStr)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum SandboxMode {
@@ -202,7 +203,7 @@ impl SessionHandler {
 }
 
 /// An executor that uses Codex CLI to process tasks
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct Codex {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,

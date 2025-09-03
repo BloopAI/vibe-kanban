@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Opencode",
+  "description": "An executor that uses OpenCode to process tasks",
+  "type": "object",
+  "properties": {
+    "additional_params": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      }
+    },
+    "agent": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "append_prompt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "base_command_override": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "model": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

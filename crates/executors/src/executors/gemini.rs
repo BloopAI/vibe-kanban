@@ -7,6 +7,7 @@ use std::{
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use futures::{StreamExt, stream::BoxStream};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::{
     fs::{self, OpenOptions},
@@ -27,7 +28,7 @@ use crate::{
 };
 
 /// Model variant of Gemini to use
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum GeminiModel {
     Default, // no --model flag
@@ -51,7 +52,7 @@ impl GeminiModel {
 }
 
 /// An executor that uses Gemini to process tasks
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct Gemini {
     pub model: GeminiModel,
     #[serde(default, skip_serializing_if = "Option::is_none")]

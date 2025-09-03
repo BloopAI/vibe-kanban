@@ -16,6 +16,7 @@ tracing-subscriber = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 ts-rs = { workspace = true, features = ["serde-json-impl"]}
+schemars = { workspace = true }
 dirs = "5.0"
 xdg = "3.0"
 async-trait = "0.1"

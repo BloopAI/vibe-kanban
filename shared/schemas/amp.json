@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Amp",
+  "description": "An executor that uses Amp to process tasks",
+  "type": "object",
+  "properties": {
+    "additional_params": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      }
+    },
+    "append_prompt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "base_command_override": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "dangerously_allow_all": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  }
+}

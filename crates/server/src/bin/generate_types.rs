@@ -1,5 +1,6 @@
 use std::{env, fs, path::Path};
 
+use schemars::{schema_for, JsonSchema};
 use ts_rs::TS;
 
 fn generate_types_content() -> String {
@@ -125,6 +126,39 @@ fn generate_types_content() -> String {
     format!("{HEADER}\n\n{body}")
 }
 
+fn write_schema<T: JsonSchema>(name: &str, schemas_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let schema = schema_for!(T);
+    let schema_json = serde_json::to_string_pretty(&schema)?;
+    let file_path = schemas_dir.join(format!("{}.json", name));
+    fs::write(file_path, schema_json)?;
+    Ok(())
+}
+
+fn generate_schemas() -> Result<(), Box<dyn std::error::Error>> {
+    // Create schemas directory
+    let schemas_dir = Path::new("shared/schemas");
+    fs::create_dir_all(&schemas_dir)?;
+
+    println!("Generating JSON schemas…");
+
+    // Generate schemas for all executor types
+    write_schema::<executors::executors::amp::Amp>("amp", &schemas_dir)?;
+    write_schema::<executors::executors::claude::ClaudeCode>("claude_code", &schemas_dir)?;
+    write_schema::<executors::executors::gemini::Gemini>("gemini", &schemas_dir)?;
+    write_schema::<executors::executors::codex::Codex>("codex", &schemas_dir)?;
+    write_schema::<executors::executors::cursor::Cursor>("cursor", &schemas_dir)?;
+    write_schema::<executors::executors::opencode::Opencode>("opencode", &schemas_dir)?;
+    write_schema::<executors::executors::qwen::QwenCode>("qwen_code", &schemas_dir)?;
+    
+    // Generate schemas for supporting types
+    write_schema::<executors::command::CmdOverrides>("cmd_overrides", &schemas_dir)?;
+    write_schema::<executors::executors::gemini::GeminiModel>("gemini_model", &schemas_dir)?;
+    write_schema::<executors::executors::codex::SandboxMode>("sandbox_mode", &schemas_dir)?;
+
+    println!("✅ JSON schemas generated in shared/schemas/");
+    Ok(())
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let check_mode = args.iter().any(|arg| arg == "--check");
@@ -137,6 +171,12 @@ fn main() {
 
     let generated = generate_types_content();
     let types_path = shared_path.join("types.ts");
+
+    // Generate JSON schemas 
+    if let Err(e) = generate_schemas() {
+        eprintln!("❌ Failed to generate schemas: {}", e);
+        std::process::exit(1);
+    }
 
     if check_mode {
         // Read the current file

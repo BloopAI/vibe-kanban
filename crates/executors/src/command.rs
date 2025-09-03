@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
+use schemars::JsonSchema;
 use ts_rs::TS;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, Default)]
 pub struct CmdOverrides {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub base_command_override: Option<String>,
@@ -9,7 +10,7 @@ pub struct CmdOverrides {
     pub additional_params: Option<Vec<String>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct CommandBuilder {
     /// Base executable command (e.g., "npx -y @anthropic-ai/claude-code@latest")
     pub base: String,

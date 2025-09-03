@@ -11,6 +11,7 @@ use fork_stream::StreamExt as _;
 use futures::{StreamExt, future::ready, stream::BoxStream};
 use lazy_static::lazy_static;
 use regex::Regex;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
@@ -30,7 +31,7 @@ use crate::{
 };
 
 /// An executor that uses OpenCode to process tasks
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct Opencode {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,
@@ -383,7 +384,7 @@ pub enum Tool {
 }
 
 /// TODO information structure
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct TodoInfo {
     pub content: String,
     pub status: String,
@@ -392,7 +393,7 @@ pub struct TodoInfo {
 }
 
 /// Web fetch format options
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum WebFetchFormat {
     Text,

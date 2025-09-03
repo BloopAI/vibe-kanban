@@ -3,6 +3,7 @@ use std::{path::Path, process::Stdio, sync::Arc};
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use futures::StreamExt;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
@@ -33,7 +34,7 @@ fn base_command(claude_code_router: bool) -> &'static str {
 }
 
 /// An executor that uses Claude CLI to process tasks
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct ClaudeCode {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub claude_code_router: Option<bool>,

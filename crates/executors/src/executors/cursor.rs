@@ -4,6 +4,7 @@ use std::{path::Path, process::Stdio, sync::Arc, time::Duration};
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use futures::StreamExt;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
@@ -28,7 +29,7 @@ use crate::{
 };
 
 /// Executor for running Cursor CLI and normalizing its JSONL stream
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct Cursor {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,

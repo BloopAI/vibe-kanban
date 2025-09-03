@@ -3,6 +3,7 @@ use std::{path::Path, process::Stdio, sync::Arc};
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use serde::{Deserialize, Serialize};
+use schemars::JsonSchema;
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
 use utils::{msg_store::MsgStore, shell::get_shell_command};
@@ -17,7 +18,7 @@ use crate::{
 };
 
 /// An executor that uses Amp to process tasks
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct Amp {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,

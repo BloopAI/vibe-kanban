@@ -2,6 +2,7 @@ use std::{path::Path, process::Stdio, sync::Arc};
 
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
@@ -14,7 +15,7 @@ use crate::{
 };
 
 /// An executor that uses QwenCode CLI to process tasks
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct QwenCode {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub append_prompt: Option<String>,
