@@ -4,6 +4,8 @@
   "type": "object",
   "properties": {
     "additional_params": {
+      "title": "Additional Parameters",
+      "description": "Additional parameters to append to the base command",
       "type": [
         "array",
         "null"
@@ -16,12 +18,16 @@
       "$ref": "#/$defs/AppendPrompt"
     },
     "base_command_override": {
+      "title": "Base Command Override",
+      "description": "Override the base command with a custom command",
       "type": [
         "string",
         "null"
       ]
     },
     "dangerously_allow_all": {
+      "title": "Dangerously Allow All",
+      "description": "Allow all commands to be executed, even if they are not safe.",
       "type": [
         "boolean",
         "null"

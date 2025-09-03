@@ -21,6 +21,10 @@ use crate::{
 pub struct Amp {
     pub append_prompt: AppendPrompt,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(
+        title = "Dangerously Allow All",
+        description = "Allow all commands to be executed, even if they are not safe."
+    )]
     pub dangerously_allow_all: Option<bool>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
