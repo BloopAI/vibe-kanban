@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use axum::{
     BoxError, Extension, Json, Router,
     extract::{Query, State},
@@ -15,7 +17,7 @@ use db::models::{
 use deployment::Deployment;
 use futures_util::TryStreamExt;
 use serde::Deserialize;
-use services::services::{container::ContainerService, events::task_patch};
+use services::services::{container::{ContainerService, WorktreeCleanupData, cleanup_worktrees_direct}, events::task_patch};
 use sqlx::Error as SqlxError;
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -220,7 +222,10 @@ pub async fn delete_task(
     // 2. Gather task attempts data needed for background cleanup
     let attempts = TaskAttempt::fetch_all(&deployment.db().pool, Some(task.id))
         .await
-        .unwrap_or_default();
+        .map_err(|e| {
+            tracing::error!("Failed to fetch task attempts for task {}: {}", task.id, e);
+            ApiError::TaskAttempt(e)
+        })?;
 
     // 3. Stop execution processes (fast operation)
     deployment
@@ -235,31 +240,42 @@ pub async fn delete_task(
             );
         });
 
-    // 4. Delete task from database (FK CASCADE will handle task_attempts)
+    // 4. Gather cleanup data before deletion (Oracle's recommendation: after stopping processes)
+    let project = task.parent_project(&deployment.db().pool)
+        .await?
+        .ok_or_else(|| ApiError::Database(SqlxError::RowNotFound))?;
+    
+    let cleanup_data: Vec<WorktreeCleanupData> = attempts
+        .iter()
+        .filter_map(|attempt| {
+            attempt.container_ref.as_ref().map(|worktree_path| WorktreeCleanupData {
+                attempt_id: attempt.id,
+                worktree_path: PathBuf::from(worktree_path),
+                git_repo_path: Some(project.git_repo_path.clone()),
+            })
+        })
+        .collect();
+
+    // 5. Delete task from database (FK CASCADE will handle task_attempts)
     let rows_affected = Task::delete(&deployment.db().pool, task.id).await?;
 
     if rows_affected == 0 {
         return Err(ApiError::Database(SqlxError::RowNotFound));
     }
 
-    // 5. Emit SSE event immediately so UI updates
+    // 6. Emit SSE event immediately so UI updates
     let patch = task_patch::remove(task.id);
     deployment.events().msg_store().push_patch(patch);
 
-    // 6. Spawn background worktree cleanup task
-    let deployment_clone = deployment.clone();
+    // 7. Spawn background worktree cleanup task
     let task_id = task.id;
     tokio::spawn(async move {
         let span = tracing::info_span!("background_worktree_cleanup", task_id = %task_id);
         let _enter = span.enter();
 
-        tracing::info!("Starting background cleanup for task {}", task_id);
+        tracing::info!("Starting background cleanup for task {} ({} worktrees)", task_id, cleanup_data.len());
 
-        if let Err(e) = deployment_clone
-            .container()
-            .cleanup_worktrees(&attempts)
-            .await
-        {
+        if let Err(e) = cleanup_worktrees_direct(&cleanup_data).await {
             tracing::error!(
                 "Background worktree cleanup failed for task {}: {}",
                 task_id,
