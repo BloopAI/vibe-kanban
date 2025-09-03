@@ -3,21 +3,21 @@ import { Settings, Cpu, Server } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const settingsNavigation = [
-  { 
-    path: 'general', 
-    label: 'General', 
+  {
+    path: 'general',
+    label: 'General',
     icon: Settings,
     description: 'Theme, notifications, and preferences'
   },
-  { 
-    path: 'executors', 
-    label: 'Executors', 
+  {
+    path: 'executors',
+    label: 'Executors',
     icon: Cpu,
     description: 'Coding agent configurations'
   },
-  { 
-    path: 'mcp', 
-    label: 'MCP Servers', 
+  {
+    path: 'mcp',
+    label: 'MCP Servers',
     icon: Server,
     description: 'Model Context Protocol servers'
   },
@@ -26,9 +26,9 @@ const settingsNavigation = [
 export function SettingsLayout() {
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex gap-8">
+      <div className="flex flex-col lg:flex-row gap-8">
         {/* Sidebar Navigation */}
-        <aside className="w-64 shrink-0">
+        <aside className="w-full lg:w-64 lg:shrink-0 lg:sticky lg:top-8 lg:h-fit lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
           <div className="space-y-1">
             <h2 className="px-3 py-2 text-lg font-semibold">Settings</h2>
             <nav className="space-y-1">
@@ -41,21 +41,18 @@ export function SettingsLayout() {
                     end
                     className={({ isActive }) =>
                       cn(
-                        'flex items-start gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-                        'hover:bg-accent hover:text-accent-foreground',
+                        'flex items-start gap-3 px-3 py-2 text-sm transition-colors',
+                        'hover:text-accent-foreground',
                         isActive
-                          ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'text-muted-foreground'
+                          ? 'text-primary-foreground'
+                          : 'text-secondary-foreground'
                       )
                     }
                   >
                     <Icon className="h-4 w-4 mt-0.5 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="font-medium">{item.label}</div>
-                      <div className={cn(
-                        "text-xs mt-0.5",
-                        "text-muted-foreground"
-                      )}>
+                      <div>
                         {item.description}
                       </div>
                     </div>

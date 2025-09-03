@@ -11,15 +11,13 @@ export const FieldTemplate = (props: FieldTemplateProps) => {
     schema,
   } = props;
 
-  console.log(props)
-
   if (schema.type === 'object') {
     return children;
   }
 
   // Two-column layout for other field types
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 py-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-6">
       {/* Left column: Label and description */}
       <div className="space-y-2">
         {label && (
