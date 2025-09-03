@@ -3,6 +3,10 @@ use std::{collections::HashMap, sync::Arc};
 use async_trait::async_trait;
 use db::DBService;
 use deployment::{Deployment, DeploymentError};
+use executors::{
+    executors::{CodingAgent, StandardCodingAgentExecutor},
+    profile::{ExecutorProfileConfigs, ExecutorProfileId},
+};
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
     auth::AuthService,
@@ -14,6 +18,7 @@ use services::services::{
     image::ImageService,
     sentry::SentryService,
 };
+use strum::VariantNames;
 use tokio::sync::RwLock;
 use utils::{assets::config_path, msg_store::MsgStore};
 use uuid::Uuid;
@@ -43,6 +48,17 @@ pub struct LocalDeployment {
 impl Deployment for LocalDeployment {
     async fn new() -> Result<Self, DeploymentError> {
         let mut raw_config = load_config_from_file(&config_path()).await;
+
+        // Set smart defaults for new users (before they go through onboarding)
+        if !raw_config.onboarding_acknowledged {
+            if let Ok(recommended_executor) = get_recommended_executor_profile().await {
+                raw_config.executor_profile = recommended_executor;
+                tracing::info!(
+                    "Set smart default executor for new user: {}",
+                    raw_config.executor_profile.executor
+                );
+            }
+        }
 
         // Check if app version has changed and set release notes flag
         {
@@ -177,4 +193,28 @@ impl Deployment for LocalDeployment {
     fn events(&self) -> &EventService {
         &self.events
     }
+}
+
+/// Get the recommended executor profile based on availability for new users
+async fn get_recommended_executor_profile() -> Result<ExecutorProfileId, DeploymentError> {
+    let profiles = ExecutorProfileConfigs::get_cached();
+
+    for variant_name in CodingAgent::VARIANTS {
+        if let Some(profile) = profiles.get_executor_profile(variant_name) {
+            if let Some(config) = profile.get_default() {
+                let is_available = config.agent.check_availability().await;
+                if is_available {
+                    tracing::info!("Detected available executor: {}", variant_name);
+                    return Ok(ExecutorProfileId::new(variant_name.to_string()));
+                }
+            }
+        }
+    }
+
+    let fallback = ExecutorProfileId::new(CodingAgent::VARIANTS[0].to_string());
+    tracing::info!(
+        "No executors detected, using fallback: {}",
+        fallback.executor
+    );
+    Ok(fallback)
 }

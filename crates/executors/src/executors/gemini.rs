@@ -211,6 +211,12 @@ impl StandardCodingAgentExecutor for Gemini {
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
         dirs::home_dir().map(|home| home.join(".gemini").join("settings.json"))
     }
+
+    async fn check_availability(&self) -> bool {
+        dirs::home_dir()
+            .map(|home| home.join(".gemini").join("settings.json").exists())
+            .unwrap_or(false)
+    }
 }
 
 impl Gemini {

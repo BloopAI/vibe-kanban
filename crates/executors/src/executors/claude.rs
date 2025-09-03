@@ -170,6 +170,12 @@ impl StandardCodingAgentExecutor for ClaudeCode {
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
         dirs::home_dir().map(|home| home.join(".claude.json"))
     }
+
+    async fn check_availability(&self) -> bool {
+        dirs::home_dir()
+            .map(|home| home.join(".claude.json").exists())
+            .unwrap_or(false)
+    }
 }
 
 fn create_watchkill_script(command: &str) -> String {
