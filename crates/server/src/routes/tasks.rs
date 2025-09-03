@@ -209,7 +209,11 @@ pub async fn delete_task(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
     // 1. Validate no running execution processes
-    if deployment.container().has_running_processes(task.id).await? {
+    if deployment
+        .container()
+        .has_running_processes(task.id)
+        .await?
+    {
         return Err(ApiError::Conflict("Task has running execution processes. Please wait for them to complete or stop them first.".to_string()));
     }
 
@@ -248,11 +252,19 @@ pub async fn delete_task(
     tokio::spawn(async move {
         let span = tracing::info_span!("background_worktree_cleanup", task_id = %task_id);
         let _enter = span.enter();
-        
+
         tracing::info!("Starting background cleanup for task {}", task_id);
-        
-        if let Err(e) = deployment_clone.container().cleanup_worktrees(&attempts).await {
-            tracing::error!("Background worktree cleanup failed for task {}: {}", task_id, e);
+
+        if let Err(e) = deployment_clone
+            .container()
+            .cleanup_worktrees(&attempts)
+            .await
+        {
+            tracing::error!(
+                "Background worktree cleanup failed for task {}: {}",
+                task_id,
+                e
+            );
         } else {
             tracing::info!("Background cleanup completed for task {}", task_id);
         }

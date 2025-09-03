@@ -87,9 +87,11 @@ pub trait ContainerService {
     /// Check if a task has any running execution processes
     async fn has_running_processes(&self, task_id: Uuid) -> Result<bool, ContainerError> {
         let attempts = TaskAttempt::fetch_all(&self.db().pool, Some(task_id)).await?;
-        
+
         for attempt in attempts {
-            if let Ok(processes) = ExecutionProcess::find_by_task_attempt_id(&self.db().pool, attempt.id).await {
+            if let Ok(processes) =
+                ExecutionProcess::find_by_task_attempt_id(&self.db().pool, attempt.id).await
+            {
                 for process in processes {
                     if process.status == ExecutionProcessStatus::Running {
                         return Ok(true);
@@ -97,12 +99,15 @@ pub trait ContainerService {
                 }
             }
         }
-        
+
         Ok(false)
     }
 
-    /// Stop execution processes for task attempts without cleanup 
-    async fn stop_task_processes(&self, task_attempts: &[TaskAttempt]) -> Result<(), ContainerError> {
+    /// Stop execution processes for task attempts without cleanup
+    async fn stop_task_processes(
+        &self,
+        task_attempts: &[TaskAttempt],
+    ) -> Result<(), ContainerError> {
         for attempt in task_attempts {
             self.try_stop(attempt).await;
         }
