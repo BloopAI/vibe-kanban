@@ -63,7 +63,8 @@ export function Settings() {
 
   // Form-based editor state
   const [useFormEditor, setUseFormEditor] = useState(false);
-  const [selectedExecutorType, setSelectedExecutorType] = useState<string>('AMP');
+  const [selectedExecutorType, setSelectedExecutorType] =
+    useState<string>('AMP');
   const [parsedProfiles, setParsedProfiles] = useState<any>(null);
 
   // Load profiles content on mount
@@ -74,7 +75,7 @@ export function Settings() {
         const result = await profilesApi.load();
         setProfilesContent(result.content);
         setProfilesPath(result.path);
-        
+
         // Try to parse the JSON for form editor
         try {
           const parsed = JSON.parse(result.content);
@@ -130,16 +131,17 @@ export function Settings() {
     setProfilesSuccess(false);
 
     try {
-      const contentToSave = useFormEditor && parsedProfiles 
-        ? JSON.stringify(parsedProfiles, null, 2)
-        : profilesContent;
-      
+      const contentToSave =
+        useFormEditor && parsedProfiles
+          ? JSON.stringify(parsedProfiles, null, 2)
+          : profilesContent;
+
       await profilesApi.save(contentToSave);
       // Reload the system to get the updated profiles
       await reloadSystem();
       setProfilesSuccess(true);
       setTimeout(() => setProfilesSuccess(false), 3000);
-      
+
       // Update the raw content if using form editor
       if (useFormEditor && parsedProfiles) {
         setProfilesContent(contentToSave);
@@ -159,10 +161,10 @@ export function Settings() {
       ...parsedProfiles,
       executors: {
         ...parsedProfiles.executors,
-        [executorType]: formData
-      }
+        [executorType]: formData,
+      },
     };
-    
+
     setParsedProfiles(updatedProfiles);
   };
 
@@ -775,9 +777,14 @@ export function Settings() {
 
                     <ExecutorConfigForm
                       executor={selectedExecutorType as any}
-                      value={parsedProfiles.executors[selectedExecutorType] || {}}
-                      onSubmit={(formData) => 
-                        handleExecutorConfigSubmit(selectedExecutorType, formData)
+                      value={
+                        parsedProfiles.executors[selectedExecutorType] || {}
+                      }
+                      onSubmit={(formData) =>
+                        handleExecutorConfigSubmit(
+                          selectedExecutorType,
+                          formData
+                        )
                       }
                       disabled={profilesSaving}
                     />
@@ -811,10 +818,9 @@ export function Settings() {
                     </p>
                   )}
                   <p className="text-sm text-muted-foreground">
-                    {useFormEditor 
+                    {useFormEditor
                       ? 'Use the form above to configure executor settings visually, or switch back to JSON mode for advanced editing.'
-                      : 'Edit coding agent profiles. Each profile needs a unique label, agent type, and command configuration. Enable "visual form editor" for a better experience.'
-                    }
+                      : 'Edit coding agent profiles. Each profile needs a unique label, agent type, and command configuration. Enable "visual form editor" for a better experience.'}
                   </p>
                 </div>
 

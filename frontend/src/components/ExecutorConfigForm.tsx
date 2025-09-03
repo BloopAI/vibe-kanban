@@ -25,13 +25,13 @@ import cursorSchema from '../../../shared/schemas/cursor.json';
 import opencodeSchema from '../../../shared/schemas/opencode.json';
 import qwenCodeSchema from '../../../shared/schemas/qwen_code.json';
 
-type ExecutorType = 
+type ExecutorType =
   | 'AMP'
-  | 'CLAUDE_CODE' 
-  | 'GEMINI' 
-  | 'CODEX' 
-  | 'CURSOR' 
-  | 'OPENCODE' 
+  | 'CLAUDE_CODE'
+  | 'GEMINI'
+  | 'CODEX'
+  | 'CURSOR'
+  | 'OPENCODE'
   | 'QWEN_CODE';
 
 interface ExecutorConfigFormProps {
@@ -55,7 +55,7 @@ const schemas: Record<ExecutorType, RJSFSchema> = {
 // Custom field templates to match shadcn/ui design
 const CustomFieldTemplate = (props: any) => {
   const { id, label, required, description, errors, children, hidden } = props;
-  
+
   if (hidden) {
     return children;
   }
@@ -82,7 +82,16 @@ const CustomFieldTemplate = (props: any) => {
 };
 
 const CustomTextWidget = (props: any) => {
-  const { id, value, onChange, onBlur, onFocus, disabled, readonly, placeholder } = props;
+  const {
+    id,
+    value,
+    onChange,
+    onBlur,
+    onFocus,
+    disabled,
+    readonly,
+    placeholder,
+  } = props;
   return (
     <Input
       id={id}
@@ -111,7 +120,7 @@ const CustomCheckboxWidget = (props: any) => {
 const CustomSelectWidget = (props: any) => {
   const { id, value, onChange, disabled, readonly, options } = props;
   const { enumOptions } = options;
-  
+
   return (
     <Select
       value={value || ''}
@@ -145,7 +154,9 @@ const customTemplates = {
     return (
       <div className="space-y-4">
         {title && <h3 className="text-lg font-semibold">{title}</h3>}
-        {description && <p className="text-sm text-muted-foreground mb-4">{description}</p>}
+        {description && (
+          <p className="text-sm text-muted-foreground mb-4">{description}</p>
+        )}
         {properties.map((element: any) => element.content)}
       </div>
     );
@@ -160,7 +171,9 @@ export function ExecutorConfigForm({
   disabled = false,
 }: ExecutorConfigFormProps) {
   const [formData, setFormData] = useState(value || {});
-  const [validationErrors, setValidationErrors] = useState<RJSFValidationError[]>([]);
+  const [validationErrors, setValidationErrors] = useState<
+    RJSFValidationError[]
+  >([]);
 
   const schema = useMemo(() => {
     return schemas[executor];
@@ -215,7 +228,10 @@ export function ExecutorConfigForm({
             showErrorList={false}
           >
             <div className="flex justify-end pt-4">
-              <Button type="submit" disabled={disabled || validationErrors.length > 0}>
+              <Button
+                type="submit"
+                disabled={disabled || validationErrors.length > 0}
+              >
                 Save Configuration
               </Button>
             </div>
