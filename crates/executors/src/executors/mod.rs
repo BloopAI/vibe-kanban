@@ -173,7 +173,8 @@ pub trait StandardCodingAgentExecutor {
 #[serde(transparent)]
 #[schemars(
     title = "Append Prompt",
-    description = "Extra text appended to the prompt"
+    description = "Extra text appended to the prompt",
+    extend("format" = "textarea")
 )]
 pub struct AppendPrompt(pub Option<String>);
 

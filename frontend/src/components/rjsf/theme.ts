@@ -7,6 +7,7 @@ export const customWidgets: RegistryWidgetsType = {
   SelectWidget,
   CheckboxWidget,
   TextareaWidget,
+  textarea: TextareaWidget,
 };
 
 export const customTemplates = {

@@ -110,16 +110,7 @@ export function ExecutorConfigForm({
             widgets={shadcnTheme.widgets}
             templates={shadcnTheme.templates}
           >
-            {onSubmit && (
-              <div className="flex justify-end pt-4">
-                <Button
-                  type="submit"
-                  disabled={disabled || validationErrors.length > 0}
-                >
-                  Save Configuration
-                </Button>
-              </div>
-            )}
+            <></>
           </Form>
         </CardContent>
       </Card>

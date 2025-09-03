@@ -19,7 +19,8 @@
       "type": [
         "string",
         "null"
-      ]
+      ],
+      "format": "textarea"
     },
     "yolo": {
       "type": [

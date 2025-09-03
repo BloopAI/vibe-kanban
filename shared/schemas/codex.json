@@ -11,7 +11,8 @@
       "type": [
         "string",
         "null"
-      ]
+      ],
+      "format": "textarea"
     },
     "sandbox": {
       "description": "Sandbox policy modes for Codex",

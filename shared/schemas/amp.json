@@ -1,9 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "required": [
-    "append_prompt"
-  ],
-  "type": "object",
   "properties": {
     "append_prompt": {
       "title": "Append Prompt",
@@ -11,7 +7,9 @@
       "type": [
         "string",
         "null"
-      ]
+      ],
+      "format": "textarea",
+      "default": null
     },
     "dangerously_allow_all": {
       "title": "Dangerously Allow All",
@@ -40,5 +38,6 @@
         "type": "string"
       }
     }
-  }
+  },
+  "type": "object"
 }
