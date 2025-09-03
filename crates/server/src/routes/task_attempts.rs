@@ -297,11 +297,11 @@ pub async fn merge_task_attempt(
     let mut commit_message = format!("{} (vibe-kanban {})", ctx.task.title, first_uuid_section);
 
     // Add description on next line if it exists
-    if let Some(description) = &ctx.task.description {
-        if !description.trim().is_empty() {
-            commit_message.push_str("\n\n");
-            commit_message.push_str(description);
-        }
+    if let Some(description) = &ctx.task.description
+        && !description.trim().is_empty()
+    {
+        commit_message.push_str("\n\n");
+        commit_message.push_str(description);
     }
 
     // Get branch name from task attempt
@@ -716,15 +716,11 @@ pub async fn rebase_task_attempt(
         github_config.token(),
     )?;
 
-    if let Some(new_base_branch) = &effective_base_branch {
-        if new_base_branch != &ctx.task_attempt.base_branch {
-            TaskAttempt::update_base_branch(
-                &deployment.db().pool,
-                task_attempt.id,
-                new_base_branch,
-            )
+    if let Some(new_base_branch) = &effective_base_branch
+        && new_base_branch != &ctx.task_attempt.base_branch
+    {
+        TaskAttempt::update_base_branch(&deployment.db().pool, task_attempt.id, new_base_branch)
             .await?;
-        }
     }
 
     Ok(ResponseJson(ApiResponse::success(())))

@@ -108,25 +108,25 @@ pub async fn create_project(
         // For new repos, create directory and initialize git
 
         // Create directory if it doesn't exist
-        if !path.exists() {
-            if let Err(e) = std::fs::create_dir_all(&path) {
-                tracing::error!("Failed to create directory: {}", e);
-                return Ok(ResponseJson(ApiResponse::error(&format!(
-                    "Failed to create directory: {}",
-                    e
-                ))));
-            }
+        if !path.exists()
+            && let Err(e) = std::fs::create_dir_all(&path)
+        {
+            tracing::error!("Failed to create directory: {}", e);
+            return Ok(ResponseJson(ApiResponse::error(&format!(
+                "Failed to create directory: {}",
+                e
+            ))));
         }
 
         // Check if it's already a git repo, if not initialize it
-        if !path.join(".git").exists() {
-            if let Err(e) = deployment.git().initialize_repo_with_main_branch(&path) {
-                tracing::error!("Failed to initialize git repository: {}", e);
-                return Ok(ResponseJson(ApiResponse::error(&format!(
-                    "Failed to initialize git repository: {}",
-                    e
-                ))));
-            }
+        if !path.join(".git").exists()
+            && let Err(e) = deployment.git().initialize_repo_with_main_branch(&path)
+        {
+            tracing::error!("Failed to initialize git repository: {}", e);
+            return Ok(ResponseJson(ApiResponse::error(&format!(
+                "Failed to initialize git repository: {}",
+                e
+            ))));
         }
     }
 
