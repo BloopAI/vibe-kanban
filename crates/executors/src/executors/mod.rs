@@ -58,7 +58,7 @@ pub enum ExecutorError {
     strum(serialize_all = "SCREAMING_SNAKE_CASE"),
     ts(use_ts_enum),
     serde(rename_all = "SCREAMING_SNAKE_CASE"),
-    sqlx(type_name = "TEXT")
+    sqlx(type_name = "TEXT", rename_all = "SCREAMING_SNAKE_CASE")
 )]
 pub enum CodingAgent {
     ClaudeCode,

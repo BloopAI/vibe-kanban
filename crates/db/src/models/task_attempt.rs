@@ -384,7 +384,6 @@ impl TaskAttempt {
         task_id: Uuid,
     ) -> Result<Self, TaskAttemptError> {
         let attempt_id = Uuid::new_v4();
-        let executor = data.executor.to_string();
         // let prefixed_id = format!("vibe-kanban-{}", attempt_id);
         // Insert the record into the database
         Ok(sqlx::query_as!(
@@ -397,7 +396,7 @@ impl TaskAttempt {
             Option::<String>::None, // Container isn't known yet
             Option::<String>::None, // branch name isn't known yet
             data.base_branch,
-            executor,
+            data.executor,
             false, // worktree_deleted is false during creation
             Option::<DateTime<Utc>>::None // setup_completed_at is None during creation
         )
