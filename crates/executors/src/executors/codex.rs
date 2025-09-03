@@ -1,4 +1,8 @@
-use std::{path::PathBuf, process::Stdio, sync::Arc};
+use std::{
+    path::{Path, PathBuf},
+    process::Stdio,
+    sync::Arc,
+};
 
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
@@ -155,7 +159,7 @@ impl Codex {
 impl StandardCodingAgentExecutor for Codex {
     async fn spawn(
         &self,
-        current_dir: &PathBuf,
+        current_dir: &Path,
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
@@ -188,7 +192,7 @@ impl StandardCodingAgentExecutor for Codex {
 
     async fn spawn_follow_up(
         &self,
-        current_dir: &PathBuf,
+        current_dir: &Path,
         prompt: &str,
         session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
@@ -229,14 +233,14 @@ impl StandardCodingAgentExecutor for Codex {
         Ok(child)
     }
 
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &PathBuf) {
+    fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {
         let entry_index_provider = EntryIndexProvider::start_from(&msg_store);
 
         // Process stderr logs for session extraction only (errors come through JSONL)
         SessionHandler::start_session_id_extraction(msg_store.clone());
 
         // Process stdout logs (Codex's JSONL output)
-        let current_dir = current_dir.clone();
+        let current_dir = current_dir.to_path_buf();
         tokio::spawn(async move {
             let mut stream = msg_store.stdout_lines_stream();
             use std::collections::HashMap;
@@ -648,7 +652,7 @@ pub enum CodexFileChange {
 
 impl CodexJson {
     /// Convert to normalized entries
-    pub fn to_normalized_entries(&self, current_dir: &PathBuf) -> Option<Vec<NormalizedEntry>> {
+    pub fn to_normalized_entries(&self, current_dir: &Path) -> Option<Vec<NormalizedEntry>> {
         match self {
             CodexJson::SystemConfig { .. } => self.format_config_message().map(|content| {
                 vec![NormalizedEntry {

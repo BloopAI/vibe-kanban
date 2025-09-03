@@ -1,5 +1,5 @@
 use core::str;
-use std::{path::PathBuf, process::Stdio, sync::Arc, time::Duration};
+use std::{path::Path, process::Stdio, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
@@ -61,7 +61,7 @@ impl Cursor {
 impl StandardCodingAgentExecutor for Cursor {
     async fn spawn(
         &self,
-        current_dir: &PathBuf,
+        current_dir: &Path,
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
@@ -91,7 +91,7 @@ impl StandardCodingAgentExecutor for Cursor {
 
     async fn spawn_follow_up(
         &self,
-        current_dir: &PathBuf,
+        current_dir: &Path,
         prompt: &str,
         session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
@@ -122,11 +122,11 @@ impl StandardCodingAgentExecutor for Cursor {
         Ok(child)
     }
 
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &PathBuf) {
+    fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &Path) {
         let entry_index_provider = EntryIndexProvider::start_from(&msg_store);
 
         // Process Cursor stdout JSONL with typed serde models
-        let current_dir = worktree_path.clone();
+        let current_dir = worktree_path.to_path_buf();
         tokio::spawn(async move {
             let mut lines = msg_store.stdout_lines_stream();
 

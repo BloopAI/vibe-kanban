@@ -1,4 +1,9 @@
-use std::{fmt, path::PathBuf, process::Stdio, sync::Arc};
+use std::{
+    fmt,
+    path::{Path, PathBuf},
+    process::Stdio,
+    sync::Arc,
+};
 
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
@@ -58,7 +63,7 @@ impl Opencode {
 impl StandardCodingAgentExecutor for Opencode {
     async fn spawn(
         &self,
-        current_dir: &PathBuf,
+        current_dir: &Path,
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
@@ -90,7 +95,7 @@ impl StandardCodingAgentExecutor for Opencode {
 
     async fn spawn_follow_up(
         &self,
-        current_dir: &PathBuf,
+        current_dir: &Path,
         prompt: &str,
         session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
@@ -130,9 +135,8 @@ impl StandardCodingAgentExecutor for Opencode {
     /// 2. Error log recognition thread: read by line, identify error log lines, store them as error messages.
     /// 3. Main normalizer thread: read stderr by line, filter out log lines, send lines (with '\n' appended) to plain text normalizer,
     ///    then define predicate for split and create appropriate normalized entry (either assistant or tool call).
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &PathBuf) {
+    fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &Path) {
         let entry_index_counter = EntryIndexProvider::start_from(&msg_store);
-        let worktree_path = worktree_path.clone();
 
         let stderr_lines = msg_store
             .stderr_lines_stream()
@@ -169,7 +173,7 @@ impl StandardCodingAgentExecutor for Opencode {
         // Normalize agent logs
         tokio::spawn(Self::process_agent_logs(
             agent_logs,
-            worktree_path,
+            worktree_path.to_path_buf(),
             entry_index_counter,
             msg_store,
         ));
@@ -247,7 +251,7 @@ impl Opencode {
     }
 
     /// Create normalized entry from content
-    pub fn create_normalized_entry(content: String, worktree_path: &PathBuf) -> NormalizedEntry {
+    pub fn create_normalized_entry(content: String, worktree_path: &Path) -> NormalizedEntry {
         // Check if this is a tool call
         if let Some(tool_call) = ToolCall::parse(&content) {
             let tool_name = tool_call.tool.name();

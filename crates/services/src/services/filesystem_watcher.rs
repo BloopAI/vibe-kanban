@@ -5,7 +5,7 @@ use std::{
 };
 
 use futures::{
-    SinkExt, StreamExt,
+    SinkExt,
     channel::mpsc::{Receiver, channel},
 };
 use ignore::{
@@ -17,6 +17,12 @@ use notify_debouncer_full::{
     DebounceEventResult, DebouncedEvent, Debouncer, RecommendedCache, new_debouncer,
 };
 use thiserror::Error;
+
+pub type WatcherComponents = (
+    Debouncer<RecommendedWatcher, RecommendedCache>,
+    Receiver<DebounceEventResult>,
+    PathBuf,
+);
 
 #[derive(Debug, Error)]
 pub enum FilesystemWatcherError {
@@ -100,16 +106,7 @@ fn debounced_should_forward(event: &DebouncedEvent, gi: &Gitignore, canonical_ro
         .all(|path| path_allowed(path, gi, canonical_root))
 }
 
-pub fn async_watcher(
-    root: PathBuf,
-) -> Result<
-    (
-        Debouncer<RecommendedWatcher, RecommendedCache>,
-        Receiver<DebounceEventResult>,
-        PathBuf,
-    ),
-    FilesystemWatcherError,
-> {
+pub fn async_watcher(root: PathBuf) -> Result<WatcherComponents, FilesystemWatcherError> {
     let canonical_root = canonicalize_lossy(&root);
     let gi_set = Arc::new(build_gitignore_set(&canonical_root)?);
     let (mut tx, rx) = channel(64); // Increased capacity for error bursts
@@ -150,19 +147,4 @@ pub fn async_watcher(
     debouncer.watch(&canonical_root, RecursiveMode::Recursive)?;
 
     Ok((debouncer, rx, canonical_root))
-}
-
-async fn async_watch<P: AsRef<Path>>(path: P) -> Result<(), FilesystemWatcherError> {
-    let (_debouncer, mut rx, _canonical_path) = async_watcher(path.as_ref().to_path_buf())?;
-
-    // The debouncer is already watching the path, no need to call watch() again
-
-    while let Some(res) = rx.next().await {
-        match res {
-            Ok(event) => println!("changed: {event:?}"),
-            Err(e) => println!("watch error: {e:?}"),
-        }
-    }
-
-    Ok(())
 }

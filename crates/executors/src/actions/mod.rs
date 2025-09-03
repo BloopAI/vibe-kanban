@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::Path;
 
 use async_trait::async_trait;
 use command_group::AsyncGroupChild;
@@ -41,20 +41,20 @@ impl ExecutorAction {
         &self.typ
     }
 
-    pub fn next_action(&self) -> Option<&Box<ExecutorAction>> {
-        self.next_action.as_ref()
+    pub fn next_action(&self) -> Option<&ExecutorAction> {
+        self.next_action.as_deref()
     }
 }
 
 #[async_trait]
 #[enum_dispatch(ExecutorActionType)]
 pub trait Executable {
-    async fn spawn(&self, current_dir: &PathBuf) -> Result<AsyncGroupChild, ExecutorError>;
+    async fn spawn(&self, current_dir: &Path) -> Result<AsyncGroupChild, ExecutorError>;
 }
 
 #[async_trait]
 impl Executable for ExecutorAction {
-    async fn spawn(&self, current_dir: &PathBuf) -> Result<AsyncGroupChild, ExecutorError> {
+    async fn spawn(&self, current_dir: &Path) -> Result<AsyncGroupChild, ExecutorError> {
         self.typ.spawn(current_dir).await
     }
 }

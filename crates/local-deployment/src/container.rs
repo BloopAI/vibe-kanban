@@ -470,6 +470,7 @@ impl LocalContainerService {
     }
 
     /// Get the worktree path for a task attempt
+    #[allow(dead_code)]
     async fn get_worktree_path(
         &self,
         task_attempt: &TaskAttempt,
@@ -536,7 +537,6 @@ impl LocalContainerService {
     /// Create a live diff stream for ongoing attempts
     async fn create_live_diff_stream(
         &self,
-        project_repo_path: &Path,
         worktree_path: &Path,
         task_branch: &str,
         base_branch: &str,
@@ -563,7 +563,6 @@ impl LocalContainerService {
         .boxed();
 
         // Create live update stream
-        let project_repo_path = project_repo_path.to_path_buf();
         let worktree_path = worktree_path.to_path_buf();
         let task_branch = task_branch.to_string();
         let base_branch = base_branch.to_string();
@@ -583,7 +582,6 @@ impl LocalContainerService {
                             if !changed_paths.is_empty() {
                                 for event in Self::process_file_changes(
                                     &git_service,
-                                    &project_repo_path,
                                     &worktree_path,
                                     &task_branch,
                                     &base_branch,
@@ -635,7 +633,6 @@ impl LocalContainerService {
     /// Process file changes and generate diff events
     fn process_file_changes(
         git_service: &GitService,
-        project_repo_path: &Path,
         worktree_path: &Path,
         task_branch: &str,
         base_branch: &str,
@@ -958,13 +955,8 @@ impl ContainerService for LocalContainerService {
         let worktree_path = PathBuf::from(container_ref);
 
         // Handle ongoing attempts (live streaming diff)
-        self.create_live_diff_stream(
-            &project_repo_path,
-            &worktree_path,
-            &task_branch,
-            &task_attempt.base_branch,
-        )
-        .await
+        self.create_live_diff_stream(&worktree_path, &task_branch, &task_attempt.base_branch)
+            .await
     }
 
     async fn try_commit_changes(&self, ctx: &ExecutionContext) -> Result<bool, ContainerError> {
@@ -1038,8 +1030,8 @@ impl ContainerService for LocalContainerService {
     /// Copy files from the original project directory to the worktree
     async fn copy_project_files(
         &self,
-        source_dir: &PathBuf,
-        target_dir: &PathBuf,
+        source_dir: &Path,
+        target_dir: &Path,
         copy_files: &str,
     ) -> Result<(), ContainerError> {
         let files: Vec<&str> = copy_files

@@ -330,11 +330,9 @@ impl PlainTextLogProcessor {
         normalized_entry_producer: impl Fn(String) -> NormalizedEntry + 'static + Send,
         size_threshold: Option<usize>,
         time_gap: Option<Duration>,
-        format_chunk: Option<Box<dyn Fn(Option<&str>, String) -> String + 'static + Send>>,
-        transform_lines: Option<Box<dyn FnMut(&mut Vec<String>) + 'static + Send>>,
-        message_boundary_predicate: Option<
-            Box<dyn Fn(&[String]) -> Option<MessageBoundary> + 'static + Send>,
-        >,
+        format_chunk: Option<FormatChunkFn>,
+        transform_lines: Option<LinesTransformFn>,
+        message_boundary_predicate: Option<MessageBoundaryPredicateFn>,
         index_provider: EntryIndexProvider,
     ) -> Self {
         Self {

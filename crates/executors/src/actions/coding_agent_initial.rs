@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::Path;
 
 use async_trait::async_trait;
 use command_group::AsyncGroupChild;
@@ -22,7 +22,7 @@ pub struct CodingAgentInitialRequest {
 
 #[async_trait]
 impl Executable for CodingAgentInitialRequest {
-    async fn spawn(&self, current_dir: &PathBuf) -> Result<AsyncGroupChild, ExecutorError> {
+    async fn spawn(&self, current_dir: &Path) -> Result<AsyncGroupChild, ExecutorError> {
         let executor_profile_id = self.executor_profile_id.clone();
         let agent = ExecutorConfigs::get_cached()
             .get_coding_agent(&executor_profile_id)

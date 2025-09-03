@@ -3,6 +3,10 @@ name = "services"
 version = "0.0.75"
 edition = "2024"
 
+[features]
+default = []
+cloud = []
+
 [dependencies]
 utils = { path = "../utils" }
 executors = { path = "../executors" }

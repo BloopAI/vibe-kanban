@@ -81,6 +81,7 @@ pub mod task_patch {
 pub struct EventService {
     msg_store: Arc<MsgStore>,
     db: DBService,
+    #[allow(dead_code)]
     entry_count: Arc<RwLock<usize>>,
 }
 

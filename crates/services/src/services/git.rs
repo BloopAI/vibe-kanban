@@ -2,8 +2,8 @@ use std::{collections::HashMap, path::Path};
 
 use chrono::{DateTime, Utc};
 use git2::{
-    BranchType, CherrypickOptions, Delta, DiffFindOptions, DiffOptions, Error as GitError,
-    FetchOptions, Reference, Remote, Repository, Sort, build::CheckoutBuilder,
+    BranchType, Delta, DiffFindOptions, DiffOptions, Error as GitError, FetchOptions, Reference,
+    Remote, Repository, Sort, build::CheckoutBuilder,
 };
 use regex;
 use serde::Serialize;
@@ -1379,97 +1379,6 @@ impl GitService {
 
         // Check fetch result
         fetch_result.map_err(GitServiceError::Git)?;
-
-        Ok(())
-    }
-
-    /// Find the merge-base between two commits
-    fn get_merge_base(
-        repo: &Repository,
-        commit1: git2::Oid,
-        commit2: git2::Oid,
-    ) -> Result<git2::Oid, GitServiceError> {
-        repo.merge_base(commit1, commit2)
-            .map_err(GitServiceError::Git)
-    }
-
-    /// Find commits that are unique to the task branch (not in either base branch)
-    fn find_unique_commits(
-        repo: &Repository,
-        task_branch_commit: git2::Oid,
-        old_base_commit: git2::Oid,
-        new_base_commit: git2::Oid,
-    ) -> Result<Vec<git2::Oid>, GitServiceError> {
-        // Find merge-base between task branch and old base branch
-        let task_old_base_merge_base =
-            Self::get_merge_base(repo, task_branch_commit, old_base_commit)?;
-
-        // Find merge-base between old base and new base
-        let old_new_base_merge_base = Self::get_merge_base(repo, old_base_commit, new_base_commit)?;
-
-        // Get all commits from task branch back to the merge-base with old base
-        let mut walker = repo.revwalk()?;
-        walker.push(task_branch_commit)?;
-        walker.hide(task_old_base_merge_base)?;
-
-        let mut task_commits = Vec::new();
-        for commit_id in walker {
-            let commit_id = commit_id?;
-
-            // Check if this commit is not in the old base branch lineage
-            // (i.e., it's not between old_new_base_merge_base and old_base_commit)
-            let is_in_old_base = repo
-                .graph_descendant_of(commit_id, old_new_base_merge_base)
-                .unwrap_or(false)
-                && repo
-                    .graph_descendant_of(old_base_commit, commit_id)
-                    .unwrap_or(false);
-
-            if !is_in_old_base {
-                task_commits.push(commit_id);
-            }
-        }
-
-        // Reverse to get chronological order for cherry-picking
-        task_commits.reverse();
-        Ok(task_commits)
-    }
-
-    /// Cherry-pick specific commits onto a new base
-    fn cherry_pick_commits(
-        repo: &Repository,
-        commits: &[git2::Oid],
-        signature: &git2::Signature,
-    ) -> Result<(), GitServiceError> {
-        for &commit_id in commits {
-            let commit = repo.find_commit(commit_id)?;
-
-            // Cherry-pick the commit
-            let mut cherrypick_opts = CherrypickOptions::new();
-            repo.cherrypick(&commit, Some(&mut cherrypick_opts))?;
-
-            // Check for conflicts
-            let mut index = repo.index()?;
-            if index.has_conflicts() {
-                return Err(GitServiceError::MergeConflicts(format!(
-                    "Cherry-pick failed due to conflicts on commit {commit_id}, please resolve conflicts manually"
-                )));
-            }
-
-            // Commit the cherry-pick
-            let tree_id = index.write_tree()?;
-            let tree = repo.find_tree(tree_id)?;
-            let head_commit = repo.head()?.peel_to_commit()?;
-
-            repo.commit(
-                Some("HEAD"),
-                signature,
-                signature,
-                commit.message().unwrap_or("Cherry-picked commit"),
-                &tree,
-                &[&head_commit],
-            )?;
-        }
 
         Ok(())
     }

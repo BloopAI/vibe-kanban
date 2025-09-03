@@ -1,4 +1,8 @@
-use std::{path::PathBuf, process::Stdio, sync::Arc};
+use std::{
+    path::{Path, PathBuf},
+    process::Stdio,
+    sync::Arc,
+};
 
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
@@ -74,7 +78,7 @@ impl Gemini {
 impl StandardCodingAgentExecutor for Gemini {
     async fn spawn(
         &self,
-        current_dir: &PathBuf,
+        current_dir: &Path,
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
@@ -105,7 +109,7 @@ impl StandardCodingAgentExecutor for Gemini {
         let duplicate_stdout = stdout_dup::duplicate_stdout(&mut child)?;
         tokio::spawn(Self::record_session(
             duplicate_stdout,
-            current_dir.clone(),
+            current_dir.to_path_buf(),
             prompt.to_string(),
             false,
         ));
@@ -115,7 +119,7 @@ impl StandardCodingAgentExecutor for Gemini {
 
     async fn spawn_follow_up(
         &self,
-        current_dir: &PathBuf,
+        current_dir: &Path,
         prompt: &str,
         _session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
@@ -149,7 +153,7 @@ impl StandardCodingAgentExecutor for Gemini {
         let duplicate_stdout = stdout_dup::duplicate_stdout(&mut child)?;
         tokio::spawn(Self::record_session(
             duplicate_stdout,
-            current_dir.clone(),
+            current_dir.to_path_buf(),
             prompt.to_string(),
             true,
         ));
@@ -175,7 +179,7 @@ impl StandardCodingAgentExecutor for Gemini {
     /// Sets up log normalization for the Gemini executor:
     /// - stderr via [`normalize_stderr_logs`]
     /// - stdout via [`PlainTextLogProcessor`] with Gemini-specific formatting and default heuristics
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &PathBuf) {
+    fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &Path) {
         let entry_index_counter = EntryIndexProvider::start_from(&msg_store);
         normalize_stderr_logs(msg_store.clone(), entry_index_counter.clone());
 
@@ -335,7 +339,7 @@ impl Gemini {
     /// Build comprehensive prompt with session context for follow-up execution
     async fn build_followup_prompt(
         &self,
-        current_dir: &PathBuf,
+        current_dir: &Path,
         prompt: &str,
     ) -> Result<String, ExecutorError> {
         let session_file_path = Self::get_session_file_path(current_dir).await;
@@ -381,7 +385,7 @@ You are continuing work on the above task. The execution history shows the previ
         utils::path::get_vibe_kanban_temp_dir().join("gemini_sessions")
     }
 
-    async fn get_session_file_path(current_dir: &PathBuf) -> PathBuf {
+    async fn get_session_file_path(current_dir: &Path) -> PathBuf {
         let file_name = current_dir.file_name().unwrap_or_default();
         let new_base = Self::get_sessions_base_dir();
         let new_path = new_base.join(file_name);
