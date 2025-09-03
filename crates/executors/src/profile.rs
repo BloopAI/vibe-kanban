@@ -393,4 +393,17 @@ impl ExecutorConfigs {
             })
             .cloned()
     }
+
+    pub fn get_coding_agent_or_default(
+        &self,
+        executor_profile_id: &ExecutorProfileId,
+    ) -> CodingAgent {
+        self.get_coding_agent(executor_profile_id)
+            .unwrap_or_else(|| {
+                let mut default_executor_profile_id = executor_profile_id.clone();
+                default_executor_profile_id.variant = Some("DEFAULT".to_string());
+                self.get_coding_agent(&default_executor_profile_id)
+                    .expect("No default variant found")
+            })
+    }
 }
