@@ -164,7 +164,7 @@ pub async fn follow_up(
     )
     .await?
     .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-        "Couldn't find a prior CodingAgent execution that already has a session_id".to_string(),
+        "Couldn't find a prior session_id, please create a new task attempt".to_string(),
     )))?;
 
     // Get ExecutionProcess for profile data
