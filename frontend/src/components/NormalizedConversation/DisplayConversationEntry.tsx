@@ -1,11 +1,7 @@
 import MarkdownRenderer from '@/components/ui/markdown-renderer.tsx';
 import {
   AlertCircle,
-  Bot,
-  Brain,
   CheckSquare,
-  ChevronRight,
-  ChevronUp,
   ChevronDown,
   Edit,
   Eye,
@@ -14,20 +10,20 @@ import {
   Search,
   Settings,
   Terminal,
-  User,
 } from 'lucide-react';
 import {
   NormalizedEntry,
   type NormalizedEntryType,
   type ActionType,
 } from 'shared/types.ts';
+import type { ProcessStartPayload } from '@/types/logs';
 import FileChangeRenderer from './FileChangeRenderer';
 import ToolDetails from './ToolDetails';
 import { Braces, FileText } from 'lucide-react';
 import { useExpandable } from '@/stores/useExpandableStore';
 
 type Props = {
-  entry: NormalizedEntry;
+  entry: NormalizedEntry | ProcessStartPayload;
   expansionKey: string;
   diffDeletable?: boolean;
 };
@@ -73,40 +69,31 @@ const getContentClassName = (entryType: NormalizedEntryType) => {
   return base;
 };
 
-const getEntryIcon = (entryType: NormalizedEntryType) => {
-  if (entryType.type === 'user_message')
-    return <User className="h-4 w-4 text-blue-600" />;
-  if (entryType.type === 'assistant_message')
-    return <Bot className="h-4 w-4 text-success" />;
-  if (entryType.type === 'thinking')
-    return <Brain className="h-4 w-4 text-purple-600" />;
-  if (entryType.type === 'tool_use') {
-    const { action_type, tool_name } = entryType;
-    if (
-      action_type.action === 'todo_management' ||
-      (tool_name &&
-        ['todowrite', 'todoread', 'todo_write', 'todo_read', 'todo'].includes(
-          tool_name.toLowerCase()
-        ))
-    )
-      return <CheckSquare className="h-4 w-4 text-purple-600" />;
-    if (action_type.action === 'file_read')
-      return <Eye className="h-4 w-4 text-orange-600" />;
-    if (action_type.action === 'file_edit')
-      return <Edit className="h-4 w-4 text-destructive" />;
-    if (action_type.action === 'command_run')
-      return <Terminal className="h-4 w-4 text-yellow-600" />;
-    if (action_type.action === 'search')
-      return <Search className="h-4 w-4 text-indigo-600" />;
-    if (action_type.action === 'web_fetch')
-      return <Globe className="h-4 w-4 text-cyan-600" />;
-    if (action_type.action === 'task_create')
-      return <Plus className="h-4 w-4 text-teal-600" />;
-    if (action_type.action === 'plan_presentation')
-      return <CheckSquare className="h-4 w-4 text-blue-600" />;
-    return <Settings className="h-4 w-4 text-gray-600" />;
-  }
-  return <Settings className="h-4 w-4 text-gray-400" />;
+const getIconFromAction = (
+  action?: { action?: string },
+  tool_name?: string
+) => {
+  const a = action?.action;
+  const tool = tool_name?.toLowerCase();
+  if (!a && !tool) return <Settings className="h-4 w-4 text-gray-400" />;
+  if (
+    a === 'todo_management' ||
+    (tool &&
+      ['todowrite', 'todoread', 'todo_write', 'todo_read', 'todo'].includes(
+        tool
+      ))
+  )
+    return <CheckSquare className="h-4 w-4 text-purple-600" />;
+  if (a === 'file_read') return <Eye className="h-4 w-4 text-orange-600" />;
+  if (a === 'file_edit') return <Edit className="h-4 w-4 text-destructive" />;
+  if (a === 'command_run')
+    return <Terminal className="h-4 w-4 text-yellow-600" />;
+  if (a === 'search') return <Search className="h-4 w-4 text-indigo-600" />;
+  if (a === 'web_fetch') return <Globe className="h-4 w-4 text-cyan-600" />;
+  if (a === 'task_create') return <Plus className="h-4 w-4 text-teal-600" />;
+  if (a === 'plan_presentation')
+    return <CheckSquare className="h-4 w-4 text-blue-600" />;
+  return <Settings className="h-4 w-4 text-gray-600" />;
 };
 
 /*********************
@@ -252,247 +239,251 @@ const CollapsibleEntry: React.FC<{
   );
 };
 
+const ToolCallCard: React.FC<{
+  entryType?: Extract<NormalizedEntryType, { type: 'tool_use' }>;
+  action?: any;
+  expansionKey: string;
+  contentClassName: string;
+  content?: string;
+  entryContent?: string;
+}> = ({
+  entryType,
+  action,
+  expansionKey,
+  contentClassName,
+  content,
+  entryContent,
+}) => {
+  const at: any = entryType?.action_type || action;
+  const [expanded, toggle] = useExpandable(`tool-entry:${expansionKey}`, false);
+
+  const label =
+    at?.action === 'command_run'
+      ? at?.command || 'Command'
+      : entryType?.tool_name || at?.tool_name || 'Tool';
+
+  const hasArgs = at?.action === 'tool' && !!at?.arguments;
+  const hasResult = at?.action === 'tool' && !!at?.result;
+  const isCommand = at?.action === 'command_run';
+
+  // Command meta
+  const output: string | null = isCommand ? (at?.result?.output ?? null) : null;
+  const exit = isCommand ? ((at?.result?.exit_status as any) ?? null) : null;
+
+  const hasExpandableDetails =
+    hasArgs || hasResult || (isCommand && (Boolean(output) || Boolean(exit)));
+  const inlineText = (entryContent || content || '').trim();
+  const isSingleLine = inlineText !== '' && !/\r?\n/.test(inlineText);
+
+  const showInlineSummary = isSingleLine;
+
+  // Status badge for command
+  let statusBadge: React.ReactNode = null;
+  if (isCommand) {
+    let ok: boolean | undefined;
+    let code: number | undefined;
+    if (exit?.type === 'success' && typeof exit.success === 'boolean')
+      ok = exit.success;
+    if (exit?.type === 'exit_code' && typeof exit.code === 'number') {
+      code = exit.code;
+      ok = code === 0;
+    }
+    statusBadge = (
+      <span
+        className={
+          'px-1.5 py-0.5 rounded text-[10px] border ' +
+          (ok
+            ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-900/40'
+            : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/40')
+        }
+        title={
+          typeof code === 'number'
+            ? `exit code: ${code}`
+            : ok
+              ? 'success'
+              : 'failed'
+        }
+      >
+        {typeof code === 'number' ? `exit ${code}` : ok ? 'ok' : 'fail'}
+      </span>
+    );
+  }
+
+  const HeaderWrapper: React.ElementType = hasExpandableDetails
+    ? 'button'
+    : 'div';
+  const headerProps: any = hasExpandableDetails
+    ? {
+        onClick: (e: React.MouseEvent) => {
+          e.preventDefault();
+          toggle();
+        },
+        title: expanded ? 'Hide details' : 'Show details',
+      }
+    : {};
+
+  return (
+    <div className="inline-block w-full">
+      <div className="border rounded-lg shadow-sm w-full overflow-hidden">
+        <HeaderWrapper
+          {...headerProps}
+          className="w-full bg-muted/50 px-3 py-2 flex items-center gap-2 text-left"
+        >
+          <div className="shrink-0">
+            {getIconFromAction(at, entryType?.tool_name || at?.tool_name)}
+          </div>
+
+          {/* Label */}
+          <span className="text-sm min-w-0 truncate">
+            {label}
+            {showInlineSummary && <span className="ml-2">{inlineText}</span>}
+          </span>
+
+          {/* Meta icons and status */}
+          <div className="flex items-center gap-1 ml-auto">
+            {hasArgs && <Braces className="h-3.5 w-3.5 text-zinc-500" />}
+            {hasResult &&
+              (at?.result?.type === 'json' ? (
+                <Braces className="h-3.5 w-3.5 text-zinc-500" />
+              ) : (
+                <FileText className="h-3.5 w-3.5 text-zinc-500" />
+              ))}
+            {isCommand && statusBadge}
+          </div>
+
+          {/* Chevron only if expandable */}
+          {hasExpandableDetails && (
+            <div className="ml-1">
+              <ExpandChevron
+                expanded={expanded}
+                onClick={toggle}
+                variant="system"
+              />
+            </div>
+          )}
+        </HeaderWrapper>
+
+        {expanded && (
+          <div className="px-3 py-2">
+            {(!showInlineSummary || hasExpandableDetails) &&
+              (entryContent || content) && (
+                <div className={contentClassName + ' mb-2'}>
+                  <MarkdownRenderer
+                    content={entryContent || content || ''}
+                    className="inline"
+                  />
+                </div>
+              )}
+
+            {(() => {
+              if (at?.action === 'tool') {
+                return (
+                  <ToolDetails
+                    arguments={at.arguments ?? null}
+                    result={
+                      at.result
+                        ? { type: at.result.type, value: at.result.value }
+                        : null
+                    }
+                  />
+                );
+              }
+              if (at?.action === 'command_run') {
+                return (
+                  <ToolDetails commandOutput={output} commandExit={exit} />
+                );
+              }
+              return null;
+            })()}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 /*******************
  * Main component  *
  *******************/
 
 function DisplayConversationEntry({ entry, expansionKey }: Props) {
+  const isNormalizedEntry = (
+    entry: NormalizedEntry | ProcessStartPayload
+  ): entry is NormalizedEntry => 'entry_type' in entry;
+
+  const isProcessStart = (
+    entry: NormalizedEntry | ProcessStartPayload
+  ): entry is ProcessStartPayload => 'processId' in entry;
+
+  if (isProcessStart(entry)) {
+    const toolAction: any = entry.action ?? null;
+    return (
+      <div className="px-4 py-1">
+        <div className="flex items-start gap-3">
+          <div className="flex-1 min-w-0">
+            <ToolCallCard
+              action={toolAction}
+              expansionKey={expansionKey}
+              contentClassName="text-sm whitespace-pre-wrap break-words"
+              content={toolAction?.message ?? toolAction?.summary ?? undefined}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle NormalizedEntry
   const entryType = entry.entry_type;
   const isSystem = entryType.type === 'system_message';
   const isError = entryType.type === 'error_message';
   const isToolUse = entryType.type === 'tool_use';
-
-  const toolAction: any = isToolUse ? (entryType as any).action_type : null;
-  const hasArgs = toolAction?.action === 'tool' && !!toolAction?.arguments;
-  const hasResult = toolAction?.action === 'tool' && !!toolAction?.result;
-  const isCommand = toolAction?.action === 'command_run';
-  const commandOutput: string | null = isCommand
-    ? (toolAction?.result?.output ?? null)
-    : null;
-  let commandSuccess: boolean | undefined = undefined;
-  let commandExitCode: number | undefined = undefined;
-  if (isCommand) {
-    const st: any = toolAction?.result?.exit_status;
-    if (st && typeof st === 'object') {
-      if (st.type === 'success' && typeof st.success === 'boolean') {
-        commandSuccess = st.success;
-      } else if (st.type === 'exit_code' && typeof st.code === 'number') {
-        commandExitCode = st.code;
-        commandSuccess = st.code === 0;
-      }
-    }
-  }
-  const outputMeta = (() => {
-    if (!commandOutput) return null;
-    const lineCount =
-      commandOutput === '' ? 0 : commandOutput.split('\n').length;
-    const bytes = new Blob([commandOutput]).size;
-    const kb = bytes / 1024;
-    const sizeStr = kb >= 1 ? `${kb.toFixed(1)} kB` : `${bytes} B`;
-    return { lineCount, sizeStr };
-  })();
-  const canExpandTool =
-    (isCommand && !!commandOutput) ||
-    (toolAction?.action === 'tool' && (hasArgs || hasResult));
-  const [toolExpanded, toggleToolExpanded] = useExpandable(
-    `tool-entry:${expansionKey}`,
-    false
-  );
+  const isFileEdit = isToolUse && entryType.action_type.action === 'file_edit';
 
   return (
     <div className="px-4 py-1">
-      <div
-        className={`flex items-start gap-3 ${isSystem || isError ? 'pl-1' : ''}`}
-      >
-        {!(isSystem || isError) && (
-          <div className="flex-shrink-0 mt-1">{getEntryIcon(entryType)}</div>
-        )}
-
-        <div className={`flex-1 min-w-0`}>
+      <div className="flex items-start gap-3">
+        <div className="flex-1 min-w-0">
           {isSystem || isError ? (
             <CollapsibleEntry
-              content={entry.content}
+              content={isNormalizedEntry(entry) ? entry.content : ''}
               markdown={shouldRenderMarkdown(entryType)}
               expansionKey={expansionKey}
               variant={isSystem ? 'system' : 'error'}
               contentClassName={getContentClassName(entryType)}
             />
-          ) : !isToolUse ? (
-            <div className={getContentClassName(entryType)}>
-              {shouldRenderMarkdown(entryType) ? (
-                <MarkdownRenderer
-                  content={entry.content}
-                  className="whitespace-pre-wrap break-words"
-                />
-              ) : (
-                entry.content
-              )}
-            </div>
-          ) : (
-            <div>
-              {canExpandTool ? (
-                <button
-                  onClick={() => toggleToolExpanded()}
-                  className="flex items-center gap-2 w-full text-left"
-                  title={toolExpanded ? 'Hide details' : 'Show details'}
-                >
-                  <span className="flex items-center gap-1 min-w-0">
-                    <span className="text-sm break-words">
-                      {shouldRenderMarkdown(entryType) ? (
-                        <MarkdownRenderer
-                          content={entry.content}
-                          className="inline"
-                        />
-                      ) : (
-                        entry.content
-                      )}
-                    </span>
-                    {isCommand ? (
-                      <>
-                        {typeof commandSuccess === 'boolean' && (
-                          <span
-                            className={
-                              'px-1.5 py-0.5 rounded text-[10px] border whitespace-nowrap ' +
-                              (commandSuccess
-                                ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-900/40'
-                                : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/40')
-                            }
-                            title={
-                              typeof commandExitCode === 'number'
-                                ? `exit code: ${commandExitCode}`
-                                : commandSuccess
-                                  ? 'success'
-                                  : 'failed'
-                            }
-                          >
-                            {typeof commandExitCode === 'number'
-                              ? `exit ${commandExitCode}`
-                              : commandSuccess
-                                ? 'ok'
-                                : 'fail'}
-                          </span>
-                        )}
-                        {commandOutput && (
-                          <span
-                            title={
-                              outputMeta
-                                ? `output: ${outputMeta.lineCount} lines · ${outputMeta.sizeStr}`
-                                : 'output'
-                            }
-                          />
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        {hasArgs && (
-                          <Braces className="h-3.5 w-3.5 text-zinc-500" />
-                        )}
-                        {hasResult &&
-                          (toolAction?.result?.type === 'json' ? (
-                            <Braces className="h-3.5 w-3.5 text-zinc-500" />
-                          ) : (
-                            <FileText className="h-3.5 w-3.5 text-zinc-500" />
-                          ))}
-                      </>
-                    )}
-                  </span>
-                </button>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <div className={'text-sm break-words'}>
-                    {shouldRenderMarkdown(entryType) ? (
-                      <MarkdownRenderer
-                        content={entry.content}
-                        className="inline"
-                      />
-                    ) : (
-                      entry.content
-                    )}
-                  </div>
-                  {isCommand ? (
-                    <>
-                      {commandOutput && (
-                        <span
-                          title={
-                            outputMeta
-                              ? `output: ${outputMeta.lineCount} lines · ${outputMeta.sizeStr}`
-                              : 'output'
-                          }
-                        >
-                          <FileText className="h-3.5 w-3.5 text-zinc-500" />
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      {hasArgs && (
-                        <Braces className="h-3.5 w-3.5 text-zinc-500" />
-                      )}
-                      {hasResult &&
-                        (toolAction?.result?.type === 'json' ? (
-                          <Braces className="h-3.5 w-3.5 text-zinc-500" />
-                        ) : (
-                          <FileText className="h-3.5 w-3.5 text-zinc-500" />
-                        ))}
-                    </>
-                  )}
-                </div>
-              )}
-
-              {entryType.type === 'tool_use' &&
-                toolExpanded &&
-                (() => {
-                  const at: any = (entryType as any).action_type;
-                  if (at?.action === 'tool') {
-                    return (
-                      <ToolDetails
-                        arguments={at.arguments ?? null}
-                        result={
-                          at.result
-                            ? { type: at.result.type, value: at.result.value }
-                            : null
-                        }
-                      />
-                    );
-                  }
-                  if (at?.action === 'command_run') {
-                    const output = at?.result?.output as string | undefined;
-                    const exit = (at?.result?.exit_status as any) ?? null;
-                    return (
-                      <ToolDetails
-                        commandOutput={output ?? null}
-                        commandExit={exit}
-                      />
-                    );
-                  }
-                  return null;
-                })()}
-            </div>
-          )}
-
-          {entryType.type === 'tool_use' &&
-            entryType.action_type.action === 'file_edit' &&
-            Array.isArray((entryType.action_type as any).changes) &&
-            (
-              entryType.action_type as Extract<
-                ActionType,
-                { action: 'file_edit' }
-              >
-            ).changes.map((change, idx) => (
+          ) : isFileEdit ? (
+            // Only FileChangeRenderer for file_edit
+            Array.isArray(entryType.action_type.changes) &&
+            entryType.action_type.changes.map((change, idx) => (
               <FileChangeRenderer
                 key={idx}
-                path={
-                  (
-                    entryType.action_type as Extract<
-                      ActionType,
-                      { action: 'file_edit' }
-                    >
-                  ).path
-                }
+                path={entryType.action_type.path}
                 change={change}
                 expansionKey={`edit:${expansionKey}:${idx}`}
               />
-            ))}
+            ))
+          ) : isToolUse ? (
+            <ToolCallCard
+              entryType={entryType}
+              expansionKey={expansionKey}
+              contentClassName={getContentClassName(entryType)}
+              entryContent={isNormalizedEntry(entry) ? entry.content : ''}
+            />
+          ) : (
+            <div className={getContentClassName(entryType)}>
+              {shouldRenderMarkdown(entryType) ? (
+                <MarkdownRenderer
+                  content={isNormalizedEntry(entry) ? entry.content : ''}
+                  className="whitespace-pre-wrap break-words"
+                />
+              ) : isNormalizedEntry(entry) ? (
+                entry.content
+              ) : (
+                ''
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

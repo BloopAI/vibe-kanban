@@ -78,9 +78,9 @@ function ProcessStartCard({
   const shouldTruncate = isCollapsed && payload.runReason === 'codingagent';
 
   return (
-    <div className="px-4 pt-4 pb-2">
+    <div className="pl-4 4 pb-2 w-full">
       <div
-        className="p-2 cursor-pointer select-none hover:bg-muted/70 transition-colors border rounded-md"
+        className="px-3 p-2 cursor-pointer select-none hover:bg-muted/70 transition-colors border rounded-md w-full"
         role="button"
         tabIndex={0}
         onClick={handleClick}

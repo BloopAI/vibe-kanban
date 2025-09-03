@@ -11,7 +11,7 @@ import { Cog, AlertTriangle, CheckCircle, GitCommit } from 'lucide-react';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { useProcessesLogs } from '@/hooks/useProcessesLogs';
-import LogEntryRow from '@/components/logs/LogEntryRow';
+import ProcessGroup from '@/components/logs/ProcessGroup';
 import {
   shouldShowInLogs,
   isAutoCollapsibleProcess,
@@ -21,11 +21,6 @@ import {
   PROCESS_STATUSES,
   PROCESS_RUN_REASONS,
 } from '@/constants/processes';
-import type {
-  ExecutionProcessStatus,
-  TaskAttempt,
-  BaseAgentCapability,
-} from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
 import {
   Dialog,
@@ -36,8 +31,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import type {
+  ExecutionProcessStatus,
+  BaseAgentCapability,
+  TaskAttempt,
+} from 'shared/types';
+import type { UnifiedLogEntry, ProcessStartPayload } from '@/types/logs';
 
-// Helper functions
 function addAll<T>(set: Set<T>, items: T[]): Set<T> {
   items.forEach((i: T) => set.add(i));
   return set;
@@ -248,7 +248,12 @@ function LogsTab({ selectedAttempt }: Props) {
     if (toExpand.length > 0) {
       dispatch({ type: 'AUTO_EXPAND', ids: toExpand });
     }
-  }, [filteredProcesses, state.userCollapsed, state.autoCollapsed]);
+  }, [
+    filteredProcesses,
+    state.userCollapsed,
+    state.autoCollapsed,
+    state.prevStatus,
+  ]);
 
   // Effect #3: Handle coding agent succession logic
   useEffect(() => {
@@ -281,143 +286,163 @@ function LogsTab({ selectedAttempt }: Props) {
     state.autoCollapsed,
   ]);
 
-  // Filter entries to hide logs from collapsed processes
-  const visibleEntries = useMemo(() => {
-    return entries.filter((entry) =>
-      entry.channel === 'process_start'
-        ? true
-        : !allCollapsedProcesses.has(entry.processId)
-    );
-  }, [entries, allCollapsedProcesses]);
+  const groups = useMemo(() => {
+    const map = new Map<
+      string,
+      { header?: ProcessStartPayload; entries: UnifiedLogEntry[] }
+    >();
 
-  // Memoized item content to prevent flickering
+    filteredProcesses.forEach((p) => {
+      map.set(p.id, { header: undefined, entries: [] });
+    });
+
+    entries.forEach((e: UnifiedLogEntry) => {
+      const bucket = map.get(e.processId);
+      if (!bucket) return;
+
+      if (e.channel === 'process_start') {
+        bucket.header = e.payload as ProcessStartPayload;
+        return;
+      }
+
+      // Always store entries; whether they show is decided by group collapse
+      bucket.entries.push(e);
+    });
+
+    return filteredProcesses
+      .map((p) => ({
+        processId: p.id,
+        ...(map.get(p.id) || { entries: [] }),
+      }))
+      .filter((g) => g.header) as Array<{
+      processId: string;
+      header: ProcessStartPayload;
+      entries: UnifiedLogEntry[];
+    }>;
+  }, [filteredProcesses, entries]);
+
   const itemContent = useCallback(
-    (index: number, entry: any) => (
-      <LogEntryRow
-        entry={entry}
-        index={index}
-        isCollapsed={
-          entry.channel === 'process_start'
-            ? allCollapsedProcesses.has(entry.payload.processId)
-            : undefined
-        }
-        onToggleCollapse={
-          entry.channel === 'process_start' ? toggleProcessCollapse : undefined
-        }
-        // Pass restore handler via entry.meta for process_start
-        // The LogEntryRow/ProcessStartCard will ignore if not provided
-        {...(entry.channel === 'process_start' && restoreSupported
-          ? (() => {
-              const proc = (attemptData.processes || []).find(
-                (p) => p.id === entry.payload.processId
+    (
+      index: number,
+      group: {
+        processId: string;
+        header: ProcessStartPayload;
+        entries: UnifiedLogEntry[];
+      }
+    ) =>
+      (() => {
+        // Compute restore props for the process header (if supported)
+        let restore:
+          | {
+              onRestore: (pid: string) => void;
+              restoreProcessId?: string;
+              restoreDisabled?: boolean;
+              restoreDisabledReason?: string;
+            }
+          | undefined;
+
+        if (restoreSupported) {
+          const proc = (attemptData.processes || []).find(
+            (p) => p.id === group.processId
+          );
+          const procs = (attemptData.processes || []).filter(
+            (p) => !p.dropped && shouldShowInLogs(p.run_reason)
+          );
+          const finished = procs.filter((p) => p.status !== 'running');
+          const latestFinished =
+            finished.length > 0 ? finished[finished.length - 1] : undefined;
+          const isLatest = latestFinished?.id === proc?.id;
+          const isRunningProc = proc?.status === 'running';
+          const head = branchStatus?.head_oid || null;
+          const isDirty = !!branchStatus?.has_uncommitted_changes;
+          const needGitReset = !!(
+            proc?.after_head_commit &&
+            (proc.after_head_commit !== head || isDirty)
+          );
+
+          // visibility decision
+          let baseShouldShow = false;
+          if (!isRunningProc) {
+            baseShouldShow = !isLatest || needGitReset;
+            if (baseShouldShow && !isLatest && !needGitReset) {
+              const idx = procs.findIndex((p) => p.id === proc?.id);
+              const later = idx >= 0 ? procs.slice(idx + 1) : [];
+              const laterHasCoding = later.some((p) =>
+                isCodingAgent(p.run_reason)
               );
-              // Consider only non-dropped processes that appear in logs for latest determination
-              const procs = (attemptData.processes || []).filter(
-                (p) => !p.dropped && shouldShowInLogs(p.run_reason)
-              );
-              const finished = procs.filter((p) => p.status !== 'running');
-              const latestFinished =
-                finished.length > 0 ? finished[finished.length - 1] : undefined;
-              const isLatest = latestFinished?.id === proc?.id;
-              const isRunningProc = proc?.status === 'running';
-              const headKnown = !!branchStatus?.head_oid;
-              const head = branchStatus?.head_oid || null;
-              const isDirty = !!branchStatus?.has_uncommitted_changes;
-              const needGitReset =
-                headKnown &&
-                !!(
-                  proc?.after_head_commit &&
-                  (proc.after_head_commit !== head || isDirty)
+              baseShouldShow = laterHasCoding;
+            }
+          }
+          const shouldShow =
+            baseShouldShow || (anyRunning && !isRunningProc && isLatest);
+
+          if (shouldShow) {
+            let disabled = anyRunning || restoreBusy || confirmOpen;
+            let disabledReason: string | undefined;
+            if (anyRunning)
+              disabledReason = 'Cannot restore while a process is running.';
+            else if (restoreBusy) disabledReason = 'Restore in progress.';
+            else if (confirmOpen)
+              disabledReason = 'Confirm the current restore first.';
+            if (!proc?.after_head_commit) {
+              disabled = true;
+              disabledReason = 'No recorded commit for this process.';
+            }
+
+            restore = {
+              restoreProcessId: group.processId,
+              restoreDisabled: disabled,
+              restoreDisabledReason: disabledReason,
+              onRestore: async (pid: string) => {
+                setRestorePid(pid);
+                const p2 = (attemptData.processes || []).find(
+                  (p) => p.id === pid
                 );
-
-              // Base visibility rules:
-              // - Never show for the currently running process
-              // - For earlier finished processes, show only if either:
-              //     a) later history includes a coding agent run, or
-              //     b) restoring would change the worktree (needGitReset)
-              // - For the latest finished process, only show if diverged (needGitReset)
-              let baseShouldShow = false;
-              if (!isRunningProc) {
-                baseShouldShow = !isLatest || needGitReset;
-
-                // If this is an earlier finished process and restoring would not
-                // change the worktree, hide when only non-coding processes would be deleted.
-                if (baseShouldShow && !isLatest && !needGitReset) {
-                  const procs = (attemptData.processes || []).filter(
-                    (p) => !p.dropped && shouldShowInLogs(p.run_reason)
-                  );
-                  const idx = procs.findIndex((p) => p.id === proc?.id);
-                  const later = idx >= 0 ? procs.slice(idx + 1) : [];
-                  const laterHasCoding = later.some((p) =>
-                    isCodingAgent(p.run_reason)
-                  );
-                  baseShouldShow = laterHasCoding;
-                }
-              }
-              // If any process is running, also surface the latest finished button disabled
-              // so users see it immediately with a clear disabled reason.
-              const shouldShow =
-                baseShouldShow || (anyRunning && !isRunningProc && isLatest);
-
-              if (!shouldShow) return {};
-
-              let disabledReason: string | undefined;
-              let disabled = anyRunning || restoreBusy || confirmOpen;
-              if (anyRunning)
-                disabledReason = 'Cannot restore while a process is running.';
-              else if (restoreBusy) disabledReason = 'Restore in progress.';
-              else if (confirmOpen)
-                disabledReason = 'Confirm the current restore first.';
-              if (!proc?.after_head_commit) {
-                disabled = true;
-                disabledReason = 'No recorded commit for this process.';
-              }
-              return {
-                restoreProcessId: entry.payload.processId,
-                onRestore: async (pid: string) => {
-                  setRestorePid(pid);
-                  const p2 = (attemptData.processes || []).find(
-                    (p) => p.id === pid
-                  );
-                  const after = p2?.after_head_commit || null;
-                  setTargetSha(after);
-                  setTargetSubject(null);
-                  if (after && selectedAttempt?.id) {
-                    try {
-                      const { commitsApi } = await import('@/lib/api');
-                      const info = await commitsApi.getInfo(
-                        selectedAttempt.id,
-                        after
-                      );
-                      setTargetSubject(info.subject);
-                      const cmp = await commitsApi.compareToHead(
-                        selectedAttempt.id,
-                        after
-                      );
-                      setCommitsToReset(
-                        cmp.is_linear ? cmp.ahead_from_head : null
-                      );
-                      setIsLinear(cmp.is_linear);
-                    } catch {
-                      /* empty */
-                    }
+                const after = p2?.after_head_commit || null;
+                setTargetSha(after);
+                setTargetSubject(null);
+                if (after && selectedAttempt?.id) {
+                  try {
+                    const { commitsApi } = await import('@/lib/api');
+                    const info = await commitsApi.getInfo(
+                      selectedAttempt.id,
+                      after
+                    );
+                    setTargetSubject(info.subject);
+                    const cmp = await commitsApi.compareToHead(
+                      selectedAttempt.id,
+                      after
+                    );
+                    setCommitsToReset(
+                      cmp.is_linear ? cmp.ahead_from_head : null
+                    );
+                    setIsLinear(cmp.is_linear);
+                  } catch {
+                    /* ignore */
                   }
-                  // Initialize reset to disabled (white) when dirty, enabled otherwise
-                  const head = branchStatus?.head_oid || null;
-                  const isDirty = !!branchStatus?.has_uncommitted_changes;
-                  const needGitReset = !!(after && (after !== head || isDirty));
-                  const canGitReset = needGitReset && !isDirty;
-                  setWorktreeResetOn(!!canGitReset);
-                  setForceReset(false);
-                  setConfirmOpen(true);
-                },
-                restoreDisabled: disabled,
-                restoreDisabledReason: disabledReason,
-              };
-            })()
-          : {})}
-      />
-    ),
+                }
+                const head = branchStatus?.head_oid || null;
+                const dirty = !!branchStatus?.has_uncommitted_changes;
+                const needReset = !!(after && (after !== head || dirty));
+                const canGitReset = needReset && !dirty;
+                setWorktreeResetOn(!!canGitReset);
+                setForceReset(false);
+                setConfirmOpen(true);
+              },
+            };
+          }
+        }
+
+        return (
+          <ProcessGroup
+            header={group.header}
+            entries={group.entries}
+            isCollapsed={allCollapsedProcesses.has(group.processId)}
+            onToggle={toggleProcessCollapse}
+            restore={restore}
+          />
+        );
+      })(),
     [
       allCollapsedProcesses,
       toggleProcessCollapse,
@@ -946,18 +971,16 @@ function LogsTab({ selectedAttempt }: Props) {
         <Virtuoso
           ref={virtuosoRef}
           style={{ height: '100%' }}
-          data={visibleEntries}
+          data={groups}
           itemContent={itemContent}
-          followOutput={true}
+          followOutput
           increaseViewportBy={200}
           overscan={5}
-          components={{
-            Footer: () => <div className="pb-4" />,
-          }}
+          components={{ Footer: () => <div className="pb-4" /> }}
         />
       </div>
     </div>
   );
 }
 
-export default LogsTab;
+export default LogsTab; // Filter entries to hide logs from collapsed processes
