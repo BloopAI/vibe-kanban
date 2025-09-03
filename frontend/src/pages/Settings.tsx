@@ -154,7 +154,11 @@ export function Settings() {
     }
   };
 
-  const handleExecutorConfigSubmit = (executorType: string, profile: string, formData: any) => {
+  const handleExecutorConfigSubmit = (
+    executorType: string,
+    profile: string,
+    formData: any
+  ) => {
     if (!parsedProfiles || !parsedProfiles.executors) return;
 
     // Update the parsed profiles with the new config in the nested structure
@@ -770,7 +774,9 @@ export function Settings() {
                           onValueChange={(value) => {
                             setSelectedExecutorType(value);
                             // Reset profile selection when executor type changes
-                            const profiles = Object.keys(parsedProfiles.executors[value] || {});
+                            const profiles = Object.keys(
+                              parsedProfiles.executors[value] || {}
+                            );
                             setSelectedProfile(profiles[0] || 'DEFAULT');
                           }}
                         >
@@ -778,11 +784,13 @@ export function Settings() {
                             <SelectValue placeholder="Select executor type" />
                           </SelectTrigger>
                           <SelectContent>
-                            {Object.keys(parsedProfiles.executors).map((type) => (
-                              <SelectItem key={type} value={type}>
-                                {type}
-                              </SelectItem>
-                            ))}
+                            {Object.keys(parsedProfiles.executors).map(
+                              (type) => (
+                                <SelectItem key={type} value={type}>
+                                  {type}
+                                </SelectItem>
+                              )
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
@@ -792,13 +800,18 @@ export function Settings() {
                         <Select
                           value={selectedProfile}
                           onValueChange={setSelectedProfile}
-                          disabled={!parsedProfiles.executors[selectedExecutorType]}
+                          disabled={
+                            !parsedProfiles.executors[selectedExecutorType]
+                          }
                         >
                           <SelectTrigger id="profile">
                             <SelectValue placeholder="Select profile" />
                           </SelectTrigger>
                           <SelectContent>
-                            {Object.keys(parsedProfiles.executors[selectedExecutorType] || {}).map((profile) => (
+                            {Object.keys(
+                              parsedProfiles.executors[selectedExecutorType] ||
+                                {}
+                            ).map((profile) => (
                               <SelectItem key={profile} value={profile}>
                                 {profile}
                               </SelectItem>
@@ -808,11 +821,15 @@ export function Settings() {
                       </div>
                     </div>
 
-                    {parsedProfiles.executors[selectedExecutorType]?.[selectedProfile]?.[selectedExecutorType] && (
+                    {parsedProfiles.executors[selectedExecutorType]?.[
+                      selectedProfile
+                    ]?.[selectedExecutorType] && (
                       <ExecutorConfigForm
                         executor={selectedExecutorType as any}
                         value={
-                          parsedProfiles.executors[selectedExecutorType][selectedProfile][selectedExecutorType] || {}
+                          parsedProfiles.executors[selectedExecutorType][
+                            selectedProfile
+                          ][selectedExecutorType] || {}
                         }
                         onSubmit={(formData) =>
                           handleExecutorConfigSubmit(
