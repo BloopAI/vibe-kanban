@@ -33,9 +33,9 @@ export const TextareaWidget = (props: WidgetProps) => {
   };
 
   // Get rows from ui:options or default based on field name
-  const rows = options.rows || (
-    (schema.title || '').toLowerCase().includes('prompt') ? 4 : 3
-  );
+  const rows =
+    options.rows ||
+    ((schema.title || '').toLowerCase().includes('prompt') ? 4 : 3);
 
   return (
     <Textarea

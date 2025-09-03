@@ -7,19 +7,19 @@ const settingsNavigation = [
     path: 'general',
     label: 'General',
     icon: Settings,
-    description: 'Theme, notifications, and preferences'
+    description: 'Theme, notifications, and preferences',
   },
   {
     path: 'executors',
     label: 'Executors',
     icon: Cpu,
-    description: 'Coding agent configurations'
+    description: 'Coding agent configurations',
   },
   {
     path: 'mcp',
     label: 'MCP Servers',
     icon: Server,
-    description: 'Model Context Protocol servers'
+    description: 'Model Context Protocol servers',
   },
 ];
 
@@ -52,9 +52,7 @@ export function SettingsLayout() {
                     <Icon className="h-4 w-4 mt-0.5 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="font-medium">{item.label}</div>
-                      <div>
-                        {item.description}
-                      </div>
+                      <div>{item.description}</div>
                     </div>
                   </NavLink>
                 );

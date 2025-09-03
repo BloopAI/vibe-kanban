@@ -6,9 +6,7 @@ export const ObjectFieldTemplate = (props: ObjectFieldTemplateProps) => {
   return (
     <div className="divide-y">
       {properties.map((element) => (
-        <div key={element.name}>
-          {element.content}
-        </div>
+        <div key={element.name}>{element.content}</div>
       ))}
     </div>
   );

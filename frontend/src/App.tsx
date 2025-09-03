@@ -1,10 +1,21 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Route, Routes, useLocation, Navigate } from 'react-router-dom';
+import {
+  BrowserRouter,
+  Route,
+  Routes,
+  useLocation,
+  Navigate,
+} from 'react-router-dom';
 import { Navbar } from '@/components/layout/navbar';
 import { Projects } from '@/pages/projects';
 import { ProjectTasks } from '@/pages/project-tasks';
 
-import { SettingsLayout, GeneralSettings, ExecutorsSettings, McpSettings } from '@/pages/settings/';
+import {
+  SettingsLayout,
+  GeneralSettings,
+  ExecutorsSettings,
+  McpSettings,
+} from '@/pages/settings/';
 import { DisclaimerDialog } from '@/components/DisclaimerDialog';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { PrivacyOptInDialog } from '@/components/PrivacyOptInDialog';
@@ -243,7 +254,10 @@ function AppContent() {
                   <Route path="mcp" element={<McpSettings />} />
                 </Route>
                 {/* Redirect old MCP route */}
-                <Route path="/mcp-servers" element={<Navigate to="/settings/mcp" replace />} />
+                <Route
+                  path="/mcp-servers"
+                  element={<Navigate to="/settings/mcp" replace />}
+                />
               </SentryRoutes>
             </div>
           </div>

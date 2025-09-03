@@ -24,7 +24,6 @@ import { ExecutorConfigForm } from '@/components/ExecutorConfigForm';
 import { profilesApi } from '@/lib/api';
 
 export function ExecutorsSettings() {
-  
   // Profiles editor state
   const [profilesContent, setProfilesContent] = useState('');
   const [profilesPath, setProfilesPath] = useState('');
@@ -35,7 +34,8 @@ export function ExecutorsSettings() {
 
   // Form-based editor state
   const [useFormEditor, setUseFormEditor] = useState(true);
-  const [selectedExecutorType, setSelectedExecutorType] = useState<string>('AMP');
+  const [selectedExecutorType, setSelectedExecutorType] =
+    useState<string>('AMP');
   const [selectedProfile, setSelectedProfile] = useState<string>('DEFAULT');
   const [parsedProfiles, setParsedProfiles] = useState<any>(null);
   const [isDirty, setIsDirty] = useState(false);
@@ -109,9 +109,10 @@ export function ExecutorsSettings() {
     setProfilesSuccess(false);
 
     try {
-      const contentToSave = useFormEditor && parsedProfiles
-        ? JSON.stringify(parsedProfiles, null, 2)
-        : profilesContent;
+      const contentToSave =
+        useFormEditor && parsedProfiles
+          ? JSON.stringify(parsedProfiles, null, 2)
+          : profilesContent;
 
       await profilesApi.save(contentToSave);
       setProfilesSuccess(true);
@@ -172,7 +173,7 @@ export function ExecutorsSettings() {
 
     // Update state
     setParsedProfiles(updatedProfiles);
-    
+
     // Save the updated profiles directly
     setProfilesSaving(true);
     setProfilesError(null);
@@ -180,7 +181,7 @@ export function ExecutorsSettings() {
 
     try {
       const contentToSave = JSON.stringify(updatedProfiles, null, 2);
-      
+
       await profilesApi.save(contentToSave);
       setProfilesSuccess(true);
       setIsDirty(false);
@@ -224,7 +225,8 @@ export function ExecutorsSettings() {
         <CardHeader>
           <CardTitle>Coding Agent Configurations</CardTitle>
           <CardDescription>
-            Customize the behavior of coding agents with different executor profiles.
+            Customize the behavior of coding agents with different executor
+            profiles.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -236,9 +238,7 @@ export function ExecutorsSettings() {
               onCheckedChange={(checked) => setUseFormEditor(!!checked)}
               disabled={profilesLoading || !parsedProfiles}
             />
-            <Label htmlFor="use-form-editor">
-              Edit visually with forms
-            </Label>
+            <Label htmlFor="use-form-editor">Edit visually with forms</Label>
           </div>
 
           {useFormEditor && parsedProfiles && parsedProfiles.executors ? (
@@ -294,11 +294,15 @@ export function ExecutorsSettings() {
                 </div>
               </div>
 
-              {parsedProfiles.executors[selectedExecutorType]?.[selectedProfile]?.[selectedExecutorType] && (
+              {parsedProfiles.executors[selectedExecutorType]?.[
+                selectedProfile
+              ]?.[selectedExecutorType] && (
                 <ExecutorConfigForm
                   executor={selectedExecutorType as any}
                   value={
-                    parsedProfiles.executors[selectedExecutorType][selectedProfile][selectedExecutorType] || {}
+                    parsedProfiles.executors[selectedExecutorType][
+                      selectedProfile
+                    ][selectedExecutorType] || {}
                   }
                   onChange={(formData) =>
                     handleExecutorConfigChange(
@@ -338,7 +342,9 @@ export function ExecutorsSettings() {
               {!profilesError && profilesPath && (
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
-                    <span className="font-medium">Configuration file location:</span>{' '}
+                    <span className="font-medium">
+                      Configuration file location:
+                    </span>{' '}
                     <span className="font-mono text-xs">{profilesPath}</span>
                   </p>
                 </div>
@@ -350,7 +356,9 @@ export function ExecutorsSettings() {
                   onClick={handleSaveProfiles}
                   disabled={!isDirty || profilesSaving || !!profilesError}
                 >
-                  {profilesSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {profilesSaving && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
                   Save Executor Configurations
                 </Button>
               </div>

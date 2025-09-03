@@ -33,13 +33,8 @@ import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 
 export function GeneralSettings() {
-  const {
-    config,
-    updateConfig,
-    saveConfig,
-    loading,
-    updateAndSaveConfig,
-  } = useUserSystem();
+  const { config, updateConfig, saveConfig, loading, updateAndSaveConfig } =
+    useUserSystem();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -153,7 +148,9 @@ export function GeneralSettings() {
             <Label htmlFor="theme">Theme</Label>
             <Select
               value={config.theme}
-              onValueChange={(value: ThemeMode) => updateConfig({ theme: value })}
+              onValueChange={(value: ThemeMode) =>
+                updateConfig({ theme: value })
+              }
             >
               <SelectTrigger id="theme">
                 <SelectValue placeholder="Select theme" />
@@ -186,7 +183,9 @@ export function GeneralSettings() {
             <Select
               value={config.editor.editor_type}
               onValueChange={(value: EditorType) =>
-                updateConfig({ editor: { ...config.editor, editor_type: value } })
+                updateConfig({
+                  editor: { ...config.editor, editor_type: value },
+                })
               }
             >
               <SelectTrigger id="editor-type">
@@ -222,7 +221,9 @@ export function GeneralSettings() {
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
-                  <p className="font-medium">Connected as {config.github.username}</p>
+                  <p className="font-medium">
+                    Connected as {config.github.username}
+                  </p>
                   {config.github.primary_email && (
                     <p className="text-sm text-muted-foreground">
                       {config.github.primary_email}
@@ -323,8 +324,8 @@ export function GeneralSettings() {
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground">
-                Choose the sound to play when tasks complete. Click the
-                volume button to preview.
+                Choose the sound to play when tasks complete. Click the volume
+                button to preview.
               </p>
             </div>
           )}

@@ -281,9 +281,9 @@ export function McpSettings() {
                   <div className="mt-2 text-sm text-amber-700 dark:text-amber-300">
                     <p>{mcpError}</p>
                     <p className="mt-1">
-                      To use MCP servers, please select a different profile
-                      that supports MCP (Claude, Amp, Gemini, Codex, or
-                      Opencode) above.
+                      To use MCP servers, please select a different profile that
+                      supports MCP (Claude, Amp, Gemini, Codex, or Opencode)
+                      above.
                     </p>
                   </div>
                 </div>
