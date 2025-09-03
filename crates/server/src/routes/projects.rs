@@ -9,7 +9,7 @@ use axum::{
     routing::{get, post},
 };
 use db::models::project::{
-    CreateProject, Project, ProjectError, SearchMatchType, SearchResult, UpdateProject,
+    CreateProject, Project, ProjectError, SearchMatchType, SearchMode, SearchResult, UpdateProject,
 };
 use deployment::Deployment;
 use ignore::WalkBuilder;
@@ -290,19 +290,28 @@ pub async fn search_project_files(
         }
     };
 
+    // Parse mode parameter (defaults to TaskForm)
+    let mode = params
+        .get("mode")
+        .and_then(|m| match m.as_str() {
+            "settings" => Some(SearchMode::Settings),
+            "task_form" | _ => Some(SearchMode::TaskForm),
+        })
+        .unwrap_or_default();
+
     let repo_path = &project.git_repo_path;
     let file_search_cache = deployment.file_search_cache();
 
     // Try cache first
-    match file_search_cache.search(repo_path, query).await {
+    match file_search_cache.search(repo_path, query, mode.clone()).await {
         Ok(results) => {
-            tracing::debug!("Cache hit for repo {:?}, query: {}", repo_path, query);
+            tracing::debug!("Cache hit for repo {:?}, query: {}, mode: {:?}", repo_path, query, mode);
             Ok(ResponseJson(ApiResponse::success(results)))
         }
         Err(CacheError::Miss) => {
             // Cache miss - fall back to filesystem search
-            tracing::debug!("Cache miss for repo {:?}, query: {}", repo_path, query);
-            match search_files_in_repo(&project.git_repo_path.to_string_lossy(), query).await {
+            tracing::debug!("Cache miss for repo {:?}, query: {}, mode: {:?}", repo_path, query, mode);
+            match search_files_in_repo(&project.git_repo_path.to_string_lossy(), query, mode).await {
                 Ok(results) => Ok(ResponseJson(ApiResponse::success(results))),
                 Err(e) => {
                     tracing::error!("Failed to search files: {}", e);
@@ -313,7 +322,7 @@ pub async fn search_project_files(
         Err(CacheError::BuildError(e)) => {
             tracing::error!("Cache build error for repo {:?}: {}", repo_path, e);
             // Fall back to filesystem search
-            match search_files_in_repo(&project.git_repo_path.to_string_lossy(), query).await {
+            match search_files_in_repo(&project.git_repo_path.to_string_lossy(), query, mode).await {
                 Ok(results) => Ok(ResponseJson(ApiResponse::success(results))),
                 Err(e) => {
                     tracing::error!("Failed to search files: {}", e);
@@ -327,6 +336,7 @@ pub async fn search_project_files(
 async fn search_files_in_repo(
     repo_path: &str,
     query: &str,
+    mode: SearchMode,
 ) -> Result<Vec<SearchResult>, Box<dyn std::error::Error + Send + Sync>> {
     let repo_path = Path::new(repo_path);
 
@@ -337,16 +347,37 @@ async fn search_files_in_repo(
     let mut results = Vec::new();
     let query_lower = query.to_lowercase();
 
-    // We intentionally do NOT respect gitignore here because this search is
-    // used to help users pick files like ".env" or local config files that are
-    // commonly gitignored but still need to be copied into the worktree.
-    // Include hidden files as well.
-    let walker = WalkBuilder::new(repo_path)
-        .git_ignore(false)
-        .git_global(false)
-        .git_exclude(false)
-        .hidden(false)
-        .build();
+    // Configure walker based on mode
+    let walker = match mode {
+        SearchMode::Settings => {
+            // Settings mode: Include ignored files but exclude performance killers
+            WalkBuilder::new(repo_path)
+                .git_ignore(false)    // Include ignored files like .env
+                .git_global(false)
+                .git_exclude(false)
+                .hidden(false)
+                .filter_entry(|entry| {
+                    let name = entry.file_name().to_string_lossy();
+                    // Always exclude .git directories and performance killers
+                    name != ".git" && name != "node_modules" && name != "target" 
+                        && name != "dist" && name != "build"
+                })
+                .build()
+        }
+        SearchMode::TaskForm => {
+            // Task form mode: Respect gitignore (cleaner results)
+            WalkBuilder::new(repo_path)
+                .git_ignore(true)     // Respect .gitignore
+                .git_global(true)     // Respect global .gitignore
+                .git_exclude(true)    // Respect .git/info/exclude
+                .hidden(false)        // Still show hidden files like .env (if not gitignored)
+                .filter_entry(|entry| {
+                    let name = entry.file_name().to_string_lossy();
+                    name != ".git"
+                })
+                .build()
+        }
+    };
 
     for result in walker {
         let entry = result?;
@@ -358,14 +389,6 @@ async fn search_files_in_repo(
         }
 
         let relative_path = path.strip_prefix(repo_path)?;
-
-        // Skip .git directory and its contents
-        if relative_path
-            .components()
-            .any(|component| component.as_os_str() == ".git")
-        {
-            continue;
-        }
         let relative_path_str = relative_path.to_string_lossy().to_lowercase();
 
         let file_name = path

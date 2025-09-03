@@ -231,10 +231,12 @@ export const projectsApi = {
   searchFiles: async (
     id: string,
     query: string,
+    mode?: string,
     options?: RequestInit
   ): Promise<SearchResult[]> => {
+    const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
     const response = await makeRequest(
-      `/api/projects/${id}/search?q=${encodeURIComponent(query)}`,
+      `/api/projects/${id}/search?q=${encodeURIComponent(query)}${modeParam}`,
       options
     );
     return handleApiResponse<SearchResult[]>(response);

@@ -17,6 +17,7 @@ fn generate_types_content() -> String {
         db::models::project::UpdateProject::decl(),
         db::models::project::SearchResult::decl(),
         db::models::project::SearchMatchType::decl(),
+        db::models::project::SearchMode::decl(),
         executors::actions::ExecutorAction::decl(),
         executors::mcp_config::McpConfig::decl(),
         executors::actions::ExecutorActionType::decl(),
