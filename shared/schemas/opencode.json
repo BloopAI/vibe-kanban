@@ -1,7 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Opencode",
-  "description": "An executor that uses OpenCode to process tasks",
   "type": "object",
   "properties": {
     "additional_params": {

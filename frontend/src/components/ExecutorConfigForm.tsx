@@ -213,7 +213,7 @@ export function ExecutorConfigForm({
   return (
     <div className="space-y-6">
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-0">
           <Form
             schema={schema}
             formData={formData}

@@ -1,7 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Gemini",
-  "description": "An executor that uses Gemini to process tasks",
   "type": "object",
   "required": [
     "model"
@@ -40,7 +39,6 @@
   },
   "definitions": {
     "GeminiModel": {
-      "description": "Model variant of Gemini to use",
       "type": "string",
       "enum": [
         "default",

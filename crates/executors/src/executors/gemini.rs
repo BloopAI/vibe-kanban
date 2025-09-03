@@ -27,7 +27,6 @@ use crate::{
     stdout_dup,
 };
 
-/// Model variant of Gemini to use
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum GeminiModel {
@@ -51,7 +50,6 @@ impl GeminiModel {
     }
 }
 
-/// An executor that uses Gemini to process tasks
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct Gemini {
     pub model: GeminiModel,

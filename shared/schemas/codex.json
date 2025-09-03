@@ -1,7 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Codex",
-  "description": "An executor that uses Codex CLI to process tasks",
   "type": "object",
   "properties": {
     "additional_params": {

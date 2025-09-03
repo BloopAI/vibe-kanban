@@ -17,7 +17,6 @@ use crate::{
     logs::{stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider},
 };
 
-/// An executor that uses Amp to process tasks
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct Amp {
     #[serde(default, skip_serializing_if = "Option::is_none")]

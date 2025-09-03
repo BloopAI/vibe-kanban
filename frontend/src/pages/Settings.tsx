@@ -62,7 +62,7 @@ export function Settings() {
   const [profilesSuccess, setProfilesSuccess] = useState(false);
 
   // Form-based editor state
-  const [useFormEditor, setUseFormEditor] = useState(false);
+  const [useFormEditor, setUseFormEditor] = useState(true);
   const [selectedExecutorType, setSelectedExecutorType] =
     useState<string>('AMP');
   const [selectedProfile, setSelectedProfile] = useState<string>('DEFAULT');
@@ -393,7 +393,7 @@ export function Settings() {
                                   }}
                                   className={
                                     currentProfileVariant?.variant ===
-                                    variantLabel
+                                      variantLabel
                                       ? 'bg-accent'
                                       : ''
                                   }
@@ -727,11 +727,10 @@ export function Settings() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                Agent Profiles
+                Coding Agent Configurations
               </CardTitle>
               <CardDescription>
-                Configure coding agent profiles with specific command-line
-                parameters.
+                Customise the behaviour of coding agents.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -759,7 +758,7 @@ export function Settings() {
                     disabled={profilesLoading || !parsedProfiles}
                   />
                   <Label htmlFor="use-form-editor">
-                    Use visual form editor
+                    Edit visually
                   </Label>
                 </div>
 
@@ -768,7 +767,7 @@ export function Settings() {
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="executor-type">Executor Type</Label>
+                        <Label htmlFor="executor-type">Executor</Label>
                         <Select
                           value={selectedExecutorType}
                           onValueChange={(value) => {
@@ -796,7 +795,7 @@ export function Settings() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="profile">Profile</Label>
+                        <Label htmlFor="profile">Variant</Label>
                         <Select
                           value={selectedProfile}
                           onValueChange={setSelectedProfile}
@@ -810,7 +809,7 @@ export function Settings() {
                           <SelectContent>
                             {Object.keys(
                               parsedProfiles.executors[selectedExecutorType] ||
-                                {}
+                              {}
                             ).map((profile) => (
                               <SelectItem key={profile} value={profile}>
                                 {profile}
@@ -824,79 +823,76 @@ export function Settings() {
                     {parsedProfiles.executors[selectedExecutorType]?.[
                       selectedProfile
                     ]?.[selectedExecutorType] && (
-                      <ExecutorConfigForm
-                        executor={selectedExecutorType as any}
-                        value={
-                          parsedProfiles.executors[selectedExecutorType][
+                        <ExecutorConfigForm
+                          executor={selectedExecutorType as any}
+                          value={
+                            parsedProfiles.executors[selectedExecutorType][
                             selectedProfile
-                          ][selectedExecutorType] || {}
-                        }
-                        onSubmit={(formData) =>
-                          handleExecutorConfigSubmit(
-                            selectedExecutorType,
-                            selectedProfile,
-                            formData
-                          )
-                        }
-                        disabled={profilesSaving}
-                      />
-                    )}
+                            ][selectedExecutorType] || {}
+                          }
+                          onSubmit={(formData) =>
+                            handleExecutorConfigSubmit(
+                              selectedExecutorType,
+                              selectedProfile,
+                              formData
+                            )
+                          }
+                          disabled={profilesSaving}
+                        />
+                      )}
                   </div>
                 ) : (
-                  // JSON editor (existing)
-                  <div className="space-y-2">
-                    <Label htmlFor="profiles-editor">
-                      Profiles Configuration
-                    </Label>
-                    <JSONEditor
-                      id="profiles-editor"
-                      placeholder={
-                        profilesLoading
-                          ? 'Loading profiles...'
-                          : '{\n  "executors": {\n    "amp": {\n      "append_prompt": null,\n      "dangerously_allow_all": null\n    }\n  }\n}'
-                      }
-                      value={profilesLoading ? 'Loading...' : profilesContent}
-                      onChange={handleProfilesChange}
-                      disabled={profilesLoading}
-                      minHeight={300}
-                    />
-                  </div>
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="profiles-editor">
+                        Profiles Configuration
+                      </Label>
+                      <JSONEditor
+                        id="profiles-editor"
+                        placeholder={
+                          profilesLoading
+                            ? 'Loading profiles...'
+                            : '{\n  "executors": {\n    "amp": {\n      "append_prompt": null,\n      "dangerously_allow_all": null\n    }\n  }\n}'
+                        }
+                        value={profilesLoading ? 'Loading...' : profilesContent}
+                        onChange={handleProfilesChange}
+                        disabled={profilesLoading}
+                        minHeight={300}
+                      />
+                    </div>
+
+
+                    <div className="space-y-2">
+                      {!profilesError && profilesPath && (
+                        <p className="text-sm text-muted-foreground">
+                          <span className="font-medium">Configuration file location:</span>{' '}
+                          <span className="font-mono text-xs">{profilesPath}</span>
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex justify-end pt-2">
+                      <Button
+                        onClick={handleSaveProfiles}
+                        disabled={
+                          profilesSaving ||
+                          profilesLoading ||
+                          !!profilesError ||
+                          profilesSuccess
+                        }
+                        className={
+                          profilesSuccess ? 'bg-green-600 hover:bg-green-700' : ''
+                        }
+                      >
+                        {profilesSaving && (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        )}
+                        {profilesSuccess && <span className="mr-2">✓</span>}
+                        {profilesSuccess ? 'Configuration Saved!' : 'Save Configuration'}
+                      </Button>
+                    </div>
+                  </>
                 )}
-
-                <div className="space-y-2">
-                  {!profilesError && profilesPath && (
-                    <p className="text-sm text-muted-foreground">
-                      <span className="font-medium">Configuration file:</span>{' '}
-                      <span className="font-mono text-xs">{profilesPath}</span>
-                    </p>
-                  )}
-                  <p className="text-sm text-muted-foreground">
-                    {useFormEditor
-                      ? 'Use the form above to configure executor settings visually, or switch back to JSON mode for advanced editing.'
-                      : 'Edit coding agent profiles. Each profile needs a unique label, agent type, and command configuration. Enable "visual form editor" for a better experience.'}
-                  </p>
-                </div>
-
-                <div className="flex justify-end pt-2">
-                  <Button
-                    onClick={handleSaveProfiles}
-                    disabled={
-                      profilesSaving ||
-                      profilesLoading ||
-                      !!profilesError ||
-                      profilesSuccess
-                    }
-                    className={
-                      profilesSuccess ? 'bg-green-600 hover:bg-green-700' : ''
-                    }
-                  >
-                    {profilesSaving && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    {profilesSuccess && <span className="mr-2">✓</span>}
-                    {profilesSuccess ? 'Profiles Saved!' : 'Save Profiles'}
-                  </Button>
-                </div>
               </div>
             </CardContent>
           </Card>

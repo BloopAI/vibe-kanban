@@ -28,7 +28,6 @@ use crate::{
     },
 };
 
-/// Executor for running Cursor CLI and normalizing its JSONL stream
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct Cursor {
     #[serde(default, skip_serializing_if = "Option::is_none")]
