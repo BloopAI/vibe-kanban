@@ -60,4 +60,4 @@ jobs:
           cargo fmt --all -- --check
           npm run generate-types:check
           cargo test --workspace
-          cargo clippy --all --all-targets --all-features
+          cargo clippy --all --all-targets -- -D warnings  
