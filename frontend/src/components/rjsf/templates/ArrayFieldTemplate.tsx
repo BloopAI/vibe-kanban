@@ -1,6 +1,5 @@
 import { ArrayFieldTemplateProps, ArrayFieldTemplateItemType } from '@rjsf/utils';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Plus, X } from 'lucide-react';
 
 export const ArrayFieldTemplate = (props: ArrayFieldTemplateProps) => {
@@ -10,9 +9,6 @@ export const ArrayFieldTemplate = (props: ArrayFieldTemplateProps) => {
     onAddClick,
     disabled,
     readonly,
-    title,
-    required,
-    schema,
   } = props;
 
   if (!items || items.length === 0 && !canAdd) {
@@ -21,20 +17,7 @@ export const ArrayFieldTemplate = (props: ArrayFieldTemplateProps) => {
 
   return (
     <div className="space-y-4">
-      {title && (
-        <Label className="text-sm font-medium">
-          {title}
-          {required && <span className="text-destructive ml-1">*</span>}
-        </Label>
-      )}
-
-      {schema.description && (
-        <p className="text-sm text-muted-foreground">
-          {schema.description}
-        </p>
-      )}
-
-      <div className="space-y-3">
+      <div>
         {items.length > 0 && items.map((element: ArrayFieldTemplateItemType) => (
           <ArrayItem
             key={element.key}
@@ -70,25 +53,24 @@ interface ArrayItemProps {
 
 const ArrayItem = ({ element, disabled, readonly }: ArrayItemProps) => {
   const { children } = element;
-  const elementAny = element as any; // Type assertion to access RJSF properties
+  const elementAny = element as any; // Type assertion needed for RJSF v6 beta properties
 
   return (
-    <div className="flex items-start gap-2 p-3 border rounded-md bg-card">
-      {/* Field content */}
-      <div className="flex-1 min-w-0">
+    <div className="flex items-center gap-2">
+      <div className="flex-1">
         {children}
       </div>
 
       {/* Remove button */}
-      {elementAny.hasRemove && (
+      {elementAny.buttonsProps?.hasRemove && (
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => elementAny.onDropIndexClick(elementAny.index)}
-          disabled={disabled || readonly}
-          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-          title="Remove"
+          onClick={elementAny.buttonsProps.onDropIndexClick(elementAny.buttonsProps.index)}
+          disabled={disabled || readonly || elementAny.buttonsProps.disabled}
+          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 shrink-0"
+          title="Remove item"
         >
           <X className="w-4 h-4" />
         </Button>

@@ -2,7 +2,7 @@ import { useMemo, useEffect, useState } from 'react';
 import Form from '@rjsf/core';
 import { RJSFSchema, RJSFValidationError } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import { Button } from '@/components/ui/button';
+
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
 import { shadcnTheme } from './rjsf';
