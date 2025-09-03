@@ -30,7 +30,7 @@ use executors::{
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
     executors::{ExecutorError, StandardCodingAgentExecutor},
-    logs::{NormalizedEntry, NormalizedEntryType, utils::patch::ConversationPatch},
+    logs::utils::patch::ConversationPatch,
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
 use futures::{StreamExt, TryStreamExt, future};
@@ -386,21 +386,11 @@ pub trait ContainerService {
                 ExecutorActionType::CodingAgentInitialRequest(request) => {
                     let executor = ExecutorConfigs::get_cached()
                         .get_coding_agent_or_default(&request.executor_profile_id);
-
-                    // Inject the initial user prompt before normalization (DB fallback path)
-                    let user_entry = create_user_message(request.prompt.clone());
-                    temp_store.push_patch(ConversationPatch::add_normalized_entry(0, user_entry));
-
                     executor.normalize_logs(temp_store.clone(), &current_dir);
                 }
                 ExecutorActionType::CodingAgentFollowUpRequest(request) => {
                     let executor = ExecutorConfigs::get_cached()
                         .get_coding_agent_or_default(&request.executor_profile_id);
-
-                    // Inject the follow-up user prompt before normalization (DB fallback path)
-                    let user_entry = create_user_message(request.prompt.clone());
-                    temp_store.push_patch(ConversationPatch::add_normalized_entry(0, user_entry));
-
                     executor.normalize_logs(temp_store.clone(), &current_dir);
                 }
                 _ => {
@@ -649,11 +639,6 @@ pub trait ContainerService {
                     if let Some(executor) =
                         ExecutorConfigs::get_cached().get_coding_agent(&request.executor_profile_id)
                     {
-                        // Prepend the initial user prompt as a normalized entry
-                        let user_entry = create_user_message(request.prompt.clone());
-                        msg_store
-                            .push_patch(ConversationPatch::add_normalized_entry(0, user_entry));
-
                         executor.normalize_logs(
                             msg_store,
                             &self.task_attempt_to_current_dir(task_attempt),
@@ -671,11 +656,6 @@ pub trait ContainerService {
                     if let Some(executor) =
                         ExecutorConfigs::get_cached().get_coding_agent(&request.executor_profile_id)
                     {
-                        // Prepend the follow-up user prompt as a normalized entry
-                        let user_entry = create_user_message(request.prompt.clone());
-                        msg_store
-                            .push_patch(ConversationPatch::add_normalized_entry(0, user_entry));
-
                         executor.normalize_logs(
                             msg_store,
                             &self.task_attempt_to_current_dir(task_attempt),
@@ -729,14 +709,5 @@ pub trait ContainerService {
 
         tracing::debug!("Started next action: {:?}", next_action);
         Ok(())
-    }
-}
-
-fn create_user_message(prompt: String) -> NormalizedEntry {
-    NormalizedEntry {
-        timestamp: None,
-        entry_type: NormalizedEntryType::UserMessage,
-        content: prompt,
-        metadata: None,
     }
 }
