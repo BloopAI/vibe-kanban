@@ -11,7 +11,6 @@ import {
   FolderOpen,
   Settings,
   BookOpen,
-  Server,
   MessageCircleQuestion,
   Menu,
   Plus,
@@ -27,7 +26,6 @@ import { useState } from 'react';
 
 const INTERNAL_NAV = [
   { label: 'Projects', icon: FolderOpen, to: '/projects' },
-  { label: 'MCP Servers', icon: Server, to: '/mcp-servers' },
   { label: 'Settings', icon: Settings, to: '/settings' },
 ];
 
@@ -125,7 +123,7 @@ export function Navbar() {
 
               <DropdownMenuContent align="end">
                 {INTERNAL_NAV.map((item) => {
-                  const active = location.pathname === item.to;
+                  const active = location.pathname.startsWith(item.to);
                   const Icon = item.icon;
                   return (
                     <DropdownMenuItem

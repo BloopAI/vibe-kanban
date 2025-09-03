@@ -4,17 +4,18 @@ import { RJSFSchema, RJSFValidationError } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
+// Unused imports commented out - using default @rjsf/shadcn components instead
+// import { Input } from '@/components/ui/input';
+// import { Label } from '@/components/ui/label';
+// import { Checkbox } from '@/components/ui/checkbox';
+// import {
+//   Select,
+//   SelectContent,
+//   SelectItem,
+//   SelectTrigger,
+//   SelectValue,
+// } from '@/components/ui/select';
 
 // Import schemas statically
 import ampSchema from '../../../shared/schemas/amp.json';
@@ -37,7 +38,7 @@ type ExecutorType =
 interface ExecutorConfigFormProps {
   executor: ExecutorType;
   value: any;
-  onSubmit: (formData: any) => void;
+  onSubmit?: (formData: any) => void;
   onChange?: (formData: any) => void;
   disabled?: boolean;
 }
@@ -52,116 +53,90 @@ const schemas: Record<ExecutorType, RJSFSchema> = {
   QWEN_CODE: qwenCodeSchema as RJSFSchema,
 };
 
-// Custom field templates to match shadcn/ui design
-const CustomFieldTemplate = (props: any) => {
-  const { id, label, required, description, errors, children, hidden } = props;
+// Note: Custom widgets commented out - currently using default @rjsf/shadcn widgets
+// Will uncomment if customization is needed in the future
 
-  if (hidden) {
-    return children;
-  }
+// const CustomTextWidget = (props: any) => {
+//   const {
+//     id,
+//     value,
+//     onChange,
+//     onBlur,
+//     onFocus,
+//     disabled,
+//     readonly,
+//     placeholder,
+//   } = props;
+//   return (
+//     <Input
+//       id={id}
+//       value={value || ''}
+//       onChange={(e) => onChange(e.target.value)}
+//       onBlur={onBlur && ((e) => onBlur(id, e.target.value))}
+//       onFocus={onFocus && ((e) => onFocus(id, e.target.value))}
+//       disabled={disabled || readonly}
+//       placeholder={placeholder}
+//     />
+//   );
+// };
 
-  return (
-    <div className="flex flex-col">
-      {label && (
-        required ?
-          <Label htmlFor={id} className="required">{label} <span className="text-destructive flex-1">*</span></Label>
-          :
-          <Label htmlFor={id} className="flex-1">{label}</Label>
-      )}
-      {children}
-      {description && (
-        <p className="text-sm text-muted-foreground">{description}</p>
-      )}
-      {errors && errors.length > 0 && (
-        <Alert variant="destructive">
-          <AlertDescription>{errors[0]}</AlertDescription>
-        </Alert>
-      )}
-    </div>
-  );
-};
+// const CustomCheckboxWidget = (props: any) => {
+//   const { id, value, onChange, disabled, readonly } = props;
+//   return (
+//     <Checkbox
+//       id={id}
+//       checked={!!value}
+//       onCheckedChange={(checked) => onChange(checked)}
+//       disabled={disabled || readonly}
+//     />
+//   );
+// };
 
-const CustomTextWidget = (props: any) => {
-  const {
-    id,
-    value,
-    onChange,
-    onBlur,
-    onFocus,
-    disabled,
-    readonly,
-    placeholder,
-  } = props;
-  return (
-    <Input
-      id={id}
-      value={value || ''}
-      onChange={(e) => onChange(e.target.value)}
-      onBlur={onBlur && ((e) => onBlur(id, e.target.value))}
-      onFocus={onFocus && ((e) => onFocus(id, e.target.value))}
-      disabled={disabled || readonly}
-      placeholder={placeholder}
-    />
-  );
-};
+// const CustomSelectWidget = (props: any) => {
+//   const { id, value, onChange, disabled, readonly, options } = props;
+//   const { enumOptions } = options;
 
-const CustomCheckboxWidget = (props: any) => {
-  const { id, value, onChange, disabled, readonly } = props;
-  return (
-    <Checkbox
-      id={id}
-      checked={!!value}
-      onCheckedChange={(checked) => onChange(checked)}
-      disabled={disabled || readonly}
-    />
-  );
-};
+//   return (
+//     <Select
+//       value={value || ''}
+//       onValueChange={onChange}
+//       disabled={disabled || readonly}
+//     >
+//       <SelectTrigger id={id}>
+//         <SelectValue placeholder="Select option..." />
+//       </SelectTrigger>
+//       <SelectContent>
+//         {enumOptions?.map((option: any) => (
+//           <SelectItem key={option.value} value={option.value}>
+//             {option.label}
+//           </SelectItem>
+//         ))}
+//       </SelectContent>
+//     </Select>
+//   );
+// };
 
-const CustomSelectWidget = (props: any) => {
-  const { id, value, onChange, disabled, readonly, options } = props;
-  const { enumOptions } = options;
+// Note: Custom widgets and templates commented out - not currently used
+// const customWidgets = {
+//   TextWidget: CustomTextWidget,
+//   CheckboxWidget: CustomCheckboxWidget,
+//   SelectWidget: CustomSelectWidget,
+// };
 
-  return (
-    <Select
-      value={value || ''}
-      onValueChange={onChange}
-      disabled={disabled || readonly}
-    >
-      <SelectTrigger id={id}>
-        <SelectValue placeholder="Select option..." />
-      </SelectTrigger>
-      <SelectContent>
-        {enumOptions?.map((option: any) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-};
-
-const customWidgets = {
-  TextWidget: CustomTextWidget,
-  CheckboxWidget: CustomCheckboxWidget,
-  SelectWidget: CustomSelectWidget,
-};
-
-const customTemplates = {
-  // FieldTemplate: CustomFieldTemplate,
-  ObjectFieldTemplate: (props: any) => {
-    const { properties, title, description } = props;
-    return (
-      <div className="space-y-4">
-        {title && <h3 className="text-lg font-semibold">{title}</h3>}
-        {description && (
-          <p className="text-sm text-muted-foreground mb-4">{description}</p>
-        )}
-        {properties.map((element: any) => element.content)}
-      </div>
-    );
-  },
-};
+// const customTemplates = {
+//   ObjectFieldTemplate: (props: any) => {
+//     const { properties, title, description } = props;
+//     return (
+//       <div className="space-y-4">
+//         {title && <h3 className="text-lg font-semibold">{title}</h3>}
+//         {description && (
+//           <p className="text-sm text-muted-foreground mb-4">{description}</p>
+//         )}
+//         {properties.map((element: any) => element.content)}
+//       </div>
+//     );
+//   },
+// };
 
 export function ExecutorConfigForm({
   executor,
@@ -193,7 +168,9 @@ export function ExecutorConfigForm({
 
   const handleSubmit = ({ formData: submitData }: any) => {
     setValidationErrors([]);
-    onSubmit(submitData);
+    if (onSubmit) {
+      onSubmit(submitData);
+    }
   };
 
   const handleError = (errors: RJSFValidationError[]) => {
@@ -209,8 +186,6 @@ export function ExecutorConfigForm({
       </Alert>
     );
   }
-
-  console.log(validationErrors);
 
   return (
     <div className="space-y-6">
@@ -229,14 +204,16 @@ export function ExecutorConfigForm({
             liveValidate
             showErrorList={false}
           >
-            <div className="flex justify-end pt-4">
-              <Button
-                type="submit"
-                disabled={disabled || validationErrors.length > 0}
-              >
-                Save Configuration
-              </Button>
-            </div>
+            {onSubmit && (
+              <div className="flex justify-end pt-4">
+                <Button
+                  type="submit"
+                  disabled={disabled || validationErrors.length > 0}
+                >
+                  Save Configuration
+                </Button>
+              </div>
+            )}
           </Form>
         </CardContent>
       </Card>
