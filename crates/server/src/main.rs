@@ -1,9 +1,10 @@
+use std::path::PathBuf;
+
 use anyhow::{self, Error as AnyhowError};
-use deployment::{Deployment, DeploymentError};
 use db::models::project::Project;
+use deployment::{Deployment, DeploymentError};
 use server::{DeploymentImpl, routes};
 use sqlx::Error as SqlxError;
-use std::path::PathBuf;
 use strip_ansi_escapes::strip;
 use thiserror::Error;
 use tracing_subscriber::{EnvFilter, prelude::*};
@@ -103,35 +104,41 @@ async fn main() -> Result<(), VibeKanbanError> {
 
 async fn warm_file_search_cache(deployment: &DeploymentImpl) -> Result<(), String> {
     tracing::info!("Starting file search cache warming...");
-    
+
     // Get top 3 most active projects
     let active_projects = Project::find_most_active(&deployment.db().pool, 3)
         .await
         .map_err(|e| format!("Failed to fetch active projects: {}", e))?;
-    
+
     if active_projects.is_empty() {
         tracing::info!("No active projects found, skipping cache warming");
         return Ok(());
     }
-    
+
     let repo_paths: Vec<PathBuf> = active_projects
         .iter()
         .map(|p| PathBuf::from(&p.git_repo_path))
         .collect();
-    
-    tracing::info!("Warming cache for {} projects: {:?}", repo_paths.len(), repo_paths);
-    
+
+    tracing::info!(
+        "Warming cache for {} projects: {:?}",
+        repo_paths.len(),
+        repo_paths
+    );
+
     let file_search_cache = deployment.file_search_cache();
-    file_search_cache.warm_repos(repo_paths.clone()).await
+    file_search_cache
+        .warm_repos(repo_paths.clone())
+        .await
         .map_err(|e| format!("Failed to warm cache: {}", e))?;
-    
+
     // Setup watchers for active projects
     for repo_path in &repo_paths {
         if let Err(e) = file_search_cache.setup_watcher(repo_path).await {
             tracing::warn!("Failed to setup watcher for {:?}: {}", repo_path, e);
         }
     }
-    
+
     tracing::info!("File search cache warming completed");
     Ok(())
 }

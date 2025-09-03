@@ -10,7 +10,7 @@ use fst::{Map, MapBuilder};
 use ignore::WalkBuilder;
 use moka::future::Cache;
 use notify::{RecommendedWatcher, RecursiveMode};
-use notify_debouncer_full::{new_debouncer, DebounceEventResult};
+use notify_debouncer_full::{DebounceEventResult, new_debouncer};
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
@@ -57,7 +57,7 @@ pub struct FileSearchCache {
 impl FileSearchCache {
     pub fn new() -> Self {
         let (build_sender, build_receiver) = mpsc::unbounded_channel();
-        
+
         // Create cache with 100MB limit and 1 hour TTL
         let cache = Cache::builder()
             .max_capacity(50) // Max 50 repos
@@ -67,7 +67,7 @@ impl FileSearchCache {
         let cache_for_worker = cache.clone();
         let git_service = GitService::new();
         let file_ranker = FileRanker::new();
-        
+
         // Spawn background worker
         let worker_git_service = git_service.clone();
         let worker_file_ranker = file_ranker.clone();
@@ -97,16 +97,14 @@ impl FileSearchCache {
         query: &str,
     ) -> Result<Vec<SearchResult>, CacheError> {
         let repo_path_buf = repo_path.to_path_buf();
-        
+
         // Check if we have a valid cache entry
-        if let Some(cached) = self.cache.get(&repo_path_buf).await {
-            if let Ok(head_info) = self.git_service.get_head_info(&repo_path_buf) {
-                if head_info.oid == cached.head_sha {
+        if let Some(cached) = self.cache.get(&repo_path_buf).await
+            && let Ok(head_info) = self.git_service.get_head_info(&repo_path_buf)
+                && head_info.oid == cached.head_sha {
                     // Cache hit - perform fast FST search
                     return Ok(self.search_in_fst(&cached, query).await);
                 }
-            }
-        }
 
         // Cache miss - trigger background refresh and return error
         if let Err(e) = self.build_queue.send(repo_path_buf) {
@@ -120,7 +118,10 @@ impl FileSearchCache {
     pub async fn warm_repos(&self, repo_paths: Vec<PathBuf>) -> Result<(), String> {
         for repo_path in repo_paths {
             if let Err(e) = self.build_queue.send(repo_path.clone()) {
-                error!("Failed to enqueue repo for warming: {:?} - {}", repo_path, e);
+                error!(
+                    "Failed to enqueue repo for warming: {:?} - {}",
+                    repo_path, e
+                );
             }
         }
         Ok(())
@@ -153,20 +154,25 @@ impl FileSearchCache {
     /// Build cache entry for a repository
     async fn build_repo_cache(&self, repo_path: &Path) -> Result<CachedRepo, String> {
         let repo_path_buf = repo_path.to_path_buf();
-        
+
         info!("Building cache for repo: {:?}", repo_path);
-        
+
         // Get current HEAD
-        let head_info = self.git_service.get_head_info(&repo_path_buf)
-            .map_err(|e| format!("Failed to get HEAD info: {}", e))?;
+        let head_info = self
+            .git_service
+            .get_head_info(&repo_path_buf)
+            .map_err(|e| format!("Failed to get HEAD info: {e}"))?;
 
         // Get git stats
-        let stats = self.file_ranker.get_stats(repo_path).await
-            .map_err(|e| format!("Failed to get git stats: {}", e))?;
+        let stats = self
+            .file_ranker
+            .get_stats(repo_path)
+            .await
+            .map_err(|e| format!("Failed to get git stats: {e}"))?;
 
         // Build file index
         let (indexed_files, fst_map) = Self::build_file_index(repo_path)
-            .map_err(|e| format!("Failed to build file index: {}", e))?;
+            .map_err(|e| format!("Failed to build file index: {e}"))?;
 
         Ok(CachedRepo {
             head_sha: head_info.oid,
@@ -178,7 +184,9 @@ impl FileSearchCache {
     }
 
     /// Build FST index from filesystem traversal
-    fn build_file_index(repo_path: &Path) -> Result<(Vec<IndexedFile>, Map<Vec<u8>>), Box<dyn std::error::Error + Send + Sync>> {
+    fn build_file_index(
+        repo_path: &Path,
+    ) -> Result<(Vec<IndexedFile>, Map<Vec<u8>>), Box<dyn std::error::Error + Send + Sync>> {
         let mut indexed_files = Vec::new();
         let mut fst_keys = Vec::new();
 
@@ -210,7 +218,7 @@ impl FileSearchCache {
 
             let relative_path_str = relative_path.to_string_lossy().to_string();
             let relative_path_lower = relative_path_str.to_lowercase();
-            
+
             // Skip empty paths
             if relative_path_lower.is_empty() {
                 continue;
@@ -296,7 +304,7 @@ impl FileSearchCache {
     /// Setup file watcher for repository
     pub async fn setup_watcher(&self, repo_path: &Path) -> Result<(), String> {
         let repo_path_buf = repo_path.to_path_buf();
-        
+
         if self.watchers.contains_key(&repo_path_buf) {
             return Ok(()); // Already watching
         }
@@ -310,7 +318,7 @@ impl FileSearchCache {
         let watched_path = repo_path_buf.clone();
 
         let (tx, mut rx) = mpsc::unbounded_channel();
-        
+
         let mut debouncer = new_debouncer(
             Duration::from_millis(500),
             None,
@@ -319,7 +327,7 @@ impl FileSearchCache {
                     for event in events {
                         // Check if any path contains HEAD file
                         for path in &event.event.paths {
-                            if path.file_name().map_or(false, |name| name == "HEAD") {
+                            if path.file_name().is_some_and(|name| name == "HEAD") {
                                 if let Err(e) = tx.send(()) {
                                     error!("Failed to send HEAD change event: {}", e);
                                 }
@@ -329,11 +337,12 @@ impl FileSearchCache {
                     }
                 }
             },
-        ).map_err(|e| format!("Failed to create file watcher: {}", e))?;
+        )
+        .map_err(|e| format!("Failed to create file watcher: {e}"))?;
 
         debouncer
-            .watch(&git_dir.join("HEAD"), RecursiveMode::NonRecursive)
-            .map_err(|e| format!("Failed to watch HEAD file: {}", e))?;
+            .watch(git_dir.join("HEAD"), RecursiveMode::NonRecursive)
+            .map_err(|e| format!("Failed to watch HEAD file: {e}"))?;
 
         // Spawn task to handle HEAD changes
         tokio::spawn(async move {
