@@ -65,6 +65,7 @@ export function Settings() {
   const [useFormEditor, setUseFormEditor] = useState(false);
   const [selectedExecutorType, setSelectedExecutorType] =
     useState<string>('AMP');
+  const [selectedProfile, setSelectedProfile] = useState<string>('DEFAULT');
   const [parsedProfiles, setParsedProfiles] = useState<any>(null);
 
   // Load profiles content on mount
@@ -153,15 +154,20 @@ export function Settings() {
     }
   };
 
-  const handleExecutorConfigSubmit = (executorType: string, formData: any) => {
+  const handleExecutorConfigSubmit = (executorType: string, profile: string, formData: any) => {
     if (!parsedProfiles || !parsedProfiles.executors) return;
 
-    // Update the parsed profiles with the new config
+    // Update the parsed profiles with the new config in the nested structure
     const updatedProfiles = {
       ...parsedProfiles,
       executors: {
         ...parsedProfiles.executors,
-        [executorType]: formData,
+        [executorType]: {
+          ...parsedProfiles.executors[executorType],
+          [profile]: {
+            [executorType]: formData,
+          },
+        },
       },
     };
 
@@ -756,38 +762,68 @@ export function Settings() {
                 {useFormEditor && parsedProfiles && parsedProfiles.executors ? (
                   // Form-based editor
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="executor-type">Executor Type</Label>
-                      <Select
-                        value={selectedExecutorType}
-                        onValueChange={setSelectedExecutorType}
-                      >
-                        <SelectTrigger id="executor-type">
-                          <SelectValue placeholder="Select executor type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.keys(parsedProfiles.executors).map((type) => (
-                            <SelectItem key={type} value={type}>
-                              {type}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="executor-type">Executor Type</Label>
+                        <Select
+                          value={selectedExecutorType}
+                          onValueChange={(value) => {
+                            setSelectedExecutorType(value);
+                            // Reset profile selection when executor type changes
+                            const profiles = Object.keys(parsedProfiles.executors[value] || {});
+                            setSelectedProfile(profiles[0] || 'DEFAULT');
+                          }}
+                        >
+                          <SelectTrigger id="executor-type">
+                            <SelectValue placeholder="Select executor type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.keys(parsedProfiles.executors).map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {type}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="profile">Profile</Label>
+                        <Select
+                          value={selectedProfile}
+                          onValueChange={setSelectedProfile}
+                          disabled={!parsedProfiles.executors[selectedExecutorType]}
+                        >
+                          <SelectTrigger id="profile">
+                            <SelectValue placeholder="Select profile" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.keys(parsedProfiles.executors[selectedExecutorType] || {}).map((profile) => (
+                              <SelectItem key={profile} value={profile}>
+                                {profile}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
 
-                    <ExecutorConfigForm
-                      executor={selectedExecutorType as any}
-                      value={
-                        parsedProfiles.executors[selectedExecutorType] || {}
-                      }
-                      onSubmit={(formData) =>
-                        handleExecutorConfigSubmit(
-                          selectedExecutorType,
-                          formData
-                        )
-                      }
-                      disabled={profilesSaving}
-                    />
+                    {parsedProfiles.executors[selectedExecutorType]?.[selectedProfile]?.[selectedExecutorType] && (
+                      <ExecutorConfigForm
+                        executor={selectedExecutorType as any}
+                        value={
+                          parsedProfiles.executors[selectedExecutorType][selectedProfile][selectedExecutorType] || {}
+                        }
+                        onSubmit={(formData) =>
+                          handleExecutorConfigSubmit(
+                            selectedExecutorType,
+                            selectedProfile,
+                            formData
+                          )
+                        }
+                        disabled={profilesSaving}
+                      />
+                    )}
                   </div>
                 ) : (
                   // JSON editor (existing)
