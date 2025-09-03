@@ -157,6 +157,50 @@ export function ExecutorsSettings() {
     markDirty(updatedProfiles);
   };
 
+  const handleExecutorConfigSave = async (formData: any) => {
+    if (!parsedProfiles || !parsedProfiles.executors) return;
+
+    // Update the parsed profiles with the saved config
+    const updatedProfiles = {
+      ...parsedProfiles,
+      executors: {
+        ...parsedProfiles.executors,
+        [selectedExecutorType]: {
+          ...parsedProfiles.executors[selectedExecutorType],
+          [selectedProfile]: {
+            [selectedExecutorType]: formData,
+          },
+        },
+      },
+    };
+
+    // Update state
+    setParsedProfiles(updatedProfiles);
+    
+    // Save the updated profiles directly
+    setProfilesSaving(true);
+    setProfilesError(null);
+    setProfilesSuccess(false);
+
+    try {
+      const contentToSave = JSON.stringify(updatedProfiles, null, 2);
+      
+      await profilesApi.save(contentToSave);
+      // Reload the system to get the updated profiles
+      await reloadSystem();
+      setProfilesSuccess(true);
+      setIsDirty(false);
+      setTimeout(() => setProfilesSuccess(false), 3000);
+
+      // Update the raw content as well
+      setProfilesContent(contentToSave);
+    } catch (err: any) {
+      setProfilesError(err.message || 'Failed to save profiles');
+    } finally {
+      setProfilesSaving(false);
+    }
+  };
+
   if (profilesLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -269,7 +313,10 @@ export function ExecutorsSettings() {
                       formData
                     )
                   }
+                  onSave={handleExecutorConfigSave}
                   disabled={profilesSaving}
+                  isSaving={profilesSaving}
+                  isDirty={isDirty}
                 />
               )}
             </div>
@@ -302,23 +349,21 @@ export function ExecutorsSettings() {
                   </p>
                 </div>
               )}
+
+              {/* Save button for JSON editor mode */}
+              <div className="flex justify-end pt-4">
+                <Button
+                  onClick={handleSaveProfiles}
+                  disabled={!isDirty || profilesSaving || !!profilesError}
+                >
+                  {profilesSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Executor Configurations
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Sticky Save Button */}
-      <div className="sticky bottom-0 z-10 bg-background/80 backdrop-blur-sm border-t pt-4">
-        <div className="flex justify-end">
-          <Button
-            onClick={handleSaveProfiles}
-            disabled={!isDirty || profilesSaving || !!profilesError}
-          >
-            {profilesSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Executor Configurations
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

@@ -5,6 +5,8 @@ import validator from '@rjsf/validator-ajv8';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 import { shadcnTheme } from './rjsf';
 // Using custom shadcn/ui widgets instead of @rjsf/shadcn theme
 
@@ -31,7 +33,10 @@ interface ExecutorConfigFormProps {
   value: any;
   onSubmit?: (formData: any) => void;
   onChange?: (formData: any) => void;
+  onSave?: (formData: any) => Promise<void>;
   disabled?: boolean;
+  isSaving?: boolean;
+  isDirty?: boolean;
 }
 
 const schemas: Record<ExecutorType, RJSFSchema> = {
@@ -49,7 +54,10 @@ export function ExecutorConfigForm({
   value,
   onSubmit,
   onChange,
+  onSave,
   disabled = false,
+  isSaving = false,
+  isDirty = false,
 }: ExecutorConfigFormProps) {
   const [formData, setFormData] = useState(value || {});
   const [validationErrors, setValidationErrors] = useState<
@@ -72,9 +80,11 @@ export function ExecutorConfigForm({
     }
   };
 
-  const handleSubmit = ({ formData: submitData }: any) => {
+  const handleSubmit = async ({ formData: submitData }: any) => {
     setValidationErrors([]);
-    if (onSubmit) {
+    if (onSave) {
+      await onSave(submitData);
+    } else if (onSubmit) {
       onSubmit(submitData);
     }
   };
@@ -110,7 +120,17 @@ export function ExecutorConfigForm({
             widgets={shadcnTheme.widgets}
             templates={shadcnTheme.templates}
           >
-            <></>
+            {onSave && (
+              <div className="flex justify-end pt-4">
+                <Button
+                  type="submit"
+                  disabled={!isDirty || validationErrors.length > 0 || isSaving}
+                >
+                  {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Configuration
+                </Button>
+              </div>
+            )}
           </Form>
         </CardContent>
       </Card>
