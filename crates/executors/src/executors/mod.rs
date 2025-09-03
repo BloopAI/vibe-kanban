@@ -176,13 +176,9 @@ pub trait StandardCodingAgentExecutor {
     description = "Extra text appended to the prompt",
     extend("format" = "textarea")
 )]
+#[derive(Default)]
 pub struct AppendPrompt(pub Option<String>);
 
-impl Default for AppendPrompt {
-    fn default() -> Self {
-        AppendPrompt(None)
-    }
-}
 
 impl AppendPrompt {
     pub fn get(&self) -> Option<String> {
