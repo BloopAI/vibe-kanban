@@ -213,7 +213,7 @@ pub async fn delete_task(
     Extension(task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
-    // 1. Validate no running execution processes
+    // Validate no running execution processes
     if deployment
         .container()
         .has_running_processes(task.id)
@@ -222,7 +222,7 @@ pub async fn delete_task(
         return Err(ApiError::Conflict("Task has running execution processes. Please wait for them to complete or stop them first.".to_string()));
     }
 
-    // 2. Gather task attempts data needed for background cleanup
+    // Gather task attempts data needed for background cleanup
     let attempts = TaskAttempt::fetch_all(&deployment.db().pool, Some(task.id))
         .await
         .map_err(|e| {
@@ -230,20 +230,7 @@ pub async fn delete_task(
             ApiError::TaskAttempt(e)
         })?;
 
-    // 3. Stop execution processes (fast operation)
-    deployment
-        .container()
-        .stop_task_processes(&attempts)
-        .await
-        .unwrap_or_else(|e| {
-            tracing::warn!(
-                "Failed to stop some execution processes for task {}: {}",
-                task.id,
-                e
-            );
-        });
-
-    // 4. Gather cleanup data before deletion (Oracle's recommendation: after stopping processes)
+    // Gather cleanup data before deletion
     let project = task
         .parent_project(&deployment.db().pool)
         .await?
@@ -263,18 +250,14 @@ pub async fn delete_task(
         })
         .collect();
 
-    // 5. Delete task from database (FK CASCADE will handle task_attempts)
+    // Delete task from database (FK CASCADE will handle task_attempts)
     let rows_affected = Task::delete(&deployment.db().pool, task.id).await?;
 
     if rows_affected == 0 {
         return Err(ApiError::Database(SqlxError::RowNotFound));
     }
 
-    // 6. Emit SSE event immediately so UI updates
-    let patch = task_patch::remove(task.id);
-    deployment.events().msg_store().push_patch(patch);
-
-    // 7. Spawn background worktree cleanup task
+    // Spawn background worktree cleanup task
     let task_id = task.id;
     tokio::spawn(async move {
         let span = tracing::info_span!("background_worktree_cleanup", task_id = %task_id);
