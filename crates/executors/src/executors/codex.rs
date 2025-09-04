@@ -40,7 +40,7 @@ pub enum SandboxMode {
 }
 
 /// Approval policy for Codex
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, AsRefStr)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, AsRefStr, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum ApprovalPolicy {
