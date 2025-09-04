@@ -106,15 +106,6 @@ pub enum SearchMatchType {
     FullPath,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[derive(Default)]
-pub enum SearchMode {
-    #[default]
-    TaskForm, // Default: exclude ignored files
-    Settings, // Include ignored files (for project config)
-}
-
-
 impl Project {
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(

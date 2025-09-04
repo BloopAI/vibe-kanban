@@ -5,19 +5,44 @@ use std::{
 };
 
 use dashmap::DashMap;
-use db::models::project::{SearchMatchType, SearchMode, SearchResult};
+use db::models::project::{SearchMatchType, SearchResult};
 use fst::{Map, MapBuilder};
 use ignore::WalkBuilder;
 use moka::future::Cache;
 use notify::{RecommendedWatcher, RecursiveMode};
 use notify_debouncer_full::{DebounceEventResult, new_debouncer};
+use serde::{Deserialize, Serialize};
+use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
+use ts_rs::TS;
 
 use super::{
     file_ranker::{FileRanker, FileStats},
     git::GitService,
 };
+
+/// Search mode for different use cases
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "lowercase")]
+pub enum SearchMode {
+    TaskForm,    // Default: exclude ignored files (clean results)
+    Settings,    // Include ignored files (for project config like .env)
+}
+
+impl Default for SearchMode {
+    fn default() -> Self {
+        SearchMode::TaskForm
+    }
+}
+
+/// Search query parameters for typed Axum extraction
+#[derive(Debug, Deserialize)]
+pub struct SearchQuery {
+    pub q: String,
+    #[serde(default)]
+    pub mode: SearchMode,
+}
 
 /// FST-indexed file search result
 #[derive(Clone, Debug)]
@@ -127,6 +152,44 @@ impl FileSearchCache {
                 );
             }
         }
+        Ok(())
+    }
+
+    /// Pre-warm cache for most active projects
+    pub async fn warm_most_active(&self, db_pool: &SqlitePool, limit: i32) -> Result<(), String> {
+        use db::models::project::Project;
+        
+        info!("Starting file search cache warming...");
+        
+        // Get most active projects
+        let active_projects = Project::find_most_active(db_pool, limit)
+            .await
+            .map_err(|e| format!("Failed to fetch active projects: {}", e))?;
+        
+        if active_projects.is_empty() {
+            info!("No active projects found, skipping cache warming");
+            return Ok(());
+        }
+        
+        let repo_paths: Vec<PathBuf> = active_projects
+            .iter()
+            .map(|p| PathBuf::from(&p.git_repo_path))
+            .collect();
+        
+        info!("Warming cache for {} projects: {:?}", repo_paths.len(), repo_paths);
+        
+        // Warm the cache
+        self.warm_repos(repo_paths.clone()).await
+            .map_err(|e| format!("Failed to warm cache: {}", e))?;
+        
+        // Setup watchers for active projects
+        for repo_path in &repo_paths {
+            if let Err(e) = self.setup_watcher(repo_path).await {
+                warn!("Failed to setup watcher for {:?}: {}", repo_path, e);
+            }
+        }
+        
+        info!("File search cache warming completed");
         Ok(())
     }
 

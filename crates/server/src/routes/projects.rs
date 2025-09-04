@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Path};
+use std::path::Path;
 
 use axum::{
     Extension, Json, Router,
@@ -9,11 +9,15 @@ use axum::{
     routing::{get, post},
 };
 use db::models::project::{
-    CreateProject, Project, ProjectError, SearchMatchType, SearchMode, SearchResult, UpdateProject,
+    CreateProject, Project, ProjectError, SearchMatchType, SearchResult, UpdateProject,
 };
 use deployment::Deployment;
 use ignore::WalkBuilder;
-use services::services::{file_ranker::FileRanker, file_search_cache::CacheError, git::GitBranch};
+use services::services::{
+    file_ranker::FileRanker, 
+    file_search_cache::{CacheError, SearchMode, SearchQuery}, 
+    git::GitBranch
+};
 use utils::{path::expand_tilde, response::ApiResponse};
 use uuid::Uuid;
 
@@ -279,25 +283,16 @@ pub async fn open_project_in_editor(
 pub async fn search_project_files(
     State(deployment): State<DeploymentImpl>,
     Extension(project): Extension<Project>,
-    Query(params): Query<HashMap<String, String>>,
+    Query(search_query): Query<SearchQuery>,
 ) -> Result<ResponseJson<ApiResponse<Vec<SearchResult>>>, StatusCode> {
-    let query = match params.get("q") {
-        Some(q) if !q.trim().is_empty() => q.trim(),
-        _ => {
-            return Ok(ResponseJson(ApiResponse::error(
-                "Query parameter 'q' is required and cannot be empty",
-            )));
-        }
-    };
-
-    // Parse mode parameter (defaults to TaskForm)
-    let mode = params
-        .get("mode")
-        .map(|m| match m.as_str() {
-            "settings" => SearchMode::Settings,
-            "task_form" | _ => SearchMode::TaskForm,
-        })
-        .unwrap_or_default();
+    let query = search_query.q.trim();
+    let mode = search_query.mode;
+    
+    if query.is_empty() {
+        return Ok(ResponseJson(ApiResponse::error(
+            "Query parameter 'q' is required and cannot be empty",
+        )));
+    }
 
     let repo_path = &project.git_repo_path;
     let file_search_cache = deployment.file_search_cache();
