@@ -1,6 +1,7 @@
-import { Cog, Play, Terminal, ChevronDown, User, History } from 'lucide-react';
+import { Cog, Play, Terminal, ChevronDown, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { ProcessStartPayload, ExecutorAction } from '@/types/logs';
+import type { ProcessStartPayload } from '@/types/logs';
+import type { ExecutorAction } from 'shared/types';
 
 interface ProcessStartCardProps {
   payload: ProcessStartPayload;
@@ -38,7 +39,7 @@ function ProcessStartCard({
       case 'cleanupscript':
         return <Terminal className="h-4 w-4" />;
       case 'codingagent':
-        return <User className="h-4 w-4" />;
+        return null;
       case 'devserver':
         return <Play className="h-4 w-4" />;
       default:
@@ -78,9 +79,9 @@ function ProcessStartCard({
   const shouldTruncate = isCollapsed && payload.runReason === 'codingagent';
 
   return (
-    <div className="pl-4 4 pb-2 w-full">
+    <div className="pl-16 pb-2 w-full">
       <div
-        className="px-3 p-2 cursor-pointer select-none hover:bg-muted/70 transition-colors border rounded-md w-full"
+        className="px-3 p-2 cursor-pointer select-none transition-colors border rounded-md w-full bg-zinc-100 dark:bg-zinc-800"
         role="button"
         tabIndex={0}
         onClick={handleClick}

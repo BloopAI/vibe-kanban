@@ -37,7 +37,7 @@ export default function ProcessGroup({
       </div>
 
       {!isCollapsed && entries.length > 0 && (
-        <div className="border rounded-lg shadow-sm w-full overflow-hidden">
+        <div className="w-full overflow-hidden">
           <div className="px-3 py-2 space-y-1">
             {entries.map((entry, i) => (
               <LogEntryRow key={entry.id} entry={entry} index={i} />
