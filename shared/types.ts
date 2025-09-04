@@ -20,7 +20,7 @@ export type SearchResult = { path: string, is_file: boolean, match_type: SearchM
 
 export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
-export type SearchMode = "TaskForm" | "Settings";
+export type SearchMode = "taskform" | "settings";
 
 export type ExecutorAction = { typ: ExecutorActionType, next_action: ExecutorAction | null, };
 
