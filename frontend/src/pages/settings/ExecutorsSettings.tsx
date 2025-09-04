@@ -133,7 +133,7 @@ export function ExecutorsSettings() {
 
     const base =
       baseConfig &&
-        parsedProfiles.executors[executorType]?.[baseConfig]?.[executorType]
+      parsedProfiles.executors[executorType]?.[baseConfig]?.[executorType]
         ? parsedProfiles.executors[executorType][baseConfig][executorType]
         : {};
 
@@ -507,26 +507,26 @@ export function ExecutorsSettings() {
               {parsedProfiles.executors[selectedExecutorType]?.[
                 selectedConfiguration
               ]?.[selectedExecutorType] && (
-                  <ExecutorConfigForm
-                    executor={selectedExecutorType as any}
-                    value={
-                      parsedProfiles.executors[selectedExecutorType][
+                <ExecutorConfigForm
+                  executor={selectedExecutorType as any}
+                  value={
+                    parsedProfiles.executors[selectedExecutorType][
                       selectedConfiguration
-                      ][selectedExecutorType] || {}
-                    }
-                    onChange={(formData) =>
-                      handleExecutorConfigChange(
-                        selectedExecutorType,
-                        selectedConfiguration,
-                        formData
-                      )
-                    }
-                    onSave={handleExecutorConfigSave}
-                    disabled={profilesSaving}
-                    isSaving={profilesSaving}
-                    isDirty={isDirty}
-                  />
-                )}
+                    ][selectedExecutorType] || {}
+                  }
+                  onChange={(formData) =>
+                    handleExecutorConfigChange(
+                      selectedExecutorType,
+                      selectedConfiguration,
+                      formData
+                    )
+                  }
+                  onSave={handleExecutorConfigSave}
+                  disabled={profilesSaving}
+                  isSaving={profilesSaving}
+                  isDirty={isDirty}
+                />
+              )}
             </div>
           ) : (
             // Raw JSON editor
