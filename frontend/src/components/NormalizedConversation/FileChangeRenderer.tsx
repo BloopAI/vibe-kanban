@@ -9,6 +9,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
+import { getActualTheme } from '@/utils/theme';
 import EditDiffRenderer from './EditDiffRenderer';
 import FileContentView from './FileContentView';
 import '@/styles/diff-style-overrides.css';
@@ -45,8 +46,7 @@ const FileChangeRenderer = ({ path, change, expansionKey }: Props) => {
   const { config } = useConfig();
   const [expanded, setExpanded] = useExpandable(expansionKey, false);
 
-  let theme: 'light' | 'dark' | undefined = 'light';
-  if (config?.theme === ThemeMode.DARK) theme = 'dark';
+  const theme = getActualTheme(config?.theme);
 
   // Edit: delegate to EditDiffRenderer for identical styling and behavior
   if (isEdit(change)) {

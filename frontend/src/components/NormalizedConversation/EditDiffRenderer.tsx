@@ -10,6 +10,7 @@ import { ChevronRight, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useConfig } from '@/components/config-provider';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
+import { getActualTheme } from '@/utils/theme';
 import '@/styles/diff-style-overrides.css';
 import '@/styles/edit-diff-overrides.css';
 
@@ -67,10 +68,7 @@ function EditDiffRenderer({
   const { config } = useConfig();
   const [expanded, setExpanded] = useExpandable(expansionKey, false);
 
-  let theme: 'light' | 'dark' | undefined = 'light';
-  if (config?.theme === ThemeMode.DARK) {
-    theme = 'dark';
-  }
+  const theme = getActualTheme(config?.theme);
 
   const { hunks, hideLineNumbers, additions, deletions, isValidDiff } = useMemo(
     () => processUnifiedDiff(unifiedDiff, hasLineNumbers),

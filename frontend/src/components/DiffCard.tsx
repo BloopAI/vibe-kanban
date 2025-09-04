@@ -4,6 +4,7 @@ import { generateDiffFile } from '@git-diff-view/file';
 import { useMemo } from 'react';
 import { useConfig } from '@/components/config-provider';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
+import { getActualTheme } from '@/utils/theme';
 import { Button } from '@/components/ui/button';
 import {
   ChevronRight,
@@ -46,7 +47,7 @@ export default function DiffCard({
   selectedAttempt,
 }: Props) {
   const { config } = useConfig();
-  const theme = config?.theme === ThemeMode.DARK ? 'dark' : 'light';
+  const theme = getActualTheme(config?.theme);
 
   const oldName = diff.oldPath || undefined;
   const newName = diff.newPath || oldName || 'unknown';
