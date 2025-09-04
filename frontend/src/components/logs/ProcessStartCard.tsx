@@ -1,4 +1,11 @@
-import { Cog, Play, Terminal, ChevronDown, History } from 'lucide-react';
+import {
+  UserRound,
+  Cog,
+  Play,
+  Terminal,
+  ChevronDown,
+  History,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ProcessStartPayload } from '@/types/logs';
 import type { ExecutorAction } from 'shared/types';
@@ -39,7 +46,7 @@ function ProcessStartCard({
       case 'cleanupscript':
         return <Terminal className="h-4 w-4" />;
       case 'codingagent':
-        return null;
+        return <UserRound className="h-4 w-4" />;
       case 'devserver':
         return <Play className="h-4 w-4" />;
       default:
