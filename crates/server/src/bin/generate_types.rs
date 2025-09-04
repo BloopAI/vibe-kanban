@@ -167,7 +167,6 @@ fn generate_schemas() -> Result<(), Box<dyn std::error::Error>> {
     write_schema::<executors::executors::opencode::Opencode>("opencode", schemas_dir)?;
     write_schema::<executors::executors::qwen::QwenCode>("qwen_code", schemas_dir)?;
 
-    println!("✅ JSON schemas generated in shared/schemas/");
     Ok(())
 }
 
@@ -175,23 +174,12 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let check_mode = args.iter().any(|arg| arg == "--check");
 
-    // 0. Wipe existing shared
-    fs::remove_dir_all("shared").ok();
-
-    // 1. Make sure ../shared exists
     let shared_path = Path::new("shared");
-    fs::create_dir_all(shared_path).expect("cannot create shared");
 
     println!("Generating TypeScript types…");
 
     let generated = generate_types_content();
     let types_path = shared_path.join("types.ts");
-
-    // Generate JSON schemas
-    if let Err(e) = generate_schemas() {
-        eprintln!("❌ Failed to generate schemas: {}", e);
-        std::process::exit(1);
-    }
 
     if check_mode {
         // Read the current file
@@ -206,8 +194,22 @@ fn main() {
             std::process::exit(1);
         }
     } else {
+        // Wipe existing shared
+        fs::remove_dir_all(shared_path).ok();
+
+        // Recreate folder
+        fs::create_dir_all(shared_path).expect("cannot create shared");
+
         // Write the file as before
         fs::write(&types_path, generated).expect("unable to write types.ts");
         println!("✅ TypeScript types generated in shared/");
+
+        // Generate JSON schemas
+        if let Err(e) = generate_schemas() {
+            eprintln!("❌ Failed to generate schemas: {}", e);
+            std::process::exit(1);
+        }
+
+        println!("✅ JSON schemas generated in shared/schemas/");
     }
 }
