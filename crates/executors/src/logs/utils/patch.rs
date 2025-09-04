@@ -14,6 +14,7 @@ enum PatchOperation {
     Remove,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Serialize, TS)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE", tag = "type", content = "content")]
 pub enum PatchType {
