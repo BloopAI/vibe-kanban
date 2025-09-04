@@ -31,6 +31,8 @@ import { Loader2 } from 'lucide-react';
 
 import { ExecutorConfigForm } from '@/components/ExecutorConfigForm';
 import { useProfiles } from '@/hooks/useProfiles';
+import { useUserSystem } from '@/components/config-provider';
+
 
 export function AgentSettings() {
   // Use profiles hook for server state
@@ -43,6 +45,15 @@ export function AgentSettings() {
     error: profilesError,
     save: saveProfiles,
   } = useProfiles();
+
+  const { reloadSystem } =
+    useUserSystem();
+
+  useEffect(() => {
+    return () => {
+      reloadSystem()
+    };
+  }, []);
 
   // Local editor state (draft that may differ from server)
   const [localProfilesContent, setLocalProfilesContent] = useState('');
@@ -398,10 +409,7 @@ export function AgentSettings() {
                     onValueChange={(value) => {
                       setSelectedExecutorType(value);
                       // Reset configuration selection when executor type changes
-                      const configurations = Object.keys(
-                        localParsedProfiles.executors[value] || {}
-                      );
-                      setSelectedConfiguration(configurations[0] || 'DEFAULT');
+                      setSelectedConfiguration('DEFAULT');
                     }}
                   >
                     <SelectTrigger id="executor-type">
