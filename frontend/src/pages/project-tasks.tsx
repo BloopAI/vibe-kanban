@@ -235,6 +235,20 @@ export function ProjectTasks() {
     return <Loader message="Loading tasks..." size={32} className="py-8" />;
   }
 
+  if (error) {
+    return (
+      <div className="p-4">
+        <Alert>
+          <AlertTitle className="flex items-center gap-2">
+            <AlertTriangle size="16" />
+            Error
+          </AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`min-h-full ${getMainContainerClasses(isPanelOpen, isFullscreen)}`}
