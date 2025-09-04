@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus } from 'lucide-react';
+import { AlertTriangle, Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { projectsApi, tasksApi, attemptsApi } from '@/lib/api';
 import { useTaskDialog } from '@/contexts/task-dialog-context';
@@ -31,6 +31,7 @@ import DeleteTaskConfirmationDialog from '@/components/tasks/DeleteTaskConfirmat
 import type { TaskWithAttemptStatus, Project, TaskAttempt } from 'shared/types';
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 import { useProjectTasks } from '@/hooks/useProjectTasks';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 type Task = TaskWithAttemptStatus;
 
@@ -234,18 +235,29 @@ export function ProjectTasks() {
     return <Loader message="Loading tasks..." size={32} className="py-8" />;
   }
 
-  if (error || streamError) {
-    return (
-      <div className="text-center py-8 text-destructive">
-        {error || streamError}
-      </div>
-    );
-  }
+  // if (error || streamError) {
+  //   return (
+  //     <div className="text-center py-8 text-destructive">
+  //       {error || streamError}
+  //     </div>
+  //   );
+  // }
 
   return (
     <div
       className={`min-h-full ${getMainContainerClasses(isPanelOpen, isFullscreen)}`}
     >
+      {(error || streamError) && (
+        <div>
+          <Alert>
+            <AlertTitle className="flex items-center gap-2">
+              <AlertTriangle size="16" />
+              Reconnecting
+            </AlertTitle>
+            <AlertDescription>{error || streamError}</AlertDescription>
+          </Alert>
+        </div>
+      )}
       {/* Left Column - Kanban Section */}
       <div className={getKanbanSectionClasses(isPanelOpen, isFullscreen)}>
         {tasks.length === 0 ? (
