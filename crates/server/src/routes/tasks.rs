@@ -17,7 +17,9 @@ use db::models::{
 use deployment::Deployment;
 use futures_util::TryStreamExt;
 use serde::Deserialize;
-use services::services::container::{ContainerService, WorktreeCleanupData, cleanup_worktrees_direct};
+use services::services::container::{
+    ContainerService, WorktreeCleanupData, cleanup_worktrees_direct,
+};
 use sqlx::Error as SqlxError;
 use utils::response::ApiResponse;
 use uuid::Uuid;
