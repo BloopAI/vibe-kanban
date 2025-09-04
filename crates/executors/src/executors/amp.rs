@@ -11,7 +11,7 @@ use utils::{msg_store::MsgStore, shell::get_shell_command};
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{
-        ExecutorError, StandardCodingAgentExecutor,
+        AppendPrompt, ExecutorError, StandardCodingAgentExecutor,
         claude::{ClaudeLogProcessor, HistoryStrategy},
     },
     logs::{stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider},
@@ -19,8 +19,7 @@ use crate::{
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct Amp {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub append_prompt: Option<String>,
+    pub append_prompt: AppendPrompt,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dangerously_allow_all: Option<bool>,
     #[serde(flatten)]
@@ -48,7 +47,7 @@ impl StandardCodingAgentExecutor for Amp {
         let (shell_cmd, shell_arg) = get_shell_command();
         let amp_command = self.build_command_builder().build_initial();
 
-        let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
+        let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
         let mut command = Command::new(shell_cmd);
         command
@@ -118,7 +117,7 @@ impl StandardCodingAgentExecutor for Amp {
             new_thread_id.clone(),
         ]);
 
-        let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
+        let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
         let mut command = Command::new(shell_cmd);
         command

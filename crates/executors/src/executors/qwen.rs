@@ -10,14 +10,13 @@ use utils::{msg_store::MsgStore, shell::get_shell_command};
 
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
-    executors::{ExecutorError, StandardCodingAgentExecutor, gemini::Gemini},
+    executors::{AppendPrompt, ExecutorError, StandardCodingAgentExecutor, gemini::Gemini},
     logs::{stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct QwenCode {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub append_prompt: Option<String>,
+    pub append_prompt: AppendPrompt,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub yolo: Option<bool>,
     #[serde(flatten)]
@@ -46,7 +45,7 @@ impl StandardCodingAgentExecutor for QwenCode {
         let (shell_cmd, shell_arg) = get_shell_command();
         let qwen_command = self.build_command_builder().build_initial();
 
-        let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
+        let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
         let mut command = Command::new(shell_cmd);
         command
@@ -80,7 +79,7 @@ impl StandardCodingAgentExecutor for QwenCode {
             .build_command_builder()
             .build_follow_up(&["--resume".to_string(), session_id.to_string()]);
 
-        let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
+        let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
         let mut command = Command::new(shell_cmd);
         command

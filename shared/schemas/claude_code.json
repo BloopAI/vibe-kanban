@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ClaudeCode",
   "type": "object",
   "properties": {
@@ -13,10 +13,7 @@
       }
     },
     "append_prompt": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "$ref": "#/$defs/AppendPrompt"
     },
     "base_command_override": {
       "type": [
@@ -39,6 +36,19 @@
     "plan": {
       "type": [
         "boolean",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "append_prompt"
+  ],
+  "$defs": {
+    "AppendPrompt": {
+      "title": "Append Prompt",
+      "description": "Extra text appended to the prompt",
+      "type": [
+        "string",
         "null"
       ]
     }

@@ -14,7 +14,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 openssl-sys = { version = "0.9", features = ["vendored"] }
 ts-rs = { git = "https://github.com/xazukx/ts-rs.git", branch = "use-ts-enum", features = ["uuid-impl", "chrono-impl", "no-serde-warnings"] }
-schemars = { version = "0.8", features = ["derive", "chrono", "uuid"] }
+schemars = { version = "1.0.4", features = ["derive", "chrono04", "uuid1"] }
 
 [profile.release]
 debug = true

@@ -31,7 +31,7 @@ command-group = { version = "5.0", features = ["with-tokio"] }
 nix = { version = "0.29", features = ["signal", "process"] }
 openssl-sys = { workspace = true }
 rmcp = { version = "0.5.0", features = ["server", "transport-io"] }
-schemars = "0.8"
+schemars = { workspace = true }
 regex = "1.11.1"
 toml = "0.8"
 sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debug-images"] }

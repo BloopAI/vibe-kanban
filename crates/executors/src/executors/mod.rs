@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use command_group::AsyncGroupChild;
 use enum_dispatch::enum_dispatch;
 use futures_io::Error as FuturesIoError;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::Type;
 use strum_macros::{Display, EnumDiscriminants, EnumString, VariantNames};
@@ -165,5 +166,32 @@ pub trait StandardCodingAgentExecutor {
         self.default_mcp_config_path()
             .map(|path| path.exists())
             .unwrap_or(false)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
+#[serde(transparent)]
+#[schemars(
+    title = "Append Prompt",
+    description = "Extra text appended to the prompt"
+)]
+pub struct AppendPrompt(pub Option<String>);
+
+impl Default for AppendPrompt {
+    fn default() -> Self {
+        AppendPrompt(None)
+    }
+}
+
+impl AppendPrompt {
+    pub fn get(&self) -> Option<String> {
+        self.0.clone()
+    }
+
+    pub fn combine_prompt(&self, prompt: &str) -> String {
+        match self {
+            AppendPrompt(Some(value)) => format!("{prompt}{value}"),
+            AppendPrompt(None) => prompt.to_string(),
+        }
     }
 }

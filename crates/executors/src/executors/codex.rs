@@ -22,7 +22,7 @@ use utils::{
 
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
-    executors::{ExecutorError, StandardCodingAgentExecutor},
+    executors::{AppendPrompt, ExecutorError, StandardCodingAgentExecutor},
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryType,
         utils::{EntryIndexProvider, patch::ConversationPatch},
@@ -204,8 +204,7 @@ impl SessionHandler {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct Codex {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub append_prompt: Option<String>,
+    pub append_prompt: AppendPrompt,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sandbox: Option<SandboxMode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -256,7 +255,7 @@ impl StandardCodingAgentExecutor for Codex {
         let (shell_cmd, shell_arg) = get_shell_command();
         let codex_command = self.build_command_builder().build_initial();
 
-        let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
+        let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
         let mut command = Command::new(shell_cmd);
         command
@@ -297,7 +296,7 @@ impl StandardCodingAgentExecutor for Codex {
             format!("experimental_resume={}", rollout_file_path.display()),
         ]);
 
-        let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
+        let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
         let mut command = Command::new(shell_cmd);
         command

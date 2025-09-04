@@ -20,7 +20,7 @@ use utils::{
 
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
-    executors::{ExecutorError, StandardCodingAgentExecutor},
+    executors::{AppendPrompt, ExecutorError, StandardCodingAgentExecutor},
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem,
         plain_text_processor::PlainTextLogProcessor,
@@ -30,8 +30,7 @@ use crate::{
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct Cursor {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub append_prompt: Option<String>,
+    pub append_prompt: AppendPrompt,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub force: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -67,7 +66,7 @@ impl StandardCodingAgentExecutor for Cursor {
         let (shell_cmd, shell_arg) = get_shell_command();
         let agent_cmd = self.build_command_builder().build_initial();
 
-        let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
+        let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
         let mut command = Command::new(shell_cmd);
         command
@@ -100,7 +99,7 @@ impl StandardCodingAgentExecutor for Cursor {
             .build_command_builder()
             .build_follow_up(&["--resume".to_string(), session_id.to_string()]);
 
-        let combined_prompt = utils::text::combine_prompt(&self.append_prompt, prompt);
+        let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
         let mut command = Command::new(shell_cmd);
         command
@@ -1072,7 +1071,7 @@ mod tests {
         // Avoid relying on feature flag in tests; construct with a dummy command
         let executor = Cursor {
             // No command field needed anymore
-            append_prompt: None,
+            append_prompt: AppendPrompt::default(),
             force: None,
             model: None,
             cmd: Default::default(),

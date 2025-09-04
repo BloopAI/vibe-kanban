@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useState } from 'react';
-import Form from '@rjsf/core';
+import Form from '@rjsf/shadcn';
 import { RJSFSchema, RJSFValidationError } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Button } from '@/components/ui/button';
@@ -61,12 +61,12 @@ const CustomFieldTemplate = (props: any) => {
   }
 
   return (
-    <div className="space-y-2 mb-4">
+    <div className="flex flex-col">
       {label && (
-        <Label htmlFor={id} className={required ? 'required' : ''}>
-          {label}
-          {required && <span className="text-red-500 ml-1">*</span>}
-        </Label>
+        required ?
+          <Label htmlFor={id} className="required">{label} <span className="text-destructive flex-1">*</span></Label>
+          :
+          <Label htmlFor={id} className="flex-1">{label}</Label>
       )}
       {children}
       {description && (
@@ -148,7 +148,7 @@ const customWidgets = {
 };
 
 const customTemplates = {
-  FieldTemplate: CustomFieldTemplate,
+  // FieldTemplate: CustomFieldTemplate,
   ObjectFieldTemplate: (props: any) => {
     const { properties, title, description } = props;
     return (
@@ -221,8 +221,8 @@ export function ExecutorConfigForm({
             onSubmit={handleSubmit}
             onError={handleError}
             validator={validator}
-            widgets={customWidgets}
-            templates={customTemplates}
+            // widgets={customWidgets}
+            // templates={customTemplates}
             disabled={disabled}
             liveValidate
             showErrorList={false}
