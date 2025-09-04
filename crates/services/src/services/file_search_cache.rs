@@ -13,6 +13,7 @@ use notify::{RecommendedWatcher, RecursiveMode};
 use notify_debouncer_full::{DebounceEventResult, new_debouncer};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
+use thiserror::Error;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 use ts_rs::TS;
@@ -32,7 +33,6 @@ pub enum SearchMode {
     Settings, // Include ignored files (for project config like .env)
 }
 
-
 /// Search query parameters for typed Axum extraction
 #[derive(Debug, Deserialize)]
 pub struct SearchQuery {
@@ -43,12 +43,32 @@ pub struct SearchQuery {
 
 /// FST-indexed file search result
 #[derive(Clone, Debug)]
-struct IndexedFile {
+pub struct IndexedFile {
     pub path: String,
     pub is_file: bool,
     pub match_type: SearchMatchType,
     pub path_lowercase: Arc<str>,
     pub is_ignored: bool, // Track if file is gitignored
+}
+
+/// File index build result containing indexed files and FST map
+#[derive(Debug)]
+pub struct FileIndex {
+    pub files: Vec<IndexedFile>,
+    pub map: Map<Vec<u8>>,
+}
+
+/// Errors that can occur during file index building
+#[derive(Error, Debug)]
+pub enum FileIndexError {
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error(transparent)]
+    Fst(#[from] fst::Error),
+    #[error(transparent)]
+    Walk(#[from] ignore::Error),
+    #[error(transparent)]
+    StripPrefix(#[from] std::path::StripPrefixError),
 }
 
 /// Cached repository data with FST index and git stats
@@ -258,22 +278,20 @@ impl FileSearchCache {
             .map_err(|e| format!("Failed to get git stats: {e}"))?;
 
         // Build file index
-        let (indexed_files, fst_map) = Self::build_file_index(repo_path)
+        let file_index = Self::build_file_index(repo_path)
             .map_err(|e| format!("Failed to build file index: {e}"))?;
 
         Ok(CachedRepo {
             head_sha: head_info.oid,
-            fst_index: fst_map,
-            indexed_files,
+            fst_index: file_index.map,
+            indexed_files: file_index.files,
             stats,
             build_ts: Instant::now(),
         })
     }
 
     /// Build FST index from filesystem traversal using superset approach
-    fn build_file_index(
-        repo_path: &Path,
-    ) -> Result<(Vec<IndexedFile>, Map<Vec<u8>>), Box<dyn std::error::Error + Send + Sync>> {
+    fn build_file_index(repo_path: &Path) -> Result<FileIndex, FileIndexError> {
         let mut indexed_files = Vec::new();
         let mut fst_keys = Vec::new();
 
@@ -389,7 +407,10 @@ impl FileSearchCache {
         }
 
         let fst_map = fst_builder.into_map();
-        Ok((indexed_files, fst_map))
+        Ok(FileIndex {
+            files: indexed_files,
+            map: fst_map,
+        })
     }
 
     /// Background worker for cache building
