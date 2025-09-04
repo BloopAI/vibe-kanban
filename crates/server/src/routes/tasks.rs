@@ -17,7 +17,10 @@ use db::models::{
 use deployment::Deployment;
 use futures_util::TryStreamExt;
 use serde::Deserialize;
-use services::services::{container::{ContainerService, WorktreeCleanupData, cleanup_worktrees_direct}, events::task_patch};
+use services::services::{
+    container::{ContainerService, WorktreeCleanupData, cleanup_worktrees_direct},
+    events::task_patch,
+};
 use sqlx::Error as SqlxError;
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -241,18 +244,22 @@ pub async fn delete_task(
         });
 
     // 4. Gather cleanup data before deletion (Oracle's recommendation: after stopping processes)
-    let project = task.parent_project(&deployment.db().pool)
+    let project = task
+        .parent_project(&deployment.db().pool)
         .await?
         .ok_or_else(|| ApiError::Database(SqlxError::RowNotFound))?;
-    
+
     let cleanup_data: Vec<WorktreeCleanupData> = attempts
         .iter()
         .filter_map(|attempt| {
-            attempt.container_ref.as_ref().map(|worktree_path| WorktreeCleanupData {
-                attempt_id: attempt.id,
-                worktree_path: PathBuf::from(worktree_path),
-                git_repo_path: Some(project.git_repo_path.clone()),
-            })
+            attempt
+                .container_ref
+                .as_ref()
+                .map(|worktree_path| WorktreeCleanupData {
+                    attempt_id: attempt.id,
+                    worktree_path: PathBuf::from(worktree_path),
+                    git_repo_path: Some(project.git_repo_path.clone()),
+                })
         })
         .collect();
 
@@ -273,7 +280,11 @@ pub async fn delete_task(
         let span = tracing::info_span!("background_worktree_cleanup", task_id = %task_id);
         let _enter = span.enter();
 
-        tracing::info!("Starting background cleanup for task {} ({} worktrees)", task_id, cleanup_data.len());
+        tracing::info!(
+            "Starting background cleanup for task {} ({} worktrees)",
+            task_id,
+            cleanup_data.len()
+        );
 
         if let Err(e) = cleanup_worktrees_direct(&cleanup_data).await {
             tracing::error!(
