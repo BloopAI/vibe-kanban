@@ -223,6 +223,10 @@ impl Codex {
         let mut builder = CommandBuilder::new("npx -y @openai/codex exec")
             .params(["--json", "--skip-git-repo-check"]);
 
+        if let Some(approval) = &self.approval {
+            builder = builder.extend_params(["--ask-for-approval", approval.as_ref()]);
+        }
+
         if let Some(sandbox) = &self.sandbox {
             builder = builder.extend_params(["--sandbox", sandbox.as_ref()]);
             if sandbox == &SandboxMode::DangerFullAccess && self.approval.is_none() {
