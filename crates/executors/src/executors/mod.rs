@@ -179,7 +179,6 @@ pub trait StandardCodingAgentExecutor {
 #[derive(Default)]
 pub struct AppendPrompt(pub Option<String>);
 
-
 impl AppendPrompt {
     pub fn get(&self) -> Option<String> {
         self.0.clone()
