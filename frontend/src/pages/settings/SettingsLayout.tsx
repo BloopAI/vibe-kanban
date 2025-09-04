@@ -10,8 +10,8 @@ const settingsNavigation = [
     description: 'Theme, notifications, and preferences',
   },
   {
-    path: 'executors',
-    label: 'Executors',
+    path: 'agents',
+    label: 'Agents',
     icon: Cpu,
     description: 'Coding agent configurations',
   },

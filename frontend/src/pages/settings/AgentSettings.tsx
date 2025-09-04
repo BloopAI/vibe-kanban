@@ -32,7 +32,7 @@ import { Loader2 } from 'lucide-react';
 import { ExecutorConfigForm } from '@/components/ExecutorConfigForm';
 import { useProfiles } from '@/hooks/useProfiles';
 
-export function ExecutorsSettings() {
+export function AgentSettings() {
   // Use profiles hook for server state
   const {
     profilesContent: serverProfilesContent,
@@ -121,7 +121,7 @@ export function ExecutorsSettings() {
 
     const base =
       baseConfig &&
-      localParsedProfiles.executors[executorType]?.[baseConfig]?.[executorType]
+        localParsedProfiles.executors[executorType]?.[baseConfig]?.[executorType]
         ? localParsedProfiles.executors[executorType][baseConfig][executorType]
         : {};
 
@@ -340,7 +340,7 @@ export function ExecutorsSettings() {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2">Loading executor configurations...</span>
+        <span className="ml-2">Loading agent configurations...</span>
       </div>
     );
   }
@@ -369,8 +369,8 @@ export function ExecutorsSettings() {
         <CardHeader>
           <CardTitle>Coding Agent Configurations</CardTitle>
           <CardDescription>
-            Customize the behavior of coding agents with different executor
-            profiles.
+            Customize the behavior of coding agents with different
+            configurations.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -378,21 +378,21 @@ export function ExecutorsSettings() {
           <div className="flex items-center space-x-2">
             <Checkbox
               id="use-form-editor"
-              checked={useFormEditor}
-              onCheckedChange={(checked) => setUseFormEditor(!!checked)}
+              checked={!useFormEditor}
+              onCheckedChange={(checked) => setUseFormEditor(!checked)}
               disabled={profilesLoading || !localParsedProfiles}
             />
-            <Label htmlFor="use-form-editor">Edit visually</Label>
+            <Label htmlFor="use-form-editor">Edit JSON</Label>
           </div>
 
           {useFormEditor &&
-          localParsedProfiles &&
-          localParsedProfiles.executors ? (
+            localParsedProfiles &&
+            localParsedProfiles.executors ? (
             // Form-based editor
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="executor-type">Executor</Label>
+                  <Label htmlFor="executor-type">Agent</Label>
                   <Select
                     value={selectedExecutorType}
                     onValueChange={(value) => {
@@ -441,7 +441,7 @@ export function ExecutorsSettings() {
                       <SelectContent>
                         {Object.keys(
                           localParsedProfiles.executors[selectedExecutorType] ||
-                            {}
+                          {}
                         ).map((configuration) => (
                           <SelectItem key={configuration} value={configuration}>
                             {configuration}
@@ -462,13 +462,13 @@ export function ExecutorsSettings() {
                         !localParsedProfiles.executors[selectedExecutorType] ||
                         Object.keys(
                           localParsedProfiles.executors[selectedExecutorType] ||
-                            {}
+                          {}
                         ).length <= 1
                       }
                       title={
                         Object.keys(
                           localParsedProfiles.executors[selectedExecutorType] ||
-                            {}
+                          {}
                         ).length <= 1
                           ? 'Cannot delete the last configuration'
                           : `Delete ${selectedConfiguration}`
@@ -483,26 +483,26 @@ export function ExecutorsSettings() {
               {localParsedProfiles.executors[selectedExecutorType]?.[
                 selectedConfiguration
               ]?.[selectedExecutorType] && (
-                <ExecutorConfigForm
-                  executor={selectedExecutorType as any}
-                  value={
-                    localParsedProfiles.executors[selectedExecutorType][
+                  <ExecutorConfigForm
+                    executor={selectedExecutorType as any}
+                    value={
+                      localParsedProfiles.executors[selectedExecutorType][
                       selectedConfiguration
-                    ][selectedExecutorType] || {}
-                  }
-                  onChange={(formData) =>
-                    handleExecutorConfigChange(
-                      selectedExecutorType,
-                      selectedConfiguration,
-                      formData
-                    )
-                  }
-                  onSave={handleExecutorConfigSave}
-                  disabled={profilesSaving}
-                  isSaving={profilesSaving}
-                  isDirty={isDirty}
-                />
-              )}
+                      ][selectedExecutorType] || {}
+                    }
+                    onChange={(formData) =>
+                      handleExecutorConfigChange(
+                        selectedExecutorType,
+                        selectedConfiguration,
+                        formData
+                      )
+                    }
+                    onSave={handleExecutorConfigSave}
+                    disabled={profilesSaving}
+                    isSaving={profilesSaving}
+                    isDirty={isDirty}
+                  />
+                )}
             </div>
           ) : (
             // Raw JSON editor

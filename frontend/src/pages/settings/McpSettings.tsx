@@ -163,8 +163,8 @@ export function McpSettings() {
           // Find the key for the selected profile
           const selectedProfileKey = profiles
             ? Object.keys(profiles).find(
-                (key) => profiles[key] === selectedProfile
-              )
+              (key) => profiles[key] === selectedProfile
+            )
             : null;
           if (!selectedProfileKey) {
             throw new Error('Selected profile key not found');
@@ -238,13 +238,13 @@ export function McpSettings() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="mcp-executor">Profile</Label>
+            <Label htmlFor="mcp-executor">Agent</Label>
             <Select
               value={
                 selectedProfile
                   ? Object.keys(profiles || {}).find(
-                      (key) => profiles![key] === selectedProfile
-                    ) || ''
+                    (key) => profiles![key] === selectedProfile
+                  ) || ''
                   : ''
               }
               onValueChange={(value: string) => {
@@ -267,7 +267,7 @@ export function McpSettings() {
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">
-              Choose which profile to configure MCP servers for.
+              Choose which agent to configure MCP servers for.
             </p>
           </div>
 
@@ -281,7 +281,7 @@ export function McpSettings() {
                   <div className="mt-2 text-sm text-amber-700 dark:text-amber-300">
                     <p>{mcpError}</p>
                     <p className="mt-1">
-                      To use MCP servers, please select a different profile that
+                      To use MCP servers, please select a different executor that
                       supports MCP (Claude, Amp, Gemini, Codex, or Opencode)
                       above.
                     </p>

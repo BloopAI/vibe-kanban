@@ -1,4 +1,4 @@
 export { SettingsLayout } from './SettingsLayout';
 export { GeneralSettings } from './GeneralSettings';
-export { ExecutorsSettings } from './ExecutorsSettings';
+export { AgentSettings } from './AgentSettings';
 export { McpSettings } from './McpSettings';

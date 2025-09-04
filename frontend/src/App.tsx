@@ -13,7 +13,7 @@ import { ProjectTasks } from '@/pages/project-tasks';
 import {
   SettingsLayout,
   GeneralSettings,
-  ExecutorsSettings,
+  AgentSettings,
   McpSettings,
 } from '@/pages/settings/';
 import { DisclaimerDialog } from '@/components/DisclaimerDialog';
@@ -250,7 +250,7 @@ function AppContent() {
                 <Route path="/settings/*" element={<SettingsLayout />}>
                   <Route index element={<Navigate to="general" replace />} />
                   <Route path="general" element={<GeneralSettings />} />
-                  <Route path="executors" element={<ExecutorsSettings />} />
+                  <Route path="agents" element={<AgentSettings />} />
                   <Route path="mcp" element={<McpSettings />} />
                 </Route>
                 {/* Redirect old MCP route */}
