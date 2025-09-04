@@ -138,9 +138,9 @@ export type ExecutorConfig = { [key in string]?: { "CLAUDE_CODE": ClaudeCode } |
 
 export type BaseAgentCapability = "RESTORE_CHECKPOINT";
 
-export type ClaudeCode = { claude_code_router?: boolean | null, append_prompt: AppendPrompt, plan?: boolean | null, dangerously_skip_permissions?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, };
+export type ClaudeCode = { append_prompt: AppendPrompt, claude_code_router?: boolean | null, plan?: boolean | null, dangerously_skip_permissions?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, };
 
-export type Gemini = { model: GeminiModel, append_prompt: AppendPrompt, yolo?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, };
+export type Gemini = { append_prompt: AppendPrompt, model: GeminiModel, yolo?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, };
 
 export type GeminiModel = "default" | "flash";
 

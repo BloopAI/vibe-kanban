@@ -1,9 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "required": [
-    "append_prompt"
-  ],
-  "type": "object",
   "properties": {
     "append_prompt": {
       "title": "Append Prompt",
@@ -12,7 +8,8 @@
         "string",
         "null"
       ],
-      "format": "textarea"
+      "format": "textarea",
+      "default": null
     },
     "model": {
       "type": [
@@ -45,5 +42,6 @@
         "type": "string"
       }
     }
-  }
+  },
+  "type": "object"
 }

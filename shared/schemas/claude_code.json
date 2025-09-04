@@ -1,16 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "required": [
-    "append_prompt"
-  ],
-  "type": "object",
   "properties": {
-    "claude_code_router": {
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
     "append_prompt": {
       "title": "Append Prompt",
       "description": "Extra text appended to the prompt",
@@ -18,7 +8,14 @@
         "string",
         "null"
       ],
-      "format": "textarea"
+      "format": "textarea",
+      "default": null
+    },
+    "claude_code_router": {
+      "type": [
+        "boolean",
+        "null"
+      ]
     },
     "plan": {
       "type": [
@@ -51,5 +48,6 @@
         "type": "string"
       }
     }
-  }
+  },
+  "type": "object"
 }

@@ -30,24 +30,31 @@ import {
 import { Loader2 } from 'lucide-react';
 
 import { ExecutorConfigForm } from '@/components/ExecutorConfigForm';
-import { profilesApi } from '@/lib/api';
+import { useProfiles } from '@/hooks/useProfiles';
 
 export function ExecutorsSettings() {
-  // Profiles editor state
-  const [profilesContent, setProfilesContent] = useState('');
-  const [profilesPath, setProfilesPath] = useState('');
-  const [profilesError, setProfilesError] = useState<string | null>(null);
-  const [profilesLoading, setProfilesLoading] = useState(false);
-  const [profilesSaving, setProfilesSaving] = useState(false);
+  // Use profiles hook for server state
+  const {
+    profilesContent: serverProfilesContent,
+    parsedProfiles: serverParsedProfiles,
+    profilesPath,
+    isLoading: profilesLoading,
+    isSaving: profilesSaving,
+    error: profilesError,
+    save: saveProfiles,
+  } = useProfiles();
+
+  // Local editor state (draft that may differ from server)
+  const [localProfilesContent, setLocalProfilesContent] = useState('');
   const [profilesSuccess, setProfilesSuccess] = useState(false);
 
   // Form-based editor state
   const [useFormEditor, setUseFormEditor] = useState(true);
   const [selectedExecutorType, setSelectedExecutorType] =
-    useState<string>('AMP');
+    useState<string>('CLAUDE_CODE');
   const [selectedConfiguration, setSelectedConfiguration] =
     useState<string>('DEFAULT');
-  const [parsedProfiles, setParsedProfiles] = useState<any>(null);
+  const [localParsedProfiles, setLocalParsedProfiles] = useState<any>(null);
   const [isDirty, setIsDirty] = useState(false);
 
   // Create configuration dialog state
@@ -61,41 +68,22 @@ export function ExecutorsSettings() {
   const [configToDelete, setConfigToDelete] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  // Load profiles content on mount
+  // Sync server state to local state when not dirty
   useEffect(() => {
-    const loadProfiles = async () => {
-      setProfilesLoading(true);
-      try {
-        const result = await profilesApi.load();
-        setProfilesContent(result.content);
-        setProfilesPath(result.path);
-
-        // Try to parse the JSON for form editor
-        try {
-          const parsed = JSON.parse(result.content);
-          setParsedProfiles(parsed);
-        } catch (parseErr) {
-          console.warn('Failed to parse profiles JSON:', parseErr);
-          setParsedProfiles(null);
-        }
-      } catch (err) {
-        console.error('Failed to load profiles:', err);
-        setProfilesError('Failed to load profiles');
-      } finally {
-        setProfilesLoading(false);
-      }
-    };
-    loadProfiles();
-  }, []);
+    if (!isDirty && serverProfilesContent) {
+      setLocalProfilesContent(serverProfilesContent);
+      setLocalParsedProfiles(serverParsedProfiles);
+    }
+  }, [serverProfilesContent, serverParsedProfiles, isDirty]);
 
   // Sync raw profiles with parsed profiles
   const syncRawProfiles = (profiles: any) => {
-    setProfilesContent(JSON.stringify(profiles, null, 2));
+    setLocalProfilesContent(JSON.stringify(profiles, null, 2));
   };
 
   // Mark profiles as dirty
   const markDirty = (nextProfiles: any) => {
-    setParsedProfiles(nextProfiles);
+    setLocalParsedProfiles(nextProfiles);
     syncRawProfiles(nextProfiles);
     setIsDirty(true);
   };
@@ -109,7 +97,7 @@ export function ExecutorsSettings() {
     if (!/^[a-zA-Z0-9_-]+$/.test(trimmedName)) {
       return 'Configuration name can only contain letters, numbers, underscores, and hyphens';
     }
-    if (parsedProfiles?.executors?.[selectedExecutorType]?.[trimmedName]) {
+    if (localParsedProfiles?.executors?.[selectedExecutorType]?.[trimmedName]) {
       return 'A configuration with this name already exists';
     }
     return null;
@@ -129,20 +117,20 @@ export function ExecutorsSettings() {
     configName: string,
     baseConfig?: string | null
   ) => {
-    if (!parsedProfiles || !parsedProfiles.executors) return;
+    if (!localParsedProfiles || !localParsedProfiles.executors) return;
 
     const base =
       baseConfig &&
-      parsedProfiles.executors[executorType]?.[baseConfig]?.[executorType]
-        ? parsedProfiles.executors[executorType][baseConfig][executorType]
+        localParsedProfiles.executors[executorType]?.[baseConfig]?.[executorType]
+        ? localParsedProfiles.executors[executorType][baseConfig][executorType]
         : {};
 
     const updatedProfiles = {
-      ...parsedProfiles,
+      ...localParsedProfiles,
       executors: {
-        ...parsedProfiles.executors,
+        ...localParsedProfiles.executors,
         [executorType]: {
-          ...parsedProfiles.executors[executorType],
+          ...localParsedProfiles.executors[executorType],
           [configName]: {
             [executorType]: base,
           },
@@ -175,21 +163,21 @@ export function ExecutorsSettings() {
 
   // Handle delete configuration
   const handleDeleteConfiguration = async () => {
-    if (!parsedProfiles || !configToDelete) {
+    if (!localParsedProfiles || !configToDelete) {
       setDeleteError('Invalid configuration data');
       return;
     }
 
     try {
       // Validate that the configuration exists
-      if (!parsedProfiles.executors[selectedExecutorType]?.[configToDelete]) {
+      if (!localParsedProfiles.executors[selectedExecutorType]?.[configToDelete]) {
         setDeleteError(`Configuration "${configToDelete}" not found`);
         return;
       }
 
       // Check if this is the last configuration
       const currentConfigs = Object.keys(
-        parsedProfiles.executors[selectedExecutorType] || {}
+        localParsedProfiles.executors[selectedExecutorType] || {}
       );
       if (currentConfigs.length <= 1) {
         setDeleteError('Cannot delete the last configuration');
@@ -198,14 +186,14 @@ export function ExecutorsSettings() {
 
       // Remove the configuration from the executor
       const remainingConfigs = {
-        ...parsedProfiles.executors[selectedExecutorType],
+        ...localParsedProfiles.executors[selectedExecutorType],
       };
       delete remainingConfigs[configToDelete];
 
       const updatedProfiles = {
-        ...parsedProfiles,
+        ...localParsedProfiles,
         executors: {
-          ...parsedProfiles.executors,
+          ...localParsedProfiles.executors,
           [selectedExecutorType]: remainingConfigs,
         },
       };
@@ -217,18 +205,13 @@ export function ExecutorsSettings() {
         };
       }
 
-      // Save to backend first - if this fails, don't update UI
-      setProfilesSaving(true);
-      setProfilesError(null);
-      setProfilesSuccess(false);
-
       try {
-        const contentToSave = JSON.stringify(updatedProfiles, null, 2);
-        await profilesApi.save(contentToSave);
+        // Save using hook
+        await saveProfiles(JSON.stringify(updatedProfiles, null, 2));
 
-        // Only update UI state if backend save succeeded
-        setParsedProfiles(updatedProfiles);
-        setProfilesContent(contentToSave);
+        // Update local state and reset dirty flag
+        setLocalParsedProfiles(updatedProfiles);
+        setLocalProfilesContent(JSON.stringify(updatedProfiles, null, 2));
         setIsDirty(false);
 
         // Select the next available configuration
@@ -247,8 +230,6 @@ export function ExecutorsSettings() {
         setDeleteError(
           saveError.message || 'Failed to save deletion. Please try again.'
         );
-      } finally {
-        setProfilesSaving(false);
       }
     } catch (error) {
       console.error('Error deleting configuration:', error);
@@ -257,53 +238,39 @@ export function ExecutorsSettings() {
   };
 
   const handleProfilesChange = (value: string) => {
-    setProfilesContent(value);
-    setProfilesError(null);
+    setLocalProfilesContent(value);
     setIsDirty(true);
 
     // Validate JSON on change
     if (value.trim()) {
       try {
         const parsed = JSON.parse(value);
-        setParsedProfiles(parsed);
-        // Basic structure validation
-        if (!parsed.executors) {
-          setProfilesError('Invalid structure: must have a "executors" object');
-        }
+        setLocalParsedProfiles(parsed);
       } catch (err) {
-        if (err instanceof SyntaxError) {
-          setProfilesError('Invalid JSON format');
-        } else {
-          setProfilesError('Validation error');
-        }
+        // Invalid JSON, keep local content but clear parsed
+        setLocalParsedProfiles(null);
       }
     }
   };
 
   const handleSaveProfiles = async () => {
-    setProfilesSaving(true);
-    setProfilesError(null);
-    setProfilesSuccess(false);
-
     try {
       const contentToSave =
-        useFormEditor && parsedProfiles
-          ? JSON.stringify(parsedProfiles, null, 2)
-          : profilesContent;
+        useFormEditor && localParsedProfiles
+          ? JSON.stringify(localParsedProfiles, null, 2)
+          : localProfilesContent;
 
-      await profilesApi.save(contentToSave);
+      await saveProfiles(contentToSave);
       setProfilesSuccess(true);
       setIsDirty(false);
       setTimeout(() => setProfilesSuccess(false), 3000);
 
-      // Update the raw content if using form editor
-      if (useFormEditor && parsedProfiles) {
-        setProfilesContent(contentToSave);
+      // Update the local content if using form editor
+      if (useFormEditor && localParsedProfiles) {
+        setLocalProfilesContent(contentToSave);
       }
     } catch (err: any) {
-      setProfilesError(err.message || 'Failed to save profiles');
-    } finally {
-      setProfilesSaving(false);
+      console.error('Failed to save profiles:', err);
     }
   };
 
@@ -312,15 +279,15 @@ export function ExecutorsSettings() {
     configuration: string,
     formData: any
   ) => {
-    if (!parsedProfiles || !parsedProfiles.executors) return;
+    if (!localParsedProfiles || !localParsedProfiles.executors) return;
 
     // Update the parsed profiles with the new config
     const updatedProfiles = {
-      ...parsedProfiles,
+      ...localParsedProfiles,
       executors: {
-        ...parsedProfiles.executors,
+        ...localParsedProfiles.executors,
         [executorType]: {
-          ...parsedProfiles.executors[executorType],
+          ...localParsedProfiles.executors[executorType],
           [configuration]: {
             [executorType]: formData,
           },
@@ -332,15 +299,15 @@ export function ExecutorsSettings() {
   };
 
   const handleExecutorConfigSave = async (formData: any) => {
-    if (!parsedProfiles || !parsedProfiles.executors) return;
+    if (!localParsedProfiles || !localParsedProfiles.executors) return;
 
     // Update the parsed profiles with the saved config
     const updatedProfiles = {
-      ...parsedProfiles,
+      ...localParsedProfiles,
       executors: {
-        ...parsedProfiles.executors,
+        ...localParsedProfiles.executors,
         [selectedExecutorType]: {
-          ...parsedProfiles.executors[selectedExecutorType],
+          ...localParsedProfiles.executors[selectedExecutorType],
           [selectedConfiguration]: {
             [selectedExecutorType]: formData,
           },
@@ -349,27 +316,21 @@ export function ExecutorsSettings() {
     };
 
     // Update state
-    setParsedProfiles(updatedProfiles);
+    setLocalParsedProfiles(updatedProfiles);
 
     // Save the updated profiles directly
-    setProfilesSaving(true);
-    setProfilesError(null);
-    setProfilesSuccess(false);
-
     try {
       const contentToSave = JSON.stringify(updatedProfiles, null, 2);
 
-      await profilesApi.save(contentToSave);
+      await saveProfiles(contentToSave);
       setProfilesSuccess(true);
       setIsDirty(false);
       setTimeout(() => setProfilesSuccess(false), 3000);
 
-      // Update the raw content as well
-      setProfilesContent(contentToSave);
+      // Update the local content as well
+      setLocalProfilesContent(contentToSave);
     } catch (err: any) {
-      setProfilesError(err.message || 'Failed to save profiles');
-    } finally {
-      setProfilesSaving(false);
+      console.error('Failed to save profiles:', err);
     }
   };
 
@@ -384,9 +345,11 @@ export function ExecutorsSettings() {
 
   return (
     <div className="space-y-6">
-      {profilesError && (
+      {!!profilesError && (
         <Alert variant="destructive">
-          <AlertDescription>{profilesError}</AlertDescription>
+          <AlertDescription>
+            {profilesError instanceof Error ? profilesError.message : String(profilesError)}
+          </AlertDescription>
         </Alert>
       )}
 
@@ -413,12 +376,12 @@ export function ExecutorsSettings() {
               id="use-form-editor"
               checked={useFormEditor}
               onCheckedChange={(checked) => setUseFormEditor(!!checked)}
-              disabled={profilesLoading || !parsedProfiles}
+              disabled={profilesLoading || !localParsedProfiles}
             />
             <Label htmlFor="use-form-editor">Edit visually</Label>
           </div>
 
-          {useFormEditor && parsedProfiles && parsedProfiles.executors ? (
+          {useFormEditor && localParsedProfiles && localParsedProfiles.executors ? (
             // Form-based editor
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -430,7 +393,7 @@ export function ExecutorsSettings() {
                       setSelectedExecutorType(value);
                       // Reset configuration selection when executor type changes
                       const configurations = Object.keys(
-                        parsedProfiles.executors[value] || {}
+                        localParsedProfiles.executors[value] || {}
                       );
                       setSelectedConfiguration(configurations[0] || 'DEFAULT');
                     }}
@@ -439,7 +402,7 @@ export function ExecutorsSettings() {
                       <SelectValue placeholder="Select executor type" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.keys(parsedProfiles.executors).map((type) => (
+                      {Object.keys(localParsedProfiles.executors).map((type) => (
                         <SelectItem key={type} value={type}>
                           {type}
                         </SelectItem>
@@ -460,14 +423,14 @@ export function ExecutorsSettings() {
                           setSelectedConfiguration(value);
                         }
                       }}
-                      disabled={!parsedProfiles.executors[selectedExecutorType]}
+                      disabled={!localParsedProfiles.executors[selectedExecutorType]}
                     >
                       <SelectTrigger id="configuration">
                         <SelectValue placeholder="Select configuration" />
                       </SelectTrigger>
                       <SelectContent>
                         {Object.keys(
-                          parsedProfiles.executors[selectedExecutorType] || {}
+                          localParsedProfiles.executors[selectedExecutorType] || {}
                         ).map((configuration) => (
                           <SelectItem key={configuration} value={configuration}>
                             {configuration}
@@ -485,14 +448,14 @@ export function ExecutorsSettings() {
                       onClick={() => openDeleteDialog(selectedConfiguration)}
                       disabled={
                         profilesSaving ||
-                        !parsedProfiles.executors[selectedExecutorType] ||
+                        !localParsedProfiles.executors[selectedExecutorType] ||
                         Object.keys(
-                          parsedProfiles.executors[selectedExecutorType] || {}
+                          localParsedProfiles.executors[selectedExecutorType] || {}
                         ).length <= 1
                       }
                       title={
                         Object.keys(
-                          parsedProfiles.executors[selectedExecutorType] || {}
+                          localParsedProfiles.executors[selectedExecutorType] || {}
                         ).length <= 1
                           ? 'Cannot delete the last configuration'
                           : `Delete ${selectedConfiguration}`
@@ -504,29 +467,29 @@ export function ExecutorsSettings() {
                 </div>
               </div>
 
-              {parsedProfiles.executors[selectedExecutorType]?.[
+              {localParsedProfiles.executors[selectedExecutorType]?.[
                 selectedConfiguration
               ]?.[selectedExecutorType] && (
-                <ExecutorConfigForm
-                  executor={selectedExecutorType as any}
-                  value={
-                    parsedProfiles.executors[selectedExecutorType][
+                  <ExecutorConfigForm
+                    executor={selectedExecutorType as any}
+                    value={
+                      localParsedProfiles.executors[selectedExecutorType][
                       selectedConfiguration
-                    ][selectedExecutorType] || {}
-                  }
-                  onChange={(formData) =>
-                    handleExecutorConfigChange(
-                      selectedExecutorType,
-                      selectedConfiguration,
-                      formData
-                    )
-                  }
-                  onSave={handleExecutorConfigSave}
-                  disabled={profilesSaving}
-                  isSaving={profilesSaving}
-                  isDirty={isDirty}
-                />
-              )}
+                      ][selectedExecutorType] || {}
+                    }
+                    onChange={(formData) =>
+                      handleExecutorConfigChange(
+                        selectedExecutorType,
+                        selectedConfiguration,
+                        formData
+                      )
+                    }
+                    onSave={handleExecutorConfigSave}
+                    disabled={profilesSaving}
+                    isSaving={profilesSaving}
+                    isDirty={isDirty}
+                  />
+                )}
             </div>
           ) : (
             // Raw JSON editor
@@ -537,12 +500,8 @@ export function ExecutorsSettings() {
                 </Label>
                 <JSONEditor
                   id="profiles-editor"
-                  placeholder={
-                    profilesLoading
-                      ? 'Loading profiles...'
-                      : '{\n  "executors": {\n    "AMP": {\n      "DEFAULT": {\n        "AMP": {\n          "append_prompt": null,\n          "dangerously_allow_all": null\n        }\n      }\n    }\n  }\n}'
-                  }
-                  value={profilesLoading ? 'Loading...' : profilesContent}
+                  placeholder='Loading profiles...'
+                  value={profilesLoading ? 'Loading...' : localProfilesContent}
                   onChange={handleProfilesChange}
                   disabled={profilesLoading}
                   minHeight={300}
@@ -616,7 +575,7 @@ export function ExecutorsSettings() {
                 <SelectContent>
                   <SelectItem value="__blank__">Start blank</SelectItem>
                   {Object.keys(
-                    parsedProfiles?.executors?.[selectedExecutorType] || {}
+                    localParsedProfiles?.executors?.[selectedExecutorType] || {}
                   ).map((configuration) => (
                     <SelectItem key={configuration} value={configuration}>
                       Clone from {configuration}
