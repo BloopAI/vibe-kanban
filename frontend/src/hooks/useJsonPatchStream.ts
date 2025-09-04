@@ -72,12 +72,14 @@ export const useJsonPatchStream = <T>(
       eventSource.addEventListener('json_patch', (event) => {
         try {
           const patches: Operation[] = JSON.parse(event.data);
-          const filtered = options.deduplicatePatches ? options.deduplicatePatches(patches) : patches;
+          const filtered = options.deduplicatePatches
+            ? options.deduplicatePatches(patches)
+            : patches;
           if (!filtered.length || !dataRef.current) return;
 
           // If any patch hits /tasks or below, bump the container identity
-          const touchesTasks = filtered.some(p =>
-            p.path === '/tasks' || p.path.startsWith('/tasks/')
+          const touchesTasks = filtered.some(
+            (p) => p.path === '/tasks' || p.path.startsWith('/tasks/')
           );
 
           if (touchesTasks) {
@@ -95,7 +97,6 @@ export const useJsonPatchStream = <T>(
           setError('Failed to process stream update');
         }
       });
-
 
       eventSource.addEventListener('finished', () => {
         eventSource.close();
