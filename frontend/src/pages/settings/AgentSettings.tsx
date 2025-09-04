@@ -33,7 +33,6 @@ import { ExecutorConfigForm } from '@/components/ExecutorConfigForm';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useUserSystem } from '@/components/config-provider';
 
-
 export function AgentSettings() {
   // Use profiles hook for server state
   const {
@@ -46,12 +45,11 @@ export function AgentSettings() {
     save: saveProfiles,
   } = useProfiles();
 
-  const { reloadSystem } =
-    useUserSystem();
+  const { reloadSystem } = useUserSystem();
 
   useEffect(() => {
     return () => {
-      reloadSystem()
+      reloadSystem();
     };
   }, []);
 
@@ -132,7 +130,7 @@ export function AgentSettings() {
 
     const base =
       baseConfig &&
-        localParsedProfiles.executors[executorType]?.[baseConfig]?.[executorType]
+      localParsedProfiles.executors[executorType]?.[baseConfig]?.[executorType]
         ? localParsedProfiles.executors[executorType][baseConfig][executorType]
         : {};
 
@@ -397,8 +395,8 @@ export function AgentSettings() {
           </div>
 
           {useFormEditor &&
-            localParsedProfiles &&
-            localParsedProfiles.executors ? (
+          localParsedProfiles &&
+          localParsedProfiles.executors ? (
             // Form-based editor
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -449,7 +447,7 @@ export function AgentSettings() {
                       <SelectContent>
                         {Object.keys(
                           localParsedProfiles.executors[selectedExecutorType] ||
-                          {}
+                            {}
                         ).map((configuration) => (
                           <SelectItem key={configuration} value={configuration}>
                             {configuration}
@@ -470,13 +468,13 @@ export function AgentSettings() {
                         !localParsedProfiles.executors[selectedExecutorType] ||
                         Object.keys(
                           localParsedProfiles.executors[selectedExecutorType] ||
-                          {}
+                            {}
                         ).length <= 1
                       }
                       title={
                         Object.keys(
                           localParsedProfiles.executors[selectedExecutorType] ||
-                          {}
+                            {}
                         ).length <= 1
                           ? 'Cannot delete the last configuration'
                           : `Delete ${selectedConfiguration}`
@@ -491,26 +489,26 @@ export function AgentSettings() {
               {localParsedProfiles.executors[selectedExecutorType]?.[
                 selectedConfiguration
               ]?.[selectedExecutorType] && (
-                  <ExecutorConfigForm
-                    executor={selectedExecutorType as any}
-                    value={
-                      localParsedProfiles.executors[selectedExecutorType][
+                <ExecutorConfigForm
+                  executor={selectedExecutorType as any}
+                  value={
+                    localParsedProfiles.executors[selectedExecutorType][
                       selectedConfiguration
-                      ][selectedExecutorType] || {}
-                    }
-                    onChange={(formData) =>
-                      handleExecutorConfigChange(
-                        selectedExecutorType,
-                        selectedConfiguration,
-                        formData
-                      )
-                    }
-                    onSave={handleExecutorConfigSave}
-                    disabled={profilesSaving}
-                    isSaving={profilesSaving}
-                    isDirty={isDirty}
-                  />
-                )}
+                    ][selectedExecutorType] || {}
+                  }
+                  onChange={(formData) =>
+                    handleExecutorConfigChange(
+                      selectedExecutorType,
+                      selectedConfiguration,
+                      formData
+                    )
+                  }
+                  onSave={handleExecutorConfigSave}
+                  disabled={profilesSaving}
+                  isSaving={profilesSaving}
+                  isDirty={isDirty}
+                />
+              )}
             </div>
           ) : (
             // Raw JSON editor
