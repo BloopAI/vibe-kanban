@@ -70,6 +70,7 @@ fn generate_types_content() -> String {
         executors::executors::amp::Amp::decl(),
         executors::executors::codex::Codex::decl(),
         executors::executors::codex::SandboxMode::decl(),
+        executors::executors::codex::ApprovalPolicy::decl(),
         executors::executors::cursor::Cursor::decl(),
         executors::executors::opencode::Opencode::decl(),
         executors::executors::qwen::QwenCode::decl(),

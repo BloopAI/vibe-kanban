@@ -38,6 +38,17 @@ pub enum SandboxMode {
     DangerFullAccess,
 }
 
+/// Approval policy for Codex
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, AsRefStr)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum ApprovalPolicy {
+    Untrusted,
+    OnFailure,
+    OnRequest,
+    Never,
+}
+
 /// Handles session management for Codex executor
 pub struct SessionHandler;
 
@@ -198,6 +209,8 @@ pub struct Codex {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sandbox: Option<SandboxMode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub approval: Option<ApprovalPolicy>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub oss: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
@@ -212,6 +225,9 @@ impl Codex {
 
         if let Some(sandbox) = &self.sandbox {
             builder = builder.extend_params(["--sandbox", sandbox.as_ref()]);
+            if sandbox == &SandboxMode::DangerFullAccess && self.approval.is_none() {
+                builder = builder.extend_params(["--dangerously-bypass-approvals-and-sandbox"]);
+            }
         }
 
         if self.oss.unwrap_or(false) {
