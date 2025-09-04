@@ -27,7 +27,7 @@ export default function ToolDetails({
   const isCommandMode = commandOutput !== undefined;
 
   const renderJson = (v: JsonValue) => (
-    <pre className="mt-1 max-h-80 overflow-auto rounded bg-muted p-2 text-xs">
+    <pre className="mt-1 rounded bg-muted p-2 text-xs">
       {JSON.stringify(v, null, 2)}
     </pre>
   );

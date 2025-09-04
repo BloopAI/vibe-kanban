@@ -1,5 +1,5 @@
 import MarkdownRenderer from '@/components/ui/markdown-renderer.tsx';
-import { AlertCircle, Check, ChevronDown, Settings } from 'lucide-react';
+import { AlertCircle, Check, ChevronDown } from 'lucide-react';
 import {
   ActionType,
   NormalizedEntry,
@@ -72,7 +72,7 @@ const MessageCard: React.FC<{
   onToggle?: () => void;
 }> = ({ children, variant, expanded, onToggle }) => {
   const frameBase =
-    'border px-3 py-2 w-full cursor-pointer text-xs bg-[hsl(var(--card))] border-[hsl(var(--border))]';
+    'border rounded-md px-3 py-2 w-full cursor-pointer text-xs bg-[hsl(var(--card))] border-[hsl(var(--border))]';
   const systemTheme = 'border-400/40 text-zinc-500';
   const errorTheme =
     'border-red-400/40 bg-red-50 dark:bg-[hsl(var(--card))] text-[hsl(var(--foreground))]';
@@ -291,7 +291,7 @@ const ToolCallCard: React.FC<{
         </HeaderWrapper>
 
         {expanded && (
-          <div className="px-2 py-1.5">
+          <div className="px-2 py-1.5 max-h-[65vh] overflow-y-auto overscroll-contain">
             {!isCommand &&
               (!showInlineSummary || hasExpandableDetails) &&
               (entryContent || content) && (

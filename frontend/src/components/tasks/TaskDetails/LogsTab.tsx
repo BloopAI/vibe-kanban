@@ -6,7 +6,7 @@ import {
   useReducer,
   useState,
 } from 'react';
-import { Virtuoso } from 'react-virtuoso';
+import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { Cog, AlertTriangle, CheckCircle, GitCommit } from 'lucide-react';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
@@ -141,7 +141,7 @@ function LogsTab({ selectedAttempt }: Props) {
   const { data: branchStatus, refetch: refetchBranch } = useBranchStatus(
     selectedAttempt?.id
   );
-  const virtuosoRef = useRef<any>(null);
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
 
   const [state, dispatch] = useReducer(reducer, initialState);
 
