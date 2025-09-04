@@ -323,7 +323,7 @@ function LogsTab({ selectedAttempt }: Props) {
 
   const itemContent = useCallback(
     (
-      index: number,
+      _index: number,
       group: {
         processId: string;
         header: ProcessStartPayload;

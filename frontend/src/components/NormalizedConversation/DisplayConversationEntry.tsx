@@ -426,14 +426,17 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
             </div>
           ) : isToolUse && isFileEdit(entryType.action_type) ? (
             // Only FileChangeRenderer for file_edit
-            entryType.action_type.changes.map((change, idx) => (
-              <FileChangeRenderer
-                key={idx}
-                path={entryType.action_type.path}
-                change={change}
-                expansionKey={`edit:${expansionKey}:${idx}`}
-              />
-            ))
+            (() => {
+              const fileEditAction = entryType.action_type as FileEditAction;
+              return fileEditAction.changes.map((change, idx) => (
+                <FileChangeRenderer
+                  key={idx}
+                  path={fileEditAction.path}
+                  change={change}
+                  expansionKey={`edit:${expansionKey}:${idx}`}
+                />
+              ));
+            })()
           ) : isToolUse ? (
             <ToolCallCard
               entryType={entryType}
