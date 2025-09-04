@@ -25,16 +25,13 @@ use super::{
 /// Search mode for different use cases
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum SearchMode {
-    TaskForm,    // Default: exclude ignored files (clean results)
-    Settings,    // Include ignored files (for project config like .env)
+    #[default]
+    TaskForm, // Default: exclude ignored files (clean results)
+    Settings, // Include ignored files (for project config like .env)
 }
 
-impl Default for SearchMode {
-    fn default() -> Self {
-        SearchMode::TaskForm
-    }
-}
 
 /// Search query parameters for typed Axum extraction
 #[derive(Debug, Deserialize)]
@@ -158,37 +155,42 @@ impl FileSearchCache {
     /// Pre-warm cache for most active projects
     pub async fn warm_most_active(&self, db_pool: &SqlitePool, limit: i32) -> Result<(), String> {
         use db::models::project::Project;
-        
+
         info!("Starting file search cache warming...");
-        
+
         // Get most active projects
         let active_projects = Project::find_most_active(db_pool, limit)
             .await
-            .map_err(|e| format!("Failed to fetch active projects: {}", e))?;
-        
+            .map_err(|e| format!("Failed to fetch active projects: {e}"))?;
+
         if active_projects.is_empty() {
             info!("No active projects found, skipping cache warming");
             return Ok(());
         }
-        
+
         let repo_paths: Vec<PathBuf> = active_projects
             .iter()
             .map(|p| PathBuf::from(&p.git_repo_path))
             .collect();
-        
-        info!("Warming cache for {} projects: {:?}", repo_paths.len(), repo_paths);
-        
+
+        info!(
+            "Warming cache for {} projects: {:?}",
+            repo_paths.len(),
+            repo_paths
+        );
+
         // Warm the cache
-        self.warm_repos(repo_paths.clone()).await
-            .map_err(|e| format!("Failed to warm cache: {}", e))?;
-        
+        self.warm_repos(repo_paths.clone())
+            .await
+            .map_err(|e| format!("Failed to warm cache: {e}"))?;
+
         // Setup watchers for active projects
         for repo_path in &repo_paths {
             if let Err(e) = self.setup_watcher(repo_path).await {
                 warn!("Failed to setup watcher for {:?}: {}", repo_path, e);
             }
         }
-        
+
         info!("File search cache warming completed");
         Ok(())
     }
@@ -313,9 +315,10 @@ impl FileSearchCache {
         let mut non_ignored_paths = std::collections::HashSet::new();
         for result in ignore_walker {
             if let Ok(entry) = result
-                && let Ok(relative_path) = entry.path().strip_prefix(repo_path) {
-                    non_ignored_paths.insert(relative_path.to_path_buf());
-                }
+                && let Ok(relative_path) = entry.path().strip_prefix(repo_path)
+            {
+                non_ignored_paths.insert(relative_path.to_path_buf());
+            }
         }
 
         // Now walk all files and determine their ignore status

@@ -50,7 +50,11 @@ async fn main() -> Result<(), VibeKanbanError> {
     // Pre-warm file search cache for most active projects
     let deployment_for_cache = deployment.clone();
     tokio::spawn(async move {
-        if let Err(e) = deployment_for_cache.file_search_cache().warm_most_active(&deployment_for_cache.db().pool, 3).await {
+        if let Err(e) = deployment_for_cache
+            .file_search_cache()
+            .warm_most_active(&deployment_for_cache.db().pool, 3)
+            .await
+        {
             tracing::warn!("Failed to warm file search cache: {}", e);
         }
     });

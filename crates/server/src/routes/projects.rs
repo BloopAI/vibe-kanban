@@ -14,9 +14,9 @@ use db::models::project::{
 use deployment::Deployment;
 use ignore::WalkBuilder;
 use services::services::{
-    file_ranker::FileRanker, 
-    file_search_cache::{CacheError, SearchMode, SearchQuery}, 
-    git::GitBranch
+    file_ranker::FileRanker,
+    file_search_cache::{CacheError, SearchMode, SearchQuery},
+    git::GitBranch,
 };
 use utils::{path::expand_tilde, response::ApiResponse};
 use uuid::Uuid;
@@ -287,7 +287,7 @@ pub async fn search_project_files(
 ) -> Result<ResponseJson<ApiResponse<Vec<SearchResult>>>, StatusCode> {
     let query = search_query.q.trim();
     let mode = search_query.mode;
-    
+
     if query.is_empty() {
         return Ok(ResponseJson(ApiResponse::error(
             "Query parameter 'q' is required and cannot be empty",
