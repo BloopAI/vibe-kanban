@@ -100,7 +100,6 @@ export const useJsonPatchStream = <T>(
 
       eventSource.onerror = () => {
         setError('Connection failed');
-        eventSource.close();
         eventSourceRef.current = null;
         setIsConnected(false);
       };

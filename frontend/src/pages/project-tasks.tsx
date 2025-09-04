@@ -235,26 +235,18 @@ export function ProjectTasks() {
     return <Loader message="Loading tasks..." size={32} className="py-8" />;
   }
 
-  // if (error || streamError) {
-  //   return (
-  //     <div className="text-center py-8 text-destructive">
-  //       {error || streamError}
-  //     </div>
-  //   );
-  // }
-
   return (
     <div
       className={`min-h-full ${getMainContainerClasses(isPanelOpen, isFullscreen)}`}
     >
-      {(error || streamError) && (
+      {streamError && (
         <div>
           <Alert>
             <AlertTitle className="flex items-center gap-2">
               <AlertTriangle size="16" />
               Reconnecting
             </AlertTitle>
-            <AlertDescription>{error || streamError}</AlertDescription>
+            <AlertDescription>{streamError}</AlertDescription>
           </Alert>
         </div>
       )}
