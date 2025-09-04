@@ -72,24 +72,30 @@ export const useJsonPatchStream = <T>(
       eventSource.addEventListener('json_patch', (event) => {
         try {
           const patches: Operation[] = JSON.parse(event.data);
+          const filtered = options.deduplicatePatches ? options.deduplicatePatches(patches) : patches;
+          if (!filtered.length || !dataRef.current) return;
 
-          // Apply deduplication if provided
-          const filteredPatches = options.deduplicatePatches
-            ? options.deduplicatePatches(patches)
-            : patches;
+          // If any patch hits /tasks or below, bump the container identity
+          const touchesTasks = filtered.some(p =>
+            p.path === '/tasks' || p.path.startsWith('/tasks/')
+          );
 
-          // Only apply patches if there are any left after filtering
-          if (filteredPatches.length > 0 && dataRef.current) {
-            applyPatch(dataRef.current, filteredPatches);
-
-            // Trigger re-render with updated data
-            setData({ ...dataRef.current });
+          if (touchesTasks) {
+            // shallow clone container before mutating
+            const cur = dataRef.current as any;
+            dataRef.current = { ...cur, tasks: { ...cur.tasks } };
           }
+
+          applyPatch(dataRef.current, filtered);
+
+          // top-level identity always changes
+          setData({ ...(dataRef.current as any) });
         } catch (err) {
           console.error('Failed to apply JSON patch:', err);
           setError('Failed to process stream update');
         }
       });
+
 
       eventSource.addEventListener('finished', () => {
         eventSource.close();
