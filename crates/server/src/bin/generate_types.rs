@@ -167,11 +167,6 @@ fn generate_schemas() -> Result<(), Box<dyn std::error::Error>> {
     write_schema::<executors::executors::opencode::Opencode>("opencode", schemas_dir)?;
     write_schema::<executors::executors::qwen::QwenCode>("qwen_code", schemas_dir)?;
 
-    // Generate schemas for supporting types
-    write_schema::<executors::command::CmdOverrides>("cmd_overrides", schemas_dir)?;
-    write_schema::<executors::executors::gemini::GeminiModel>("gemini_model", schemas_dir)?;
-    write_schema::<executors::executors::codex::SandboxMode>("sandbox_mode", schemas_dir)?;
-
     println!("✅ JSON schemas generated in shared/schemas/");
     Ok(())
 }

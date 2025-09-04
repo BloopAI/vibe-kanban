@@ -1,6 +1,6 @@
 import { useMemo, useEffect, useState } from 'react';
 import Form from '@rjsf/core';
-import { RJSFSchema, RJSFValidationError } from '@rjsf/utils';
+import { RJSFValidationError } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -9,15 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { shadcnTheme } from './rjsf';
 // Using custom shadcn/ui widgets instead of @rjsf/shadcn theme
-
-// Import schemas statically
-import ampSchema from '../../../shared/schemas/amp.json';
-import claudeCodeSchema from '../../../shared/schemas/claude_code.json';
-import geminiSchema from '../../../shared/schemas/gemini.json';
-import codexSchema from '../../../shared/schemas/codex.json';
-import cursorSchema from '../../../shared/schemas/cursor.json';
-import opencodeSchema from '../../../shared/schemas/opencode.json';
-import qwenCodeSchema from '../../../shared/schemas/qwen_code.json';
 
 type ExecutorType =
   | 'AMP'
@@ -39,15 +30,7 @@ interface ExecutorConfigFormProps {
   isDirty?: boolean;
 }
 
-const schemas: Record<ExecutorType, RJSFSchema> = {
-  AMP: ampSchema as RJSFSchema,
-  CLAUDE_CODE: claudeCodeSchema as RJSFSchema,
-  GEMINI: geminiSchema as RJSFSchema,
-  CODEX: codexSchema as RJSFSchema,
-  CURSOR: cursorSchema as RJSFSchema,
-  OPENCODE: opencodeSchema as RJSFSchema,
-  QWEN_CODE: qwenCodeSchema as RJSFSchema,
-};
+import schemas from 'virtual:executor-schemas';
 
 export function ExecutorConfigForm({
   executor,
