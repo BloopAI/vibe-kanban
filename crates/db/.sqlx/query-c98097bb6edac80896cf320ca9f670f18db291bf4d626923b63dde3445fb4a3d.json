@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT \n                id               as \"id!: Uuid\",\n                task_attempt_id  as \"task_attempt_id!: Uuid\",\n                prompt           as \"prompt!: String\",\n                queued           as \"queued!: bool\",\n                sending          as \"sending!: bool\",\n                variant,\n                image_ids        as \"image_ids?: String\",\n                created_at       as \"created_at!: DateTime<Utc>\",\n                updated_at       as \"updated_at!: DateTime<Utc>\",\n                version          as \"version!: i64\"\n              FROM follow_up_drafts\n             WHERE task_attempt_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "task_attempt_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "prompt!: String",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "queued!: bool",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "sending!: bool",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "variant",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "image_ids?: String",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "version!: i64",
+        "ordinal": 9,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "c98097bb6edac80896cf320ca9f670f18db291bf4d626923b63dde3445fb4a3d"
+}

@@ -67,12 +67,12 @@ export function AgentSettings() {
   }, [serverProfilesContent, serverParsedProfiles, isDirty]);
 
   // Sync raw profiles with parsed profiles
-  const syncRawProfiles = (profiles: any) => {
+  const syncRawProfiles = (profiles: unknown) => {
     setLocalProfilesContent(JSON.stringify(profiles, null, 2));
   };
 
   // Mark profiles as dirty
-  const markDirty = (nextProfiles: any) => {
+  const markDirty = (nextProfiles: unknown) => {
     setLocalParsedProfiles(nextProfiles);
     syncRawProfiles(nextProfiles);
     setIsDirty(true);
@@ -216,7 +216,7 @@ export function AgentSettings() {
         // Show success
         setProfilesSuccess(true);
         setTimeout(() => setProfilesSuccess(false), 3000);
-      } catch (saveError: any) {
+      } catch (saveError: unknown) {
         console.error('Failed to save deletion to backend:', saveError);
       }
     } catch (error) {
@@ -256,7 +256,7 @@ export function AgentSettings() {
       if (useFormEditor && localParsedProfiles) {
         setLocalProfilesContent(contentToSave);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to save profiles:', err);
     }
   };
@@ -264,7 +264,7 @@ export function AgentSettings() {
   const handleExecutorConfigChange = (
     executorType: string,
     configuration: string,
-    formData: any
+    formData: unknown
   ) => {
     if (!localParsedProfiles || !localParsedProfiles.executors) return;
 
@@ -285,7 +285,7 @@ export function AgentSettings() {
     markDirty(updatedProfiles);
   };
 
-  const handleExecutorConfigSave = async (formData: any) => {
+  const handleExecutorConfigSave = async (formData: unknown) => {
     if (!localParsedProfiles || !localParsedProfiles.executors) return;
 
     // Update the parsed profiles with the saved config
@@ -316,7 +316,7 @@ export function AgentSettings() {
 
       // Update the local content as well
       setLocalProfilesContent(contentToSave);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to save profiles:', err);
     }
   };

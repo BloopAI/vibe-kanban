@@ -1,5 +1,8 @@
 import {
   AlertCircle,
+  CheckCircle2,
+  WifiOff,
+  Clock,
   Send,
   ChevronDown,
   ImageIcon,
@@ -10,11 +13,19 @@ import { ImageUploadSection } from '@/components/ui/ImageUploadSection';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
-import { attemptsApi, imagesApi } from '@/lib/api.ts';
-import type { ImageResponse, TaskWithAttemptStatus } from 'shared/types';
+import {
+  attemptsApi,
+  imagesApi,
+  type UpdateFollowUpDraftRequest,
+} from '@/lib/api.ts';
+import type {
+  ImageResponse,
+  TaskWithAttemptStatus,
+  FollowUpDraft,
+} from 'shared/types';
 import { useBranchStatus } from '@/hooks';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
-import { Loader } from '@/components/ui/loader';
+import { Loader2 } from 'lucide-react';
 import { useUserSystem } from '@/components/config-provider';
 import {
   DropdownMenu,
@@ -25,6 +36,8 @@ import {
 import { cn } from '@/lib/utils';
 import { useVariantCyclingShortcut } from '@/lib/keyboard-shortcuts';
 import { useReview } from '@/contexts/ReviewProvider';
+import { useJsonPatchStream } from '@/hooks/useJsonPatchStream';
+import { inIframe } from '@/vscode/bridge';
 
 interface TaskFollowUpSectionProps {
   task: TaskWithAttemptStatus;
@@ -104,6 +117,70 @@ export function TaskFollowUpSection({
   const [newlyUploadedImageIds, setNewlyUploadedImageIds] = useState<string[]>(
     []
   );
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [lockedMinHeight, setLockedMinHeight] = useState<number | null>(null);
+  // Fade-out overlay for clearing text when sending begins
+  const [fadeOverlayText, setFadeOverlayText] = useState('');
+  const [showFadeOverlay, setShowFadeOverlay] = useState(false);
+  const [overlayFadeClass, setOverlayFadeClass] = useState('');
+  const overlayFadeTimerRef = useRef<number | undefined>(undefined);
+  const overlayHideTimerRef = useRef<number | undefined>(undefined);
+  const [isQueued, setIsQueued] = useState(false);
+  const [isDraftSending, setIsDraftSending] = useState(false);
+  const [isQueuing, setIsQueuing] = useState(false);
+  const [isUnqueuing, setIsUnqueuing] = useState(false);
+  const [isDraftReady, setIsDraftReady] = useState(false);
+  const saveTimeoutRef = useRef<number | undefined>(undefined);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<
+    'idle' | 'saving' | 'saved' | 'offline' | 'sent'
+  >('idle');
+  const [isStatusFading, setIsStatusFading] = useState(false);
+  const statusFadeTimerRef = useRef<number | undefined>(undefined);
+  const statusClearTimerRef = useRef<number | undefined>(undefined);
+  const lastSentRef = useRef<string>('');
+  const suppressNextSaveRef = useRef<boolean>(false);
+  const localDirtyRef = useRef<boolean>(false);
+  // We auto-resolve conflicts silently by adopting server state.
+  const lastServerVersionRef = useRef<number>(-1);
+  const prevSendingRef = useRef<boolean>(false);
+
+  // Helper to show a pleasant fade for transient "Saved" status
+  const scheduleSavedStatus = useCallback(() => {
+    // Clear pending timers
+    if (statusFadeTimerRef.current)
+      window.clearTimeout(statusFadeTimerRef.current);
+    if (statusClearTimerRef.current)
+      window.clearTimeout(statusClearTimerRef.current);
+    setIsStatusFading(false);
+    setSaveStatus('saved');
+    // Fade out close to the end of visibility
+    statusFadeTimerRef.current = window.setTimeout(
+      () => setIsStatusFading(true),
+      1800
+    );
+    statusClearTimerRef.current = window.setTimeout(() => {
+      setSaveStatus('idle');
+      setIsStatusFading(false);
+    }, 2000);
+  }, []);
+
+  const scheduleSentStatus = useCallback(() => {
+    if (statusFadeTimerRef.current)
+      window.clearTimeout(statusFadeTimerRef.current);
+    if (statusClearTimerRef.current)
+      window.clearTimeout(statusClearTimerRef.current);
+    setIsStatusFading(false);
+    setSaveStatus('sent');
+    statusFadeTimerRef.current = window.setTimeout(
+      () => setIsStatusFading(true),
+      1800
+    );
+    statusClearTimerRef.current = window.setTimeout(() => {
+      setSaveStatus('idle');
+      setIsStatusFading(false);
+    }, 2000);
+  }, []);
 
   // Get the profile from the attempt data
   const selectedProfile = selectedAttemptProfile;
@@ -153,6 +230,347 @@ export function TaskFollowUpSection({
   useEffect(() => {
     setSelectedVariant(defaultFollowUpVariant);
   }, [defaultFollowUpVariant]);
+
+  // Subscribe to follow-up draft SSE stream for this attempt
+  type DraftStreamState = { follow_up_draft: FollowUpDraft };
+  const draftStreamEndpoint = selectedAttemptId
+    ? `/api/task-attempts/${selectedAttemptId}/follow-up-draft/stream`
+    : undefined;
+  const makeInitialDraftData = useCallback(
+    () => ({
+      follow_up_draft: {
+        id: '',
+        task_attempt_id: selectedAttemptId || '',
+        prompt: '',
+        queued: false,
+        sending: false,
+        variant: null,
+        image_ids: [],
+        // version used only for local comparison; server will patch real value
+        version: 0 as unknown,
+        created_at: new Date().toISOString() as unknown,
+        updated_at: new Date().toISOString() as unknown,
+      } as any,
+    }),
+    [selectedAttemptId]
+  );
+
+  const {
+    data: draftStream,
+    isConnected: draftStreamConnected,
+    error: draftStreamError,
+  } = useJsonPatchStream<DraftStreamState>(
+    draftStreamEndpoint,
+    !!draftStreamEndpoint,
+    makeInitialDraftData
+  );
+
+  // One-shot hydration via REST to avoid waiting on SSE, and to handle environments
+  // where SSE connects but initial event is delayed or blocked.
+  useEffect(() => {
+    let cancelled = false;
+    const hydrateOnce = async () => {
+      if (!selectedAttemptId) return;
+      try {
+        const draft = await attemptsApi.getFollowUpDraft(selectedAttemptId);
+        if (cancelled) return;
+        suppressNextSaveRef.current = true;
+        const incomingVersion = draft?.version
+          ? Number(draft.version as unknown)
+          : 0;
+        lastServerVersionRef.current = incomingVersion;
+        setFollowUpMessage(draft.prompt || '');
+        setIsQueued(!!draft.queued);
+        if (draft.variant !== undefined && draft.variant !== null)
+          setSelectedVariant(draft.variant);
+        // Load images if present
+        if (draft.image_ids && draft.image_ids.length > 0) {
+          const all = await imagesApi.getTaskImages(task.id);
+          if (cancelled) return;
+          const wantIds = new Set(draft.image_ids);
+          setImages(all.filter((img) => wantIds.has(img.id)));
+        } else {
+          setImages([]);
+        }
+        if (!isDraftReady) setIsDraftReady(true);
+      } catch {
+        // ignore, rely on SSE/poll fallback
+      }
+    };
+    hydrateOnce();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedAttemptId]);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (statusFadeTimerRef.current)
+        window.clearTimeout(statusFadeTimerRef.current);
+      if (statusClearTimerRef.current)
+        window.clearTimeout(statusClearTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!draftStream) return;
+    const d = draftStream.follow_up_draft as FollowUpDraft;
+    // Ignore synthetic initial placeholder until real SSE snapshot arrives
+    if ((d as any).id === '') {
+      return;
+    }
+    const incomingVersion = d?.version ? Number(d.version as unknown) : 0;
+
+    // Always reflect queued/sending flags immediately
+    setIsQueued(!!d.queued);
+    const sendingNow = !!(d as any).sending;
+    setIsDraftSending(sendingNow);
+
+    // If server indicates we're sending, ensure the editor is cleared for clarity.
+    if (sendingNow) {
+      // Edge trigger: show Sent pill once
+      if (!prevSendingRef.current) {
+        scheduleSentStatus();
+      }
+      // Show a quick fade-out of the prior content while clearing the actual textarea value
+      if (followUpMessage !== '') {
+        if (overlayFadeTimerRef.current)
+          window.clearTimeout(overlayFadeTimerRef.current);
+        if (overlayHideTimerRef.current)
+          window.clearTimeout(overlayHideTimerRef.current);
+        // Lock container height to avoid jump while autosize recomputes
+        if (wrapperRef.current) {
+          const h = wrapperRef.current.getBoundingClientRect().height;
+          setLockedMinHeight(h);
+        }
+        setFadeOverlayText(followUpMessage);
+        setShowFadeOverlay(true);
+        // Start fully visible
+        setOverlayFadeClass('opacity-100');
+        // Clear textarea immediately under the overlay
+        setFollowUpMessage('');
+        // Trigger fast fade on next tick (no motion), then remove overlay shortly after
+        overlayFadeTimerRef.current = window.setTimeout(
+          () => setOverlayFadeClass('opacity-0'),
+          20
+        );
+        overlayHideTimerRef.current = window.setTimeout(() => {
+          setShowFadeOverlay(false);
+          setFadeOverlayText('');
+          setOverlayFadeClass('');
+          // Release height lock shortly after fade completes
+          setLockedMinHeight(null);
+        }, 180);
+      }
+      if (images.length > 0) setImages([]);
+      if (newlyUploadedImageIds.length > 0) setNewlyUploadedImageIds([]);
+      if (showImageUpload) setShowImageUpload(false);
+    }
+    prevSendingRef.current = sendingNow;
+
+    // Skip if this is a duplicate of what we already processed
+    if (incomingVersion === lastServerVersionRef.current) {
+      if (!isDraftReady) setIsDraftReady(true);
+      return;
+    }
+
+    // Mark that next local change shouldn't auto-save (we're syncing from server)
+    suppressNextSaveRef.current = true;
+
+    // Initial hydration: avoid clobbering locally typed text with empty server prompt
+    if (lastServerVersionRef.current === -1) {
+      if (!localDirtyRef.current && !sendingNow) {
+        setFollowUpMessage(d.prompt || '');
+      }
+      if (d.variant !== undefined) setSelectedVariant(d.variant);
+      lastServerVersionRef.current = incomingVersion;
+    }
+
+    // Real server-side change: adopt new prompt/variant
+    if (incomingVersion > lastServerVersionRef.current) {
+      // If sending, keep the editor clear regardless of server prompt value
+      setFollowUpMessage(sendingNow ? '' : d.prompt || '');
+      if (d.variant !== undefined) setSelectedVariant(d.variant);
+      localDirtyRef.current = false;
+      lastServerVersionRef.current = incomingVersion;
+    }
+    if (!d.image_ids || d.image_ids.length === 0) {
+      setImages([]);
+      setNewlyUploadedImageIds([]);
+      setShowImageUpload(false);
+    } else {
+      // Load attached images for this draft by IDs
+      const wantIds = new Set(d.image_ids);
+      const haveIds = new Set(images.map((img) => img.id));
+      let mismatch = false;
+      if (images.length !== wantIds.size) mismatch = true;
+      else
+        for (const id of wantIds)
+          if (!haveIds.has(id)) {
+            mismatch = true;
+            break;
+          }
+      if (mismatch) {
+        imagesApi
+          .getTaskImages(task.id)
+          .then((all) => {
+            setImages(all.filter((img) => wantIds.has(img.id)));
+            setNewlyUploadedImageIds([]);
+          })
+          .catch(() => void 0);
+      }
+    }
+    if (!isDraftReady) setIsDraftReady(true);
+  }, [draftStream]);
+
+  // Cleanup overlay timers
+  useEffect(() => {
+    return () => {
+      if (overlayFadeTimerRef.current)
+        window.clearTimeout(overlayFadeTimerRef.current);
+      if (overlayHideTimerRef.current)
+        window.clearTimeout(overlayHideTimerRef.current);
+    };
+  }, []);
+
+  // Fallback: if running inside VSCode iframe and SSE isn't connected, poll the draft endpoint to keep UI in sync
+  const pollTimerRef = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (!selectedAttemptId) return;
+    const shouldPoll =
+      inIframe() && (!draftStreamConnected || !!draftStreamError);
+    if (!shouldPoll) {
+      if (pollTimerRef.current) window.clearInterval(pollTimerRef.current);
+      pollTimerRef.current = undefined;
+      return;
+    }
+    const pollOnce = async () => {
+      try {
+        const draft = await attemptsApi.getFollowUpDraft(selectedAttemptId);
+        // Update immediate state, similar to SSE handler
+        setIsQueued(!!draft.queued);
+        // Polling response does not include 'sending'; preserve previous sending state
+        const incomingVersion = draft?.version
+          ? Number(draft.version as unknown)
+          : 0;
+        if (incomingVersion !== lastServerVersionRef.current) {
+          suppressNextSaveRef.current = true;
+          setFollowUpMessage(draft.prompt || '');
+          if (draft.variant !== undefined && draft.variant !== null)
+            setSelectedVariant(draft.variant);
+          lastServerVersionRef.current = incomingVersion;
+          // images not included in response type for polling; leave as-is
+        }
+        if (!isDraftReady) setIsDraftReady(true);
+      } catch {
+        // ignore
+      }
+    };
+    // Prime once, then interval
+    pollOnce();
+    pollTimerRef.current = window.setInterval(pollOnce, 1000);
+    return () => {
+      if (pollTimerRef.current) window.clearInterval(pollTimerRef.current);
+      pollTimerRef.current = undefined;
+    };
+  }, [selectedAttemptId, draftStreamConnected, draftStreamError]);
+
+  // Debounced persist draft on message or variant change (only while not queued)
+  useEffect(() => {
+    if (!selectedAttemptId) return;
+    // skip saving if currently sending follow-up; it will be cleared on success
+    if (isSendingFollowUp) return;
+    // also skip while server is sending a queued draft
+    if (isDraftSending) return;
+    // skip saving while queue/unqueue transitions are in-flight
+    if (isQueuing || isUnqueuing) return;
+    if (suppressNextSaveRef.current) {
+      suppressNextSaveRef.current = false;
+      return;
+    }
+    // Only save when not queued (edit mode)
+    if (isQueued) return;
+
+    const saveDraft = async () => {
+      const d = draftStream?.follow_up_draft;
+      const payload: any = {} as UpdateFollowUpDraftRequest;
+      // prompt change
+      if (d && followUpMessage !== (d.prompt || '')) {
+        payload.prompt = followUpMessage;
+      }
+      // variant change (string | null)
+      if ((d?.variant ?? null) !== (selectedVariant ?? null)) {
+        payload.variant = selectedVariant as any; // may be null
+      }
+      // images change (compare ids)
+      const currentIds = images.map((img) => img.id);
+      const serverIds = (d?.image_ids as string[] | undefined) ?? [];
+      const idsEqual =
+        currentIds.length === serverIds.length &&
+        currentIds.every((id, i) => id === serverIds[i]);
+      if (!idsEqual) {
+        payload.image_ids = currentIds;
+      }
+
+      // If no field changed, skip network
+      const keys = Object.keys(payload).filter((k) => k !== 'version');
+      if (keys.length === 0) return;
+      const payloadKey = JSON.stringify(payload);
+      if (payloadKey === lastSentRef.current) return;
+      lastSentRef.current = payloadKey;
+      try {
+        setIsSaving(true);
+        setSaveStatus(navigator.onLine ? 'saving' : 'offline');
+        await attemptsApi.saveFollowUpDraft(selectedAttemptId, payload);
+        // pleasant linger + fade-out
+        scheduleSavedStatus();
+      } catch (e: unknown) {
+        // On conflict or error, silently adopt server state
+        try {
+          const draft = await attemptsApi.getFollowUpDraft(selectedAttemptId);
+          suppressNextSaveRef.current = true;
+          setFollowUpMessage(draft.prompt || '');
+          setIsQueued(!!draft.queued);
+          if (draft.variant !== undefined && draft.variant !== null) {
+            setSelectedVariant(draft.variant);
+          }
+          if (draft.version !== undefined && draft.version !== null) {
+            lastServerVersionRef.current = Number(draft.version as unknown);
+          }
+        } catch {
+          /* empty */
+        }
+        setSaveStatus(navigator.onLine ? 'idle' : 'offline');
+      } finally {
+        setIsSaving(false);
+      }
+    };
+
+    // debounce 400ms
+    if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = (
+      window.setTimeout as unknown as (
+        handler: () => void,
+        timeout?: number
+      ) => number
+    )(saveDraft, 400);
+    return () => {
+      if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
+    };
+  }, [
+    followUpMessage,
+    selectedVariant,
+    isQueued,
+    selectedAttemptId,
+    isSendingFollowUp,
+    isQueuing,
+    isUnqueuing,
+  ]);
+
+  // Remove BroadcastChannel — SSE is authoritative
+
+  // (removed duplicate SSE subscription block)
 
   const handleImageUploaded = useCallback((image: ImageResponse) => {
     const markdownText = `![${image.original_name}](${image.file_path})`;
@@ -204,7 +622,9 @@ export function TaskFollowUpSection({
         image_ids: imageIds,
       });
       setFollowUpMessage('');
-      clearComments(); // Clear review comments after successful submission
+      // Clear review comments and reset queue state after successful submission
+      clearComments();
+      setIsQueued(false);
       // Clear images and newly uploaded IDs after successful submission
       setImages([]);
       setNewlyUploadedImageIds([]);
@@ -218,6 +638,100 @@ export function TaskFollowUpSection({
       setIsSendingFollowUp(false);
     }
   };
+
+  // Derived UI lock: disallow edits/actions while queued or transitioning
+  const isDraftLocked = isQueued || isQueuing || isUnqueuing || isDraftSending;
+  const isInputDisabled = isDraftLocked || !isDraftReady;
+
+  // Queue handler: ensure draft is persisted immediately, then toggle queued
+  const onQueue = async () => {
+    if (!selectedAttemptId) return;
+    if (isQueuing || isQueued) return;
+    const hasContent = followUpMessage.trim().length > 0;
+    if (!hasContent) return;
+    try {
+      // Prevent any pending debounced save from racing
+      if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
+      suppressNextSaveRef.current = true;
+      setIsQueuing(true);
+      // Optimistically reflect queued state to block edits/buttons immediately
+      setIsQueued(true);
+      setIsSaving(true);
+      setSaveStatus(navigator.onLine ? 'saving' : 'offline');
+      // 1) Force-save current draft so the row exists and is up to date (no version to avoid conflicts)
+      const immediatePayload: any = {
+        // Do NOT send version here to avoid spurious 409; we'll use the returned version for queueing
+        prompt: followUpMessage,
+      } as UpdateFollowUpDraftRequest;
+      if (
+        (draftStream?.follow_up_draft?.variant ?? null) !==
+        (selectedVariant ?? null)
+      ) {
+        immediatePayload.variant = selectedVariant as any;
+      }
+      const currentIds = images.map((img) => img.id);
+      const serverIds =
+        (draftStream?.follow_up_draft?.image_ids as string[] | undefined) ?? [];
+      const idsEqual =
+        currentIds.length === serverIds.length &&
+        currentIds.every((id, i) => id === serverIds[i]);
+      if (!idsEqual) {
+        immediatePayload.image_ids = currentIds;
+      }
+      await attemptsApi.saveFollowUpDraft(selectedAttemptId, immediatePayload);
+
+      // 2) Queue with optimistic concurrency using latest version from save
+      try {
+        const resp = await attemptsApi.setFollowUpQueue(
+          selectedAttemptId,
+          true
+        );
+        // Immediate local sync to avoid waiting for SSE
+        if (resp?.version !== undefined) {
+          lastServerVersionRef.current = Number(resp.version as unknown);
+        }
+        setIsQueued(!!resp.queued);
+        if (resp.variant !== undefined && resp.variant !== null) {
+          setSelectedVariant(resp.variant);
+        }
+      } catch (err: unknown) {
+        // On any error, silently adopt server state
+        const latest = await attemptsApi.getFollowUpDraft(selectedAttemptId);
+        suppressNextSaveRef.current = true;
+        if (latest.version !== undefined && latest.version !== null) {
+          lastServerVersionRef.current = Number(latest.version as unknown);
+        }
+        setIsQueued(!!latest.queued);
+        if (latest.variant !== undefined && latest.variant !== null) {
+          setSelectedVariant(latest.variant);
+        }
+      }
+      // Do not show "Saved" for queue; right side shows Queued; a "Sent" pill will appear when sending starts
+      setSaveStatus('idle');
+    } catch (e: unknown) {
+      // On any error, hard refresh to server truth
+      try {
+        const draft = await attemptsApi.getFollowUpDraft(selectedAttemptId);
+        suppressNextSaveRef.current = true;
+        setFollowUpMessage(draft.prompt || '');
+        setIsQueued(!!draft.queued);
+        if (draft.variant !== undefined && draft.variant !== null) {
+          setSelectedVariant(draft.variant);
+        }
+        if (draft.version !== undefined && draft.version !== null) {
+          lastServerVersionRef.current = Number(draft.version as unknown);
+        }
+      } catch {
+        /* empty */
+      }
+      setSaveStatus(navigator.onLine ? 'idle' : 'offline');
+    } finally {
+      setIsSaving(false);
+      setIsQueuing(false);
+    }
+  };
+
+  // (Removed) auto-unqueue logic — editing is explicit and guarded by a lock now
 
   return (
     selectedAttemptId && (
@@ -238,7 +752,7 @@ export function TaskFollowUpSection({
                   onUpload={imagesApi.upload}
                   onDelete={imagesApi.delete}
                   onImageUploaded={handleImageUploaded}
-                  disabled={!canSendFollowUp}
+                  disabled={!canSendFollowUp || isDraftLocked || !isDraftReady}
                   collapsible={false}
                   defaultExpanded={true}
                 />
@@ -253,16 +767,27 @@ export function TaskFollowUpSection({
             )}
 
             <div className="flex flex-col gap-2">
-              <div>
+              <div
+                ref={wrapperRef}
+                className="relative"
+                style={
+                  lockedMinHeight
+                    ? ({ minHeight: lockedMinHeight } as any)
+                    : undefined
+                }
+              >
                 <FileSearchTextarea
                   placeholder={
-                    reviewMarkdown
-                      ? '(Optional) Add additional instructions... Type @ to search files.'
-                      : 'Continue working on this task attempt... Type @ to search files.'
+                    isQueued
+                      ? 'Type your follow-up… It will auto-send when ready.'
+                      : reviewMarkdown
+                        ? '(Optional) Add additional instructions... Type @ to search files.'
+                        : 'Continue working on this task attempt... Type @ to search files.'
                   }
                   value={followUpMessage}
                   onChange={(value) => {
                     setFollowUpMessage(value);
+                    localDirtyRef.current = true;
                     if (followUpError) setFollowUpError(null);
                   }}
                   onKeyDown={(e) => {
@@ -271,23 +796,110 @@ export function TaskFollowUpSection({
                       if (canSendFollowUp && !isSendingFollowUp) {
                         onSendFollowUp();
                       }
+                    } else if (e.key === 'Escape') {
+                      // Clear input and auto-cancel queue
+                      e.preventDefault();
+                      setFollowUpMessage('');
                     }
                   }}
-                  className="flex-1 min-h-[40px] resize-none"
-                  disabled={!canTypeFollowUp}
+                  className={cn(
+                    'flex-1 min-h-[40px] resize-none',
+                    showFadeOverlay && 'placeholder-transparent'
+                  )}
+                  // Edits are disallowed while queued or in transition
+                  disabled={isInputDisabled}
                   projectId={projectId}
                   rows={1}
                   maxRows={6}
                 />
+                {showFadeOverlay && fadeOverlayText && (
+                  <div
+                    className={cn(
+                      'pointer-events-none select-none absolute inset-0 px-3 py-2 text-sm whitespace-pre-wrap text-foreground/70 transition-opacity duration-150 ease-out z-10',
+                      overlayFadeClass
+                    )}
+                    aria-hidden
+                  >
+                    {fadeOverlayText}
+                  </div>
+                )}
+                {(isUnqueuing || !isDraftReady) && (
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/60 z-20">
+                    <Loader2 className="animate-spin h-4 w-4" />
+                  </div>
+                )}
               </div>
-              <div className="flex flex-row">
+              {/* Status row: reserved space above action buttons to avoid layout shift */}
+              <div className="flex items-center justify-between text-xs min-h-6 h-6 px-0.5">
+                {/* Left side: save state or conflicts */}
+                <div className="text-muted-foreground">
+                  {saveStatus === 'saving' ? (
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 bg-muted animate-in fade-in-0',
+                        isSaving && 'italic'
+                      )}
+                    >
+                      <Loader2 className="animate-spin h-3 w-3" /> Saving…
+                    </span>
+                  ) : saveStatus === 'offline' ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 bg-muted text-amber-700 animate-in fade-in-0">
+                      <WifiOff className="h-3 w-3" /> Offline — changes pending
+                    </span>
+                  ) : saveStatus === 'saved' ? (
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 bg-muted text-emerald-700 transition-opacity duration-200 animate-in fade-in-0',
+                        isStatusFading && 'opacity-0'
+                      )}
+                    >
+                      <CheckCircle2 className="h-3 w-3" /> Saved
+                    </span>
+                  ) : saveStatus === 'sent' ? (
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 bg-muted text-emerald-700 transition-opacity duration-200 animate-in fade-in-0',
+                        isStatusFading && 'opacity-0'
+                      )}
+                    >
+                      <Send className="h-3 w-3" /> Sent
+                    </span>
+                  ) : null}
+                </div>
+                {/* Right side: queued/sending status */}
+                <div className="text-muted-foreground">
+                  {isUnqueuing ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 bg-muted animate-in fade-in-0">
+                      <Loader2 className="animate-spin h-3 w-3" /> Unlocking…
+                    </span>
+                  ) : !isDraftReady ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 bg-muted animate-in fade-in-0">
+                      <Loader2 className="animate-spin h-3 w-3" /> Loading
+                      draft…
+                    </span>
+                  ) : isDraftSending ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 bg-muted animate-in fade-in-0">
+                      <Loader2 className="animate-spin h-3 w-3" /> Sending
+                      follow-up…
+                    </span>
+                  ) : isQueued ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 bg-muted animate-in fade-in-0">
+                      <Clock className="h-3 w-3" /> Queued for next turn. Edits
+                      are locked.
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+              <div className="flex flex-row items-center">
                 <div className="flex-1 flex gap-2">
                   {/* Image button */}
                   <Button
                     variant="secondary"
                     size="sm"
                     onClick={() => setShowImageUpload(!showImageUpload)}
-                    disabled={!canSendFollowUp}
+                    disabled={
+                      !canSendFollowUp || isDraftLocked || !isDraftReady
+                    }
                   >
                     <ImageIcon
                       className={cn(
@@ -314,6 +926,7 @@ export function TaskFollowUpSection({
                                 'w-24 px-2 flex items-center justify-between transition-all',
                                 isAnimating && 'scale-105 bg-accent'
                               )}
+                              disabled={isDraftLocked || !isDraftReady}
                             >
                               <span className="text-xs truncate flex-1 text-left">
                                 {selectedVariant || 'DEFAULT'}
@@ -361,40 +974,48 @@ export function TaskFollowUpSection({
                     return null;
                   })()}
                 </div>
-                <div className="flex gap-2">
-                  {comments.length > 0 && (
-                    <Button
-                      onClick={clearComments}
-                      size="sm"
-                      variant="destructive"
-                    >
-                      Clear Review Comments
-                    </Button>
-                  )}
-                  {isAttemptRunning ? (
-                    <Button
-                      onClick={stopExecution}
-                      disabled={isStopping}
-                      size="sm"
-                      variant="destructive"
-                    >
-                      {isStopping ? (
-                        <Loader size={16} className="mr-2" />
-                      ) : (
-                        <>
-                          <StopCircle className="h-4 w-4 mr-2" />
-                          Stop
-                        </>
-                      )}
-                    </Button>
-                  ) : (
+                {/* (removed) old inline notices now replaced by the status row above */}
+
+                {isAttemptRunning ? (
+                  <Button
+                    onClick={stopExecution}
+                    disabled={isStopping}
+                    size="sm"
+                    variant="destructive"
+                  >
+                    {isStopping ? (
+                      <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                    ) : (
+                      <>
+                        <StopCircle className="h-4 w-4 mr-2" />
+                        Stop
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    {comments.length > 0 && (
+                      <Button
+                        onClick={clearComments}
+                        size="sm"
+                        variant="destructive"
+                      >
+                        Clear Review Comments
+                      </Button>
+                    )}
                     <Button
                       onClick={onSendFollowUp}
-                      disabled={!canSendFollowUp || isSendingFollowUp}
+                      disabled={
+                        !canSendFollowUp ||
+                        isDraftLocked ||
+                        !isDraftReady ||
+                        !followUpMessage.trim() ||
+                        isSendingFollowUp
+                      }
                       size="sm"
                     >
                       {isSendingFollowUp ? (
-                        <Loader size={16} className="mr-2" />
+                        <Loader2 className="animate-spin h-4 w-4 mr-2" />
                       ) : (
                         <>
                           <Send className="h-4 w-4 mr-2" />
@@ -402,8 +1023,162 @@ export function TaskFollowUpSection({
                         </>
                       )}
                     </Button>
-                  )}
-                </div>
+                    {isQueued && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="min-w-[180px] transition-all"
+                        onClick={async () => {
+                          if (!selectedAttemptId) return;
+                          try {
+                            if (saveTimeoutRef.current)
+                              window.clearTimeout(saveTimeoutRef.current);
+                            suppressNextSaveRef.current = true;
+                            setIsUnqueuing(true);
+                            try {
+                              const resp = await attemptsApi.setFollowUpQueue(
+                                selectedAttemptId,
+                                false
+                              );
+                              if (resp?.version !== undefined) {
+                                lastServerVersionRef.current = Number(
+                                  resp.version as unknown
+                                );
+                              }
+                              setIsQueued(!!resp.queued);
+                            } catch (err: unknown) {
+                              // On any error (including 409), hard refresh and adopt server state
+                              const latest =
+                                await attemptsApi.getFollowUpDraft(
+                                  selectedAttemptId
+                                );
+                              suppressNextSaveRef.current = true;
+                              setFollowUpMessage(latest.prompt || '');
+                              setIsQueued(!!latest.queued);
+                              if (
+                                latest.variant !== undefined &&
+                                latest.variant !== null
+                              ) {
+                                setSelectedVariant(latest.variant);
+                              }
+                              if (
+                                latest.version !== undefined &&
+                                latest.version !== null
+                              ) {
+                                lastServerVersionRef.current = Number(
+                                  latest.version as unknown
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            console.error('Failed to unqueue for editing', e);
+                          } finally {
+                            setIsUnqueuing(false);
+                          }
+                        }}
+                        disabled={isUnqueuing}
+                      >
+                        {isUnqueuing ? (
+                          <>
+                            <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                            Unqueuing…
+                          </>
+                        ) : (
+                          'Edit'
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                )}
+                {isAttemptRunning && (
+                  <div className="ml-2 flex items-center gap-2">
+                    <Button
+                      onClick={async () => {
+                        if (!selectedAttemptId) return;
+                        if (isQueued) {
+                          try {
+                            if (saveTimeoutRef.current)
+                              window.clearTimeout(saveTimeoutRef.current);
+                            suppressNextSaveRef.current = true;
+                            setIsUnqueuing(true);
+                            try {
+                              const resp = await attemptsApi.setFollowUpQueue(
+                                selectedAttemptId,
+                                false
+                              );
+                              if (resp?.version !== undefined) {
+                                lastServerVersionRef.current = Number(
+                                  resp.version as unknown
+                                );
+                              }
+                              setIsQueued(!!resp.queued);
+                            } catch (err: unknown) {
+                              // On any error (including 409), hard refresh and adopt server state
+                              const latest =
+                                await attemptsApi.getFollowUpDraft(
+                                  selectedAttemptId
+                                );
+                              suppressNextSaveRef.current = true;
+                              setFollowUpMessage(latest.prompt || '');
+                              setIsQueued(!!latest.queued);
+                              if (
+                                latest.variant !== undefined &&
+                                latest.variant !== null
+                              ) {
+                                setSelectedVariant(latest.variant);
+                              }
+                              if (
+                                latest.version !== undefined &&
+                                latest.version !== null
+                              ) {
+                                lastServerVersionRef.current = Number(
+                                  latest.version as unknown
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            console.error('Failed to unqueue for editing', e);
+                          } finally {
+                            setIsUnqueuing(false);
+                          }
+                        } else {
+                          await onQueue();
+                        }
+                      }}
+                      disabled={
+                        isQueued
+                          ? isUnqueuing
+                          : !canSendFollowUp ||
+                            !isDraftReady ||
+                            !followUpMessage.trim() ||
+                            isQueuing ||
+                            isUnqueuing ||
+                            isDraftSending
+                      }
+                      size="sm"
+                      variant="default"
+                      className="min-w-[180px] transition-all"
+                    >
+                      {isQueued ? (
+                        isUnqueuing ? (
+                          <>
+                            <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                            Unqueuing…
+                          </>
+                        ) : (
+                          'Edit'
+                        )
+                      ) : isQueuing ? (
+                        <>
+                          <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                          Queuing…
+                        </>
+                      ) : (
+                        'Queue for next turn'
+                      )}
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

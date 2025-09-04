@@ -80,7 +80,7 @@ pub async fn create_task(
     let task = Task::create(&deployment.db().pool, &payload, id).await?;
 
     if let Some(image_ids) = &payload.image_ids {
-        TaskImage::associate_many(&deployment.db().pool, task.id, image_ids).await?;
+        TaskImage::associate_many_dedup(&deployment.db().pool, task.id, image_ids).await?;
     }
 
     deployment
@@ -106,7 +106,7 @@ pub async fn create_task_and_start(
     let task = Task::create(&deployment.db().pool, &payload, task_id).await?;
 
     if let Some(image_ids) = &payload.image_ids {
-        TaskImage::associate_many(&deployment.db().pool, task.id, image_ids).await?;
+        TaskImage::associate_many_dedup(&deployment.db().pool, task.id, image_ids).await?;
     }
 
     deployment
@@ -202,7 +202,7 @@ pub async fn update_task(
 
     if let Some(image_ids) = &payload.image_ids {
         TaskImage::delete_by_task_id(&deployment.db().pool, task.id).await?;
-        TaskImage::associate_many(&deployment.db().pool, task.id, image_ids).await?;
+        TaskImage::associate_many_dedup(&deployment.db().pool, task.id, image_ids).await?;
     }
 
     Ok(ResponseJson(ApiResponse::success(task)))

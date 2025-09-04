@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO task_images (id, task_id, image_id)\n                   SELECT $1, $2, $3\n                   WHERE NOT EXISTS (\n                       SELECT 1 FROM task_images WHERE task_id = $2 AND image_id = $3\n                   )",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "9966caaf5d4427190b812b20bd76e5370bc0b0ba877192ac487ff7ba487b0fa1"
+}

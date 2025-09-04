@@ -173,7 +173,7 @@ export function useKanbanKeyboardNavigation({
   focusedStatus: string | null;
   setFocusedStatus: (status: string | null) => void;
   groupedTasks: Record<string, any[]>;
-  filteredTasks: any[];
+  filteredTasks: unknown[];
   allTaskStatuses: string[];
   onViewTaskDetails?: (task: any) => void;
   preserveIndexOnColumnSwitch?: boolean;

@@ -93,6 +93,8 @@ enum HookTables {
     TaskAttempts,
     #[strum(to_string = "execution_processes")]
     ExecutionProcesses,
+    #[strum(to_string = "follow_up_drafts")]
+    FollowUpDrafts,
 }
 
 #[derive(Serialize, Deserialize, TS)]
@@ -101,6 +103,7 @@ pub enum RecordTypes {
     Task(Task),
     TaskAttempt(TaskAttempt),
     ExecutionProcess(ExecutionProcess),
+    FollowUpDraft(db::models::follow_up_draft::FollowUpDraft),
     DeletedTask {
         rowid: i64,
         project_id: Option<Uuid>,
@@ -111,6 +114,10 @@ pub enum RecordTypes {
         task_id: Option<Uuid>,
     },
     DeletedExecutionProcess {
+        rowid: i64,
+        task_attempt_id: Option<Uuid>,
+    },
+    DeletedFollowUpDraft {
         rowid: i64,
         task_attempt_id: Option<Uuid>,
     },
@@ -241,6 +248,41 @@ impl EventService {
                                         Err(e) => {
                                             tracing::error!(
                                                 "Failed to fetch execution_process: {:?}",
+                                                e
+                                            );
+                                            return;
+                                        }
+                                    }
+                                }
+                                (HookTables::FollowUpDrafts, SqliteOperation::Delete) => {
+                                    // Try to get draft before deletion to capture attempt id
+                                    let attempt_id =
+                                        db::models::follow_up_draft::FollowUpDraft::find_by_rowid(
+                                            &db.pool, rowid,
+                                        )
+                                        .await
+                                        .ok()
+                                        .flatten()
+                                        .map(|d| d.task_attempt_id);
+                                    RecordTypes::DeletedFollowUpDraft {
+                                        rowid,
+                                        task_attempt_id: attempt_id,
+                                    }
+                                }
+                                (HookTables::FollowUpDrafts, _) => {
+                                    match db::models::follow_up_draft::FollowUpDraft::find_by_rowid(
+                                        &db.pool, rowid,
+                                    )
+                                    .await
+                                    {
+                                        Ok(Some(draft)) => RecordTypes::FollowUpDraft(draft),
+                                        Ok(None) => RecordTypes::DeletedFollowUpDraft {
+                                            rowid,
+                                            task_attempt_id: None,
+                                        },
+                                        Err(e) => {
+                                            tracing::error!(
+                                                "Failed to fetch follow_up_draft: {:?}",
                                                 e
                                             );
                                             return;
@@ -551,6 +593,108 @@ impl EventService {
         );
 
         // Start with initial snapshot, then live updates
+        let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
+        let combined_stream = initial_stream
+            .chain(filtered_stream)
+            .map_ok(|msg| msg.to_sse_event())
+            .boxed();
+
+        Ok(combined_stream)
+    }
+
+    /// Stream follow-up draft for a specific task attempt with initial snapshot
+    pub async fn stream_follow_up_draft_for_attempt(
+        &self,
+        task_attempt_id: Uuid,
+    ) -> Result<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>, EventError>
+    {
+        // Get initial snapshot of follow-up draft
+        let draft = db::models::follow_up_draft::FollowUpDraft::find_by_task_attempt_id(
+            &self.db.pool,
+            task_attempt_id,
+        )
+        .await?
+        .unwrap_or(db::models::follow_up_draft::FollowUpDraft {
+            id: uuid::Uuid::new_v4(),
+            task_attempt_id,
+            prompt: String::new(),
+            queued: false,
+            sending: false,
+            variant: None,
+            image_ids: None,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+            version: 0,
+        });
+
+        let initial_patch = json!([{
+            "op": "replace",
+            "path": "/",
+            "value": { "follow_up_draft": draft }
+        }]);
+        let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
+
+        // Filtered live stream, mapped into direct JSON patches that update /follow_up_draft
+        let filtered_stream = BroadcastStream::new(self.msg_store.get_receiver()).filter_map(
+            move |msg_result| async move {
+                match msg_result {
+                    Ok(LogMsg::JsonPatch(patch)) => {
+                        if let Some(event_patch_op) = patch.0.first()
+                            && let Ok(event_patch_value) = serde_json::to_value(event_patch_op)
+                            && let Ok(event_patch) =
+                                serde_json::from_value::<EventPatch>(event_patch_value)
+                        {
+                            match &event_patch.value.record {
+                                RecordTypes::FollowUpDraft(draft) => {
+                                    if draft.task_attempt_id == task_attempt_id {
+                                        // Build a direct patch to replace /follow_up_draft
+                                        let direct = json!([{
+                                            "op": "replace",
+                                            "path": "/follow_up_draft",
+                                            "value": draft
+                                        }]);
+                                        let direct_patch = serde_json::from_value(direct).unwrap();
+                                        return Some(Ok(LogMsg::JsonPatch(direct_patch)));
+                                    }
+                                }
+                                RecordTypes::DeletedFollowUpDraft {
+                                    task_attempt_id: Some(id),
+                                    ..
+                                } => {
+                                    if *id == task_attempt_id {
+                                        // Replace with empty draft state
+                                        let empty = json!({
+                                            "id": uuid::Uuid::new_v4(),
+                                            "task_attempt_id": id,
+                                            "prompt": "",
+                                            "queued": false,
+                                            "sending": false,
+                                            "variant": null,
+                                            "image_ids": null,
+                                            "created_at": chrono::Utc::now(),
+                                            "updated_at": chrono::Utc::now(),
+                                            "version": 0
+                                        });
+                                        let direct = json!([{
+                                            "op": "replace",
+                                            "path": "/follow_up_draft",
+                                            "value": empty
+                                        }]);
+                                        let direct_patch = serde_json::from_value(direct).unwrap();
+                                        return Some(Ok(LogMsg::JsonPatch(direct_patch)));
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                        None
+                    }
+                    Ok(other) => Some(Ok(other)),
+                    Err(_) => None,
+                }
+            },
+        );
+
         let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
         let combined_stream = initial_stream
             .chain(filtered_stream)

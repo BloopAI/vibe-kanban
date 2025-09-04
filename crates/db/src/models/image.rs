@@ -185,6 +185,30 @@ impl TaskImage {
         Ok(())
     }
 
+    /// Associate multiple images with a task, skipping duplicates.
+    pub async fn associate_many_dedup(
+        pool: &SqlitePool,
+        task_id: Uuid,
+        image_ids: &[Uuid],
+    ) -> Result<(), sqlx::Error> {
+        for &image_id in image_ids {
+            let id = Uuid::new_v4();
+            sqlx::query!(
+                r#"INSERT INTO task_images (id, task_id, image_id)
+                   SELECT $1, $2, $3
+                   WHERE NOT EXISTS (
+                       SELECT 1 FROM task_images WHERE task_id = $2 AND image_id = $3
+                   )"#,
+                id,
+                task_id,
+                image_id
+            )
+            .execute(pool)
+            .await?;
+        }
+        Ok(())
+    }
+
     pub async fn delete_by_task_id(pool: &SqlitePool, task_id: Uuid) -> Result<(), sqlx::Error> {
         sqlx::query!(r#"DELETE FROM task_images WHERE task_id = $1"#, task_id)
             .execute(pool)

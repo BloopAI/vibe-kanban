@@ -76,6 +76,10 @@ export type GetMcpServerResponse = { mcp_config: McpConfig, config_path: string,
 
 export type CreateFollowUpAttempt = { prompt: string, variant: string | null, image_ids: Array<string> | null, };
 
+export type FollowUpDraftResponse = { task_attempt_id: string, prompt: string, queued: boolean, variant: string | null, image_ids: Array<string> | null, version: bigint, };
+
+export type UpdateFollowUpDraftRequest = { prompt: string | null, variant: string | null | null, image_ids: Array<string> | null, version: bigint | null, };
+
 export type CreateGitHubPrRequest = { title: string, body: string | null, base_branch: string | null, };
 
 export type ImageResponse = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
@@ -236,7 +240,9 @@ export type EventPatch = { op: string, path: string, value: EventPatchInner, };
 
 export type EventPatchInner = { db_op: string, record: RecordTypes, };
 
-export type RecordTypes = { "type": "TASK", "data": Task } | { "type": "TASK_ATTEMPT", "data": TaskAttempt } | { "type": "EXECUTION_PROCESS", "data": ExecutionProcess } | { "type": "DELETED_TASK", "data": { rowid: bigint, project_id: string | null, task_id: string | null, } } | { "type": "DELETED_TASK_ATTEMPT", "data": { rowid: bigint, task_id: string | null, } } | { "type": "DELETED_EXECUTION_PROCESS", "data": { rowid: bigint, task_attempt_id: string | null, } };
+export type RecordTypes = { "type": "TASK", "data": Task } | { "type": "TASK_ATTEMPT", "data": TaskAttempt } | { "type": "EXECUTION_PROCESS", "data": ExecutionProcess } | { "type": "FOLLOW_UP_DRAFT", "data": FollowUpDraft } | { "type": "DELETED_TASK", "data": { rowid: bigint, project_id: string | null, task_id: string | null, } } | { "type": "DELETED_TASK_ATTEMPT", "data": { rowid: bigint, task_id: string | null, } } | { "type": "DELETED_EXECUTION_PROCESS", "data": { rowid: bigint, task_attempt_id: string | null, } } | { "type": "DELETED_FOLLOW_UP_DRAFT", "data": { rowid: bigint, task_attempt_id: string | null, } };
+
+export type FollowUpDraft = { id: string, task_attempt_id: string, prompt: string, queued: boolean, sending: boolean, variant: string | null, image_ids: Array<string> | null, created_at: string, updated_at: string, version: bigint, };
 
 export type CommandExitStatus = { "type": "exit_code", code: number, } | { "type": "success", success: boolean, };
 

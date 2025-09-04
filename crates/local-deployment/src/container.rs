@@ -18,6 +18,8 @@ use db::{
             ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
         },
         executor_session::ExecutorSession,
+        follow_up_draft::FollowUpDraft,
+        image::TaskImage,
         merge::Merge,
         project::Project,
         task::{Task, TaskStatus},
@@ -397,6 +399,14 @@ impl LocalContainerService {
 
                         if Self::should_finalize(&ctx) {
                             Self::finalize_task(&db, &config, &ctx).await;
+                            // After finalization, check if a queued follow-up exists and start it
+                            if let Err(e) = container.try_consume_queued_followup(&ctx).await {
+                                tracing::error!(
+                                    "Failed to start queued follow-up for attempt {}: {}",
+                                    ctx.task_attempt.id,
+                                    e
+                                );
+                            }
                         }
 
                         // Fire event when CodingAgent execution has finished
@@ -1190,6 +1200,164 @@ impl LocalContainerService {
                 }
             }
         }
+
+        Ok(())
+    }
+
+    /// If a queued follow-up draft exists for this attempt and nothing is running,
+    /// start it immediately and clear the draft.
+    async fn try_consume_queued_followup(
+        &self,
+        ctx: &ExecutionContext,
+    ) -> Result<(), ContainerError> {
+        // Only consider CodingAgent/cleanup chains; skip DevServer completions
+        if matches!(
+            ctx.execution_process.run_reason,
+            ExecutionProcessRunReason::DevServer
+        ) {
+            return Ok(());
+        }
+
+        // If anything is running for this attempt, bail
+        let procs =
+            ExecutionProcess::find_by_task_attempt_id(&self.db.pool, ctx.task_attempt.id).await?;
+        if procs
+            .iter()
+            .any(|p| matches!(p.status, ExecutionProcessStatus::Running))
+        {
+            return Ok(());
+        }
+
+        // Load draft and ensure it's eligible
+        let Some(draft) =
+            FollowUpDraft::find_by_task_attempt_id(&self.db.pool, ctx.task_attempt.id).await?
+        else {
+            return Ok(());
+        };
+
+        if !draft.queued || draft.prompt.trim().is_empty() {
+            return Ok(());
+        }
+
+        // Atomically acquire sending lock; if not acquired, someone else is sending.
+        if !FollowUpDraft::try_mark_sending(&self.db.pool, ctx.task_attempt.id)
+            .await
+            .unwrap_or(false)
+        {
+            return Ok(());
+        }
+
+        // Ensure worktree exists
+        let container_ref = self.ensure_container_exists(&ctx.task_attempt).await?;
+
+        // Get session id
+        let Some(session_id) = ExecutionProcess::find_latest_session_id_by_task_attempt(
+            &self.db.pool,
+            ctx.task_attempt.id,
+        )
+        .await?
+        else {
+            tracing::warn!(
+                "No session id found for attempt {}. Cannot start queued follow-up.",
+                ctx.task_attempt.id
+            );
+            return Ok(());
+        };
+
+        // Get last coding agent process to inherit executor profile
+        let Some(latest) = ExecutionProcess::find_latest_by_task_attempt_and_run_reason(
+            &self.db.pool,
+            ctx.task_attempt.id,
+            &ExecutionProcessRunReason::CodingAgent,
+        )
+        .await?
+        else {
+            tracing::warn!(
+                "No prior CodingAgent process for attempt {}. Cannot start queued follow-up.",
+                ctx.task_attempt.id
+            );
+            return Ok(());
+        };
+
+        use executors::actions::ExecutorActionType;
+        let initial_executor_profile_id = match &latest.executor_action()?.typ {
+            ExecutorActionType::CodingAgentInitialRequest(req) => req.executor_profile_id.clone(),
+            ExecutorActionType::CodingAgentFollowUpRequest(req) => req.executor_profile_id.clone(),
+            _ => {
+                tracing::warn!(
+                    "Latest process for attempt {} is not a coding agent; skipping queued follow-up",
+                    ctx.task_attempt.id
+                );
+                return Ok(());
+            }
+        };
+
+        let executor_profile_id = executors::profile::ExecutorProfileId {
+            executor: initial_executor_profile_id.executor,
+            variant: draft.variant.clone(),
+        };
+
+        // Prepare cleanup action
+        let cleanup_action = ctx
+            .task
+            .parent_project(&self.db.pool)
+            .await?
+            .and_then(|p| p.cleanup_script)
+            .map(|script| {
+                Box::new(executors::actions::ExecutorAction::new(
+                    executors::actions::ExecutorActionType::ScriptRequest(
+                        executors::actions::script::ScriptRequest {
+                            script,
+                            language: executors::actions::script::ScriptRequestLanguage::Bash,
+                            context: executors::actions::script::ScriptContext::CleanupScript,
+                        },
+                    ),
+                    None,
+                ))
+            });
+
+        // Handle images: associate, copy to worktree, canonicalize prompt
+        let mut prompt = draft.prompt.clone();
+        if let Some(image_ids) = &draft.image_ids {
+            // Associate to task
+            let _ = TaskImage::associate_many_dedup(&self.db.pool, ctx.task.id, image_ids).await;
+
+            // Copy to worktree and canonicalize
+            let worktree_path = std::path::PathBuf::from(&container_ref);
+            if let Err(e) = self
+                .image_service
+                .copy_images_by_ids_to_worktree(&worktree_path, image_ids)
+                .await
+            {
+                tracing::warn!("Failed to copy images to worktree: {}", e);
+            } else {
+                prompt = ImageService::canonicalise_image_paths(&prompt, &worktree_path);
+            }
+        }
+
+        let follow_up_request =
+            executors::actions::coding_agent_follow_up::CodingAgentFollowUpRequest {
+                prompt,
+                session_id,
+                executor_profile_id,
+            };
+
+        let follow_up_action = executors::actions::ExecutorAction::new(
+            executors::actions::ExecutorActionType::CodingAgentFollowUpRequest(follow_up_request),
+            cleanup_action,
+        );
+
+        // Start the execution
+        let _ = self
+            .start_execution(
+                &ctx.task_attempt,
+                &follow_up_action,
+                &ExecutionProcessRunReason::CodingAgent,
+            )
+            .await?;
+
+        // Clear the draft to reflect that it has been consumed
+        let _ = FollowUpDraft::clear_after_send(&self.db.pool, ctx.task_attempt.id).await;
 
         Ok(())
     }

@@ -33,6 +33,20 @@ export const useJsonPatchStream = <T>(
   const [error, setError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const dataRef = useRef<T | undefined>(undefined);
+  const retryTimerRef = useRef<number | null>(null);
+  const retryAttemptsRef = useRef<number>(0);
+  const [retryNonce, setRetryNonce] = useState(0);
+
+  function scheduleReconnect() {
+    if (retryTimerRef.current) return; // already scheduled
+    // Exponential backoff with cap: 1s, 2s, 4s, 8s (max), then stay at 8s
+    const attempt = retryAttemptsRef.current;
+    const delay = Math.min(8000, 1000 * Math.pow(2, attempt));
+    retryTimerRef.current = window.setTimeout(() => {
+      retryTimerRef.current = null;
+      setRetryNonce((n) => n + 1);
+    }, delay);
+  }
 
   useEffect(() => {
     if (!enabled || !endpoint) {
@@ -41,6 +55,11 @@ export const useJsonPatchStream = <T>(
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
+      if (retryTimerRef.current) {
+        window.clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+      retryAttemptsRef.current = 0;
       setData(undefined);
       setIsConnected(false);
       setError(null);
@@ -67,6 +86,12 @@ export const useJsonPatchStream = <T>(
       eventSource.onopen = () => {
         setError(null);
         setIsConnected(true);
+        // Reset backoff on successful connection
+        retryAttemptsRef.current = 0;
+        if (retryTimerRef.current) {
+          window.clearTimeout(retryTimerRef.current);
+          retryTimerRef.current = null;
+        }
       };
 
       eventSource.addEventListener('json_patch', (event) => {
@@ -96,12 +121,23 @@ export const useJsonPatchStream = <T>(
         eventSource.close();
         eventSourceRef.current = null;
         setIsConnected(false);
+        // Treat finished as terminal and schedule reconnect; servers may rotate
+        retryAttemptsRef.current += 1;
+        scheduleReconnect();
       });
 
       eventSource.onerror = () => {
         setError('Connection failed');
+        // Close and schedule reconnect
+        try {
+          eventSource.close();
+        } catch {
+          /* empty */
+        }
         eventSourceRef.current = null;
         setIsConnected(false);
+        retryAttemptsRef.current += 1;
+        scheduleReconnect();
       };
 
       eventSourceRef.current = eventSource;
@@ -112,6 +148,10 @@ export const useJsonPatchStream = <T>(
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
+      if (retryTimerRef.current) {
+        window.clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
       dataRef.current = undefined;
       setData(undefined);
     };
@@ -121,6 +161,7 @@ export const useJsonPatchStream = <T>(
     initialData,
     options.injectInitialEntry,
     options.deduplicatePatches,
+    retryNonce,
   ]);
 
   return { data, isConnected, error };

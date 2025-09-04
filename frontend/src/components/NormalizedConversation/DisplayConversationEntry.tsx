@@ -372,7 +372,7 @@ const ToolCallCard: React.FC<{
   const HeaderWrapper: React.ElementType = hasExpandableDetails
     ? 'button'
     : 'div';
-  const headerProps: any = hasExpandableDetails
+  const headerProps = hasExpandableDetails
     ? {
         onClick: (e: React.MouseEvent) => {
           e.preventDefault();

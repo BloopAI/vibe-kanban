@@ -38,10 +38,16 @@ import {
   ImageResponse,
   RestoreAttemptRequest,
   RestoreAttemptResult,
+  FollowUpDraftResponse,
+  UpdateFollowUpDraftRequest,
 } from 'shared/types';
 
 // Re-export types for convenience
 export type { RepositoryInfo } from 'shared/types';
+export type {
+  FollowUpDraftResponse,
+  UpdateFollowUpDraftRequest,
+} from 'shared/types';
 
 export class ApiError<E = unknown> extends Error {
   public status?: number;
@@ -356,6 +362,50 @@ export const attemptsApi = {
       }
     );
     return handleApiResponse<void>(response);
+  },
+
+  getFollowUpDraft: async (
+    attemptId: string
+  ): Promise<FollowUpDraftResponse> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/follow-up-draft`
+    );
+    return handleApiResponse<FollowUpDraftResponse>(response);
+  },
+
+  saveFollowUpDraft: async (
+    attemptId: string,
+    data: UpdateFollowUpDraftRequest
+  ): Promise<FollowUpDraftResponse> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/follow-up-draft`,
+      {
+        // Server expects PUT for saving/updating the draft
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<FollowUpDraftResponse>(response);
+  },
+
+  setFollowUpQueue: async (
+    attemptId: string,
+    queued: boolean,
+    expectedQueued?: boolean,
+    expectedVersion?: number
+  ): Promise<FollowUpDraftResponse> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/follow-up-draft/queue`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          queued,
+          expected_queued: expectedQueued,
+          expected_version: expectedVersion,
+        }),
+      }
+    );
+    return handleApiResponse<FollowUpDraftResponse>(response);
   },
 
   deleteFile: async (
