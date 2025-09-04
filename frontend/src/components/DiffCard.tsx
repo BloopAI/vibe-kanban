@@ -1,4 +1,4 @@
-import { Diff as Diff, ThemeMode } from 'shared/types';
+import { Diff } from 'shared/types';
 import { DiffModeEnum, DiffView } from '@git-diff-view/react';
 import { generateDiffFile } from '@git-diff-view/file';
 import { useMemo } from 'react';

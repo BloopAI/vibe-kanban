@@ -5,7 +5,6 @@ import {
   DiffLineType,
   parseInstance,
 } from '@git-diff-view/react';
-import { ThemeMode } from 'shared/types';
 import { ChevronRight, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useConfig } from '@/components/config-provider';

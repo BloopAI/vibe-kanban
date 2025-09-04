@@ -1,4 +1,4 @@
-import { ThemeMode, type FileChange } from 'shared/types';
+import { type FileChange } from 'shared/types';
 import { useConfig } from '@/components/config-provider';
 import { Button } from '@/components/ui/button';
 import {
