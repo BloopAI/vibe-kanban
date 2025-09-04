@@ -255,7 +255,7 @@ export function TaskFollowUpSection({
                     <ImageIcon
                       className={cn(
                         'h-4 w-4',
-                        images.length > 0 && 'text-primary'
+                        (images.length > 0 || showImageUpload) && 'text-primary'
                       )}
                     />
                   </Button>

@@ -24,7 +24,7 @@ export default function ProcessGroup({
 }: Props) {
   return (
     <div className="px-4 pt-3 space-y-2">
-      <div className="w-full">
+      <div className="pr-3 w-full">
         <ProcessStartCard
           payload={header}
           isCollapsed={isCollapsed}
@@ -38,7 +38,7 @@ export default function ProcessGroup({
 
       {!isCollapsed && entries.length > 0 && (
         <div className="w-full overflow-hidden">
-          <div className="px-3 py-2 space-y-1">
+          <div className="pl-3 py-2 space-y-1">
             {entries.map((entry, i) => (
               <LogEntryRow key={entry.id} entry={entry} index={i} />
             ))}
