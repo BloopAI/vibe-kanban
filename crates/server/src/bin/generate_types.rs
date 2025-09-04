@@ -175,6 +175,9 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let check_mode = args.iter().any(|arg| arg == "--check");
 
+    // 0. Wipe existing shared
+    fs::remove_dir_all("shared").ok();
+
     // 1. Make sure ../shared exists
     let shared_path = Path::new("shared");
     fs::create_dir_all(shared_path).expect("cannot create shared");
