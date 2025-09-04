@@ -67,15 +67,15 @@ type CardVariant = 'system' | 'error';
 
 const MessageCard: React.FC<{
   children: React.ReactNode;
-  icon?: React.ReactNode;
   variant: CardVariant;
   expanded?: boolean;
   onToggle?: () => void;
-}> = ({ children, icon, variant, expanded, onToggle }) => {
+}> = ({ children, variant, expanded, onToggle }) => {
   const frameBase =
-    'border rounded-lg shadow-sm px-3 py-2 w-full cursor-pointer text-xs bg-[hsl(var(--card))] border-[hsl(var(--border))]';
-  const systemTheme = 'border-amber-400/40 text-[hsl(var(--foreground))]';
-  const errorTheme = 'border-red-400/40 text-[hsl(var(--foreground))]';
+    'border px-3 py-2 w-full cursor-pointer text-xs bg-[hsl(var(--card))] border-[hsl(var(--border))]';
+  const systemTheme = 'border-400/40 text-zinc-500';
+  const errorTheme =
+    'border-red-400/40 bg-red-50 dark:bg-[hsl(var(--card))] text-[hsl(var(--foreground))]';
 
   return (
     <div className="inline-block w-full">
@@ -86,7 +86,6 @@ const MessageCard: React.FC<{
         onClick={onToggle}
       >
         <div className="flex items-center gap-1.5">
-          {icon && <div className="mt-0.5 shrink-0">{icon}</div>}
           <div className="min-w-0 flex-1">{children}</div>
           {onToggle && (
             <ExpandChevron
@@ -114,7 +113,7 @@ const ExpandChevron: React.FC<{
 }> = ({ expanded, onClick, variant }) => {
   const color =
     variant === 'system'
-      ? 'text-amber-700 dark:text-amber-300'
+      ? 'text-700 dark:text-300'
       : 'text-red-700 dark:text-red-300';
 
   return (
@@ -150,13 +149,6 @@ const CollapsibleEntry: React.FC<{
     </div>
   );
 
-  const icon =
-    variant === 'system' ? (
-      <Settings className="h-4 w-4 text-amber-300" />
-    ) : (
-      <AlertCircle className="h-4 w-4 text-red-300" />
-    );
-
   const firstLine = content.split('\n')[0];
   const PreviewInner = (
     <div className={contentClassName}>
@@ -172,29 +164,15 @@ const CollapsibleEntry: React.FC<{
   );
 
   if (!multiline) {
-    return (
-      <MessageCard icon={icon} variant={variant}>
-        {Inner}
-      </MessageCard>
-    );
+    return <MessageCard variant={variant}>{Inner}</MessageCard>;
   }
 
   return expanded ? (
-    <MessageCard
-      icon={icon}
-      variant={variant}
-      expanded={expanded}
-      onToggle={toggle}
-    >
+    <MessageCard variant={variant} expanded={expanded} onToggle={toggle}>
       {Inner}
     </MessageCard>
   ) : (
-    <MessageCard
-      icon={icon}
-      variant={variant}
-      expanded={expanded}
-      onToggle={toggle}
-    >
+    <MessageCard variant={variant} expanded={expanded} onToggle={toggle}>
       {PreviewInner}
     </MessageCard>
   );
@@ -275,7 +253,7 @@ const ToolCallCard: React.FC<{
     : {};
 
   return (
-    <div className="inline-block w-full pl-4">
+    <div className="inline-block w-full">
       <div className="border rounded-lg w-full overflow-hidden text-xs">
         <HeaderWrapper
           {...headerProps}
@@ -415,15 +393,13 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
           {isSystem || isError ? (
-            <div className="p-2">
-              <CollapsibleEntry
-                content={isNormalizedEntry(entry) ? entry.content : ''}
-                markdown={shouldRenderMarkdown(entryType)}
-                expansionKey={expansionKey}
-                variant={isSystem ? 'system' : 'error'}
-                contentClassName={getContentClassName(entryType)}
-              />
-            </div>
+            <CollapsibleEntry
+              content={isNormalizedEntry(entry) ? entry.content : ''}
+              markdown={shouldRenderMarkdown(entryType)}
+              expansionKey={expansionKey}
+              variant={isSystem ? 'system' : 'error'}
+              contentClassName={getContentClassName(entryType)}
+            />
           ) : isToolUse && isFileEdit(entryType.action_type) ? (
             // Only FileChangeRenderer for file_edit
             (() => {

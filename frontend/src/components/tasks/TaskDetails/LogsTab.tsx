@@ -248,12 +248,7 @@ function LogsTab({ selectedAttempt }: Props) {
     if (toExpand.length > 0) {
       dispatch({ type: 'AUTO_EXPAND', ids: toExpand });
     }
-  }, [
-    filteredProcesses,
-    state.userCollapsed,
-    state.autoCollapsed,
-    state.prevStatus,
-  ]);
+  }, [filteredProcesses, state.userCollapsed, state.autoCollapsed]);
 
   // Effect #3: Handle coding agent succession logic
   useEffect(() => {
