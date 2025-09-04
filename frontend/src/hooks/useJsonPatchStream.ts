@@ -75,23 +75,17 @@ export const useJsonPatchStream = <T>(
           const filtered = options.deduplicatePatches
             ? options.deduplicatePatches(patches)
             : patches;
+
           if (!filtered.length || !dataRef.current) return;
 
-          // If any patch hits /tasks or below, bump the container identity
-          const touchesTasks = filtered.some(
-            (p) => p.path === '/tasks' || p.path.startsWith('/tasks/')
-          );
+          // Deep clone the current state before mutating it
+          dataRef.current = structuredClone(dataRef.current);
 
-          if (touchesTasks) {
-            // shallow clone container before mutating
-            const cur = dataRef.current as any;
-            dataRef.current = { ...cur, tasks: { ...cur.tasks } };
-          }
+          // Apply patch (mutates the clone in place)
+          applyPatch(dataRef.current as any, filtered);
 
-          applyPatch(dataRef.current, filtered);
-
-          // top-level identity always changes
-          setData({ ...(dataRef.current as any) });
+          // React re-render: dataRef.current is already a new object
+          setData(dataRef.current);
         } catch (err) {
           console.error('Failed to apply JSON patch:', err);
           setError('Failed to process stream update');
