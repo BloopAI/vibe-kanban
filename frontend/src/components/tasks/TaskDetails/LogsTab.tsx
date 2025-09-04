@@ -445,11 +445,7 @@ function LogsTab({ selectedAttempt }: Props) {
 
   return (
     <div className="w-full h-full flex flex-col">
-      <Dialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        className="bg-white dark:bg-white"
-      >
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent
           className="max-h-[92vh] sm:max-h-[88vh] overflow-y-auto overflow-x-hidden"
           onKeyDownCapture={(e) => {
@@ -552,7 +548,7 @@ function LogsTab({ selectedAttempt }: Props) {
                             ? 'flex items-start gap-3 rounded-md border p-3'
                             : hasRisk
                               ? 'flex items-start gap-3 rounded-md border border-destructive/30 bg-destructive/10 p-3'
-                              : 'flex items-start gap-3 rounded-md border border-amber-300/60 bg-amber-50/70 p-3'
+                              : 'flex items-start gap-3 rounded-md border p-3 border-amber-300/60 bg-amber-50/70 dark:border-amber-400/30 dark:bg-amber-900/20'
                         }
                       >
                         <AlertTriangle
@@ -561,7 +557,7 @@ function LogsTab({ selectedAttempt }: Props) {
                               ? 'h-4 w-4 text-muted-foreground mt-0.5'
                               : hasRisk
                                 ? 'h-4 w-4 text-destructive mt-0.5'
-                                : 'h-4 w-4 text-amber-600 mt-0.5'
+                                : 'h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5'
                           }
                         />
                         <div className="text-sm min-w-0 w-full break-words">
@@ -571,7 +567,8 @@ function LogsTab({ selectedAttempt }: Props) {
                                 ? 'font-medium text-muted-foreground'
                                 : hasRisk
                                   ? 'font-medium text-destructive'
-                                  : 'font-medium text-amber-700') + ' mb-2'
+                                  : 'font-medium text-amber-700 dark:text-amber-300') +
+                              ' mb-2'
                             }
                           >
                             Reset worktree

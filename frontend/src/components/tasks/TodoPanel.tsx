@@ -25,10 +25,14 @@ export function TodoPanel({ selectedAttempt }: TodoPanelProps) {
 
   const filteredProcesses = useMemo(
     () =>
-      (attemptData.processes || []).filter((p) =>
-        shouldShowInLogs(p.run_reason)
+      (attemptData.processes || []).filter(
+        (p) => shouldShowInLogs(p.run_reason) && !p.dropped
       ),
-    [attemptData.processes?.map((p) => p.id).join(',')]
+    [
+      attemptData.processes
+        ?.map((p) => `${p.id}:${p.status}:${p.dropped}`)
+        .join(','),
+    ]
   );
 
   const { entries } = useProcessesLogs(filteredProcesses, true);
