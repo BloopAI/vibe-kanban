@@ -121,7 +121,7 @@ export function ExecutorsSettings() {
 
     const base =
       baseConfig &&
-        localParsedProfiles.executors[executorType]?.[baseConfig]?.[executorType]
+      localParsedProfiles.executors[executorType]?.[baseConfig]?.[executorType]
         ? localParsedProfiles.executors[executorType][baseConfig][executorType]
         : {};
 
@@ -170,7 +170,9 @@ export function ExecutorsSettings() {
 
     try {
       // Validate that the configuration exists
-      if (!localParsedProfiles.executors[selectedExecutorType]?.[configToDelete]) {
+      if (
+        !localParsedProfiles.executors[selectedExecutorType]?.[configToDelete]
+      ) {
         setDeleteError(`Configuration "${configToDelete}" not found`);
         return;
       }
@@ -348,7 +350,9 @@ export function ExecutorsSettings() {
       {!!profilesError && (
         <Alert variant="destructive">
           <AlertDescription>
-            {profilesError instanceof Error ? profilesError.message : String(profilesError)}
+            {profilesError instanceof Error
+              ? profilesError.message
+              : String(profilesError)}
           </AlertDescription>
         </Alert>
       )}
@@ -381,7 +385,9 @@ export function ExecutorsSettings() {
             <Label htmlFor="use-form-editor">Edit visually</Label>
           </div>
 
-          {useFormEditor && localParsedProfiles && localParsedProfiles.executors ? (
+          {useFormEditor &&
+          localParsedProfiles &&
+          localParsedProfiles.executors ? (
             // Form-based editor
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -402,11 +408,13 @@ export function ExecutorsSettings() {
                       <SelectValue placeholder="Select executor type" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.keys(localParsedProfiles.executors).map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
-                      ))}
+                      {Object.keys(localParsedProfiles.executors).map(
+                        (type) => (
+                          <SelectItem key={type} value={type}>
+                            {type}
+                          </SelectItem>
+                        )
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -423,14 +431,17 @@ export function ExecutorsSettings() {
                           setSelectedConfiguration(value);
                         }
                       }}
-                      disabled={!localParsedProfiles.executors[selectedExecutorType]}
+                      disabled={
+                        !localParsedProfiles.executors[selectedExecutorType]
+                      }
                     >
                       <SelectTrigger id="configuration">
                         <SelectValue placeholder="Select configuration" />
                       </SelectTrigger>
                       <SelectContent>
                         {Object.keys(
-                          localParsedProfiles.executors[selectedExecutorType] || {}
+                          localParsedProfiles.executors[selectedExecutorType] ||
+                            {}
                         ).map((configuration) => (
                           <SelectItem key={configuration} value={configuration}>
                             {configuration}
@@ -450,12 +461,14 @@ export function ExecutorsSettings() {
                         profilesSaving ||
                         !localParsedProfiles.executors[selectedExecutorType] ||
                         Object.keys(
-                          localParsedProfiles.executors[selectedExecutorType] || {}
+                          localParsedProfiles.executors[selectedExecutorType] ||
+                            {}
                         ).length <= 1
                       }
                       title={
                         Object.keys(
-                          localParsedProfiles.executors[selectedExecutorType] || {}
+                          localParsedProfiles.executors[selectedExecutorType] ||
+                            {}
                         ).length <= 1
                           ? 'Cannot delete the last configuration'
                           : `Delete ${selectedConfiguration}`
@@ -470,26 +483,26 @@ export function ExecutorsSettings() {
               {localParsedProfiles.executors[selectedExecutorType]?.[
                 selectedConfiguration
               ]?.[selectedExecutorType] && (
-                  <ExecutorConfigForm
-                    executor={selectedExecutorType as any}
-                    value={
-                      localParsedProfiles.executors[selectedExecutorType][
+                <ExecutorConfigForm
+                  executor={selectedExecutorType as any}
+                  value={
+                    localParsedProfiles.executors[selectedExecutorType][
                       selectedConfiguration
-                      ][selectedExecutorType] || {}
-                    }
-                    onChange={(formData) =>
-                      handleExecutorConfigChange(
-                        selectedExecutorType,
-                        selectedConfiguration,
-                        formData
-                      )
-                    }
-                    onSave={handleExecutorConfigSave}
-                    disabled={profilesSaving}
-                    isSaving={profilesSaving}
-                    isDirty={isDirty}
-                  />
-                )}
+                    ][selectedExecutorType] || {}
+                  }
+                  onChange={(formData) =>
+                    handleExecutorConfigChange(
+                      selectedExecutorType,
+                      selectedConfiguration,
+                      formData
+                    )
+                  }
+                  onSave={handleExecutorConfigSave}
+                  disabled={profilesSaving}
+                  isSaving={profilesSaving}
+                  isDirty={isDirty}
+                />
+              )}
             </div>
           ) : (
             // Raw JSON editor
@@ -500,7 +513,7 @@ export function ExecutorsSettings() {
                 </Label>
                 <JSONEditor
                   id="profiles-editor"
-                  placeholder='Loading profiles...'
+                  placeholder="Loading profiles..."
                   value={profilesLoading ? 'Loading...' : localProfilesContent}
                   onChange={handleProfilesChange}
                   disabled={profilesLoading}

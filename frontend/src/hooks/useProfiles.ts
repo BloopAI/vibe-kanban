@@ -7,13 +7,13 @@ export type UseProfilesReturn = {
   profilesContent: string;
   parsedProfiles: any | null;
   profilesPath: string;
-  
+
   // status
   isLoading: boolean;
   isError: boolean;
   error: unknown;
   isSaving: boolean;
-  
+
   // actions
   refetch: () => void;
   save: (content: string) => Promise<void>;
@@ -23,22 +23,13 @@ export type UseProfilesReturn = {
 export function useProfiles(): UseProfilesReturn {
   const queryClient = useQueryClient();
 
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['profiles'],
     queryFn: () => profilesApi.load(),
     staleTime: 1000 * 60, // 1 minute cache
   });
 
-  const {
-    mutateAsync: saveMutation,
-    isPending: isSaving,
-  } = useMutation({
+  const { mutateAsync: saveMutation, isPending: isSaving } = useMutation({
     mutationFn: (content: string) => profilesApi.save(content),
     onSuccess: (_, content) => {
       // Optimistically update cache with new content
