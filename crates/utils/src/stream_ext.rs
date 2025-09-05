@@ -5,8 +5,34 @@ use tokio::time::{Duration, Instant, sleep_until};
 
 use crate::log_msg::LogMsg;
 
-const WINDOW_MS: u64 = 200;
+const WINDOW_MS: u64 = 10;
 const WINDOW_LIMIT: usize = 10 * 1024; // 10 KiB per window
+
+// helper that flushes buf + optional [truncated] marker
+fn flush_buf(
+    buf: &mut Vec<u8>,
+    kind: Option<bool>,
+    truncated_in_window: &mut bool,
+) -> Option<LogMsg> {
+    if buf.is_empty() && !*truncated_in_window {
+        return None;
+    }
+    let mut out = String::from_utf8_lossy(buf).into_owned();
+    if *truncated_in_window {
+        if !out.ends_with('\n') {
+            out.push('\n');
+        }
+        out.push_str("[truncated]\n");
+    }
+    buf.clear();
+    *truncated_in_window = false;
+
+    match kind {
+        Some(true) => Some(LogMsg::Stdout(out)),
+        Some(false) => Some(LogMsg::Stderr(out)),
+        None => None,
+    }
+}
 
 pub fn debounce_logs<S>(input: S) -> impl Stream<Item = Result<LogMsg, io::Error>>
 where
@@ -14,127 +40,89 @@ where
 {
     async_stream::stream! {
         let mut buf: Vec<u8> = Vec::with_capacity(WINDOW_LIMIT);
-        let mut current_stream_type: Option<bool> = None; // None, Some(true) = stdout, Some(false) = stderr
+        let mut current_stream_type: Option<bool> = None; // Some(true)=stdout, Some(false)=stderr
         let mut timer = Instant::now() + Duration::from_millis(WINDOW_MS);
+
+        // per-window accounting
+        let mut window_bytes_emitted: usize = 0;
+        let mut truncated_in_window: bool = false;
 
         tokio::pin!(input);
 
         loop {
             tokio::select! {
-                // incoming chunks
                 maybe = input.next() => {
                     let msg = match maybe {
                         Some(Ok(v)) => v,
-                        Some(Err(e)) => {
-                            yield Err(e);
-                            continue;
-                        }
-                        None => break,                 // EOF
+                        Some(Err(e)) => { yield Err(e); continue; }
+                        None => break,
                     };
 
-                    // We only limit Stdout / Stderr.
                     match &msg {
-                        LogMsg::Stdout(s) => {
-                            // Flush buffer if switching stream types
-                            if let Some(false) = current_stream_type
-                                && !buf.is_empty() {
-                                    yield Ok(LogMsg::Stderr(String::from_utf8_lossy(&buf).into_owned()));
-                                    buf.clear();
-                                }
-                            current_stream_type = Some(true);
+                        LogMsg::Stdout(s) | LogMsg::Stderr(s) => {
+                            let is_stdout = matches!(msg, LogMsg::Stdout(_));
 
-                            // Check if this chunk would overflow the window
-                            if buf.len() + s.len() > WINDOW_LIMIT {
-                                // Flush existing buffer if not empty
-                                if !buf.is_empty() {
-                                    yield Ok(LogMsg::Stdout(String::from_utf8_lossy(&buf).into_owned()));
-                                    buf.clear();
+                            // Flush if switching stream kind
+                            if current_stream_type != Some(is_stdout) {
+                                if let Some(flushed) = flush_buf(&mut buf, current_stream_type, &mut truncated_in_window) {
+                                    yield Ok(flushed);
                                 }
-
-                                // If single chunk is huge, truncate it
-                                if s.len() > WINDOW_LIMIT {
-                                    let truncated = String::from_utf8_lossy(&s.as_bytes()[..WINDOW_LIMIT]);
-                                    yield Ok(LogMsg::Stdout(truncated.into_owned()));
-                                    yield Ok(LogMsg::Stdout("[truncated]\n".into()));
-                                } else {
-                                    yield Ok(LogMsg::Stdout(s.clone()));
-                                }
-
-                                timer = Instant::now() + Duration::from_millis(WINDOW_MS);
-                                continue;
+                                current_stream_type = Some(is_stdout);
+                                window_bytes_emitted = 0;
+                                truncated_in_window = false;
                             }
-                            buf.extend_from_slice(s.as_bytes());
+
+                            // How many bytes can we still emit in *this* window?
+                            let remaining = WINDOW_LIMIT.saturating_sub(window_bytes_emitted);
+
+                            if remaining == 0 {
+                                // We've hit the budget; drop this chunk and mark truncated
+                                truncated_in_window = true;
+                            } else {
+                                let bytes = s.as_bytes();
+                                let take = remaining.min(bytes.len());
+                                buf.extend_from_slice(&bytes[..take]);
+                                window_bytes_emitted += take;
+
+                                if bytes.len() > take {
+                                    // Dropped tail of this chunk
+                                    truncated_in_window = true;
+                                }
+                            }
                         }
-                        LogMsg::Stderr(s) => {
-                            // Flush buffer if switching stream types
-                            if let Some(true) = current_stream_type
-                                && !buf.is_empty() {
-                                    yield Ok(LogMsg::Stdout(String::from_utf8_lossy(&buf).into_owned()));
-                                    buf.clear();
-                                }
-                            current_stream_type = Some(false);
 
-                            // Check if this chunk would overflow the window
-                            if buf.len() + s.len() > WINDOW_LIMIT {
-                                // Flush existing buffer if not empty
-                                if !buf.is_empty() {
-                                    yield Ok(LogMsg::Stderr(String::from_utf8_lossy(&buf).into_owned()));
-                                    buf.clear();
-                                }
-
-                                // If single chunk is huge, truncate it
-                                if s.len() > WINDOW_LIMIT {
-                                    let truncated = String::from_utf8_lossy(&s.as_bytes()[..WINDOW_LIMIT]);
-                                    yield Ok(LogMsg::Stderr(truncated.into_owned()));
-                                    yield Ok(LogMsg::Stderr("[truncated]\n".into()));
-                                } else {
-                                    yield Ok(LogMsg::Stderr(s.clone()));
-                                }
-
-                                timer = Instant::now() + Duration::from_millis(WINDOW_MS);
-                                continue;
+                        _ => {
+                            // Flush accumulated stdout/stderr before passing through other messages
+                            if let Some(flushed) = flush_buf(&mut buf, current_stream_type, &mut truncated_in_window) {
+                                yield Ok(flushed);
                             }
-                            buf.extend_from_slice(s.as_bytes());
-                        }
-                        _ => {                          // JsonPatch, SessionId, Finished
-                            // Flush any accumulated buffer before passing through other messages
-                            if !buf.is_empty() {
-                                match current_stream_type {
-                                    Some(true) => yield Ok(LogMsg::Stdout(String::from_utf8_lossy(&buf).into_owned())),
-                                    Some(false) => yield Ok(LogMsg::Stderr(String::from_utf8_lossy(&buf).into_owned())),
-                                    None => {}
-                                }
-                                buf.clear();
-                                current_stream_type = None;
-                            }
-                            yield Ok(msg);                   // pass through unchanged
+                            current_stream_type = None;
+                            yield Ok(msg);
                         }
                     }
                 }
 
-                // end of window
                 _ = sleep_until(timer) => {
-                    if !buf.is_empty() {
-                        match current_stream_type {
-                            Some(true) => yield Ok(LogMsg::Stdout(String::from_utf8_lossy(&buf).into_owned())),
-                            Some(false) => yield Ok(LogMsg::Stderr(String::from_utf8_lossy(&buf).into_owned())),
-                            None => {}
-                        }
-                        buf.clear();
-                        current_stream_type = None;
+                    if let Some(flushed) = {
+                        let kind = current_stream_type;
+                        flush_buf(&mut buf, kind, &mut truncated_in_window)
+                    } {
+                        yield Ok(flushed);
                     }
+                    // Start a fresh time window
                     timer = Instant::now() + Duration::from_millis(WINDOW_MS);
+                    window_bytes_emitted = 0;
+                    truncated_in_window = false;
                 }
             }
         }
 
-        // flush leftovers on stream end
-        if !buf.is_empty() {
-            match current_stream_type {
-                Some(true) => yield Ok(LogMsg::Stdout(String::from_utf8_lossy(&buf).into_owned())),
-                Some(false) => yield Ok(LogMsg::Stderr(String::from_utf8_lossy(&buf).into_owned())),
-                None => {}
-            }
+        // Final flush on stream end
+        if let Some(flushed) = {
+            let kind = current_stream_type;
+            flush_buf(&mut buf, kind, &mut truncated_in_window)
+        } {
+            yield Ok(flushed);
         }
     }
 }
