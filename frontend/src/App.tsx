@@ -26,9 +26,9 @@ import {
   EditorDialogProvider,
   useEditorDialog,
 } from '@/contexts/editor-dialog-context';
-import { CreatePRDialogProvider } from '@/contexts/create-pr-dialog-context';
+
 import { EditorSelectionDialog } from '@/components/tasks/EditorSelectionDialog';
-import CreatePRDialog from '@/components/tasks/Toolbar/CreatePRDialog';
+
 import { TaskDialogProvider } from '@/contexts/task-dialog-context';
 import { TaskFormDialogContainer } from '@/components/tasks/TaskFormDialogContainer';
 import { ProjectProvider } from '@/contexts/project-context';
@@ -38,11 +38,12 @@ import type { ExecutorProfileId } from 'shared/types';
 import { configApi } from '@/lib/api';
 import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
-import { GitHubLoginDialog } from '@/components/GitHubLoginDialog';
+
 import { ReleaseNotesDialog } from '@/components/ReleaseNotesDialog';
 import { AppWithStyleOverride } from '@/utils/style-override';
 import { WebviewContextMenu } from '@/vscode/ContextMenu';
 import { DevBanner } from '@/components/DevBanner';
+import NiceModal from '@ebay/nice-modal-react';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
@@ -57,7 +58,6 @@ function AppContent() {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showPrivacyOptIn, setShowPrivacyOptIn] = useState(false);
-  const [showGitHubLogin, setShowGitHubLogin] = useState(false);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const showNavbar = !location.pathname.endsWith('/full');
 
@@ -68,7 +68,7 @@ function AppContent() {
         setShowOnboarding(!config.onboarding_acknowledged);
         if (config.onboarding_acknowledged) {
           if (!config.github_login_acknowledged) {
-            setShowGitHubLogin(true);
+            NiceModal.show('github-login').then(() => handleGitHubLoginComplete());
           } else if (!config.telemetry_acknowledged) {
             setShowPrivacyOptIn(true);
           } else if (config.show_release_notes) {
@@ -143,10 +143,8 @@ function AppContent() {
       // Refresh the config to get the latest GitHub authentication state
       const latestUserSystem = await configApi.getConfig();
       updateConfig(latestUserSystem.config);
-      setShowGitHubLogin(false);
 
       // If user skipped (no GitHub token), we need to manually set the acknowledgment
-
       const updatedConfig = {
         ...latestUserSystem.config,
         github_login_acknowledged: true,
@@ -197,10 +195,6 @@ function AppContent() {
           <div className="h-screen flex flex-col bg-background">
             {/* Custom context menu and VS Code-friendly interactions when embedded in iframe */}
             <WebviewContextMenu />
-            <GitHubLoginDialog
-              open={showGitHubLogin}
-              onOpenChange={handleGitHubLoginComplete}
-            />
             <DisclaimerDialog
               open={showDisclaimer}
               onAccept={handleDisclaimerAccept}
@@ -222,7 +216,6 @@ function AppContent() {
               onClose={closeEditorDialog}
               selectedAttempt={selectedAttempt}
             />
-            <CreatePRDialog />
             <TaskFormDialogContainer />
             {showNavbar && <DevBanner />}
             {showNavbar && <Navbar />}
@@ -273,11 +266,9 @@ function App() {
       <ConfigProvider>
         <ProjectProvider>
           <EditorDialogProvider>
-            <CreatePRDialogProvider>
-              <TaskDialogProvider>
-                <AppContent />
-              </TaskDialogProvider>
-            </CreatePRDialogProvider>
+            <TaskDialogProvider>
+              <AppContent />
+            </TaskDialogProvider>
           </EditorDialogProvider>
         </ProjectProvider>
       </ConfigProvider>

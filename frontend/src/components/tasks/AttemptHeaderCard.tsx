@@ -13,7 +13,7 @@ import { useRebase } from '@/hooks/useRebase';
 import { useMerge } from '@/hooks/useMerge';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import { useDiffSummary } from '@/hooks/useDiffSummary';
-import { useCreatePRDialog } from '@/contexts/create-pr-dialog-context';
+import NiceModal from '@ebay/nice-modal-react';
 
 interface AttemptHeaderCardProps {
   attemptNumber: number;
@@ -45,11 +45,9 @@ export function AttemptHeaderCard({
   const { fileCount, added, deleted } = useDiffSummary(
     selectedAttempt?.id ?? null
   );
-  const { showCreatePRDialog } = useCreatePRDialog();
-
   const handleCreatePR = () => {
     if (selectedAttempt) {
-      showCreatePRDialog({
+      NiceModal.show('create-pr', {
         attempt: selectedAttempt,
         task,
         projectId,
