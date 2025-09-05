@@ -123,7 +123,7 @@ module.exports = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        'chivo-mono': ['Chivo Mono', 'monospace'],
+        'chivo-mono': ['Chivo Mono', 'Noto Emoji', 'monospace'],
       },
       keyframes: {
         "accordion-down": {

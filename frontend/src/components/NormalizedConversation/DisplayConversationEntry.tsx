@@ -1,5 +1,4 @@
 import MarkdownRenderer from '@/components/ui/markdown-renderer.tsx';
-import { AlertCircle, Check, ChevronDown } from 'lucide-react';
 import {
   ActionType,
   NormalizedEntry,
@@ -9,6 +8,23 @@ import type { ProcessStartPayload } from '@/types/logs';
 import FileChangeRenderer from './FileChangeRenderer';
 import ToolDetails from './ToolDetails';
 import { useExpandable } from '@/stores/useExpandableStore';
+import {
+  AlertCircle,
+  Bot,
+  Brain,
+  CheckSquare,
+  ChevronDown,
+  Check,
+  Edit,
+  Eye,
+  Globe,
+  Plus,
+  Search,
+  Settings,
+  Terminal,
+  User,
+} from 'lucide-react';
+
 
 type Props = {
   entry: NormalizedEntry | ProcessStartPayload;
@@ -17,6 +33,59 @@ type Props = {
 };
 
 type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
+
+const getEntryIcon = (entryType: NormalizedEntryType, size?: string) => {
+  let iconSize = size || 'h-3 w-3';
+  if (entryType.type === 'user_message') {
+    return <User className={iconSize} />;
+  }
+  if (entryType.type === 'assistant_message') {
+    return <Bot className={iconSize} />;
+  }
+  if (entryType.type === 'system_message') {
+    return <Settings className={iconSize} />;
+  }
+  if (entryType.type === 'thinking') {
+    return <Brain className={iconSize} />;
+  }
+  if (entryType.type === 'error_message') {
+    return <AlertCircle className={iconSize} />;
+  }
+  if (entryType.type === 'tool_use') {
+    const { action_type, tool_name } = entryType;
+
+    // Special handling for TODO tools
+    if (
+      action_type.action === 'todo_management' ||
+      (tool_name &&
+        (tool_name.toLowerCase() === 'todowrite' ||
+          tool_name.toLowerCase() === 'todoread' ||
+          tool_name.toLowerCase() === 'todo_write' ||
+          tool_name.toLowerCase() === 'todo_read' ||
+          tool_name.toLowerCase() === 'todo'))
+    ) {
+      return <CheckSquare className={iconSize} />;
+    }
+
+    if (action_type.action === 'file_read') {
+      return <Eye className={iconSize} />;
+    } else if (action_type.action === 'file_edit') {
+      return <Edit className={iconSize} />;
+    } else if (action_type.action === 'command_run') {
+      return <Terminal className={iconSize} />;
+    } else if (action_type.action === 'search') {
+      return <Search className={iconSize} />;
+    } else if (action_type.action === 'web_fetch') {
+      return <Globe className={iconSize} />;
+    } else if (action_type.action === 'task_create') {
+      return <Plus className={iconSize} />;
+    } else if (action_type.action === 'plan_presentation') {
+      return <CheckSquare className={iconSize} />;
+    }
+    return <Settings className={iconSize} />;
+  }
+  return <Settings className={iconSize} />;
+};
 
 /**********************
  * Helper definitions *
@@ -240,7 +309,7 @@ const ToolCallCard: React.FC<{
 
     const label =
       at?.action === 'command_run'
-        ? 'Run'
+        ? 'Ran'
         : entryType?.tool_name || at?.tool_name || 'Tool';
 
     const isCommand = at?.action === 'command_run';
@@ -295,48 +364,78 @@ const ToolCallCard: React.FC<{
       : {};
 
     return (
-      <div className="inline-block w-full">
-        <div className="border rounded-lg w-full overflow-hidden text-xs">
-          <HeaderWrapper
-            {...headerProps}
-            className="w-full px-2 py-1.5 flex items-center gap-1.5 text-left bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] border-b border-[hsl(var(--border))]"
-          >
-            <span className="text-xs min-w-0 truncate">
-              <span className="font-semibold">{label}</span>
-              {showInlineSummary && (
-                <span className="ml-2 font-normal">{inlineText}</span>
-              )}
-            </span>
-
-            {hasExpandableDetails && (
-              <div className="ml-auto flex items-center gap-2">
-                {isCommand &&
-                  typeof ok === 'boolean' &&
-                  (ok ? (
-                    <Check
-                      className="h-4 w-4 text-green-600"
-                      aria-label="Command succeeded"
-                    />
-                  ) : (
-                    <AlertCircle
-                      className="h-4 w-4 text-red-600"
-                      aria-label="Command failed"
-                    />
-                  ))}
-                <ExpandChevron
-                  expanded={expanded}
-                  onClick={toggle}
-                  variant="system"
-                />
-              </div>
+      <div className="inline-block w-full text-xs flex flex-col gap-4">
+        <HeaderWrapper
+          {...headerProps}
+          className="w-full flex items-center gap-1.5 text-left text-secondary-foreground"
+        >
+          <span className="text-xs min-w-0 flex items-center gap-1.5">
+            {entryType ? getEntryIcon(entryType) :
+              <span className="font-normal flex">{label}</span>
+            }
+            {showInlineSummary && (
+              <span className="font-light">{inlineText}</span>
             )}
-          </HeaderWrapper>
+          </span>
 
-          {expanded && (
-            <div className="px-2 py-1.5 max-h-[65vh] overflow-y-auto overscroll-contain">
-              {!isCommand &&
-                (!showInlineSummary || hasExpandableDetails) &&
-                (entryContent || content) && (
+          {hasExpandableDetails && (
+            <div className="ml-auto flex items-center gap-2">
+              {isCommand &&
+                typeof ok === 'boolean' &&
+                (ok ? (
+                  <Check
+                    className="h-4 w-4 text-green-600"
+                    aria-label="Command succeeded"
+                  />
+                ) : (
+                  <AlertCircle
+                    className="h-4 w-4 text-red-600"
+                    aria-label="Command failed"
+                  />
+                ))}
+              <ExpandChevron
+                expanded={expanded}
+                onClick={toggle}
+                variant="system"
+              />
+            </div>
+          )}
+        </HeaderWrapper>
+
+        {expanded && (
+          <div className="px-2 py-1.5 max-h-[200px] overflow-y-auto bg-background">
+            {!isCommand &&
+              (!showInlineSummary || hasExpandableDetails) &&
+              (entryContent || content) && (
+                <div className={contentClassName + ' mb-2'}>
+                  <MarkdownRenderer
+                    content={entryContent || content || ''}
+                    className="inline"
+                  />
+                </div>
+              )}
+
+            {isCommand ? (
+              <>
+                {argsText != null && argsText !== '' && (
+                  <div className="mb-3">
+                    <div className="text-xs font-medium uppercase text-zinc-500 mb-1">
+                      Args
+                    </div>
+                    <ToolDetails commandOutput={argsText} />
+                  </div>
+                )}
+
+                <div>
+                  <div className="text-xs font-medium uppercase text-zinc-500 mb-1">
+                    Output
+                  </div>
+                  <ToolDetails commandOutput={output ?? ''} />
+                </div>
+              </>
+            ) : (
+              <>
+                {(entryContent || content) && (
                   <div className={contentClassName + ' mb-2'}>
                     <MarkdownRenderer
                       content={entryContent || content || ''}
@@ -344,50 +443,20 @@ const ToolCallCard: React.FC<{
                     />
                   </div>
                 )}
-
-              {isCommand ? (
-                <>
-                  {argsText != null && argsText !== '' && (
-                    <div className="mb-3">
-                      <div className="text-xs font-medium uppercase text-zinc-500 mb-1">
-                        Args
-                      </div>
-                      <ToolDetails commandOutput={argsText} />
-                    </div>
-                  )}
-
-                  <div>
-                    <div className="text-xs font-medium uppercase text-zinc-500 mb-1">
-                      Output
-                    </div>
-                    <ToolDetails commandOutput={output ?? ''} />
-                  </div>
-                </>
-              ) : (
-                <>
-                  {(entryContent || content) && (
-                    <div className={contentClassName + ' mb-2'}>
-                      <MarkdownRenderer
-                        content={entryContent || content || ''}
-                        className="inline"
-                      />
-                    </div>
-                  )}
-                  {at?.action === 'tool' && (
-                    <ToolDetails
-                      arguments={at.arguments ?? null}
-                      result={
-                        at.result
-                          ? { type: at.result.type, value: at.result.value }
-                          : null
-                      }
-                    />
-                  )}
-                </>
-              )}
-            </div>
-          )}
-        </div>
+                {at?.action === 'tool' && (
+                  <ToolDetails
+                    arguments={at.arguments ?? null}
+                    result={
+                      at.result
+                        ? { type: at.result.type, value: at.result.value }
+                        : null
+                    }
+                  />
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -465,7 +534,7 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
           {shouldRenderMarkdown(entryType) ? (
             <MarkdownRenderer
               content={isNormalizedEntry(entry) ? entry.content : ''}
-              className="whitespace-pre-wrap break-words"
+              className="whitespace-pre-wrap break-words flex flex-col gap-1 font-light"
             />
           ) : isNormalizedEntry(entry) ? (
             entry.content
