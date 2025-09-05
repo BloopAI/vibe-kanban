@@ -145,6 +145,7 @@ export function TaskFormDialogContainer() {
       initialTemplate={dialogState.initialTemplate}
       initialTask={dialogState.initialTask}
       availableExecutors={systemInfo?.executors || null}
+      currentExecutorProfile={systemInfo?.config.executor_profile || null}
       onCreateTask={handleCreateTask}
       onCreateAndStartTask={handleCreateAndStartTask}
       onUpdateTask={handleUpdateTask}

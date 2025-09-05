@@ -39,6 +39,7 @@ interface TaskFormDialogProps {
   initialTemplate?: TaskTemplate | null; // For pre-filling from template
   initialTask?: Task | null; // For duplicating an existing task
   availableExecutors?: Record<string, ExecutorConfig> | null; // Available executor profiles
+  currentExecutorProfile?: ExecutorProfileId | null; // Current executor profile from config
   onCreateTask?: (
     title: string,
     description: string,
@@ -67,6 +68,7 @@ export function TaskFormDialog({
   initialTemplate,
   initialTask,
   availableExecutors,
+  currentExecutorProfile,
   onCreateTask,
   onCreateAndStartTask,
   onUpdateTask,
@@ -187,10 +189,15 @@ export function TaskFormDialog({
           if (defaultBranch) {
             setSelectedBranch(defaultBranch.name);
           }
+
+          // Set default executor profile from config
+          if (currentExecutorProfile && availableExecutors) {
+            setSelectedExecutorProfile(currentExecutorProfile);
+          }
         })
         .catch(console.error);
     }
-  }, [isOpen, isEditMode, projectId]);
+  }, [isOpen, isEditMode, projectId, currentExecutorProfile, availableExecutors]);
 
   // Handle template selection
   const handleTemplateChange = (templateId: string) => {
@@ -262,7 +269,7 @@ export function TaskFormDialog({
         setImages([]);
         setNewlyUploadedImageIds([]);
         setSelectedBranch('');
-        setSelectedExecutorProfile(null);
+        setSelectedExecutorProfile(currentExecutorProfile || null);
         setQuickstartExpanded(false);
       }
 
@@ -300,7 +307,7 @@ export function TaskFormDialog({
       setImages([]);
       setNewlyUploadedImageIds([]);
       setSelectedBranch('');
-      setSelectedExecutorProfile(null);
+      setSelectedExecutorProfile(currentExecutorProfile || null);
       setQuickstartExpanded(false);
 
       onOpenChange(false);
