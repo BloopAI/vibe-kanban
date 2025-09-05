@@ -46,6 +46,7 @@ const CreatePrDialog = NiceModal.create(() => {
     if (modal.visible && data) {
       setPrTitle(`${data.task.title} (vibe-kanban)`);
       setPrBody(data.task.description || '');
+      setPrBaseBranch(data.attempt.base_branch || 'main');
       setError(null); // Reset error when opening
     }
   }, [modal.visible, data]);
