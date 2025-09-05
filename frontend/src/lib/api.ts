@@ -307,6 +307,11 @@ export const attemptsApi = {
     return handleApiResponse<TaskAttempt[]>(response);
   },
 
+  get: async (attemptId: string): Promise<TaskAttempt> => {
+    const response = await makeRequest(`/api/task-attempts/${attemptId}`);
+    return handleApiResponse<TaskAttempt>(response);
+  },
+
   create: async (data: CreateTaskAttemptBody): Promise<TaskAttempt> => {
     const response = await makeRequest(`/api/task-attempts`, {
       method: 'POST',

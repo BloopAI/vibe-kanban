@@ -160,7 +160,6 @@ export function TaskFormDialogContainer() {
       initialTemplate={dialogState.initialTemplate}
       initialTask={dialogState.initialTask}
       initialBaseBranch={dialogState.initialBaseBranch}
-      parentTaskAttemptId={dialogState.parentTaskAttemptId}
       onCreateTask={handleCreateTask}
       onCreateAndStartTask={handleCreateAndStartTask}
       onUpdateTask={handleUpdateTask}

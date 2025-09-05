@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { projectsApi } from '@/lib/api';
+import { projectsApi, attemptsApi } from '@/lib/api';
 import type {
   GitBranch,
   TaskAttempt,
@@ -95,6 +95,7 @@ function TaskDetailsToolbar({
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
   const [selectedProfile, setSelectedProfile] =
     useState<ExecutorProfileId | null>(null);
+  const [parentBaseBranch, setParentBaseBranch] = useState<string | null>(null);
   // const { attemptId: urlAttemptId } = useParams<{ attemptId?: string }>();
   const { system, profiles } = useUserSystem();
 
@@ -115,16 +116,31 @@ function TaskDetailsToolbar({
 
   // Derive createAttemptBranch for backward compatibility
   const createAttemptBranch = useMemo(() => {
+    // Priority order:
+    // 1. User explicitly selected a branch
     if (selectedBranch) {
       return selectedBranch;
-    } else if (
+    }
+
+    // 2. Latest attempt's base branch (existing behavior for resume/rerun)
+    if (
       latestAttempt?.base_branch &&
       branches.some((b: GitBranch) => b.name === latestAttempt.base_branch)
     ) {
       return latestAttempt.base_branch;
     }
+
+    // 3. Parent task attempt's base branch (NEW - for inherited tasks)
+    if (
+      parentBaseBranch &&
+      branches.some((b: GitBranch) => b.name === parentBaseBranch)
+    ) {
+      return parentBaseBranch;
+    }
+
+    // 4. Fall back to selectedBranch (current branch)
     return selectedBranch;
-  }, [latestAttempt, branches, selectedBranch]);
+  }, [latestAttempt, branches, selectedBranch, parentBaseBranch]);
 
   const fetchProjectBranches = useCallback(async () => {
     const result = await projectsApi.getBranches(projectId);
@@ -147,6 +163,18 @@ function TaskDetailsToolbar({
       setSelectedProfile(system.config.executor_profile);
     }
   }, [system.config?.executor_profile]);
+
+  // Fetch parent task attempt's base branch
+  useEffect(() => {
+    if (task.parent_task_attempt) {
+      attemptsApi
+        .get(task.parent_task_attempt)
+        .then((attempt) => setParentBaseBranch(attempt.base_branch))
+        .catch(() => setParentBaseBranch(null));
+    } else {
+      setParentBaseBranch(null);
+    }
+  }, [task.parent_task_attempt]);
 
   // Simplified - hooks handle data fetching and navigation
   // const fetchTaskAttempts = useCallback(() => {
