@@ -53,16 +53,14 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <NiceModal.Provider>
-        <Sentry.ErrorBoundary
-          fallback={<p>An error has occurred</p>}
-          showDialog
-        >
-          <ClickToComponent />
-          <App />
-          {/* <ReactQueryDevtools initialIsOpen={false} /> */}
-        </Sentry.ErrorBoundary>
-      </NiceModal.Provider>
+      <Sentry.ErrorBoundary
+        fallback={<p>An error has occurred</p>}
+        showDialog
+      >
+        <ClickToComponent />
+        <App />
+        {/* <ReactQueryDevtools initialIsOpen={false} /> */}
+      </Sentry.ErrorBoundary>
     </QueryClientProvider>
   </React.StrictMode>
 );

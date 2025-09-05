@@ -267,11 +267,13 @@ function App() {
     <BrowserRouter>
       <ConfigProvider>
         <ProjectProvider>
-          <EditorDialogProvider>
-            <TaskDialogProvider>
-              <AppContent />
-            </TaskDialogProvider>
-          </EditorDialogProvider>
+          <NiceModal.Provider>
+            <EditorDialogProvider>
+              <TaskDialogProvider>
+                <AppContent />
+              </TaskDialogProvider>
+            </EditorDialogProvider>
+          </NiceModal.Provider>
         </ProjectProvider>
       </ConfigProvider>
     </BrowserRouter>
