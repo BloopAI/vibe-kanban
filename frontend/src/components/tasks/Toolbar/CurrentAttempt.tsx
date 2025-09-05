@@ -49,7 +49,7 @@ import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useDevServer } from '@/hooks/useDevServer';
 import { useRebase } from '@/hooks/useRebase';
 import { useMerge } from '@/hooks/useMerge';
-import { useCreatePRDialog } from '@/contexts/create-pr-dialog-context';
+import NiceModal from '@ebay/nice-modal-react';
 import { usePush } from '@/hooks/usePush';
 import { useConfig } from '@/components/config-provider.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
@@ -126,7 +126,6 @@ function CurrentAttempt({
   const rebaseMutation = useRebase(selectedAttempt?.id, projectId);
   const mergeMutation = useMerge(selectedAttempt?.id);
   const pushMutation = usePush(selectedAttempt?.id);
-  const { showCreatePRDialog } = useCreatePRDialog();
 
   const [merging, setMerging] = useState(false);
   const [pushing, setPushing] = useState(false);
@@ -246,7 +245,7 @@ function CurrentAttempt({
       return;
     }
 
-    showCreatePRDialog({
+    NiceModal.show('create-pr', {
       attempt: selectedAttempt,
       task,
       projectId,
