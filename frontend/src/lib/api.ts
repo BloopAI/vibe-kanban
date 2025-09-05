@@ -278,7 +278,9 @@ export const tasksApi = {
     return handleApiResponse<Task>(response);
   },
 
-  createAndStart: async (data: CreateAndStartTaskRequest): Promise<TaskWithAttemptStatus> => {
+  createAndStart: async (
+    data: CreateAndStartTaskRequest
+  ): Promise<TaskWithAttemptStatus> => {
     const response = await makeRequest(`/api/tasks/create-and-start`, {
       method: 'POST',
       body: JSON.stringify(data),
