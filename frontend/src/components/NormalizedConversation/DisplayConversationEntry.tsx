@@ -6,7 +6,7 @@ import {
 } from 'shared/types.ts';
 import type { ProcessStartPayload } from '@/types/logs';
 import FileChangeRenderer from './FileChangeRenderer';
-import ToolDetails from './ToolDetails';
+import ToolDetails, { renderJson } from './ToolDetails';
 import { useExpandable } from '@/stores/useExpandableStore';
 import {
   AlertCircle,
@@ -14,7 +14,7 @@ import {
   Brain,
   CheckSquare,
   ChevronDown,
-  Check,
+  Hammer,
   Edit,
   Eye,
   Globe,
@@ -24,6 +24,7 @@ import {
   Terminal,
   User,
 } from 'lucide-react';
+import RawLogText from '../common/RawLogText';
 
 
 type Props = {
@@ -81,6 +82,8 @@ const getEntryIcon = (entryType: NormalizedEntryType) => {
       return <Plus className={iconSize} />;
     } else if (action_type.action === 'plan_presentation') {
       return <CheckSquare className={iconSize} />;
+    } else if (action_type.action === 'tool') {
+      return <Hammer className={iconSize} />;
     }
     return <Settings className={iconSize} />;
   }
@@ -88,38 +91,34 @@ const getEntryIcon = (entryType: NormalizedEntryType) => {
 };
 
 const getStatusIndicator = (entryType: NormalizedEntryType) => {
-  type StatusType = 'success' | 'error' | 'pending';
-  let status: StatusType = 'pending';
-  if (entryType.type === 'tool_use') {
-    if (entryType.action_type.action === 'command_run') {
-      if (entryType.action_type.result?.exit_status?.type === 'success') {
-        if (entryType.action_type.result?.exit_status?.success === true) {
-          status = 'success';
-        } else {
-          status = 'error';
-        }
-      }
-    }
-  }
+  const result = entryType.type === "tool_use" &&
+    entryType.action_type.action === "command_run"
+    ? entryType.action_type.result?.exit_status
+    : null;
 
-  if (status === 'pending') {
-    return null;
-  }
+  const status =
+    result?.type === "success"
+      ? result.success
+        ? "success"
+        : "error"
+      : "pending";
 
-  let color = '';
-  switch (status) {
-    case 'success':
-      color = 'bg-green-300';
-      break;
-    case 'error':
-      color = 'bg-red-300';
-      break;
-    default:
-      color = 'bg-gray-500';
-      break;
-  }
-  return (<div className="relative"><div className={`${color} h-1.5 w-1.5 rounded-full absolute -left-1 -bottom-4`} /></div>);
+  if (status === "pending") return null;
+
+  const colorMap: Record<typeof status, string> = {
+    success: "bg-green-300",
+    error: "bg-red-300",
+  };
+
+  return (
+    <div className="relative">
+      <div
+        className={`${colorMap[status]} h-1.5 w-1.5 rounded-full absolute -left-1 -bottom-4`}
+      />
+    </div>
+  );
 };
+
 
 /**********************
  * Helper definitions *
@@ -348,17 +347,6 @@ const ToolCallCard: React.FC<{
 
     const isCommand = at?.action === 'command_run';
 
-    // success/failure
-    let ok: boolean | undefined;
-    if (isCommand) {
-      const exit = at?.result?.exit_status ?? null;
-      if (exit?.type === 'success' && typeof exit.success === 'boolean') {
-        ok = exit.success;
-      } else if (exit?.type === 'exit_code' && typeof exit.code === 'number') {
-        ok = exit.code === 0;
-      }
-    }
-
     const inlineText = (entryContent || content || '').trim();
     const isSingleLine = inlineText !== '' && !/\r?\n/.test(inlineText);
     const showInlineSummary = isSingleLine;
@@ -415,56 +403,52 @@ const ToolCallCard: React.FC<{
 
         {expanded && (
           <div className="max-h-[200px] overflow-y-auto border">
-            {!isCommand &&
-              (!showInlineSummary || hasExpandableDetails) &&
-              (entryContent || content) && (
-                <div className={contentClassName + ' mb-2'}>
-                  <MarkdownRenderer
-                    content={entryContent || content || ''}
-                    className="inline"
-                  />
-                </div>
-              )}
-
             {isCommand ? (
               <>
-                {argsText != null && argsText !== '' && (
+                {argsText && (
                   <>
-                    <div className="text-xs font-medium uppercase bg-background border-b border-dashed p-2">
+                    <div className="text-xs font-medium uppercase bg-background border-b border-dashed px-2 py-1">
                       Args
                     </div>
-                    <div className="p-2">
-                      <ToolDetails commandOutput={argsText} />
+                    <div className="px-2 py-1">
+                      {argsText}
                     </div>
                   </>
                 )}
 
-                <div className="text-xs font-medium uppercase bg-background border-y border-b-dashed p-2">
-                  Output
-                </div>
-                <div className="p-2">
-                  <ToolDetails commandOutput={output ?? ''} />
-                </div>
+                {output && (
+                  <>
+                    <div className="text-xs font-medium uppercase bg-background border-y border-dashed px-2 py-1">
+                      Output
+                    </div>
+                    <div className="px-2 py-1">
+                      <RawLogText content={output} />
+                    </div>
+                  </>
+                )}
               </>
             ) : (
               <>
-                {(entryContent || content) && (
-                  <div className={contentClassName + ' mb-2'}>
-                    <MarkdownRenderer
-                      content={entryContent || content || ''}
-                      className="inline"
-                    />
-                  </div>
-                )}
-                {at?.action === 'tool' && (
-                  <ToolDetails
-                    arguments={at.arguments ?? null}
-                    result={
-                      at.result
-                        ? { type: at.result.type, value: at.result.value }
-                        : null
-                    }
-                  />
+                {entryType?.action_type.action === 'tool' && (
+                  <>
+                    <div className="text-xs font-medium uppercase bg-background border-b border-dashed px-2 py-1">
+                      Args
+                    </div>
+                    <div className="px-2 py-1">
+                      {renderJson(entryType.action_type.arguments)}
+                    </div>
+                    <div className="text-xs font-medium uppercase bg-background border-b border-dashed px-2 py-1">
+                      Result
+                    </div>
+                    <div className="px-2 py-1">
+                      {entryType.action_type.result?.type.type === 'markdown' && entryType.action_type.result.value && (
+                        <MarkdownRenderer content={entryType.action_type.result.value?.toString()} />
+                      )}
+                      {entryType.action_type.result?.type.type === 'json' && (
+                        renderJson(entryType.action_type.result.value)
+                      )}
+                    </div>
+                  </>
                 )}
               </>
             )}

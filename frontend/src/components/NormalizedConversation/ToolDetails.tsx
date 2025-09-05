@@ -19,18 +19,18 @@ type Props = {
   | null;
 };
 
+export const renderJson = (v: JsonValue) => (
+  <pre>
+    {JSON.stringify(v, null, 2)}
+  </pre >
+);
+
 export default function ToolDetails({
   arguments: args,
   result,
   commandOutput,
 }: Props) {
   const isCommandMode = commandOutput !== undefined;
-
-  const renderJson = (v: JsonValue) => (
-    <pre className="rounded bg-muted p-2 text-xs">
-      {JSON.stringify(v, null, 2)}
-    </pre>
-  );
 
   return (
     <div className="space-y-3">
@@ -88,3 +88,4 @@ export default function ToolDetails({
     </div>
   );
 }
+
