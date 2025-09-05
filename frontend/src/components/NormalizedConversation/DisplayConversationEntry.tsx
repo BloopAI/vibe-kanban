@@ -40,6 +40,8 @@ const getContentClassName = (entryType: NormalizedEntryType) => {
   if (entryType.type === 'error_message')
     return `${base} font-mono text-destructive`;
 
+  if (entryType.type === 'thinking') return `${base} opacity-60`;
+
   if (
     entryType.type === 'tool_use' &&
     (entryType.action_type.action === 'todo_management' ||
