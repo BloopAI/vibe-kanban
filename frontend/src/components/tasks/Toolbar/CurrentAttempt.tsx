@@ -9,6 +9,7 @@ import {
   Settings,
   StopCircle,
   ScrollText,
+  GitFork,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -55,6 +56,7 @@ import { useConfig } from '@/components/config-provider.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
+import { useTaskDialog } from '@/contexts/task-dialog-context';
 
 // Helper function to get the display name for different editor types
 function getEditorDisplayName(editorType: string): string {
@@ -114,6 +116,7 @@ function CurrentAttempt({
   const { data: branchStatus } = useBranchStatus(selectedAttempt?.id);
   const handleOpenInEditor = useOpenInEditor(selectedAttempt);
   const { jumpToProcess } = useProcessSelection();
+  const { openSpinoff } = useTaskDialog();
 
   // Attempt action hooks
   const {
@@ -142,6 +145,10 @@ function CurrentAttempt({
     if (latestDevServerProcess) {
       jumpToProcess(latestDevServerProcess.id);
     }
+  };
+
+  const handleSpinoffClick = () => {
+    openSpinoff(selectedAttempt.id, selectedAttempt.base_branch);
   };
 
   // Use the stopExecution function from the hook
@@ -637,15 +644,35 @@ function CurrentAttempt({
                 {isStopping ? 'Stopping...' : 'Stop Attempt'}
               </Button>
             ) : (
-              <Button
-                variant="outline"
-                size="xs"
-                onClick={handleEnterCreateAttemptMode}
-                className="gap-1 flex-1"
-              >
-                <Plus className="h-4 w-4" />
-                New Attempt
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={handleEnterCreateAttemptMode}
+                  className="gap-1 flex-1"
+                >
+                  <Plus className="h-4 w-4" />
+                  New Attempt
+                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={handleSpinoffClick}
+                        className="gap-1"
+                      >
+                        <GitFork className="h-3 w-3" />
+                        Spinoff
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Create new task from this base branch</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </>
             )}
             {taskAttempts.length > 1 && (
               <DropdownMenu>

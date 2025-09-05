@@ -28,6 +28,8 @@ interface TaskDialogState {
   task: Task | null;
   initialTemplate: TaskTemplate | null;
   initialTask: Task | null;
+  initialBaseBranch?: string;
+  parentTaskAttemptId?: string;
   afterSubmit?: (task: Task) => void;
 }
 
@@ -43,6 +45,11 @@ interface TaskDialogAPI {
     options?: TaskDialogOptions
   ) => void;
   openDuplicate: (task: Task, options?: TaskDialogOptions) => void;
+  openSpinoff: (
+    attemptId: string,
+    baseBranch: string,
+    options?: TaskDialogOptions
+  ) => void;
   close: () => void;
 
   // For dialog component to call after successful operations
@@ -62,6 +69,8 @@ export function TaskDialogProvider({ children }: TaskDialogProviderProps) {
     task: null,
     initialTemplate: null,
     initialTask: null,
+    initialBaseBranch: undefined,
+    parentTaskAttemptId: undefined,
     afterSubmit: undefined,
   });
 
@@ -72,6 +81,8 @@ export function TaskDialogProvider({ children }: TaskDialogProviderProps) {
       task: null,
       initialTemplate: null,
       initialTask: null,
+      initialBaseBranch: undefined,
+      parentTaskAttemptId: undefined,
       afterSubmit: options?.onSuccess,
     });
   }, []);
@@ -83,6 +94,8 @@ export function TaskDialogProvider({ children }: TaskDialogProviderProps) {
       task,
       initialTemplate: null,
       initialTask: null,
+      initialBaseBranch: undefined,
+      parentTaskAttemptId: undefined,
       afterSubmit: options?.onSuccess,
     });
   }, []);
@@ -95,6 +108,8 @@ export function TaskDialogProvider({ children }: TaskDialogProviderProps) {
         task: null,
         initialTemplate: template,
         initialTask: null,
+        initialBaseBranch: undefined,
+        parentTaskAttemptId: undefined,
         afterSubmit: options?.onSuccess,
       });
     },
@@ -109,6 +124,24 @@ export function TaskDialogProvider({ children }: TaskDialogProviderProps) {
         task: null,
         initialTemplate: null,
         initialTask: sourceTask,
+        initialBaseBranch: undefined,
+        parentTaskAttemptId: undefined,
+        afterSubmit: options?.onSuccess,
+      });
+    },
+    []
+  );
+
+  const openSpinoff = useCallback(
+    (attemptId: string, baseBranch: string, options?: TaskDialogOptions) => {
+      setDialogState({
+        isOpen: true,
+        mode: 'create',
+        task: null,
+        initialTemplate: null,
+        initialTask: null,
+        initialBaseBranch: baseBranch,
+        parentTaskAttemptId: attemptId,
         afterSubmit: options?.onSuccess,
       });
     },
@@ -140,6 +173,7 @@ export function TaskDialogProvider({ children }: TaskDialogProviderProps) {
       openEdit,
       openFromTemplate,
       openDuplicate,
+      openSpinoff,
       close,
       handleSuccess,
     }),
@@ -149,6 +183,7 @@ export function TaskDialogProvider({ children }: TaskDialogProviderProps) {
       openEdit,
       openFromTemplate,
       openDuplicate,
+      openSpinoff,
       close,
       handleSuccess,
     ]
