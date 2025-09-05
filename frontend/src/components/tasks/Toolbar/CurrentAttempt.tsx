@@ -46,6 +46,7 @@ import { useUserSystem } from '@/components/config-provider.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
+import { openTaskForm } from '@/lib/openTaskForm';
 import { showModal } from '@/lib/modals';
 
 // Helper function to get the display name for different editor types
@@ -130,6 +131,14 @@ function CurrentAttempt({
     if (latestDevServerProcess) {
       jumpToProcess(latestDevServerProcess.id);
     }
+  };
+
+  const handleSpinoffClick = () => {
+    openTaskForm({
+      projectId,
+      initialBaseBranch: selectedAttempt.branch || selectedAttempt.base_branch,
+      parentTaskAttemptId: selectedAttempt.id,
+    });
   };
 
   // Use the stopExecution function from the hook
@@ -696,6 +705,15 @@ function CurrentAttempt({
               </DropdownMenu>
             )}
           </div>
+          <Button
+            onClick={handleSpinoffClick}
+            variant="outline"
+            size="xs"
+            className="gap-1 min-w-[120px]"
+          >
+            <GitFork className="h-3 w-3" />
+            Spinoff Task
+          </Button>
         </div>
       </div>
     </div>
