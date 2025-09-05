@@ -29,7 +29,7 @@ function CreatePrDialog() {
   const { isOpen, data, closeCreatePRDialog } = useCreatePRDialog();
   const [prTitle, setPrTitle] = useState('');
   const [prBody, setPrBody] = useState('');
-  const [prBaseBranch, setPrBaseBranch] = useState('main');
+  const [prBaseBranch, setPrBaseBranch] = useState('');
   const [showPatDialog, setShowPatDialog] = useState(false);
   const [patDialogError, setPatDialogError] = useState<string | null>(null);
   const [showGitHubLoginDialog, setShowGitHubLoginDialog] = useState(false);
@@ -45,11 +45,12 @@ function CreatePrDialog() {
       setPrTitle(`${data.task.title} (vibe-kanban)`);
       setPrBody(data.task.description || '');
       
-      // Smart default: task attempt base branch → current branch → "main"
+      // Smart default: task attempt base branch → current branch
       const defaultBranch = data.attempt.base_branch || 
-                           branches.find(b => b.is_current)?.name || 
-                           'main';
-      setPrBaseBranch(defaultBranch);
+                           branches.find(b => b.is_current)?.name;
+      if (defaultBranch) {
+        setPrBaseBranch(defaultBranch);
+      }
       
       setError(null); // Reset error when opening
     }
@@ -72,7 +73,7 @@ function CreatePrDialog() {
       // Reset form and close dialog
       setPrTitle('');
       setPrBody('');
-      setPrBaseBranch('main');
+      setPrBaseBranch('');
       closeCreatePRDialog();
     } else {
       if (result.error) {
@@ -113,7 +114,7 @@ function CreatePrDialog() {
     // Reset form to empty state
     setPrTitle('');
     setPrBody('');
-    setPrBaseBranch('main');
+    setPrBaseBranch('');
   }, [closeCreatePRDialog]);
 
   // Don't render if no data
