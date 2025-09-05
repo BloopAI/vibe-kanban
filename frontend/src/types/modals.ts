@@ -1,7 +1,4 @@
-import type {
-  TaskAttempt,
-  TaskWithAttemptStatus,
-} from 'shared/types';
+import type { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import type { ConfirmDialogProps } from '@/components/modals/ConfirmDialog';
 import type { ProvidePatDialogProps } from '@/components/ProvidePatDialog';
 import type { DeleteTaskConfirmationDialogProps } from '@/components/tasks/DeleteTaskConfirmationDialog';

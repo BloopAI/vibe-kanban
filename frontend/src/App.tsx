@@ -19,9 +19,7 @@ import {
 import { ConfigProvider, useConfig } from '@/components/config-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SearchProvider } from '@/contexts/search-context';
-import {
-  EditorDialogProvider,
-} from '@/contexts/editor-dialog-context';
+import { EditorDialogProvider } from '@/contexts/editor-dialog-context';
 
 import { TaskDialogProvider } from '@/contexts/task-dialog-context';
 import { TaskFormDialogContainer } from '@/components/tasks/TaskFormDialogContainer';
@@ -32,7 +30,6 @@ import type { ExecutorProfileId } from 'shared/types';
 import { configApi } from '@/lib/api';
 import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
-
 
 import { AppWithStyleOverride } from '@/utils/style-override';
 import { WebviewContextMenu } from '@/vscode/ContextMenu';
@@ -59,10 +56,15 @@ function AppContent() {
       } else if (!config.onboarding_acknowledged) {
         NiceModal.show('onboarding').then((result) => {
           if (result !== 'canceled') {
-            handleOnboardingComplete(result as {
-              profile: ExecutorProfileId;
-              editor: { editor_type: EditorType; custom_command: string | null };
-            });
+            handleOnboardingComplete(
+              result as {
+                profile: ExecutorProfileId;
+                editor: {
+                  editor_type: EditorType;
+                  custom_command: string | null;
+                };
+              }
+            );
           }
         });
       } else if (!config.github_login_acknowledged) {
@@ -90,10 +92,15 @@ function AppContent() {
       if (!config.onboarding_acknowledged) {
         NiceModal.show('onboarding').then((result) => {
           if (result !== 'canceled') {
-            handleOnboardingComplete(result as {
-              profile: ExecutorProfileId;
-              editor: { editor_type: EditorType; custom_command: string | null };
-            });
+            handleOnboardingComplete(
+              result as {
+                profile: ExecutorProfileId;
+                editor: {
+                  editor_type: EditorType;
+                  custom_command: string | null;
+                };
+              }
+            );
           }
         });
       }

@@ -60,7 +60,6 @@ export function TaskDetailsPanel({
   attempts,
   setSelectedAttempt,
 }: TaskDetailsPanelProps) {
-
   // Attempt number, find the current attempt number
   const attemptNumber =
     attempts.length -
@@ -230,8 +229,6 @@ export function TaskDetailsPanel({
                 )}
               </div>
             </div>
-
-
           </ProcessSelectionProvider>
         </TabNavContext.Provider>
       )}

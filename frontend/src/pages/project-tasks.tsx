@@ -57,8 +57,6 @@ export function ProjectTasks() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
-
-
   // Fullscreen state from pathname
   const isFullscreen = location.pathname.endsWith('/full');
 
@@ -152,14 +150,16 @@ export function ProjectTasks() {
         NiceModal.show('delete-task-confirmation', {
           task,
           projectId: projectId!,
-        }).then(() => {
-          // Task was deleted, close panel if this task was selected
-          if (selectedTask?.id === taskId) {
-            handleClosePanel();
-          }
-        }).catch(() => {
-          // Modal was cancelled - do nothing
-        });
+        })
+          .then(() => {
+            // Task was deleted, close panel if this task was selected
+            if (selectedTask?.id === taskId) {
+              handleClosePanel();
+            }
+          })
+          .catch(() => {
+            // Modal was cancelled - do nothing
+          });
       }
     },
     [tasksById, projectId, selectedTask, handleClosePanel]

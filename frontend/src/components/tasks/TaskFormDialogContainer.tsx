@@ -132,13 +132,15 @@ export function TaskFormDialogContainer() {
       onCreateTask: handleCreateTask,
       onCreateAndStartTask: handleCreateAndStartTask,
       onUpdateTask: handleUpdateTask,
-    }).then(() => {
-      // Modal was closed, update context
-      close();
-    }).catch(() => {
-      // Modal was cancelled/closed
-      close();
-    });
+    })
+      .then(() => {
+        // Modal was closed, update context
+        close();
+      })
+      .catch(() => {
+        // Modal was cancelled/closed
+        close();
+      });
   }
 
   return null;

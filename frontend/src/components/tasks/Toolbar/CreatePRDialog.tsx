@@ -81,7 +81,8 @@ const CreatePrDialog = NiceModal.create(() => {
             break;
           case GitHubServiceError.REPO_NOT_FOUND_OR_NO_ACCESS:
             NiceModal.show('provide-pat', {
-              errorMessage: 'Your token does not have access to this repository, or the repository does not exist. Please check the repository URL and/or provide a Personal Access Token with access.'
+              errorMessage:
+                'Your token does not have access to this repository, or the repository does not exist. Please check the repository URL and/or provide a Personal Access Token with access.',
             });
             break;
         }
