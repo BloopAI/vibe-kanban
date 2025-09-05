@@ -120,7 +120,12 @@ export function TaskFormDialogContainer() {
         base_branch: baseBranch,
       });
     },
-    [projectId, system, createAndStartTaskMutation, dialogState.parentTaskAttemptId]
+    [
+      projectId,
+      system,
+      createAndStartTaskMutation,
+      dialogState.parentTaskAttemptId,
+    ]
   );
 
   const handleUpdateTask = useCallback(

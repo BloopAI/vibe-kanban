@@ -148,7 +148,10 @@ function CurrentAttempt({
   };
 
   const handleSpinoffClick = () => {
-    openSpinoff(selectedAttempt.id, selectedAttempt.base_branch);
+    openSpinoff(
+      selectedAttempt.id,
+      selectedAttempt.branch || selectedAttempt.base_branch
+    );
   };
 
   // Use the stopExecution function from the hook
@@ -644,35 +647,15 @@ function CurrentAttempt({
                 {isStopping ? 'Stopping...' : 'Stop Attempt'}
               </Button>
             ) : (
-              <>
-                <Button
-                  variant="outline"
-                  size="xs"
-                  onClick={handleEnterCreateAttemptMode}
-                  className="gap-1 flex-1"
-                >
-                  <Plus className="h-4 w-4" />
-                  New Attempt
-                </Button>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="xs"
-                        onClick={handleSpinoffClick}
-                        className="gap-1"
-                      >
-                        <GitFork className="h-3 w-3" />
-                        Spinoff
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Create new task from this base branch</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </>
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={handleEnterCreateAttemptMode}
+                className="gap-1 flex-1"
+              >
+                <Plus className="h-4 w-4" />
+                New Attempt
+              </Button>
             )}
             {taskAttempts.length > 1 && (
               <DropdownMenu>
@@ -715,6 +698,19 @@ function CurrentAttempt({
             )}
           </div>
         </div>
+      </div>
+
+      {/* Row 3: Spinoff Button */}
+      <div className="flex gap-2 @md:flex-none">
+        <Button
+          onClick={handleSpinoffClick}
+          variant="outline"
+          size="xs"
+          className="gap-1 flex-1"
+        >
+          <GitFork className="h-3 w-3" />
+          Spinoff Task
+        </Button>
       </div>
 
       {/* Rebase Dialog */}

@@ -195,12 +195,15 @@ export function TaskFormDialog({
           // Set branches and default to initialBaseBranch if provided, otherwise current branch
           setBranches(projectBranches);
 
-          if (initialBaseBranch && projectBranches.some(b => b.name === initialBaseBranch)) {
+          if (
+            initialBaseBranch &&
+            projectBranches.some((b) => b.name === initialBaseBranch)
+          ) {
             // Use initialBaseBranch if it exists in the project branches (for spinoff)
             setSelectedBranch(initialBaseBranch);
           } else {
             // Default behavior: use current branch or first available
-            const currentBranch = projectBranches.find(b => b.is_current);
+            const currentBranch = projectBranches.find((b) => b.is_current);
             const defaultBranch = currentBranch || projectBranches[0];
             if (defaultBranch) {
               setSelectedBranch(defaultBranch.name);
