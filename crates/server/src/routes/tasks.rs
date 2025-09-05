@@ -10,17 +10,18 @@ use axum::{
 };
 use db::models::{
     image::TaskImage,
-    project::Project,
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
     task_attempt::{CreateTaskAttempt, TaskAttempt},
 };
 use deployment::Deployment;
+use executors::profile::ExecutorProfileId;
 use futures_util::TryStreamExt;
 use serde::Deserialize;
 use services::services::container::{
     ContainerService, WorktreeCleanupData, cleanup_worktrees_direct,
 };
 use sqlx::Error as SqlxError;
+use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -98,15 +99,22 @@ pub async fn create_task(
     Ok(ResponseJson(ApiResponse::success(task)))
 }
 
+#[derive(Debug, Deserialize, TS)]
+pub struct CreateAndStartTaskRequest {
+    pub task: CreateTask,
+    pub executor_profile_id: ExecutorProfileId,
+    pub base_branch: String,
+}
+
 pub async fn create_task_and_start(
     State(deployment): State<DeploymentImpl>,
-    Json(payload): Json<CreateTask>,
+    Json(payload): Json<CreateAndStartTaskRequest>,
 ) -> Result<ResponseJson<ApiResponse<TaskWithAttemptStatus>>, ApiError> {
     let task_id = Uuid::new_v4();
-    let task = Task::create(&deployment.db().pool, &payload, task_id).await?;
+    let task = Task::create(&deployment.db().pool, &payload.task, task_id).await?;
 
-    if let Some(image_ids) = &payload.image_ids {
-        TaskImage::associate_many_dedup(&deployment.db().pool, task.id, image_ids).await?;
+    if let Some(image_ids) = &payload.task.image_ids {
+        TaskImage::associate_many(&deployment.db().pool, task.id, image_ids).await?;
     }
 
     deployment
@@ -116,40 +124,31 @@ pub async fn create_task_and_start(
                 "task_id": task.id.to_string(),
                 "project_id": task.project_id,
                 "has_description": task.description.is_some(),
-                "has_images": payload.image_ids.is_some(),
+                "has_images": payload.task.image_ids.is_some(),
             }),
         )
         .await;
 
-    // use the default executor profile and the current branch for the task attempt
-    let executor_profile_id = deployment.config().read().await.executor_profile.clone();
-    let project = Project::find_by_id(&deployment.db().pool, payload.project_id)
-        .await?
-        .ok_or(ApiError::Database(SqlxError::RowNotFound))?;
-    let branch = deployment
-        .git()
-        .get_current_branch(&project.git_repo_path)?;
-
     let task_attempt = TaskAttempt::create(
         &deployment.db().pool,
         &CreateTaskAttempt {
-            executor: executor_profile_id.executor,
-            base_branch: branch,
+            executor: payload.executor_profile_id.executor,
+            base_branch: payload.base_branch,
         },
         task.id,
     )
     .await?;
     let execution_process = deployment
         .container()
-        .start_attempt(&task_attempt, executor_profile_id.clone())
+        .start_attempt(&task_attempt, payload.executor_profile_id.clone())
         .await?;
     deployment
         .track_if_analytics_allowed(
             "task_attempt_started",
             serde_json::json!({
                 "task_id": task.id.to_string(),
-                "executor": &executor_profile_id.executor,
-                "variant": &executor_profile_id.variant,
+                "executor": &payload.executor_profile_id.executor,
+                "variant": &payload.executor_profile_id.variant,
                 "attempt_id": task_attempt.id.to_string(),
             }),
         )
