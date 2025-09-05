@@ -5,7 +5,14 @@ import { TaskFormDialog } from './TaskFormDialog';
 import { useTaskDialog } from '@/contexts/task-dialog-context';
 import { useProject } from '@/contexts/project-context';
 import { tasksApi } from '@/lib/api';
-import type { TaskStatus, CreateTask } from 'shared/types';
+import type {
+  TaskStatus,
+  CreateTask,
+  CreateAndStartTaskRequest,
+  UpdateTask,
+  ExecutorProfileId,
+} from 'shared/types';
+import { useUserSystem } from '@/components/config-provider';
 
 /**
  * Container component that bridges the TaskDialogContext with TaskFormDialog
@@ -16,6 +23,7 @@ export function TaskFormDialogContainer() {
   const { projectId } = useProject();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { system } = useUserSystem();
 
   // React Query mutations
   const createTaskMutation = useMutation({
@@ -37,7 +45,8 @@ export function TaskFormDialogContainer() {
   });
 
   const createAndStartTaskMutation = useMutation({
-    mutationFn: (data: CreateTask) => tasksApi.createAndStart(data),
+    mutationFn: (data: CreateAndStartTaskRequest) =>
+      tasksApi.createAndStart(data),
     onSuccess: (result) => {
       // Invalidate and refetch tasks list
       queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
@@ -55,7 +64,7 @@ export function TaskFormDialogContainer() {
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: ({ taskId, data }: { taskId: string; data: any }) =>
+    mutationFn: ({ taskId, data }: { taskId: string; data: UpdateTask }) =>
       tasksApi.update(taskId, data),
     onSuccess: (updatedTask) => {
       // Invalidate and refetch tasks list and individual task
@@ -85,18 +94,33 @@ export function TaskFormDialogContainer() {
   );
 
   const handleCreateAndStartTask = useCallback(
-    async (title: string, description: string, imageIds?: string[]) => {
-      if (!projectId) return;
+    async (
+      title: string,
+      description: string,
+      imageIds?: string[],
+      baseBranch?: string,
+      executorProfile?: ExecutorProfileId
+    ) => {
+      if (!projectId || !baseBranch) return;
+
+      // Use provided executor profile or fall back to config default
+      const finalExecutorProfile =
+        executorProfile || system.config?.executor_profile;
+      if (!finalExecutorProfile) return;
 
       createAndStartTaskMutation.mutate({
-        project_id: projectId,
-        title,
-        description: description || null,
-        parent_task_attempt: null,
-        image_ids: imageIds || null,
+        task: {
+          project_id: projectId,
+          title,
+          description: description || null,
+          parent_task_attempt: null,
+          image_ids: imageIds || null,
+        },
+        executor_profile_id: finalExecutorProfile,
+        base_branch: baseBranch,
       });
     },
-    [projectId, createAndStartTaskMutation]
+    [projectId, system, createAndStartTaskMutation]
   );
 
   const handleUpdateTask = useCallback(

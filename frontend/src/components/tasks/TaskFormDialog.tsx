@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Globe2 } from 'lucide-react';
+import { Globe2, Settings2, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ImageUploadSection } from '@/components/ui/ImageUploadSection';
 import {
@@ -18,8 +18,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { templatesApi, imagesApi } from '@/lib/api';
-import type { TaskStatus, TaskTemplate, ImageResponse } from 'shared/types';
+import { templatesApi, imagesApi, projectsApi } from '@/lib/api';
+import type {
+  TaskStatus,
+  TaskTemplate,
+  ImageResponse,
+  GitBranch,
+  BaseCodingAgent,
+  ExecutorProfileId,
+} from 'shared/types';
+import { useUserSystem } from '@/components/config-provider';
 
 interface Task {
   id: string;
@@ -46,7 +54,9 @@ interface TaskFormDialogProps {
   onCreateAndStartTask?: (
     title: string,
     description: string,
-    imageIds?: string[]
+    imageIds?: string[],
+    baseBranch?: string,
+    executorProfile?: ExecutorProfileId
   ) => Promise<void>;
   onUpdateTask?: (
     title: string,
@@ -79,7 +89,13 @@ export function TaskFormDialog({
   const [newlyUploadedImageIds, setNewlyUploadedImageIds] = useState<string[]>(
     []
   );
+  const [branches, setBranches] = useState<GitBranch[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string>('');
+  const [selectedExecutorProfile, setSelectedExecutorProfile] =
+    useState<ExecutorProfileId | null>(null);
+  const [quickstartExpanded, setQuickstartExpanded] = useState<boolean>(false);
 
+  const { system, profiles } = useUserSystem();
   const isEditMode = Boolean(task);
 
   // Check if there's any content that would be lost
@@ -159,21 +175,37 @@ export function TaskFormDialog({
     }
   }, [task, initialTask, initialTemplate, isOpen]);
 
-  // Fetch templates when dialog opens in create mode
+  // Fetch templates and branches when dialog opens in create mode
   useEffect(() => {
     if (isOpen && !isEditMode && projectId) {
       // Fetch both project and global templates
       Promise.all([
         templatesApi.listByProject(projectId),
         templatesApi.listGlobal(),
+        projectsApi.getBranches(projectId),
       ])
-        .then(([projectTemplates, globalTemplates]) => {
+        .then(([projectTemplates, globalTemplates, projectBranches]) => {
           // Combine templates with project templates first
           setTemplates([...projectTemplates, ...globalTemplates]);
+
+          // Set branches and default to current branch
+          setBranches(projectBranches);
+          const currentBranch = projectBranches.find((b) => b.is_current);
+          const defaultBranch = currentBranch || projectBranches[0];
+          if (defaultBranch) {
+            setSelectedBranch(defaultBranch.name);
+          }
         })
         .catch(console.error);
     }
   }, [isOpen, isEditMode, projectId]);
+
+  // Set default executor from config (following TaskDetailsToolbar pattern)
+  useEffect(() => {
+    if (system.config?.executor_profile) {
+      setSelectedExecutorProfile(system.config.executor_profile);
+    }
+  }, [system.config?.executor_profile]);
 
   // Handle template selection
   const handleTemplateChange = (templateId: string) => {
@@ -244,6 +276,9 @@ export function TaskFormDialog({
         setStatus('todo');
         setImages([]);
         setNewlyUploadedImageIds([]);
+        setSelectedBranch('');
+        setSelectedExecutorProfile(system.config?.executor_profile || null);
+        setQuickstartExpanded(false);
       }
 
       onOpenChange(false);
@@ -260,6 +295,7 @@ export function TaskFormDialog({
     onOpenChange,
     newlyUploadedImageIds,
     images,
+    system.config?.executor_profile,
   ]);
 
   const handleCreateAndStart = useCallback(async () => {
@@ -270,7 +306,13 @@ export function TaskFormDialog({
       if (!isEditMode && onCreateAndStartTask) {
         const imageIds =
           newlyUploadedImageIds.length > 0 ? newlyUploadedImageIds : undefined;
-        await onCreateAndStartTask(title, description, imageIds);
+        await onCreateAndStartTask(
+          title,
+          description,
+          imageIds,
+          selectedBranch || undefined,
+          selectedExecutorProfile || undefined
+        );
       }
 
       // Reset form on successful creation
@@ -279,6 +321,9 @@ export function TaskFormDialog({
       setStatus('todo');
       setImages([]);
       setNewlyUploadedImageIds([]);
+      setSelectedBranch('');
+      setSelectedExecutorProfile(system.config?.executor_profile || null);
+      setQuickstartExpanded(false);
 
       onOpenChange(false);
     } finally {
@@ -291,6 +336,9 @@ export function TaskFormDialog({
     onCreateAndStartTask,
     onOpenChange,
     newlyUploadedImageIds,
+    selectedBranch,
+    selectedExecutorProfile,
+    system.config?.executor_profile,
   ]);
 
   const handleCancel = useCallback(() => {
@@ -490,6 +538,155 @@ export function TaskFormDialog({
                     <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+
+            {!isEditMode && onCreateAndStartTask && (
+              <div className="pt-2">
+                <details
+                  className="group"
+                  open={quickstartExpanded}
+                  onToggle={(e) =>
+                    setQuickstartExpanded((e.target as HTMLDetailsElement).open)
+                  }
+                >
+                  <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-2">
+                    <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                    <Settings2 className="h-3 w-3" />
+                    Quickstart
+                  </summary>
+                  <div className="mt-3 space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      Configuration for "Create & Start" workflow
+                    </p>
+
+                    {/* Executor Profile Selector */}
+                    {profiles && (
+                      <div>
+                        <Label
+                          htmlFor="executor-profile"
+                          className="text-sm font-medium"
+                        >
+                          Executor Profile
+                        </Label>
+                        <Select
+                          value={selectedExecutorProfile?.executor || ''}
+                          onValueChange={(value) => {
+                            setSelectedExecutorProfile({
+                              executor: value as BaseCodingAgent,
+                              variant: null,
+                            });
+                          }}
+                          disabled={isSubmitting || isSubmittingAndStart}
+                        >
+                          <SelectTrigger className="mt-1.5">
+                            <SelectValue placeholder="Select executor profile" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.keys(profiles)
+                              .sort((a, b) => a.localeCompare(b))
+                              .map((executorKey) => (
+                                <SelectItem
+                                  key={executorKey}
+                                  value={executorKey}
+                                >
+                                  {executorKey}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {/* Variant Selector (conditional) */}
+                    {selectedExecutorProfile &&
+                      profiles &&
+                      (() => {
+                        const currentProfile =
+                          profiles[selectedExecutorProfile.executor];
+                        const hasVariants =
+                          currentProfile &&
+                          Object.keys(currentProfile).length > 0;
+
+                        if (hasVariants && currentProfile) {
+                          return (
+                            <div>
+                              <Label
+                                htmlFor="executor-variant"
+                                className="text-sm font-medium"
+                              >
+                                Variant
+                              </Label>
+                              <Select
+                                value={
+                                  selectedExecutorProfile.variant || 'DEFAULT'
+                                }
+                                onValueChange={(value) => {
+                                  setSelectedExecutorProfile({
+                                    ...selectedExecutorProfile,
+                                    variant: value === 'DEFAULT' ? null : value,
+                                  });
+                                }}
+                                disabled={isSubmitting || isSubmittingAndStart}
+                              >
+                                <SelectTrigger className="mt-1.5">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.keys(currentProfile).map(
+                                    (variantKey) => (
+                                      <SelectItem
+                                        key={variantKey}
+                                        value={variantKey}
+                                      >
+                                        {variantKey}
+                                      </SelectItem>
+                                    )
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+
+                    {/* Branch Selector */}
+                    {branches.length > 0 && (
+                      <div>
+                        <Label
+                          htmlFor="base-branch"
+                          className="text-sm font-medium"
+                        >
+                          Branch
+                        </Label>
+                        <Select
+                          value={selectedBranch}
+                          onValueChange={setSelectedBranch}
+                          disabled={isSubmitting || isSubmittingAndStart}
+                        >
+                          <SelectTrigger className="mt-1.5">
+                            <SelectValue placeholder="Select branch" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {branches.map((branch) => (
+                              <SelectItem key={branch.name} value={branch.name}>
+                                <div className="flex items-center gap-2">
+                                  <span>{branch.name}</span>
+                                  {branch.is_current && (
+                                    <span className="text-xs text-muted-foreground">
+                                      (current)
+                                    </span>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+                </details>
               </div>
             )}
 
