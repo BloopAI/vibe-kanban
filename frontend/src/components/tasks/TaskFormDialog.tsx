@@ -76,7 +76,6 @@ export function TaskFormDialog({
   initialTemplate,
   initialTask,
   initialBaseBranch,
-  parentTaskAttemptId,
   onCreateTask,
   onCreateAndStartTask,
   onUpdateTask,
