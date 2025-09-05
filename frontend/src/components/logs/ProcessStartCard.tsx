@@ -9,6 +9,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { ProcessStartPayload } from '@/types/logs';
 import type { ExecutorAction } from 'shared/types';
+import { PROCESS_RUN_REASONS } from '@/constants/processes';
 
 interface ProcessStartCardProps {
   payload: ProcessStartPayload;
@@ -23,7 +24,6 @@ interface ProcessStartCardProps {
 const extractPromptFromAction = (
   action?: ExecutorAction | null
 ): string | null => {
-  console.log(action);
   if (!action) return null;
   const t = action.typ as any;
   if (t && typeof t.prompt === 'string' && t.prompt.trim()) return t.prompt;
@@ -41,13 +41,13 @@ function ProcessStartCard({
 }: ProcessStartCardProps) {
   const getProcessIcon = (runReason: string) => {
     switch (runReason) {
-      case 'setupscript':
+      case PROCESS_RUN_REASONS.SETUP_SCRIPT:
         return <Cog className="h-4 w-4" />;
-      case 'cleanupscript':
+      case PROCESS_RUN_REASONS.CLEANUP_SCRIPT:
         return <Terminal className="h-4 w-4" />;
-      case 'codingagent':
+      case PROCESS_RUN_REASONS.CODING_AGENT:
         return <UserRound className="h-4 w-4" />;
-      case 'devserver':
+      case PROCESS_RUN_REASONS.DEV_SERVER:
         return <Play className="h-4 w-4" />;
       default:
         return <Cog className="h-4 w-4" />;
@@ -55,16 +55,16 @@ function ProcessStartCard({
   };
 
   const getProcessLabel = (p: ProcessStartPayload) => {
-    if (p.runReason === 'codingagent') {
+    if (p.runReason === PROCESS_RUN_REASONS.CODING_AGENT) {
       const prompt = extractPromptFromAction(p.action);
       return prompt || 'Coding Agent';
     }
     switch (p.runReason) {
-      case 'setupscript':
+      case PROCESS_RUN_REASONS.SETUP_SCRIPT:
         return 'Setup Script';
-      case 'cleanupscript':
+      case PROCESS_RUN_REASONS.CLEANUP_SCRIPT:
         return 'Cleanup Script';
-      case 'devserver':
+      case PROCESS_RUN_REASONS.DEV_SERVER:
         return 'Dev Server';
       default:
         return p.runReason;
@@ -83,7 +83,8 @@ function ProcessStartCard({
   };
 
   const label = getProcessLabel(payload);
-  const shouldTruncate = isCollapsed && payload.runReason === 'codingagent';
+  const shouldTruncate =
+    isCollapsed && payload.runReason === PROCESS_RUN_REASONS.CODING_AGENT;
 
   return (
     <div className="pl-16 pb-2 w-full">
@@ -109,33 +110,35 @@ function ProcessStartCard({
               {label}
             </span>
           </div>
-          {onRestore && payload.runReason === 'codingagent' && (
-            <button
-              className={cn(
-                'ml-2 group w-20 flex items-center gap-1 px-1.5 py-1 rounded transition-colors',
-                restoreDisabled
-                  ? 'cursor-not-allowed text-muted-foreground/60 bg-muted/40'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-              )}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (restoreDisabled) return;
-                onRestore(restoreProcessId || payload.processId);
-              }}
-              title={
-                restoreDisabled
-                  ? restoreDisabledReason || 'Restore is currently unavailable.'
-                  : 'Restore to this checkpoint (deletes later history)'
-              }
-              aria-label="Restore to this checkpoint"
-              disabled={!!restoreDisabled}
-            >
-              <History className="h-4 w-4" />
-              <span className="text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                Restore
-              </span>
-            </button>
-          )}
+          {onRestore &&
+            payload.runReason === PROCESS_RUN_REASONS.CODING_AGENT && (
+              <button
+                className={cn(
+                  'ml-2 group w-20 flex items-center gap-1 px-1.5 py-1 rounded transition-colors',
+                  restoreDisabled
+                    ? 'cursor-not-allowed text-muted-foreground/60 bg-muted/40'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (restoreDisabled) return;
+                  onRestore(restoreProcessId || payload.processId);
+                }}
+                title={
+                  restoreDisabled
+                    ? restoreDisabledReason ||
+                      'Restore is currently unavailable.'
+                    : 'Restore to this checkpoint (deletes later history)'
+                }
+                aria-label="Restore to this checkpoint"
+                disabled={!!restoreDisabled}
+              >
+                <History className="h-4 w-4" />
+                <span className="text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                  Restore
+                </span>
+              </button>
+            )}
 
           <div
             className={cn(
