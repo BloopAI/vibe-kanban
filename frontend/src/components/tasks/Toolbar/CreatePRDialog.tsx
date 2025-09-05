@@ -21,12 +21,18 @@ import { useCallback, useEffect, useState } from 'react';
 import { attemptsApi } from '@/lib/api.ts';
 import { ProvidePatDialog } from '@/components/ProvidePatDialog';
 
-import { GitHubServiceError, TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
+import {
+  GitHubServiceError,
+  TaskAttempt,
+  TaskWithAttemptStatus,
+} from 'shared/types';
 import { useProjectBranches } from '@/hooks';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 const CreatePrDialog = NiceModal.create(() => {
   const modal = useModal();
-  const data = modal.args as { attempt: TaskAttempt; task: TaskWithAttemptStatus; projectId: string } | undefined;
+  const data = modal.args as
+    | { attempt: TaskAttempt; task: TaskWithAttemptStatus; projectId: string }
+    | undefined;
   const [prTitle, setPrTitle] = useState('');
   const [prBody, setPrBody] = useState('');
   const [prBaseBranch, setPrBaseBranch] = useState('main');
@@ -91,13 +97,7 @@ const CreatePrDialog = NiceModal.create(() => {
       }
     }
     setCreatingPR(false);
-  }, [
-    data,
-    prBaseBranch,
-    prBody,
-    prTitle,
-    modal,
-  ]);
+  }, [data, prBaseBranch, prBody, prTitle, modal]);
 
   const handleCancelCreatePR = useCallback(() => {
     modal.hide();
