@@ -1,11 +1,11 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { TaskFormDialog } from './TaskFormDialog';
 import { useTaskDialog } from '@/contexts/task-dialog-context';
 import { useProject } from '@/contexts/project-context';
-import { tasksApi } from '@/lib/api';
-import type { TaskStatus, CreateTask } from 'shared/types';
+import { tasksApi, configApi } from '@/lib/api';
+import type { TaskStatus, CreateTask, CreateAndStartTaskRequest } from 'shared/types';
 
 /**
  * Container component that bridges the TaskDialogContext with TaskFormDialog
@@ -16,6 +16,12 @@ export function TaskFormDialogContainer() {
   const { projectId } = useProject();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  // Fetch config to get the executor profile
+  const { data: systemInfo } = useQuery({
+    queryKey: ['config'],
+    queryFn: configApi.getConfig,
+  });
 
   // React Query mutations
   const createTaskMutation = useMutation({
@@ -37,7 +43,7 @@ export function TaskFormDialogContainer() {
   });
 
   const createAndStartTaskMutation = useMutation({
-    mutationFn: (data: CreateTask) => tasksApi.createAndStart(data),
+    mutationFn: (data: CreateAndStartTaskRequest) => tasksApi.createAndStart(data),
     onSuccess: (result) => {
       // Invalidate and refetch tasks list
       queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
@@ -85,18 +91,22 @@ export function TaskFormDialogContainer() {
   );
 
   const handleCreateAndStartTask = useCallback(
-    async (title: string, description: string, imageIds?: string[]) => {
-      if (!projectId) return;
+    async (title: string, description: string, imageIds?: string[], baseBranch?: string) => {
+      if (!projectId || !systemInfo?.config.executor_profile || !baseBranch) return;
 
       createAndStartTaskMutation.mutate({
-        project_id: projectId,
-        title,
-        description: description || null,
-        parent_task_attempt: null,
-        image_ids: imageIds || null,
+        task: {
+          project_id: projectId,
+          title,
+          description: description || null,
+          parent_task_attempt: null,
+          image_ids: imageIds || null,
+        },
+        executor_profile_id: systemInfo.config.executor_profile,
+        base_branch: baseBranch,
       });
     },
-    [projectId, createAndStartTaskMutation]
+    [projectId, systemInfo, createAndStartTaskMutation]
   );
 
   const handleUpdateTask = useCallback(

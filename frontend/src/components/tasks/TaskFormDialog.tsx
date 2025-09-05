@@ -18,8 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { templatesApi, imagesApi } from '@/lib/api';
-import type { TaskStatus, TaskTemplate, ImageResponse } from 'shared/types';
+import { templatesApi, imagesApi, projectsApi } from '@/lib/api';
+import type { TaskStatus, TaskTemplate, ImageResponse, GitBranch } from 'shared/types';
 
 interface Task {
   id: string;
@@ -46,7 +46,8 @@ interface TaskFormDialogProps {
   onCreateAndStartTask?: (
     title: string,
     description: string,
-    imageIds?: string[]
+    imageIds?: string[],
+    baseBranch?: string
   ) => Promise<void>;
   onUpdateTask?: (
     title: string,
@@ -79,6 +80,8 @@ export function TaskFormDialog({
   const [newlyUploadedImageIds, setNewlyUploadedImageIds] = useState<string[]>(
     []
   );
+  const [branches, setBranches] = useState<GitBranch[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string>('');
 
   const isEditMode = Boolean(task);
 
@@ -159,17 +162,26 @@ export function TaskFormDialog({
     }
   }, [task, initialTask, initialTemplate, isOpen]);
 
-  // Fetch templates when dialog opens in create mode
+  // Fetch templates and branches when dialog opens in create mode
   useEffect(() => {
     if (isOpen && !isEditMode && projectId) {
       // Fetch both project and global templates
       Promise.all([
         templatesApi.listByProject(projectId),
         templatesApi.listGlobal(),
+        projectsApi.getBranches(projectId),
       ])
-        .then(([projectTemplates, globalTemplates]) => {
+        .then(([projectTemplates, globalTemplates, projectBranches]) => {
           // Combine templates with project templates first
           setTemplates([...projectTemplates, ...globalTemplates]);
+          
+          // Set branches and default to current branch
+          setBranches(projectBranches);
+          const currentBranch = projectBranches.find(b => b.is_current);
+          const defaultBranch = currentBranch || projectBranches[0];
+          if (defaultBranch) {
+            setSelectedBranch(defaultBranch.name);
+          }
         })
         .catch(console.error);
     }
@@ -244,6 +256,7 @@ export function TaskFormDialog({
         setStatus('todo');
         setImages([]);
         setNewlyUploadedImageIds([]);
+        setSelectedBranch('');
       }
 
       onOpenChange(false);
@@ -270,7 +283,7 @@ export function TaskFormDialog({
       if (!isEditMode && onCreateAndStartTask) {
         const imageIds =
           newlyUploadedImageIds.length > 0 ? newlyUploadedImageIds : undefined;
-        await onCreateAndStartTask(title, description, imageIds);
+        await onCreateAndStartTask(title, description, imageIds, selectedBranch || undefined);
       }
 
       // Reset form on successful creation
@@ -279,6 +292,7 @@ export function TaskFormDialog({
       setStatus('todo');
       setImages([]);
       setNewlyUploadedImageIds([]);
+      setSelectedBranch('');
 
       onOpenChange(false);
     } finally {
@@ -488,6 +502,35 @@ export function TaskFormDialog({
                     <SelectItem value="inreview">In Review</SelectItem>
                     <SelectItem value="done">Done</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {!isEditMode && onCreateAndStartTask && branches.length > 0 && (
+              <div className="pt-2">
+                <Label htmlFor="base-branch" className="text-sm font-medium">
+                  Base Branch
+                </Label>
+                <Select
+                  value={selectedBranch}
+                  onValueChange={setSelectedBranch}
+                  disabled={isSubmitting || isSubmittingAndStart}
+                >
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue placeholder="Select base branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branches.map((branch) => (
+                      <SelectItem key={branch.name} value={branch.name}>
+                        <div className="flex items-center gap-2">
+                          <span>{branch.name}</span>
+                          {branch.is_current && (
+                            <span className="text-xs text-muted-foreground">(current)</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
