@@ -68,7 +68,9 @@ function AppContent() {
         setShowOnboarding(!config.onboarding_acknowledged);
         if (config.onboarding_acknowledged) {
           if (!config.github_login_acknowledged) {
-            NiceModal.show('github-login').then(() => handleGitHubLoginComplete());
+            NiceModal.show('github-login').then(() =>
+              handleGitHubLoginComplete()
+            );
           } else if (!config.telemetry_acknowledged) {
             setShowPrivacyOptIn(true);
           } else if (config.show_release_notes) {
