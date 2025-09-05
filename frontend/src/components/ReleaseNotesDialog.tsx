@@ -8,20 +8,17 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, AlertCircle } from 'lucide-react';
-
-interface ReleaseNotesDialogProps {
-  open: boolean;
-  onClose: () => void;
-}
+import NiceModal, { useModal } from '@ebay/nice-modal-react';
 
 const RELEASE_NOTES_URL = 'https://vibekanban.com/release-notes';
 
-export function ReleaseNotesDialog({ open, onClose }: ReleaseNotesDialogProps) {
+export const ReleaseNotesDialog = NiceModal.create(() => {
+  const modal = useModal();
   const [iframeError, setIframeError] = useState(false);
 
   const handleOpenInBrowser = () => {
     window.open(RELEASE_NOTES_URL, '_blank');
-    onClose();
+    modal.hide();
   };
 
   const handleIframeError = () => {
@@ -29,7 +26,7 @@ export function ReleaseNotesDialog({ open, onClose }: ReleaseNotesDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={modal.visible} onOpenChange={(open) => !open && modal.hide()}>
       <DialogContent className="flex flex-col w-full h-full max-w-7xl max-h-[calc(100dvh-1rem)] p-0">
         <DialogHeader className="p-4 border-b flex-shrink-0">
           <DialogTitle className="text-xl font-semibold">
@@ -86,4 +83,4 @@ export function ReleaseNotesDialog({ open, onClose }: ReleaseNotesDialogProps) {
       </DialogContent>
     </Dialog>
   );
-}
+});

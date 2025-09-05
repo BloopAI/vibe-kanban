@@ -1,9 +1,13 @@
 import type {
   TaskAttempt,
   TaskWithAttemptStatus,
-  TaskTemplate,
 } from 'shared/types';
 import type { ConfirmDialogProps } from '@/components/modals/ConfirmDialog';
+import type { ProvidePatDialogProps } from '@/components/ProvidePatDialog';
+import type { DeleteTaskConfirmationDialogProps } from '@/components/tasks/DeleteTaskConfirmationDialog';
+import type { DeleteFileConfirmationDialogProps } from '@/components/tasks/DeleteFileConfirmationDialog';
+import type { TaskFormDialogProps } from '@/components/tasks/TaskFormDialog';
+import type { EditorSelectionDialogProps } from '@/components/tasks/EditorSelectionDialog';
 
 // Type definitions for nice-modal-react modal arguments
 declare module '@ebay/nice-modal-react' {
@@ -19,32 +23,18 @@ declare module '@ebay/nice-modal-react' {
     // Generic modals
     confirm: ConfirmDialogProps;
 
-    // App flow modals (to be converted)
+    // App flow modals
     disclaimer: void;
     onboarding: void;
     'privacy-opt-in': void;
-    'provide-pat': {
-      errorMessage?: string;
-    };
+    'provide-pat': ProvidePatDialogProps;
     'release-notes': void;
 
-    // Task-related modals (to be converted)
-    'task-form': {
-      mode: 'create' | 'edit';
-      task?: TaskWithAttemptStatus;
-      initialTemplate?: TaskTemplate;
-    };
-    'delete-task': {
-      task: TaskWithAttemptStatus;
-      projectId: string;
-    };
-    'delete-file': {
-      filePath: string;
-      attemptId: string;
-    };
-    'editor-selection': {
-      attempt: TaskAttempt;
-    };
+    // Task-related modals
+    'task-form': TaskFormDialogProps;
+    'delete-task-confirmation': DeleteTaskConfirmationDialogProps;
+    'delete-file-confirmation': DeleteFileConfirmationDialogProps;
+    'editor-selection': EditorSelectionDialogProps;
   }
 }
 

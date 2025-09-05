@@ -19,7 +19,6 @@ import {
 } from '@/components/ui/select';
 import { useCallback, useEffect, useState } from 'react';
 import { attemptsApi } from '@/lib/api.ts';
-import { ProvidePatDialog } from '@/components/ProvidePatDialog';
 
 import {
   GitHubServiceError,
@@ -36,8 +35,6 @@ const CreatePrDialog = NiceModal.create(() => {
   const [prTitle, setPrTitle] = useState('');
   const [prBody, setPrBody] = useState('');
   const [prBaseBranch, setPrBaseBranch] = useState('main');
-  const [showPatDialog, setShowPatDialog] = useState(false);
-  const [patDialogError, setPatDialogError] = useState<string | null>(null);
   const [creatingPR, setCreatingPR] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,14 +77,12 @@ const CreatePrDialog = NiceModal.create(() => {
             NiceModal.show('github-login');
             break;
           case GitHubServiceError.INSUFFICIENT_PERMISSIONS:
-            // ProvidePatDialog still uses old pattern - will be converted later
-            setShowPatDialog(true);
+            NiceModal.show('provide-pat');
             break;
           case GitHubServiceError.REPO_NOT_FOUND_OR_NO_ACCESS:
-            setPatDialogError(
-              'Your token does not have access to this repository, or the repository does not exist. Please check the repository URL and/or provide a Personal Access Token with access.'
-            );
-            setShowPatDialog(true);
+            NiceModal.show('provide-pat', {
+              errorMessage: 'Your token does not have access to this repository, or the repository does not exist. Please check the repository URL and/or provide a Personal Access Token with access.'
+            });
             break;
         }
       } else if (result.message) {
@@ -193,15 +188,6 @@ const CreatePrDialog = NiceModal.create(() => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <ProvidePatDialog
-        open={showPatDialog}
-        onOpenChange={(open) => {
-          setShowPatDialog(open);
-          if (!open) setPatDialogError(null);
-        }}
-        errorMessage={patDialogError || undefined}
-      />
     </>
   );
 });

@@ -7,12 +7,11 @@ import {
   useMemo,
 } from 'react';
 import type { TaskAttempt } from 'shared/types';
+import NiceModal from '@ebay/nice-modal-react';
 
 interface EditorDialogState {
-  isOpen: boolean;
   selectedAttempt: TaskAttempt | null;
   showEditorDialog: (attempt: TaskAttempt) => void;
-  closeEditorDialog: () => void;
 }
 
 const EditorDialogContext = createContext<EditorDialogState | null>(null);
@@ -22,29 +21,21 @@ interface EditorDialogProviderProps {
 }
 
 export function EditorDialogProvider({ children }: EditorDialogProviderProps) {
-  const [isOpen, setIsOpen] = useState(false);
   const [selectedAttempt, setSelectedAttempt] = useState<TaskAttempt | null>(
     null
   );
 
   const showEditorDialog = useCallback((attempt: TaskAttempt) => {
     setSelectedAttempt(attempt);
-    setIsOpen(true);
-  }, []);
-
-  const closeEditorDialog = useCallback(() => {
-    setIsOpen(false);
-    setSelectedAttempt(null);
+    NiceModal.show('editor-selection', { selectedAttempt: attempt });
   }, []);
 
   const value = useMemo(
     () => ({
-      isOpen,
       selectedAttempt,
       showEditorDialog,
-      closeEditorDialog,
     }),
-    [isOpen, selectedAttempt, showEditorDialog, closeEditorDialog]
+    [selectedAttempt, showEditorDialog]
   );
 
   return (

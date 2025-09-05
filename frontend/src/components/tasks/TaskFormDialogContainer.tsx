@@ -1,11 +1,11 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { TaskFormDialog } from './TaskFormDialog';
 import { useTaskDialog } from '@/contexts/task-dialog-context';
 import { useProject } from '@/contexts/project-context';
 import { tasksApi } from '@/lib/api';
 import type { TaskStatus, CreateTask } from 'shared/types';
+import NiceModal from '@ebay/nice-modal-react';
 
 /**
  * Container component that bridges the TaskDialogContext with TaskFormDialog
@@ -122,17 +122,24 @@ export function TaskFormDialogContainer() {
     [dialogState.task, updateTaskMutation]
   );
 
-  return (
-    <TaskFormDialog
-      isOpen={dialogState.isOpen}
-      onOpenChange={(open) => !open && close()}
-      task={dialogState.task}
-      projectId={projectId || undefined}
-      initialTemplate={dialogState.initialTemplate}
-      initialTask={dialogState.initialTask}
-      onCreateTask={handleCreateTask}
-      onCreateAndStartTask={handleCreateAndStartTask}
-      onUpdateTask={handleUpdateTask}
-    />
-  );
+  // Show modal when dialogState.isOpen becomes true
+  if (dialogState.isOpen) {
+    NiceModal.show('task-form', {
+      task: dialogState.task,
+      projectId: projectId || undefined,
+      initialTemplate: dialogState.initialTemplate,
+      initialTask: dialogState.initialTask,
+      onCreateTask: handleCreateTask,
+      onCreateAndStartTask: handleCreateAndStartTask,
+      onUpdateTask: handleUpdateTask,
+    }).then(() => {
+      // Modal was closed, update context
+      close();
+    }).catch(() => {
+      // Modal was cancelled/closed
+      close();
+    });
+  }
+
+  return null;
 }

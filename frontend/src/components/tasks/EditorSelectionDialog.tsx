@@ -17,30 +17,34 @@ import {
 } from '@/components/ui/select';
 import { EditorType, TaskAttempt } from 'shared/types';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
+import NiceModal, { useModal } from '@ebay/nice-modal-react';
 
-interface EditorSelectionDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
+export interface EditorSelectionDialogProps {
   selectedAttempt: TaskAttempt | null;
 }
 
-export function EditorSelectionDialog({
-  isOpen,
-  onClose,
+export const EditorSelectionDialog = NiceModal.create<EditorSelectionDialogProps>(({
   selectedAttempt,
-}: EditorSelectionDialogProps) {
-  const handleOpenInEditor = useOpenInEditor(selectedAttempt, onClose);
+}) => {
+  const modal = useModal();
+  const handleOpenInEditor = useOpenInEditor(selectedAttempt, () => modal.hide());
   const [selectedEditor, setSelectedEditor] = useState<EditorType>(
     EditorType.VS_CODE
   );
 
   const handleConfirm = () => {
     handleOpenInEditor(selectedEditor);
-    onClose();
+    modal.resolve(selectedEditor);
+    modal.hide();
+  };
+
+  const handleCancel = () => {
+    modal.resolve(null);
+    modal.hide();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={modal.visible} onOpenChange={(open) => !open && handleCancel()}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Choose Editor</DialogTitle>
@@ -70,7 +74,7 @@ export function EditorSelectionDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={handleCancel}>
             Cancel
           </Button>
           <Button onClick={handleConfirm}>Open Editor</Button>
@@ -78,4 +82,4 @@ export function EditorSelectionDialog({
       </DialogContent>
     </Dialog>
   );
-}
+});

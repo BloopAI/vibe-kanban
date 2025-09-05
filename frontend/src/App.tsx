@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import {
   BrowserRouter,
   Route,
@@ -16,17 +16,12 @@ import {
   AgentSettings,
   McpSettings,
 } from '@/pages/settings/';
-import { OnboardingDialog } from '@/components/OnboardingDialog';
-import { PrivacyOptInDialog } from '@/components/PrivacyOptInDialog';
 import { ConfigProvider, useConfig } from '@/components/config-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SearchProvider } from '@/contexts/search-context';
 import {
   EditorDialogProvider,
-  useEditorDialog,
 } from '@/contexts/editor-dialog-context';
-
-import { EditorSelectionDialog } from '@/components/tasks/EditorSelectionDialog';
 
 import { TaskDialogProvider } from '@/contexts/task-dialog-context';
 import { TaskFormDialogContainer } from '@/components/tasks/TaskFormDialogContainer';
@@ -38,7 +33,7 @@ import { configApi } from '@/lib/api';
 import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
 
-import { ReleaseNotesDialog } from '@/components/ReleaseNotesDialog';
+
 import { AppWithStyleOverride } from '@/utils/style-override';
 import { WebviewContextMenu } from '@/vscode/ContextMenu';
 import { DevBanner } from '@/components/DevBanner';
@@ -49,14 +44,7 @@ const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 function AppContent() {
   const { config, updateConfig, loading } = useConfig();
   const location = useLocation();
-  const {
-    isOpen: editorDialogOpen,
-    selectedAttempt,
-    closeEditorDialog,
-  } = useEditorDialog();
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showPrivacyOptIn, setShowPrivacyOptIn] = useState(false);
-  const [showReleaseNotes, setShowReleaseNotes] = useState(false);
+
   const showNavbar = !location.pathname.endsWith('/full');
 
   useEffect(() => {
@@ -69,13 +57,24 @@ function AppContent() {
           }
         });
       } else if (!config.onboarding_acknowledged) {
-        setShowOnboarding(true);
+        NiceModal.show('onboarding').then((result) => {
+          if (result !== 'canceled') {
+            handleOnboardingComplete(result as {
+              profile: ExecutorProfileId;
+              editor: { editor_type: EditorType; custom_command: string | null };
+            });
+          }
+        });
       } else if (!config.github_login_acknowledged) {
         NiceModal.show('github-login').then(() => handleGitHubLoginComplete());
       } else if (!config.telemetry_acknowledged) {
-        setShowPrivacyOptIn(true);
+        NiceModal.show('privacy-opt-in').then((result) => {
+          handlePrivacyOptInComplete(result as boolean);
+        });
       } else if (config.show_release_notes) {
-        setShowReleaseNotes(true);
+        NiceModal.show('release-notes').then(() => {
+          handleReleaseNotesClose();
+        });
       }
     }
   }, [config]);
@@ -87,7 +86,17 @@ function AppContent() {
 
     try {
       await configApi.saveConfig({ ...config, disclaimer_acknowledged: true });
-      setShowOnboarding(!config.onboarding_acknowledged);
+      // Trigger onboarding after disclaimer is accepted
+      if (!config.onboarding_acknowledged) {
+        NiceModal.show('onboarding').then((result) => {
+          if (result !== 'canceled') {
+            handleOnboardingComplete(result as {
+              profile: ExecutorProfileId;
+              editor: { editor_type: EditorType; custom_command: string | null };
+            });
+          }
+        });
+      }
     } catch (err) {
       console.error('Error saving config:', err);
     }
@@ -110,7 +119,6 @@ function AppContent() {
 
     try {
       await configApi.saveConfig(updatedConfig);
-      setShowOnboarding(false);
     } catch (err) {
       console.error('Error saving config:', err);
     }
@@ -129,10 +137,6 @@ function AppContent() {
 
     try {
       await configApi.saveConfig(updatedConfig);
-      setShowPrivacyOptIn(false);
-      if (updatedConfig.show_release_notes) {
-        setShowReleaseNotes(true);
-      }
     } catch (err) {
       console.error('Error saving config:', err);
     }
@@ -153,12 +157,6 @@ function AppContent() {
       await configApi.saveConfig(updatedConfig);
     } catch (err) {
       console.error('Error refreshing config:', err);
-    } finally {
-      if (!config?.telemetry_acknowledged) {
-        setShowPrivacyOptIn(true);
-      } else if (config?.show_release_notes) {
-        setShowReleaseNotes(true);
-      }
     }
   };
 
@@ -174,7 +172,6 @@ function AppContent() {
 
     try {
       await configApi.saveConfig(updatedConfig);
-      setShowReleaseNotes(false);
     } catch (err) {
       console.error('Error saving config:', err);
     }
@@ -195,23 +192,7 @@ function AppContent() {
           <div className="h-screen flex flex-col bg-background">
             {/* Custom context menu and VS Code-friendly interactions when embedded in iframe */}
             <WebviewContextMenu />
-            <OnboardingDialog
-              open={showOnboarding}
-              onComplete={handleOnboardingComplete}
-            />
-            <PrivacyOptInDialog
-              open={showPrivacyOptIn}
-              onComplete={handlePrivacyOptInComplete}
-            />
-            <ReleaseNotesDialog
-              open={showReleaseNotes}
-              onClose={handleReleaseNotesClose}
-            />
-            <EditorSelectionDialog
-              isOpen={editorDialogOpen}
-              onClose={closeEditorDialog}
-              selectedAttempt={selectedAttempt}
-            />
+
             <TaskFormDialogContainer />
             {showNavbar && <DevBanner />}
             {showNavbar && <Navbar />}

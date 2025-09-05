@@ -13,12 +13,28 @@ import { GitHubLoginDialog } from './components/GitHubLoginDialog';
 import CreatePRDialog from './components/tasks/Toolbar/CreatePRDialog';
 import { ConfirmDialog } from './components/modals/ConfirmDialog';
 import { DisclaimerDialog } from './components/DisclaimerDialog';
+import { OnboardingDialog } from './components/OnboardingDialog';
+import PrivacyOptInDialog from './components/PrivacyOptInDialog';
+import { ProvidePatDialog } from './components/ProvidePatDialog';
+import { ReleaseNotesDialog } from './components/ReleaseNotesDialog';
+import DeleteTaskConfirmationDialog from './components/tasks/DeleteTaskConfirmationDialog';
+import DeleteFileConfirmationDialog from './components/tasks/DeleteFileConfirmationDialog';
+import { TaskFormDialog } from './components/tasks/TaskFormDialog';
+import { EditorSelectionDialog } from './components/tasks/EditorSelectionDialog';
 
 // Register modals
 NiceModal.register('github-login', GitHubLoginDialog);
 NiceModal.register('create-pr', CreatePRDialog);
 NiceModal.register('confirm', ConfirmDialog);
 NiceModal.register('disclaimer', DisclaimerDialog);
+NiceModal.register('onboarding', OnboardingDialog);
+NiceModal.register('privacy-opt-in', PrivacyOptInDialog);
+NiceModal.register('provide-pat', ProvidePatDialog);
+NiceModal.register('release-notes', ReleaseNotesDialog);
+NiceModal.register('delete-task-confirmation', DeleteTaskConfirmationDialog);
+NiceModal.register('delete-file-confirmation', DeleteFileConfirmationDialog);
+NiceModal.register('task-form', TaskFormDialog);
+NiceModal.register('editor-selection', EditorSelectionDialog);
 // Install VS Code iframe keyboard bridge when running inside an iframe
 import './vscode/bridge';
 

@@ -10,45 +10,50 @@ import { Button } from '@/components/ui/button.tsx';
 import { attemptsApi } from '@/lib/api.ts';
 import { useTaskDeletingFiles } from '@/stores/useTaskDetailsUiStore';
 import type { Task, TaskAttempt } from 'shared/types';
+import NiceModal, { useModal } from '@ebay/nice-modal-react';
 
-type Props = {
+export interface DeleteFileConfirmationDialogProps {
   task: Task;
   projectId: string;
   selectedAttempt: TaskAttempt | null;
-};
+  fileToDelete: string;
+}
 
-function DeleteFileConfirmationDialog({
+const DeleteFileConfirmationDialog = NiceModal.create<DeleteFileConfirmationDialogProps>(({
   task,
-  projectId,
   selectedAttempt,
-}: Props) {
-  const { setDeletingFiles, fileToDelete, deletingFiles, setFileToDelete } =
-    useTaskDeletingFiles(task.id);
+  fileToDelete,
+}) => {
+  const modal = useModal();
+  const { setDeletingFiles, deletingFiles } = useTaskDeletingFiles(task.id);
 
   const handleConfirmDelete = async () => {
-    if (!fileToDelete || !projectId || !task?.id || !selectedAttempt?.id)
+    if (!fileToDelete || !task?.id || !selectedAttempt?.id)
       return;
 
     setDeletingFiles(new Set([...deletingFiles, fileToDelete]));
 
     try {
       await attemptsApi.deleteFile(selectedAttempt.id, fileToDelete);
+      modal.resolve(true);
     } catch (error: unknown) {
       console.error('Failed to delete file:', error);
+      modal.resolve(false);
     } finally {
       const newSet = new Set(deletingFiles);
       newSet.delete(fileToDelete);
       setDeletingFiles(newSet);
-      setFileToDelete(null);
+      modal.hide();
     }
   };
 
   const handleCancelDelete = () => {
-    setFileToDelete(null);
+    modal.resolve(false);
+    modal.hide();
   };
 
   return (
-    <Dialog open={!!fileToDelete} onOpenChange={() => handleCancelDelete()}>
+    <Dialog open={modal.visible} onOpenChange={(open) => !open && handleCancelDelete()}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Delete File</DialogTitle>
@@ -82,6 +87,6 @@ function DeleteFileConfirmationDialog({
       </DialogContent>
     </Dialog>
   );
-}
+});
 
 export default DeleteFileConfirmationDialog;

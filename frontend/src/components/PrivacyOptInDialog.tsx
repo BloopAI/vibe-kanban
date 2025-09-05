@@ -9,16 +9,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Shield, CheckCircle, XCircle, Settings } from 'lucide-react';
 import { useConfig } from '@/components/config-provider';
+import NiceModal, { useModal } from '@ebay/nice-modal-react';
 
-interface PrivacyOptInDialogProps {
-  open: boolean;
-  onComplete: (telemetryEnabled: boolean) => void;
-}
-
-export function PrivacyOptInDialog({
-  open,
-  onComplete,
-}: PrivacyOptInDialogProps) {
+const PrivacyOptInDialog = NiceModal.create(() => {
+  const modal = useModal();
   const { config } = useConfig();
 
   // Check if user is authenticated with GitHub
@@ -26,15 +20,15 @@ export function PrivacyOptInDialog({
     config?.github?.username && config?.github?.oauth_token;
 
   const handleOptIn = () => {
-    onComplete(true);
+    modal.resolve(true);
   };
 
   const handleOptOut = () => {
-    onComplete(false);
+    modal.resolve(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
+    <Dialog open={modal.visible} onOpenChange={() => modal.resolve(false)}>
       <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -118,4 +112,6 @@ export function PrivacyOptInDialog({
       </DialogContent>
     </Dialog>
   );
-}
+});
+
+export default PrivacyOptInDialog;

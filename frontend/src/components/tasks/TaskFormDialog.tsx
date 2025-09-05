@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { templatesApi, imagesApi } from '@/lib/api';
 import type { TaskStatus, TaskTemplate, ImageResponse } from 'shared/types';
+import NiceModal, { useModal } from '@ebay/nice-modal-react';
 
 interface Task {
   id: string;
@@ -31,42 +32,30 @@ interface Task {
   updated_at: string;
 }
 
-interface TaskFormDialogProps {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
+export interface TaskFormDialogProps {
   task?: Task | null; // Optional for create mode
   projectId?: string; // For file search functionality
   initialTemplate?: TaskTemplate | null; // For pre-filling from template
   initialTask?: Task | null; // For duplicating an existing task
-  onCreateTask?: (
-    title: string,
-    description: string,
-    imageIds?: string[]
-  ) => Promise<void>;
-  onCreateAndStartTask?: (
-    title: string,
-    description: string,
-    imageIds?: string[]
-  ) => Promise<void>;
-  onUpdateTask?: (
-    title: string,
-    description: string,
-    status: TaskStatus,
-    imageIds?: string[]
-  ) => Promise<void>;
 }
 
-export function TaskFormDialog({
-  isOpen,
-  onOpenChange,
+export interface TaskFormDialogResult {
+  action: 'create' | 'createAndStart' | 'update' | 'cancel';
+  data?: {
+    title: string;
+    description: string;
+    status: TaskStatus;
+    imageIds?: string[];
+  };
+}
+
+export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(({
   task,
   projectId,
   initialTemplate,
   initialTask,
-  onCreateTask,
-  onCreateAndStartTask,
-  onUpdateTask,
-}: TaskFormDialogProps) {
+}) => {
+  const modal = useModal();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TaskStatus>('todo');
@@ -100,7 +89,7 @@ export function TaskFormDialog({
 
   // Warn on browser/tab close if there are unsaved changes
   useEffect(() => {
-    if (!isOpen) return; // dialog closed → nothing to do
+    if (!modal.visible) return; // dialog closed → nothing to do
 
     // always re-evaluate latest fields via hasUnsavedChanges()
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -115,7 +104,7 @@ export function TaskFormDialog({
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isOpen, hasUnsavedChanges]); // hasUnsavedChanges is memoised with title/descr deps
+  }, [modal.visible, hasUnsavedChanges]); // hasUnsavedChanges is memoised with title/descr deps
 
   useEffect(() => {
     if (task) {
@@ -125,7 +114,7 @@ export function TaskFormDialog({
       setStatus(task.status);
 
       // Load existing images for the task
-      if (isOpen) {
+      if (modal.visible) {
         imagesApi
           .getTaskImages(task.id)
           .then((taskImages) => setImages(taskImages))
@@ -157,11 +146,11 @@ export function TaskFormDialog({
       setImages([]);
       setNewlyUploadedImageIds([]);
     }
-  }, [task, initialTask, initialTemplate, isOpen]);
+  }, [task, initialTask, initialTemplate, modal.visible]);
 
   // Fetch templates when dialog opens in create mode
   useEffect(() => {
-    if (isOpen && !isEditMode && projectId) {
+    if (modal.visible && !isEditMode && projectId) {
       // Fetch both project and global templates
       Promise.all([
         templatesApi.listByProject(projectId),
@@ -173,7 +162,7 @@ export function TaskFormDialog({
         })
         .catch(console.error);
     }
-  }, [isOpen, isEditMode, projectId]);
+  }, [modal.visible, isEditMode, projectId]);
 
   // Handle template selection
   const handleTemplateChange = (templateId: string) => {
@@ -231,22 +220,18 @@ export function TaskFormDialog({
           newlyUploadedImageIds.length > 0 ? newlyUploadedImageIds : undefined;
       }
 
-      if (isEditMode && onUpdateTask) {
-        await onUpdateTask(title, description, status, imageIds);
-      } else if (!isEditMode && onCreateTask) {
-        await onCreateTask(title, description, imageIds);
-      }
+      const result: TaskFormDialogResult = {
+        action: isEditMode ? 'update' : 'create',
+        data: {
+          title,
+          description,
+          status,
+          imageIds,
+        },
+      };
 
-      // Reset form on successful creation
-      if (!isEditMode) {
-        setTitle('');
-        setDescription('');
-        setStatus('todo');
-        setImages([]);
-        setNewlyUploadedImageIds([]);
-      }
-
-      onOpenChange(false);
+      modal.resolve(result);
+      modal.hide();
     } finally {
       setIsSubmitting(false);
     }
@@ -255,9 +240,7 @@ export function TaskFormDialog({
     description,
     status,
     isEditMode,
-    onCreateTask,
-    onUpdateTask,
-    onOpenChange,
+    modal,
     newlyUploadedImageIds,
     images,
   ]);
@@ -267,20 +250,23 @@ export function TaskFormDialog({
 
     setIsSubmittingAndStart(true);
     try {
-      if (!isEditMode && onCreateAndStartTask) {
+      if (!isEditMode) {
         const imageIds =
           newlyUploadedImageIds.length > 0 ? newlyUploadedImageIds : undefined;
-        await onCreateAndStartTask(title, description, imageIds);
+        
+        const result: TaskFormDialogResult = {
+          action: 'createAndStart',
+          data: {
+            title,
+            description,
+            status: 'todo',
+            imageIds,
+          },
+        };
+
+        modal.resolve(result);
+        modal.hide();
       }
-
-      // Reset form on successful creation
-      setTitle('');
-      setDescription('');
-      setStatus('todo');
-      setImages([]);
-      setNewlyUploadedImageIds([]);
-
-      onOpenChange(false);
     } finally {
       setIsSubmittingAndStart(false);
     }
@@ -288,8 +274,7 @@ export function TaskFormDialog({
     title,
     description,
     isEditMode,
-    onCreateAndStartTask,
-    onOpenChange,
+    modal,
     newlyUploadedImageIds,
   ]);
 
@@ -298,15 +283,17 @@ export function TaskFormDialog({
     if (hasUnsavedChanges()) {
       setShowDiscardWarning(true);
     } else {
-      onOpenChange(false);
+      modal.resolve({ action: 'cancel' });
+      modal.hide();
     }
-  }, [onOpenChange, hasUnsavedChanges]);
+  }, [modal, hasUnsavedChanges]);
 
   const handleDiscardChanges = useCallback(() => {
     // Close both dialogs
     setShowDiscardWarning(false);
-    onOpenChange(false);
-  }, [onOpenChange]);
+    modal.resolve({ action: 'cancel' });
+    modal.hide();
+  }, [modal]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -323,7 +310,6 @@ export function TaskFormDialog({
       if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
         if (
           !isEditMode &&
-          onCreateAndStartTask &&
           title.trim() &&
           !isSubmitting &&
           !isSubmittingAndStart
@@ -342,14 +328,13 @@ export function TaskFormDialog({
       }
     };
 
-    if (isOpen) {
+    if (modal.visible) {
       document.addEventListener('keydown', handleKeyDown, true); // Use capture phase to get priority
       return () => document.removeEventListener('keydown', handleKeyDown, true);
     }
   }, [
-    isOpen,
+    modal.visible,
     isEditMode,
-    onCreateAndStartTask,
     title,
     handleSubmit,
     isSubmitting,
@@ -363,14 +348,15 @@ export function TaskFormDialog({
     if (!open && hasUnsavedChanges()) {
       // Trying to close with unsaved changes
       setShowDiscardWarning(true);
-    } else {
-      onOpenChange(open);
+    } else if (!open) {
+      modal.resolve({ action: 'cancel' });
+      modal.hide();
     }
   };
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={handleDialogOpenChange}>
+      <Dialog open={modal.visible} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="sm:max-w-[550px]">
           <DialogHeader>
             <DialogTitle>
@@ -519,19 +505,17 @@ export function TaskFormDialog({
                   >
                     {isSubmitting ? 'Creating...' : 'Create Task'}
                   </Button>
-                  {onCreateAndStartTask && (
-                    <Button
-                      onClick={handleCreateAndStart}
-                      disabled={
-                        isSubmitting || isSubmittingAndStart || !title.trim()
-                      }
-                      className={'font-medium'}
-                    >
-                      {isSubmittingAndStart
-                        ? 'Creating & Starting...'
-                        : 'Create & Start'}
-                    </Button>
-                  )}
+                  <Button
+                    onClick={handleCreateAndStart}
+                    disabled={
+                      isSubmitting || isSubmittingAndStart || !title.trim()
+                    }
+                    className={'font-medium'}
+                  >
+                    {isSubmittingAndStart
+                      ? 'Creating & Starting...'
+                      : 'Create & Start'}
+                  </Button>
                 </>
               )}
             </div>
@@ -566,4 +550,4 @@ export function TaskFormDialog({
       </Dialog>
     </>
   );
-}
+});

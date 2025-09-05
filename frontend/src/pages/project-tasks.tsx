@@ -27,11 +27,11 @@ import {
 
 import TaskKanbanBoard from '@/components/tasks/TaskKanbanBoard';
 import { TaskDetailsPanel } from '@/components/tasks/TaskDetailsPanel';
-import DeleteTaskConfirmationDialog from '@/components/tasks/DeleteTaskConfirmationDialog';
 import type { TaskWithAttemptStatus, Project, TaskAttempt } from 'shared/types';
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 import { useProjectTasks } from '@/hooks/useProjectTasks';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import NiceModal from '@ebay/nice-modal-react';
 
 type Task = TaskWithAttemptStatus;
 
@@ -57,8 +57,7 @@ export function ProjectTasks() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
-  // Task deletion state
-  const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+
 
   // Fullscreen state from pathname
   const isFullscreen = location.pathname.endsWith('/full');
@@ -139,14 +138,31 @@ export function ProjectTasks() {
     setIsTemplateManagerOpen(false);
   }, []);
 
+  const handleClosePanel = useCallback(() => {
+    // setIsPanelOpen(false);
+    // setSelectedTask(null);
+    // Remove task ID from URL when closing panel
+    navigate(`/projects/${projectId}/tasks`, { replace: true });
+  }, [projectId, navigate]);
+
   const handleDeleteTask = useCallback(
     (taskId: string) => {
       const task = tasksById[taskId];
       if (task) {
-        setTaskToDelete(task);
+        NiceModal.show('delete-task-confirmation', {
+          task,
+          projectId: projectId!,
+        }).then(() => {
+          // Task was deleted, close panel if this task was selected
+          if (selectedTask?.id === taskId) {
+            handleClosePanel();
+          }
+        }).catch(() => {
+          // Modal was cancelled - do nothing
+        });
       }
     },
-    [tasksById]
+    [tasksById, projectId, selectedTask, handleClosePanel]
   );
 
   const handleEditTask = useCallback(
@@ -175,13 +191,6 @@ export function ProjectTasks() {
     },
     [projectId, navigate]
   );
-
-  const handleClosePanel = useCallback(() => {
-    // setIsPanelOpen(false);
-    // setSelectedTask(null);
-    // Remove task ID from URL when closing panel
-    navigate(`/projects/${projectId}/tasks`, { replace: true });
-  }, [projectId, navigate]);
 
   const handleProjectSettingsSuccess = useCallback(() => {
     setIsProjectSettingsOpen(false);
@@ -326,21 +335,6 @@ export function ProjectTasks() {
       </div>
 
       {/* Dialogs - rendered at main container level to avoid stacking issues */}
-
-      {taskToDelete && (
-        <DeleteTaskConfirmationDialog
-          key={taskToDelete.id}
-          task={taskToDelete}
-          projectId={projectId!}
-          onClose={() => setTaskToDelete(null)}
-          onDeleted={() => {
-            setTaskToDelete(null);
-            if (selectedTask?.id === taskToDelete.id) {
-              handleClosePanel();
-            }
-          }}
-        />
-      )}
 
       <ProjectForm
         open={isProjectSettingsOpen}

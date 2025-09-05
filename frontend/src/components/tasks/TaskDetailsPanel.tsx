@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import TaskDetailsHeader from './TaskDetailsHeader';
 import { TaskFollowUpSection } from './TaskFollowUpSection';
-import { EditorSelectionDialog } from './EditorSelectionDialog';
 import { TaskTitleDescription } from './TaskDetails/TaskTitleDescription';
 import type { TaskAttempt } from 'shared/types';
 import {
@@ -14,7 +13,6 @@ import type { TabType } from '@/types/tabs';
 import DiffTab from '@/components/tasks/TaskDetails/DiffTab.tsx';
 import LogsTab from '@/components/tasks/TaskDetails/LogsTab.tsx';
 import ProcessesTab from '@/components/tasks/TaskDetails/ProcessesTab.tsx';
-import DeleteFileConfirmationDialog from '@/components/tasks/DeleteFileConfirmationDialog.tsx';
 import TabNavigation from '@/components/tasks/TaskDetails/TabNavigation.tsx';
 import TaskDetailsToolbar from './TaskDetailsToolbar.tsx';
 import TodoPanel from '@/components/tasks/TodoPanel';
@@ -62,8 +60,6 @@ export function TaskDetailsPanel({
   attempts,
   setSelectedAttempt,
 }: TaskDetailsPanelProps) {
-  // selectedAttempt now comes from AttemptContext for child components
-  const [showEditorDialog, setShowEditorDialog] = useState(false);
 
   // Attempt number, find the current attempt number
   const attemptNumber =
@@ -235,17 +231,7 @@ export function TaskDetailsPanel({
               </div>
             </div>
 
-            <EditorSelectionDialog
-              isOpen={showEditorDialog}
-              onClose={() => setShowEditorDialog(false)}
-              selectedAttempt={selectedAttempt}
-            />
 
-            <DeleteFileConfirmationDialog
-              task={task}
-              projectId={projectId}
-              selectedAttempt={selectedAttempt}
-            />
           </ProcessSelectionProvider>
         </TabNavContext.Provider>
       )}

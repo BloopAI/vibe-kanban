@@ -11,15 +11,15 @@ import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { tasksApi } from '@/lib/api';
 import type { TaskWithAttemptStatus } from 'shared/types';
+import NiceModal, { useModal } from '@ebay/nice-modal-react';
 
-type Props = {
+export interface DeleteTaskConfirmationDialogProps {
   task: TaskWithAttemptStatus;
   projectId: string;
-  onClose: () => void;
-  onDeleted: () => void;
-};
+}
 
-function DeleteTaskConfirmationDialog({ task, onClose, onDeleted }: Props) {
+const DeleteTaskConfirmationDialog = NiceModal.create<DeleteTaskConfirmationDialogProps>(({ task }) => {
+  const modal = useModal();
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +29,8 @@ function DeleteTaskConfirmationDialog({ task, onClose, onDeleted }: Props) {
 
     try {
       await tasksApi.delete(task.id);
-      onDeleted();
+      modal.resolve(true);
+      modal.hide();
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to delete task';
@@ -40,11 +41,12 @@ function DeleteTaskConfirmationDialog({ task, onClose, onDeleted }: Props) {
   };
 
   const handleCancelDelete = () => {
-    onClose();
+    modal.resolve(false);
+    modal.hide();
   };
 
   return (
-    <Dialog open onOpenChange={onClose}>
+    <Dialog open={modal.visible} onOpenChange={(open) => !open && handleCancelDelete()}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Delete Task</DialogTitle>
@@ -89,6 +91,6 @@ function DeleteTaskConfirmationDialog({ task, onClose, onDeleted }: Props) {
       </DialogContent>
     </Dialog>
   );
-}
+});
 
 export default DeleteTaskConfirmationDialog;

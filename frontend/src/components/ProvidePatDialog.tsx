@@ -10,16 +10,14 @@ import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { useConfig } from './config-provider';
 import { Alert, AlertDescription } from './ui/alert';
+import NiceModal, { useModal } from '@ebay/nice-modal-react';
 
-export function ProvidePatDialog({
-  open,
-  onOpenChange,
-  errorMessage,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+export interface ProvidePatDialogProps {
   errorMessage?: string;
-}) {
+}
+
+export const ProvidePatDialog = NiceModal.create<ProvidePatDialogProps>(({ errorMessage }) => {
+  const modal = useModal();
   const { config, updateAndSaveConfig } = useConfig();
   const [pat, setPat] = useState('');
   const [saving, setSaving] = useState(false);
@@ -36,7 +34,8 @@ export function ProvidePatDialog({
           pat,
         },
       });
-      onOpenChange(false);
+      modal.resolve(true);
+      modal.hide();
     } catch (err) {
       setError('Failed to save Personal Access Token');
     } finally {
@@ -45,7 +44,7 @@ export function ProvidePatDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={modal.visible} onOpenChange={(open) => !open && modal.hide()}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Provide GitHub Personal Access Token</DialogTitle>
@@ -86,7 +85,10 @@ export function ProvidePatDialog({
           </Button>
           <Button
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => {
+              modal.resolve(false);
+              modal.hide();
+            }}
             disabled={saving}
           >
             Cancel
@@ -95,4 +97,4 @@ export function ProvidePatDialog({
       </DialogContent>
     </Dialog>
   );
-}
+});
