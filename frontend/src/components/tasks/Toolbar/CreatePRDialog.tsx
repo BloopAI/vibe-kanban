@@ -44,6 +44,7 @@ function CreatePrDialog() {
     if (isOpen && data) {
       setPrTitle(`${data.task.title} (vibe-kanban)`);
       setPrBody(data.task.description || '');
+      setPrBaseBranch(data.attempt.base_branch || 'main');
       setError(null); // Reset error when opening
     }
   }, [isOpen, data]);
