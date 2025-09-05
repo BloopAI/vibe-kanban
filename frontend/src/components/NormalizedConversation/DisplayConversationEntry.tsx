@@ -178,6 +178,50 @@ const CollapsibleEntry: React.FC<{
   );
 };
 
+const PlanPresentationCard: React.FC<{
+  plan: string;
+  expansionKey: string;
+}> = ({ plan, expansionKey }) => {
+  const [expanded, toggle] = useExpandable(`plan-entry:${expansionKey}`, true);
+
+  return (
+    <div className="inline-block w-full">
+      <div className="border rounded-lg w-full overflow-hidden text-xs border-blue-400/40">
+        <button
+          onClick={(e: React.MouseEvent) => {
+            e.preventDefault();
+            toggle();
+          }}
+          title={expanded ? 'Hide plan' : 'Show plan'}
+          className="w-full px-2 py-1.5 flex items-center gap-1.5 text-left bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 border-b border-blue-400/40"
+        >
+          <span className="text-xs min-w-0 truncate">
+            <span className="font-semibold">Plan</span>
+          </span>
+          <div className="ml-auto flex items-center gap-2">
+            <ExpandChevron
+              expanded={expanded}
+              onClick={toggle}
+              variant="system"
+            />
+          </div>
+        </button>
+
+        {expanded && (
+          <div className="px-3 py-2 max-h-[65vh] overflow-y-auto overscroll-contain bg-blue-50 dark:bg-blue-950/20">
+            <div className="text-sm text-blue-700 dark:text-blue-300">
+              <MarkdownRenderer
+                content={plan}
+                className="whitespace-pre-wrap break-words"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const ToolCallCard: React.FC<{
   entryType?: Extract<NormalizedEntryType, { type: 'tool_use' }>;
   action?: any;
@@ -413,6 +457,11 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
                 />
               ));
             })()
+          ) : isToolUse && entryType.action_type.action === 'plan_presentation' ? (
+            <PlanPresentationCard
+              plan={entryType.action_type.plan}
+              expansionKey={expansionKey}
+            />
           ) : isToolUse ? (
             <ToolCallCard
               entryType={entryType}
