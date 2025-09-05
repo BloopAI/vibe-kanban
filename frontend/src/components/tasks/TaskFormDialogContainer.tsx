@@ -5,7 +5,7 @@ import { TaskFormDialog } from './TaskFormDialog';
 import { useTaskDialog } from '@/contexts/task-dialog-context';
 import { useProject } from '@/contexts/project-context';
 import { tasksApi, configApi } from '@/lib/api';
-import type { TaskStatus, CreateTask, CreateAndStartTaskRequest } from 'shared/types';
+import type { TaskStatus, CreateTask, CreateAndStartTaskRequest, ExecutorProfileId } from 'shared/types';
 
 /**
  * Container component that bridges the TaskDialogContext with TaskFormDialog
@@ -91,8 +91,12 @@ export function TaskFormDialogContainer() {
   );
 
   const handleCreateAndStartTask = useCallback(
-    async (title: string, description: string, imageIds?: string[], baseBranch?: string) => {
-      if (!projectId || !systemInfo?.config.executor_profile || !baseBranch) return;
+    async (title: string, description: string, imageIds?: string[], baseBranch?: string, executorProfile?: ExecutorProfileId) => {
+      if (!projectId || !baseBranch) return;
+
+      // Use provided executor profile or fall back to config default
+      const finalExecutorProfile = executorProfile || systemInfo?.config.executor_profile;
+      if (!finalExecutorProfile) return;
 
       createAndStartTaskMutation.mutate({
         task: {
@@ -102,7 +106,7 @@ export function TaskFormDialogContainer() {
           parent_task_attempt: null,
           image_ids: imageIds || null,
         },
-        executor_profile_id: systemInfo.config.executor_profile,
+        executor_profile_id: finalExecutorProfile,
         base_branch: baseBranch,
       });
     },
@@ -140,6 +144,7 @@ export function TaskFormDialogContainer() {
       projectId={projectId || undefined}
       initialTemplate={dialogState.initialTemplate}
       initialTask={dialogState.initialTask}
+      availableExecutors={systemInfo?.executors || null}
       onCreateTask={handleCreateTask}
       onCreateAndStartTask={handleCreateAndStartTask}
       onUpdateTask={handleUpdateTask}
