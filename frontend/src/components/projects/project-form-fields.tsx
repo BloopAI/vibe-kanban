@@ -413,7 +413,7 @@ export function ProjectFormFields({
             />
             <p className="text-sm text-muted-foreground">
               This script will run after creating the worktree and before the
-              executor starts. Use it for setup tasks like installing
+              coding agent starts. Use it for setup tasks like installing
               dependencies or preparing the environment.
             </p>
           </div>

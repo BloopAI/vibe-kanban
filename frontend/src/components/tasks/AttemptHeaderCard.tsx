@@ -65,7 +65,7 @@ export function AttemptHeaderCard({
           {attemptNumber}/{totalAttempts}
         </p>
         <p>
-          <span className="text-secondary-foreground">Profile &middot; </span>
+          <span className="text-secondary-foreground">Agent &middot; </span>
           {selectedAttempt?.executor}
         </p>
         {selectedAttempt?.branch && (

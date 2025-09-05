@@ -515,7 +515,7 @@ export function AgentSettings() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="profiles-editor">
-                  Profiles Configuration (JSON)
+                  Agent Configuration (JSON)
                 </Label>
                 <JSONEditor
                   id="profiles-editor"
@@ -547,7 +547,7 @@ export function AgentSettings() {
                   {profilesSaving && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  Save Executor Configurations
+                  Save Agent Configurations
                 </Button>
               </div>
             </div>

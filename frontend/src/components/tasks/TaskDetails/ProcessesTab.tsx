@@ -159,7 +159,7 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
                       )}
                       {
                         <p className="text-sm text-muted-foreground mt-1">
-                          Profile:{' '}
+                          Agent:{' '}
                           {process.executor_action.typ.type ===
                             'CodingAgentInitialRequest' ||
                           process.executor_action.typ.type ===

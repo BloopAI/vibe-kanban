@@ -191,7 +191,7 @@ export function GeneralSettings() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="executor">Default Executor Profile</Label>
+            <Label htmlFor="executor">Default Agent Configuration</Label>
             <div className="grid grid-cols-2 gap-2">
               <Select
                 value={config.executor_profile?.executor ?? ''}
@@ -296,7 +296,7 @@ export function GeneralSettings() {
               })()}
             </div>
             <p className="text-sm text-muted-foreground">
-              Choose the default executor profile to use when creating a task
+              Choose the default agent configuration to use when creating a task
               attempt.
             </p>
           </div>

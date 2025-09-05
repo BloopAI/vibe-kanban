@@ -388,7 +388,7 @@ function CurrentAttempt({
       <div className="grid grid-cols-2 gap-3 items-start @md:flex @md:items-start">
         <div className="min-w-0">
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-            Profile
+            Agent
           </div>
           <div className="text-sm font-medium">{selectedAttempt.executor}</div>
         </div>

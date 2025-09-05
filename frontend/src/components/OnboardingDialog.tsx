@@ -84,7 +84,7 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
             Choose Your Coding Agent
           </h2>
           <div className="space-y-2">
-            <Label htmlFor="profile">Default Profile</Label>
+            <Label htmlFor="profile">Default Agent</Label>
             <div className="flex gap-2">
               <Select
                 value={profile.executor}
