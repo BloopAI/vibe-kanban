@@ -86,7 +86,7 @@ function EditDiffRenderer({
   }, [hunks, path]);
 
   return (
-    <div className="border">
+    <div className="border rounded-md">
       <div className="flex items-center px-4 py-2">
         <Button
           variant="ghost"

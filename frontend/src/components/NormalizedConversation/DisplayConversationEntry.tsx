@@ -54,7 +54,7 @@ const getContentClassName = (entryType: NormalizedEntryType) => {
     entryType.type === 'tool_use' &&
     entryType.action_type.action === 'plan_presentation'
   )
-    return base; // Card handles the visual treatment
+    return `${base} text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/20 px-3 py-2 rounded-md border-l-4 border-blue-400`;
 
   return base;
 };
