@@ -41,7 +41,7 @@ const ConfirmDialog = NiceModal.create<ConfirmDialogProps>((props) => {
 
   const getIcon = () => {
     if (!icon) return null;
-    
+
     switch (variant) {
       case 'destructive':
         return <AlertTriangle className="h-6 w-6 text-destructive" />;
