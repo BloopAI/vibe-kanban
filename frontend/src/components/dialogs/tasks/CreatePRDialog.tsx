@@ -35,6 +35,9 @@ const CreatePrDialog = NiceModal.create(() => {
   const [prTitle, setPrTitle] = useState('');
   const [prBody, setPrBody] = useState('');
   const [prBaseBranch, setPrBaseBranch] = useState('main');
+  const [showPatDialog, setShowPatDialog] = useState(false);
+  const [patDialogError, setPatDialogError] = useState<string | null>(null);
+  const [showGitHubLoginDialog, setShowGitHubLoginDialog] = useState(false);
   const [creatingPR, setCreatingPR] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,11 +50,12 @@ const CreatePrDialog = NiceModal.create(() => {
       setPrTitle(`${data.task.title} (vibe-kanban)`);
       setPrBody(data.task.description || '');
 
-      // Smart default: task attempt base branch → current branch → "main"
+      // Smart default: task attempt base branch → current branch
       const defaultBranch = data.attempt.base_branch ||
-        branches.find(b => b.is_current)?.name ||
-        'main';
-      setPrBaseBranch(defaultBranch);
+        branches.find(b => b.is_current)?.name;
+      if (defaultBranch) {
+        setPrBaseBranch(defaultBranch);
+      }
 
       setError(null); // Reset error when opening
     }
@@ -74,8 +78,8 @@ const CreatePrDialog = NiceModal.create(() => {
       // Reset form and close dialog
       setPrTitle('');
       setPrBody('');
-      setPrBaseBranch('main');
-      modal.hide();
+      setPrBaseBranch('');
+      closeCreatePRDialog();
     } else {
       if (result.error) {
         modal.hide();
@@ -107,7 +111,7 @@ const CreatePrDialog = NiceModal.create(() => {
     // Reset form to empty state
     setPrTitle('');
     setPrBody('');
-    setPrBaseBranch('main');
+    setPrBaseBranch('');
   }, [modal]);
 
   // Don't render if no data
