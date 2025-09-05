@@ -11,10 +11,14 @@ import './types/modals';
 // Import and register modals
 import { GitHubLoginDialog } from './components/GitHubLoginDialog';
 import CreatePRDialog from './components/tasks/Toolbar/CreatePRDialog';
+import { ConfirmDialog } from './components/modals/ConfirmDialog';
+import { DisclaimerDialog } from './components/DisclaimerDialog';
 
 // Register modals
 NiceModal.register('github-login', GitHubLoginDialog);
 NiceModal.register('create-pr', CreatePRDialog);
+NiceModal.register('confirm', ConfirmDialog);
+NiceModal.register('disclaimer', DisclaimerDialog);
 // Install VS Code iframe keyboard bridge when running inside an iframe
 import './vscode/bridge';
 

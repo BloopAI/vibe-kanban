@@ -10,23 +10,24 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertTriangle } from 'lucide-react';
+import NiceModal, { useModal } from '@ebay/nice-modal-react';
 
-interface DisclaimerDialogProps {
-  open: boolean;
-  onAccept: () => void;
-}
-
-export function DisclaimerDialog({ open, onAccept }: DisclaimerDialogProps) {
+const DisclaimerDialog = NiceModal.create(() => {
+  const modal = useModal();
   const [acknowledged, setAcknowledged] = useState(false);
 
   const handleAccept = () => {
     if (acknowledged) {
-      onAccept();
+      modal.resolve('accepted');
     }
   };
 
+  const handleCancel = () => {
+    modal.resolve('canceled');
+  };
+
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
+    <Dialog open={modal.visible} onOpenChange={handleCancel}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -103,4 +104,6 @@ export function DisclaimerDialog({ open, onAccept }: DisclaimerDialogProps) {
       </DialogContent>
     </Dialog>
   );
-}
+});
+
+export { DisclaimerDialog };

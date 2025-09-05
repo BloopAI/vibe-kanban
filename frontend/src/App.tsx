@@ -16,7 +16,6 @@ import {
   AgentSettings,
   McpSettings,
 } from '@/pages/settings/';
-import { DisclaimerDialog } from '@/components/DisclaimerDialog';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { PrivacyOptInDialog } from '@/components/PrivacyOptInDialog';
 import { ConfigProvider, useConfig } from '@/components/config-provider';
@@ -55,7 +54,6 @@ function AppContent() {
     selectedAttempt,
     closeEditorDialog,
   } = useEditorDialog();
-  const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showPrivacyOptIn, setShowPrivacyOptIn] = useState(false);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
@@ -63,20 +61,21 @@ function AppContent() {
 
   useEffect(() => {
     if (config) {
-      setShowDisclaimer(!config.disclaimer_acknowledged);
-      if (config.disclaimer_acknowledged) {
-        setShowOnboarding(!config.onboarding_acknowledged);
-        if (config.onboarding_acknowledged) {
-          if (!config.github_login_acknowledged) {
-            NiceModal.show('github-login').then(() =>
-              handleGitHubLoginComplete()
-            );
-          } else if (!config.telemetry_acknowledged) {
-            setShowPrivacyOptIn(true);
-          } else if (config.show_release_notes) {
-            setShowReleaseNotes(true);
+      // Handle disclaimer with nice-modal-react
+      if (!config.disclaimer_acknowledged) {
+        NiceModal.show('disclaimer').then((result) => {
+          if (result === 'accepted') {
+            handleDisclaimerAccept();
           }
-        }
+        });
+      } else if (!config.onboarding_acknowledged) {
+        setShowOnboarding(true);
+      } else if (!config.github_login_acknowledged) {
+        NiceModal.show('github-login').then(() => handleGitHubLoginComplete());
+      } else if (!config.telemetry_acknowledged) {
+        setShowPrivacyOptIn(true);
+      } else if (config.show_release_notes) {
+        setShowReleaseNotes(true);
       }
     }
   }, [config]);
@@ -88,7 +87,6 @@ function AppContent() {
 
     try {
       await configApi.saveConfig({ ...config, disclaimer_acknowledged: true });
-      setShowDisclaimer(false);
       setShowOnboarding(!config.onboarding_acknowledged);
     } catch (err) {
       console.error('Error saving config:', err);
@@ -197,10 +195,6 @@ function AppContent() {
           <div className="h-screen flex flex-col bg-background">
             {/* Custom context menu and VS Code-friendly interactions when embedded in iframe */}
             <WebviewContextMenu />
-            <DisclaimerDialog
-              open={showDisclaimer}
-              onAccept={handleDisclaimerAccept}
-            />
             <OnboardingDialog
               open={showOnboarding}
               onComplete={handleOnboardingComplete}
