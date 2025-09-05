@@ -46,6 +46,8 @@ interface TaskFormDialogProps {
   projectId?: string; // For file search functionality
   initialTemplate?: TaskTemplate | null; // For pre-filling from template
   initialTask?: Task | null; // For duplicating an existing task
+  initialBaseBranch?: string; // For pre-selecting base branch in spinoff
+  parentTaskAttemptId?: string; // For linking to parent task attempt
   onCreateTask?: (
     title: string,
     description: string,
@@ -73,6 +75,8 @@ export function TaskFormDialog({
   projectId,
   initialTemplate,
   initialTask,
+  initialBaseBranch,
+  parentTaskAttemptId,
   onCreateTask,
   onCreateAndStartTask,
   onUpdateTask,
@@ -188,17 +192,27 @@ export function TaskFormDialog({
           // Combine templates with project templates first
           setTemplates([...projectTemplates, ...globalTemplates]);
 
-          // Set branches and default to current branch
+          // Set branches and default to initialBaseBranch if provided, otherwise current branch
           setBranches(projectBranches);
-          const currentBranch = projectBranches.find((b) => b.is_current);
-          const defaultBranch = currentBranch || projectBranches[0];
-          if (defaultBranch) {
-            setSelectedBranch(defaultBranch.name);
+
+          if (
+            initialBaseBranch &&
+            projectBranches.some((b) => b.name === initialBaseBranch)
+          ) {
+            // Use initialBaseBranch if it exists in the project branches (for spinoff)
+            setSelectedBranch(initialBaseBranch);
+          } else {
+            // Default behavior: use current branch or first available
+            const currentBranch = projectBranches.find((b) => b.is_current);
+            const defaultBranch = currentBranch || projectBranches[0];
+            if (defaultBranch) {
+              setSelectedBranch(defaultBranch.name);
+            }
           }
         })
         .catch(console.error);
     }
-  }, [isOpen, isEditMode, projectId]);
+  }, [isOpen, isEditMode, projectId, initialBaseBranch]);
 
   // Set default executor from config (following TaskDetailsToolbar pattern)
   useEffect(() => {

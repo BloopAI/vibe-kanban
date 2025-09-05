@@ -9,6 +9,7 @@ import {
   Settings,
   StopCircle,
   ScrollText,
+  GitFork,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -55,6 +56,7 @@ import { useConfig } from '@/components/config-provider.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
+import { useTaskDialog } from '@/contexts/task-dialog-context';
 
 // Helper function to get the display name for different editor types
 function getEditorDisplayName(editorType: string): string {
@@ -114,6 +116,7 @@ function CurrentAttempt({
   const { data: branchStatus } = useBranchStatus(selectedAttempt?.id);
   const handleOpenInEditor = useOpenInEditor(selectedAttempt);
   const { jumpToProcess } = useProcessSelection();
+  const { openSpinoff } = useTaskDialog();
 
   // Attempt action hooks
   const {
@@ -142,6 +145,13 @@ function CurrentAttempt({
     if (latestDevServerProcess) {
       jumpToProcess(latestDevServerProcess.id);
     }
+  };
+
+  const handleSpinoffClick = () => {
+    openSpinoff(
+      selectedAttempt.id,
+      selectedAttempt.branch || selectedAttempt.base_branch
+    );
   };
 
   // Use the stopExecution function from the hook
@@ -688,6 +698,19 @@ function CurrentAttempt({
             )}
           </div>
         </div>
+      </div>
+
+      {/* Row 3: Spinoff Button */}
+      <div className="flex gap-2 @md:flex-none">
+        <Button
+          onClick={handleSpinoffClick}
+          variant="outline"
+          size="xs"
+          className="gap-1 flex-1"
+        >
+          <GitFork className="h-3 w-3" />
+          Spinoff Task
+        </Button>
       </div>
 
       {/* Rebase Dialog */}

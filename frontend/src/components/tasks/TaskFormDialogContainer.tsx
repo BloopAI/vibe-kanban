@@ -86,11 +86,11 @@ export function TaskFormDialogContainer() {
         project_id: projectId,
         title,
         description: description || null,
-        parent_task_attempt: null,
+        parent_task_attempt: dialogState.parentTaskAttemptId || null,
         image_ids: imageIds || null,
       });
     },
-    [projectId, createTaskMutation]
+    [projectId, createTaskMutation, dialogState.parentTaskAttemptId]
   );
 
   const handleCreateAndStartTask = useCallback(
@@ -113,14 +113,19 @@ export function TaskFormDialogContainer() {
           project_id: projectId,
           title,
           description: description || null,
-          parent_task_attempt: null,
+          parent_task_attempt: dialogState.parentTaskAttemptId || null,
           image_ids: imageIds || null,
         },
         executor_profile_id: finalExecutorProfile,
         base_branch: baseBranch,
       });
     },
-    [projectId, system, createAndStartTaskMutation]
+    [
+      projectId,
+      system,
+      createAndStartTaskMutation,
+      dialogState.parentTaskAttemptId,
+    ]
   );
 
   const handleUpdateTask = useCallback(
@@ -154,6 +159,8 @@ export function TaskFormDialogContainer() {
       projectId={projectId || undefined}
       initialTemplate={dialogState.initialTemplate}
       initialTask={dialogState.initialTask}
+      initialBaseBranch={dialogState.initialBaseBranch}
+      parentTaskAttemptId={dialogState.parentTaskAttemptId}
       onCreateTask={handleCreateTask}
       onCreateAndStartTask={handleCreateAndStartTask}
       onUpdateTask={handleUpdateTask}
