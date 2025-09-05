@@ -34,8 +34,8 @@ type Props = {
 
 type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
 
-const getEntryIcon = (entryType: NormalizedEntryType, size?: string) => {
-  let iconSize = size || 'h-3 w-3';
+const getEntryIcon = (entryType: NormalizedEntryType) => {
+  const iconSize = 'h-3 w-3';
   if (entryType.type === 'user_message') {
     return <User className={iconSize} />;
   }
@@ -85,6 +85,40 @@ const getEntryIcon = (entryType: NormalizedEntryType, size?: string) => {
     return <Settings className={iconSize} />;
   }
   return <Settings className={iconSize} />;
+};
+
+const getStatusIndicator = (entryType: NormalizedEntryType) => {
+  type StatusType = 'success' | 'error' | 'pending';
+  let status: StatusType = 'pending';
+  if (entryType.type === 'tool_use') {
+    if (entryType.action_type.action === 'command_run') {
+      if (entryType.action_type.result?.exit_status?.type === 'success') {
+        if (entryType.action_type.result?.exit_status?.success === true) {
+          status = 'success';
+        } else {
+          status = 'error';
+        }
+      }
+    }
+  }
+
+  if (status === 'pending') {
+    return null;
+  }
+
+  let color = '';
+  switch (status) {
+    case 'success':
+      color = 'bg-green-300';
+      break;
+    case 'error':
+      color = 'bg-red-300';
+      break;
+    default:
+      color = 'bg-gray-500';
+      break;
+  }
+  return (<div className="relative"><div className={`${color} h-1.5 w-1.5 rounded-full absolute -left-1 -bottom-4`} /></div>);
 };
 
 /**********************
@@ -370,40 +404,17 @@ const ToolCallCard: React.FC<{
           className="w-full flex items-center gap-1.5 text-left text-secondary-foreground"
         >
           <span className="text-xs min-w-0 flex items-center gap-1.5">
-            {entryType ? getEntryIcon(entryType) :
+            {entryType ? <span>{getStatusIndicator(entryType)}{getEntryIcon(entryType)}</span> :
               <span className="font-normal flex">{label}</span>
             }
             {showInlineSummary && (
               <span className="font-light">{inlineText}</span>
             )}
           </span>
-
-          {hasExpandableDetails && (
-            <div className="ml-auto flex items-center gap-2">
-              {isCommand &&
-                typeof ok === 'boolean' &&
-                (ok ? (
-                  <Check
-                    className="h-4 w-4 text-green-600"
-                    aria-label="Command succeeded"
-                  />
-                ) : (
-                  <AlertCircle
-                    className="h-4 w-4 text-red-600"
-                    aria-label="Command failed"
-                  />
-                ))}
-              <ExpandChevron
-                expanded={expanded}
-                onClick={toggle}
-                variant="system"
-              />
-            </div>
-          )}
         </HeaderWrapper>
 
         {expanded && (
-          <div className="px-2 py-1.5 max-h-[200px] overflow-y-auto bg-background">
+          <div className="max-h-[200px] overflow-y-auto border">
             {!isCommand &&
               (!showInlineSummary || hasExpandableDetails) &&
               (entryContent || content) && (
@@ -418,18 +429,20 @@ const ToolCallCard: React.FC<{
             {isCommand ? (
               <>
                 {argsText != null && argsText !== '' && (
-                  <div className="mb-3">
-                    <div className="text-xs font-medium uppercase text-zinc-500 mb-1">
+                  <>
+                    <div className="text-xs font-medium uppercase bg-background border-b border-dashed p-2">
                       Args
                     </div>
-                    <ToolDetails commandOutput={argsText} />
-                  </div>
+                    <div className="p-2">
+                      <ToolDetails commandOutput={argsText} />
+                    </div>
+                  </>
                 )}
 
-                <div>
-                  <div className="text-xs font-medium uppercase text-zinc-500 mb-1">
-                    Output
-                  </div>
+                <div className="text-xs font-medium uppercase bg-background border-y border-b-dashed p-2">
+                  Output
+                </div>
+                <div className="p-2">
                   <ToolDetails commandOutput={output ?? ''} />
                 </div>
               </>

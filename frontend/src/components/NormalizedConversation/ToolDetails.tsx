@@ -14,9 +14,9 @@ type Props = {
   result?: ToolResult | null;
   commandOutput?: string | null; // presence => command mode
   commandExit?:
-    | { type: 'success'; success: boolean }
-    | { type: 'exit_code'; code: number }
-    | null;
+  | { type: 'success'; success: boolean }
+  | { type: 'exit_code'; code: number }
+  | null;
 };
 
 export default function ToolDetails({
@@ -27,13 +27,13 @@ export default function ToolDetails({
   const isCommandMode = commandOutput !== undefined;
 
   const renderJson = (v: JsonValue) => (
-    <pre className="mt-1 rounded bg-muted p-2 text-xs">
+    <pre className="rounded bg-muted p-2 text-xs">
       {JSON.stringify(v, null, 2)}
     </pre>
   );
 
   return (
-    <div className="mt-2 space-y-3">
+    <div className="space-y-3">
       {args && (
         <section>
           {!isCommandMode ? (
