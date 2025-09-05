@@ -80,23 +80,20 @@ const MessageCard: React.FC<{
     'border-red-400/40 bg-red-50 dark:bg-[hsl(var(--card))] text-[hsl(var(--foreground))]';
 
   return (
-    <div className="inline-block w-full">
-      <div
-        className={`${frameBase} ${
-          variant === 'system' ? systemTheme : errorTheme
+    <div
+      className={`${frameBase} ${variant === 'system' ? systemTheme : errorTheme
         }`}
-        onClick={onToggle}
-      >
-        <div className="flex items-center gap-1.5">
-          <div className="min-w-0 flex-1">{children}</div>
-          {onToggle && (
-            <ExpandChevron
-              expanded={!!expanded}
-              onClick={onToggle}
-              variant={variant}
-            />
-          )}
-        </div>
+      onClick={onToggle}
+    >
+      <div className="flex items-center gap-1.5">
+        <div className="min-w-0 flex-1">{children}</div>
+        {onToggle && (
+          <ExpandChevron
+            expanded={!!expanded}
+            onClick={onToggle}
+            variant={variant}
+          />
+        )}
       </div>
     </div>
   );
@@ -121,9 +118,8 @@ const ExpandChevron: React.FC<{
   return (
     <ChevronDown
       onClick={onClick}
-      className={`h-4 w-4 cursor-pointer transition-transform ${color} ${
-        expanded ? '' : '-rotate-90'
-      }`}
+      className={`h-4 w-4 cursor-pointer transition-transform ${color} ${expanded ? '' : '-rotate-90'
+        }`}
     />
   );
 };
@@ -239,137 +235,108 @@ const ToolCallCard: React.FC<{
   content,
   entryContent,
 }) => {
-  const at: any = entryType?.action_type || action;
-  const [expanded, toggle] = useExpandable(`tool-entry:${expansionKey}`, false);
+    const at: any = entryType?.action_type || action;
+    const [expanded, toggle] = useExpandable(`tool-entry:${expansionKey}`, false);
 
-  const label =
-    at?.action === 'command_run'
-      ? 'Run'
-      : entryType?.tool_name || at?.tool_name || 'Tool';
+    const label =
+      at?.action === 'command_run'
+        ? 'Run'
+        : entryType?.tool_name || at?.tool_name || 'Tool';
 
-  const isCommand = at?.action === 'command_run';
+    const isCommand = at?.action === 'command_run';
 
-  // success/failure
-  let ok: boolean | undefined;
-  if (isCommand) {
-    const exit = at?.result?.exit_status ?? null;
-    if (exit?.type === 'success' && typeof exit.success === 'boolean') {
-      ok = exit.success;
-    } else if (exit?.type === 'exit_code' && typeof exit.code === 'number') {
-      ok = exit.code === 0;
+    // success/failure
+    let ok: boolean | undefined;
+    if (isCommand) {
+      const exit = at?.result?.exit_status ?? null;
+      if (exit?.type === 'success' && typeof exit.success === 'boolean') {
+        ok = exit.success;
+      } else if (exit?.type === 'exit_code' && typeof exit.code === 'number') {
+        ok = exit.code === 0;
+      }
     }
-  }
 
-  const inlineText = (entryContent || content || '').trim();
-  const isSingleLine = inlineText !== '' && !/\r?\n/.test(inlineText);
-  const showInlineSummary = isSingleLine;
+    const inlineText = (entryContent || content || '').trim();
+    const isSingleLine = inlineText !== '' && !/\r?\n/.test(inlineText);
+    const showInlineSummary = isSingleLine;
 
-  const hasArgs = at?.action === 'tool' && !!at?.arguments;
-  const hasResult = at?.action === 'tool' && !!at?.result;
+    const hasArgs = at?.action === 'tool' && !!at?.arguments;
+    const hasResult = at?.action === 'tool' && !!at?.result;
 
-  const output: string | null = isCommand ? (at?.result?.output ?? null) : null;
-  let argsText: string | null = null;
-  if (isCommand) {
-    const fromArgs =
-      typeof at?.arguments === 'string'
-        ? at.arguments
-        : at?.arguments != null
-          ? JSON.stringify(at.arguments, null, 2)
-          : '';
+    const output: string | null = isCommand ? (at?.result?.output ?? null) : null;
+    let argsText: string | null = null;
+    if (isCommand) {
+      const fromArgs =
+        typeof at?.arguments === 'string'
+          ? at.arguments
+          : at?.arguments != null
+            ? JSON.stringify(at.arguments, null, 2)
+            : '';
 
-    const fallback = (entryContent || content || '').trim();
-    argsText = (fromArgs || fallback).trim();
-  }
+      const fallback = (entryContent || content || '').trim();
+      argsText = (fromArgs || fallback).trim();
+    }
 
-  const hasExpandableDetails = isCommand
-    ? Boolean(argsText) || Boolean(output)
-    : hasArgs || hasResult;
+    const hasExpandableDetails = isCommand
+      ? Boolean(argsText) || Boolean(output)
+      : hasArgs || hasResult;
 
-  const HeaderWrapper: React.ElementType = hasExpandableDetails
-    ? 'button'
-    : 'div';
-  const headerProps: any = hasExpandableDetails
-    ? {
+    const HeaderWrapper: React.ElementType = hasExpandableDetails
+      ? 'button'
+      : 'div';
+    const headerProps: any = hasExpandableDetails
+      ? {
         onClick: (e: React.MouseEvent) => {
           e.preventDefault();
           toggle();
         },
         title: expanded ? 'Hide details' : 'Show details',
       }
-    : {};
+      : {};
 
-  return (
-    <div className="inline-block w-full">
-      <div className="border rounded-lg w-full overflow-hidden text-xs">
-        <HeaderWrapper
-          {...headerProps}
-          className="w-full px-2 py-1.5 flex items-center gap-1.5 text-left bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] border-b border-[hsl(var(--border))]"
-        >
-          <span className="text-xs min-w-0 truncate">
-            <span className="font-semibold">{label}</span>
-            {showInlineSummary && (
-              <span className="ml-2 font-normal">{inlineText}</span>
-            )}
-          </span>
-
-          {hasExpandableDetails && (
-            <div className="ml-auto flex items-center gap-2">
-              {isCommand &&
-                typeof ok === 'boolean' &&
-                (ok ? (
-                  <Check
-                    className="h-4 w-4 text-green-600"
-                    aria-label="Command succeeded"
-                  />
-                ) : (
-                  <AlertCircle
-                    className="h-4 w-4 text-red-600"
-                    aria-label="Command failed"
-                  />
-                ))}
-              <ExpandChevron
-                expanded={expanded}
-                onClick={toggle}
-                variant="system"
-              />
-            </div>
-          )}
-        </HeaderWrapper>
-
-        {expanded && (
-          <div className="px-2 py-1.5 max-h-[65vh] overflow-y-auto overscroll-contain">
-            {!isCommand &&
-              (!showInlineSummary || hasExpandableDetails) &&
-              (entryContent || content) && (
-                <div className={contentClassName + ' mb-2'}>
-                  <MarkdownRenderer
-                    content={entryContent || content || ''}
-                    className="inline"
-                  />
-                </div>
+    return (
+      <div className="inline-block w-full">
+        <div className="border rounded-lg w-full overflow-hidden text-xs">
+          <HeaderWrapper
+            {...headerProps}
+            className="w-full px-2 py-1.5 flex items-center gap-1.5 text-left bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] border-b border-[hsl(var(--border))]"
+          >
+            <span className="text-xs min-w-0 truncate">
+              <span className="font-semibold">{label}</span>
+              {showInlineSummary && (
+                <span className="ml-2 font-normal">{inlineText}</span>
               )}
+            </span>
 
-            {isCommand ? (
-              <>
-                {argsText != null && argsText !== '' && (
-                  <div className="mb-3">
-                    <div className="text-xs font-medium uppercase text-zinc-500 mb-1">
-                      Args
-                    </div>
-                    <ToolDetails commandOutput={argsText} />
-                  </div>
-                )}
+            {hasExpandableDetails && (
+              <div className="ml-auto flex items-center gap-2">
+                {isCommand &&
+                  typeof ok === 'boolean' &&
+                  (ok ? (
+                    <Check
+                      className="h-4 w-4 text-green-600"
+                      aria-label="Command succeeded"
+                    />
+                  ) : (
+                    <AlertCircle
+                      className="h-4 w-4 text-red-600"
+                      aria-label="Command failed"
+                    />
+                  ))}
+                <ExpandChevron
+                  expanded={expanded}
+                  onClick={toggle}
+                  variant="system"
+                />
+              </div>
+            )}
+          </HeaderWrapper>
 
-                <div>
-                  <div className="text-xs font-medium uppercase text-zinc-500 mb-1">
-                    Output
-                  </div>
-                  <ToolDetails commandOutput={output ?? ''} />
-                </div>
-              </>
-            ) : (
-              <>
-                {(entryContent || content) && (
+          {expanded && (
+            <div className="px-2 py-1.5 max-h-[65vh] overflow-y-auto overscroll-contain">
+              {!isCommand &&
+                (!showInlineSummary || hasExpandableDetails) &&
+                (entryContent || content) && (
                   <div className={contentClassName + ' mb-2'}>
                     <MarkdownRenderer
                       content={entryContent || content || ''}
@@ -377,24 +344,53 @@ const ToolCallCard: React.FC<{
                     />
                   </div>
                 )}
-                {at?.action === 'tool' && (
-                  <ToolDetails
-                    arguments={at.arguments ?? null}
-                    result={
-                      at.result
-                        ? { type: at.result.type, value: at.result.value }
-                        : null
-                    }
-                  />
-                )}
-              </>
-            )}
-          </div>
-        )}
+
+              {isCommand ? (
+                <>
+                  {argsText != null && argsText !== '' && (
+                    <div className="mb-3">
+                      <div className="text-xs font-medium uppercase text-zinc-500 mb-1">
+                        Args
+                      </div>
+                      <ToolDetails commandOutput={argsText} />
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="text-xs font-medium uppercase text-zinc-500 mb-1">
+                      Output
+                    </div>
+                    <ToolDetails commandOutput={output ?? ''} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  {(entryContent || content) && (
+                    <div className={contentClassName + ' mb-2'}>
+                      <MarkdownRenderer
+                        content={entryContent || content || ''}
+                        className="inline"
+                      />
+                    </div>
+                  )}
+                  {at?.action === 'tool' && (
+                    <ToolDetails
+                      arguments={at.arguments ?? null}
+                      result={
+                        at.result
+                          ? { type: at.result.type, value: at.result.value }
+                          : null
+                      }
+                    />
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
 /*******************
  * Main component  *
@@ -412,18 +408,12 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
   if (isProcessStart(entry)) {
     const toolAction: any = entry.action ?? null;
     return (
-      <div className="px-4 py-1">
-        <div className="flex items-start gap-3">
-          <div className="flex-1 min-w-0">
-            <ToolCallCard
-              action={toolAction}
-              expansionKey={expansionKey}
-              contentClassName="text-sm whitespace-pre-wrap break-words"
-              content={toolAction?.message ?? toolAction?.summary ?? undefined}
-            />
-          </div>
-        </div>
-      </div>
+      <ToolCallCard
+        action={toolAction}
+        expansionKey={expansionKey}
+        contentClassName="text-sm whitespace-pre-wrap break-words"
+        content={toolAction?.message ?? toolAction?.summary ?? undefined}
+      />
     );
   }
 
@@ -435,60 +425,56 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
   const isFileEdit = (a: ActionType): a is FileEditAction =>
     a.action === 'file_edit';
   return (
-    <div className="px-4 py-0.5">
-      <div className="flex items-start gap-3">
-        <div className="flex-1 min-w-0">
-          {isSystem || isError ? (
-            <CollapsibleEntry
+    <>
+      {isSystem || isError ? (
+        <CollapsibleEntry
+          content={isNormalizedEntry(entry) ? entry.content : ''}
+          markdown={shouldRenderMarkdown(entryType)}
+          expansionKey={expansionKey}
+          variant={isSystem ? 'system' : 'error'}
+          contentClassName={getContentClassName(entryType)}
+        />
+      ) : isToolUse && isFileEdit(entryType.action_type) ? (
+        // Only FileChangeRenderer for file_edit
+        (() => {
+          const fileEditAction = entryType.action_type as FileEditAction;
+          return fileEditAction.changes.map((change, idx) => (
+            <FileChangeRenderer
+              key={idx}
+              path={fileEditAction.path}
+              change={change}
+              expansionKey={`edit:${expansionKey}:${idx}`}
+            />
+          ));
+        })()
+      ) : isToolUse &&
+        entryType.action_type.action === 'plan_presentation' ? (
+        <PlanPresentationCard
+          plan={entryType.action_type.plan}
+          expansionKey={expansionKey}
+        />
+      ) : isToolUse ? (
+        <ToolCallCard
+          entryType={entryType}
+          expansionKey={expansionKey}
+          contentClassName={getContentClassName(entryType)}
+          entryContent={isNormalizedEntry(entry) ? entry.content : ''}
+        />
+      ) : (
+        <div className={getContentClassName(entryType)}>
+          {shouldRenderMarkdown(entryType) ? (
+            <MarkdownRenderer
               content={isNormalizedEntry(entry) ? entry.content : ''}
-              markdown={shouldRenderMarkdown(entryType)}
-              expansionKey={expansionKey}
-              variant={isSystem ? 'system' : 'error'}
-              contentClassName={getContentClassName(entryType)}
+              className="whitespace-pre-wrap break-words"
             />
-          ) : isToolUse && isFileEdit(entryType.action_type) ? (
-            // Only FileChangeRenderer for file_edit
-            (() => {
-              const fileEditAction = entryType.action_type as FileEditAction;
-              return fileEditAction.changes.map((change, idx) => (
-                <FileChangeRenderer
-                  key={idx}
-                  path={fileEditAction.path}
-                  change={change}
-                  expansionKey={`edit:${expansionKey}:${idx}`}
-                />
-              ));
-            })()
-          ) : isToolUse &&
-            entryType.action_type.action === 'plan_presentation' ? (
-            <PlanPresentationCard
-              plan={entryType.action_type.plan}
-              expansionKey={expansionKey}
-            />
-          ) : isToolUse ? (
-            <ToolCallCard
-              entryType={entryType}
-              expansionKey={expansionKey}
-              contentClassName={getContentClassName(entryType)}
-              entryContent={isNormalizedEntry(entry) ? entry.content : ''}
-            />
+          ) : isNormalizedEntry(entry) ? (
+            entry.content
           ) : (
-            <div className={getContentClassName(entryType)}>
-              {shouldRenderMarkdown(entryType) ? (
-                <MarkdownRenderer
-                  content={isNormalizedEntry(entry) ? entry.content : ''}
-                  className="whitespace-pre-wrap break-words"
-                />
-              ) : isNormalizedEntry(entry) ? (
-                entry.content
-              ) : (
-                ''
-              )}
-            </div>
+            ''
           )}
         </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 }
 

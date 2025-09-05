@@ -48,12 +48,12 @@ function MarkdownRenderer({ content, className = '' }: MarkdownRendererProps) {
         </h3>
       ),
       ul: ({ children, ...props }) => (
-        <ul {...props} className="list-disc ml-2">
+        <ul {...props} className="list-disc list-inside">
           {children}
         </ul>
       ),
       ol: ({ children, ...props }) => (
-        <ol {...props} className="list-decimal ml-2">
+        <ol {...props} className="list-decimal list-inside">
           {children}
         </ol>
       ),
