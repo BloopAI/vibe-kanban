@@ -135,19 +135,15 @@ function TaskDetailsToolbar({
       return parentBaseBranch;
     }
 
-    // 4. Fall back to selectedBranch (current branch)
-    return selectedBranch;
+    // 4. Fall back to current branch
+    const currentBranch = branches.find((b) => b.is_current);
+    return currentBranch?.name || null;
   }, [latestAttempt, branches, selectedBranch, parentBaseBranch]);
 
   const fetchProjectBranches = useCallback(async () => {
     const result = await projectsApi.getBranches(projectId);
 
     setBranches(result);
-    // Set current branch as default
-    const currentBranch = result.find((b) => b.is_current);
-    if (currentBranch) {
-      setSelectedBranch((prev) => (!prev ? currentBranch.name : prev));
-    }
   }, [projectId]);
 
   useEffect(() => {
