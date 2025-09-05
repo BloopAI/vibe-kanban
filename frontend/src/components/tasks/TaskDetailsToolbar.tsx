@@ -169,7 +169,9 @@ function TaskDetailsToolbar({
     if (task.parent_task_attempt) {
       attemptsApi
         .get(task.parent_task_attempt)
-        .then((attempt) => setParentBaseBranch(attempt.base_branch))
+        .then((attempt) =>
+          setParentBaseBranch(attempt.branch || attempt.base_branch)
+        )
         .catch(() => setParentBaseBranch(null));
     } else {
       setParentBaseBranch(null);
