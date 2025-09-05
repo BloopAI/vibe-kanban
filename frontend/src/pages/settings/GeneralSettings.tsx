@@ -345,9 +345,6 @@ export function GeneralSettings() {
             <Key className="h-5 w-5" />
             GitHub Integration
           </CardTitle>
-          <CardDescription>
-            Connect your GitHub account to enable advanced features.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {isAuthenticated ? (

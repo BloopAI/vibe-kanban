@@ -90,12 +90,13 @@ export function GitHubLoginDialog({
     };
   }, [polling, deviceState]);
 
-  // Automatically copy code to clipboard when deviceState is set
+  // Automatically copy code to clipboard and open GitHub URL when deviceState is set
   useEffect(() => {
     if (deviceState?.user_code) {
       copyToClipboard(deviceState.user_code);
+      window.open(deviceState.verification_uri, '_blank');
     }
-  }, [deviceState?.user_code]);
+  }, [deviceState?.user_code, deviceState?.verification_uri]);
 
   const copyToClipboard = async (text: string) => {
     try {
