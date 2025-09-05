@@ -19,7 +19,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { templatesApi, imagesApi, projectsApi } from '@/lib/api';
-import type { TaskStatus, TaskTemplate, ImageResponse, GitBranch, BaseCodingAgent, ExecutorProfileId } from 'shared/types';
+import type {
+  TaskStatus,
+  TaskTemplate,
+  ImageResponse,
+  GitBranch,
+  BaseCodingAgent,
+  ExecutorProfileId,
+} from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
 
 interface Task {
@@ -84,7 +91,8 @@ export function TaskFormDialog({
   );
   const [branches, setBranches] = useState<GitBranch[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>('');
-  const [selectedExecutorProfile, setSelectedExecutorProfile] = useState<ExecutorProfileId | null>(null);
+  const [selectedExecutorProfile, setSelectedExecutorProfile] =
+    useState<ExecutorProfileId | null>(null);
   const [quickstartExpanded, setQuickstartExpanded] = useState<boolean>(false);
 
   const { system, profiles } = useUserSystem();
@@ -179,15 +187,14 @@ export function TaskFormDialog({
         .then(([projectTemplates, globalTemplates, projectBranches]) => {
           // Combine templates with project templates first
           setTemplates([...projectTemplates, ...globalTemplates]);
-          
+
           // Set branches and default to current branch
           setBranches(projectBranches);
-          const currentBranch = projectBranches.find(b => b.is_current);
+          const currentBranch = projectBranches.find((b) => b.is_current);
           const defaultBranch = currentBranch || projectBranches[0];
           if (defaultBranch) {
             setSelectedBranch(defaultBranch.name);
           }
-
         })
         .catch(console.error);
     }
@@ -288,6 +295,7 @@ export function TaskFormDialog({
     onOpenChange,
     newlyUploadedImageIds,
     images,
+    system.config?.executor_profile,
   ]);
 
   const handleCreateAndStart = useCallback(async () => {
@@ -298,7 +306,13 @@ export function TaskFormDialog({
       if (!isEditMode && onCreateAndStartTask) {
         const imageIds =
           newlyUploadedImageIds.length > 0 ? newlyUploadedImageIds : undefined;
-        await onCreateAndStartTask(title, description, imageIds, selectedBranch || undefined, selectedExecutorProfile || undefined);
+        await onCreateAndStartTask(
+          title,
+          description,
+          imageIds,
+          selectedBranch || undefined,
+          selectedExecutorProfile || undefined
+        );
       }
 
       // Reset form on successful creation
@@ -322,6 +336,9 @@ export function TaskFormDialog({
     onCreateAndStartTask,
     onOpenChange,
     newlyUploadedImageIds,
+    selectedBranch,
+    selectedExecutorProfile,
+    system.config?.executor_profile,
   ]);
 
   const handleCancel = useCallback(() => {
@@ -526,7 +543,13 @@ export function TaskFormDialog({
 
             {!isEditMode && onCreateAndStartTask && (
               <div className="pt-2">
-                <details className="group" open={quickstartExpanded} onToggle={(e) => setQuickstartExpanded((e.target as HTMLDetailsElement).open)}>
+                <details
+                  className="group"
+                  open={quickstartExpanded}
+                  onToggle={(e) =>
+                    setQuickstartExpanded((e.target as HTMLDetailsElement).open)
+                  }
+                >
                   <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-2">
                     <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
                     <Settings2 className="h-3 w-3" />
@@ -540,7 +563,10 @@ export function TaskFormDialog({
                     {/* Executor Profile Selector */}
                     {profiles && (
                       <div>
-                        <Label htmlFor="executor-profile" className="text-sm font-medium">
+                        <Label
+                          htmlFor="executor-profile"
+                          className="text-sm font-medium"
+                        >
                           Executor Profile
                         </Label>
                         <Select
@@ -560,7 +586,10 @@ export function TaskFormDialog({
                             {Object.keys(profiles)
                               .sort((a, b) => a.localeCompare(b))
                               .map((executorKey) => (
-                                <SelectItem key={executorKey} value={executorKey}>
+                                <SelectItem
+                                  key={executorKey}
+                                  value={executorKey}
+                                >
                                   {executorKey}
                                 </SelectItem>
                               ))}
@@ -570,47 +599,65 @@ export function TaskFormDialog({
                     )}
 
                     {/* Variant Selector (conditional) */}
-                    {selectedExecutorProfile && profiles && (() => {
-                      const currentProfile = profiles[selectedExecutorProfile.executor];
-                      const hasVariants = currentProfile && Object.keys(currentProfile).length > 0;
-                      
-                      if (hasVariants && currentProfile) {
-                        return (
-                          <div>
-                            <Label htmlFor="executor-variant" className="text-sm font-medium">
-                              Variant
-                            </Label>
-                            <Select
-                              value={selectedExecutorProfile.variant || 'DEFAULT'}
-                              onValueChange={(value) => {
-                                setSelectedExecutorProfile({
-                                  ...selectedExecutorProfile,
-                                  variant: value === 'DEFAULT' ? null : value,
-                                });
-                              }}
-                              disabled={isSubmitting || isSubmittingAndStart}
-                            >
-                              <SelectTrigger className="mt-1.5">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Object.keys(currentProfile).map((variantKey) => (
-                                  <SelectItem key={variantKey} value={variantKey}>
-                                    {variantKey}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
+                    {selectedExecutorProfile &&
+                      profiles &&
+                      (() => {
+                        const currentProfile =
+                          profiles[selectedExecutorProfile.executor];
+                        const hasVariants =
+                          currentProfile &&
+                          Object.keys(currentProfile).length > 0;
+
+                        if (hasVariants && currentProfile) {
+                          return (
+                            <div>
+                              <Label
+                                htmlFor="executor-variant"
+                                className="text-sm font-medium"
+                              >
+                                Variant
+                              </Label>
+                              <Select
+                                value={
+                                  selectedExecutorProfile.variant || 'DEFAULT'
+                                }
+                                onValueChange={(value) => {
+                                  setSelectedExecutorProfile({
+                                    ...selectedExecutorProfile,
+                                    variant: value === 'DEFAULT' ? null : value,
+                                  });
+                                }}
+                                disabled={isSubmitting || isSubmittingAndStart}
+                              >
+                                <SelectTrigger className="mt-1.5">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.keys(currentProfile).map(
+                                    (variantKey) => (
+                                      <SelectItem
+                                        key={variantKey}
+                                        value={variantKey}
+                                      >
+                                        {variantKey}
+                                      </SelectItem>
+                                    )
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
 
                     {/* Branch Selector */}
                     {branches.length > 0 && (
                       <div>
-                        <Label htmlFor="base-branch" className="text-sm font-medium">
+                        <Label
+                          htmlFor="base-branch"
+                          className="text-sm font-medium"
+                        >
                           Branch
                         </Label>
                         <Select
@@ -627,7 +674,9 @@ export function TaskFormDialog({
                                 <div className="flex items-center gap-2">
                                   <span>{branch.name}</span>
                                   {branch.is_current && (
-                                    <span className="text-xs text-muted-foreground">(current)</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      (current)
+                                    </span>
                                   )}
                                 </div>
                               </SelectItem>

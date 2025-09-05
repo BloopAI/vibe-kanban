@@ -5,7 +5,13 @@ import { TaskFormDialog } from './TaskFormDialog';
 import { useTaskDialog } from '@/contexts/task-dialog-context';
 import { useProject } from '@/contexts/project-context';
 import { tasksApi } from '@/lib/api';
-import type { TaskStatus, CreateTask, CreateAndStartTaskRequest, ExecutorProfileId } from 'shared/types';
+import type {
+  TaskStatus,
+  CreateTask,
+  CreateAndStartTaskRequest,
+  UpdateTask,
+  ExecutorProfileId,
+} from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
 
 /**
@@ -39,7 +45,8 @@ export function TaskFormDialogContainer() {
   });
 
   const createAndStartTaskMutation = useMutation({
-    mutationFn: (data: CreateAndStartTaskRequest) => tasksApi.createAndStart(data),
+    mutationFn: (data: CreateAndStartTaskRequest) =>
+      tasksApi.createAndStart(data),
     onSuccess: (result) => {
       // Invalidate and refetch tasks list
       queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
@@ -57,7 +64,7 @@ export function TaskFormDialogContainer() {
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: ({ taskId, data }: { taskId: string; data: any }) =>
+    mutationFn: ({ taskId, data }: { taskId: string; data: UpdateTask }) =>
       tasksApi.update(taskId, data),
     onSuccess: (updatedTask) => {
       // Invalidate and refetch tasks list and individual task
@@ -87,11 +94,18 @@ export function TaskFormDialogContainer() {
   );
 
   const handleCreateAndStartTask = useCallback(
-    async (title: string, description: string, imageIds?: string[], baseBranch?: string, executorProfile?: ExecutorProfileId) => {
+    async (
+      title: string,
+      description: string,
+      imageIds?: string[],
+      baseBranch?: string,
+      executorProfile?: ExecutorProfileId
+    ) => {
       if (!projectId || !baseBranch) return;
 
       // Use provided executor profile or fall back to config default
-      const finalExecutorProfile = executorProfile || system.config?.executor_profile;
+      const finalExecutorProfile =
+        executorProfile || system.config?.executor_profile;
       if (!finalExecutorProfile) return;
 
       createAndStartTaskMutation.mutate({
