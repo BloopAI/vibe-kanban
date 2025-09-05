@@ -131,10 +131,7 @@ function TaskDetailsToolbar({
     }
 
     // 3. Parent task attempt's base branch (NEW - for inherited tasks)
-    if (
-      parentBaseBranch &&
-      branches.some((b: GitBranch) => b.name === parentBaseBranch)
-    ) {
+    if (parentBaseBranch) {
       return parentBaseBranch;
     }
 
@@ -170,7 +167,7 @@ function TaskDetailsToolbar({
       attemptsApi
         .get(task.parent_task_attempt)
         .then((attempt) =>
-          setParentBaseBranch(attempt.branch || attempt.base_branch)
+          setParentBaseBranch(attempt.branch)
         )
         .catch(() => setParentBaseBranch(null));
     } else {
