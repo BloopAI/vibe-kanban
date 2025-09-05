@@ -1,11 +1,12 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { TaskFormDialog } from './TaskFormDialog';
 import { useTaskDialog } from '@/contexts/task-dialog-context';
 import { useProject } from '@/contexts/project-context';
-import { tasksApi, configApi } from '@/lib/api';
+import { tasksApi } from '@/lib/api';
 import type { TaskStatus, CreateTask, CreateAndStartTaskRequest, ExecutorProfileId } from 'shared/types';
+import { useUserSystem } from '@/components/config-provider';
 
 /**
  * Container component that bridges the TaskDialogContext with TaskFormDialog
@@ -16,12 +17,7 @@ export function TaskFormDialogContainer() {
   const { projectId } = useProject();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-
-  // Fetch config to get the executor profile
-  const { data: systemInfo } = useQuery({
-    queryKey: ['config'],
-    queryFn: configApi.getConfig,
-  });
+  const { system } = useUserSystem();
 
   // React Query mutations
   const createTaskMutation = useMutation({
@@ -95,7 +91,7 @@ export function TaskFormDialogContainer() {
       if (!projectId || !baseBranch) return;
 
       // Use provided executor profile or fall back to config default
-      const finalExecutorProfile = executorProfile || systemInfo?.config.executor_profile;
+      const finalExecutorProfile = executorProfile || system.config?.executor_profile;
       if (!finalExecutorProfile) return;
 
       createAndStartTaskMutation.mutate({
@@ -110,7 +106,7 @@ export function TaskFormDialogContainer() {
         base_branch: baseBranch,
       });
     },
-    [projectId, systemInfo, createAndStartTaskMutation]
+    [projectId, system, createAndStartTaskMutation]
   );
 
   const handleUpdateTask = useCallback(
@@ -144,8 +140,6 @@ export function TaskFormDialogContainer() {
       projectId={projectId || undefined}
       initialTemplate={dialogState.initialTemplate}
       initialTask={dialogState.initialTask}
-      availableExecutors={systemInfo?.executors || null}
-      currentExecutorProfile={systemInfo?.config.executor_profile || null}
       onCreateTask={handleCreateTask}
       onCreateAndStartTask={handleCreateAndStartTask}
       onUpdateTask={handleUpdateTask}

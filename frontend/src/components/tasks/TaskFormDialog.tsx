@@ -19,7 +19,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { templatesApi, imagesApi, projectsApi } from '@/lib/api';
-import type { TaskStatus, TaskTemplate, ImageResponse, GitBranch, BaseCodingAgent, ExecutorConfig, ExecutorProfileId } from 'shared/types';
+import type { TaskStatus, TaskTemplate, ImageResponse, GitBranch, BaseCodingAgent, ExecutorProfileId } from 'shared/types';
+import { useUserSystem } from '@/components/config-provider';
 
 interface Task {
   id: string;
@@ -38,8 +39,6 @@ interface TaskFormDialogProps {
   projectId?: string; // For file search functionality
   initialTemplate?: TaskTemplate | null; // For pre-filling from template
   initialTask?: Task | null; // For duplicating an existing task
-  availableExecutors?: Record<string, ExecutorConfig> | null; // Available executor profiles
-  currentExecutorProfile?: ExecutorProfileId | null; // Current executor profile from config
   onCreateTask?: (
     title: string,
     description: string,
@@ -67,8 +66,6 @@ export function TaskFormDialog({
   projectId,
   initialTemplate,
   initialTask,
-  availableExecutors,
-  currentExecutorProfile,
   onCreateTask,
   onCreateAndStartTask,
   onUpdateTask,
@@ -90,6 +87,7 @@ export function TaskFormDialog({
   const [selectedExecutorProfile, setSelectedExecutorProfile] = useState<ExecutorProfileId | null>(null);
   const [quickstartExpanded, setQuickstartExpanded] = useState<boolean>(false);
 
+  const { system, profiles } = useUserSystem();
   const isEditMode = Boolean(task);
 
   // Check if there's any content that would be lost
@@ -190,14 +188,17 @@ export function TaskFormDialog({
             setSelectedBranch(defaultBranch.name);
           }
 
-          // Set default executor profile from config
-          if (currentExecutorProfile && availableExecutors) {
-            setSelectedExecutorProfile(currentExecutorProfile);
-          }
         })
         .catch(console.error);
     }
-  }, [isOpen, isEditMode, projectId, currentExecutorProfile, availableExecutors]);
+  }, [isOpen, isEditMode, projectId]);
+
+  // Set default executor from config (following TaskDetailsToolbar pattern)
+  useEffect(() => {
+    if (system.config?.executor_profile) {
+      setSelectedExecutorProfile(system.config.executor_profile);
+    }
+  }, [system.config?.executor_profile]);
 
   // Handle template selection
   const handleTemplateChange = (templateId: string) => {
@@ -269,7 +270,7 @@ export function TaskFormDialog({
         setImages([]);
         setNewlyUploadedImageIds([]);
         setSelectedBranch('');
-        setSelectedExecutorProfile(currentExecutorProfile || null);
+        setSelectedExecutorProfile(system.config?.executor_profile || null);
         setQuickstartExpanded(false);
       }
 
@@ -307,7 +308,7 @@ export function TaskFormDialog({
       setImages([]);
       setNewlyUploadedImageIds([]);
       setSelectedBranch('');
-      setSelectedExecutorProfile(currentExecutorProfile || null);
+      setSelectedExecutorProfile(system.config?.executor_profile || null);
       setQuickstartExpanded(false);
 
       onOpenChange(false);
@@ -537,7 +538,7 @@ export function TaskFormDialog({
                     </p>
 
                     {/* Executor Profile Selector */}
-                    {availableExecutors && (
+                    {profiles && (
                       <div>
                         <Label htmlFor="executor-profile" className="text-sm font-medium">
                           Executor Profile
@@ -556,7 +557,7 @@ export function TaskFormDialog({
                             <SelectValue placeholder="Select executor profile" />
                           </SelectTrigger>
                           <SelectContent>
-                            {Object.keys(availableExecutors)
+                            {Object.keys(profiles)
                               .sort((a, b) => a.localeCompare(b))
                               .map((executorKey) => (
                                 <SelectItem key={executorKey} value={executorKey}>
@@ -569,8 +570,8 @@ export function TaskFormDialog({
                     )}
 
                     {/* Variant Selector (conditional) */}
-                    {selectedExecutorProfile && availableExecutors && (() => {
-                      const currentProfile = availableExecutors[selectedExecutorProfile.executor];
+                    {selectedExecutorProfile && profiles && (() => {
+                      const currentProfile = profiles[selectedExecutorProfile.executor];
                       const hasVariants = currentProfile && Object.keys(currentProfile).length > 0;
                       
                       if (hasVariants && currentProfile) {
