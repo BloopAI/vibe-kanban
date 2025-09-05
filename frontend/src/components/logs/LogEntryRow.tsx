@@ -34,23 +34,13 @@ function LogEntryRow({
       return <StderrEntry content={entry.payload as string} />;
     case 'normalized':
       return (
-        <DisplayConversationEntry
-          entry={entry.payload as NormalizedEntry}
-          expansionKey={`${entry.processId}:${index}`}
-          diffDeletable={false}
-        />
-      );
-    case 'process_start':
-      return (
-        <ProcessStartCard
-          payload={entry.payload as ProcessStartPayload}
-          isCollapsed={isCollapsed || false}
-          onToggle={onToggleCollapse || (() => { })}
-          onRestore={onRestore}
-          restoreProcessId={restoreProcessId}
-          restoreDisabled={restoreDisabled}
-          restoreDisabledReason={restoreDisabledReason}
-        />
+        <div className="mt-4">
+          <DisplayConversationEntry
+            entry={entry.payload as NormalizedEntry}
+            expansionKey={`${entry.processId}:${index}`}
+            diffDeletable={false}
+          />
+        </div>
       );
     default:
       return (

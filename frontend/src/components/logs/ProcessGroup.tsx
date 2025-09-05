@@ -23,7 +23,7 @@ export default function ProcessGroup({
   restore,
 }: Props) {
   return (
-    <div className="px-4 py-4 space-y-4">
+    <div className="px-4 mt-4">
       <ProcessStartCard
         payload={header}
         isCollapsed={isCollapsed}
@@ -33,12 +33,13 @@ export default function ProcessGroup({
         restoreDisabled={restore?.restoreDisabled}
         restoreDisabledReason={restore?.restoreDisabledReason}
       />
-
-      {!isCollapsed && entries.length > 0 &&
-        entries.map((entry, i) => (
-          <LogEntryRow key={entry.id} entry={entry} index={i} />
-        ))
-      }
+      <div className="flex flex-col py-2">
+        {!isCollapsed && entries.length > 0 &&
+          entries.map((entry, i) => (
+            <LogEntryRow key={entry.id} entry={entry} index={i} />
+          ))
+        }
+      </div>
     </div>
   );
 }

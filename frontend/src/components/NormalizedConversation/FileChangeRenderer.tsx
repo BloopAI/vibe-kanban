@@ -117,7 +117,7 @@ const FileChangeRenderer = ({ path, change, expansionKey }: Props) => {
   }
 
   return (
-    <div className="border rounded-md">
+    <div className="border">
       <div className="flex items-center px-4 py-2">
         {expandable && (
           <Button

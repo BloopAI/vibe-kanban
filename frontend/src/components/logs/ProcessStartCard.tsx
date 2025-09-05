@@ -94,20 +94,16 @@ function ProcessStartCard({
 
   return (
     <div
-      className="px-3 p-2 cursor-pointer select-none transition-colors border rounded-md w-full bg-zinc-100 dark:bg-zinc-800"
+      className="p-2 border cursor-pointer select-none transition-colors w-full bg-background"
       role="button"
       tabIndex={0}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
     >
-      <div className="flex items-center gap-2 text-sm">
+      <div className="flex items-center gap-2 text-sm font-light">
         <div className="flex items-center gap-2 text-foreground min-w-0 flex-1">
-          <div className="flex-shrink-0">
-            {getProcessIcon(payload.runReason)}
-          </div>
           <span
             className={cn(
-              'font-medium',
               shouldTruncate ? 'truncate' : 'whitespace-normal break-words'
             )}
             title={shouldTruncate ? label : undefined}
