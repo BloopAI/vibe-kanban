@@ -457,7 +457,8 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
                 />
               ));
             })()
-          ) : isToolUse && entryType.action_type.action === 'plan_presentation' ? (
+          ) : isToolUse &&
+            entryType.action_type.action === 'plan_presentation' ? (
             <PlanPresentationCard
               plan={entryType.action_type.plan}
               expansionKey={expansionKey}
