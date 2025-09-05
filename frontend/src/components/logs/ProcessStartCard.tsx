@@ -7,6 +7,12 @@ import {
   History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { ProcessStartPayload } from '@/types/logs';
 import type { ExecutorAction } from 'shared/types';
 import { PROCESS_RUN_REASONS } from '@/constants/processes';
@@ -112,32 +118,35 @@ function ProcessStartCard({
           </div>
           {onRestore &&
             payload.runReason === PROCESS_RUN_REASONS.CODING_AGENT && (
-              <button
-                className={cn(
-                  'ml-2 group w-20 flex items-center gap-1 px-1.5 py-1 rounded transition-colors',
-                  restoreDisabled
-                    ? 'cursor-not-allowed text-muted-foreground/60 bg-muted/40'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                )}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (restoreDisabled) return;
-                  onRestore(restoreProcessId || payload.processId);
-                }}
-                title={
-                  restoreDisabled
-                    ? restoreDisabledReason ||
-                      'Restore is currently unavailable.'
-                    : 'Restore to this checkpoint (deletes later history)'
-                }
-                aria-label="Restore to this checkpoint"
-                disabled={!!restoreDisabled}
-              >
-                <History className="h-4 w-4" />
-                <span className="text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                  Restore
-                </span>
-              </button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      className={cn(
+                        'ml-2 p-1 rounded transition-colors',
+                        restoreDisabled
+                          ? 'cursor-not-allowed text-muted-foreground/60'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                      )}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (restoreDisabled) return;
+                        onRestore(restoreProcessId || payload.processId);
+                      }}
+                      aria-label="Restore to this checkpoint"
+                      disabled={!!restoreDisabled}
+                    >
+                      <History className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {restoreDisabled
+                      ? restoreDisabledReason ||
+                        'Restore is currently unavailable.'
+                      : 'Restore'}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
 
           <div
