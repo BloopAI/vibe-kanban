@@ -44,14 +44,14 @@ function CreatePrDialog() {
     if (isOpen && data) {
       setPrTitle(`${data.task.title} (vibe-kanban)`);
       setPrBody(data.task.description || '');
-      
+
       // Smart default: task attempt base branch → current branch
-      const defaultBranch = data.attempt.base_branch || 
-                           branches.find(b => b.is_current)?.name;
+      const defaultBranch = data.attempt.base_branch ||
+        branches.find(b => b.is_current)?.name;
       if (defaultBranch) {
         setPrBaseBranch(defaultBranch);
       }
-      
+
       setError(null); // Reset error when opening
     }
   }, [isOpen, data, branches]);
