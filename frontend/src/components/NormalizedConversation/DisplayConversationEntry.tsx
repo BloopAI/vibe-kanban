@@ -158,7 +158,7 @@ const getContentClassName = (entryType: NormalizedEntryType) => {
     entryType.type === 'tool_use' &&
     entryType.action_type.action === 'plan_presentation'
   )
-    return `${base} text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/20 px-3 py-2 rounded-md border-l-4 border-blue-400`;
+    return `${base} text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/20 px-3 py-2 border-l-4 border-blue-400`;
 
   return base;
 };
@@ -176,7 +176,7 @@ const MessageCard: React.FC<{
   onToggle?: () => void;
 }> = ({ children, variant, expanded, onToggle }) => {
   const frameBase =
-    'border rounded-md px-3 py-2 w-full cursor-pointer  bg-[hsl(var(--card))] border-[hsl(var(--border))]';
+    'border px-3 py-2 w-full cursor-pointer  bg-[hsl(var(--card))] border-[hsl(var(--border))]';
   const systemTheme = 'border-400/40 text-zinc-500';
   const errorTheme =
     'border-red-400/40 bg-red-50 dark:bg-[hsl(var(--card))] text-[hsl(var(--foreground))]';
@@ -286,7 +286,7 @@ const PlanPresentationCard: React.FC<{
 
   return (
     <div className="inline-block w-full">
-      <div className="border rounded-lg w-full overflow-hidden  border-blue-400/40">
+      <div className="border w-full overflow-hidden  border-blue-400/40">
         <button
           onClick={(e: React.MouseEvent) => {
             e.preventDefault();

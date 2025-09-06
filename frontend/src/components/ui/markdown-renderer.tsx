@@ -12,7 +12,7 @@ function MarkdownRenderer({ content, className = '' }: MarkdownRendererProps) {
       code: ({ children, ...props }) => (
         <code
           {...props}
-          className="bg-background px-1 py-0.5 rounded text-sm font-mono"
+          className="bg-background px-1 py-0.5 text-sm font-mono"
         >
           {children}
         </code>
