@@ -58,9 +58,7 @@ export const getMainContainerClasses = (
   forceFullScreen: boolean
 ) => {
   const overlayClasses =
-    isPanelOpen && forceFullScreen
-      ? 'w-full h-full'
-      : 'h-full flex flex-col';
+    isPanelOpen && forceFullScreen ? 'w-full h-full' : 'h-full flex flex-col';
 
   return `${overlayClasses}`;
 };

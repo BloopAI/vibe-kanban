@@ -263,7 +263,7 @@ export function ProjectTasks() {
           <AlertDescription>{streamError}</AlertDescription>
         </Alert>
       )}
-      
+
       {/* Kanban + Panel Container - uses side-by-side layout on xl+ */}
       <div className="flex-1 min-h-0 xl:flex">
         {/* Left Column - Kanban Section */}
