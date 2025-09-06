@@ -5,6 +5,16 @@ import './styles/index.css';
 import { ClickToComponent } from 'click-to-react-component';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Sentry from '@sentry/react';
+import NiceModal from '@ebay/nice-modal-react';
+// Import modal type definitions
+import './types/modals';
+// Import and register modals
+import { GitHubLoginDialog } from './components/GitHubLoginDialog';
+import CreatePRDialog from './components/tasks/Toolbar/CreatePRDialog';
+
+// Register modals
+NiceModal.register('github-login', GitHubLoginDialog);
+NiceModal.register('create-pr', CreatePRDialog);
 // Install VS Code iframe keyboard bridge when running inside an iframe
 import './vscode/bridge';
 

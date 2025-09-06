@@ -14,14 +14,10 @@ import { Loader } from './ui/loader';
 import { githubAuthApi } from '../lib/api';
 import { DeviceFlowStartResponse, DevicePollStatus } from 'shared/types';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import NiceModal, { useModal } from '@ebay/nice-modal-react';
 
-export function GitHubLoginDialog({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
+const GitHubLoginDialog = NiceModal.create(() => {
+  const modal = useModal();
   const { config, loading, githubTokenInvalid, reloadSystem } = useConfig();
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +59,7 @@ export function GitHubLoginDialog({
               setDeviceState(null);
               setError(null);
               await reloadSystem();
-              onOpenChange(false);
+              modal.hide();
               break;
             case DevicePollStatus.AUTHORIZATION_PENDING:
               timer = setTimeout(poll, deviceState.interval * 1000);
@@ -129,7 +125,7 @@ export function GitHubLoginDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={modal.visible} onOpenChange={modal.hide}>
       <DialogContent>
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -160,7 +156,7 @@ export function GitHubLoginDialog({
               </CardContent>
             </Card>
             <DialogFooter>
-              <Button onClick={() => onOpenChange(false)} className="w-full">
+              <Button onClick={() => modal.hide()} className="w-full">
                 Close
               </Button>
             </DialogFooter>
@@ -234,7 +230,7 @@ export function GitHubLoginDialog({
             )}
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
+              <Button variant="outline" onClick={() => modal.hide()}>
                 Skip
               </Button>
             </DialogFooter>
@@ -287,7 +283,7 @@ export function GitHubLoginDialog({
             <DialogFooter className="gap-3 flex-col sm:flex-row">
               <Button
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={() => modal.hide()}
                 className="flex-1"
               >
                 Skip
@@ -306,4 +302,6 @@ export function GitHubLoginDialog({
       </DialogContent>
     </Dialog>
   );
-}
+});
+
+export { GitHubLoginDialog };
