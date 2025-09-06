@@ -1,13 +1,6 @@
 import { type FileChange } from 'shared/types';
 import { useConfig } from '@/components/config-provider';
-import { Button } from '@/components/ui/button';
-import {
-  ChevronRight,
-  ChevronUp,
-  Trash2,
-  ArrowLeftRight,
-  ArrowRight,
-} from 'lucide-react';
+import { Trash2, FilePlus2, ArrowRight } from 'lucide-react';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import { getActualTheme } from '@/utils/theme';
 import EditDiffRenderer from './EditDiffRenderer';
@@ -61,20 +54,11 @@ const FileChangeRenderer = ({ path, change, expansionKey }: Props) => {
   }
 
   // Title row content and whether the row is expandable
-  const { titleNode, expandable } = (() => {
-    const commonTitleClass = 'text-xs font-mono overflow-x-auto flex-1';
-    const commonTitleStyle = {
-      color: 'hsl(var(--muted-foreground) / 0.7)',
-    };
-
+  const { titleNode, icon, expandable } = (() => {
     if (isDelete(change)) {
       return {
-        titleNode: (
-          <p className={commonTitleClass} style={commonTitleStyle}>
-            <Trash2 className="h-3 w-3 inline mr-1.5" aria-hidden />
-            Delete <span className="ml-1">{path}</span>
-          </p>
-        ),
+        titleNode: path,
+        icon: <Trash2 className="h-3 w-3" />,
         expandable: false,
       };
     }
@@ -82,24 +66,19 @@ const FileChangeRenderer = ({ path, change, expansionKey }: Props) => {
     if (isRename(change)) {
       return {
         titleNode: (
-          <p className={commonTitleClass} style={commonTitleStyle}>
-            <ArrowLeftRight className="h-3 w-3 inline mr-1.5" aria-hidden />
-            Rename <span className="ml-1">{path}</span>{' '}
-            <ArrowRight className="h-3 w-3 inline mx-1" aria-hidden />{' '}
-            <span>{change.new_path}</span>
-          </p>
+          <>
+            Rename {path} to {change.new_path}
+          </>
         ),
+        icon: <ArrowRight className="h-3 w-3" />,
         expandable: false,
       };
     }
 
     if (isWrite(change)) {
       return {
-        titleNode: (
-          <p className={commonTitleClass} style={commonTitleStyle}>
-            Write to <span className="ml-1">{path}</span>
-          </p>
-        ),
+        titleNode: path,
+        icon: <FilePlus2 className="h-3 w-3" />,
         expandable: true,
       };
     }
@@ -107,6 +86,7 @@ const FileChangeRenderer = ({ path, change, expansionKey }: Props) => {
     // No fallback: render nothing for unknown change types
     return {
       titleNode: null,
+      icon: null,
       expandable: false,
     };
   })();
@@ -117,26 +97,15 @@ const FileChangeRenderer = ({ path, change, expansionKey }: Props) => {
   }
 
   return (
-    <div className="border rounded-md">
-      <div className="flex items-center px-4 py-2">
-        {expandable && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setExpanded()}
-            className="h-6 w-6 p-0 mr-2"
-            title={expanded ? 'Collapse' : 'Expand'}
-            aria-expanded={expanded}
-          >
-            {expanded ? (
-              <ChevronUp className="h-3 w-3" />
-            ) : (
-              <ChevronRight className="h-3 w-3" />
-            )}
-          </Button>
-        )}
-
-        {titleNode}
+    <div>
+      <div className="flex items-center text-secondary-foreground gap-1.5">
+        {icon}
+        <p
+          onClick={() => expandable && setExpanded()}
+          className="text-xs font-mono overflow-x-auto flex-1 cursor-pointer"
+        >
+          {titleNode}
+        </p>
       </div>
 
       {/* Body */}

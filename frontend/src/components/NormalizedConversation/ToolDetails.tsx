@@ -19,6 +19,10 @@ type Props = {
     | null;
 };
 
+export const renderJson = (v: JsonValue) => (
+  <pre>{JSON.stringify(v, null, 2)}</pre>
+);
+
 export default function ToolDetails({
   arguments: args,
   result,
@@ -26,14 +30,8 @@ export default function ToolDetails({
 }: Props) {
   const isCommandMode = commandOutput !== undefined;
 
-  const renderJson = (v: JsonValue) => (
-    <pre className="mt-1 rounded bg-muted p-2 text-xs">
-      {JSON.stringify(v, null, 2)}
-    </pre>
-  );
-
   return (
-    <div className="mt-2 space-y-3">
+    <div className="space-y-3">
       {args && (
         <section>
           {!isCommandMode ? (

@@ -23,28 +23,23 @@ export default function ProcessGroup({
   restore,
 }: Props) {
   return (
-    <div className="px-4 pt-3 space-y-2">
-      <div className="pr-3 w-full">
-        <ProcessStartCard
-          payload={header}
-          isCollapsed={isCollapsed}
-          onToggle={onToggle}
-          onRestore={restore?.onRestore}
-          restoreProcessId={restore?.restoreProcessId}
-          restoreDisabled={restore?.restoreDisabled}
-          restoreDisabledReason={restore?.restoreDisabledReason}
-        />
+    <div className="px-4 mt-4">
+      <ProcessStartCard
+        payload={header}
+        isCollapsed={isCollapsed}
+        onToggle={onToggle}
+        onRestore={restore?.onRestore}
+        restoreProcessId={restore?.restoreProcessId}
+        restoreDisabled={restore?.restoreDisabled}
+        restoreDisabledReason={restore?.restoreDisabledReason}
+      />
+      <div className="text-sm">
+        {!isCollapsed &&
+          entries.length > 0 &&
+          entries.map((entry, i) => (
+            <LogEntryRow key={entry.id} entry={entry} index={i} />
+          ))}
       </div>
-
-      {!isCollapsed && entries.length > 0 && (
-        <div className="w-full overflow-hidden">
-          <div className="pl-3 py-2 space-y-1">
-            {entries.map((entry, i) => (
-              <LogEntryRow key={entry.id} entry={entry} index={i} />
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

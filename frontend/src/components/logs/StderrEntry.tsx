@@ -5,11 +5,7 @@ interface StderrEntryProps {
 }
 
 function StderrEntry({ content }: StderrEntryProps) {
-  return (
-    <div className="flex gap-2 px-4">
-      <RawLogText content={content} channel="stderr" as="span" />
-    </div>
-  );
+  return <RawLogText content={content} channel="stderr" as="span" />;
 }
 
 export default StderrEntry;

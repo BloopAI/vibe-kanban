@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Chivo+Mono:ital,wght@0,100..900;1,100..900&family=Noto+Emoji:wght@300..700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -11,7 +13,7 @@
     --_primary: var(--_muted);
     --_primary-foreground: var(--_muted-foreground);
     --_secondary: var(--_muted);
-    --_secondary-foreground: 215.4 16.3% 46.9%;
+    --_secondary-foreground: 215.4 16.3% 70.9%;
     --_muted: 0 0% 100%;
     --_muted-foreground: var(--_foreground);
     --_accent: var(--_background);

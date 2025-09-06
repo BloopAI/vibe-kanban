@@ -8,13 +8,12 @@ type Props = {
   content: string;
   lang: string | null;
   theme?: 'light' | 'dark';
-  className?: string;
 };
 
 /**
  * View syntax highlighted file content.
  */
-function FileContentView({ content, lang, theme, className }: Props) {
+function FileContentView({ content, lang, theme }: Props) {
   // Uses the syntax highlighter from @git-diff-view/react without any diff-related features.
   // This allows uniform styling with EditDiffRenderer.
   const diffFile = useMemo(() => {
@@ -34,29 +33,21 @@ function FileContentView({ content, lang, theme, className }: Props) {
     }
   }, [content, lang]);
 
-  return (
-    <div
-      className={['plain-file-content edit-diff-hide-nums', className]
-        .filter(Boolean)
-        .join(' ')}
-    >
-      <div className="px-4 py-2">
-        {diffFile ? (
-          <DiffView
-            diffFile={diffFile}
-            diffViewWrap={false}
-            diffViewTheme={theme}
-            diffViewHighlight
-            diffViewMode={DiffModeEnum.Unified}
-            diffViewFontSize={12}
-          />
-        ) : (
-          <pre className="text-xs font-mono overflow-x-auto whitespace-pre">
-            {content}
-          </pre>
-        )}
-      </div>
+  return diffFile ? (
+    <div className="border mt-2">
+      <DiffView
+        diffFile={diffFile}
+        diffViewWrap={false}
+        diffViewTheme={theme}
+        diffViewHighlight
+        diffViewMode={DiffModeEnum.Unified}
+        diffViewFontSize={12}
+      />
     </div>
+  ) : (
+    <pre className="text-xs font-mono overflow-x-auto whitespace-pre">
+      {content}
+    </pre>
   );
 }
 
