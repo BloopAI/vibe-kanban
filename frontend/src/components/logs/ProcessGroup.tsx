@@ -34,11 +34,11 @@ export default function ProcessGroup({
         restoreDisabledReason={restore?.restoreDisabledReason}
       />
       <div className="text-sm">
-        {!isCollapsed && entries.length > 0 &&
+        {!isCollapsed &&
+          entries.length > 0 &&
           entries.map((entry, i) => (
             <LogEntryRow key={entry.id} entry={entry} index={i} />
-          ))
-        }
+          ))}
       </div>
     </div>
   );

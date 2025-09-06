@@ -1,10 +1,6 @@
 import { type FileChange } from 'shared/types';
 import { useConfig } from '@/components/config-provider';
-import {
-  Trash2,
-  FilePlus2,
-  ArrowRight,
-} from 'lucide-react';
+import { Trash2, FilePlus2, ArrowRight } from 'lucide-react';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import { getActualTheme } from '@/utils/theme';
 import EditDiffRenderer from './EditDiffRenderer';
@@ -70,7 +66,9 @@ const FileChangeRenderer = ({ path, change, expansionKey }: Props) => {
     if (isRename(change)) {
       return {
         titleNode: (
-          <>Rename {path} to {change.new_path}</>
+          <>
+            Rename {path} to {change.new_path}
+          </>
         ),
         icon: <ArrowRight className="h-3 w-3" />,
         expandable: false,

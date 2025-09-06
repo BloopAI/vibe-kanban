@@ -5,9 +5,7 @@ interface StderrEntryProps {
 }
 
 function StderrEntry({ content }: StderrEntryProps) {
-  return (
-    <RawLogText content={content} channel="stderr" as="span" />
-  );
+  return <RawLogText content={content} channel="stderr" as="span" />;
 }
 
 export default StderrEntry;

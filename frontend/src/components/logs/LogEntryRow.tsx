@@ -1,9 +1,8 @@
-import { memo, useEffect, useRef } from 'react';
-import type { UnifiedLogEntry, ProcessStartPayload } from '@/types/logs';
+import { memo } from 'react';
+import type { UnifiedLogEntry } from '@/types/logs';
 import type { NormalizedEntry } from 'shared/types';
 import StdoutEntry from './StdoutEntry';
 import StderrEntry from './StderrEntry';
-import ProcessStartCard from './ProcessStartCard';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 
 interface LogEntryRowProps {
@@ -17,16 +16,7 @@ interface LogEntryRowProps {
   restoreDisabledReason?: string;
 }
 
-function LogEntryRow({
-  entry,
-  index,
-  isCollapsed,
-  onToggleCollapse,
-  onRestore,
-  restoreProcessId,
-  restoreDisabled,
-  restoreDisabledReason,
-}: LogEntryRowProps) {
+function LogEntryRow({ entry, index }: LogEntryRowProps) {
   switch (entry.channel) {
     case 'stdout':
       return <StdoutEntry content={entry.payload as string} />;

@@ -14,15 +14,13 @@ type Props = {
   result?: ToolResult | null;
   commandOutput?: string | null; // presence => command mode
   commandExit?:
-  | { type: 'success'; success: boolean }
-  | { type: 'exit_code'; code: number }
-  | null;
+    | { type: 'success'; success: boolean }
+    | { type: 'exit_code'; code: number }
+    | null;
 };
 
 export const renderJson = (v: JsonValue) => (
-  <pre>
-    {JSON.stringify(v, null, 2)}
-  </pre >
+  <pre>{JSON.stringify(v, null, 2)}</pre>
 );
 
 export default function ToolDetails({
@@ -88,4 +86,3 @@ export default function ToolDetails({
     </div>
   );
 }
-

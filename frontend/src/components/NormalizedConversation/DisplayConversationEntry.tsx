@@ -6,7 +6,7 @@ import {
 } from 'shared/types.ts';
 import type { ProcessStartPayload } from '@/types/logs';
 import FileChangeRenderer from './FileChangeRenderer';
-import ToolDetails, { renderJson } from './ToolDetails';
+import { renderJson } from './ToolDetails';
 import { useExpandable } from '@/stores/useExpandableStore';
 import {
   AlertCircle,
@@ -25,7 +25,6 @@ import {
   User,
 } from 'lucide-react';
 import RawLogText from '../common/RawLogText';
-
 
 type Props = {
   entry: NormalizedEntry | ProcessStartPayload;
@@ -91,23 +90,28 @@ const getEntryIcon = (entryType: NormalizedEntryType) => {
 };
 
 const getStatusIndicator = (entryType: NormalizedEntryType) => {
-  const result = entryType.type === "tool_use" &&
-    entryType.action_type.action === "command_run"
-    ? entryType.action_type.result?.exit_status
-    : null;
+  const result =
+    entryType.type === 'tool_use' &&
+    entryType.action_type.action === 'command_run'
+      ? entryType.action_type.result?.exit_status
+      : null;
 
   const status =
-    result?.type === "success"
+    result?.type === 'success'
       ? result.success
-        ? "success"
-        : "error"
-      : result?.type === "exit_code" ? result.code === 0 ? "success" : "error" : "unknown";
+        ? 'success'
+        : 'error'
+      : result?.type === 'exit_code'
+        ? result.code === 0
+          ? 'success'
+          : 'error'
+        : 'unknown';
 
-  if (status === "unknown") return null;
+  if (status === 'unknown') return null;
 
   const colorMap: Record<typeof status, string> = {
-    success: "bg-green-300",
-    error: "bg-red-300",
+    success: 'bg-green-300',
+    error: 'bg-red-300',
   };
 
   return (
@@ -118,7 +122,6 @@ const getStatusIndicator = (entryType: NormalizedEntryType) => {
     </div>
   );
 };
-
 
 /**********************
  * Helper definitions *
@@ -183,8 +186,9 @@ const MessageCard: React.FC<{
 
   return (
     <div
-      className={`${frameBase} ${variant === 'system' ? systemTheme : errorTheme
-        }`}
+      className={`${frameBase} ${
+        variant === 'system' ? systemTheme : errorTheme
+      }`}
       onClick={onToggle}
     >
       <div className="flex items-center gap-1.5">
@@ -220,8 +224,9 @@ const ExpandChevron: React.FC<{
   return (
     <ChevronDown
       onClick={onClick}
-      className={`h-4 w-4 cursor-pointer transition-transform ${color} ${expanded ? '' : '-rotate-90'
-        }`}
+      className={`h-4 w-4 cursor-pointer transition-transform ${color} ${
+        expanded ? '' : '-rotate-90'
+      }`}
     />
   );
 };
@@ -326,137 +331,134 @@ const ToolCallCard: React.FC<{
   entryType?: Extract<NormalizedEntryType, { type: 'tool_use' }>;
   action?: any;
   expansionKey: string;
-  contentClassName: string;
   content?: string;
   entryContent?: string;
-}> = ({
-  entryType,
-  action,
-  expansionKey,
-  contentClassName,
-  content,
-  entryContent,
-}) => {
-    const at: any = entryType?.action_type || action;
-    const [expanded, toggle] = useExpandable(`tool-entry:${expansionKey}`, false);
+}> = ({ entryType, action, expansionKey, content, entryContent }) => {
+  const at: any = entryType?.action_type || action;
+  const [expanded, toggle] = useExpandable(`tool-entry:${expansionKey}`, false);
 
-    const label =
-      at?.action === 'command_run'
-        ? 'Ran'
-        : entryType?.tool_name || at?.tool_name || 'Tool';
+  const label =
+    at?.action === 'command_run'
+      ? 'Ran'
+      : entryType?.tool_name || at?.tool_name || 'Tool';
 
-    const isCommand = at?.action === 'command_run';
+  const isCommand = at?.action === 'command_run';
 
-    const inlineText = (entryContent || content || '').trim();
-    const isSingleLine = inlineText !== '' && !/\r?\n/.test(inlineText);
-    const showInlineSummary = isSingleLine;
+  const inlineText = (entryContent || content || '').trim();
+  const isSingleLine = inlineText !== '' && !/\r?\n/.test(inlineText);
+  const showInlineSummary = isSingleLine;
 
-    const hasArgs = at?.action === 'tool' && !!at?.arguments;
-    const hasResult = at?.action === 'tool' && !!at?.result;
+  const hasArgs = at?.action === 'tool' && !!at?.arguments;
+  const hasResult = at?.action === 'tool' && !!at?.result;
 
-    const output: string | null = isCommand ? (at?.result?.output ?? null) : null;
-    let argsText: string | null = null;
-    if (isCommand) {
-      const fromArgs =
-        typeof at?.arguments === 'string'
-          ? at.arguments
-          : at?.arguments != null
-            ? JSON.stringify(at.arguments, null, 2)
-            : '';
+  const output: string | null = isCommand ? (at?.result?.output ?? null) : null;
+  let argsText: string | null = null;
+  if (isCommand) {
+    const fromArgs =
+      typeof at?.arguments === 'string'
+        ? at.arguments
+        : at?.arguments != null
+          ? JSON.stringify(at.arguments, null, 2)
+          : '';
 
-      const fallback = (entryContent || content || '').trim();
-      argsText = (fromArgs || fallback).trim();
-    }
+    const fallback = (entryContent || content || '').trim();
+    argsText = (fromArgs || fallback).trim();
+  }
 
-    const hasExpandableDetails = isCommand
-      ? Boolean(argsText) || Boolean(output)
-      : hasArgs || hasResult;
+  const hasExpandableDetails = isCommand
+    ? Boolean(argsText) || Boolean(output)
+    : hasArgs || hasResult;
 
-    const HeaderWrapper: React.ElementType = hasExpandableDetails
-      ? 'button'
-      : 'div';
-    const headerProps: any = hasExpandableDetails
-      ? {
+  const HeaderWrapper: React.ElementType = hasExpandableDetails
+    ? 'button'
+    : 'div';
+  const headerProps: any = hasExpandableDetails
+    ? {
         onClick: (e: React.MouseEvent) => {
           e.preventDefault();
           toggle();
         },
         title: expanded ? 'Hide details' : 'Show details',
       }
-      : {};
+    : {};
 
-    return (
-      <div className="inline-block w-full  flex flex-col gap-4">
-        <HeaderWrapper
-          {...headerProps}
-          className="w-full flex items-center gap-1.5 text-left text-secondary-foreground"
-        >
-          <span className=" min-w-0 flex items-center gap-1.5">
-            {entryType ? <span>{getStatusIndicator(entryType)}{getEntryIcon(entryType)}</span> :
-              <span className="font-normal flex">{label}</span>
-            }
-            {showInlineSummary && (
-              <span className="font-light">{inlineText}</span>
-            )}
-          </span>
-        </HeaderWrapper>
+  return (
+    <div className="inline-block w-full  flex flex-col gap-4">
+      <HeaderWrapper
+        {...headerProps}
+        className="w-full flex items-center gap-1.5 text-left text-secondary-foreground"
+      >
+        <span className=" min-w-0 flex items-center gap-1.5">
+          {entryType ? (
+            <span>
+              {getStatusIndicator(entryType)}
+              {getEntryIcon(entryType)}
+            </span>
+          ) : (
+            <span className="font-normal flex">{label}</span>
+          )}
+          {showInlineSummary && (
+            <span className="font-light">{inlineText}</span>
+          )}
+        </span>
+      </HeaderWrapper>
 
-        {expanded && (
-          <div className="max-h-[200px] overflow-y-auto border">
-            {isCommand ? (
-              <>
-                {argsText && (
-                  <>
-                    <div className="font-normal uppercase bg-background border-b border-dashed px-2 py-1">
-                      Args
-                    </div>
-                    <div className="px-2 py-1">
-                      {argsText}
-                    </div>
-                  </>
-                )}
+      {expanded && (
+        <div className="max-h-[200px] overflow-y-auto border">
+          {isCommand ? (
+            <>
+              {argsText && (
+                <>
+                  <div className="font-normal uppercase bg-background border-b border-dashed px-2 py-1">
+                    Args
+                  </div>
+                  <div className="px-2 py-1">{argsText}</div>
+                </>
+              )}
 
-                {output && (
-                  <>
-                    <div className="font-normal uppercase bg-background border-y border-dashed px-2 py-1">
-                      Output
-                    </div>
-                    <div className="px-2 py-1">
-                      <RawLogText content={output} />
-                    </div>
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                {entryType?.action_type.action === 'tool' && (
-                  <>
-                    <div className="font-normal uppercase bg-background border-b border-dashed px-2 py-1">
-                      Args
-                    </div>
-                    <div className="px-2 py-1">
-                      {renderJson(entryType.action_type.arguments)}
-                    </div>
-                    <div className="font-normal uppercase bg-background border-y border-dashed px-2 py-1">
-                      Result
-                    </div>
-                    <div className="px-2 py-1">
-                      {entryType.action_type.result?.type.type === 'markdown' && entryType.action_type.result.value && (
-                        <MarkdownRenderer content={entryType.action_type.result.value?.toString()} />
+              {output && (
+                <>
+                  <div className="font-normal uppercase bg-background border-y border-dashed px-2 py-1">
+                    Output
+                  </div>
+                  <div className="px-2 py-1">
+                    <RawLogText content={output} />
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              {entryType?.action_type.action === 'tool' && (
+                <>
+                  <div className="font-normal uppercase bg-background border-b border-dashed px-2 py-1">
+                    Args
+                  </div>
+                  <div className="px-2 py-1">
+                    {renderJson(entryType.action_type.arguments)}
+                  </div>
+                  <div className="font-normal uppercase bg-background border-y border-dashed px-2 py-1">
+                    Result
+                  </div>
+                  <div className="px-2 py-1">
+                    {entryType.action_type.result?.type.type === 'markdown' &&
+                      entryType.action_type.result.value && (
+                        <MarkdownRenderer
+                          content={entryType.action_type.result.value?.toString()}
+                        />
                       )}
-                      {entryType.action_type.result?.type.type === 'json' && (
-                        renderJson(entryType.action_type.result.value)
-                      )}
-                    </div>
-                  </>
-                )}
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
+                    {entryType.action_type.result?.type.type === 'json' &&
+                      renderJson(entryType.action_type.result.value)}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 /*******************
  * Main component  *
@@ -477,7 +479,6 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
       <ToolCallCard
         action={toolAction}
         expansionKey={expansionKey}
-        contentClassName=" whitespace-pre-wrap break-words"
         content={toolAction?.message ?? toolAction?.summary ?? undefined}
       />
     );
@@ -513,8 +514,7 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
             />
           ));
         })()
-      ) : isToolUse &&
-        entryType.action_type.action === 'plan_presentation' ? (
+      ) : isToolUse && entryType.action_type.action === 'plan_presentation' ? (
         <PlanPresentationCard
           plan={entryType.action_type.plan}
           expansionKey={expansionKey}
@@ -523,7 +523,6 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
         <ToolCallCard
           entryType={entryType}
           expansionKey={expansionKey}
-          contentClassName={getContentClassName(entryType)}
           entryContent={isNormalizedEntry(entry) ? entry.content : ''}
         />
       ) : (

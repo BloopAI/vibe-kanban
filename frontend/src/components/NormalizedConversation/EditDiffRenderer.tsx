@@ -5,8 +5,7 @@ import {
   DiffLineType,
   parseInstance,
 } from '@git-diff-view/react';
-import { ChevronRight, ChevronUp, SquarePen } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { SquarePen } from 'lucide-react';
 import { useConfig } from '@/components/config-provider';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import { getActualTheme } from '@/utils/theme';

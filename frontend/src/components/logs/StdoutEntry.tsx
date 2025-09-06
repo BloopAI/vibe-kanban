@@ -5,9 +5,7 @@ interface StdoutEntryProps {
 }
 
 function StdoutEntry({ content }: StdoutEntryProps) {
-  return (
-    <RawLogText content={content} channel="stdout" as="span" />
-  );
+  return <RawLogText content={content} channel="stdout" as="span" />;
 }
 
 export default StdoutEntry;

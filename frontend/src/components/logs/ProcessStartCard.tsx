@@ -1,11 +1,4 @@
-import {
-  UserRound,
-  Cog,
-  Play,
-  Terminal,
-  ChevronDown,
-  History,
-} from 'lucide-react';
+import { ChevronDown, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -45,21 +38,6 @@ function ProcessStartCard({
   restoreDisabled,
   restoreDisabledReason,
 }: ProcessStartCardProps) {
-  const getProcessIcon = (runReason: string) => {
-    switch (runReason) {
-      case PROCESS_RUN_REASONS.SETUP_SCRIPT:
-        return <Cog className="h-4 w-4" />;
-      case PROCESS_RUN_REASONS.CLEANUP_SCRIPT:
-        return <Terminal className="h-4 w-4" />;
-      case PROCESS_RUN_REASONS.CODING_AGENT:
-        return <UserRound className="h-4 w-4" />;
-      case PROCESS_RUN_REASONS.DEV_SERVER:
-        return <Play className="h-4 w-4" />;
-      default:
-        return <Cog className="h-4 w-4" />;
-    }
-  };
-
   const getProcessLabel = (p: ProcessStartPayload) => {
     if (p.runReason === PROCESS_RUN_REASONS.CODING_AGENT) {
       const prompt = extractPromptFromAction(p.action);
@@ -137,7 +115,7 @@ function ProcessStartCard({
                 <TooltipContent>
                   {restoreDisabled
                     ? restoreDisabledReason ||
-                    'Restore is currently unavailable.'
+                      'Restore is currently unavailable.'
                     : 'Restore'}
                 </TooltipContent>
               </Tooltip>

@@ -48,12 +48,18 @@ function MarkdownRenderer({ content, className = '' }: MarkdownRendererProps) {
         </h3>
       ),
       ul: ({ children, ...props }) => (
-        <ul {...props} className="list-disc list-inside flex flex-col gap-1 pl-4">
+        <ul
+          {...props}
+          className="list-disc list-inside flex flex-col gap-1 pl-4"
+        >
           {children}
         </ul>
       ),
       ol: ({ children, ...props }) => (
-        <ol {...props} className="list-decimal list-inside flex flex-col gap-1 pl-4">
+        <ol
+          {...props}
+          className="list-decimal list-inside flex flex-col gap-1 pl-4"
+        >
           {children}
         </ol>
       ),
