@@ -112,7 +112,7 @@ function EditDiffRenderer({
               diffViewTheme={theme}
               diffViewHighlight
               diffViewMode={DiffModeEnum.Unified}
-              diffViewFontSize={10}
+              diffViewFontSize={12}
             />
           ) : (
             <>

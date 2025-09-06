@@ -34,7 +34,7 @@ function LogEntryRow({
       return <StderrEntry content={entry.payload as string} />;
     case 'normalized':
       return (
-        <div className="mt-4">
+        <div className="my-4">
           <DisplayConversationEntry
             entry={entry.payload as NormalizedEntry}
             expansionKey={`${entry.processId}:${index}`}

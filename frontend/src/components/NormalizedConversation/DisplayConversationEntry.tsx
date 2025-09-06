@@ -101,9 +101,9 @@ const getStatusIndicator = (entryType: NormalizedEntryType) => {
       ? result.success
         ? "success"
         : "error"
-      : "pending";
+      : result?.type === "exit_code" ? result.code === 0 ? "success" : "error" : "unknown";
 
-  if (status === "pending") return null;
+  if (status === "unknown") return null;
 
   const colorMap: Record<typeof status, string> = {
     success: "bg-green-300",
@@ -131,7 +131,7 @@ const shouldRenderMarkdown = (entryType: NormalizedEntryType) =>
   entryType.type === 'tool_use';
 
 const getContentClassName = (entryType: NormalizedEntryType) => {
-  const base = 'text-sm whitespace-pre-wrap break-words';
+  const base = ' whitespace-pre-wrap break-words';
   if (
     entryType.type === 'tool_use' &&
     entryType.action_type.action === 'command_run'
@@ -176,7 +176,7 @@ const MessageCard: React.FC<{
   onToggle?: () => void;
 }> = ({ children, variant, expanded, onToggle }) => {
   const frameBase =
-    'border rounded-md px-3 py-2 w-full cursor-pointer text-xs bg-[hsl(var(--card))] border-[hsl(var(--border))]';
+    'border rounded-md px-3 py-2 w-full cursor-pointer  bg-[hsl(var(--card))] border-[hsl(var(--border))]';
   const systemTheme = 'border-400/40 text-zinc-500';
   const errorTheme =
     'border-red-400/40 bg-red-50 dark:bg-[hsl(var(--card))] text-[hsl(var(--foreground))]';
@@ -286,7 +286,7 @@ const PlanPresentationCard: React.FC<{
 
   return (
     <div className="inline-block w-full">
-      <div className="border rounded-lg w-full overflow-hidden text-xs border-blue-400/40">
+      <div className="border rounded-lg w-full overflow-hidden  border-blue-400/40">
         <button
           onClick={(e: React.MouseEvent) => {
             e.preventDefault();
@@ -295,7 +295,7 @@ const PlanPresentationCard: React.FC<{
           title={expanded ? 'Hide plan' : 'Show plan'}
           className="w-full px-2 py-1.5 flex items-center gap-1.5 text-left bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 border-b border-blue-400/40"
         >
-          <span className="text-xs min-w-0 truncate">
+          <span className=" min-w-0 truncate">
             <span className="font-semibold">Plan</span>
           </span>
           <div className="ml-auto flex items-center gap-2">
@@ -309,7 +309,7 @@ const PlanPresentationCard: React.FC<{
 
         {expanded && (
           <div className="px-3 py-2 max-h-[65vh] overflow-y-auto overscroll-contain bg-blue-50 dark:bg-blue-950/20">
-            <div className="text-sm text-blue-700 dark:text-blue-300">
+            <div className=" text-blue-700 dark:text-blue-300">
               <MarkdownRenderer
                 content={plan}
                 className="whitespace-pre-wrap break-words"
@@ -386,12 +386,12 @@ const ToolCallCard: React.FC<{
       : {};
 
     return (
-      <div className="inline-block w-full text-xs flex flex-col gap-4">
+      <div className="inline-block w-full  flex flex-col gap-4">
         <HeaderWrapper
           {...headerProps}
           className="w-full flex items-center gap-1.5 text-left text-secondary-foreground"
         >
-          <span className="text-xs min-w-0 flex items-center gap-1.5">
+          <span className=" min-w-0 flex items-center gap-1.5">
             {entryType ? <span>{getStatusIndicator(entryType)}{getEntryIcon(entryType)}</span> :
               <span className="font-normal flex">{label}</span>
             }
@@ -407,7 +407,7 @@ const ToolCallCard: React.FC<{
               <>
                 {argsText && (
                   <>
-                    <div className="text-xs font-medium uppercase bg-background border-b border-dashed px-2 py-1">
+                    <div className="font-normal uppercase bg-background border-b border-dashed px-2 py-1">
                       Args
                     </div>
                     <div className="px-2 py-1">
@@ -418,7 +418,7 @@ const ToolCallCard: React.FC<{
 
                 {output && (
                   <>
-                    <div className="text-xs font-medium uppercase bg-background border-y border-dashed px-2 py-1">
+                    <div className="font-normal uppercase bg-background border-y border-dashed px-2 py-1">
                       Output
                     </div>
                     <div className="px-2 py-1">
@@ -431,13 +431,13 @@ const ToolCallCard: React.FC<{
               <>
                 {entryType?.action_type.action === 'tool' && (
                   <>
-                    <div className="text-xs font-medium uppercase bg-background border-b border-dashed px-2 py-1">
+                    <div className="font-normal uppercase bg-background border-b border-dashed px-2 py-1">
                       Args
                     </div>
                     <div className="px-2 py-1">
                       {renderJson(entryType.action_type.arguments)}
                     </div>
-                    <div className="text-xs font-medium uppercase bg-background border-b border-dashed px-2 py-1">
+                    <div className="font-normal uppercase bg-background border-y border-dashed px-2 py-1">
                       Result
                     </div>
                     <div className="px-2 py-1">
@@ -477,7 +477,7 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
       <ToolCallCard
         action={toolAction}
         expansionKey={expansionKey}
-        contentClassName="text-sm whitespace-pre-wrap break-words"
+        contentClassName=" whitespace-pre-wrap break-words"
         content={toolAction?.message ?? toolAction?.summary ?? undefined}
       />
     );

@@ -33,7 +33,7 @@ export default function ProcessGroup({
         restoreDisabled={restore?.restoreDisabled}
         restoreDisabledReason={restore?.restoreDisabledReason}
       />
-      <div className="flex flex-col py-2">
+      <div className="text-sm">
         {!isCollapsed && entries.length > 0 &&
           entries.map((entry, i) => (
             <LogEntryRow key={entry.id} entry={entry} index={i} />
