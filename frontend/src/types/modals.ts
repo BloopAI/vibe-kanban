@@ -1,11 +1,11 @@
 import type { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
-import type { 
+import type {
   ConfirmDialogProps,
   ProvidePatDialogProps,
-  DeleteTaskConfirmationDialogProps, 
+  DeleteTaskConfirmationDialogProps,
   DeleteFileConfirmationDialogProps,
   TaskFormDialogProps,
-  EditorSelectionDialogProps
+  EditorSelectionDialogProps,
 } from '@/components/dialogs';
 
 // Type definitions for nice-modal-react modal arguments
