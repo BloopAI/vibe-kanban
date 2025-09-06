@@ -1,10 +1,12 @@
 import type { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
-import type { ConfirmDialogProps } from '@/components/modals/ConfirmDialog';
-import type { ProvidePatDialogProps } from '@/components/ProvidePatDialog';
-import type { DeleteTaskConfirmationDialogProps } from '@/components/tasks/DeleteTaskConfirmationDialog';
-import type { DeleteFileConfirmationDialogProps } from '@/components/tasks/DeleteFileConfirmationDialog';
-import type { TaskFormDialogProps } from '@/components/tasks/TaskFormDialog';
-import type { EditorSelectionDialogProps } from '@/components/tasks/EditorSelectionDialog';
+import type { 
+  ConfirmDialogProps,
+  ProvidePatDialogProps,
+  DeleteTaskConfirmationDialogProps, 
+  DeleteFileConfirmationDialogProps,
+  TaskFormDialogProps,
+  EditorSelectionDialogProps
+} from '@/components/dialogs';
 
 // Type definitions for nice-modal-react modal arguments
 declare module '@ebay/nice-modal-react' {

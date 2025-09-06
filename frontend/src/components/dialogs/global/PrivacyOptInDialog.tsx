@@ -114,4 +114,5 @@ const PrivacyOptInDialog = NiceModal.create(() => {
   );
 });
 
+export { PrivacyOptInDialog };
 export default PrivacyOptInDialog;

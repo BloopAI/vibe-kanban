@@ -22,7 +22,7 @@ import { SearchProvider } from '@/contexts/search-context';
 import { EditorDialogProvider } from '@/contexts/editor-dialog-context';
 
 import { TaskDialogProvider } from '@/contexts/task-dialog-context';
-import { TaskFormDialogContainer } from '@/components/tasks/TaskFormDialogContainer';
+import { TaskFormDialogContainer } from '@/components/dialogs';
 import { ProjectProvider } from '@/contexts/project-context';
 import type { EditorType } from 'shared/types';
 import { ThemeMode } from 'shared/types';

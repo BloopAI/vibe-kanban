@@ -5,11 +5,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from './ui/dialog';
-import { Input } from './ui/input';
-import { Button } from './ui/button';
-import { useConfig } from './config-provider';
-import { Alert, AlertDescription } from './ui/alert';
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { useConfig } from '@/components/config-provider';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 
 export interface ProvidePatDialogProps {

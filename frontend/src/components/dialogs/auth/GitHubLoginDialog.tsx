@@ -6,14 +6,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from './ui/dialog';
-import { Button } from './ui/button';
-import { useConfig } from './config-provider';
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { useConfig } from '@/components/config-provider';
 import { Check, Clipboard, Github } from 'lucide-react';
-import { Loader } from './ui/loader';
-import { githubAuthApi } from '../lib/api';
+import { Loader } from '@/components/ui/loader';
+import { githubAuthApi } from '@/lib/api';
 import { DeviceFlowStartResponse, DevicePollStatus } from 'shared/types';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 
 const GitHubLoginDialog = NiceModal.create(() => {

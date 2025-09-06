@@ -18,6 +18,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
+      "@dialogs/*": ["./src/components/dialogs/*"],
       "shared/*": ["../shared/*"]
     }
   },

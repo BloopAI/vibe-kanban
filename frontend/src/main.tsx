@@ -9,18 +9,20 @@ import NiceModal from '@ebay/nice-modal-react';
 // Import modal type definitions
 import './types/modals';
 // Import and register modals
-import { GitHubLoginDialog } from './components/GitHubLoginDialog';
-import CreatePRDialog from './components/tasks/Toolbar/CreatePRDialog';
-import { ConfirmDialog } from './components/modals/ConfirmDialog';
-import { DisclaimerDialog } from './components/DisclaimerDialog';
-import { OnboardingDialog } from './components/OnboardingDialog';
-import PrivacyOptInDialog from './components/PrivacyOptInDialog';
-import { ProvidePatDialog } from './components/ProvidePatDialog';
-import { ReleaseNotesDialog } from './components/ReleaseNotesDialog';
-import DeleteTaskConfirmationDialog from './components/tasks/DeleteTaskConfirmationDialog';
-import DeleteFileConfirmationDialog from './components/tasks/DeleteFileConfirmationDialog';
-import { TaskFormDialog } from './components/tasks/TaskFormDialog';
-import { EditorSelectionDialog } from './components/tasks/EditorSelectionDialog';
+import {
+  GitHubLoginDialog,
+  CreatePRDialog,
+  ConfirmDialog,
+  DisclaimerDialog,
+  OnboardingDialog,
+  PrivacyOptInDialog,
+  ProvidePatDialog,
+  ReleaseNotesDialog,
+  TaskFormDialog,
+  EditorSelectionDialog,
+  DeleteTaskConfirmationDialog,
+  DeleteFileConfirmationDialog,
+} from './components/dialogs';
 
 // Register modals
 NiceModal.register('github-login', GitHubLoginDialog);

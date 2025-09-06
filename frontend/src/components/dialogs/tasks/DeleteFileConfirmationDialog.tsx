@@ -90,4 +90,5 @@ const DeleteFileConfirmationDialog =
     }
   );
 
+export { DeleteFileConfirmationDialog };
 export default DeleteFileConfirmationDialog;
