@@ -24,15 +24,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog.tsx';
-import BranchSelector from '@/components/tasks/BranchSelector.tsx';
-import {
   Dispatch,
   SetStateAction,
   useCallback,
@@ -55,6 +46,7 @@ import { useConfig } from '@/components/config-provider.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
+import { showModal } from '@/lib/modals';
 
 // Helper function to get the display name for different editor types
 function getEditorDisplayName(editorType: string): string {
@@ -130,9 +122,6 @@ function CurrentAttempt({
   const [merging, setMerging] = useState(false);
   const [pushing, setPushing] = useState(false);
   const [rebasing, setRebasing] = useState(false);
-  const [showRebaseDialog, setShowRebaseDialog] = useState(false);
-  const [selectedRebaseBranch, setSelectedRebaseBranch] = useState<string>('');
-  const [showStopConfirmation, setShowStopConfirmation] = useState(false);
   const [copied, setCopied] = useState(false);
   const [mergeSuccess, setMergeSuccess] = useState(false);
   const [pushSuccess, setPushSuccess] = useState(false);
@@ -146,14 +135,29 @@ function CurrentAttempt({
   // Use the stopExecution function from the hook
 
   useKeyboardShortcuts({
-    stopExecution: () => setShowStopConfirmation(true),
-    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => {},
-    hasOpenDialog: showStopConfirmation,
-    closeDialog: () => setShowStopConfirmation(false),
-    onEnter: () => {
-      setShowStopConfirmation(false);
-      stopExecution();
+    stopExecution: async () => {
+      try {
+        const result = await showModal<'confirmed' | 'canceled'>(
+          'stop-execution-confirm',
+          {
+            title: 'Stop Current Attempt?',
+            message:
+              'Are you sure you want to stop the current execution? This action cannot be undone.',
+            isExecuting: isStopping,
+          }
+        );
+
+        if (result === 'confirmed') {
+          stopExecution();
+        }
+      } catch (error) {
+        // User cancelled - do nothing
+      }
     },
+    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => {},
+    hasOpenDialog: false,
+    closeDialog: () => {},
+    onEnter: () => {},
   });
 
   const handleAttemptChange = useCallback(
@@ -217,7 +221,6 @@ function CurrentAttempt({
       setRebasing(true);
       await rebaseMutation.mutateAsync(newBaseBranch);
       setError(null); // Clear any previous errors on success
-      setShowRebaseDialog(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to rebase branch');
     } finally {
@@ -225,15 +228,22 @@ function CurrentAttempt({
     }
   };
 
-  const handleRebaseDialogConfirm = () => {
-    if (selectedRebaseBranch) {
-      handleRebaseWithNewBranch(selectedRebaseBranch);
-    }
-  };
+  const handleRebaseDialogOpen = async () => {
+    try {
+      const result = await showModal<{
+        action: 'confirmed' | 'canceled';
+        branchName?: string;
+      }>('rebase-dialog', {
+        branches,
+        isRebasing: rebasing,
+      });
 
-  const handleRebaseDialogOpen = () => {
-    setSelectedRebaseBranch('');
-    setShowRebaseDialog(true);
+      if (result.action === 'confirmed' && result.branchName) {
+        await handleRebaseWithNewBranch(result.branchName);
+      }
+    } catch (error) {
+      // User cancelled - do nothing
+    }
   };
 
   const handlePRButtonClick = async () => {
@@ -688,84 +698,6 @@ function CurrentAttempt({
           </div>
         </div>
       </div>
-
-      {/* Rebase Dialog */}
-      <Dialog open={showRebaseDialog} onOpenChange={setShowRebaseDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Rebase Task Attempt</DialogTitle>
-            <DialogDescription>
-              Choose a new base branch to rebase this task attempt onto.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="base-branch" className="text-sm font-medium">
-                Base Branch
-              </label>
-              <BranchSelector
-                branches={branches}
-                selectedBranch={selectedRebaseBranch}
-                onBranchSelect={setSelectedRebaseBranch}
-                placeholder="Select a base branch"
-                excludeCurrentBranch={false}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowRebaseDialog(false)}
-              disabled={rebasing}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleRebaseDialogConfirm}
-              disabled={rebasing || !selectedRebaseBranch}
-            >
-              {rebasing ? 'Rebasing...' : 'Rebase'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Stop Execution Confirmation Dialog */}
-      <Dialog
-        open={showStopConfirmation}
-        onOpenChange={setShowStopConfirmation}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Stop Current Attempt?</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to stop the current execution? This action
-              cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowStopConfirmation(false)}
-              disabled={isStopping}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={async () => {
-                setShowStopConfirmation(false);
-                await stopExecution();
-              }}
-              disabled={isStopping}
-            >
-              {isStopping ? 'Stopping...' : 'Stop'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

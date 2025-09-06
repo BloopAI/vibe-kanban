@@ -18,20 +18,12 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { JSONEditor } from '@/components/ui/json-editor';
-import { Input } from '@/components/ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Loader2 } from 'lucide-react';
 
 import { ExecutorConfigForm } from '@/components/ExecutorConfigForm';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useUserSystem } from '@/components/config-provider';
+import { showModal } from '@/lib/modals';
 
 export function AgentSettings() {
   // Use profiles hook for server state
@@ -66,17 +58,6 @@ export function AgentSettings() {
   const [localParsedProfiles, setLocalParsedProfiles] = useState<any>(null);
   const [isDirty, setIsDirty] = useState(false);
 
-  // Create configuration dialog state
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [newConfigName, setNewConfigName] = useState('');
-  const [cloneFrom, setCloneFrom] = useState<string | null>(null);
-  const [dialogError, setDialogError] = useState<string | null>(null);
-
-  // Delete configuration dialog state
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [configToDelete, setConfigToDelete] = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-
   // Sync server state to local state when not dirty
   useEffect(() => {
     if (!isDirty && serverProfilesContent) {
@@ -97,27 +78,30 @@ export function AgentSettings() {
     setIsDirty(true);
   };
 
-  // Validate configuration name
-  const validateConfigName = (name: string): string | null => {
-    const trimmedName = name.trim();
-    if (!trimmedName) return 'Configuration name cannot be empty';
-    if (trimmedName.length > 40)
-      return 'Configuration name must be 40 characters or less';
-    if (!/^[a-zA-Z0-9_-]+$/.test(trimmedName)) {
-      return 'Configuration name can only contain letters, numbers, underscores, and hyphens';
-    }
-    if (localParsedProfiles?.executors?.[selectedExecutorType]?.[trimmedName]) {
-      return 'A configuration with this name already exists';
-    }
-    return null;
-  };
-
   // Open create dialog
-  const openCreateDialog = () => {
-    setNewConfigName('');
-    setCloneFrom(null);
-    setDialogError(null);
-    setShowCreateDialog(true);
+  const openCreateDialog = async () => {
+    try {
+      const result = await showModal<{
+        action: 'created' | 'canceled';
+        configName?: string;
+        cloneFrom?: string | null;
+      }>('create-configuration', {
+        executorType: selectedExecutorType,
+        existingConfigs: Object.keys(
+          localParsedProfiles?.executors?.[selectedExecutorType] || {}
+        ),
+      });
+
+      if (result.action === 'created' && result.configName) {
+        createConfiguration(
+          selectedExecutorType,
+          result.configName,
+          result.cloneFrom
+        );
+      }
+    } catch (error) {
+      // User cancelled - do nothing
+    }
   };
 
   // Create new configuration
@@ -151,29 +135,28 @@ export function AgentSettings() {
     setSelectedConfiguration(configName);
   };
 
-  // Handle create dialog submission
-  const handleCreateConfiguration = () => {
-    const validationError = validateConfigName(newConfigName);
-    if (validationError) {
-      setDialogError(validationError);
-      return;
-    }
-
-    createConfiguration(selectedExecutorType, newConfigName.trim(), cloneFrom);
-    setShowCreateDialog(false);
-  };
-
   // Open delete dialog
-  const openDeleteDialog = (configName: string) => {
-    setConfigToDelete(configName);
-    setDeleteError(null);
-    setShowDeleteDialog(true);
+  const openDeleteDialog = async (configName: string) => {
+    try {
+      const result = await showModal<'deleted' | 'canceled'>(
+        'delete-configuration',
+        {
+          configName,
+          executorType: selectedExecutorType,
+        }
+      );
+
+      if (result === 'deleted') {
+        await handleDeleteConfiguration(configName);
+      }
+    } catch (error) {
+      // User cancelled - do nothing
+    }
   };
 
   // Handle delete configuration
-  const handleDeleteConfiguration = async () => {
-    if (!localParsedProfiles || !configToDelete) {
-      setDeleteError('Invalid configuration data');
+  const handleDeleteConfiguration = async (configToDelete: string) => {
+    if (!localParsedProfiles) {
       return;
     }
 
@@ -182,7 +165,6 @@ export function AgentSettings() {
       if (
         !localParsedProfiles.executors[selectedExecutorType]?.[configToDelete]
       ) {
-        setDeleteError(`Configuration "${configToDelete}" not found`);
         return;
       }
 
@@ -191,7 +173,6 @@ export function AgentSettings() {
         localParsedProfiles.executors[selectedExecutorType] || {}
       );
       if (currentConfigs.length <= 1) {
-        setDeleteError('Cannot delete the last configuration');
         return;
       }
 
@@ -232,19 +213,14 @@ export function AgentSettings() {
         const nextSelected = nextConfigs[0] || 'DEFAULT';
         setSelectedConfiguration(nextSelected);
 
-        // Show success and close dialog
+        // Show success
         setProfilesSuccess(true);
         setTimeout(() => setProfilesSuccess(false), 3000);
-        setShowDeleteDialog(false);
       } catch (saveError: any) {
         console.error('Failed to save deletion to backend:', saveError);
-        setDeleteError(
-          saveError.message || 'Failed to save deletion. Please try again.'
-        );
       }
     } catch (error) {
       console.error('Error deleting configuration:', error);
-      setDeleteError('Failed to delete configuration. Please try again.');
     }
   };
 
@@ -554,119 +530,6 @@ export function AgentSettings() {
           )}
         </CardContent>
       </Card>
-
-      {/* Create Configuration Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Create New Configuration</DialogTitle>
-            <DialogDescription>
-              Add a new configuration for the {selectedExecutorType} executor.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="config-name">Configuration Name</Label>
-              <Input
-                id="config-name"
-                value={newConfigName}
-                onChange={(e) => {
-                  setNewConfigName(e.target.value);
-                  setDialogError(null);
-                }}
-                placeholder="e.g., PRODUCTION, DEVELOPMENT"
-                maxLength={40}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="clone-from">Clone from (optional)</Label>
-              <Select
-                value={cloneFrom || '__blank__'}
-                onValueChange={(value) =>
-                  setCloneFrom(value === '__blank__' ? null : value)
-                }
-              >
-                <SelectTrigger id="clone-from">
-                  <SelectValue placeholder="Start blank or clone existing" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__blank__">Start blank</SelectItem>
-                  {Object.keys(
-                    localParsedProfiles?.executors?.[selectedExecutorType] || {}
-                  ).map((configuration) => (
-                    <SelectItem key={configuration} value={configuration}>
-                      Clone from {configuration}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {dialogError && (
-              <Alert variant="destructive">
-                <AlertDescription>{dialogError}</AlertDescription>
-              </Alert>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowCreateDialog(false)}
-              disabled={profilesSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateConfiguration}
-              disabled={!newConfigName.trim() || profilesSaving}
-            >
-              Create Configuration
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Configuration Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Delete Configuration?</DialogTitle>
-            <DialogDescription>
-              This will permanently remove "{configToDelete}" from the{' '}
-              {selectedExecutorType} executor. You can't undo this action.
-            </DialogDescription>
-          </DialogHeader>
-
-          {deleteError && (
-            <Alert variant="destructive">
-              <AlertDescription>{deleteError}</AlertDescription>
-            </Alert>
-          )}
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteDialog(false)}
-              disabled={profilesSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteConfiguration}
-              disabled={profilesSaving}
-            >
-              {profilesSaving && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

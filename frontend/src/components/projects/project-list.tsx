@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Project } from 'shared/types';
-import { ProjectForm } from './project-form';
+import { showProjectForm } from '@/lib/modals';
 import { projectsApi } from '@/lib/api';
 import { AlertCircle, Loader2, Plus } from 'lucide-react';
 import ProjectCard from '@/components/projects/ProjectCard.tsx';
@@ -17,8 +17,6 @@ export function ProjectList() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [error, setError] = useState('');
   const [focusedProjectId, setFocusedProjectId] = useState<string | null>(null);
   const [focusedColumn, setFocusedColumn] = useState<string | null>(null);
@@ -38,10 +36,26 @@ export function ProjectList() {
     }
   };
 
-  const handleFormSuccess = () => {
-    setShowForm(false);
-    setEditingProject(null);
-    fetchProjects();
+  const handleCreateProject = async () => {
+    try {
+      const result = await showProjectForm();
+      if (result === 'saved') {
+        fetchProjects();
+      }
+    } catch (error) {
+      // User cancelled - do nothing
+    }
+  };
+
+  const handleEditProject = async (project: Project) => {
+    try {
+      const result = await showProjectForm({ project });
+      if (result === 'saved') {
+        fetchProjects();
+      }
+    } catch (error) {
+      // User cancelled - do nothing
+    }
   };
 
   // Group projects by grid columns (3 columns for lg, 2 for md, 1 for sm)
@@ -97,7 +111,7 @@ export function ProjectList() {
 
   useKeyboardShortcuts({
     ignoreEscape: true,
-    onC: () => setShowForm(true),
+    onC: handleCreateProject,
     navigate,
     currentPath: '/projects',
   });
@@ -136,7 +150,7 @@ export function ProjectList() {
             Manage your projects and track their progress
           </p>
         </div>
-        <Button onClick={() => setShowForm(true)}>
+        <Button onClick={handleCreateProject}>
           <Plus className="mr-2 h-4 w-4" />
           Create Project
         </Button>
@@ -164,7 +178,7 @@ export function ProjectList() {
             <p className="mt-2 text-sm text-muted-foreground">
               Get started by creating your first project.
             </p>
-            <Button className="mt-4" onClick={() => setShowForm(true)}>
+            <Button className="mt-4" onClick={handleCreateProject}>
               <Plus className="mr-2 h-4 w-4" />
               Create your first project
             </Button>
@@ -178,23 +192,12 @@ export function ProjectList() {
               project={project}
               isFocused={focusedProjectId === project.id}
               setError={setError}
-              setEditingProject={setEditingProject}
-              setShowForm={setShowForm}
+              onEdit={handleEditProject}
               fetchProjects={fetchProjects}
             />
           ))}
         </div>
       )}
-
-      <ProjectForm
-        open={showForm}
-        onClose={() => {
-          setShowForm(false);
-          setEditingProject(null);
-        }}
-        onSuccess={handleFormSuccess}
-        project={editingProject}
-      />
     </div>
   );
 }

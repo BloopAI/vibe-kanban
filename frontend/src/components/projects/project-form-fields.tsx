@@ -19,6 +19,7 @@ import { useUserSystem } from '@/components/config-provider';
 import { CopyFilesField } from './copy-files-field';
 // Removed collapsible sections for simplicity; show fields always in edit mode
 import { fileSystemApi } from '@/lib/api';
+import { showFolderPicker } from '@/lib/modals';
 import { DirectoryEntry } from 'shared/types';
 import { generateProjectNameFromPath } from '@/utils/string';
 
@@ -28,7 +29,6 @@ interface ProjectFormFieldsProps {
   setRepoMode: (mode: 'existing' | 'new') => void;
   gitRepoPath: string;
   handleGitRepoPathChange: (path: string) => void;
-  setShowFolderPicker: (show: boolean) => void;
   parentPath: string;
   setParentPath: (path: string) => void;
   setFolderName: (name: string) => void;
@@ -54,7 +54,6 @@ export function ProjectFormFields({
   setRepoMode,
   gitRepoPath,
   handleGitRepoPathChange,
-  setShowFolderPicker,
   parentPath,
   setParentPath,
   setFolderName,
@@ -259,9 +258,19 @@ export function ProjectFormFields({
                 {/* Browse for repository card */}
                 <div
                   className="p-4 border border-dashed cursor-pointer hover:shadow-md transition-shadow rounded-lg bg-card"
-                  onClick={() => {
-                    setShowFolderPicker(true);
+                  onClick={async () => {
                     setError('');
+                    const selectedPath = await showFolderPicker({
+                      title: 'Select Git Repository',
+                      description: 'Choose an existing git repository',
+                    });
+                    if (selectedPath) {
+                      const projectName =
+                        generateProjectNameFromPath(selectedPath);
+                      if (onCreateProject) {
+                        onCreateProject(selectedPath, projectName);
+                      }
+                    }
                   }}
                 >
                   <div className="flex items-start gap-3">
@@ -347,7 +356,16 @@ export function ProjectFormFields({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  onClick={() => setShowFolderPicker(true)}
+                  onClick={async () => {
+                    const selectedPath = await showFolderPicker({
+                      title: 'Select Parent Directory',
+                      description: 'Choose where to create the new repository',
+                      value: parentPath,
+                    });
+                    if (selectedPath) {
+                      setParentPath(selectedPath);
+                    }
+                  }}
                 >
                   <Folder className="h-4 w-4" />
                 </Button>
@@ -378,7 +396,16 @@ export function ProjectFormFields({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setShowFolderPicker(true)}
+                onClick={async () => {
+                  const selectedPath = await showFolderPicker({
+                    title: 'Select Git Repository',
+                    description: 'Choose an existing git repository',
+                    value: gitRepoPath,
+                  });
+                  if (selectedPath) {
+                    handleGitRepoPathChange(selectedPath);
+                  }
+                }}
               >
                 <Folder className="h-4 w-4" />
               </Button>

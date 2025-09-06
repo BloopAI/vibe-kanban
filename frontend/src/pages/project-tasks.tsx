@@ -6,19 +6,9 @@ import { AlertTriangle, Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { projectsApi, tasksApi, attemptsApi } from '@/lib/api';
 import { useTaskDialog } from '@/contexts/task-dialog-context';
-import { ProjectForm } from '@/components/projects/project-form';
-import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
 import { useSearch } from '@/contexts/search-context';
 import { useQuery } from '@tanstack/react-query';
-
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
 
 import {
   getKanbanSectionClasses,
@@ -47,11 +37,7 @@ export function ProjectTasks() {
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { openCreate, openEdit, openDuplicate } = useTaskDialog();
-  const [isProjectSettingsOpen, setIsProjectSettingsOpen] = useState(false);
   const { query: searchQuery } = useSearch();
-
-  // Template management state
-  const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
 
   // Panel state
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -132,10 +118,6 @@ export function ProjectTasks() {
     }
   }, [projectId]);
 
-  const handleCloseTemplateManager = useCallback(() => {
-    setIsTemplateManagerOpen(false);
-  }, []);
-
   const handleClosePanel = useCallback(() => {
     // setIsPanelOpen(false);
     // setSelectedTask(null);
@@ -192,11 +174,6 @@ export function ProjectTasks() {
     [projectId, navigate]
   );
 
-  const handleProjectSettingsSuccess = useCallback(() => {
-    setIsProjectSettingsOpen(false);
-    fetchProject(); // Refresh project data after settings change
-  }, [fetchProject]);
-
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       const { active, over } = event;
@@ -227,8 +204,8 @@ export function ProjectTasks() {
   useKeyboardShortcuts({
     navigate,
     currentPath: window.location.pathname,
-    hasOpenDialog: isTemplateManagerOpen || isProjectSettingsOpen,
-    closeDialog: () => {}, // No local dialog to close
+    hasOpenDialog: false,
+    closeDialog: () => {},
     onC: handleCreateNewTask,
   });
 
@@ -316,7 +293,6 @@ export function ProjectTasks() {
             onClose={handleClosePanel}
             onEditTask={handleEditTask}
             onDeleteTask={handleDeleteTask}
-            isDialogOpen={isProjectSettingsOpen}
             isFullScreen={isFullscreen}
             setFullScreen={
               selectedAttempt
@@ -333,33 +309,6 @@ export function ProjectTasks() {
           />
         )}
       </div>
-
-      {/* Dialogs - rendered at main container level to avoid stacking issues */}
-
-      <ProjectForm
-        open={isProjectSettingsOpen}
-        onClose={() => setIsProjectSettingsOpen(false)}
-        onSuccess={handleProjectSettingsSuccess}
-        project={project}
-      />
-
-      {/* Template Manager Dialog */}
-      <Dialog
-        open={isTemplateManagerOpen}
-        onOpenChange={setIsTemplateManagerOpen}
-      >
-        <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Manage Templates</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <TaskTemplateManager projectId={projectId} />
-          </div>
-          <DialogFooter>
-            <Button onClick={handleCloseTemplateManager}>Done</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

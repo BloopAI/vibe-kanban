@@ -1,4 +1,11 @@
 import NiceModal from '@ebay/nice-modal-react';
+import type {
+  FolderPickerDialogProps,
+  TaskTemplateEditDialogProps,
+  TaskTemplateEditResult,
+  ProjectFormDialogProps,
+  ProjectFormDialogResult,
+} from '@/components/dialogs';
 
 /**
  * Typed wrapper around NiceModal.show with better TypeScript support
@@ -11,6 +18,48 @@ export function showModal<T = void>(
   props: Record<string, unknown> = {}
 ): Promise<T> {
   return NiceModal.show<T>(modal, props) as Promise<T>;
+}
+
+/**
+ * Show folder picker dialog
+ * @param props - Props for folder picker
+ * @returns Promise that resolves with selected path or null if cancelled
+ */
+export function showFolderPicker(
+  props: FolderPickerDialogProps = {}
+): Promise<string | null> {
+  return showModal<string | null>(
+    'folder-picker',
+    props as Record<string, unknown>
+  );
+}
+
+/**
+ * Show task template edit dialog
+ * @param props - Props for template edit dialog
+ * @returns Promise that resolves with 'saved' or 'canceled'
+ */
+export function showTaskTemplateEdit(
+  props: TaskTemplateEditDialogProps
+): Promise<TaskTemplateEditResult> {
+  return showModal<TaskTemplateEditResult>(
+    'task-template-edit',
+    props as Record<string, unknown>
+  );
+}
+
+/**
+ * Show project form dialog
+ * @param props - Props for project form dialog
+ * @returns Promise that resolves with 'saved' or 'canceled'
+ */
+export function showProjectForm(
+  props: ProjectFormDialogProps = {}
+): Promise<ProjectFormDialogResult> {
+  return showModal<ProjectFormDialogResult>(
+    'project-form',
+    props as Record<string, unknown>
+  );
 }
 
 /**

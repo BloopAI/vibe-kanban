@@ -11,6 +11,13 @@ export {
   type ProvidePatDialogProps,
 } from './auth/ProvidePatDialog';
 
+// Project-related dialogs
+export {
+  ProjectFormDialog,
+  type ProjectFormDialogProps,
+  type ProjectFormDialogResult,
+} from './projects/ProjectFormDialog';
+
 // Task-related dialogs
 export {
   TaskFormDialog,
@@ -30,6 +37,47 @@ export {
   DeleteFileConfirmationDialog,
   type DeleteFileConfirmationDialogProps,
 } from './tasks/DeleteFileConfirmationDialog';
+export {
+  TaskTemplateEditDialog,
+  type TaskTemplateEditDialogProps,
+  type TaskTemplateEditResult,
+} from './tasks/TaskTemplateEditDialog';
+export {
+  CreateAttemptConfirmDialog,
+  type CreateAttemptConfirmDialogProps,
+  type CreateAttemptConfirmResult,
+} from './tasks/CreateAttemptConfirmDialog';
+export {
+  StopExecutionConfirmDialog,
+  type StopExecutionConfirmDialogProps,
+  type StopExecutionConfirmResult,
+} from './tasks/StopExecutionConfirmDialog';
+export {
+  RebaseDialog,
+  type RebaseDialogProps,
+  type RebaseDialogResult,
+} from './tasks/RebaseDialog';
+export {
+  RestoreLogsDialog,
+  type RestoreLogsDialogProps,
+  type RestoreLogsDialogResult,
+} from './tasks/RestoreLogsDialog';
+
+// Settings dialogs
+export {
+  CreateConfigurationDialog,
+  type CreateConfigurationDialogProps,
+  type CreateConfigurationResult,
+} from './settings/CreateConfigurationDialog';
+export {
+  DeleteConfigurationDialog,
+  type DeleteConfigurationDialogProps,
+  type DeleteConfigurationResult,
+} from './settings/DeleteConfigurationDialog';
 
 // Shared/Generic dialogs
 export { ConfirmDialog, type ConfirmDialogProps } from './shared/ConfirmDialog';
+export {
+  FolderPickerDialog,
+  type FolderPickerDialogProps,
+} from './shared/FolderPickerDialog';

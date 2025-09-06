@@ -30,8 +30,7 @@ type Props = {
   isFocused: boolean;
   fetchProjects: () => void;
   setError: (error: string) => void;
-  setEditingProject: (project: Project) => void;
-  setShowForm: (show: boolean) => void;
+  onEdit: (project: Project) => void;
 };
 
 function ProjectCard({
@@ -39,8 +38,7 @@ function ProjectCard({
   isFocused,
   fetchProjects,
   setError,
-  setEditingProject,
-  setShowForm,
+  onEdit,
 }: Props) {
   const navigate = useNavigate();
   const ref = useRef<HTMLDivElement>(null);
@@ -70,8 +68,7 @@ function ProjectCard({
   };
 
   const handleEdit = (project: Project) => {
-    setEditingProject(project);
-    setShowForm(true);
+    onEdit(project);
   };
 
   const handleOpenInIDE = async (projectId: string) => {

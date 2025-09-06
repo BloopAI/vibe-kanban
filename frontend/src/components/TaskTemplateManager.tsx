@@ -1,22 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
 import { templatesApi } from '@/lib/api';
-import type {
-  TaskTemplate,
-  CreateTaskTemplate,
-  UpdateTaskTemplate,
-} from 'shared/types';
+import { showTaskTemplateEdit } from '@/lib/modals';
+import type { TaskTemplate } from 'shared/types';
 
 interface TaskTemplateManagerProps {
   projectId?: string;
@@ -29,17 +16,6 @@ export function TaskTemplateManager({
 }: TaskTemplateManagerProps) {
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<TaskTemplate | null>(
-    null
-  );
-  const [formData, setFormData] = useState({
-    template_name: '',
-    title: '',
-    description: '',
-  });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const fetchTemplates = useCallback(async () => {
     setLoading(true);
@@ -69,96 +45,24 @@ export function TaskTemplateManager({
     fetchTemplates();
   }, [fetchTemplates]);
 
-  const handleOpenDialog = useCallback((template?: TaskTemplate) => {
-    if (template) {
-      setEditingTemplate(template);
-      setFormData({
-        template_name: template.template_name,
-        title: template.title,
-        description: template.description || '',
-      });
-    } else {
-      setEditingTemplate(null);
-      setFormData({
-        template_name: '',
-        title: '',
-        description: '',
-      });
-    }
-    setError(null);
-    setIsDialogOpen(true);
-  }, []);
+  const handleOpenDialog = useCallback(
+    async (template?: TaskTemplate) => {
+      try {
+        const result = await showTaskTemplateEdit({
+          template: template || null,
+          projectId,
+          isGlobal,
+        });
 
-  const handleCloseDialog = useCallback(() => {
-    setIsDialogOpen(false);
-    setEditingTemplate(null);
-    setFormData({
-      template_name: '',
-      title: '',
-      description: '',
-    });
-    setError(null);
-  }, []);
-
-  const handleSave = useCallback(async () => {
-    if (!formData.template_name.trim() || !formData.title.trim()) {
-      setError('Template name and title are required');
-      return;
-    }
-
-    setSaving(true);
-    setError(null);
-
-    try {
-      if (editingTemplate) {
-        const updateData: UpdateTaskTemplate = {
-          template_name: formData.template_name,
-          title: formData.title,
-          description: formData.description || null,
-        };
-        await templatesApi.update(editingTemplate.id, updateData);
-      } else {
-        const createData: CreateTaskTemplate = {
-          project_id: isGlobal ? null : projectId || null,
-          template_name: formData.template_name,
-          title: formData.title,
-          description: formData.description || null,
-        };
-        await templatesApi.create(createData);
-      }
-      await fetchTemplates();
-      handleCloseDialog();
-    } catch (err: any) {
-      setError(err.message || 'Failed to save template');
-    } finally {
-      setSaving(false);
-    }
-  }, [
-    formData,
-    editingTemplate,
-    isGlobal,
-    projectId,
-    fetchTemplates,
-    handleCloseDialog,
-  ]);
-
-  // Handle keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Command/Ctrl + Enter to save template
-      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-        if (isDialogOpen && !saving) {
-          event.preventDefault();
-          handleSave();
+        if (result === 'saved') {
+          await fetchTemplates();
         }
+      } catch (error) {
+        // User cancelled - do nothing
       }
-    };
-
-    if (isDialogOpen) {
-      document.addEventListener('keydown', handleKeyDown, true); // Use capture phase for priority
-      return () => document.removeEventListener('keydown', handleKeyDown, true);
-    }
-  }, [isDialogOpen, saving, handleSave]);
+    },
+    [projectId, isGlobal, fetchTemplates]
+  );
 
   const handleDelete = useCallback(
     async (template: TaskTemplate) => {
@@ -271,66 +175,6 @@ export function TaskTemplateManager({
           </div>
         </div>
       )}
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>
-              {editingTemplate ? 'Edit Template' : 'Create Template'}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="template-name">Template Name</Label>
-              <Input
-                id="template-name"
-                value={formData.template_name}
-                onChange={(e) =>
-                  setFormData({ ...formData, template_name: e.target.value })
-                }
-                placeholder="e.g., Bug Fix, Feature Request"
-              />
-            </div>
-            <div>
-              <Label htmlFor="template-title">Default Title</Label>
-              <Input
-                id="template-title"
-                value={formData.title}
-                onChange={(e) =>
-                  setFormData({ ...formData, title: e.target.value })
-                }
-                placeholder="e.g., Fix bug in..."
-              />
-            </div>
-            <div>
-              <Label htmlFor="template-description">Default Description</Label>
-              <Textarea
-                id="template-description"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                placeholder="Enter a default description for tasks created with this template"
-                rows={4}
-              />
-            </div>
-            {error && <div className="text-sm text-destructive">{error}</div>}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={handleCloseDialog}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {editingTemplate ? 'Update' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

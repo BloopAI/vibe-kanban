@@ -21,8 +21,7 @@ import { useSearch } from '@/contexts/search-context';
 import { useTaskDialog } from '@/contexts/task-dialog-context';
 import { useProject } from '@/contexts/project-context';
 import { projectsApi } from '@/lib/api';
-import { ProjectForm } from '@/components/projects/project-form';
-import { useState } from 'react';
+import { showProjectForm } from '@/lib/modals';
 
 const INTERNAL_NAV = [
   { label: 'Projects', icon: FolderOpen, to: '/projects' },
@@ -47,7 +46,6 @@ export function Navbar() {
   const { projectId, project } = useProject();
   const { query, setQuery, active, clear } = useSearch();
   const { openCreate } = useTaskDialog();
-  const [isProjectSettingsOpen, setIsProjectSettingsOpen] = useState(false);
 
   const handleOpenInIDE = async () => {
     if (!projectId) return;
@@ -58,8 +56,13 @@ export function Navbar() {
     }
   };
 
-  const handleProjectSettingsSuccess = () => {
-    setIsProjectSettingsOpen(false);
+  const handleProjectSettings = async () => {
+    try {
+      await showProjectForm({ project });
+      // Settings saved successfully - no additional action needed
+    } catch (error) {
+      // User cancelled - do nothing
+    }
   };
 
   return (
@@ -95,7 +98,7 @@ export function Navbar() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setIsProjectSettingsOpen(true)}
+                  onClick={handleProjectSettings}
                   aria-label="Project settings"
                 >
                   <Settings className="h-4 w-4" />
@@ -161,13 +164,6 @@ export function Navbar() {
           </div>
         </div>
       </div>
-
-      <ProjectForm
-        open={isProjectSettingsOpen}
-        onClose={() => setIsProjectSettingsOpen(false)}
-        onSuccess={handleProjectSettingsSuccess}
-        project={project || null}
-      />
     </div>
   );
 }

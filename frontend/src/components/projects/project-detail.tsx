@@ -11,7 +11,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Project } from 'shared/types';
-import { ProjectForm } from './project-form';
+import { showProjectForm } from '@/lib/modals';
 import { projectsApi } from '@/lib/api';
 import {
   AlertCircle,
@@ -34,7 +34,6 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showEditForm, setShowEditForm] = useState(false);
   const [error, setError] = useState('');
 
   useKeyboardShortcuts({
@@ -77,9 +76,15 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
     }
   };
 
-  const handleEditSuccess = () => {
-    setShowEditForm(false);
-    fetchProject();
+  const handleEditClick = async () => {
+    try {
+      const result = await showProjectForm({ project });
+      if (result === 'saved') {
+        fetchProject();
+      }
+    } catch (error) {
+      // User cancelled - do nothing
+    }
   };
 
   useEffect(() => {
@@ -143,7 +148,7 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
             <CheckSquare className="mr-2 h-4 w-4" />
             View Tasks
           </Button>
-          <Button variant="outline" onClick={() => setShowEditForm(true)}>
+          <Button variant="outline" onClick={handleEditClick}>
             <Edit className="mr-2 h-4 w-4" />
             Edit
           </Button>
@@ -234,13 +239,6 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
           </CardContent>
         </Card>
       </div>
-
-      <ProjectForm
-        open={showEditForm}
-        onClose={() => setShowEditForm(false)}
-        onSuccess={handleEditSuccess}
-        project={project}
-      />
     </div>
   );
 }

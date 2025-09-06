@@ -22,6 +22,15 @@ import {
   EditorSelectionDialog,
   DeleteTaskConfirmationDialog,
   DeleteFileConfirmationDialog,
+  FolderPickerDialog,
+  TaskTemplateEditDialog,
+  CreateAttemptConfirmDialog,
+  StopExecutionConfirmDialog,
+  RebaseDialog,
+  CreateConfigurationDialog,
+  DeleteConfigurationDialog,
+  ProjectFormDialog,
+  RestoreLogsDialog,
 } from './components/dialogs';
 
 // Register modals
@@ -37,6 +46,15 @@ NiceModal.register('delete-task-confirmation', DeleteTaskConfirmationDialog);
 NiceModal.register('delete-file-confirmation', DeleteFileConfirmationDialog);
 NiceModal.register('task-form', TaskFormDialog);
 NiceModal.register('editor-selection', EditorSelectionDialog);
+NiceModal.register('folder-picker', FolderPickerDialog);
+NiceModal.register('task-template-edit', TaskTemplateEditDialog);
+NiceModal.register('create-attempt-confirm', CreateAttemptConfirmDialog);
+NiceModal.register('stop-execution-confirm', StopExecutionConfirmDialog);
+NiceModal.register('rebase-dialog', RebaseDialog);
+NiceModal.register('create-configuration', CreateConfigurationDialog);
+NiceModal.register('delete-configuration', DeleteConfigurationDialog);
+NiceModal.register('project-form', ProjectFormDialog);
+NiceModal.register('restore-logs', RestoreLogsDialog);
 // Install VS Code iframe keyboard bridge when running inside an iframe
 import './vscode/bridge';
 
