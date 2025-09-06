@@ -35,28 +35,22 @@ function FileContentView({ content, lang, theme, className }: Props) {
   }, [content, lang]);
 
   return (
-    <div
-      className={['plain-file-content edit-diff-hide-nums', className]
-        .filter(Boolean)
-        .join(' ')}
-    >
-      <div className="px-4 py-2">
-        {diffFile ? (
-          <DiffView
-            diffFile={diffFile}
-            diffViewWrap={false}
-            diffViewTheme={theme}
-            diffViewHighlight
-            diffViewMode={DiffModeEnum.Unified}
-            diffViewFontSize={12}
-          />
-        ) : (
-          <pre className="text-xs font-mono overflow-x-auto whitespace-pre">
-            {content}
-          </pre>
-        )}
+    diffFile ? (
+      <div className="border mt-2">
+        <DiffView
+          diffFile={diffFile}
+          diffViewWrap={false}
+          diffViewTheme={theme}
+          diffViewHighlight
+          diffViewMode={DiffModeEnum.Unified}
+          diffViewFontSize={12}
+        />
       </div>
-    </div>
+    ) : (
+      <pre className="text-xs font-mono overflow-x-auto whitespace-pre">
+        {content}
+      </pre>
+    )
   );
 }
 
