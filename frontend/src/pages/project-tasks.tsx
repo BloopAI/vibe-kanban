@@ -255,73 +255,75 @@ export function ProjectTasks() {
       className={`min-h-full ${getMainContainerClasses(isPanelOpen, isFullscreen)}`}
     >
       {streamError && (
-        <div>
-          <Alert>
-            <AlertTitle className="flex items-center gap-2">
-              <AlertTriangle size="16" />
-              Reconnecting
-            </AlertTitle>
-            <AlertDescription>{streamError}</AlertDescription>
-          </Alert>
-        </div>
+        <Alert className="w-full z-30 xl:sticky xl:top-0">
+          <AlertTitle className="flex items-center gap-2">
+            <AlertTriangle size="16" />
+            Reconnecting
+          </AlertTitle>
+          <AlertDescription>{streamError}</AlertDescription>
+        </Alert>
       )}
-      {/* Left Column - Kanban Section */}
-      <div className={getKanbanSectionClasses(isPanelOpen, isFullscreen)}>
-        {tasks.length === 0 ? (
-          <div className="max-w-7xl mx-auto mt-8">
-            <Card>
-              <CardContent className="text-center py-8">
-                <p className="text-muted-foreground">
-                  No tasks found for this project.
-                </p>
-                <Button className="mt-4" onClick={handleCreateNewTask}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create First Task
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        ) : (
-          <div className="w-full h-full overflow-x-auto">
-            <TaskKanbanBoard
-              tasks={tasks}
-              searchQuery={searchQuery}
-              onDragEnd={handleDragEnd}
-              onEditTask={handleEditTask}
-              onDeleteTask={handleDeleteTask}
-              onDuplicateTask={handleDuplicateTask}
-              onViewTaskDetails={handleViewTaskDetails}
-              isPanelOpen={isPanelOpen}
-            />
-          </div>
+
+      {/* Kanban + Panel Container - uses side-by-side layout on xl+ */}
+      <div className="flex-1 min-h-0 xl:flex">
+        {/* Left Column - Kanban Section */}
+        <div className={getKanbanSectionClasses(isPanelOpen, isFullscreen)}>
+          {tasks.length === 0 ? (
+            <div className="max-w-7xl mx-auto mt-8">
+              <Card>
+                <CardContent className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    No tasks found for this project.
+                  </p>
+                  <Button className="mt-4" onClick={handleCreateNewTask}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create First Task
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <div className="w-full h-full overflow-x-auto">
+              <TaskKanbanBoard
+                tasks={tasks}
+                searchQuery={searchQuery}
+                onDragEnd={handleDragEnd}
+                onEditTask={handleEditTask}
+                onDeleteTask={handleDeleteTask}
+                onDuplicateTask={handleDuplicateTask}
+                onViewTaskDetails={handleViewTaskDetails}
+                isPanelOpen={isPanelOpen}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Right Column - Task Details Panel */}
+        {isPanelOpen && (
+          <TaskDetailsPanel
+            task={selectedTask}
+            projectHasDevScript={!!project?.dev_script}
+            projectId={projectId!}
+            onClose={handleClosePanel}
+            onEditTask={handleEditTask}
+            onDeleteTask={handleDeleteTask}
+            isDialogOpen={isProjectSettingsOpen}
+            isFullScreen={isFullscreen}
+            setFullScreen={
+              selectedAttempt
+                ? (fullscreen) => {
+                    const baseUrl = `/projects/${projectId}/tasks/${selectedTask!.id}/attempts/${selectedAttempt.id}`;
+                    const fullUrl = fullscreen ? `${baseUrl}/full` : baseUrl;
+                    navigate(fullUrl, { replace: true });
+                  }
+                : undefined
+            }
+            selectedAttempt={selectedAttempt}
+            attempts={attempts}
+            setSelectedAttempt={setSelectedAttempt}
+          />
         )}
       </div>
-
-      {/* Right Column - Task Details Panel */}
-      {isPanelOpen && (
-        <TaskDetailsPanel
-          task={selectedTask}
-          projectHasDevScript={!!project?.dev_script}
-          projectId={projectId!}
-          onClose={handleClosePanel}
-          onEditTask={handleEditTask}
-          onDeleteTask={handleDeleteTask}
-          isDialogOpen={isProjectSettingsOpen}
-          isFullScreen={isFullscreen}
-          setFullScreen={
-            selectedAttempt
-              ? (fullscreen) => {
-                  const baseUrl = `/projects/${projectId}/tasks/${selectedTask!.id}/attempts/${selectedAttempt.id}`;
-                  const fullUrl = fullscreen ? `${baseUrl}/full` : baseUrl;
-                  navigate(fullUrl, { replace: true });
-                }
-              : undefined
-          }
-          selectedAttempt={selectedAttempt}
-          attempts={attempts}
-          setSelectedAttempt={setSelectedAttempt}
-        />
-      )}
 
       {/* Dialogs - rendered at main container level to avoid stacking issues */}
 
