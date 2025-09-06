@@ -3,6 +3,7 @@
 ## Project Structure & Module Organization
 - `crates/`: Rust workspace crates — `server` (API + bins), `db` (SQLx models/migrations), `executors`, `services`, `utils`, `deployment`, `local-deployment`.
 - `frontend/`: React + TypeScript app (Vite, Tailwind). Source in `frontend/src`.
+- `frontend/src/components/dialogs`: Dialog components for the frontend.
 - `shared/`: Generated TypeScript types (`shared/types.ts`). Do not edit directly.
 - `assets/`, `dev_assets_seed/`, `dev_assets/`: Packaged and local dev assets.
 - `npx-cli/`: Files published to the npm CLI package.
