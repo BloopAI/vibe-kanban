@@ -8,12 +8,12 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Shield, CheckCircle, XCircle, Settings } from 'lucide-react';
-import { useConfig } from '@/components/config-provider';
+import { useUserSystem } from '@/components/config-provider';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 
 const PrivacyOptInDialog = NiceModal.create(() => {
   const modal = useModal();
-  const { config } = useConfig();
+  const { config } = useUserSystem();
 
   // Check if user is authenticated with GitHub
   const isGitHubAuthenticated =
@@ -28,7 +28,7 @@ const PrivacyOptInDialog = NiceModal.create(() => {
   };
 
   return (
-    <Dialog open={modal.visible} onOpenChange={() => modal.resolve(false)}>
+    <Dialog open={modal.visible} uncloseable={true}>
       <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
           <div className="flex items-center gap-3">

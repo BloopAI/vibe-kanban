@@ -1,5 +1,5 @@
 import { type FileChange } from 'shared/types';
-import { useConfig } from '@/components/config-provider';
+import { useUserSystem } from '@/components/config-provider';
 import { Trash2, FilePlus2, ArrowRight } from 'lucide-react';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import { getActualTheme } from '@/utils/theme';
@@ -36,7 +36,7 @@ function isEdit(
 }
 
 const FileChangeRenderer = ({ path, change, expansionKey }: Props) => {
-  const { config } = useConfig();
+  const { config } = useUserSystem();
   const [expanded, setExpanded] = useExpandable(expansionKey, false);
 
   const theme = getActualTheme(config?.theme);

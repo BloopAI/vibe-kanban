@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useConfig } from '@/components/config-provider';
+import { useUserSystem } from '@/components/config-provider';
 import { Check, Clipboard, Github } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { githubAuthApi } from '@/lib/api';
@@ -18,7 +18,7 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 
 const GitHubLoginDialog = NiceModal.create(() => {
   const modal = useModal();
-  const { config, loading, githubTokenInvalid, reloadSystem } = useConfig();
+  const { config, loading, githubTokenInvalid, reloadSystem } = useUserSystem();
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deviceState, setDeviceState] =
@@ -59,7 +59,7 @@ const GitHubLoginDialog = NiceModal.create(() => {
               setDeviceState(null);
               setError(null);
               await reloadSystem();
-              modal.hide();
+              modal.resolve();
               break;
             case DevicePollStatus.AUTHORIZATION_PENDING:
               timer = setTimeout(poll, deviceState.interval * 1000);
@@ -90,7 +90,6 @@ const GitHubLoginDialog = NiceModal.create(() => {
   useEffect(() => {
     if (deviceState?.user_code) {
       copyToClipboard(deviceState.user_code);
-      window.open(deviceState.verification_uri, '_blank');
     }
   }, [deviceState?.user_code, deviceState?.verification_uri]);
 
@@ -125,7 +124,7 @@ const GitHubLoginDialog = NiceModal.create(() => {
   };
 
   return (
-    <Dialog open={modal.visible} onOpenChange={modal.hide}>
+    <Dialog open={modal.visible} onOpenChange={modal.resolve}>
       <DialogContent>
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -156,7 +155,7 @@ const GitHubLoginDialog = NiceModal.create(() => {
               </CardContent>
             </Card>
             <DialogFooter>
-              <Button onClick={() => modal.hide()} className="w-full">
+              <Button onClick={() => modal.resolve()} className="w-full">
                 Close
               </Button>
             </DialogFooter>
@@ -230,7 +229,7 @@ const GitHubLoginDialog = NiceModal.create(() => {
             )}
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => modal.hide()}>
+              <Button variant="outline" onClick={() => modal.resolve()}>
                 Skip
               </Button>
             </DialogFooter>
@@ -283,7 +282,7 @@ const GitHubLoginDialog = NiceModal.create(() => {
             <DialogFooter className="gap-3 flex-col sm:flex-row">
               <Button
                 variant="outline"
-                onClick={() => modal.hide()}
+                onClick={() => modal.resolve()}
                 className="flex-1"
               >
                 Skip

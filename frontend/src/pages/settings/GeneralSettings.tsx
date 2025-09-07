@@ -379,7 +379,7 @@ export function GeneralSettings() {
                 Connect your GitHub account to access private repositories and
                 enable advanced Git operations.
               </p>
-              <Button onClick={() => NiceModal.show('github-login')}>
+              <Button onClick={() => NiceModal.show('github-login').finally(() => NiceModal.hide('github-login'))}>
                 Connect GitHub Account
               </Button>
             </div>

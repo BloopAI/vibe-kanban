@@ -42,7 +42,7 @@ import { useRebase } from '@/hooks/useRebase';
 import { useMerge } from '@/hooks/useMerge';
 import NiceModal from '@ebay/nice-modal-react';
 import { usePush } from '@/hooks/usePush';
-import { useConfig } from '@/components/config-provider.tsx';
+import { useUserSystem } from '@/components/config-provider.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
@@ -98,7 +98,7 @@ function CurrentAttempt({
   branches,
   setSelectedAttempt,
 }: Props) {
-  const { config } = useConfig();
+  const { config } = useUserSystem();
   const { isAttemptRunning, stopExecution, isStopping } = useAttemptExecution(
     selectedAttempt?.id,
     task.id
@@ -154,10 +154,10 @@ function CurrentAttempt({
         // User cancelled - do nothing
       }
     },
-    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => {},
+    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => { },
     hasOpenDialog: false,
-    closeDialog: () => {},
-    onEnter: () => {},
+    closeDialog: () => { },
+    onEnter: () => { },
   });
 
   const handleAttemptChange = useCallback(
@@ -493,11 +493,10 @@ function CurrentAttempt({
           </Button>
         </div>
         <div
-          className={`text-xs font-mono px-2 py-1 break-all cursor-pointer transition-all duration-300 flex items-center gap-2 ${
-            copied
+          className={`text-xs font-mono px-2 py-1 break-all cursor-pointer transition-all duration-300 flex items-center gap-2 ${copied
               ? 'bg-green-100 text-green-800 border border-green-300'
               : 'text-muted-foreground bg-muted hover:bg-muted/80'
-          }`}
+            }`}
           onClick={handleCopyWorktreePath}
           title={copied ? 'Copied!' : 'Click to copy worktree path'}
         >

@@ -31,6 +31,11 @@ import { useUserSystem } from '@/components/config-provider';
 import { toPrettyCase } from '@/utils/string';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 
+export type OnboardingResult = {
+  profile: ExecutorProfileId;
+  editor: { editor_type: EditorType; custom_command: string | null };
+};
+
 const OnboardingDialog = NiceModal.create(() => {
   const modal = useModal();
   const { profiles, config } = useUserSystem();
@@ -45,6 +50,7 @@ const OnboardingDialog = NiceModal.create(() => {
   const [customCommand, setCustomCommand] = useState<string>('');
 
   const handleComplete = () => {
+    console.log("DEBUG1")
     modal.resolve({
       profile,
       editor: {
@@ -52,7 +58,7 @@ const OnboardingDialog = NiceModal.create(() => {
         custom_command:
           editorType === EditorType.CUSTOM ? customCommand || null : null,
       },
-    });
+    } as OnboardingResult);
   };
 
   const isValid =
@@ -60,7 +66,7 @@ const OnboardingDialog = NiceModal.create(() => {
     (editorType === EditorType.CUSTOM && customCommand.trim() !== '');
 
   return (
-    <Dialog open={modal.visible} onOpenChange={() => modal.resolve('canceled')}>
+    <Dialog open={modal.visible} uncloseable={true}>
       <DialogContent className="sm:max-w-[600px] space-y-4">
         <DialogHeader>
           <div className="flex items-center gap-3">

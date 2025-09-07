@@ -6,7 +6,7 @@ import {
   parseInstance,
 } from '@git-diff-view/react';
 import { SquarePen } from 'lucide-react';
-import { useConfig } from '@/components/config-provider';
+import { useUserSystem } from '@/components/config-provider';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import { getActualTheme } from '@/utils/theme';
 import '@/styles/diff-style-overrides.css';
@@ -63,7 +63,7 @@ function EditDiffRenderer({
   hasLineNumbers,
   expansionKey,
 }: Props) {
-  const { config } = useConfig();
+  const { config } = useUserSystem();
   const [expanded, setExpanded] = useExpandable(expansionKey, false);
 
   const theme = getActualTheme(config?.theme);

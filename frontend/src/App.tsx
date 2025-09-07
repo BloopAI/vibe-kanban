@@ -16,7 +16,7 @@ import {
   AgentSettings,
   McpSettings,
 } from '@/pages/settings/';
-import { ConfigProvider, useConfig } from '@/components/config-provider';
+import { UserSystemProvider, useUserSystem } from '@/components/config-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SearchProvider } from '@/contexts/search-context';
 import { EditorDialogProvider } from '@/contexts/editor-dialog-context';
@@ -24,10 +24,7 @@ import { EditorDialogProvider } from '@/contexts/editor-dialog-context';
 import { TaskDialogProvider } from '@/contexts/task-dialog-context';
 import { TaskFormDialogContainer } from '@/components/dialogs';
 import { ProjectProvider } from '@/contexts/project-context';
-import type { EditorType } from 'shared/types';
 import { ThemeMode } from 'shared/types';
-import type { ExecutorProfileId } from 'shared/types';
-import { configApi } from '@/lib/api';
 import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
 
@@ -35,156 +32,81 @@ import { AppWithStyleOverride } from '@/utils/style-override';
 import { WebviewContextMenu } from '@/vscode/ContextMenu';
 import { DevBanner } from '@/components/DevBanner';
 import NiceModal from '@ebay/nice-modal-react';
+import { OnboardingResult } from './components/dialogs/global/OnboardingDialog';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
-  const { config, updateConfig, loading } = useConfig();
+  const { config, updateAndSaveConfig, loading } = useUserSystem();
   const location = useLocation();
 
   const showNavbar = !location.pathname.endsWith('/full');
 
   useEffect(() => {
-    if (config) {
-      // Handle disclaimer with nice-modal-react
-      if (!config.disclaimer_acknowledged) {
-        NiceModal.show('disclaimer').then((result) => {
-          if (result === 'accepted') {
-            NiceModal.hide('disclaimer');
-            handleDisclaimerAccept();
-          }
-        });
-      } else if (!config.onboarding_acknowledged) {
-        NiceModal.show('onboarding').then((result) => {
-          if (result !== 'canceled') {
-            handleOnboardingComplete(
-              result as {
-                profile: ExecutorProfileId;
-                editor: {
-                  editor_type: EditorType;
-                  custom_command: string | null;
-                };
-              }
-            );
-          }
-        });
-      } else if (!config.github_login_acknowledged) {
-        NiceModal.show('github-login').then(() => handleGitHubLoginComplete());
-      } else if (!config.telemetry_acknowledged) {
-        NiceModal.show('privacy-opt-in').then((result) => {
-          handlePrivacyOptInComplete(result as boolean);
-        });
-      } else if (config.show_release_notes) {
-        NiceModal.show('release-notes').then(() => {
-          handleReleaseNotesClose();
-          NiceModal.hide('release-notes');
-        });
-      }
-    }
-  }, [config]);
-
-  const handleDisclaimerAccept = async () => {
-    if (!config) return;
-
-    updateConfig({ disclaimer_acknowledged: true });
-
-    try {
-      await configApi.saveConfig({ ...config, disclaimer_acknowledged: true });
-      // Trigger onboarding after disclaimer is accepted
-      if (!config.onboarding_acknowledged) {
-        NiceModal.show('onboarding').then((result) => {
-          if (result !== 'canceled') {
-            handleOnboardingComplete(
-              result as {
-                profile: ExecutorProfileId;
-                editor: {
-                  editor_type: EditorType;
-                  custom_command: string | null;
-                };
-              }
-            );
-          }
-        });
-      }
-    } catch (err) {
-      console.error('Error saving config:', err);
-    }
-  };
-
-  const handleOnboardingComplete = async (onboardingConfig: {
-    profile: ExecutorProfileId;
-    editor: { editor_type: EditorType; custom_command: string | null };
-  }) => {
-    if (!config) return;
-
-    const updatedConfig = {
-      ...config,
-      onboarding_acknowledged: true,
-      executor_profile: onboardingConfig.profile,
-      editor: onboardingConfig.editor,
-    };
-
-    updateConfig(updatedConfig);
-
-    try {
-      await configApi.saveConfig(updatedConfig);
-    } catch (err) {
-      console.error('Error saving config:', err);
-    }
-  };
-
-  const handlePrivacyOptInComplete = async (telemetryEnabled: boolean) => {
-    if (!config) return;
-
-    const updatedConfig = {
-      ...config,
-      telemetry_acknowledged: true,
-      analytics_enabled: telemetryEnabled,
-    };
-
-    updateConfig(updatedConfig);
-
-    try {
-      await configApi.saveConfig(updatedConfig);
-    } catch (err) {
-      console.error('Error saving config:', err);
-    }
-  };
-
-  const handleGitHubLoginComplete = async () => {
-    try {
-      // Refresh the config to get the latest GitHub authentication state
-      const latestUserSystem = await configApi.getConfig();
-      updateConfig(latestUserSystem.config);
-
-      // If user skipped (no GitHub token), we need to manually set the acknowledgment
+    const handleOnboardingComplete = async (onboardingConfig: OnboardingResult) => {
       const updatedConfig = {
-        ...latestUserSystem.config,
-        github_login_acknowledged: true,
+        ...config,
+        onboarding_acknowledged: true,
+        executor_profile: onboardingConfig.profile,
+        editor: onboardingConfig.editor,
       };
-      updateConfig(updatedConfig);
-      await configApi.saveConfig(updatedConfig);
-    } catch (err) {
-      console.error('Error refreshing config:', err);
-    }
-  };
 
-  const handleReleaseNotesClose = async () => {
-    if (!config) return;
-
-    const updatedConfig = {
-      ...config,
-      show_release_notes: false,
+      updateAndSaveConfig(updatedConfig);
     };
 
-    updateConfig(updatedConfig);
-
-    try {
-      await configApi.saveConfig(updatedConfig);
-    } catch (err) {
-      console.error('Error saving config:', err);
+    const handleDisclaimerAccept = async () => {
+      await updateAndSaveConfig({ disclaimer_acknowledged: true });
     }
-  };
+
+    const handleGitHubLoginComplete = async () => {
+      await updateAndSaveConfig({ github_login_acknowledged: true });
+    }
+
+    const handleTelemetryOptIn = async (analyticsEnabled: boolean) => {
+      await updateAndSaveConfig({ telemetry_acknowledged: true, analytics_enabled: analyticsEnabled });
+    }
+
+    const handleReleaseNotesClose = async () => {
+      await updateAndSaveConfig({ show_release_notes: false });
+    }
+
+    const checkOnboardingSteps = async () => {
+      if (!config) return;
+
+      if (!config.disclaimer_acknowledged) {
+        await NiceModal.show('disclaimer');
+        await handleDisclaimerAccept();
+        await NiceModal.hide('disclaimer');
+      }
+
+      if (!config.onboarding_acknowledged) {
+        const onboardingResult: OnboardingResult = await NiceModal.show('onboarding');
+        await handleOnboardingComplete(onboardingResult);
+        await NiceModal.hide('onboarding');
+
+      }
+
+      if (!config.github_login_acknowledged) {
+        await NiceModal.show('github-login');
+        await handleGitHubLoginComplete();
+        await NiceModal.hide('github-login');
+      }
+
+      if (!config.telemetry_acknowledged) {
+        const analyticsEnabled: boolean = await NiceModal.show('privacy-opt-in');
+        await handleTelemetryOptIn(analyticsEnabled);
+        await NiceModal.hide('privacy-opt-in');
+      }
+
+      if (config.show_release_notes) {
+        await NiceModal.show('release-notes');
+        await handleReleaseNotesClose();
+        await NiceModal.hide('release-notes');
+      }
+    }
+
+    checkOnboardingSteps();
+  }, [config]);
 
   if (loading) {
     return (
@@ -249,7 +171,7 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter>
-      <ConfigProvider>
+      <UserSystemProvider>
         <ProjectProvider>
           <NiceModal.Provider>
             <EditorDialogProvider>
@@ -259,7 +181,7 @@ function App() {
             </EditorDialogProvider>
           </NiceModal.Provider>
         </ProjectProvider>
-      </ConfigProvider>
+      </UserSystemProvider>
     </BrowserRouter>
   );
 }

@@ -22,12 +22,8 @@ const DisclaimerDialog = NiceModal.create(() => {
     }
   };
 
-  const handleCancel = () => {
-    modal.resolve('canceled');
-  };
-
   return (
-    <Dialog open={modal.visible} onOpenChange={handleCancel}>
+    <Dialog open={modal.visible} uncloseable={true}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <div className="flex items-center gap-3">

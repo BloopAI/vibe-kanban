@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useConfig } from '@/components/config-provider';
+import { useUserSystem } from '@/components/config-provider';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 
@@ -19,7 +19,7 @@ export interface ProvidePatDialogProps {
 export const ProvidePatDialog = NiceModal.create<ProvidePatDialogProps>(
   ({ errorMessage }) => {
     const modal = useModal();
-    const { config, updateAndSaveConfig } = useConfig();
+    const { config, updateAndSaveConfig } = useUserSystem();
     const [pat, setPat] = useState('');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);

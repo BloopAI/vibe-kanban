@@ -2,7 +2,7 @@ import { Diff } from 'shared/types';
 import { DiffModeEnum, DiffView } from '@git-diff-view/react';
 import { generateDiffFile } from '@git-diff-view/file';
 import { useMemo } from 'react';
-import { useConfig } from '@/components/config-provider';
+import { useUserSystem } from '@/components/config-provider';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import { getActualTheme } from '@/utils/theme';
 import { Button } from '@/components/ui/button';
@@ -46,7 +46,7 @@ export default function DiffCard({
   onToggle,
   selectedAttempt,
 }: Props) {
-  const { config } = useConfig();
+  const { config } = useUserSystem();
   const theme = getActualTheme(config?.theme);
 
   const oldName = diff.oldPath || undefined;
