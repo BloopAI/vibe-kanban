@@ -1,14 +1,12 @@
 import { useCallback } from 'react';
 import { attemptsApi } from '@/lib/api';
-import { useEditorDialog } from '@/contexts/editor-dialog-context';
+import NiceModal from '@ebay/nice-modal-react';
 import type { EditorType, TaskAttempt } from 'shared/types';
 
 export function useOpenInEditor(
   attempt: TaskAttempt | null,
   onShowEditorDialog?: () => void
 ) {
-  const { showEditorDialog } = useEditorDialog();
-
   return useCallback(
     async (editorType?: EditorType) => {
       if (!attempt) return;
@@ -20,7 +18,7 @@ export function useOpenInEditor(
           if (onShowEditorDialog) {
             onShowEditorDialog();
           } else {
-            showEditorDialog(attempt);
+            NiceModal.show('editor-selection', { selectedAttempt: attempt });
           }
         }
       } catch (err) {
@@ -29,11 +27,11 @@ export function useOpenInEditor(
           if (onShowEditorDialog) {
             onShowEditorDialog();
           } else {
-            showEditorDialog(attempt);
+            NiceModal.show('editor-selection', { selectedAttempt: attempt });
           }
         }
       }
     },
-    [attempt, onShowEditorDialog, showEditorDialog]
+    [attempt, onShowEditorDialog]
   );
 }

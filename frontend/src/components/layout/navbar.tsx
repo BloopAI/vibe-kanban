@@ -20,8 +20,8 @@ import { SearchBar } from '@/components/search-bar';
 import { useSearch } from '@/contexts/search-context';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { useProject } from '@/contexts/project-context';
-import { projectsApi } from '@/lib/api';
 import { showProjectForm } from '@/lib/modals';
+import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
 
 const INTERNAL_NAV = [
   { label: 'Projects', icon: FolderOpen, to: '/projects' },
@@ -45,19 +45,16 @@ export function Navbar() {
   const location = useLocation();
   const { projectId, project } = useProject();
   const { query, setQuery, active, clear } = useSearch();
+  const handleOpenInEditor = useOpenProjectInEditor(project || null);
+  
   const handleCreateTask = () => {
     if (projectId) {
       openTaskForm({ projectId });
     }
   };
 
-  const handleOpenInIDE = async () => {
-    if (!projectId) return;
-    try {
-      await projectsApi.openEditor(projectId);
-    } catch (err) {
-      console.error('Failed to open project in IDE:', err);
-    }
+  const handleOpenInIDE = () => {
+    handleOpenInEditor();
   };
 
   const handleProjectSettings = async () => {

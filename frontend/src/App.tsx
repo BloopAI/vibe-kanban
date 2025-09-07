@@ -19,9 +19,6 @@ import {
 import { UserSystemProvider, useUserSystem } from '@/components/config-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SearchProvider } from '@/contexts/search-context';
-import { EditorDialogProvider } from '@/contexts/editor-dialog-context';
-
-
 
 import { ProjectProvider } from '@/contexts/project-context';
 import { ThemeMode } from 'shared/types';
@@ -174,9 +171,7 @@ function App() {
       <UserSystemProvider>
         <ProjectProvider>
           <NiceModal.Provider>
-            <EditorDialogProvider>
-              <AppContent />
-            </EditorDialogProvider>
+            <AppContent />
           </NiceModal.Provider>
         </ProjectProvider>
       </UserSystemProvider>

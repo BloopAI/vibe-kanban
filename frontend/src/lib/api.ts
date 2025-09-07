@@ -218,10 +218,15 @@ export const projectsApi = {
     return handleApiResponse<void>(response);
   },
 
-  openEditor: async (id: string): Promise<void> => {
+  openEditor: async (id: string, editorType?: EditorType): Promise<void> => {
+    const requestBody: any = {};
+    if (editorType) requestBody.editor_type = editorType;
+
     const response = await makeRequest(`/api/projects/${id}/open-editor`, {
       method: 'POST',
-      body: JSON.stringify(null),
+      body: JSON.stringify(
+        Object.keys(requestBody).length > 0 ? requestBody : null
+      ),
     });
     return handleApiResponse<void>(response);
   },

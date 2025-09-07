@@ -21,9 +21,10 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { projectsApi } from '@/lib/api.ts';
 import { Project } from 'shared/types';
 import { useEffect, useRef } from 'react';
+import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
+import { projectsApi } from '@/lib/api';
 
 type Props = {
   project: Project;
@@ -42,6 +43,7 @@ function ProjectCard({
 }: Props) {
   const navigate = useNavigate();
   const ref = useRef<HTMLDivElement>(null);
+  const handleOpenInEditor = useOpenProjectInEditor(project);
 
   useEffect(() => {
     if (isFocused && ref.current) {
@@ -71,13 +73,8 @@ function ProjectCard({
     onEdit(project);
   };
 
-  const handleOpenInIDE = async (projectId: string) => {
-    try {
-      await projectsApi.openEditor(projectId);
-    } catch (error) {
-      console.error('Failed to open project in IDE:', error);
-      setError('Failed to open project in IDE');
-    }
+  const handleOpenInIDE = () => {
+    handleOpenInEditor();
   };
 
   return (
@@ -111,7 +108,7 @@ function ProjectCard({
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleOpenInIDE(project.id);
+                    handleOpenInIDE();
                   }}
                 >
                   <FolderOpen className="mr-2 h-4 w-4" />
