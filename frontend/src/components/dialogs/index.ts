@@ -34,10 +34,6 @@ export {
   type DeleteTaskConfirmationDialogProps,
 } from './tasks/DeleteTaskConfirmationDialog';
 export {
-  DeleteFileConfirmationDialog,
-  type DeleteFileConfirmationDialogProps,
-} from './tasks/DeleteFileConfirmationDialog';
-export {
   TaskTemplateEditDialog,
   type TaskTemplateEditDialogProps,
   type TaskTemplateEditResult,

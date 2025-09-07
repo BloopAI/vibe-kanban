@@ -21,7 +21,6 @@ import {
   TaskFormDialog,
   EditorSelectionDialog,
   DeleteTaskConfirmationDialog,
-  DeleteFileConfirmationDialog,
   FolderPickerDialog,
   TaskTemplateEditDialog,
   CreateAttemptConfirmDialog,

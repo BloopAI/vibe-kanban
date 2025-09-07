@@ -3,7 +3,6 @@ import type {
   ConfirmDialogProps,
   ProvidePatDialogProps,
   DeleteTaskConfirmationDialogProps,
-  DeleteFileConfirmationDialogProps,
   TaskFormDialogProps,
   EditorSelectionDialogProps,
 } from '@/components/dialogs';
@@ -32,9 +31,8 @@ declare module '@ebay/nice-modal-react' {
     // Task-related modals
     'task-form': TaskFormDialogProps;
     'delete-task-confirmation': DeleteTaskConfirmationDialogProps;
-    'delete-file-confirmation': DeleteFileConfirmationDialogProps;
     'editor-selection': EditorSelectionDialogProps;
   }
 }
 
-export {};
+export { };
