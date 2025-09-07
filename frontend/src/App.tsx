@@ -50,6 +50,7 @@ function AppContent() {
       if (!config.disclaimer_acknowledged) {
         NiceModal.show('disclaimer').then((result) => {
           if (result === 'accepted') {
+            NiceModal.hide('disclaimer');
             handleDisclaimerAccept();
           }
         });

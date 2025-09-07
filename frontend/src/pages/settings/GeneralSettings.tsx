@@ -88,12 +88,12 @@ export function GeneralSettings() {
 
   const resetDisclaimer = async () => {
     if (!config) return;
-    updateConfig({ disclaimer_acknowledged: false });
+    updateAndSaveConfig({ disclaimer_acknowledged: false });
   };
 
   const resetOnboarding = async () => {
     if (!config) return;
-    updateConfig({ onboarding_acknowledged: false });
+    updateAndSaveConfig({ onboarding_acknowledged: false });
   };
 
   const isAuthenticated = !!(
