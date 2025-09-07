@@ -76,6 +76,7 @@ function AppContent() {
       } else if (config.show_release_notes) {
         NiceModal.show('release-notes').then(() => {
           handleReleaseNotesClose();
+          NiceModal.hide('release-notes');
         });
       }
     }
