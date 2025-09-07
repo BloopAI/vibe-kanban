@@ -21,8 +21,8 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { SearchProvider } from '@/contexts/search-context';
 import { EditorDialogProvider } from '@/contexts/editor-dialog-context';
 
-import { TaskDialogProvider } from '@/contexts/task-dialog-context';
-import { TaskFormDialogContainer } from '@/components/dialogs';
+
+
 import { ProjectProvider } from '@/contexts/project-context';
 import { ThemeMode } from 'shared/types';
 import * as Sentry from '@sentry/react';
@@ -124,7 +124,7 @@ function AppContent() {
             {/* Custom context menu and VS Code-friendly interactions when embedded in iframe */}
             <WebviewContextMenu />
 
-            <TaskFormDialogContainer />
+
             {showNavbar && <DevBanner />}
             {showNavbar && <Navbar />}
             <div className="flex-1 h-full overflow-y-scroll">
@@ -175,9 +175,7 @@ function App() {
         <ProjectProvider>
           <NiceModal.Provider>
             <EditorDialogProvider>
-              <TaskDialogProvider>
-                <AppContent />
-              </TaskDialogProvider>
+              <AppContent />
             </EditorDialogProvider>
           </NiceModal.Provider>
         </ProjectProvider>

@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { projectsApi, tasksApi, attemptsApi } from '@/lib/api';
-import { useTaskDialog } from '@/contexts/task-dialog-context';
+import { openTaskForm } from '@/lib/openTaskForm';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
 import { useSearch } from '@/contexts/search-context';
 import { useQuery } from '@tanstack/react-query';
@@ -36,7 +36,24 @@ export function ProjectTasks() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { openCreate, openEdit, openDuplicate } = useTaskDialog();
+  // Helper functions to open task forms
+  const handleCreateTask = () => {
+    if (project?.id) {
+      openTaskForm({ projectId: project.id });
+    }
+  };
+  
+  const handleEditTask = (task: Task) => {
+    if (project?.id) {
+      openTaskForm({ projectId: project.id, task });
+    }
+  };
+  
+  const handleDuplicateTask = (task: Task) => {
+    if (project?.id) {
+      openTaskForm({ projectId: project.id, initialTask: task });
+    }
+  };
   const { query: searchQuery } = useSearch();
 
   // Panel state
@@ -103,9 +120,8 @@ export function ProjectTasks() {
 
   // Define task creation handler
   const handleCreateNewTask = useCallback(() => {
-    if (!projectId) return;
-    openCreate();
-  }, [projectId, openCreate]);
+    handleCreateTask();
+  }, [handleCreateTask]);
 
   // Full screen
 
@@ -147,18 +163,18 @@ export function ProjectTasks() {
     [tasksById, projectId, selectedTask, handleClosePanel]
   );
 
-  const handleEditTask = useCallback(
+  const handleEditTaskCallback = useCallback(
     (task: Task) => {
-      openEdit(task);
+      handleEditTask(task);
     },
-    [openEdit]
+    [handleEditTask]
   );
 
-  const handleDuplicateTask = useCallback(
+  const handleDuplicateTaskCallback = useCallback(
     (task: Task) => {
-      openDuplicate(task);
+      handleDuplicateTask(task);
     },
-    [openDuplicate]
+    [handleDuplicateTask]
   );
 
   const handleViewTaskDetails = useCallback(
@@ -274,9 +290,9 @@ export function ProjectTasks() {
                 tasks={tasks}
                 searchQuery={searchQuery}
                 onDragEnd={handleDragEnd}
-                onEditTask={handleEditTask}
+                onEditTask={handleEditTaskCallback}
                 onDeleteTask={handleDeleteTask}
-                onDuplicateTask={handleDuplicateTask}
+                onDuplicateTask={handleDuplicateTaskCallback}
                 onViewTaskDetails={handleViewTaskDetails}
                 isPanelOpen={isPanelOpen}
               />
@@ -291,7 +307,7 @@ export function ProjectTasks() {
             projectHasDevScript={!!project?.dev_script}
             projectId={projectId!}
             onClose={handleClosePanel}
-            onEditTask={handleEditTask}
+            onEditTask={handleEditTaskCallback}
             onDeleteTask={handleDeleteTask}
             isFullScreen={isFullscreen}
             setFullScreen={

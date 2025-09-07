@@ -18,7 +18,7 @@ import {
 import { Logo } from '@/components/logo';
 import { SearchBar } from '@/components/search-bar';
 import { useSearch } from '@/contexts/search-context';
-import { useTaskDialog } from '@/contexts/task-dialog-context';
+import { openTaskForm } from '@/lib/openTaskForm';
 import { useProject } from '@/contexts/project-context';
 import { projectsApi } from '@/lib/api';
 import { showProjectForm } from '@/lib/modals';
@@ -45,7 +45,11 @@ export function Navbar() {
   const location = useLocation();
   const { projectId, project } = useProject();
   const { query, setQuery, active, clear } = useSearch();
-  const { openCreate } = useTaskDialog();
+  const handleCreateTask = () => {
+    if (projectId) {
+      openTaskForm({ projectId });
+    }
+  };
 
   const handleOpenInIDE = async () => {
     if (!projectId) return;
@@ -106,7 +110,7 @@ export function Navbar() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => openCreate()}
+                  onClick={handleCreateTask}
                   aria-label="Create new task"
                 >
                   <Plus className="h-4 w-4" />
