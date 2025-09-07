@@ -43,11 +43,6 @@ export {
   type TaskTemplateEditResult,
 } from './tasks/TaskTemplateEditDialog';
 export {
-  CreateAttemptConfirmDialog,
-  type CreateAttemptConfirmDialogProps,
-  type CreateAttemptConfirmResult,
-} from './tasks/CreateAttemptConfirmDialog';
-export {
   StopExecutionConfirmDialog,
   type StopExecutionConfirmDialogProps,
   type StopExecutionConfirmResult,

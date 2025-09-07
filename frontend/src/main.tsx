@@ -23,7 +23,6 @@ import {
   DeleteTaskConfirmationDialog,
   FolderPickerDialog,
   TaskTemplateEditDialog,
-  CreateAttemptConfirmDialog,
   StopExecutionConfirmDialog,
   RebaseDialog,
   CreateConfigurationDialog,
@@ -47,7 +46,6 @@ NiceModal.register('task-form', TaskFormDialog);
 NiceModal.register('editor-selection', EditorSelectionDialog);
 NiceModal.register('folder-picker', FolderPickerDialog);
 NiceModal.register('task-template-edit', TaskTemplateEditDialog);
-NiceModal.register('create-attempt-confirm', CreateAttemptConfirmDialog);
 NiceModal.register('stop-execution-confirm', StopExecutionConfirmDialog);
 NiceModal.register('rebase-dialog', RebaseDialog);
 NiceModal.register('create-configuration', CreateConfigurationDialog);
