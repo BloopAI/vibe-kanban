@@ -26,7 +26,10 @@ export const ReleaseNotesDialog = NiceModal.create(() => {
   };
 
   return (
-    <Dialog open={modal.visible} onOpenChange={(open) => !open && modal.resolve()}>
+    <Dialog
+      open={modal.visible}
+      onOpenChange={(open) => !open && modal.resolve()}
+    >
       <DialogContent className="flex flex-col w-full h-full max-w-7xl max-h-[calc(100dvh-1rem)] p-0">
         <DialogHeader className="p-4 border-b flex-shrink-0">
           <DialogTitle className="text-xl font-semibold">

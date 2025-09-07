@@ -19,7 +19,9 @@ export function useOpenProjectInEditor(
           if (onShowEditorDialog) {
             onShowEditorDialog();
           } else {
-            NiceModal.show('project-editor-selection', { selectedProject: project });
+            NiceModal.show('project-editor-selection', {
+              selectedProject: project,
+            });
           }
         }
       }

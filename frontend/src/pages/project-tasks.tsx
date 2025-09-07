@@ -42,13 +42,13 @@ export function ProjectTasks() {
       openTaskForm({ projectId: project.id });
     }
   };
-  
+
   const handleEditTask = (task: Task) => {
     if (project?.id) {
       openTaskForm({ projectId: project.id, task });
     }
   };
-  
+
   const handleDuplicateTask = (task: Task) => {
     if (project?.id) {
       openTaskForm({ projectId: project.id, initialTask: task });

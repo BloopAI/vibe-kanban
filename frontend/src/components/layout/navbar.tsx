@@ -46,7 +46,7 @@ export function Navbar() {
   const { projectId, project } = useProject();
   const { query, setQuery, active, clear } = useSearch();
   const handleOpenInEditor = useOpenProjectInEditor(project || null);
-  
+
   const handleCreateTask = () => {
     if (projectId) {
       openTaskForm({ projectId });

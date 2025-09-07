@@ -16,7 +16,10 @@ import {
   AgentSettings,
   McpSettings,
 } from '@/pages/settings/';
-import { UserSystemProvider, useUserSystem } from '@/components/config-provider';
+import {
+  UserSystemProvider,
+  useUserSystem,
+} from '@/components/config-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SearchProvider } from '@/contexts/search-context';
 
@@ -40,7 +43,9 @@ function AppContent() {
   const showNavbar = !location.pathname.endsWith('/full');
 
   useEffect(() => {
-    const handleOnboardingComplete = async (onboardingConfig: OnboardingResult) => {
+    const handleOnboardingComplete = async (
+      onboardingConfig: OnboardingResult
+    ) => {
       const updatedConfig = {
         ...config,
         onboarding_acknowledged: true,
@@ -53,19 +58,22 @@ function AppContent() {
 
     const handleDisclaimerAccept = async () => {
       await updateAndSaveConfig({ disclaimer_acknowledged: true });
-    }
+    };
 
     const handleGitHubLoginComplete = async () => {
       await updateAndSaveConfig({ github_login_acknowledged: true });
-    }
+    };
 
     const handleTelemetryOptIn = async (analyticsEnabled: boolean) => {
-      await updateAndSaveConfig({ telemetry_acknowledged: true, analytics_enabled: analyticsEnabled });
-    }
+      await updateAndSaveConfig({
+        telemetry_acknowledged: true,
+        analytics_enabled: analyticsEnabled,
+      });
+    };
 
     const handleReleaseNotesClose = async () => {
       await updateAndSaveConfig({ show_release_notes: false });
-    }
+    };
 
     const checkOnboardingSteps = async () => {
       if (!config) return;
@@ -77,10 +85,10 @@ function AppContent() {
       }
 
       if (!config.onboarding_acknowledged) {
-        const onboardingResult: OnboardingResult = await NiceModal.show('onboarding');
+        const onboardingResult: OnboardingResult =
+          await NiceModal.show('onboarding');
         await handleOnboardingComplete(onboardingResult);
         await NiceModal.hide('onboarding');
-
       }
 
       if (!config.github_login_acknowledged) {
@@ -90,7 +98,8 @@ function AppContent() {
       }
 
       if (!config.telemetry_acknowledged) {
-        const analyticsEnabled: boolean = await NiceModal.show('privacy-opt-in');
+        const analyticsEnabled: boolean =
+          await NiceModal.show('privacy-opt-in');
         await handleTelemetryOptIn(analyticsEnabled);
         await NiceModal.hide('privacy-opt-in');
       }
@@ -100,7 +109,7 @@ function AppContent() {
         await handleReleaseNotesClose();
         await NiceModal.hide('release-notes');
       }
-    }
+    };
 
     checkOnboardingSteps();
   }, [config]);
@@ -120,7 +129,6 @@ function AppContent() {
           <div className="h-screen flex flex-col bg-background">
             {/* Custom context menu and VS Code-friendly interactions when embedded in iframe */}
             <WebviewContextMenu />
-
 
             {showNavbar && <DevBanner />}
             {showNavbar && <Navbar />}

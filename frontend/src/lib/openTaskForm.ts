@@ -6,5 +6,5 @@ import type { TaskFormDialogProps } from '@/components/dialogs/tasks/TaskFormDia
  * This replaces the previous TaskFormDialogContainer pattern
  */
 export function openTaskForm(props: TaskFormDialogProps) {
-    return NiceModal.show('task-form', props);
+  return NiceModal.show('task-form', props);
 }
