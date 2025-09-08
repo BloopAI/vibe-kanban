@@ -10,12 +10,6 @@
         "CLAUDE_CODE": {
           "plan": true
         }
-      },
-      "ROUTER": {
-        "CLAUDE_CODE": {
-          "claude_code_router": true,
-          "dangerously_skip_permissions": true
-        }
       }
     },
     "AMP": {
