@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import DiffCard from '@/components/DiffCard';
 import { useDiffSummary } from '@/hooks/useDiffSummary';
 import type { TaskAttempt } from 'shared/types';
+import { ReviewProvider } from '@/contexts/ReviewProvider';
+import { ReviewSubmissionBar } from '@/components/diff/ReviewSubmissionBar';
 
 interface DiffTabProps {
   selectedAttempt: TaskAttempt | null;
@@ -76,7 +78,65 @@ function DiffTab({ selectedAttempt }: DiffTabProps) {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <ReviewProvider>
+      <DiffTabContent 
+        diffs={diffs}
+        fileCount={fileCount}
+        added={added}
+        deleted={deleted}
+        collapsedIds={collapsedIds}
+        allCollapsed={allCollapsed}
+        handleCollapseAll={handleCollapseAll}
+        toggle={toggle}
+        selectedAttempt={selectedAttempt}
+      />
+    </ReviewProvider>
+  );
+}
+
+interface DiffTabContentProps {
+  diffs: any[];
+  fileCount: number;
+  added: number;
+  deleted: number;
+  collapsedIds: Set<string>;
+  allCollapsed: boolean;
+  handleCollapseAll: () => void;
+  toggle: (id: string) => void;
+  selectedAttempt: TaskAttempt | null;
+}
+
+function DiffTabContent({
+  diffs,
+  fileCount,
+  added,
+  deleted,
+  collapsedIds,
+  allCollapsed,
+  handleCollapseAll,
+  toggle,
+  selectedAttempt,
+}: DiffTabContentProps) {
+
+
+  const handleSubmitReview = async (reviewMarkdown: string) => {
+    if (!selectedAttempt?.id) return;
+
+    try {
+      const { attemptsApi } = await import('@/lib/api');
+      await attemptsApi.followUp(selectedAttempt.id, {
+        prompt: reviewMarkdown,
+        variant: null,
+        image_ids: null,
+      });
+      console.log('Review submitted successfully');
+    } catch (error) {
+      console.error('Failed to submit review:', error);
+    }
+  };
+
+  return (
+    <div className="h-full flex flex-col relative">
       {diffs.length > 0 && (
         <div className="sticky top-0 bg-background border-b px-4 py-2 z-10">
           <div className="flex items-center justify-between gap-4">
@@ -118,6 +178,9 @@ function DiffTab({ selectedAttempt }: DiffTabProps) {
           );
         })}
       </div>
+      <ReviewSubmissionBar 
+        onSubmitReview={handleSubmitReview} 
+      />
     </div>
   );
 }
