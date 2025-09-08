@@ -34,10 +34,7 @@ const CreatePrDialog = NiceModal.create(() => {
     | undefined;
   const [prTitle, setPrTitle] = useState('');
   const [prBody, setPrBody] = useState('');
-  const [prBaseBranch, setPrBaseBranch] = useState('main');
-  const [showPatDialog, setShowPatDialog] = useState(false);
-  const [patDialogError, setPatDialogError] = useState<string | null>(null);
-  const [showGitHubLoginDialog, setShowGitHubLoginDialog] = useState(false);
+  const [prBaseBranch, setPrBaseBranch] = useState('');
   const [creatingPR, setCreatingPR] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,15 +48,15 @@ const CreatePrDialog = NiceModal.create(() => {
       setPrBody(data.task.description || '');
 
       // Smart default: task attempt base branch → current branch
-      const defaultBranch = data.attempt.base_branch ||
-        branches.find(b => b.is_current)?.name;
+      const defaultBranch =
+        data.attempt.base_branch || branches.find((b) => b.is_current)?.name;
       if (defaultBranch) {
         setPrBaseBranch(defaultBranch);
       }
 
       setError(null); // Reset error when opening
     }
-  }, [modal.visible, data]);
+  }, [modal.visible, data, branches]);
 
   const handleConfirmCreatePR = useCallback(async () => {
     if (!data?.projectId || !data?.attempt.id) return;
@@ -79,7 +76,7 @@ const CreatePrDialog = NiceModal.create(() => {
       setPrTitle('');
       setPrBody('');
       setPrBaseBranch('');
-      closeCreatePRDialog();
+      modal.hide();
     } else {
       if (result.error) {
         modal.hide();
@@ -170,13 +167,6 @@ const CreatePrDialog = NiceModal.create(() => {
                       {branch.is_current && ' (current)'}
                     </SelectItem>
                   ))}
-                  {/* Add common branches as fallback if not in the list */}
-                  {!branches.some((b) => b.name === 'main' && !b.is_remote) && (
-                    <SelectItem value="main">main</SelectItem>
-                  )}
-                  {!branches.some(
-                    (b) => b.name === 'master' && !b.is_remote
-                  ) && <SelectItem value="master">master</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
