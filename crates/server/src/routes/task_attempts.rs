@@ -17,7 +17,7 @@ use db::models::{
     image::TaskImage,
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
     project::{Project, ProjectError},
-    task::{Task, TaskStatus},
+    task::{Task, TaskStatus, TaskRelationships},
     task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptError},
 };
 use deployment::Deployment;
@@ -1516,12 +1516,12 @@ pub async fn start_dev_server(
 pub async fn get_task_attempt_children(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<Vec<Task>>>, StatusCode> {
-    match Task::find_related_tasks_by_attempt_id(&deployment.db().pool, task_attempt.id).await {
-        Ok(related_tasks) => Ok(ResponseJson(ApiResponse::success(related_tasks))),
+) -> Result<ResponseJson<ApiResponse<TaskRelationships>>, StatusCode> {
+    match Task::find_relationships_for_attempt(&deployment.db().pool, &task_attempt).await {
+        Ok(relationships) => Ok(ResponseJson(ApiResponse::success(relationships))),
         Err(e) => {
             tracing::error!(
-                "Failed to fetch children for task attempt {}: {}",
+                "Failed to fetch relationships for task attempt {}: {}",
                 task_attempt.id,
                 e
             );

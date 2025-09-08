@@ -26,6 +26,7 @@ import {
   SearchResult,
   Task,
   TaskAttempt,
+  TaskRelationships,
   TaskTemplate,
   TaskWithAttemptStatus,
   UpdateProject,
@@ -306,11 +307,11 @@ export const tasksApi = {
 
 // Task Attempts APIs
 export const attemptsApi = {
-  getChildren: async (attemptId: string): Promise<Task[]> => {
+  getChildren: async (attemptId: string): Promise<TaskRelationships> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/children`
     );
-    return handleApiResponse<Task[]>(response);
+    return handleApiResponse<TaskRelationships>(response);
   },
 
   getAll: async (taskId: string): Promise<TaskAttempt[]> => {

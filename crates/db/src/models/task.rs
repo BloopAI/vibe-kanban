@@ -5,6 +5,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use super::project::Project;
+use super::task_attempt::TaskAttempt;
 
 #[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
 #[sqlx(type_name = "task_status", rename_all = "lowercase")]
@@ -43,6 +44,13 @@ pub struct TaskWithAttemptStatus {
     pub has_merged_attempt: bool,
     pub last_attempt_failed: bool,
     pub executor: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct TaskRelationships {
+    pub parent_task: Option<Task>,      // The task that owns this attempt
+    pub current_attempt: TaskAttempt,   // The attempt we're viewing
+    pub children: Vec<Task>,            // Tasks created by this attempt
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -275,32 +283,52 @@ ORDER BY t.created_at DESC"#,
         Ok(result.is_some())
     }
 
-    pub async fn find_related_tasks_by_attempt_id(
+    pub async fn find_children_by_attempt_id(
         pool: &SqlitePool,
         attempt_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
-        // Find both children and parent for this attempt
+        // Find only child tasks that have this attempt as their parent
         sqlx::query_as!(
             Task,
-            r#"SELECT DISTINCT t.id as "id!: Uuid", t.project_id as "project_id!: Uuid", t.title, t.description, t.status as "status!: TaskStatus", t.parent_task_attempt as "parent_task_attempt: Uuid", t.created_at as "created_at!: DateTime<Utc>", t.updated_at as "updated_at!: DateTime<Utc>"
-               FROM tasks t
-               WHERE (
-                   -- Find children: tasks that have this attempt as parent
-                   t.parent_task_attempt = $1
-               ) OR (
-                   -- Find parent: task that owns the parent attempt of current task
-                   EXISTS (
-                       SELECT 1 FROM tasks current_task 
-                       JOIN task_attempts parent_attempt ON current_task.parent_task_attempt = parent_attempt.id
-                       WHERE parent_attempt.task_id = t.id 
-                   )
-               )
-               -- Exclude the current task itself to prevent circular references
-               AND t.id != (SELECT task_id FROM task_attempts WHERE id = $1)
-               ORDER BY t.created_at DESC"#,
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+               FROM tasks 
+               WHERE parent_task_attempt = $1
+               ORDER BY created_at DESC"#,
             attempt_id,
         )
         .fetch_all(pool)
         .await
+    }
+
+    pub async fn find_relationships_for_attempt(
+        pool: &SqlitePool,
+        task_attempt: &TaskAttempt,
+    ) -> Result<TaskRelationships, sqlx::Error> {
+        // 1. Get the current task (task that owns this attempt)
+        let current_task = Self::find_by_id(pool, task_attempt.task_id)
+            .await?
+            .ok_or(sqlx::Error::RowNotFound)?;
+        
+        // 2. Get parent task (if current task was created by another task's attempt)
+        let parent_task = if let Some(parent_attempt_id) = current_task.parent_task_attempt {
+            // Find the attempt that created the current task
+            if let Ok(Some(parent_attempt)) = TaskAttempt::find_by_id(pool, parent_attempt_id).await {
+                // Find the task that owns that parent attempt - THAT's the real parent
+                Self::find_by_id(pool, parent_attempt.task_id).await?
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        
+        // 3. Get children tasks (created by this attempt)
+        let children = Self::find_children_by_attempt_id(pool, task_attempt.id).await?;
+        
+        Ok(TaskRelationships {
+            parent_task,
+            current_attempt: task_attempt.clone(),
+            children,
+        })
     }
 }
