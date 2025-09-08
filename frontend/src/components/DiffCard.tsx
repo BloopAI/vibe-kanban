@@ -112,6 +112,7 @@ export default function DiffCard({
     const newFileData: Record<string, { data: any }> = {};
 
     commentsForFile.forEach((comment) => {
+      console.log('DEBUG', comment);
       const lineKey = String(comment.lineNumber);
       if (comment.side === 'old') {
         oldFileData[lineKey] = { data: comment };
@@ -126,11 +127,15 @@ export default function DiffCard({
     };
   }, [commentsForFile]);
 
-  const handleAddWidgetClick = (lineNumber: number, side: SplitSide) => {
+  const handleAddWidgetClick = (lineNumber: number, side: number) => {
+    let sideName = "old";
+    if (side === 2) {
+      sideName = "new";
+    }
     const widgetKey = `${filePath}-${side}-${lineNumber}`;
     const draft: ReviewDraft = {
       filePath,
-      side: side as unknown as 'old' | 'new',
+      side: sideName as 'old' | 'new',
       lineNumber,
       text: '',
     };

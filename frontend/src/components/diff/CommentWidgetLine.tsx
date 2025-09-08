@@ -61,18 +61,10 @@ export function CommentWidgetLine({
         rows={3}
       />
       <div className="mt-2 flex gap-2">
-        <Button
-          size="xs"
-          onClick={handleSave}
-          disabled={!value.trim()}
-        >
+        <Button size="xs" onClick={handleSave} disabled={!value.trim()}>
           Add review comment
         </Button>
-        <Button
-          size="xs"
-          variant="ghost"
-          onClick={handleCancel}
-        >
+        <Button size="xs" variant="ghost" onClick={handleCancel}>
           Cancel
         </Button>
       </div>

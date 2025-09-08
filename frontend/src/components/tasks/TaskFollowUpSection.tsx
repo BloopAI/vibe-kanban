@@ -4,7 +4,6 @@ import {
   ChevronDown,
   ImageIcon,
   StopCircle,
-  MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ImageUploadSection } from '@/components/ui/ImageUploadSection';
@@ -235,29 +234,28 @@ export function TaskFollowUpSection({
                 />
               </div>
             )}
-            
+
             {/* Review comments preview */}
             {reviewMarkdown && (
-              <div className="border rounded-md p-3 bg-muted/50">
+              <div className="text-sm mb-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <MessageSquare className="h-4 w-4 text-primary" />
-                  <p className="text-xs font-semibold text-muted-foreground">
+                  <p className="font-semibold text-muted-foreground">
                     Review comments ({comments.length})
                   </p>
                 </div>
-                <div className="text-xs text-foreground whitespace-pre-wrap font-mono bg-background rounded border p-2">
+                <div className="whitespace-pre-wrap">
                   {reviewMarkdown}
                 </div>
               </div>
             )}
-            
+
             <div className="flex flex-col gap-2">
               <div>
                 <FileSearchTextarea
                   placeholder={
-                    reviewMarkdown 
-                      ? "(Optional) Add additional instructions... Type @ to search files."
-                      : "Continue working on this task attempt... Type @ to search files."
+                    reviewMarkdown
+                      ? '(Optional) Add additional instructions... Type @ to search files.'
+                      : 'Continue working on this task attempt... Type @ to search files.'
                   }
                   value={followUpMessage}
                   onChange={(value) => {

@@ -76,17 +76,17 @@ function DiffTab({ selectedAttempt }: DiffTabProps) {
   }
 
   return (
-  <DiffTabContent 
-  diffs={diffs}
-  fileCount={fileCount}
-  added={added}
-  deleted={deleted}
-  collapsedIds={collapsedIds}
-  allCollapsed={allCollapsed}
-  handleCollapseAll={handleCollapseAll}
-  toggle={toggle}
-  selectedAttempt={selectedAttempt}
-  />
+    <DiffTabContent
+      diffs={diffs}
+      fileCount={fileCount}
+      added={added}
+      deleted={deleted}
+      collapsedIds={collapsedIds}
+      allCollapsed={allCollapsed}
+      handleCollapseAll={handleCollapseAll}
+      toggle={toggle}
+      selectedAttempt={selectedAttempt}
+    />
   );
 }
 
@@ -113,7 +113,6 @@ function DiffTabContent({
   toggle,
   selectedAttempt,
 }: DiffTabContentProps) {
-
   return (
     <div className="h-full flex flex-col relative">
       {diffs.length > 0 && (
