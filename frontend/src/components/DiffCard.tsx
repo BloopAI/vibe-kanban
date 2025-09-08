@@ -102,7 +102,7 @@ export default function DiffCard({
   // Review functionality
   const filePath = newName || oldName || 'unknown';
   const commentsForFile = useMemo(
-    () => comments.filter(c => c.filePath === filePath),
+    () => comments.filter((c) => c.filePath === filePath),
     [comments, filePath]
   );
 
@@ -110,8 +110,8 @@ export default function DiffCard({
   const extendData = useMemo(() => {
     const oldFileData: Record<string, { data: any }> = {};
     const newFileData: Record<string, { data: any }> = {};
-    
-    commentsForFile.forEach(comment => {
+
+    commentsForFile.forEach((comment) => {
       const lineKey = String(comment.lineNumber);
       if (comment.side === 'old') {
         oldFileData[lineKey] = { data: comment };

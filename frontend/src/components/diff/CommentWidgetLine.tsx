@@ -9,11 +9,11 @@ interface CommentWidgetLineProps {
   onCancel: () => void;
 }
 
-export function CommentWidgetLine({ 
-  draft, 
-  widgetKey, 
-  onSave, 
-  onCancel 
+export function CommentWidgetLine({
+  draft,
+  widgetKey,
+  onSave,
+  onCancel,
 }: CommentWidgetLineProps) {
   const { setDraft, addComment } = useReview();
   const [value, setValue] = useState(draft.text);
@@ -50,36 +50,31 @@ export function CommentWidgetLine({
   };
 
   return (
-    <div className="pl-8 pr-4 py-2 bg-muted/50 border-l-2 border-primary">
+    <div className="p-4 border-y">
       <textarea
         ref={textareaRef}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Add a comment..."
-        className="w-full p-2 text-xs font-mono bg-background border border-border rounded resize-none min-h-[60px] focus:outline-none focus:ring-1 focus:ring-primary"
+        className="w-full text-sm font-mono resize-none min-h-[60px] focus:outline-none focus:ring-1 focus:ring-primary"
         rows={3}
       />
       <div className="mt-2 flex gap-2">
-        <Button 
-          size="sm" 
+        <Button
+          size="xs"
           onClick={handleSave}
           disabled={!value.trim()}
-          className="text-xs"
         >
-          Save comment
+          Add review comment
         </Button>
-        <Button 
-          size="sm" 
-          variant="ghost" 
+        <Button
+          size="xs"
+          variant="ghost"
           onClick={handleCancel}
-          className="text-xs"
         >
           Cancel
         </Button>
-      </div>
-      <div className="mt-1 text-xs text-muted-foreground">
-        Press Ctrl+Enter to save, Esc to cancel
       </div>
     </div>
   );

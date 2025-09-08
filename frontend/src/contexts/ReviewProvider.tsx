@@ -45,19 +45,19 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
       ...comment,
       id: crypto.randomUUID(),
     };
-    setComments(prev => [...prev, newComment]);
+    setComments((prev) => [...prev, newComment]);
   };
 
   const updateComment = (id: string, text: string) => {
-    setComments(prev => 
-      prev.map(comment => 
+    setComments((prev) =>
+      prev.map((comment) =>
         comment.id === id ? { ...comment, text } : comment
       )
     );
   };
 
   const deleteComment = (id: string) => {
-    setComments(prev => prev.filter(comment => comment.id !== id));
+    setComments((prev) => prev.filter((comment) => comment.id !== id));
   };
 
   const clearComments = () => {
@@ -66,7 +66,7 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
   };
 
   const setDraft = (key: string, draft: ReviewDraft | null) => {
-    setDrafts(prev => {
+    setDrafts((prev) => {
       if (draft === null) {
         const { [key]: _, ...rest } = prev;
         return rest;
@@ -80,8 +80,9 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
 
     const header = `## Review Comments\n\n`;
     const commentsMd = comments
-      .map(comment => 
-        `**${comment.filePath}** (Line ${comment.lineNumber})\n\n> ${comment.text.trim()}\n`
+      .map(
+        (comment) =>
+          `**${comment.filePath}** (Line ${comment.lineNumber})\n\n> ${comment.text.trim()}\n`
       )
       .join('\n');
 

@@ -1,4 +1,3 @@
-
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Send, X } from 'lucide-react';
 import { useReview } from '@/contexts/ReviewProvider';
@@ -7,7 +6,9 @@ interface ReviewSubmissionBarProps {
   onSubmitReview: (reviewMarkdown: string) => void;
 }
 
-export function ReviewSubmissionBar({ onSubmitReview }: ReviewSubmissionBarProps) {
+export function ReviewSubmissionBar({
+  onSubmitReview,
+}: ReviewSubmissionBarProps) {
   const { comments, clearComments, generateReviewMarkdown } = useReview();
 
   if (comments.length === 0) return null;
@@ -31,7 +32,7 @@ export function ReviewSubmissionBar({ onSubmitReview }: ReviewSubmissionBarProps
             {comments.length} review comment{comments.length === 1 ? '' : 's'}
           </span>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
@@ -42,7 +43,7 @@ export function ReviewSubmissionBar({ onSubmitReview }: ReviewSubmissionBarProps
             <X className="h-4 w-4 mr-1" />
             Discard
           </Button>
-          
+
           <Button
             onClick={handleSubmit}
             size="sm"

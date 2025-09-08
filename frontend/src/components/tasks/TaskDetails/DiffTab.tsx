@@ -79,7 +79,7 @@ function DiffTab({ selectedAttempt }: DiffTabProps) {
 
   return (
     <ReviewProvider>
-      <DiffTabContent 
+      <DiffTabContent
         diffs={diffs}
         fileCount={fileCount}
         added={added}
@@ -117,8 +117,6 @@ function DiffTabContent({
   toggle,
   selectedAttempt,
 }: DiffTabContentProps) {
-
-
   const handleSubmitReview = async (reviewMarkdown: string) => {
     if (!selectedAttempt?.id) return;
 
@@ -178,9 +176,7 @@ function DiffTabContent({
           );
         })}
       </div>
-      <ReviewSubmissionBar 
-        onSubmitReview={handleSubmitReview} 
-      />
+      <ReviewSubmissionBar onSubmitReview={handleSubmitReview} />
     </div>
   );
 }
