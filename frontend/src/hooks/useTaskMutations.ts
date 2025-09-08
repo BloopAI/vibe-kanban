@@ -1,7 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { tasksApi } from '@/lib/api';
-import type { CreateTask, Task } from 'shared/types';
+import type {
+  CreateTask,
+  CreateAndStartTaskRequest,
+  Task,
+  TaskWithAttemptStatus,
+  UpdateTask,
+} from 'shared/types';
 
 export function useTaskMutations(projectId?: string) {
   const navigate = useNavigate();
@@ -28,8 +34,9 @@ export function useTaskMutations(projectId?: string) {
   });
 
   const createAndStart = useMutation({
-    mutationFn: (data: CreateTask) => tasksApi.createAndStart(data),
-    onSuccess: (createdTask: Task) => {
+    mutationFn: (data: CreateAndStartTaskRequest) =>
+      tasksApi.createAndStart(data),
+    onSuccess: (createdTask: TaskWithAttemptStatus) => {
       invalidateQueries();
       navigate(`/projects/${projectId}/tasks/${createdTask.id}`, {
         replace: true,
@@ -41,7 +48,7 @@ export function useTaskMutations(projectId?: string) {
   });
 
   const updateTask = useMutation({
-    mutationFn: ({ taskId, data }: { taskId: string; data: any }) =>
+    mutationFn: ({ taskId, data }: { taskId: string; data: UpdateTask }) =>
       tasksApi.update(taskId, data),
     onSuccess: (updatedTask: Task) => {
       invalidateQueries(updatedTask.id);
