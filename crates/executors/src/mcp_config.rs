@@ -2,7 +2,7 @@
 //!
 //! These helpers abstract over JSON vs TOML formats used by different agents.
 
-use std::collections::HashMap;
+use std::{sync::LazyLock, collections::HashMap};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -11,12 +11,17 @@ use ts_rs::TS;
 
 use crate::executors::ExecutorError;
 
+static DEFAULT_MCP_JSON: &str = include_str!("../default_mcp.json");
+pub static PRECONFIGURED_MCP_SERVERS: LazyLock<Value> = LazyLock::new(|| {
+    serde_json::from_str::<Value>(DEFAULT_MCP_JSON).expect("Failed to parse default MCP JSON")
+});
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct McpConfig {
     servers: HashMap<String, serde_json::Value>,
     pub servers_path: Vec<String>,
     pub template: serde_json::Value,
-    pub vibe_kanban: serde_json::Value,
+    pub preconfigured: serde_json::Value,
     pub is_toml_config: bool,
 }
 
@@ -24,14 +29,14 @@ impl McpConfig {
     pub fn new(
         servers_path: Vec<String>,
         template: serde_json::Value,
-        vibe_kanban: serde_json::Value,
+        preconfigured: serde_json::Value,
         is_toml_config: bool,
     ) -> Self {
         Self {
             servers: HashMap::new(),
             servers_path,
             template,
-            vibe_kanban,
+            preconfigured,
             is_toml_config,
         }
     }

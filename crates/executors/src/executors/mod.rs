@@ -17,7 +17,7 @@ use crate::{
         amp::Amp, claude::ClaudeCode, codex::Codex, cursor::Cursor, gemini::Gemini,
         opencode::Opencode, qwen::QwenCode,
     },
-    mcp_config::McpConfig,
+    mcp_config::{McpConfig, PRECONFIGURED_MCP_SERVERS},
 };
 
 pub mod amp;
@@ -85,10 +85,7 @@ impl CodingAgent {
                 serde_json::json!({
                     "mcp_servers": {}
                 }),
-                serde_json::json!({
-                    "command": "npx",
-                    "args": ["-y", "vibe-kanban", "--mcp"],
-                }),
+                PRECONFIGURED_MCP_SERVERS.clone(),
                 true,
             ),
             Self::Amp(_) => McpConfig::new(
@@ -96,10 +93,7 @@ impl CodingAgent {
                 serde_json::json!({
                     "amp.mcpServers": {}
                 }),
-                serde_json::json!({
-                    "command": "npx",
-                    "args": ["-y", "vibe-kanban", "--mcp"],
-                }),
+                PRECONFIGURED_MCP_SERVERS.clone(),
                 false,
             ),
             Self::Opencode(_) => McpConfig::new(
@@ -109,9 +103,25 @@ impl CodingAgent {
                     "$schema": "https://opencode.ai/config.json"
                 }),
                 serde_json::json!({
-                    "type": "local",
-                    "command": ["npx", "-y", "vibe-kanban", "--mcp"],
-                    "enabled": true
+                    "vibe-kanban": {
+                        "type": "local",
+                        "command": ["npx", "-y", "vibe-kanban", "--mcp"],
+                        "enabled": true
+                    },
+                    "context7": {
+                        "type": "remote",
+                        "url": "https://mcp.context7.com/mcp",
+                        "enabled": true,
+                        "headers": {
+                            "CONTEXT7_API_KEY": "YOUR_API_KEY",
+                            "Accept": "application/json, text/event-stream"
+                        }
+                    },
+                    "playwright": {
+                        "type": "local",
+                        "command": ["npx", "@playwright/mcp@latest"],
+                        "enabled": true
+                    }
                 }),
                 false,
             ),
@@ -120,10 +130,7 @@ impl CodingAgent {
                 serde_json::json!({
                     "mcpServers": {}
                 }),
-                serde_json::json!({
-                    "command": "npx",
-                    "args": ["-y", "vibe-kanban", "--mcp"],
-                }),
+                PRECONFIGURED_MCP_SERVERS.clone(),
                 false,
             ),
         }
