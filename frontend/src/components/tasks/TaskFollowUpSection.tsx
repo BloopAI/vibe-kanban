@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ImageIcon,
   StopCircle,
+  MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ImageUploadSection } from '@/components/ui/ImageUploadSection';
@@ -24,6 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { useVariantCyclingShortcut } from '@/lib/keyboard-shortcuts';
+import { useReview } from '@/contexts/ReviewProvider';
 
 interface TaskFollowUpSectionProps {
   task: TaskWithAttemptStatus;
@@ -47,6 +49,12 @@ export function TaskFollowUpSection({
   } = useAttemptExecution(selectedAttemptId, task.id);
   const { data: branchStatus } = useBranchStatus(selectedAttemptId);
   const { profiles } = useUserSystem();
+  const { comments, generateReviewMarkdown, clearComments } = useReview();
+
+  // Generate review markdown when comments change
+  const reviewMarkdown = useMemo(() => {
+    return generateReviewMarkdown();
+  }, [generateReviewMarkdown, comments]);
 
   // Inline defaultFollowUpVariant logic
   const defaultFollowUpVariant = useMemo(() => {
@@ -118,12 +126,15 @@ export function TaskFollowUpSection({
       }
     }
 
-    return true;
+    // Allow sending if either review comments exist OR follow-up message is present
+    return Boolean(reviewMarkdown || followUpMessage.trim());
   }, [
     selectedAttemptId,
     attemptData.processes,
     isSendingFollowUp,
     branchStatus?.merges,
+    reviewMarkdown,
+    followUpMessage,
   ]);
   const currentProfile = useMemo(() => {
     if (!selectedProfile || !profiles) return null;
@@ -158,7 +169,15 @@ export function TaskFollowUpSection({
   });
 
   const onSendFollowUp = async () => {
-    if (!task || !selectedAttemptId || !followUpMessage.trim()) return;
+    if (!task || !selectedAttemptId) return;
+
+    // Combine review markdown and follow-up message
+    const extraMessage = followUpMessage.trim();
+    const finalPrompt = [reviewMarkdown, extraMessage]
+      .filter(Boolean)
+      .join('\n\n');
+
+    if (!finalPrompt) return;
 
     try {
       setIsSendingFollowUp(true);
@@ -172,11 +191,12 @@ export function TaskFollowUpSection({
             : null;
 
       await attemptsApi.followUp(selectedAttemptId, {
-        prompt: followUpMessage.trim(),
+        prompt: finalPrompt,
         variant: selectedVariant,
         image_ids: imageIds,
       });
       setFollowUpMessage('');
+      clearComments(); // Clear review comments after successful submission
       // Clear images and newly uploaded IDs after successful submission
       setImages([]);
       setNewlyUploadedImageIds([]);
@@ -215,10 +235,30 @@ export function TaskFollowUpSection({
                 />
               </div>
             )}
+            
+            {/* Review comments preview */}
+            {reviewMarkdown && (
+              <div className="border rounded-md p-3 bg-muted/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <MessageSquare className="h-4 w-4 text-primary" />
+                  <p className="text-xs font-semibold text-muted-foreground">
+                    Review comments ({comments.length})
+                  </p>
+                </div>
+                <div className="text-xs text-foreground whitespace-pre-wrap font-mono bg-background rounded border p-2">
+                  {reviewMarkdown}
+                </div>
+              </div>
+            )}
+            
             <div className="flex flex-col gap-2">
               <div>
                 <FileSearchTextarea
-                  placeholder="Continue working on this task attempt... Type @ to search files."
+                  placeholder={
+                    reviewMarkdown 
+                      ? "(Optional) Add additional instructions... Type @ to search files."
+                      : "Continue working on this task attempt... Type @ to search files."
+                  }
                   value={followUpMessage}
                   onChange={(value) => {
                     setFollowUpMessage(value);
@@ -227,11 +267,7 @@ export function TaskFollowUpSection({
                   onKeyDown={(e) => {
                     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                       e.preventDefault();
-                      if (
-                        canSendFollowUp &&
-                        followUpMessage.trim() &&
-                        !isSendingFollowUp
-                      ) {
+                      if (canSendFollowUp && !isSendingFollowUp) {
                         onSendFollowUp();
                       }
                     }
@@ -343,11 +379,7 @@ export function TaskFollowUpSection({
                 ) : (
                   <Button
                     onClick={onSendFollowUp}
-                    disabled={
-                      !canSendFollowUp ||
-                      !followUpMessage.trim() ||
-                      isSendingFollowUp
-                    }
+                    disabled={!canSendFollowUp || isSendingFollowUp}
                     size="sm"
                   >
                     {isSendingFollowUp ? (

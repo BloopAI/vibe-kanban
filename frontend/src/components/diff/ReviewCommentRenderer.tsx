@@ -1,4 +1,4 @@
-import { MessageSquare, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useReview, type ReviewComment } from '@/contexts/ReviewProvider';
 
