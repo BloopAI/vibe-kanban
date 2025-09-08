@@ -143,11 +143,7 @@ export function TaskFollowUpSection({
 
     // Allow sending if either review comments exist OR follow-up message is present
     return Boolean(reviewMarkdown || followUpMessage.trim());
-  }, [
-    canTypeFollowUp,
-    reviewMarkdown,
-    followUpMessage,
-  ]);
+  }, [canTypeFollowUp, reviewMarkdown, followUpMessage]);
   const currentProfile = useMemo(() => {
     if (!selectedProfile || !profiles) return null;
     return profiles?.[selectedProfile];
