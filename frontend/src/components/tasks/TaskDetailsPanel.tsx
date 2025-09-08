@@ -75,6 +75,10 @@ export function TaskDetailsPanel({
     setActiveTab('diffs');
   };
 
+  const jumpToLogsTab = () => {
+    setActiveTab('logs');
+  };
+
   // Reset to logs tab when task changes
   useEffect(() => {
     if (task?.id) {
@@ -155,7 +159,7 @@ export function TaskDetailsPanel({
                           attempts={attempts}
                           selectedAttempt={selectedAttempt}
                           setSelectedAttempt={setSelectedAttempt}
-                          // hide actions in sidebar; moved to header in fullscreen
+                        // hide actions in sidebar; moved to header in fullscreen
                         />
 
                         {/* Task Breakdown (TODOs) */}
@@ -185,6 +189,7 @@ export function TaskDetailsPanel({
                           projectId={projectId}
                           selectedAttemptId={selectedAttempt?.id}
                           selectedAttemptProfile={selectedAttempt?.executor}
+                          jumpToLogsTab={jumpToLogsTab}
                         />
                       </main>
                     </div>
@@ -200,7 +205,7 @@ export function TaskDetailsPanel({
                           attempts={attempts}
                           selectedAttempt={selectedAttempt}
                           setSelectedAttempt={setSelectedAttempt}
-                          // hide actions in sidebar; moved to header in fullscreen
+                        // hide actions in sidebar; moved to header in fullscreen
                         />
                       ) : (
                         <>
@@ -224,6 +229,7 @@ export function TaskDetailsPanel({
                             projectId={projectId}
                             selectedAttemptId={selectedAttempt?.id}
                             selectedAttemptProfile={selectedAttempt?.executor}
+                            jumpToLogsTab={jumpToLogsTab}
                           />
                         </>
                       )}

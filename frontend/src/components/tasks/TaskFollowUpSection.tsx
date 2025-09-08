@@ -31,6 +31,7 @@ interface TaskFollowUpSectionProps {
   projectId: string;
   selectedAttemptId?: string;
   selectedAttemptProfile?: string;
+  jumpToLogsTab: () => void;
 }
 
 export function TaskFollowUpSection({
@@ -38,6 +39,7 @@ export function TaskFollowUpSection({
   projectId,
   selectedAttemptId,
   selectedAttemptProfile,
+  jumpToLogsTab,
 }: TaskFollowUpSectionProps) {
   const {
     attemptData,
@@ -200,6 +202,7 @@ export function TaskFollowUpSection({
       setImages([]);
       setNewlyUploadedImageIds([]);
       setShowImageUpload(false);
+      jumpToLogsTab();
       // No need to manually refetch - React Query will handle this
     } catch (error: unknown) {
       // @ts-expect-error it is type ApiError
