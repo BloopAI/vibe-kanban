@@ -21,7 +21,7 @@ import { ProcessSelectionProvider } from '@/contexts/ProcessSelectionContext';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
 import { AttemptHeaderCard } from './AttemptHeaderCard';
 import { inIframe } from '@/vscode/bridge';
-import { TaskRelationshipDAGEnhanced } from './TaskRelationshipDAGEnhanced';
+import { TaskRelationshipViewer } from './TaskRelationshipViewer';
 
 interface TaskDetailsPanelProps {
   task: TaskWithAttemptStatus | null;
@@ -160,7 +160,7 @@ export function TaskDetailsPanel({
                           attempts={attempts}
                           selectedAttempt={selectedAttempt}
                           setSelectedAttempt={setSelectedAttempt}
-                        // hide actions in sidebar; moved to header in fullscreen
+                          // hide actions in sidebar; moved to header in fullscreen
                         />
 
                         {/* Task Breakdown (TODOs) */}
@@ -206,7 +206,7 @@ export function TaskDetailsPanel({
                           attempts={attempts}
                           selectedAttempt={selectedAttempt}
                           setSelectedAttempt={setSelectedAttempt}
-                        // hide actions in sidebar; moved to header in fullscreen
+                          // hide actions in sidebar; moved to header in fullscreen
                         />
                       ) : (
                         <>
