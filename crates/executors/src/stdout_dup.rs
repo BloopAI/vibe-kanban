@@ -76,6 +76,89 @@ pub fn duplicate_stdout(
     Ok(Box::pin(UnboundedReceiverStream::new(dup_reader)))
 }
 
+/// Handle to append additional lines into the child's stdout stream.
+pub struct StdoutAppender {
+    tx: tokio::sync::mpsc::UnboundedSender<String>,
+}
+
+impl StdoutAppender {
+    pub fn append_line<S: Into<String>>(&self, line: S) {
+        // Best-effort; ignore send errors if writer task ended
+        let _ = self.tx.send(line.into());
+    }
+}
+
+/// Tee the child's stdout and provide both a duplicate stream and an appender to write additional
+/// lines into the child's stdout. This keeps the original stdout functional and mirrors output to
+/// the returned duplicate stream.
+pub fn tee_stdout_with_appender(
+    child: &mut AsyncGroupChild,
+) -> Result<(BoxStream<'static, std::io::Result<String>>, StdoutAppender), ExecutorError> {
+    // Take original stdout
+    let original_stdout = child.inner().stdout.take().ok_or_else(|| {
+        ExecutorError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "Child process has no stdout",
+        ))
+    })?;
+
+    // Create replacement pipe and set as new child stdout
+    let (pipe_reader, pipe_writer) = os_pipe::pipe().map_err(|e| {
+        ExecutorError::Io(std::io::Error::other(format!("Failed to create pipe: {e}")))
+    })?;
+    child.inner().stdout = Some(wrap_fd_as_child_stdout(pipe_reader)?);
+
+    // Single shared writer for both original stdout forwarding and injected lines
+    let writer = wrap_fd_as_tokio_writer(pipe_writer)?;
+    let shared_writer = std::sync::Arc::new(tokio::sync::Mutex::new(writer));
+
+    // Create duplicate stream publisher
+    let (dup_tx, dup_rx) = tokio::sync::mpsc::unbounded_channel::<std::io::Result<String>>();
+    // Create injector channel
+    let (inj_tx, mut inj_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
+
+    // Task 1: forward original stdout to child stdout and duplicate stream
+    {
+        let shared_writer = shared_writer.clone();
+        tokio::spawn(async move {
+            let mut stdout_stream = ReaderStream::new(original_stdout);
+            while let Some(res) = stdout_stream.next().await {
+                match res {
+                    Ok(data) => {
+                        // forward to child stdout
+                        let mut w = shared_writer.lock().await;
+                        let _ = w.write_all(&data).await;
+                        // publish duplicate
+                        let string_chunk = String::from_utf8_lossy(&data).into_owned();
+                        let _ = dup_tx.send(Ok(string_chunk));
+                    }
+                    Err(err) => {
+                        let _ = dup_tx.send(Err(err));
+                    }
+                }
+            }
+        });
+    }
+
+    // Task 2: write injected lines to child stdout
+    {
+        let shared_writer = shared_writer.clone();
+        tokio::spawn(async move {
+            while let Some(line) = inj_rx.recv().await {
+                let mut data = line.into_bytes();
+                data.push(b'\n');
+                let mut w = shared_writer.lock().await;
+                let _ = w.write_all(&data).await;
+            }
+        });
+    }
+
+    Ok((
+        Box::pin(UnboundedReceiverStream::new(dup_rx)),
+        StdoutAppender { tx: inj_tx },
+    ))
+}
+
 // =========================================
 // OS file descriptor helper functions
 // =========================================
