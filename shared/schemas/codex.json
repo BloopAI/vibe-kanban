@@ -50,6 +50,33 @@
         "null"
       ]
     },
+    "model_reasoning_effort": {
+      "description": "Reasoning effort for the underlying model",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        null
+      ]
+    },
+    "model_reasoning_summary": {
+      "description": "Model reasoning summary style",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "auto",
+        "concise",
+        "detailed",
+        "none",
+        null
+      ]
+    },
     "base_command_override": {
       "title": "Base Command Override",
       "description": "Override the base command with a custom command",

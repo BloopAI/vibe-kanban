@@ -44,6 +44,12 @@
         "CODEX": {
           "sandbox": "danger-full-access"
         }
+      },
+      "HIGH": {
+        "CODEX": {
+          "sandbox": "danger-full-access",
+          "model_reasoning_effort": "high"
+        }
       }
     },
     "OPENCODE": {

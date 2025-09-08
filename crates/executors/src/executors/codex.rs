@@ -50,6 +50,27 @@ pub enum ApprovalPolicy {
     Never,
 }
 
+/// Reasoning effort for the underlying model
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum ReasoningEffort {
+    Low,
+    Medium,
+    High,
+}
+
+/// Model reasoning summary style
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum ReasoningSummary {
+    Auto,
+    Concise,
+    Detailed,
+    None,
+}
+
 /// Handles session management for Codex executor
 pub struct SessionHandler;
 
@@ -214,6 +235,10 @@ pub struct Codex {
     pub oss: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_reasoning_effort: Option<ReasoningEffort>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_reasoning_summary: Option<ReasoningSummary>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
 }
@@ -240,6 +265,20 @@ impl Codex {
 
         if let Some(model) = &self.model {
             builder = builder.extend_params(["--model", model]);
+        }
+
+        if let Some(effort) = &self.model_reasoning_effort {
+            builder = builder.extend_params([
+                "--config",
+                &format!("model_reasoning_effort={}", effort.as_ref()),
+            ]);
+        }
+
+        if let Some(summary) = &self.model_reasoning_summary {
+            builder = builder.extend_params([
+                "--config",
+                &format!("model_reasoning_summary={}", summary.as_ref()),
+            ]);
         }
 
         apply_overrides(builder, &self.cmd)
