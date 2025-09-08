@@ -108,7 +108,8 @@ export function TaskFollowUpSection({
   // Get the profile from the attempt data
   const selectedProfile = selectedAttemptProfile;
 
-  const canSendFollowUp = useMemo(() => {
+  // Separate logic for when textarea should be disabled vs when send button should be disabled
+  const canTypeFollowUp = useMemo(() => {
     if (
       !selectedAttemptId ||
       attemptData.processes.length === 0 ||
@@ -127,13 +128,23 @@ export function TaskFollowUpSection({
       }
     }
 
-    // Allow sending if either review comments exist OR follow-up message is present
-    return Boolean(reviewMarkdown || followUpMessage.trim());
+    return true;
   }, [
     selectedAttemptId,
     attemptData.processes,
     isSendingFollowUp,
     branchStatus?.merges,
+  ]);
+
+  const canSendFollowUp = useMemo(() => {
+    if (!canTypeFollowUp) {
+      return false;
+    }
+
+    // Allow sending if either review comments exist OR follow-up message is present
+    return Boolean(reviewMarkdown || followUpMessage.trim());
+  }, [
+    canTypeFollowUp,
     reviewMarkdown,
     followUpMessage,
   ]);
@@ -267,7 +278,7 @@ export function TaskFollowUpSection({
                     }
                   }}
                   className="flex-1 min-h-[40px] resize-none"
-                  disabled={!canSendFollowUp}
+                  disabled={!canTypeFollowUp}
                   projectId={projectId}
                   rows={1}
                   maxRows={6}
