@@ -1,6 +1,7 @@
 import {
   ExternalLink,
   GitBranch as GitBranchIcon,
+  GitFork,
   GitPullRequest,
   History,
   Play,
