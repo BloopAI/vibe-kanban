@@ -11,6 +11,8 @@ import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import { getActualTheme } from '@/utils/theme';
 import '@/styles/diff-style-overrides.css';
 import '@/styles/edit-diff-overrides.css';
+import { useDiffViewMode } from '@/stores/useDiffViewStore';
+import DiffViewSwitch from '@/components/diff-view-switch';
 
 type Props = {
   path: string;
@@ -67,6 +69,7 @@ function EditDiffRenderer({
   const [expanded, setExpanded] = useExpandable(expansionKey, false);
 
   const theme = getActualTheme(config?.theme);
+  const globalMode = useDiffViewMode();
 
   const { hunks, hideLineNumbers, additions, deletions, isValidDiff } = useMemo(
     () => processUnifiedDiff(unifiedDiff, hasLineNumbers),
@@ -104,13 +107,20 @@ function EditDiffRenderer({
 
       {expanded && (
         <div className={'mt-2 border ' + hideLineNumbersClass}>
+          <div className="flex items-center justify-end border-b px-2 py-1">
+            <DiffViewSwitch />
+          </div>
           {isValidDiff ? (
             <DiffView
               data={diffData}
               diffViewWrap={false}
               diffViewTheme={theme}
               diffViewHighlight
-              diffViewMode={DiffModeEnum.Unified}
+              diffViewMode={
+                globalMode === 'split'
+                  ? DiffModeEnum.Split
+                  : DiffModeEnum.Unified
+              }
               diffViewFontSize={12}
             />
           ) : (

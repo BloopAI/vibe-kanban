@@ -2,6 +2,7 @@ import { useDiffEntries } from '@/hooks/useDiffEntries';
 import { useMemo, useCallback, useState, useEffect } from 'react';
 import { Loader } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
+import DiffViewSwitch from '@/components/diff-view-switch';
 import DiffCard from '@/components/DiffCard';
 import { useDiffSummary } from '@/hooks/useDiffSummary';
 import type { TaskAttempt } from 'shared/types';
@@ -131,14 +132,17 @@ function DiffTabContent({
                 -{deleted}
               </span>
             </span>
-            <Button
-              variant="outline"
-              size="xs"
-              onClick={handleCollapseAll}
-              className="shrink-0"
-            >
-              {allCollapsed ? 'Expand All' : 'Collapse All'}
-            </Button>
+            <div className="flex items-center gap-2">
+              <DiffViewSwitch />
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={handleCollapseAll}
+                className="shrink-0"
+              >
+                {allCollapsed ? 'Expand All' : 'Collapse All'}
+              </Button>
+            </div>
           </div>
         </div>
       )}

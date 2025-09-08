@@ -24,6 +24,7 @@ import type { TaskAttempt } from 'shared/types';
 import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
 import { CommentWidgetLine } from '@/components/diff/CommentWidgetLine';
 import { ReviewCommentRenderer } from '@/components/diff/ReviewCommentRenderer';
+import { useDiffViewMode } from '@/stores/useDiffViewStore';
 
 type Props = {
   diff: Diff;
@@ -53,6 +54,7 @@ export default function DiffCard({
   const { config } = useUserSystem();
   const theme = getActualTheme(config?.theme);
   const { comments, drafts, setDraft } = useReview();
+  const globalMode = useDiffViewMode();
 
   const oldName = diff.oldPath || undefined;
   const newName = diff.newPath || oldName || 'unknown';
@@ -247,7 +249,9 @@ export default function DiffCard({
             diffViewWrap={false}
             diffViewTheme={theme}
             diffViewHighlight
-            diffViewMode={DiffModeEnum.Unified}
+            diffViewMode={
+              globalMode === 'split' ? DiffModeEnum.Split : DiffModeEnum.Unified
+            }
             diffViewFontSize={12}
             diffViewAddWidget
             onAddWidgetClick={handleAddWidgetClick}
