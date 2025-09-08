@@ -64,7 +64,12 @@ export function CommentWidgetLine({
         <Button size="xs" onClick={handleSave} disabled={!value.trim()}>
           Add review comment
         </Button>
-        <Button size="xs" variant="ghost" onClick={handleCancel} className="text-secondary-foreground">
+        <Button
+          size="xs"
+          variant="ghost"
+          onClick={handleCancel}
+          className="text-secondary-foreground"
+        >
           Cancel
         </Button>
       </div>

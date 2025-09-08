@@ -80,7 +80,7 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
   const generateReviewMarkdown = () => {
     if (comments.length === 0) return '';
 
-    let commentsNum = comments.length;
+    const commentsNum = comments.length;
 
     const header = `## Review Comments (${commentsNum})\n\n`;
     const commentsMd = comments
