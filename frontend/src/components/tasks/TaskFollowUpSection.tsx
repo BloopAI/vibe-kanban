@@ -356,38 +356,49 @@ export function TaskFollowUpSection({
                     return null;
                   })()}
                 </div>
-                {isAttemptRunning ? (
-                  <Button
-                    onClick={stopExecution}
-                    disabled={isStopping}
-                    size="sm"
-                    variant="destructive"
-                  >
-                    {isStopping ? (
-                      <Loader size={16} className="mr-2" />
-                    ) : (
-                      <>
-                        <StopCircle className="h-4 w-4 mr-2" />
-                        Stop
-                      </>
-                    )}
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={onSendFollowUp}
-                    disabled={!canSendFollowUp || isSendingFollowUp}
-                    size="sm"
-                  >
-                    {isSendingFollowUp ? (
-                      <Loader size={16} className="mr-2" />
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4 mr-2" />
-                        Send
-                      </>
-                    )}
-                  </Button>
-                )}
+                <div className="flex gap-2">
+                  {comments.length > 0 && (
+                    <Button
+                      onClick={clearComments}
+                      size="sm"
+                      variant="destructive"
+                    >
+                      Clear Review Comments
+                    </Button>
+                  )}
+                  {isAttemptRunning ? (
+                    <Button
+                      onClick={stopExecution}
+                      disabled={isStopping}
+                      size="sm"
+                      variant="destructive"
+                    >
+                      {isStopping ? (
+                        <Loader size={16} className="mr-2" />
+                      ) : (
+                        <>
+                          <StopCircle className="h-4 w-4 mr-2" />
+                          Stop
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={onSendFollowUp}
+                      disabled={!canSendFollowUp || isSendingFollowUp}
+                      size="sm"
+                    >
+                      {isSendingFollowUp ? (
+                        <Loader size={16} className="mr-2" />
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4 mr-2" />
+                          Send
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
