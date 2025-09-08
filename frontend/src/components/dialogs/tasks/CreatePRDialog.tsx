@@ -47,19 +47,22 @@ const CreatePrDialog = NiceModal.create(() => {
       setPrTitle(`${data.task.title} (vibe-kanban)`);
       setPrBody(data.task.description || '');
 
-      // Set immediate default (task attempt base branch)
-      if (data.attempt.base_branch) {
-        setPrBaseBranch(data.attempt.base_branch);
-      } else if (data.projectId) {
-        // Fetch branches and set current branch as fallback
+      // Always fetch branches for dropdown population
+      if (data.projectId) {
         setBranchesLoading(true);
         projectsApi
           .getBranches(data.projectId)
           .then((projectBranches) => {
             setBranches(projectBranches);
-            const currentBranch = projectBranches.find((b) => b.is_current);
-            if (currentBranch) {
-              setPrBaseBranch(currentBranch.name);
+
+            // Set smart default: task base branch OR current branch
+            if (data.attempt.base_branch) {
+              setPrBaseBranch(data.attempt.base_branch);
+            } else {
+              const currentBranch = projectBranches.find((b) => b.is_current);
+              if (currentBranch) {
+                setPrBaseBranch(currentBranch.name);
+              }
             }
           })
           .catch(console.error)
