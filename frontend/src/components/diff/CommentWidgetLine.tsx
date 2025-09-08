@@ -57,14 +57,14 @@ export function CommentWidgetLine({
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Add a comment..."
-        className="w-full text-sm font-mono resize-none min-h-[60px] focus:outline-none focus:ring-1 focus:ring-primary"
+        className="w-full bg-primary text-primary-foreground text-sm font-mono resize-none min-h-[60px] focus:outline-none focus:ring-1 focus:ring-primary"
         rows={3}
       />
       <div className="mt-2 flex gap-2">
         <Button size="xs" onClick={handleSave} disabled={!value.trim()}>
           Add review comment
         </Button>
-        <Button size="xs" variant="ghost" onClick={handleCancel}>
+        <Button size="xs" variant="ghost" onClick={handleCancel} className="text-secondary-foreground">
           Cancel
         </Button>
       </div>
