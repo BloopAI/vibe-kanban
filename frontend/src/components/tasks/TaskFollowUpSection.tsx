@@ -243,9 +243,7 @@ export function TaskFollowUpSection({
                     Review comments ({comments.length})
                   </p>
                 </div>
-                <div className="whitespace-pre-wrap">
-                  {reviewMarkdown}
-                </div>
+                <div className="whitespace-pre-wrap">{reviewMarkdown}</div>
               </div>
             )}
 

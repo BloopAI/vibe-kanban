@@ -1,5 +1,5 @@
 import { Diff } from 'shared/types';
-import { DiffModeEnum, DiffView } from '@git-diff-view/react';
+import { DiffModeEnum, DiffView, SplitSide } from '@git-diff-view/react';
 import { generateDiffFile } from '@git-diff-view/file';
 import { useMemo } from 'react';
 import { useUserSystem } from '@/components/config-provider';
@@ -108,13 +108,13 @@ export default function DiffCard({
 
   // Transform comments to git-diff-view extendData format
   const extendData = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const oldFileData: Record<string, { data: any }> = {};
     const newFileData: Record<string, { data: any }> = {};
 
     commentsForFile.forEach((comment) => {
-      console.log('DEBUG', comment);
       const lineKey = String(comment.lineNumber);
-      if (comment.side === 'old') {
+      if (comment.side === SplitSide.old) {
         oldFileData[lineKey] = { data: comment };
       } else {
         newFileData[lineKey] = { data: comment };
@@ -127,15 +127,11 @@ export default function DiffCard({
     };
   }, [commentsForFile]);
 
-  const handleAddWidgetClick = (lineNumber: number, side: number) => {
-    let sideName = "old";
-    if (side === 2) {
-      sideName = "new";
-    }
+  const handleAddWidgetClick = (lineNumber: number, side: SplitSide) => {
     const widgetKey = `${filePath}-${side}-${lineNumber}`;
     const draft: ReviewDraft = {
       filePath,
-      side: sideName as 'old' | 'new',
+      side,
       lineNumber,
       text: '',
     };

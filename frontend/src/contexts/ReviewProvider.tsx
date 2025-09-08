@@ -1,16 +1,17 @@
+import { SplitSide } from '@git-diff-view/react';
 import { createContext, useContext, useState, ReactNode } from 'react';
 
 export interface ReviewComment {
   id: string;
   filePath: string;
   lineNumber: number;
-  side: 'old' | 'new';
+  side: SplitSide;
   text: string;
 }
 
 export interface ReviewDraft {
   filePath: string;
-  side: 'old' | 'new';
+  side: SplitSide;
   lineNumber: number;
   text: string;
 }
@@ -68,8 +69,9 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
   const setDraft = (key: string, draft: ReviewDraft | null) => {
     setDrafts((prev) => {
       if (draft === null) {
-        const { [key]: _, ...rest } = prev;
-        return rest;
+        const newDrafts = { ...prev };
+        delete newDrafts[key];
+        return newDrafts;
       }
       return { ...prev, [key]: draft };
     });
