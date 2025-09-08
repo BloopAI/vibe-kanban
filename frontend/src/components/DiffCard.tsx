@@ -1,5 +1,5 @@
 import { Diff } from 'shared/types';
-import { DiffModeEnum, DiffView, type SplitSide } from '@git-diff-view/react';
+import { DiffModeEnum, DiffView } from '@git-diff-view/react';
 import { generateDiffFile } from '@git-diff-view/file';
 import { useMemo } from 'react';
 import { useUserSystem } from '@/components/config-provider';
