@@ -238,11 +238,6 @@ export function TaskFollowUpSection({
             {/* Review comments preview */}
             {reviewMarkdown && (
               <div className="text-sm mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <p className="font-semibold text-muted-foreground">
-                    Review comments ({comments.length})
-                  </p>
-                </div>
                 <div className="whitespace-pre-wrap">{reviewMarkdown}</div>
               </div>
             )}
