@@ -25,7 +25,7 @@ import {
   TaskAttempt,
   TaskWithAttemptStatus,
 } from 'shared/types';
-import { useProjectBranches } from '@/hooks';
+import { projectsApi } from '@/lib/api.ts';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 const CreatePrDialog = NiceModal.create(() => {
   const modal = useModal();
@@ -37,26 +37,38 @@ const CreatePrDialog = NiceModal.create(() => {
   const [prBaseBranch, setPrBaseBranch] = useState('');
   const [creatingPR, setCreatingPR] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Fetch branches when dialog opens
-  const { data: branches = [], isLoading: branchesLoading } =
-    useProjectBranches(modal.visible ? data?.projectId : undefined);
+  const [branches, setBranches] = useState<
+    Array<{ name: string; is_current: boolean; is_remote: boolean }>
+  >([]);
+  const [branchesLoading, setBranchesLoading] = useState(false);
 
   useEffect(() => {
     if (modal.visible && data) {
       setPrTitle(`${data.task.title} (vibe-kanban)`);
       setPrBody(data.task.description || '');
 
-      // Smart default: task attempt base branch → current branch
-      const defaultBranch =
-        data.attempt.base_branch || branches.find((b) => b.is_current)?.name;
-      if (defaultBranch) {
-        setPrBaseBranch(defaultBranch);
+      // Set immediate default (task attempt base branch)
+      if (data.attempt.base_branch) {
+        setPrBaseBranch(data.attempt.base_branch);
+      } else if (data.projectId) {
+        // Fetch branches and set current branch as fallback
+        setBranchesLoading(true);
+        projectsApi
+          .getBranches(data.projectId)
+          .then((projectBranches) => {
+            setBranches(projectBranches);
+            const currentBranch = projectBranches.find((b) => b.is_current);
+            if (currentBranch) {
+              setPrBaseBranch(currentBranch.name);
+            }
+          })
+          .catch(console.error)
+          .finally(() => setBranchesLoading(false));
       }
 
       setError(null); // Reset error when opening
     }
-  }, [modal.visible, data, branches]);
+  }, [modal.visible, data]);
 
   const handleConfirmCreatePR = useCallback(async () => {
     if (!data?.projectId || !data?.attempt.id) return;
