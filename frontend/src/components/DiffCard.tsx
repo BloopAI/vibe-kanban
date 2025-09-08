@@ -1,5 +1,5 @@
 import { Diff } from 'shared/types';
-import { DiffModeEnum, DiffView } from '@git-diff-view/react';
+import { DiffModeEnum, DiffView, type SplitSide } from '@git-diff-view/react';
 import { generateDiffFile } from '@git-diff-view/file';
 import { useMemo } from 'react';
 import { useUserSystem } from '@/components/config-provider';
@@ -126,19 +126,19 @@ export default function DiffCard({
     };
   }, [commentsForFile]);
 
-  const handleAddWidgetClick = (ctx: any) => {
-    const widgetKey = `${ctx.filePath}-${ctx.side}-${ctx.insertedLineNumber || ctx.deletedLineNumber}`;
+  const handleAddWidgetClick = (lineNumber: number, side: SplitSide) => {
+    const widgetKey = `${filePath}-${side}-${lineNumber}`;
     const draft: ReviewDraft = {
-      filePath: ctx.filePath,
-      side: ctx.side,
-      lineNumber: ctx.side === 'new' ? ctx.insertedLineNumber : ctx.deletedLineNumber,
+      filePath,
+      side: side as unknown as 'old' | 'new',
+      lineNumber,
       text: '',
     };
     setDraft(widgetKey, draft);
   };
 
   const renderWidgetLine = (props: any) => {
-    const widgetKey = `${props.filePath}-${props.side}-${props.lineNumber}`;
+    const widgetKey = `${filePath}-${props.side}-${props.lineNumber}`;
     const draft = drafts[widgetKey];
     if (!draft) return null;
 
