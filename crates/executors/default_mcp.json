@@ -1,5 +1,5 @@
 {
-  "vibe-kanban": {
+  "vibe_kanban": {
     "command": "npx",
     "args": [
       "-y",
@@ -19,5 +19,25 @@
     "args": [
       "@playwright/mcp@latest"
     ]
+  },
+  "meta": {
+    "vibe_kanban": {
+      "name": "Vibe Kanban",
+      "description": "Create, update and delete Vibe Kanban tasks",
+      "url": "https://www.vibekanban.com/docs/user-guide/vibe-kanban-mcp-server",
+      "icon": "viba-kanban-favicon.png"
+    },
+    "context7": {
+      "name": "Context7",
+      "description": "Fetch up-to-date documentation and code examples",
+      "url": "https://github.com/upstash/context7",
+      "icon": "mcp/context7logo.png"
+    },
+    "playwright": {
+      "name": "Playwright",
+      "description": "Browser automation with Playwright",
+      "url": "https://github.com/microsoft/playwright-mcp",
+      "icon": "mcp/playwright_logo_icon.svg"
+    }
   }
 }

@@ -53,32 +53,31 @@ export class McpConfigStrategyGeneral {
     return current;
   }
 
-  static addVibeKanbanToConfig(
+  static addPreconfiguredToConfig(
     mcp_config: McpConfig,
-    existingConfig: Record<string, any>
+    existingConfig: Record<string, any>,
+    serverKey: string
   ): Record<string, any> {
-    // Clone the existing config to avoid mutations
-    const updatedConfig = JSON.parse(JSON.stringify(existingConfig));
-    let current = updatedConfig;
+    const preconf = mcp_config.preconfigured as Record<string, any>;
+    if (!preconf || typeof preconf !== 'object' || !(serverKey in preconf)) {
+      throw new Error(`Unknown preconfigured server '${serverKey}'`);
+    }
 
-    // Navigate to the correct location for servers (all except the last element)
+    const updated = JSON.parse(JSON.stringify(existingConfig || {}));
+    let current = updated;
+
     for (let i = 0; i < mcp_config.servers_path.length - 1; i++) {
       const key = mcp_config.servers_path[i];
-      if (!current[key]) {
-        current[key] = {};
-      }
+      if (!current[key] || typeof current[key] !== 'object') current[key] = {};
       current = current[key];
     }
 
-    // Get or create the servers object at the final path element
     const lastKey = mcp_config.servers_path[mcp_config.servers_path.length - 1];
-    if (!current[lastKey]) {
+    if (!current[lastKey] || typeof current[lastKey] !== 'object')
       current[lastKey] = {};
-    }
 
-    // Add vibe_kanban server with the config from the schema
-    current[lastKey]['vibe_kanban'] = mcp_config.vibe_kanban;
+    current[lastKey][serverKey] = preconf[serverKey];
 
-    return updatedConfig;
+    return updated;
   }
 }

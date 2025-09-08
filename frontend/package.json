@@ -43,6 +43,7 @@
     "click-to-react-component": "^1.1.2",
     "clsx": "^2.0.0",
     "diff": "^8.0.2",
+    "embla-carousel-react": "^8.6.0",
     "fancy-ansi": "^0.1.3",
     "lucide-react": "^0.539.0",
     "react": "^18.2.0",

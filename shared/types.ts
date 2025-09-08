@@ -24,7 +24,7 @@ export type SearchMode = "taskform" | "settings";
 
 export type ExecutorAction = { typ: ExecutorActionType, next_action: ExecutorAction | null, };
 
-export type McpConfig = { servers: { [key in string]?: JsonValue }, servers_path: Array<string>, template: JsonValue, vibe_kanban: JsonValue, is_toml_config: boolean, };
+export type McpConfig = { servers: { [key in string]?: JsonValue }, servers_path: Array<string>, template: JsonValue, preconfigured: JsonValue, is_toml_config: boolean, };
 
 export type ExecutorActionType = { "type": "CodingAgentInitialRequest" } & CodingAgentInitialRequest | { "type": "CodingAgentFollowUpRequest" } & CodingAgentFollowUpRequest | { "type": "ScriptRequest" } & ScriptRequest;
 

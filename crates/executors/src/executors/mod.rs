@@ -102,27 +102,7 @@ impl CodingAgent {
                     "mcp": {},
                     "$schema": "https://opencode.ai/config.json"
                 }),
-                serde_json::json!({
-                    "vibe-kanban": {
-                        "type": "local",
-                        "command": ["npx", "-y", "vibe-kanban", "--mcp"],
-                        "enabled": true
-                    },
-                    "context7": {
-                        "type": "remote",
-                        "url": "https://mcp.context7.com/mcp",
-                        "enabled": true,
-                        "headers": {
-                            "CONTEXT7_API_KEY": "YOUR_API_KEY",
-                            "Accept": "application/json, text/event-stream"
-                        }
-                    },
-                    "playwright": {
-                        "type": "local",
-                        "command": ["npx", "@playwright/mcp@latest"],
-                        "enabled": true
-                    }
-                }),
+                opencode_preconfigured(),
                 false,
             ),
             _ => McpConfig::new(
@@ -148,6 +128,37 @@ impl CodingAgent {
             Self::Gemini(_) | Self::Opencode(_) | Self::Cursor(_) | Self::QwenCode(_) => vec![],
         }
     }
+}
+
+fn opencode_preconfigured() -> serde_json::Value {
+    let mut v = serde_json::json!({
+        "vibe_kanban": {
+            "type": "local",
+            "command": ["npx", "-y", "vibe-kanban", "--mcp"],
+            "enabled": true
+        },
+        "context7": {
+            "type": "remote",
+            "url": "https://mcp.context7.com/mcp",
+            "enabled": true,
+            "headers": {
+                "CONTEXT7_API_KEY": "YOUR_API_KEY",
+                "Accept": "application/json, text/event-stream"
+            }
+        },
+        "playwright": {
+            "type": "local",
+            "command": ["npx", "@playwright/mcp@latest"],
+            "enabled": true
+        }
+    });
+
+    if let Some(meta_all) = PRECONFIGURED_MCP_SERVERS.get("meta").cloned() {
+        if let Some(map) = v.as_object_mut() {
+            map.insert("meta".to_string(), meta_all);
+        }
+    }
+    v
 }
 
 #[async_trait]

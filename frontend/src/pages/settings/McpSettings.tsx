@@ -14,6 +14,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from '@/components/ui/carousel';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { JSONEditor } from '@/components/ui/json-editor';
@@ -119,29 +126,6 @@ export function McpSettings() {
     }
   };
 
-  const handleConfigureVibeKanban = async () => {
-    if (!selectedProfile || !mcpConfig) return;
-
-    try {
-      // Parse existing configuration
-      const existingConfig = mcpServers.trim() ? JSON.parse(mcpServers) : {};
-
-      // Add vibe_kanban to the existing configuration using the schema
-      const updatedConfig = McpConfigStrategyGeneral.addVibeKanbanToConfig(
-        mcpConfig,
-        existingConfig
-      );
-
-      // Update the textarea with the new configuration
-      const configJson = JSON.stringify(updatedConfig, null, 2);
-      setMcpServers(configJson);
-      setMcpError(null);
-    } catch (err) {
-      setMcpError('Failed to configure vibe-kanban MCP server');
-      console.error('Error configuring vibe-kanban:', err);
-    }
-  };
-
   const handleApplyMcpServers = async () => {
     if (!selectedProfile || !mcpConfig) return;
 
@@ -199,6 +183,36 @@ export function McpSettings() {
       setMcpApplying(false);
     }
   };
+
+  const addServer = (key: string) => {
+    try {
+      const existing = mcpServers.trim() ? JSON.parse(mcpServers) : {};
+      const updated = McpConfigStrategyGeneral.addPreconfiguredToConfig(
+        mcpConfig!,
+        existing,
+        key
+      );
+      setMcpServers(JSON.stringify(updated, null, 2));
+      setMcpError(null);
+    } catch (err) {
+      console.error(err);
+      setMcpError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to add preconfigured server'
+      );
+    }
+  };
+
+  const preconfigured = (mcpConfig?.preconfigured ?? {}) as Record<string, any>;
+  const meta = (preconfigured.meta ?? {}) as Record<
+    string,
+    { name?: string; description?: string; url?: string; icon?: string }
+  >;
+  const servers = Object.fromEntries(
+    Object.entries(preconfigured).filter(([k]) => k !== 'meta')
+  ) as Record<string, any>;
+  const getMetaFor = (key: string) => meta[key] || {};
 
   if (!config) {
     return (
@@ -324,18 +338,83 @@ export function McpSettings() {
                 )}
               </div>
 
-              <div className="pt-4">
-                <Button
-                  onClick={handleConfigureVibeKanban}
-                  disabled={mcpApplying || mcpLoading || !selectedProfile}
-                  className="w-64"
-                >
-                  Add Vibe-Kanban MCP
-                </Button>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Automatically adds the Vibe-Kanban MCP server configuration.
-                </p>
-              </div>
+              {mcpConfig?.preconfigured &&
+                typeof mcpConfig.preconfigured === 'object' && (
+                  <div className="pt-4">
+                    <Label>Popular servers</Label>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Click a card to insert that MCP Server into the JSON
+                      above.
+                    </p>
+
+                    <div className="relative overflow-hidden rounded-xl border bg-background">
+                      <Carousel className="w-full px-4 py-3">
+                        <CarouselContent className="gap-3 justify-center">
+                          {Object.entries(servers).map(([key]) => {
+                            const metaObj = getMetaFor(key) as {
+                              name?: string;
+                              description?: string;
+                              url?: string;
+                              icon?: string;
+                            };
+                            const name = metaObj.name || key;
+                            const description =
+                              metaObj.description || 'No description';
+                            const icon = metaObj.icon
+                              ? `/${metaObj.icon}`
+                              : null;
+
+                            return (
+                              <CarouselItem
+                                key={name}
+                                className="sm:basis-1/3 lg:basis-1/4"
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => addServer(key)}
+                                  aria-label={`Add ${name} to config`}
+                                  className="group w-full text-left outline-none"
+                                >
+                                  <Card className="h-32 rounded-xl border hover:shadow-md transition">
+                                    <CardHeader className="pb-0">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-6 h-6 rounded-lg border bg-muted grid place-items-center overflow-hidden">
+                                          {icon ? (
+                                            <img
+                                              src={icon}
+                                              alt=""
+                                              className="w-full h-full object-cover"
+                                            />
+                                          ) : (
+                                            <span className="font-semibold">
+                                              {name.slice(0, 1).toUpperCase()}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <CardTitle className="text-base font-medium truncate">
+                                          {name}
+                                        </CardTitle>
+                                      </div>
+                                    </CardHeader>
+
+                                    <CardContent className="pt-2 px-4">
+                                      <p className="text-sm text-muted-foreground line-clamp-3">
+                                        {description}
+                                      </p>
+                                    </CardContent>
+                                  </Card>
+                                </button>
+                              </CarouselItem>
+                            );
+                          })}
+                        </CarouselContent>
+
+                        <CarouselPrevious className="left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full border bg-background/80 shadow-sm backdrop-blur hover:bg-background" />
+                        <CarouselNext className="right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full border bg-background/80 shadow-sm backdrop-blur hover:bg-background" />
+                      </Carousel>
+                    </div>
+                  </div>
+                )}
             </div>
           )}
         </CardContent>
