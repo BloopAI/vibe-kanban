@@ -25,11 +25,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ChevronDown, Key, Loader2, Volume2 } from 'lucide-react';
 import {
-  ThemeMode,
-  EditorType,
-  SoundFile,
-  ExecutorProfileId,
   BaseCodingAgent,
+  EditorType,
+  ExecutorProfileId,
+  SoundFile,
+  ThemeMode,
 } from 'shared/types';
 
 import { toPrettyCase } from '@/utils/string';
@@ -564,7 +564,7 @@ export function GeneralSettings() {
       </Card>
 
       {/* Sticky Save Button */}
-      <div className="sticky bottom-0 z-10 bg-background/80 backdrop-blur-sm border-t pt-4">
+      <div className="sticky bottom-0 z-10 bg-background/80 backdrop-blur-sm border-t py-4">
         <div className="flex justify-end">
           <Button onClick={handleSave} disabled={saving}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

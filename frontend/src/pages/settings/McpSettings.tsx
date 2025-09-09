@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -18,8 +18,8 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { JSONEditor } from '@/components/ui/json-editor';
 import { Loader2 } from 'lucide-react';
-import { McpConfig } from 'shared/types';
 import type { BaseCodingAgent, ExecutorConfig } from 'shared/types';
+import { McpConfig } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
 import { mcpServersApi } from '@/lib/api';
 import { McpConfigStrategyGeneral } from '@/lib/mcp-strategies';
@@ -342,7 +342,7 @@ export function McpSettings() {
       </Card>
 
       {/* Sticky Save Button */}
-      <div className="sticky bottom-0 z-10 bg-background/80 backdrop-blur-sm border-t pt-4">
+      <div className="sticky bottom-0 z-10 bg-background/80 backdrop-blur-sm border-t py-4">
         <div className="flex justify-end">
           <Button
             onClick={handleApplyMcpServers}

@@ -1,20 +1,20 @@
 import { useEffect } from 'react';
 import {
   BrowserRouter,
+  Navigate,
   Route,
   Routes,
   useLocation,
-  Navigate,
 } from 'react-router-dom';
 import { Navbar } from '@/components/layout/navbar';
 import { Projects } from '@/pages/projects';
 import { ProjectTasks } from '@/pages/project-tasks';
 
 import {
-  SettingsLayout,
-  GeneralSettings,
   AgentSettings,
+  GeneralSettings,
   McpSettings,
+  SettingsLayout,
 } from '@/pages/settings/';
 import {
   UserSystemProvider,
@@ -132,7 +132,7 @@ function AppContent() {
 
             {showNavbar && <DevBanner />}
             {showNavbar && <Navbar />}
-            <div className="flex-1 h-full overflow-y-scroll">
+            <div className="flex-1 h-full overflow-y-scroll flex">
               <SentryRoutes>
                 <Route path="/" element={<Projects />} />
                 <Route path="/projects" element={<Projects />} />
