@@ -60,13 +60,11 @@ export type CreateImage = { file_path: string, original_name: string, mime_type:
 
 export type ApiResponse<T, E = T> = { success: boolean, data: T | null, error_data: E | null, message: string | null, };
 
-export type UserSystemInfo = {
-    config: Config, environment: Environment,
-    /**
-     * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["RESTORE_CHECKPOINT"] })
-     */
-    capabilities: { [key in string]?: Array<BaseAgentCapability> }, executors: { [key in BaseCodingAgent]?: ExecutorConfig },
-};
+export type UserSystemInfo = { config: Config, environment: Environment, 
+/**
+ * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["RESTORE_CHECKPOINT"] })
+ */
+capabilities: { [key in string]?: Array<BaseAgentCapability> }, executors: { [key in BaseCodingAgent]?: ExecutorConfig }, };
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
 
@@ -120,27 +118,25 @@ export type FileDiffDetails = { fileName: string | null, content: string | null,
 
 export type RepositoryInfo = { id: bigint, name: string, full_name: string, owner: string, description: string | null, clone_url: string, ssh_url: string, default_branch: string, private: boolean, };
 
-export type CommandBuilder = {
-    /**
-     * Base executable command (e.g., "npx -y @anthropic-ai/claude-code@latest")
-     */
-    base: string,
-    /**
-     * Optional parameters to append to the base command
-     */
-    params: Array<string> | null,
-};
+export type CommandBuilder = { 
+/**
+ * Base executable command (e.g., "npx -y @anthropic-ai/claude-code@latest")
+ */
+base: string, 
+/**
+ * Optional parameters to append to the base command
+ */
+params: Array<string> | null, };
 
-export type ExecutorProfileId = {
-    /**
-     * The executor type (e.g., "CLAUDE_CODE", "AMP")
-     */
-    executor: BaseCodingAgent,
-    /**
-     * Optional variant name (e.g., "PLAN", "ROUTER")
-     */
-    variant: string | null,
-};
+export type ExecutorProfileId = { 
+/**
+ * The executor type (e.g., "CLAUDE_CODE", "AMP")
+ */
+executor: BaseCodingAgent, 
+/**
+ * Optional variant name (e.g., "PLAN", "ROUTER")
+ */
+variant: string | null, };
 
 export type ExecutorConfig = { [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor } | { "QWEN_CODE": QwenCode } };
 
@@ -172,46 +168,39 @@ export type QwenCode = { append_prompt: AppendPrompt, yolo?: boolean | null, bas
 
 export type AppendPrompt = string | null;
 
-export type CodingAgentInitialRequest = {
-    prompt: string,
-    /**
-     * Executor profile specification
-     */
-    executor_profile_id: ExecutorProfileId,
-};
+export type CodingAgentInitialRequest = { prompt: string, 
+/**
+ * Executor profile specification
+ */
+executor_profile_id: ExecutorProfileId, };
 
-export type CodingAgentFollowUpRequest = {
-    prompt: string, session_id: string,
-    /**
-     * Executor profile specification
-     */
-    executor_profile_id: ExecutorProfileId,
-};
+export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, 
+/**
+ * Executor profile specification
+ */
+executor_profile_id: ExecutorProfileId, };
 
-export type CreateTaskAttemptBody = {
-    task_id: string,
-    /**
-     * Executor profile specification
-     */
-    executor_profile_id: ExecutorProfileId, base_branch: string,
-};
+export type CreateTaskAttemptBody = { task_id: string, 
+/**
+ * Executor profile specification
+ */
+executor_profile_id: ExecutorProfileId, base_branch: string, };
 
 export type RebaseTaskAttemptRequest = { new_base_branch: string | null, };
 
-export type RestoreAttemptRequest = {
-    /**
-     * Process to restore to (target = its after_head_commit)
-     */
-    process_id: string,
-    /**
-     * If true, allow resetting Git even when uncommitted changes exist
-     */
-    force_when_dirty: boolean | null,
-    /**
-     * If false, skip performing the Git reset step (history drop still applies)
-     */
-    perform_git_reset: boolean | null,
-};
+export type RestoreAttemptRequest = { 
+/**
+ * Process to restore to (target = its after_head_commit)
+ */
+process_id: string, 
+/**
+ * If true, allow resetting Git even when uncommitted changes exist
+ */
+force_when_dirty: boolean | null, 
+/**
+ * If false, skip performing the Git reset step (history drop still applies)
+ */
+perform_git_reset: boolean | null, };
 
 export type RestoreAttemptResult = { had_later_processes: boolean, git_reset_needed: boolean, git_reset_applied: boolean, target_after_oid: string | null, };
 
@@ -223,19 +212,17 @@ export type BranchStatus = { commits_behind: number | null, commits_ahead: numbe
 
 export type TaskAttempt = { id: string, task_id: string, container_ref: string | null, branch: string | null, base_branch: string, executor: string, worktree_deleted: boolean, setup_completed_at: string | null, created_at: string, updated_at: string, };
 
-export type ExecutionProcess = {
-    id: string, task_attempt_id: string, run_reason: ExecutionProcessRunReason, executor_action: ExecutorAction,
-    /**
-     * Git HEAD commit OID captured after the process ends
-     */
-    after_head_commit: string | null, status: ExecutionProcessStatus, exit_code: bigint | null,
-    /**
-     * dropped: true if this process is excluded from the current
-     * history view (due to restore/trimming). Hidden from logs/timeline;
-     * still listed in the Processes tab.
-     */
-    dropped: boolean, started_at: string, completed_at: string | null, created_at: string, updated_at: string,
-};
+export type ExecutionProcess = { id: string, task_attempt_id: string, run_reason: ExecutionProcessRunReason, executor_action: ExecutorAction, 
+/**
+ * Git HEAD commit OID captured after the process ends
+ */
+after_head_commit: string | null, status: ExecutionProcessStatus, exit_code: bigint | null, 
+/**
+ * dropped: true if this process is excluded from the current
+ * history view (due to restore/trimming). Hidden from logs/timeline;
+ * still listed in the Processes tab.
+ */
+dropped: boolean, started_at: string, completed_at: string | null, created_at: string, updated_at: string, };
 
 export type ExecutionProcessStatus = "running" | "completed" | "failed" | "killed";
 
@@ -269,29 +256,25 @@ export type NormalizedEntry = { timestamp: string | null, entry_type: Normalized
 
 export type NormalizedEntryType = { "type": "user_message" } | { "type": "assistant_message" } | { "type": "tool_use", tool_name: string, action_type: ActionType, } | { "type": "system_message" } | { "type": "error_message" } | { "type": "thinking" };
 
-export type FileChange = { "action": "write", content: string, } | { "action": "delete" } | { "action": "rename", new_path: string, } | {
-    "action": "edit",
-    /**
-     * Unified diff containing file header and hunks.
-     */
-    unified_diff: string,
-    /**
-     * Whether line number in the hunks are reliable.
-     */
-    has_line_numbers: boolean,
-};
+export type FileChange = { "action": "write", content: string, } | { "action": "delete" } | { "action": "rename", new_path: string, } | { "action": "edit", 
+/**
+ * Unified diff containing file header and hunks.
+ */
+unified_diff: string, 
+/**
+ * Whether line number in the hunks are reliable.
+ */
+has_line_numbers: boolean, };
 
 export type ActionType = { "action": "file_read", path: string, } | { "action": "file_edit", path: string, changes: Array<FileChange>, } | { "action": "command_run", command: string, result: CommandRunResult | null, } | { "action": "search", query: string, } | { "action": "web_fetch", url: string, } | { "action": "tool", tool_name: string, arguments: JsonValue | null, result: ToolResult | null, } | { "action": "task_create", description: string, } | { "action": "plan_presentation", plan: string, } | { "action": "todo_management", todos: Array<TodoItem>, operation: string, } | { "action": "other", description: string, };
 
 export type TodoItem = { content: string, status: string, priority: string | null, };
 
-export type ToolResult = {
-    type: ToolResultValueType,
-    /**
-     * For Markdown, this will be a JSON string; for JSON, a structured value
-     */
-    value: JsonValue,
-};
+export type ToolResult = { type: ToolResultValueType, 
+/**
+ * For Markdown, this will be a JSON string; for JSON, a structured value
+ */
+value: JsonValue, };
 
 export type ToolResultValueType = { "type": "markdown" } | { "type": "json" };
 
