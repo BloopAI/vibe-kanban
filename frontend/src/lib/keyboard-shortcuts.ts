@@ -288,15 +288,14 @@ export function useVariantCyclingShortcut({
       if (e.shiftKey && e.key === 'Tab') {
         e.preventDefault();
 
-        // Build the variant cycle: null (Default) → variant1 → variant2 → ... → null
+        // Build the variant cycle: variant1 → variant2 → ... → variant1
         const variants = currentProfile;
         const variantLabels = Object.keys(variants);
-        const allOptions = [null, ...variantLabels];
 
         // Find current index and cycle to next
-        const currentIndex = allOptions.findIndex((v) => v === selectedVariant);
-        const nextIndex = (currentIndex + 1) % allOptions.length;
-        const nextVariant = allOptions[nextIndex];
+        const currentIndex = variantLabels.findIndex((v) => v === selectedVariant);
+        const nextIndex = (currentIndex + 1) % variantLabels.length;
+        const nextVariant = variantLabels[nextIndex];
 
         setSelectedVariant(nextVariant);
 
