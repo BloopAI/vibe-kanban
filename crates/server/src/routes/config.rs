@@ -99,7 +99,7 @@ async fn update_config(
     Json(new_config): Json<Config>,
 ) -> ResponseJson<ApiResponse<Config>> {
     let config_path = config_path();
-    
+
     // Get old config state before updating
     let old_config = deployment.config().read().await.clone();
 
@@ -128,7 +128,7 @@ async fn track_onboarding_events(deployment: &DeploymentImpl, old: &Config, new:
         ),
         (
             !old.onboarding_acknowledged && new.onboarding_acknowledged,
-            "onboarding_completed", 
+            "onboarding_completed",
             serde_json::json!({
                 "profile": new.executor_profile,
                 "editor": new.editor
@@ -140,8 +140,8 @@ async fn track_onboarding_events(deployment: &DeploymentImpl, old: &Config, new:
             serde_json::json!({
                 "username": new.github.username,
                 "email": new.github.primary_email,
-                "auth_method": if new.github.oauth_token.is_some() { "oauth" } 
-                              else if new.github.pat.is_some() { "pat" } 
+                "auth_method": if new.github.oauth_token.is_some() { "oauth" }
+                              else if new.github.pat.is_some() { "pat" }
                               else { "none" },
                 "has_default_pr_base": new.github.default_pr_base.is_some(),
                 "skipped": new.github.username.is_none()
@@ -158,7 +158,9 @@ async fn track_onboarding_events(deployment: &DeploymentImpl, old: &Config, new:
 
     for (should_track, event_name, properties) in events {
         if should_track {
-            deployment.track_if_analytics_allowed(event_name, properties).await;
+            deployment
+                .track_if_analytics_allowed(event_name, properties)
+                .await;
         }
     }
 }

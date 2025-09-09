@@ -123,9 +123,10 @@ pub trait Deployment: Clone + Send + Sync + 'static {
         // Only skip tracking if user explicitly opted out (Some(false))
         // Send for None (undecided) and Some(true) (opted in)
         if analytics_enabled != Some(false)
-            && let Some(analytics) = self.analytics() {
-                analytics.track_event(self.user_id(), event_name, Some(properties.clone()));
-            }
+            && let Some(analytics) = self.analytics()
+        {
+            analytics.track_event(self.user_id(), event_name, Some(properties.clone()));
+        }
     }
 
     /// Cleanup executions marked as running in the db, call at startup
