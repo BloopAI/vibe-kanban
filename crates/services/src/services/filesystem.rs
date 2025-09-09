@@ -63,18 +63,34 @@ impl FilesystemService {
                 if !path.is_dir() {
                     return false;
                 }
-                
+
                 // Skip common non-git folders
                 if let Some(name) = path.file_name().and_then(|n| n.to_str())
-                    && matches!(name, 
-                        "Movies" | "Music" | "Pictures" | "Videos" | "Downloads" |
-                        "node_modules" | "target" | "build" | "dist" | ".next" | ".nuxt" |
-                        ".cache" | ".npm" | ".yarn" | ".pnpm-store" |
-                        "Library" | "AppData" | "Applications"
-                    ) {
+                    && matches!(
+                        name,
+                        "Movies"
+                            | "Music"
+                            | "Pictures"
+                            | "Videos"
+                            | "Downloads"
+                            | "node_modules"
+                            | "target"
+                            | "build"
+                            | "dist"
+                            | ".next"
+                            | ".nuxt"
+                            | ".cache"
+                            | ".npm"
+                            | ".yarn"
+                            | ".pnpm-store"
+                            | "Library"
+                            | "AppData"
+                            | "Applications"
+                    )
+                {
                     return false;
                 }
-                
+
                 true
             })
             .max_depth(max_depth)
