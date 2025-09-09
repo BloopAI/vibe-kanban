@@ -563,64 +563,69 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                 </div>
               )}
 
-              {!isEditMode && (() => {
-                const quickstartSection = (
-                  <div className="pt-2">
-                    <details
-                      className="group"
-                      open={quickstartExpanded}
-                      onToggle={(e) =>
-                        setQuickstartExpanded(
-                          (e.target as HTMLDetailsElement).open
-                        )
-                      }
-                    >
-                      <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-2">
-                        <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
-                        <Settings2 className="h-3 w-3" />
-                        Quickstart
-                      </summary>
-                      <div className="mt-3 space-y-3">
-                        <p className="text-xs text-muted-foreground">
-                          Configuration for "Create & Start" workflow
-                        </p>
+              {!isEditMode &&
+                (() => {
+                  const quickstartSection = (
+                    <div className="pt-2">
+                      <details
+                        className="group"
+                        open={quickstartExpanded}
+                        onToggle={(e) =>
+                          setQuickstartExpanded(
+                            (e.target as HTMLDetailsElement).open
+                          )
+                        }
+                      >
+                        <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-2">
+                          <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                          <Settings2 className="h-3 w-3" />
+                          Quickstart
+                        </summary>
+                        <div className="mt-3 space-y-3">
+                          <p className="text-xs text-muted-foreground">
+                            Configuration for "Create & Start" workflow
+                          </p>
 
-                        {/* Executor Profile Selector */}
-                        {profiles && selectedExecutorProfile && (
-                          <ExecutorProfileSelector
-                            profiles={profiles}
-                            selectedProfile={selectedExecutorProfile}
-                            onProfileSelect={setSelectedExecutorProfile}
-                            disabled={isSubmitting || isSubmittingAndStart}
-                          />
-                        )}
+                          {/* Executor Profile Selector */}
+                          {profiles && selectedExecutorProfile && (
+                            <ExecutorProfileSelector
+                              profiles={profiles}
+                              selectedProfile={selectedExecutorProfile}
+                              onProfileSelect={setSelectedExecutorProfile}
+                              disabled={isSubmitting || isSubmittingAndStart}
+                            />
+                          )}
 
-                        {/* Branch Selector */}
-                        {branches.length > 0 && (
-                          <div>
-                            <Label
-                              htmlFor="base-branch"
-                              className="text-sm font-medium"
-                            >
-                              Branch
-                            </Label>
-                            <div className="mt-1.5">
-                              <BranchSelector
-                                branches={branches}
-                                selectedBranch={selectedBranch}
-                                onBranchSelect={setSelectedBranch}
-                                placeholder="Select branch"
-                                className={isSubmitting || isSubmittingAndStart ? 'opacity-50 cursor-not-allowed' : ''}
-                              />
+                          {/* Branch Selector */}
+                          {branches.length > 0 && (
+                            <div>
+                              <Label
+                                htmlFor="base-branch"
+                                className="text-sm font-medium"
+                              >
+                                Branch
+                              </Label>
+                              <div className="mt-1.5">
+                                <BranchSelector
+                                  branches={branches}
+                                  selectedBranch={selectedBranch}
+                                  onBranchSelect={setSelectedBranch}
+                                  placeholder="Select branch"
+                                  className={
+                                    isSubmitting || isSubmittingAndStart
+                                      ? 'opacity-50 cursor-not-allowed'
+                                      : ''
+                                  }
+                                />
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    </details>
-                  </div>
-                );
-                return quickstartSection;
-              })()}
+                          )}
+                        </div>
+                      </details>
+                    </div>
+                  );
+                  return quickstartSection;
+                })()}
 
               <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
                 <Button
