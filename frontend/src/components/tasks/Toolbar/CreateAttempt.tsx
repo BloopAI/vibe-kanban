@@ -167,9 +167,7 @@ function CreateAttempt({
               profiles={availableProfiles}
               selectedProfile={selectedProfile}
               onProfileSelect={setSelectedProfile}
-              executorSelectorProps={{
-                showLabel: true,
-              }}
+              showLabel={true}
             />
           )}
 
