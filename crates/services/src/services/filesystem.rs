@@ -56,7 +56,7 @@ impl FilesystemService {
         Self::verify_directory(&base_path)?;
         let mut git_repos: Vec<DirectoryEntry> = WalkBuilder::new(&base_path)
             .follow_links(false)
-            .hidden(true)
+            .hidden(false)
             .git_ignore(true)
             .filter_entry(|entry| {
                 let path = entry.path();
@@ -66,7 +66,12 @@ impl FilesystemService {
                 
                 // Skip common non-git folders
                 if let Some(name) = path.file_name().and_then(|n| n.to_str())
-                    && matches!(name, "Movies" | "Music" | "Pictures" | "Videos" | "Downloads") {
+                    && matches!(name, 
+                        "Movies" | "Music" | "Pictures" | "Videos" | "Downloads" |
+                        "node_modules" | "target" | "build" | "dist" | ".next" | ".nuxt" |
+                        ".cache" | ".npm" | ".yarn" | ".pnpm-store" |
+                        "Library" | "AppData" | "Applications"
+                    ) {
                     return false;
                 }
                 
