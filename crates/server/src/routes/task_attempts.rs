@@ -17,7 +17,7 @@ use db::models::{
     image::TaskImage,
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
     project::{Project, ProjectError},
-    task::{Task, TaskStatus, TaskRelationships},
+    task::{Task, TaskRelationships, TaskStatus},
     task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptError},
 };
 use deployment::Deployment;

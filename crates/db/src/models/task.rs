@@ -4,8 +4,7 @@ use sqlx::{FromRow, SqlitePool, Type};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::project::Project;
-use super::task_attempt::TaskAttempt;
+use super::{project::Project, task_attempt::TaskAttempt};
 
 #[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
 #[sqlx(type_name = "task_status", rename_all = "lowercase")]
@@ -48,9 +47,9 @@ pub struct TaskWithAttemptStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct TaskRelationships {
-    pub parent_task: Option<Task>,      // The task that owns this attempt
-    pub current_attempt: TaskAttempt,   // The attempt we're viewing
-    pub children: Vec<Task>,            // Tasks created by this attempt
+    pub parent_task: Option<Task>,    // The task that owns this attempt
+    pub current_attempt: TaskAttempt, // The attempt we're viewing
+    pub children: Vec<Task>,          // Tasks created by this attempt
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -308,11 +307,12 @@ ORDER BY t.created_at DESC"#,
         let current_task = Self::find_by_id(pool, task_attempt.task_id)
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
-        
+
         // 2. Get parent task (if current task was created by another task's attempt)
         let parent_task = if let Some(parent_attempt_id) = current_task.parent_task_attempt {
             // Find the attempt that created the current task
-            if let Ok(Some(parent_attempt)) = TaskAttempt::find_by_id(pool, parent_attempt_id).await {
+            if let Ok(Some(parent_attempt)) = TaskAttempt::find_by_id(pool, parent_attempt_id).await
+            {
                 // Find the task that owns that parent attempt - THAT's the real parent
                 Self::find_by_id(pool, parent_attempt.task_id).await?
             } else {
@@ -321,10 +321,10 @@ ORDER BY t.created_at DESC"#,
         } else {
             None
         };
-        
+
         // 3. Get children tasks (created by this attempt)
         let children = Self::find_children_by_attempt_id(pool, task_attempt.id).await?;
-        
+
         Ok(TaskRelationships {
             parent_task,
             current_attempt: task_attempt.clone(),
