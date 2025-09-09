@@ -43,9 +43,12 @@ function AppContent() {
   const showNavbar = !location.pathname.endsWith('/full');
 
   useEffect(() => {
+    let cancelled = false;
+
     const handleOnboardingComplete = async (
       onboardingConfig: OnboardingResult
     ) => {
+      if (cancelled) return;
       const updatedConfig = {
         ...config,
         onboarding_acknowledged: true,
@@ -57,14 +60,17 @@ function AppContent() {
     };
 
     const handleDisclaimerAccept = async () => {
+      if (cancelled) return;
       await updateAndSaveConfig({ disclaimer_acknowledged: true });
     };
 
     const handleGitHubLoginComplete = async () => {
+      if (cancelled) return;
       await updateAndSaveConfig({ github_login_acknowledged: true });
     };
 
     const handleTelemetryOptIn = async (analyticsEnabled: boolean) => {
+      if (cancelled) return;
       await updateAndSaveConfig({
         telemetry_acknowledged: true,
         analytics_enabled: analyticsEnabled,
@@ -72,47 +78,71 @@ function AppContent() {
     };
 
     const handleReleaseNotesClose = async () => {
+      if (cancelled) return;
       await updateAndSaveConfig({ show_release_notes: false });
     };
 
     const checkOnboardingSteps = async () => {
-      if (!config) return;
+      if (!config || cancelled) return;
 
       if (!config.telemetry_acknowledged) {
+        if (cancelled) return;
         const analyticsEnabled: boolean =
           await NiceModal.show('privacy-opt-in');
+        if (cancelled) return;
         await handleTelemetryOptIn(analyticsEnabled);
+        if (cancelled) return;
         await NiceModal.hide('privacy-opt-in');
       }
 
       if (!config.disclaimer_acknowledged) {
+        if (cancelled) return;
         await NiceModal.show('disclaimer');
+        if (cancelled) return;
         await handleDisclaimerAccept();
+        if (cancelled) return;
         await NiceModal.hide('disclaimer');
       }
 
       if (!config.onboarding_acknowledged) {
+        if (cancelled) return;
         const onboardingResult: OnboardingResult =
           await NiceModal.show('onboarding');
+        if (cancelled) return;
         await handleOnboardingComplete(onboardingResult);
+        if (cancelled) return;
         await NiceModal.hide('onboarding');
       }
 
       if (!config.github_login_acknowledged) {
+        if (cancelled) return;
         await NiceModal.show('github-login');
+        if (cancelled) return;
         await handleGitHubLoginComplete();
+        if (cancelled) return;
         await NiceModal.hide('github-login');
       }
 
-
       if (config.show_release_notes) {
+        if (cancelled) return;
         await NiceModal.show('release-notes');
+        if (cancelled) return;
         await handleReleaseNotesClose();
+        if (cancelled) return;
         await NiceModal.hide('release-notes');
       }
     };
 
-    checkOnboardingSteps();
+    const runOnboarding = async () => {
+      if (!config || cancelled) return;
+      await checkOnboardingSteps();
+    };
+
+    runOnboarding();
+
+    return () => {
+      cancelled = true;
+    };
   }, [config]);
 
   if (loading) {
