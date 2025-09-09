@@ -5,6 +5,7 @@ import {
   History,
   Play,
   Plus,
+  GitFork,
   RefreshCw,
   Settings,
   StopCircle,
