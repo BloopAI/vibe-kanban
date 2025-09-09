@@ -321,7 +321,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
             selectedExecutorProfile || system.config?.executor_profile;
           if (!finalExecutorProfile || !selectedBranch) {
             console.warn(
-              'Missing executor profile or branch for Create & Start'
+              `Missing ${!finalExecutorProfile ? 'executor profile' : 'branch'} for Create & Start`
             );
             return;
           }
