@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { templatesApi, imagesApi, projectsApi } from '@/lib/api';
+import { templatesApi, imagesApi, projectsApi, attemptsApi } from '@/lib/api';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
 import { useUserSystem } from '@/components/config-provider';
 import { ExecutorProfileSelector } from '@/components/settings';
@@ -206,6 +206,35 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
           .catch(console.error);
       }
     }, [modal.visible, isEditMode, projectId, initialBaseBranch]);
+
+    // Fetch parent base branch when parentTaskAttemptId is provided
+    useEffect(() => {
+      if (
+        modal.visible &&
+        !isEditMode &&
+        parentTaskAttemptId &&
+        !initialBaseBranch &&
+        branches.length > 0
+      ) {
+        attemptsApi
+          .get(parentTaskAttemptId)
+          .then((attempt) => {
+            const parentBranch = attempt.branch || attempt.base_branch;
+            if (parentBranch && branches.some((b) => b.name === parentBranch)) {
+              setSelectedBranch(parentBranch);
+            }
+          })
+          .catch(() => {
+            // Silently fail, will use current branch fallback
+          });
+      }
+    }, [
+      modal.visible,
+      isEditMode,
+      parentTaskAttemptId,
+      initialBaseBranch,
+      branches,
+    ]);
 
     // Set default executor from config (following TaskDetailsToolbar pattern)
     useEffect(() => {
