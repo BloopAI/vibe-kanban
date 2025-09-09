@@ -34,6 +34,7 @@ use crate::{
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum SandboxMode {
+    Auto,
     ReadOnly,
     WorkspaceWrite,
     DangerFullAccess,
@@ -253,9 +254,13 @@ impl Codex {
         }
 
         if let Some(sandbox) = &self.sandbox {
-            builder = builder.extend_params(["--sandbox", sandbox.as_ref()]);
-            if sandbox == &SandboxMode::DangerFullAccess && self.approval.is_none() {
-                builder = builder.extend_params(["--dangerously-bypass-approvals-and-sandbox"]);
+            if sandbox == &SandboxMode::Auto {
+                builder = builder.extend_params(["--full-auto"]);
+            } else {
+                builder = builder.extend_params(["--sandbox", sandbox.as_ref()]);
+                if sandbox == &SandboxMode::DangerFullAccess && self.approval.is_none() {
+                    builder = builder.extend_params(["--dangerously-bypass-approvals-and-sandbox"]);
+                }
             }
         }
 

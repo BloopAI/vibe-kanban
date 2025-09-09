@@ -18,6 +18,7 @@
         "null"
       ],
       "enum": [
+        "auto",
         "read-only",
         "workspace-write",
         "danger-full-access",

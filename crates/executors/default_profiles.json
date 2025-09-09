@@ -36,7 +36,7 @@
     "CODEX": {
       "DEFAULT": {
         "CODEX": {
-          "sandbox": "danger-full-access"
+          "sandbox": "auto"
         }
       },
       "HIGH": {
