@@ -58,12 +58,11 @@ export function TaskRelationshipViewer({
   }
 
   return (
-    <Card className="mx-3 mb-4">
-      <div className="p-4 space-y-6">
-        <h3 className="text-sm font-medium text-muted-foreground">
-          Task Relationships
-        </h3>
-
+    <div>
+      <Card className="bg-background p-3 border border-dashed text-sm">
+        Task Relationships
+      </Card>
+      <div className="p-3 space-y-6">
         {loading ? (
           <div className="text-sm text-muted-foreground py-8 text-center">
             Loading relationships...
@@ -142,6 +141,6 @@ export function TaskRelationshipViewer({
           </div>
         )}
       </div>
-    </Card>
+    </div>
   );
 }
