@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, AlertCircle } from 'lucide-react';
+import { AlertCircle, ExternalLink } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 
 const RELEASE_NOTES_URL = 'https://vibekanban.com/release-notes';
@@ -29,6 +29,7 @@ export const ReleaseNotesDialog = NiceModal.create(() => {
     <Dialog
       open={modal.visible}
       onOpenChange={(open) => !open && modal.resolve()}
+      className="h-[calc(100%-4rem)]"
     >
       <DialogContent className="flex flex-col w-full h-full max-w-7xl max-h-[calc(100dvh-1rem)] p-0">
         <DialogHeader className="p-4 border-b flex-shrink-0">
@@ -57,7 +58,7 @@ export const ReleaseNotesDialog = NiceModal.create(() => {
         ) : (
           <iframe
             src={RELEASE_NOTES_URL}
-            className="flex-1 w-full border-0 min-h-[600px]"
+            className="flex-1 w-full border-0"
             sandbox="allow-scripts allow-same-origin allow-popups"
             referrerPolicy="no-referrer"
             title="Release Notes"
