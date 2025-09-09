@@ -293,7 +293,9 @@ export function useVariantCyclingShortcut({
         const variantLabels = Object.keys(variants);
 
         // Find current index and cycle to next
-        const currentIndex = variantLabels.findIndex((v) => v === selectedVariant);
+        const currentIndex = variantLabels.findIndex(
+          (v) => v === selectedVariant
+        );
         const nextIndex = (currentIndex + 1) % variantLabels.length;
         const nextVariant = variantLabels[nextIndex];
 
