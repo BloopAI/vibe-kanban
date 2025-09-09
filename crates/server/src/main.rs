@@ -90,13 +90,15 @@ async fn main() -> Result<(), VibeKanbanError> {
 
     if !cfg!(debug_assertions) {
         tracing::info!("Opening browser...");
-        if let Err(e) = open_browser(&format!("http://127.0.0.1:{actual_port}")).await {
-            tracing::warn!(
-                "Failed to open browser automatically: {}. Please open http://127.0.0.1:{} manually.",
-                e,
-                actual_port
-            );
-        }
+        tokio::spawn(async move {
+            if let Err(e) = open_browser(&format!("http://127.0.0.1:{actual_port}")).await {
+                tracing::warn!(
+                    "Failed to open browser automatically: {}. Please open http://127.0.0.1:{} manually.",
+                    e,
+                    actual_port
+                );
+            }
+        });
     }
 
     axum::serve(listener, app_router).await?;
