@@ -1,4 +1,6 @@
 use std::{
+    fs,
+    io::{BufRead, BufReader},
     path::{Path, PathBuf},
     process::Stdio,
     sync::Arc,
@@ -101,6 +103,88 @@ impl SessionHandler {
             .captures(line)
             .and_then(|cap| cap.get(1))
             .map(|m| m.as_str().to_string())
+    }
+
+    /// Background fallback: scan ~/.codex/sessions for a newly created rollout file
+    /// after `baseline` and, if found, emit its session id to the `msg_store`.
+    pub fn start_rollout_scan_fallback(msg_store: Arc<MsgStore>, baseline: std::time::SystemTime) {
+        tokio::spawn(async move {
+            // Try for up to ~10 seconds (20 attempts x 500ms)
+            for _ in 0..20u8 {
+                if let Some(session_id) = Self::try_find_recent_rollout_session_id(&baseline) {
+                    msg_store.push_session_id(session_id);
+                    break;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            }
+        });
+    }
+
+    fn try_find_recent_rollout_session_id(baseline: &std::time::SystemTime) -> Option<String> {
+        let home_dir = dirs::home_dir()?;
+        let sessions_dir = home_dir.join(".codex").join("sessions");
+        if !sessions_dir.exists() {
+            return None;
+        }
+
+        // Walk directory tree to find newest rollout-*.jsonl
+        let mut newest: Option<(std::path::PathBuf, std::time::SystemTime)> = None;
+        fn visit_dir(acc: &mut Option<(std::path::PathBuf, std::time::SystemTime)>, dir: &std::path::Path) {
+            if let Ok(read_dir) = fs::read_dir(dir) {
+                for entry in read_dir.flatten() {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        visit_dir(acc, &path);
+                    } else if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
+                        if name.starts_with("rollout-") && name.ends_with(".jsonl") {
+                            if let Ok(meta) = fs::metadata(&path) {
+                                if let Ok(modified) = meta.modified() {
+                                    match acc {
+                                        Some((_, cur_ts)) if modified > *cur_ts => {
+                                            *acc = Some((path.clone(), modified));
+                                        }
+                                        None => {
+                                            *acc = Some((path.clone(), modified));
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        visit_dir(&mut newest, &sessions_dir);
+
+        let (candidate_path, modified) = newest?;
+        if &modified <= baseline {
+            return None;
+        }
+
+        // Try to read first line JSON `{ "id": "<session_id>", ... }`
+        let file = fs::File::open(&candidate_path).ok()?;
+        let mut reader = BufReader::new(file);
+        let mut first_line = String::new();
+        if reader.read_line(&mut first_line).ok()? > 0 {
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(first_line.trim()) {
+                if let Some(id) = json.get("id").and_then(|v| v.as_str()) {
+                    return Some(id.to_string());
+                }
+            }
+        }
+
+        // Fallback to filename suffix: rollout-...-<session_id>.jsonl
+        if let Some(fname) = candidate_path.file_name().and_then(|s| s.to_str()) {
+            if let Some(stem) = fname.strip_suffix(".jsonl") {
+                if let Some(idx) = stem.rfind('-') {
+                    return Some(stem[idx + 1..].to_string());
+                }
+            }
+        }
+
+        None
     }
 
     /// Find codex rollout file path for given session_id. Used during follow-up execution.
@@ -366,6 +450,9 @@ impl StandardCodingAgentExecutor for Codex {
 
         // Process stderr logs for session extraction only (errors come through JSONL)
         SessionHandler::start_session_id_extraction(msg_store.clone());
+
+        // Also start fallback scanner for session id via rollout files
+        SessionHandler::start_rollout_scan_fallback(msg_store.clone(), std::time::SystemTime::now());
 
         // Process stdout logs (Codex's JSONL output)
         let current_dir = current_dir.to_path_buf();
