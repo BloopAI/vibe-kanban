@@ -85,50 +85,35 @@ function AppContent() {
     const checkOnboardingSteps = async () => {
       if (!config || cancelled) return;
 
-      if (!config.telemetry_acknowledged) {
-        if (cancelled) return;
-        const analyticsEnabled: boolean =
-          await NiceModal.show('privacy-opt-in');
-        if (cancelled) return;
-        await handleTelemetryOptIn(analyticsEnabled);
-        if (cancelled) return;
-        await NiceModal.hide('privacy-opt-in');
-      }
-
       if (!config.disclaimer_acknowledged) {
-        if (cancelled) return;
         await NiceModal.show('disclaimer');
-        if (cancelled) return;
         await handleDisclaimerAccept();
-        if (cancelled) return;
         await NiceModal.hide('disclaimer');
       }
 
       if (!config.onboarding_acknowledged) {
-        if (cancelled) return;
         const onboardingResult: OnboardingResult =
           await NiceModal.show('onboarding');
-        if (cancelled) return;
         await handleOnboardingComplete(onboardingResult);
-        if (cancelled) return;
         await NiceModal.hide('onboarding');
       }
 
       if (!config.github_login_acknowledged) {
-        if (cancelled) return;
         await NiceModal.show('github-login');
-        if (cancelled) return;
         await handleGitHubLoginComplete();
-        if (cancelled) return;
         await NiceModal.hide('github-login');
       }
 
+      if (!config.telemetry_acknowledged) {
+        const analyticsEnabled: boolean =
+          await NiceModal.show('privacy-opt-in');
+        await handleTelemetryOptIn(analyticsEnabled);
+        await NiceModal.hide('privacy-opt-in');
+      }
+
       if (config.show_release_notes) {
-        if (cancelled) return;
         await NiceModal.show('release-notes');
-        if (cancelled) return;
         await handleReleaseNotesClose();
-        if (cancelled) return;
         await NiceModal.hide('release-notes');
       }
     };
