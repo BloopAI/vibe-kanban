@@ -1,19 +1,14 @@
 import { Dispatch, SetStateAction, useCallback } from 'react';
 import { Button } from '@/components/ui/button.tsx';
-import { ArrowDown, Settings2, X } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu.tsx';
-import type { BaseCodingAgent, GitBranch, Task } from 'shared/types';
+import { X } from 'lucide-react';
+import type { GitBranch, Task } from 'shared/types';
 import type { ExecutorConfig } from 'shared/types';
 import type { ExecutorProfileId } from 'shared/types';
 import type { TaskAttempt } from 'shared/types';
 import { useAttemptCreation } from '@/hooks/useAttemptCreation';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import BranchSelector from '@/components/tasks/BranchSelector.tsx';
+import { ExecutorProfileSelector } from '@/components/settings';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
 import { showModal } from '@/lib/modals';
 import { Card } from '@/components/ui/card';
@@ -166,136 +161,19 @@ function CreateAttempt({
             />
           </div>
 
-          {/* Step 2: Choose Profile */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">
-                Profile
-              </label>
-            </div>
-            {availableProfiles && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-between text-xs"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <Settings2 className="h-3 w-3" />
-                      <span className="truncate">
-                        {selectedProfile?.executor || 'Select profile'}
-                      </span>
-                    </div>
-                    <ArrowDown className="h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-full">
-                  {availableProfiles &&
-                    Object.entries(availableProfiles)
-                      .sort((a, b) => a[0].localeCompare(b[0]))
-                      .map(([profileKey]) => (
-                        <DropdownMenuItem
-                          key={profileKey}
-                          onClick={() => {
-                            setSelectedProfile({
-                              executor: profileKey as BaseCodingAgent,
-                              variant: null,
-                            });
-                          }}
-                          className={
-                            selectedProfile?.executor === profileKey
-                              ? 'bg-accent'
-                              : ''
-                          }
-                        >
-                          {profileKey}
-                        </DropdownMenuItem>
-                      ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
+          {/* Step 2 & 3: Choose Profile and Variant */}
+          {availableProfiles && (
+            <ExecutorProfileSelector
+              profiles={availableProfiles}
+              selectedProfile={selectedProfile}
+              onProfileSelect={setSelectedProfile}
+              executorSelectorProps={{
+                showLabel: true,
+              }}
+            />
+          )}
 
-          {/* Step 3: Choose Variant (if available) */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5">
-              <label className="text-xs font-medium text-muted-foreground">
-                Variant
-              </label>
-            </div>
-            {(() => {
-              const currentProfile =
-                availableProfiles?.[selectedProfile?.executor || ''];
-              const hasVariants =
-                currentProfile && Object.keys(currentProfile).length > 0;
-
-              if (hasVariants && currentProfile) {
-                return (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full px-2 flex items-center justify-between text-xs"
-                      >
-                        <span className="truncate flex-1 text-left">
-                          {selectedProfile?.variant || 'DEFAULT'}
-                        </span>
-                        <ArrowDown className="h-3 w-3 ml-1 flex-shrink-0" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-full">
-                      {Object.entries(currentProfile).map(([variantLabel]) => (
-                        <DropdownMenuItem
-                          key={variantLabel}
-                          onClick={() => {
-                            if (selectedProfile) {
-                              setSelectedProfile({
-                                ...selectedProfile,
-                                variant: variantLabel,
-                              });
-                            }
-                          }}
-                          className={
-                            selectedProfile?.variant === variantLabel
-                              ? 'bg-accent'
-                              : ''
-                          }
-                        >
-                          {variantLabel}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                );
-              }
-              if (currentProfile) {
-                return (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled
-                    className="w-full text-xs justify-start"
-                  >
-                    Default
-                  </Button>
-                );
-              }
-              return (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled
-                  className="w-full text-xs justify-start"
-                >
-                  Select profile first
-                </Button>
-              );
-            })()}
-          </div>
-
-          {/* Step 4: Start Attempt */}
+          {/* Step 3: Start Attempt */}
           <div className="space-y-1">
             <Button
               onClick={handleCreateAttempt}

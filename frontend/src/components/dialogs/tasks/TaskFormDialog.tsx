@@ -21,12 +21,13 @@ import {
 import { templatesApi, imagesApi, projectsApi } from '@/lib/api';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
 import { useUserSystem } from '@/components/config-provider';
+import { ExecutorProfileSelector } from '@/components/settings';
+import BranchSelector from '@/components/tasks/BranchSelector';
 import type {
   TaskStatus,
   TaskTemplate,
   ImageResponse,
   GitBranch,
-  BaseCodingAgent,
   ExecutorProfileId,
 } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
@@ -562,162 +563,64 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                 </div>
               )}
 
-              {!isEditMode && (
-                <div className="pt-2">
-                  <details
-                    className="group"
-                    open={quickstartExpanded}
-                    onToggle={(e) =>
-                      setQuickstartExpanded(
-                        (e.target as HTMLDetailsElement).open
-                      )
-                    }
-                  >
-                    <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-2">
-                      <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
-                      <Settings2 className="h-3 w-3" />
-                      Quickstart
-                    </summary>
-                    <div className="mt-3 space-y-3">
-                      <p className="text-xs text-muted-foreground">
-                        Configuration for "Create & Start" workflow
-                      </p>
+              {!isEditMode && (() => {
+                const quickstartSection = (
+                  <div className="pt-2">
+                    <details
+                      className="group"
+                      open={quickstartExpanded}
+                      onToggle={(e) =>
+                        setQuickstartExpanded(
+                          (e.target as HTMLDetailsElement).open
+                        )
+                      }
+                    >
+                      <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-2">
+                        <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                        <Settings2 className="h-3 w-3" />
+                        Quickstart
+                      </summary>
+                      <div className="mt-3 space-y-3">
+                        <p className="text-xs text-muted-foreground">
+                          Configuration for "Create & Start" workflow
+                        </p>
 
-                      {/* Executor Profile Selector */}
-                      {profiles && (
-                        <div>
-                          <Label
-                            htmlFor="executor-profile"
-                            className="text-sm font-medium"
-                          >
-                            Executor Profile
-                          </Label>
-                          <Select
-                            value={selectedExecutorProfile?.executor || ''}
-                            onValueChange={(value) => {
-                              setSelectedExecutorProfile({
-                                executor: value as BaseCodingAgent,
-                                variant: null,
-                              });
-                            }}
+                        {/* Executor Profile Selector */}
+                        {profiles && selectedExecutorProfile && (
+                          <ExecutorProfileSelector
+                            profiles={profiles}
+                            selectedProfile={selectedExecutorProfile}
+                            onProfileSelect={setSelectedExecutorProfile}
                             disabled={isSubmitting || isSubmittingAndStart}
-                          >
-                            <SelectTrigger className="mt-1.5">
-                              <SelectValue placeholder="Select executor profile" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.keys(profiles)
-                                .sort((a, b) => a.localeCompare(b))
-                                .map((executorKey) => (
-                                  <SelectItem
-                                    key={executorKey}
-                                    value={executorKey}
-                                  >
-                                    {executorKey}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
+                          />
+                        )}
 
-                      {/* Variant Selector (conditional) */}
-                      {selectedExecutorProfile &&
-                        profiles &&
-                        (() => {
-                          const currentProfile =
-                            profiles[selectedExecutorProfile.executor];
-                          const hasVariants =
-                            currentProfile &&
-                            Object.keys(currentProfile).length > 0;
-
-                          if (hasVariants && currentProfile) {
-                            return (
-                              <div>
-                                <Label
-                                  htmlFor="executor-variant"
-                                  className="text-sm font-medium"
-                                >
-                                  Variant
-                                </Label>
-                                <Select
-                                  value={
-                                    selectedExecutorProfile.variant || 'DEFAULT'
-                                  }
-                                  onValueChange={(value) => {
-                                    setSelectedExecutorProfile({
-                                      ...selectedExecutorProfile,
-                                      variant:
-                                        value === 'DEFAULT' ? null : value,
-                                    });
-                                  }}
-                                  disabled={
-                                    isSubmitting || isSubmittingAndStart
-                                  }
-                                >
-                                  <SelectTrigger className="mt-1.5">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {Object.keys(currentProfile).map(
-                                      (variantKey) => (
-                                        <SelectItem
-                                          key={variantKey}
-                                          value={variantKey}
-                                        >
-                                          {variantKey}
-                                        </SelectItem>
-                                      )
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            );
-                          }
-                          return null;
-                        })()}
-
-                      {/* Branch Selector */}
-                      {branches.length > 0 && (
-                        <div>
-                          <Label
-                            htmlFor="base-branch"
-                            className="text-sm font-medium"
-                          >
-                            Branch
-                          </Label>
-                          <Select
-                            value={selectedBranch}
-                            onValueChange={setSelectedBranch}
-                            disabled={isSubmitting || isSubmittingAndStart}
-                          >
-                            <SelectTrigger className="mt-1.5">
-                              <SelectValue placeholder="Select branch" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {branches.map((branch) => (
-                                <SelectItem
-                                  key={branch.name}
-                                  value={branch.name}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <span>{branch.name}</span>
-                                    {branch.is_current && (
-                                      <span className="text-xs text-muted-foreground">
-                                        (current)
-                                      </span>
-                                    )}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-                    </div>
-                  </details>
-                </div>
-              )}
+                        {/* Branch Selector */}
+                        {branches.length > 0 && (
+                          <div>
+                            <Label
+                              htmlFor="base-branch"
+                              className="text-sm font-medium"
+                            >
+                              Branch
+                            </Label>
+                            <div className="mt-1.5">
+                              <BranchSelector
+                                branches={branches}
+                                selectedBranch={selectedBranch}
+                                onBranchSelect={setSelectedBranch}
+                                placeholder="Select branch"
+                                className={isSubmitting || isSubmittingAndStart ? 'opacity-50 cursor-not-allowed' : ''}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </details>
+                  </div>
+                );
+                return quickstartSection;
+              })()}
 
               <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
                 <Button
