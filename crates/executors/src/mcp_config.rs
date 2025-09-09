@@ -2,14 +2,14 @@
 //!
 //! These helpers abstract over JSON vs TOML formats used by different agents.
 
-use std::{sync::LazyLock, collections::HashMap};
+use std::{collections::HashMap, sync::LazyLock};
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
 use tokio::fs;
 use ts_rs::TS;
 
-use crate::executors::ExecutorError;
+use crate::executors::{CodingAgent, ExecutorError};
 
 static DEFAULT_MCP_JSON: &str = include_str!("../default_mcp.json");
 pub static PRECONFIGURED_MCP_SERVERS: LazyLock<Value> = LazyLock::new(|| {
@@ -83,4 +83,181 @@ pub async fn write_agent_config(
         fs::write(config_path, json_content).await?;
     }
     Ok(())
+}
+
+type ServerMap = Map<String, Value>;
+
+fn is_http_server(s: &Map<String, Value>) -> bool {
+    matches!(s.get("type").and_then(Value::as_str), Some("http"))
+}
+
+fn is_stdio(s: &Map<String, Value>) -> bool {
+    !is_http_server(s) && s.get("command").is_some()
+}
+
+fn extract_meta(mut obj: ServerMap) -> (ServerMap, Option<Value>) {
+    let meta = obj.remove("meta");
+    (obj, meta)
+}
+
+fn attach_meta(mut obj: ServerMap, meta: Option<Value>) -> Value {
+    if let Some(m) = meta {
+        obj.insert("meta".to_string(), m);
+    }
+    Value::Object(obj)
+}
+
+fn ensure_header(headers: &mut Map<String, Value>, key: &str, val: &str) {
+    match headers.get_mut(key) {
+        Some(Value::String(_)) => {}
+        _ => {
+            headers.insert(key.to_string(), Value::String(val.to_string()));
+        }
+    }
+}
+
+fn transform_http_servers<F>(mut servers: ServerMap, mut f: F) -> ServerMap
+where
+    F: FnMut(Map<String, Value>) -> Map<String, Value>,
+{
+    for (_k, v) in servers.iter_mut() {
+        if let Value::Object(s) = v
+            && is_http_server(s)
+        {
+            let taken = std::mem::take(s);
+            *s = f(taken);
+        }
+    }
+    servers
+}
+
+// --- Adapters ---------------------------------------------------------------
+
+fn adapt_passthrough(servers: ServerMap, meta: Option<Value>) -> Value {
+    attach_meta(servers, meta)
+}
+
+fn adapt_gemini(servers: ServerMap, meta: Option<Value>) -> Value {
+    let servers = transform_http_servers(servers, |mut s| {
+        let url = s
+            .remove("url")
+            .unwrap_or_else(|| Value::String(String::new()));
+        let mut headers = s
+            .remove("headers")
+            .and_then(|v| v.as_object().cloned())
+            .unwrap_or_default();
+
+        ensure_header(
+            &mut headers,
+            "Accept",
+            "application/json, text/event-stream",
+        );
+        Map::from_iter([
+            ("httpUrl".to_string(), url),
+            ("headers".to_string(), Value::Object(headers)),
+        ])
+    });
+    attach_meta(servers, meta)
+}
+
+fn adapt_cursor(servers: ServerMap, meta: Option<Value>) -> Value {
+    let servers = transform_http_servers(servers, |mut s| {
+        let url = s
+            .remove("url")
+            .unwrap_or_else(|| Value::String(String::new()));
+        let headers = s
+            .remove("headers")
+            .unwrap_or_else(|| Value::Object(Default::default()));
+        Map::from_iter([("url".to_string(), url), ("headers".to_string(), headers)])
+    });
+    attach_meta(servers, meta)
+}
+
+fn adapt_codex(mut servers: ServerMap, mut meta: Option<Value>) -> Value {
+    servers.retain(|_, v| v.as_object().map(is_stdio).unwrap_or(false));
+
+    if let Some(Value::Object(ref mut m)) = meta {
+        m.retain(|k, _| servers.contains_key(k));
+        servers.insert("meta".to_string(), Value::Object(std::mem::take(m)));
+        meta = None; // already attached above
+    }
+    attach_meta(servers, meta)
+}
+
+fn adapt_opencode() -> Value {
+    let mut v = serde_json::json!({
+        "vibe_kanban": {
+            "type": "local",
+            "command": ["npx", "-y", "vibe-kanban", "--mcp"],
+            "enabled": true
+        },
+        "context7": {
+            "type": "remote",
+            "url": "https://mcp.context7.com/mcp",
+            "enabled": true,
+            "headers": {
+                "CONTEXT7_API_KEY": "YOUR_API_KEY",
+                "Accept": "application/json, text/event-stream"
+            }
+        },
+        "playwright": {
+            "type": "local",
+            "command": ["npx", "@playwright/mcp@latest"],
+            "enabled": true
+        }
+    });
+
+    if let Some(meta_all) = PRECONFIGURED_MCP_SERVERS.get("meta").cloned()
+        && let Some(map) = v.as_object_mut()
+    {
+        map.insert("meta".to_string(), meta_all);
+    }
+
+    v
+}
+
+enum Adapter {
+    Passthrough,
+    Gemini,
+    Cursor,
+    Codex,
+    Opencode,
+}
+
+fn choose_adapter(agent: &CodingAgent) -> Adapter {
+    use Adapter::*;
+    match agent {
+        CodingAgent::ClaudeCode(_) | CodingAgent::Amp(_) => Passthrough,
+        CodingAgent::QwenCode(_) | CodingAgent::Gemini(_) => Gemini,
+        CodingAgent::Cursor(_) => Cursor,
+        CodingAgent::Codex(_) => Codex,
+        CodingAgent::Opencode(_) => Opencode,
+    }
+}
+
+fn apply_adapter(adapter: Adapter, canonical: Value) -> Value {
+    if matches!(adapter, Adapter::Opencode) {
+        return adapt_opencode();
+    }
+
+    let (servers_only, meta) = match canonical.as_object() {
+        Some(map) => extract_meta(map.clone()),
+        None => (ServerMap::new(), None),
+    };
+
+    match adapter {
+        Adapter::Passthrough => adapt_passthrough(servers_only, meta),
+        Adapter::Gemini => adapt_gemini(servers_only, meta),
+        Adapter::Cursor => adapt_cursor(servers_only, meta),
+        Adapter::Codex => adapt_codex(servers_only, meta),
+        Adapter::Opencode => unreachable!(),
+    }
+}
+
+impl CodingAgent {
+    pub fn preconfigured_mcp(&self) -> Value {
+        let adapter = choose_adapter(self);
+        let canonical = PRECONFIGURED_MCP_SERVERS.clone();
+        apply_adapter(adapter, canonical)
+    }
 }
