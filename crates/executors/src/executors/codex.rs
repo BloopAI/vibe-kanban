@@ -245,7 +245,7 @@ pub struct Codex {
 
 impl Codex {
     fn build_command_builder(&self) -> CommandBuilder {
-        let mut builder = CommandBuilder::new("npx -y @openai/codex exec")
+        let mut builder = CommandBuilder::new("npx -y @openai/codex@0.29.0 exec")
             .params(["--json", "--skip-git-repo-check"]);
 
         if let Some(approval) = &self.approval {
