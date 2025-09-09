@@ -44,7 +44,7 @@ pub async fn list_git_repos(
 ) -> Result<ResponseJson<ApiResponse<Vec<DirectoryEntry>>>, ApiError> {
     match deployment
         .filesystem()
-        .list_git_repos(query.path, Some(4))
+        .list_git_repos(query.path, Some(3))
         .await
     {
         Ok(response) => Ok(ResponseJson(ApiResponse::success(response))),
