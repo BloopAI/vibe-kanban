@@ -78,6 +78,13 @@ function AppContent() {
     const checkOnboardingSteps = async () => {
       if (!config) return;
 
+      if (!config.telemetry_acknowledged) {
+        const analyticsEnabled: boolean =
+          await NiceModal.show('privacy-opt-in');
+        await handleTelemetryOptIn(analyticsEnabled);
+        await NiceModal.hide('privacy-opt-in');
+      }
+
       if (!config.disclaimer_acknowledged) {
         await NiceModal.show('disclaimer');
         await handleDisclaimerAccept();
@@ -97,12 +104,6 @@ function AppContent() {
         await NiceModal.hide('github-login');
       }
 
-      if (!config.telemetry_acknowledged) {
-        const analyticsEnabled: boolean =
-          await NiceModal.show('privacy-opt-in');
-        await handleTelemetryOptIn(analyticsEnabled);
-        await NiceModal.hide('privacy-opt-in');
-      }
 
       if (config.show_release_notes) {
         await NiceModal.show('release-notes');
