@@ -20,10 +20,29 @@ function DiffTab({ selectedAttempt }: DiffTabProps) {
   );
 
   useEffect(() => {
+    setLoading(true);
+  }, [selectedAttempt?.id]);
+
+  useEffect(() => {
+    setLoading(true);
+  }, [selectedAttempt?.id]);
+
+  useEffect(() => {
     if (diffs.length > 0 && loading) {
       setLoading(false);
     }
   }, [diffs, loading]);
+
+  // If no diffs arrive within 7 seconds, stop showing the spinner
+  useEffect(() => {
+    if (!loading) return;
+    const timer = setTimeout(() => {
+      if (diffs.length === 0) {
+        setLoading(false);
+      }
+    }, 7000);
+    return () => clearTimeout(timer);
+  }, [loading, diffs.length]);
 
   // Default-collapse certain change kinds on first load
   useEffect(() => {
@@ -72,6 +91,14 @@ function DiffTab({ selectedAttempt }: DiffTabProps) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader />
+      </div>
+    );
+  }
+
+  if (!loading && diffs.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+        No changes have been made yet
       </div>
     );
   }
