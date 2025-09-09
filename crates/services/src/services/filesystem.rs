@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fs,
     path::{Path, PathBuf},
 };
@@ -45,6 +46,44 @@ impl FilesystemService {
         FilesystemService {}
     }
 
+    fn get_directories_to_skip() -> HashSet<String> {
+        let mut skip_dirs = HashSet::from(
+            [
+                "node_modules",
+                "target",
+                "build",
+                "dist",
+                ".next",
+                ".nuxt",
+                ".cache",
+                ".npm",
+                ".yarn",
+                ".pnpm-store",
+                "Library",
+                "AppData",
+                "Applications",
+            ]
+            .map(String::from),
+        );
+
+        [
+            dirs::executable_dir(),
+            dirs::data_dir(),
+            dirs::download_dir(),
+            dirs::picture_dir(),
+            dirs::video_dir(),
+            dirs::audio_dir(),
+        ]
+        .into_iter()
+        .flatten()
+        .filter_map(|path| path.file_name()?.to_str().map(String::from))
+        .for_each(|name| {
+            skip_dirs.insert(name);
+        });
+
+        skip_dirs
+    }
+
     pub async fn list_git_repos(
         &self,
         path: Option<String>,
@@ -54,44 +93,27 @@ impl FilesystemService {
             .map(PathBuf::from)
             .unwrap_or_else(Self::get_working_or_home_directory);
         Self::verify_directory(&base_path)?;
+        let skip_dirs = Self::get_directories_to_skip();
         let mut git_repos: Vec<DirectoryEntry> = WalkBuilder::new(&base_path)
             .follow_links(false)
-            .hidden(false)
+            .hidden(true) // true to skip hidden files
             .git_ignore(true)
-            .filter_entry(|entry| {
-                let path = entry.path();
-                if !path.is_dir() {
-                    return false;
-                }
+            .filter_entry({
+                move |entry| {
+                    let path = entry.path();
+                    if !path.is_dir() {
+                        return false;
+                    }
 
-                // Skip common non-git folders
-                if let Some(name) = path.file_name().and_then(|n| n.to_str())
-                    && matches!(
-                        name,
-                        "Movies"
-                            | "Music"
-                            | "Pictures"
-                            | "Videos"
-                            | "Downloads"
-                            | "node_modules"
-                            | "target"
-                            | "build"
-                            | "dist"
-                            | ".next"
-                            | ".nuxt"
-                            | ".cache"
-                            | ".npm"
-                            | ".yarn"
-                            | ".pnpm-store"
-                            | "Library"
-                            | "AppData"
-                            | "Applications"
-                    )
-                {
-                    return false;
-                }
+                    // Skip common non-git folders
+                    if let Some(name) = path.file_name().and_then(|n| n.to_str())
+                        && skip_dirs.contains(name)
+                    {
+                        return false;
+                    }
 
-                true
+                    true
+                }
             })
             .max_depth(max_depth)
             .git_exclude(true)
