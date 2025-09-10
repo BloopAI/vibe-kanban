@@ -1202,3 +1202,58 @@ fn merge_into_orphaned_branch_uses_libgit2_fallback() {
         "Source worktree should remain clean after libgit2 merge"
     );
 }
+
+#[test]
+fn merge_base_ahead_of_task_should_error() {
+    let td = TempDir::new().unwrap();
+    let repo_path = td.path().join("repo");
+    let worktree_path = td.path().join("wt-feature");
+
+    // Setup: Initialize repo with main branch
+    let service = GitService::new();
+    service
+        .initialize_repo_with_main_branch(&repo_path)
+        .expect("init repo");
+    let repo = Repository::open(&repo_path).unwrap();
+    configure_user(&repo);
+    checkout_branch(&repo, "main");
+
+    // Initial commit on main
+    write_file(&repo_path, "base.txt", "initial content\n");
+    commit_all(&repo, "initial commit");
+
+    // Create feature branch from this point
+    create_branch_from_head(&repo, "feature");
+    service
+        .add_worktree(&repo_path, &worktree_path, "feature", false)
+        .expect("create worktree");
+
+    // Feature makes a change and commits
+    write_file(&worktree_path, "feature.txt", "feature content\n");
+    let wt_repo = Repository::open(&worktree_path).unwrap();
+    commit_all(&wt_repo, "feature change");
+
+    // Main branch advances ahead of feature (this is the key scenario)
+    checkout_branch(&repo, "main");
+    write_file(&repo_path, "main_advance.txt", "main advanced\n");
+    commit_all(&repo, "main advances ahead");
+    write_file(&repo_path, "main_advance2.txt", "main advanced more\n");
+    commit_all(&repo, "main advances further");
+
+    // Attempt to merge feature into main when main is ahead
+    // This should error because base branch has moved ahead of task branch
+    let res = service.merge_changes(
+        &repo_path,
+        &worktree_path,
+        "feature",
+        "main",
+        "attempt merge when base ahead",
+    );
+
+    // TDD: This test will initially fail because merge currently succeeds
+    // Later we'll fix the merge logic to detect this scenario and error
+    assert!(
+        res.is_err(),
+        "Merge should error when base branch is ahead of task branch"
+    );
+}
