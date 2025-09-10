@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useMemo } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Plus } from 'lucide-react';
@@ -9,6 +9,7 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
 import { useSearch } from '@/contexts/search-context';
 import { useQuery } from '@tanstack/react-query';
+import { useTaskViewManager } from '@/hooks/useTaskViewManager';
 
 import {
   getKanbanSectionClasses,
@@ -32,7 +33,6 @@ export function ProjectTasks() {
     attemptId?: string;
   }>();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -60,8 +60,9 @@ export function ProjectTasks() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
-  // Fullscreen state from pathname
-  const isFullscreen = location.pathname.endsWith('/full');
+  // Fullscreen state using custom hook
+  const { isFullscreen, navigateToTask, navigateToAttempt } =
+    useTaskViewManager();
 
   // Attempts fetching (only when task is selected)
   const { data: attempts = [] } = useQuery({
@@ -86,14 +87,13 @@ export function ProjectTasks() {
     (attempt: TaskAttempt | null) => {
       if (!selectedTask) return;
 
-      const baseUrl = `/projects/${projectId}/tasks/${selectedTask.id}`;
-      const attemptUrl = attempt ? `/attempts/${attempt.id}` : '';
-      const fullSuffix = isFullscreen ? '/full' : '';
-      const fullUrl = `${baseUrl}${attemptUrl}${fullSuffix}`;
-
-      navigate(fullUrl, { replace: true });
+      if (attempt) {
+        navigateToAttempt(projectId!, selectedTask.id, attempt.id);
+      } else {
+        navigateToTask(projectId!, selectedTask.id);
+      }
     },
-    [navigate, projectId, selectedTask, isFullscreen]
+    [navigateToTask, navigateToAttempt, projectId, selectedTask]
   );
 
   // Stream tasks for this project
@@ -178,16 +178,14 @@ export function ProjectTasks() {
   );
 
   const handleViewTaskDetails = useCallback(
-    (task: Task, attemptIdToShow?: string) => {
-      // setSelectedTask(task);
-      // setIsPanelOpen(true);
-      // Update URL to include task ID and optionally attempt ID
-      const targetUrl = attemptIdToShow
-        ? `/projects/${projectId}/tasks/${task.id}/attempts/${attemptIdToShow}`
-        : `/projects/${projectId}/tasks/${task.id}`;
-      navigate(targetUrl, { replace: true });
+    (task: Task, attemptIdToShow?: string, fullscreen?: boolean) => {
+      if (attemptIdToShow) {
+        navigateToAttempt(projectId!, task.id, attemptIdToShow, { fullscreen });
+      } else {
+        navigateToTask(projectId!, task.id, { fullscreen });
+      }
     },
-    [projectId, navigate]
+    [projectId, navigateToTask, navigateToAttempt]
   );
 
   const handleDragEnd = useCallback(
@@ -312,22 +310,14 @@ export function ProjectTasks() {
             onNavigateToTask={(taskId) => {
               const task = tasksById[taskId];
               if (task) {
-                handleViewTaskDetails(task);
+                handleViewTaskDetails(task, undefined, true);
               }
             }}
             isFullScreen={isFullscreen}
-            setFullScreen={
-              selectedAttempt
-                ? (fullscreen) => {
-                    const baseUrl = `/projects/${projectId}/tasks/${selectedTask!.id}/attempts/${selectedAttempt.id}`;
-                    const fullUrl = fullscreen ? `${baseUrl}/full` : baseUrl;
-                    navigate(fullUrl, { replace: true });
-                  }
-                : undefined
-            }
             selectedAttempt={selectedAttempt}
             attempts={attempts}
             setSelectedAttempt={setSelectedAttempt}
+            tasksById={tasksById}
           />
         )}
       </div>

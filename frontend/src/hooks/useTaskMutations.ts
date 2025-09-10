@@ -1,6 +1,6 @@
-import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { tasksApi } from '@/lib/api';
+import { useTaskViewManager } from '@/hooks/useTaskViewManager';
 import type {
   CreateTask,
   CreateAndStartTaskRequest,
@@ -10,8 +10,8 @@ import type {
 } from 'shared/types';
 
 export function useTaskMutations(projectId?: string) {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { navigateToTask } = useTaskViewManager();
 
   const invalidateQueries = (taskId?: string) => {
     queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
@@ -24,9 +24,9 @@ export function useTaskMutations(projectId?: string) {
     mutationFn: (data: CreateTask) => tasksApi.create(data),
     onSuccess: (createdTask: Task) => {
       invalidateQueries();
-      navigate(`/projects/${projectId}/tasks/${createdTask.id}`, {
-        replace: true,
-      });
+      if (projectId) {
+        navigateToTask(projectId, createdTask.id);
+      }
     },
     onError: (err) => {
       console.error('Failed to create task:', err);
@@ -38,9 +38,9 @@ export function useTaskMutations(projectId?: string) {
       tasksApi.createAndStart(data),
     onSuccess: (createdTask: TaskWithAttemptStatus) => {
       invalidateQueries();
-      navigate(`/projects/${projectId}/tasks/${createdTask.id}`, {
-        replace: true,
-      });
+      if (projectId) {
+        navigateToTask(projectId, createdTask.id);
+      }
     },
     onError: (err) => {
       console.error('Failed to create and start task:', err);
