@@ -333,6 +333,7 @@ export function ProjectTasks() {
             selectedAttempt={selectedAttempt}
             attempts={attempts}
             setSelectedAttempt={setSelectedAttempt}
+            tasksById={tasksById}
           />
         )}
       </div>
