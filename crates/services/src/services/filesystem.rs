@@ -143,11 +143,7 @@ impl FilesystemService {
     }
 
     fn get_working_or_home_directory() -> PathBuf {
-        // Try current working directory first
-        if let Ok(current_dir) = std::env::current_dir() {
-            return current_dir;
-        }
-        // Fall back to home directory
+        // Always use home directory instead of working directory
         Self::get_home_directory()
     }
 
