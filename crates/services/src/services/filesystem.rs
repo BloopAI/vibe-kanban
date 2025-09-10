@@ -91,7 +91,7 @@ impl FilesystemService {
     ) -> Result<Vec<DirectoryEntry>, FilesystemError> {
         let base_path = path
             .map(PathBuf::from)
-            .unwrap_or_else(Self::get_working_or_home_directory);
+            .unwrap_or_else(Self::get_home_directory);
         Self::verify_directory(&base_path)?;
         let skip_dirs = Self::get_directories_to_skip();
         let mut git_repos: Vec<DirectoryEntry> = WalkBuilder::new(&base_path)
@@ -140,11 +140,6 @@ impl FilesystemService {
             .collect();
         git_repos.sort_by_key(|entry| entry.last_modified.unwrap_or(0));
         Ok(git_repos)
-    }
-
-    fn get_working_or_home_directory() -> PathBuf {
-        // Always use home directory instead of working directory
-        Self::get_home_directory()
     }
 
     fn get_home_directory() -> PathBuf {
