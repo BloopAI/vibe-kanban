@@ -184,36 +184,69 @@ fn adapt_codex(mut servers: ServerMap, mut meta: Option<Value>) -> Value {
     attach_meta(servers, meta)
 }
 
-fn adapt_opencode() -> Value {
-    let mut v = serde_json::json!({
-        "vibe_kanban": {
-            "type": "local",
-            "command": ["npx", "-y", "vibe-kanban", "--mcp"],
-            "enabled": true
-        },
-        "context7": {
-            "type": "remote",
-            "url": "https://mcp.context7.com/mcp",
-            "enabled": true,
-            "headers": {
-                "CONTEXT7_API_KEY": "YOUR_API_KEY",
-                "Accept": "application/json, text/event-stream"
-            }
-        },
-        "playwright": {
-            "type": "local",
-            "command": ["npx", "@playwright/mcp@latest"],
-            "enabled": true
-        }
+fn adapt_opencode(servers: ServerMap, meta: Option<Value>) -> Value {
+    let mut servers = transform_http_servers(servers, |mut s| {
+        let url = s
+            .remove("url")
+            .unwrap_or_else(|| Value::String(String::new()));
+
+        let mut headers = s
+            .remove("headers")
+            .and_then(|v| v.as_object().cloned())
+            .unwrap_or_default();
+
+        ensure_header(
+            &mut headers,
+            "Accept",
+            "application/json, text/event-stream",
+        );
+
+        Map::from_iter([
+            ("type".to_string(), Value::String("remote".to_string())),
+            ("url".to_string(), url),
+            ("headers".to_string(), Value::Object(headers)),
+            ("enabled".to_string(), Value::Bool(true)),
+        ])
     });
 
-    if let Some(meta_all) = PRECONFIGURED_MCP_SERVERS.get("meta").cloned()
-        && let Some(map) = v.as_object_mut()
-    {
-        map.insert("meta".to_string(), meta_all);
+    for (_k, v) in servers.iter_mut() {
+        if let Value::Object(s) = v
+            && is_stdio(s)
+        {
+            let command_str = s
+                .remove("command")
+                .and_then(|v| match v {
+                    Value::String(s) => Some(s),
+                    _ => None,
+                })
+                .unwrap_or_default();
+
+            let mut cmd_vec: Vec<Value> = Vec::new();
+            if !command_str.is_empty() {
+                cmd_vec.push(Value::String(command_str));
+            }
+
+            if let Some(arr) = s.remove("args").and_then(|v| match v {
+                Value::Array(arr) => Some(arr),
+                _ => None,
+            }) {
+                for a in arr {
+                    match a {
+                        Value::String(s) => cmd_vec.push(Value::String(s)),
+                        other => cmd_vec.push(other), // fall back to raw value if not string
+                    }
+                }
+            }
+
+            let mut new_map = Map::new();
+            new_map.insert("type".to_string(), Value::String("local".to_string()));
+            new_map.insert("command".to_string(), Value::Array(cmd_vec));
+            new_map.insert("enabled".to_string(), Value::Bool(true));
+            *s = new_map;
+        }
     }
 
-    v
+    attach_meta(servers, meta)
 }
 
 enum Adapter {
@@ -224,22 +257,7 @@ enum Adapter {
     Opencode,
 }
 
-fn choose_adapter(agent: &CodingAgent) -> Adapter {
-    use Adapter::*;
-    match agent {
-        CodingAgent::ClaudeCode(_) | CodingAgent::Amp(_) => Passthrough,
-        CodingAgent::QwenCode(_) | CodingAgent::Gemini(_) => Gemini,
-        CodingAgent::Cursor(_) => Cursor,
-        CodingAgent::Codex(_) => Codex,
-        CodingAgent::Opencode(_) => Opencode,
-    }
-}
-
 fn apply_adapter(adapter: Adapter, canonical: Value) -> Value {
-    if matches!(adapter, Adapter::Opencode) {
-        return adapt_opencode();
-    }
-
     let (servers_only, meta) = match canonical.as_object() {
         Some(map) => extract_meta(map.clone()),
         None => (ServerMap::new(), None),
@@ -250,13 +268,22 @@ fn apply_adapter(adapter: Adapter, canonical: Value) -> Value {
         Adapter::Gemini => adapt_gemini(servers_only, meta),
         Adapter::Cursor => adapt_cursor(servers_only, meta),
         Adapter::Codex => adapt_codex(servers_only, meta),
-        Adapter::Opencode => unreachable!(),
+        Adapter::Opencode => adapt_opencode(servers_only, meta),
     }
 }
 
 impl CodingAgent {
     pub fn preconfigured_mcp(&self) -> Value {
-        let adapter = choose_adapter(self);
+        use Adapter::*;
+
+        let adapter = match self {
+            CodingAgent::ClaudeCode(_) | CodingAgent::Amp(_) => Passthrough,
+            CodingAgent::QwenCode(_) | CodingAgent::Gemini(_) => Gemini,
+            CodingAgent::Cursor(_) => Cursor,
+            CodingAgent::Codex(_) => Codex,
+            CodingAgent::Opencode(_) => Opencode,
+        };
+
         let canonical = PRECONFIGURED_MCP_SERVERS.clone();
         apply_adapter(adapter, canonical)
     }
