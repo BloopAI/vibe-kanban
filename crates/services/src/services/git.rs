@@ -579,12 +579,20 @@ impl GitService {
         }
     }
 
-    /// Find worktree path for a given branch name
-    fn find_worktree_for_branch(
+    /// Find where a branch is currently checked out (main repo or worktree path)
+    fn find_checkout_path_for_branch(
         &self,
         repo_path: &Path,
         branch_name: &str,
     ) -> Result<Option<std::path::PathBuf>, GitServiceError> {
+        // Check main repo first
+        if let Ok(current_branch) = self.get_current_branch(repo_path)
+            && current_branch == branch_name
+        {
+            return Ok(Some(repo_path.to_path_buf()));
+        }
+
+        // Check worktrees
         let git_cli = GitCli::new();
         let worktree_list = git_cli
             .git(repo_path, ["worktree", "list", "--porcelain"])
@@ -618,24 +626,22 @@ impl GitService {
         let worktree_repo = self.open_repo(worktree_path)?;
         let main_repo = self.open_repo(repo_path)?;
 
-        // Check if target branch has an active worktree (worktree-to-worktree merge)
-        if let Some(target_worktree_path) =
-            self.find_worktree_for_branch(repo_path, base_branch_name)?
+        // Check where target branch is checked out (if anywhere)
+        if let Some(target_checkout_path) =
+            self.find_checkout_path_for_branch(repo_path, base_branch_name)?
         {
             // Use CLI merge in target worktree context to avoid index inconsistencies
             let git_cli = GitCli::new();
-            self.ensure_cli_commit_identity(&target_worktree_path)?;
+            self.ensure_cli_commit_identity(&target_checkout_path)?;
             let sha = git_cli
                 .merge_squash_commit(
-                    &target_worktree_path,
+                    &target_checkout_path,
                     base_branch_name,
                     branch_name,
                     commit_message,
                 )
                 .map_err(|e| {
-                    GitServiceError::InvalidRepository(format!(
-                        "worktree-to-worktree merge failed: {e}"
-                    ))
+                    GitServiceError::InvalidRepository(format!("CLI merge failed: {e}"))
                 })?;
             return Ok(sha);
         }
