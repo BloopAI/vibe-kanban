@@ -1139,3 +1139,66 @@ fn worktree_to_worktree_merge_leaves_no_staged_changes() {
         );
     }
 }
+
+#[test]
+fn merge_into_orphaned_branch_uses_libgit2_fallback() {
+    let td = TempDir::new().unwrap();
+    let (repo_path, worktree_path) = setup_repo_with_worktree(&td);
+
+    // Create an "orphaned" target branch that exists as ref but isn't checked out anywhere
+    let service = GitService::new();
+    let repo = Repository::open(&repo_path).unwrap();
+
+    // Create orphaned-feature branch from current main HEAD but don't check it out
+    let main_commit = repo.head().unwrap().peel_to_commit().unwrap();
+    repo.branch("orphaned-feature", &main_commit, false)
+        .unwrap();
+
+    // Ensure main repo is on different branch and no worktree has orphaned-feature
+    service.checkout_branch(&repo_path, "main").unwrap();
+
+    // Make changes in source worktree
+    write_file(
+        &worktree_path,
+        "feature_content.txt",
+        "content from feature\n",
+    );
+    let wt_repo = Repository::open(&worktree_path).unwrap();
+    commit_all(&wt_repo, "feature changes");
+
+    // orphaned-feature is not checked out anywhere, so should trigger libgit2 path
+
+    // Perform merge into orphaned branch (should use libgit2 fallback)
+    let merge_sha = service
+        .merge_changes(
+            &repo_path,
+            &worktree_path,
+            "feature",
+            "orphaned-feature",
+            "merge into orphaned branch",
+        )
+        .expect("libgit2 merge into orphaned branch should succeed");
+
+    // Verify merge worked - orphaned-feature branch should now point to merge commit
+    let orphaned_branch_oid = service
+        .get_branch_oid(&repo_path, "orphaned-feature")
+        .unwrap();
+    assert_eq!(
+        orphaned_branch_oid, merge_sha,
+        "orphaned-feature branch should point to merge commit"
+    );
+
+    // Verify no working tree was affected (since branch wasn't checked out anywhere)
+    let main_git_cli = GitCli::new();
+    let main_has_staged = main_git_cli.has_staged_changes(&repo_path).unwrap();
+    let worktree_has_staged = main_git_cli.has_staged_changes(&worktree_path).unwrap();
+
+    assert!(
+        !main_has_staged,
+        "Main repo should remain clean after libgit2 merge"
+    );
+    assert!(
+        !worktree_has_staged,
+        "Source worktree should remain clean after libgit2 merge"
+    );
+}
