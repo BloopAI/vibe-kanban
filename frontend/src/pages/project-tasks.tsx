@@ -178,13 +178,14 @@ export function ProjectTasks() {
   );
 
   const handleViewTaskDetails = useCallback(
-    (task: Task, attemptIdToShow?: string) => {
+    (task: Task, attemptIdToShow?: string, fullscreen?: boolean) => {
       // setSelectedTask(task);
       // setIsPanelOpen(true);
       // Update URL to include task ID and optionally attempt ID
-      const targetUrl = attemptIdToShow
+      const baseUrl = attemptIdToShow
         ? `/projects/${projectId}/tasks/${task.id}/attempts/${attemptIdToShow}`
         : `/projects/${projectId}/tasks/${task.id}`;
+      const targetUrl = fullscreen ? `${baseUrl}/full` : baseUrl;
       navigate(targetUrl, { replace: true });
     },
     [projectId, navigate]
@@ -312,19 +313,23 @@ export function ProjectTasks() {
             onNavigateToTask={(taskId) => {
               const task = tasksById[taskId];
               if (task) {
-                handleViewTaskDetails(task);
+                handleViewTaskDetails(task, undefined, true);
               }
             }}
             isFullScreen={isFullscreen}
-            setFullScreen={
-              selectedAttempt
-                ? (fullscreen) => {
-                    const baseUrl = `/projects/${projectId}/tasks/${selectedTask!.id}/attempts/${selectedAttempt.id}`;
-                    const fullUrl = fullscreen ? `${baseUrl}/full` : baseUrl;
-                    navigate(fullUrl, { replace: true });
-                  }
-                : undefined
-            }
+            setFullScreen={(fullscreen) => {
+              let baseUrl, fullUrl;
+              if (selectedAttempt) {
+                // Existing logic with attempt ID
+                baseUrl = `/projects/${projectId}/tasks/${selectedTask!.id}/attempts/${selectedAttempt.id}`;
+                fullUrl = fullscreen ? `${baseUrl}/full` : baseUrl;
+              } else {
+                // New auto-resolution logic without attempt ID
+                baseUrl = `/projects/${projectId}/tasks/${selectedTask!.id}`;
+                fullUrl = fullscreen ? `${baseUrl}/full` : baseUrl;
+              }
+              navigate(fullUrl, { replace: true });
+            }}
             selectedAttempt={selectedAttempt}
             attempts={attempts}
             setSelectedAttempt={setSelectedAttempt}
