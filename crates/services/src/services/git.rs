@@ -579,6 +579,32 @@ impl GitService {
         }
     }
 
+    /// Find worktree path for a given branch name
+    fn find_worktree_for_branch(
+        &self,
+        repo_path: &Path,
+        branch_name: &str,
+    ) -> Result<Option<std::path::PathBuf>, GitServiceError> {
+        let git_cli = GitCli::new();
+        let worktree_list = git_cli
+            .git(repo_path, ["worktree", "list", "--porcelain"])
+            .map_err(|e| {
+                GitServiceError::InvalidRepository(format!("git worktree list failed: {e}"))
+            })?;
+
+        for line in worktree_list.lines() {
+            if let Some(wt_path_str) = line.strip_prefix("worktree ") {
+                let wt_path = std::path::Path::new(wt_path_str);
+                if let Ok(wt_branch) = self.get_current_branch(wt_path)
+                    && wt_branch == branch_name
+                {
+                    return Ok(Some(wt_path.to_path_buf()));
+                }
+            }
+        }
+        Ok(None)
+    }
+
     /// Merge changes from a worktree branch back to the main repository
     pub fn merge_changes(
         &self,
@@ -591,6 +617,28 @@ impl GitService {
         // Open the repositories
         let worktree_repo = self.open_repo(worktree_path)?;
         let main_repo = self.open_repo(repo_path)?;
+
+        // Check if target branch has an active worktree (worktree-to-worktree merge)
+        if let Some(target_worktree_path) =
+            self.find_worktree_for_branch(repo_path, base_branch_name)?
+        {
+            // Use CLI merge in target worktree context to avoid index inconsistencies
+            let git_cli = GitCli::new();
+            self.ensure_cli_commit_identity(&target_worktree_path)?;
+            let sha = git_cli
+                .merge_squash_commit(
+                    &target_worktree_path,
+                    base_branch_name,
+                    branch_name,
+                    commit_message,
+                )
+                .map_err(|e| {
+                    GitServiceError::InvalidRepository(format!(
+                        "worktree-to-worktree merge failed: {e}"
+                    ))
+                })?;
+            return Ok(sha);
+        }
 
         // If main repo is currently on the base branch, perform a safe CLI
         // squash merge directly in the main working tree, provided there are
