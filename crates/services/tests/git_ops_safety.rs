@@ -969,30 +969,39 @@ fn merge_rename_vs_modify_conflict_does_not_move_ref() {
 fn merge_leaves_no_staged_changes_on_target_branch() {
     let td = TempDir::new().unwrap();
     let (repo_path, worktree_path) = setup_repo_with_worktree(&td);
-    
+
     // Ensure main repo is on the base branch (triggers CLI merge path)
     let s = GitService::new();
     s.checkout_branch(&repo_path, "main").unwrap();
-    
+
     // Feature branch makes some changes
     write_file(&worktree_path, "feature_file.txt", "feature content\n");
     write_file(&worktree_path, "common.txt", "modified by feature\n");
     let wt_repo = Repository::open(&worktree_path).unwrap();
     commit_all(&wt_repo, "feature changes");
-    
+
     // Perform the merge
     let _merge_sha = s
-        .merge_changes(&repo_path, &worktree_path, "feature", "main", "merge feature")
+        .merge_changes(
+            &repo_path,
+            &worktree_path,
+            "feature",
+            "main",
+            "merge feature",
+        )
         .expect("merge should succeed");
-    
+
     // THE KEY CHECK: Verify no staged changes remain on target branch
     let git_cli = GitCli::new();
     let has_staged = git_cli
         .has_staged_changes(&repo_path)
         .expect("should be able to check staged changes");
-    
-    assert!(!has_staged, "Target branch should have no staged changes after merge");
-    
+
+    assert!(
+        !has_staged,
+        "Target branch should have no staged changes after merge"
+    );
+
     // Debug info if test fails
     if has_staged {
         let status_output = git_cli.git(&repo_path, ["status", "--porcelain"]).unwrap();
@@ -1004,42 +1013,58 @@ fn merge_leaves_no_staged_changes_on_target_branch() {
 fn feature_to_feature_merge_leaves_no_staged_changes() {
     let td = TempDir::new().unwrap();
     let (repo_path, worktree_path) = setup_repo_with_worktree(&td);
-    
+
     // Create feature-B branch in main repo
     let s = GitService::new();
     s.create_branch(&repo_path, "feature-B").unwrap();
-    
+
     // Ensure main repo is NOT on feature-B (triggers libgit2 path instead of CLI path)
     s.checkout_branch(&repo_path, "old-base").unwrap();
-    
+
     // Feature branch makes some changes
     write_file(&worktree_path, "feature_file.txt", "feature content\n");
     write_file(&worktree_path, "common.txt", "modified by feature\n");
     let wt_repo = Repository::open(&worktree_path).unwrap();
     commit_all(&wt_repo, "feature changes");
-    
+
     // Verify we're triggering libgit2 path by checking current branch != target branch
     let current_branch = s.get_current_branch(&repo_path).unwrap();
-    assert_ne!(current_branch, "feature-B", "Main repo should NOT be on feature-B to trigger libgit2 path");
-    
+    assert_ne!(
+        current_branch, "feature-B",
+        "Main repo should NOT be on feature-B to trigger libgit2 path"
+    );
+
     // Perform feature → feature-B merge (should trigger libgit2 path)
     let _merge_sha = s
-        .merge_changes(&repo_path, &worktree_path, "feature", "feature-B", "merge feature to feature-B")
+        .merge_changes(
+            &repo_path,
+            &worktree_path,
+            "feature",
+            "feature-B",
+            "merge feature to feature-B",
+        )
         .expect("merge should succeed");
-    
+
     // THE KEY CHECK: Verify no staged changes remain on main repo after merge
     let git_cli = GitCli::new();
     let has_staged = git_cli
         .has_staged_changes(&repo_path)
         .expect("should be able to check staged changes");
-    
-    assert!(!has_staged, "Main repo should have no staged changes after feature-to-feature merge");
-    
+
+    assert!(
+        !has_staged,
+        "Main repo should have no staged changes after feature-to-feature merge"
+    );
+
     // Debug info if test fails
     if has_staged {
         let status_output = git_cli.git(&repo_path, ["status", "--porcelain"]).unwrap();
-        let final_branch = s.get_current_branch(&repo_path).unwrap_or_else(|_| "unknown".to_string());
-        panic!("Found staged changes after feature-to-feature merge!\nCurrent branch: {final_branch}\nStaged changes:\n{status_output}");
+        let final_branch = s
+            .get_current_branch(&repo_path)
+            .unwrap_or_else(|_| "unknown".to_string());
+        panic!(
+            "Found staged changes after feature-to-feature merge!\nCurrent branch: {final_branch}\nStaged changes:\n{status_output}"
+        );
     }
 }
 
@@ -1047,48 +1072,207 @@ fn feature_to_feature_merge_leaves_no_staged_changes() {
 fn feature_to_feature_merge_with_existing_files_leaves_no_staged_changes() {
     let td = TempDir::new().unwrap();
     let (repo_path, worktree_path) = setup_repo_with_worktree(&td);
-    
+
     // Create feature-B branch in main repo and add some initial content
     let s = GitService::new();
     s.create_branch(&repo_path, "feature-B").unwrap();
     s.checkout_branch(&repo_path, "feature-B").unwrap();
-    
+
     // Add some files on feature-B branch that don't conflict
-    write_file(&repo_path, "feature_b_file.txt", "initial feature-B content\n");
+    write_file(
+        &repo_path,
+        "feature_b_file.txt",
+        "initial feature-B content\n",
+    );
     let repo = Repository::open(&repo_path).unwrap();
     commit_all(&repo, "feature-B initial changes");
-    
+
     // Switch back to a different branch to trigger libgit2 path
     s.checkout_branch(&repo_path, "old-base").unwrap();
-    
+
     // Feature branch makes non-conflicting changes
-    write_file(&worktree_path, "feature_file.txt", "feature content from worktree\n");
-    write_file(&worktree_path, "common.txt", "modified by feature worktree\n");
+    write_file(
+        &worktree_path,
+        "feature_file.txt",
+        "feature content from worktree\n",
+    );
+    write_file(
+        &worktree_path,
+        "common.txt",
+        "modified by feature worktree\n",
+    );
     write_file(&worktree_path, "new_file.txt", "new file from feature\n");
     let wt_repo = Repository::open(&worktree_path).unwrap();
     commit_all(&wt_repo, "feature changes with overlapping files");
-    
+
     // Verify we're triggering libgit2 path
     let current_branch = s.get_current_branch(&repo_path).unwrap();
-    assert_ne!(current_branch, "feature-B", "Main repo should NOT be on feature-B to trigger libgit2 path");
-    
+    assert_ne!(
+        current_branch, "feature-B",
+        "Main repo should NOT be on feature-B to trigger libgit2 path"
+    );
+
     // Perform feature → feature-B merge (should trigger libgit2 path)
     let _merge_sha = s
-        .merge_changes(&repo_path, &worktree_path, "feature", "feature-B", "merge feature to feature-B with existing files")
+        .merge_changes(
+            &repo_path,
+            &worktree_path,
+            "feature",
+            "feature-B",
+            "merge feature to feature-B with existing files",
+        )
         .expect("merge should succeed");
-    
+
     // THE KEY CHECK: Verify no staged changes remain on main repo after merge
     let git_cli = GitCli::new();
     let has_staged = git_cli
         .has_staged_changes(&repo_path)
         .expect("should be able to check staged changes");
-    
-    assert!(!has_staged, "Main repo should have no staged changes after complex feature-to-feature merge");
-    
-    // Debug info if test fails  
+
+    assert!(
+        !has_staged,
+        "Main repo should have no staged changes after complex feature-to-feature merge"
+    );
+
+    // Debug info if test fails
     if has_staged {
         let status_output = git_cli.git(&repo_path, ["status", "--porcelain"]).unwrap();
-        let final_branch = s.get_current_branch(&repo_path).unwrap_or_else(|_| "unknown".to_string());
-        panic!("Found staged changes after complex feature-to-feature merge!\nCurrent branch: {final_branch}\nStaged changes:\n{status_output}");
+        let final_branch = s
+            .get_current_branch(&repo_path)
+            .unwrap_or_else(|_| "unknown".to_string());
+        panic!(
+            "Found staged changes after complex feature-to-feature merge!\nCurrent branch: {final_branch}\nStaged changes:\n{status_output}"
+        );
+    }
+}
+
+#[test]
+fn worktree_to_worktree_merge_leaves_no_staged_changes() {
+    let td = TempDir::new().unwrap();
+    let repo_path = td.path().join("repo");
+    let worktree_a_path = td.path().join("wt-feature-a");
+    let worktree_b_path = td.path().join("wt-feature-b");
+
+    // Setup: Initialize repo with main branch
+    let service = GitService::new();
+    service
+        .initialize_repo_with_main_branch(&repo_path)
+        .expect("init repo");
+    let repo = Repository::open(&repo_path).unwrap();
+    configure_user(&repo);
+    checkout_branch(&repo, "main");
+
+    write_file(&repo_path, "base.txt", "base content\n");
+    commit_all(&repo, "initial commit");
+
+    // Create two feature branches
+    create_branch_from_head(&repo, "feature-a");
+    create_branch_from_head(&repo, "feature-b");
+
+    // Create worktrees for both feature branches
+    service
+        .add_worktree(&repo_path, &worktree_a_path, "feature-a", false)
+        .expect("create worktree A");
+    service
+        .add_worktree(&repo_path, &worktree_b_path, "feature-b", false)
+        .expect("create worktree B");
+
+    // Make changes in worktree A
+    write_file(
+        &worktree_a_path,
+        "feature_a.txt",
+        "content from feature A\n",
+    );
+    write_file(&worktree_a_path, "base.txt", "modified by feature A\n");
+    let wt_a_repo = Repository::open(&worktree_a_path).unwrap();
+    commit_all(&wt_a_repo, "feature A changes");
+
+    // Make different changes in worktree B
+    write_file(
+        &worktree_b_path,
+        "feature_b.txt",
+        "content from feature B\n",
+    );
+    let wt_b_repo = Repository::open(&worktree_b_path).unwrap();
+    commit_all(&wt_b_repo, "feature B changes");
+
+    // Ensure main repo is on different branch (neither feature-a nor feature-b)
+    checkout_branch(&repo, "main");
+
+    // Perform worktree-to-worktree merge: feature-a → feature-b
+    let _merge_sha = service
+        .merge_changes(
+            &repo_path,
+            &worktree_a_path,
+            "feature-a",
+            "feature-b",
+            "merge feature-a into feature-b",
+        )
+        .expect("worktree-to-worktree merge should succeed");
+
+    // THE KEY CHECK: Verify no staged changes in target worktree (feature-b)
+    let git_cli = GitCli::new();
+    let has_staged_main = git_cli
+        .has_staged_changes(&repo_path)
+        .expect("should be able to check staged changes in main repo");
+    let has_staged_target = git_cli
+        .has_staged_changes(&worktree_b_path)
+        .expect("should be able to check staged changes in target worktree");
+
+    // Show debug info regardless of pass/fail to understand what's happening
+    let main_status = git_cli.git(&repo_path, ["status", "--porcelain"]).unwrap();
+    let target_status = git_cli
+        .git(&worktree_b_path, ["status", "--porcelain"])
+        .unwrap();
+    let main_branch = service
+        .get_current_branch(&repo_path)
+        .unwrap_or_else(|_| "unknown".to_string());
+    let target_branch = service
+        .get_current_branch(&worktree_b_path)
+        .unwrap_or_else(|_| "unknown".to_string());
+
+    println!(
+        "DEBUG: Main repo (on {main_branch}): {}",
+        if main_status.is_empty() {
+            "(clean)"
+        } else {
+            &main_status
+        }
+    );
+    println!(
+        "DEBUG: Target worktree (on {target_branch}): {}",
+        if target_status.is_empty() {
+            "(clean)"
+        } else {
+            &target_status
+        }
+    );
+
+    assert!(
+        !has_staged_main,
+        "Main repo should have no staged changes after worktree-to-worktree merge"
+    );
+    assert!(
+        !has_staged_target,
+        "Target worktree should have no staged changes after worktree-to-worktree merge"
+    );
+
+    // Debug info if test fails
+    if has_staged_main || has_staged_target {
+        let main_status = git_cli.git(&repo_path, ["status", "--porcelain"]).unwrap();
+        let target_status = git_cli
+            .git(&worktree_b_path, ["status", "--porcelain"])
+            .unwrap();
+        let main_branch = service
+            .get_current_branch(&repo_path)
+            .unwrap_or_else(|_| "unknown".to_string());
+        let target_branch = service
+            .get_current_branch(&worktree_b_path)
+            .unwrap_or_else(|_| "unknown".to_string());
+        panic!(
+            "Found staged changes after worktree-to-worktree merge!\n\
+                Main repo (on {main_branch}):\n{main_status}\n\
+                Target worktree (on {target_branch}):\n{target_status}"
+        );
     }
 }
