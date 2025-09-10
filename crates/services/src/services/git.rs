@@ -591,10 +591,10 @@ impl GitService {
         })?;
 
         for worktree in worktrees {
-            if let Some(ref branch) = worktree.branch {
-                if branch == branch_name {
-                    return Ok(Some(std::path::PathBuf::from(worktree.path)));
-                }
+            if let Some(ref branch) = worktree.branch
+                && branch == branch_name
+            {
+                return Ok(Some(std::path::PathBuf::from(worktree.path)));
             }
         }
         Ok(None)
@@ -620,8 +620,7 @@ impl GitService {
 
         if task_behind > 0 {
             return Err(GitServiceError::BranchesDiverged(format!(
-                "Cannot merge: base branch '{}' is {} commits ahead of task branch '{}'. The base branch has moved forward since the task was created.",
-                base_branch_name, task_behind, task_branch_name
+                "Cannot merge: base branch '{base_branch_name}' is {task_behind} commits ahead of task branch '{task_branch_name}'. The base branch has moved forward since the task was created.",
             )));
         }
 
