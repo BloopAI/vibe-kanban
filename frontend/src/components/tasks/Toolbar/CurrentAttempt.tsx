@@ -134,7 +134,7 @@ function CurrentAttempt({
     }
   };
 
-  const handleSpinoffClick = () => {
+  const handleCreateSubtaskClick = () => {
     openTaskForm({
       projectId,
       initialBaseBranch: selectedAttempt.branch || selectedAttempt.base_branch,
@@ -707,13 +707,13 @@ function CurrentAttempt({
             )}
           </div>
           <Button
-            onClick={handleSpinoffClick}
+            onClick={handleCreateSubtaskClick}
             variant="outline"
             size="xs"
             className="gap-1 min-w-[120px]"
           >
             <GitFork className="h-3 w-3" />
-            Spinoff Task
+            Create Subtask
           </Button>
         </div>
       </div>
