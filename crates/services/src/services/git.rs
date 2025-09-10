@@ -613,6 +613,18 @@ impl GitService {
         let task_repo = self.open_repo(task_worktree_path)?;
         let base_repo = self.open_repo(base_worktree_path)?;
 
+        // Check if base branch is ahead of task branch - this indicates the base has moved
+        // ahead since the task was created, which should block the merge
+        let (_, task_behind) =
+            self.get_branch_status(base_worktree_path, task_branch_name, base_branch_name)?;
+
+        if task_behind > 0 {
+            return Err(GitServiceError::BranchesDiverged(format!(
+                "Cannot merge: base branch '{}' is {} commits ahead of task branch '{}'. The base branch has moved forward since the task was created.",
+                base_branch_name, task_behind, task_branch_name
+            )));
+        }
+
         // Check where base branch is checked out (if anywhere)
         match self.find_checkout_path_for_branch(base_worktree_path, base_branch_name)? {
             Some(base_checkout_path) => {
