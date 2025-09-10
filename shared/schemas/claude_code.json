@@ -23,6 +23,12 @@
         "null"
       ]
     },
+    "approvals": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "model": {
       "type": [
         "string",

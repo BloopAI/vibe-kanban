@@ -2,7 +2,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use futures::StreamExt;
 use regex::Regex;
-use utils::msg_store::MsgStore;
+use workspace_utils::msg_store::MsgStore;
 
 /// Handles session management for Codex
 pub struct SessionHandler;

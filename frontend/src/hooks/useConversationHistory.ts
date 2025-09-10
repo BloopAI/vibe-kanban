@@ -6,6 +6,7 @@ import {
   NormalizedEntry,
   PatchType,
   TaskAttempt,
+  ToolStatus,
 } from 'shared/types';
 import { useExecutionProcesses } from './useExecutionProcesses';
 import { useEffect, useMemo, useRef } from 'react';
@@ -273,13 +274,22 @@ export const useConversationHistory = ({
             p.executionProcess.id
           );
 
+          const exitCode = Number(executionProcess?.exit_code) || 0;
           const exit_status: CommandExitStatus | null =
             executionProcess?.status === 'running'
               ? null
               : {
                   type: 'exit_code',
-                  code: Number(executionProcess?.exit_code) || 0,
+                  code: exitCode,
                 };
+
+          const toolStatus: ToolStatus =
+            executionProcess?.status === 'running'
+              ? { status: 'created' }
+              : exitCode === 0
+                ? { status: 'success' }
+                : { status: 'failed' };
+
           const output = p.entries.map((line) => line.content).join('\n');
 
           const toolNormalizedEntry: NormalizedEntry = {
@@ -294,6 +304,7 @@ export const useConversationHistory = ({
                   exit_status,
                 },
               },
+              status: toolStatus,
             },
             content: toolName,
             timestamp: null,

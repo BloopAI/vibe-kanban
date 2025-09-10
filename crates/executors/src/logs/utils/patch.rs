@@ -1,8 +1,8 @@
 use json_patch::Patch;
 use serde::{Deserialize, Serialize};
-use serde_json::{from_value, json};
+use serde_json::{from_value, json, to_value};
 use ts_rs::TS;
-use utils::diff::Diff;
+use workspace_utils::diff::Diff;
 
 use crate::logs::NormalizedEntry;
 
@@ -113,4 +113,21 @@ impl ConversationPatch {
 
         from_value(json!([patch_entry])).unwrap()
     }
+}
+
+/// Extract the entry index and `NormalizedEntry` from a JsonPatch if it contains one
+pub fn extract_normalized_entry_from_patch(patch: &Patch) -> Option<(usize, NormalizedEntry)> {
+    let value = to_value(patch).ok()?;
+    let ops = value.as_array()?;
+    ops.iter().rev().find_map(|op| {
+        let path = op.get("path")?.as_str()?;
+        let entry_index = path.strip_prefix("/entries/")?.parse::<usize>().ok()?;
+
+        let value = op.get("value")?;
+        (value.get("type")?.as_str()? == "NORMALIZED_ENTRY")
+            .then(|| value.get("content"))
+            .flatten()
+            .and_then(|c| from_value::<NormalizedEntry>(c.clone()).ok())
+            .map(|entry| (entry_index, entry))
+    })
 }

@@ -108,7 +108,11 @@ fn generate_types_content() -> String {
         executors::logs::TodoItem::decl(),
         executors::logs::ToolResult::decl(),
         executors::logs::ToolResultValueType::decl(),
+        executors::logs::ToolStatus::decl(),
         executors::logs::utils::patch::PatchType::decl(),
+        utils::approvals::ApprovalStatus::decl(),
+        utils::approvals::CreateApprovalRequest::decl(),
+        utils::approvals::ApprovalResponse::decl(),
         serde_json::Value::decl(),
     ];
 
