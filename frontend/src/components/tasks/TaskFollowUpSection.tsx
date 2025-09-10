@@ -145,7 +145,7 @@ export function TaskFollowUpSection({
   const lastServerVersionRef = useRef<number>(-1);
   const prevSendingRef = useRef<boolean>(false);
 
-  // Helper to show a pleasant fade for transient "Saved" status
+  // Helper to show a pleasant fade for transient "Draft saved" status
   const scheduleSavedStatus = useCallback(() => {
     // Clear pending timers
     if (statusFadeTimerRef.current)
@@ -329,7 +329,7 @@ export function TaskFollowUpSection({
 
     // If server indicates we're sending, ensure the editor is cleared for clarity.
     if (sendingNow) {
-      // Edge trigger: show Sent pill once
+      // Edge trigger: show "Follow-up sent" pill once
       if (!prevSendingRef.current) {
         scheduleSentStatus();
       }
@@ -706,7 +706,7 @@ export function TaskFollowUpSection({
           setSelectedVariant(latest.variant);
         }
       }
-      // Do not show "Saved" for queue; right side shows Queued; a "Sent" pill will appear when sending starts
+      // Do not show "Draft saved" for queue; right side shows Queued; a "Follow-up sent" pill will appear when sending starts
       setSaveStatus('idle');
     } catch (e: unknown) {
       // On any error, hard refresh to server truth
@@ -853,7 +853,7 @@ export function TaskFollowUpSection({
                         isStatusFading && 'opacity-0'
                       )}
                     >
-                      <CheckCircle2 className="h-3 w-3" /> Saved
+                      <CheckCircle2 className="h-3 w-3" /> Draft saved
                     </span>
                   ) : saveStatus === 'sent' ? (
                     <span
@@ -862,7 +862,7 @@ export function TaskFollowUpSection({
                         isStatusFading && 'opacity-0'
                       )}
                     >
-                      <Send className="h-3 w-3" /> Sent
+                      <Send className="h-3 w-3" /> Follow-up sent
                     </span>
                   ) : null}
                 </div>
