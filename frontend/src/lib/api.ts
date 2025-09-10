@@ -38,8 +38,6 @@ import {
   UpdateMcpServersBody,
   GetMcpServerResponse,
   ImageResponse,
-  RestoreAttemptRequest,
-  RestoreAttemptResult,
   FollowUpDraftResponse,
   UpdateFollowUpDraftRequest,
 } from 'shared/types';
@@ -339,24 +337,24 @@ export const attemptsApi = {
     return handleApiResponse<void>(response);
   },
 
-  restore: async (
+  replaceProcess: async (
     attemptId: string,
-    processId: string,
-    opts?: { forceWhenDirty?: boolean; performGitReset?: boolean }
-  ): Promise<RestoreAttemptResult> => {
-    const body: RestoreAttemptRequest = {
-      process_id: processId,
-      force_when_dirty: opts?.forceWhenDirty ?? false,
-      perform_git_reset: opts?.performGitReset ?? true,
-    } as any;
+    data: {
+      process_id: string;
+      prompt: string;
+      variant?: string | null;
+      force_when_dirty?: boolean;
+      perform_git_reset?: boolean;
+    }
+  ): Promise<unknown> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/restore`,
+      `/api/task-attempts/${attemptId}/replace-process`,
       {
         method: 'POST',
-        body: JSON.stringify(body),
+        body: JSON.stringify(data),
       }
     );
-    return handleApiResponse<RestoreAttemptResult>(response);
+    return handleApiResponse(response);
   },
 
   followUp: async (

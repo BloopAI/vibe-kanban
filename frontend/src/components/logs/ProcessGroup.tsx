@@ -7,11 +7,11 @@ type Props = {
   entries: UnifiedLogEntry[];
   isCollapsed: boolean;
   onToggle: (processId: string) => void;
-  restore?: {
-    onRestore: (processId: string) => void;
-    restoreProcessId?: string;
-    restoreDisabled?: boolean;
-    restoreDisabledReason?: string;
+  retry?: {
+    onRetry: (processId: string, newPrompt: string) => void;
+    retryProcessId?: string;
+    retryDisabled?: boolean;
+    retryDisabledReason?: string;
   };
 };
 
@@ -20,7 +20,7 @@ export default function ProcessGroup({
   entries,
   isCollapsed,
   onToggle,
-  restore,
+  retry,
 }: Props) {
   return (
     <div className="px-4 mt-4">
@@ -28,10 +28,10 @@ export default function ProcessGroup({
         payload={header}
         isCollapsed={isCollapsed}
         onToggle={onToggle}
-        onRestore={restore?.onRestore}
-        restoreProcessId={restore?.restoreProcessId}
-        restoreDisabled={restore?.restoreDisabled}
-        restoreDisabledReason={restore?.restoreDisabledReason}
+        onRetry={retry?.onRetry}
+        retryProcessId={retry?.retryProcessId}
+        retryDisabled={retry?.retryDisabled}
+        retryDisabledReason={retry?.retryDisabledReason}
       />
       <div className="text-sm">
         {!isCollapsed &&

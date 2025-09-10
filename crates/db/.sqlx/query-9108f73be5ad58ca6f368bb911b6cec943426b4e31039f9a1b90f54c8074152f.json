@@ -1,0 +1,92 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO execution_processes (\n                id, task_attempt_id, run_reason, executor_action, before_head_commit, after_head_commit, status, \n                exit_code, started_at, completed_at, created_at, updated_at\n               ) \n               VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9, $10, $11) \n               RETURNING \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                run_reason as \"run_reason!: ExecutionProcessRunReason\",\n                executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\",\n                before_head_commit,\n                after_head_commit,\n                status as \"status!: ExecutionProcessStatus\",\n                exit_code,\n                dropped as \"dropped!: bool\",\n                started_at as \"started_at!: DateTime<Utc>\",\n                completed_at as \"completed_at?: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_attempt_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "run_reason!: ExecutionProcessRunReason",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "executor_action!: sqlx::types::Json<ExecutorActionField>",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "before_head_commit",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "after_head_commit",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "status!: ExecutionProcessStatus",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "exit_code",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "dropped!: bool",
+        "ordinal": 8,
+        "type_info": "Bool"
+      },
+      {
+        "name": "started_at!: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "completed_at?: DateTime<Utc>",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 12,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 11
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "9108f73be5ad58ca6f368bb911b6cec943426b4e31039f9a1b90f54c8074152f"
+}

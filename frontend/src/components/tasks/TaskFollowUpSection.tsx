@@ -974,7 +974,6 @@ export function TaskFollowUpSection({
                     return null;
                   })()}
                 </div>
-                {/* (removed) old inline notices now replaced by the status row above */}
 
                 {isAttemptRunning ? (
                   <Button

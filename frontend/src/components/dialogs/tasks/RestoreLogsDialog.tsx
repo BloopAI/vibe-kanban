@@ -61,9 +61,7 @@ export const RestoreLogsDialog = NiceModal.create<RestoreLogsDialogProps>(
 
     const hasLater = laterCount > 0;
     const short = targetSha?.slice(0, 7);
-    const effectiveNeedGitReset =
-      needGitReset && worktreeResetOn && (!hasRisk || (hasRisk && forceReset));
-    const hasChanges = hasLater || effectiveNeedGitReset;
+    // Note: confirm enabling logic handled in footer based on uncommitted changes
 
     const handleConfirm = () => {
       modal.resolve({
@@ -99,7 +97,7 @@ export const RestoreLogsDialog = NiceModal.create<RestoreLogsDialogProps>(
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 mb-3 md:mb-4">
               <AlertTriangle className="h-4 w-4 text-destructive" /> Confirm
-              Restore
+              Retry
             </DialogTitle>
             <DialogDescription className="mt-6 break-words">
               <div className="space-y-3">
@@ -110,34 +108,39 @@ export const RestoreLogsDialog = NiceModal.create<RestoreLogsDialogProps>(
                       <p className="font-medium text-destructive mb-2">
                         History change
                       </p>
-                      {laterCount > 0 && (
-                        <>
-                          <p className="mt-0.5">
-                            Will delete {laterCount} later process
-                            {laterCount === 1 ? '' : 'es'} from history.
-                          </p>
-                          <ul className="mt-1 text-xs text-muted-foreground list-disc pl-5">
-                            {laterCoding > 0 && (
-                              <li>
-                                {laterCoding} coding agent run
-                                {laterCoding === 1 ? '' : 's'}
-                              </li>
-                            )}
-                            {laterSetup + laterCleanup > 0 && (
-                              <li>
-                                {laterSetup + laterCleanup} script process
-                                {laterSetup + laterCleanup === 1 ? '' : 'es'}
-                                {laterSetup > 0 && laterCleanup > 0 && (
-                                  <>
-                                    {' '}
-                                    ({laterSetup} setup, {laterCleanup} cleanup)
-                                  </>
-                                )}
-                              </li>
-                            )}
-                          </ul>
-                        </>
-                      )}
+                      <>
+                        <p className="mt-0.5">
+                          Will delete this process
+                          {laterCount > 0 && (
+                            <>
+                              {' '}
+                              and {laterCount} later process
+                              {laterCount === 1 ? '' : 'es'}
+                            </>
+                          )}{' '}
+                          from history.
+                        </p>
+                        <ul className="mt-1 text-xs text-muted-foreground list-disc pl-5">
+                          {laterCoding > 0 && (
+                            <li>
+                              {laterCoding} coding agent run
+                              {laterCoding === 1 ? '' : 's'}
+                            </li>
+                          )}
+                          {laterSetup + laterCleanup > 0 && (
+                            <li>
+                              {laterSetup + laterCleanup} script process
+                              {laterSetup + laterCleanup === 1 ? '' : 'es'}
+                              {laterSetup > 0 && laterCleanup > 0 && (
+                                <>
+                                  {' '}
+                                  ({laterSetup} setup, {laterCleanup} cleanup)
+                                </>
+                              )}
+                            </li>
+                          )}
+                        </ul>
+                      </>
                       <p className="mt-1 text-xs text-muted-foreground">
                         This permanently alters history and cannot be undone.
                       </p>
@@ -262,11 +265,14 @@ export const RestoreLogsDialog = NiceModal.create<RestoreLogsDialogProps>(
                         Reset worktree
                       </p>
                       <div
-                        className={`mt-2 w-full flex items-center select-none ${forceReset ? 'cursor-pointer' : 'opacity-60 cursor-not-allowed'}`}
+                        className={`mt-2 w-full flex items-center select-none cursor-pointer`}
                         role="switch"
                         onClick={() => {
-                          if (!forceReset) return;
-                          setWorktreeResetOn((v) => !v);
+                          setWorktreeResetOn((on) => {
+                            if (forceReset) return !on; // free toggle when forced
+                            // Without force, only allow explicitly disabling reset
+                            return false;
+                          });
                         }}
                       >
                         <div className="text-xs text-muted-foreground">
@@ -358,10 +364,11 @@ export const RestoreLogsDialog = NiceModal.create<RestoreLogsDialogProps>(
                     <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
                     <div className="text-sm min-w-0 w-full break-words">
                       <p className="font-medium text-green-700 mb-2">
-                        Nothing to change
+                        No resets required
                       </p>
                       <p className="mt-0.5">
-                        You are already at this checkpoint.
+                        You are already at this checkpoint. Retrying will start
+                        a new run from here.
                       </p>
                     </div>
                   </div>
@@ -375,10 +382,15 @@ export const RestoreLogsDialog = NiceModal.create<RestoreLogsDialogProps>(
             </Button>
             <Button
               variant="destructive"
-              disabled={!hasChanges}
+              disabled={
+                // Disable when uncommitted changes present and user hasn't enabled force
+                // or explicitly disabled worktree reset.
+                (hasRisk && worktreeResetOn && needGitReset && !forceReset) ||
+                false
+              }
               onClick={handleConfirm}
             >
-              {hasChanges ? 'Restore' : 'Nothing to change'}
+              Retry
             </Button>
           </DialogFooter>
         </DialogContent>

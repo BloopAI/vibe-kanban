@@ -21,12 +21,7 @@ import {
   PROCESS_STATUSES,
   PROCESS_RUN_REASONS,
 } from '@/constants/processes';
-import { useUserSystem } from '@/components/config-provider';
-import type {
-  ExecutionProcessStatus,
-  BaseAgentCapability,
-  TaskAttempt,
-} from 'shared/types';
+import type { ExecutionProcessStatus, TaskAttempt } from 'shared/types';
 import type { UnifiedLogEntry, ProcessStartPayload } from '@/types/logs';
 import { showModal } from '@/lib/modals';
 
@@ -148,14 +143,6 @@ function LogsTab({ selectedAttempt }: Props) {
       ?.map((p) => `${p.id}:${p.status}:${p.dropped}`)
       .join(','),
   ]);
-
-  const { capabilities } = useUserSystem();
-  const restoreSupported = useMemo(() => {
-    const exec = selectedAttempt?.executor;
-    if (!exec) return false;
-    const caps = capabilities?.[exec] || [];
-    return caps.includes('RESTORE_CHECKPOINT' as BaseAgentCapability);
-  }, [selectedAttempt?.executor, capabilities]);
 
   // Detect if any process is running
   const anyRunning = useMemo(
@@ -310,86 +297,60 @@ function LogsTab({ selectedAttempt }: Props) {
       }
     ) =>
       (() => {
-        // Compute restore props for the process header (if supported)
-        let restore:
+        // Compute retry props (replaces restore)
+        let retry:
           | {
-              onRestore: (pid: string) => void;
-              restoreProcessId?: string;
-              restoreDisabled?: boolean;
-              restoreDisabledReason?: string;
+              onRetry: (pid: string, newPrompt: string) => void;
+              retryProcessId?: string;
+              retryDisabled?: boolean;
+              retryDisabledReason?: string;
             }
           | undefined;
 
-        if (restoreSupported) {
+        {
           const proc = (attemptData.processes || []).find(
             (p) => p.id === group.processId
           );
-          const procs = (attemptData.processes || []).filter(
-            (p) => !p.dropped && shouldShowInLogs(p.run_reason)
-          );
-          const finished = procs.filter((p) => p.status !== 'running');
-          const latestFinished =
-            finished.length > 0 ? finished[finished.length - 1] : undefined;
-          const isLatest = latestFinished?.id === proc?.id;
           const isRunningProc = proc?.status === 'running';
-          const head = branchStatus?.head_oid || null;
-          const isDirty = !!branchStatus?.has_uncommitted_changes;
-          const needGitReset = !!(
-            proc?.after_head_commit &&
-            (proc.after_head_commit !== head || isDirty)
-          );
-
-          // visibility decision
-          let baseShouldShow = false;
-          if (!isRunningProc) {
-            baseShouldShow = !isLatest || needGitReset;
-            if (baseShouldShow && !isLatest && !needGitReset) {
-              const idx = procs.findIndex((p) => p.id === proc?.id);
-              const later = idx >= 0 ? procs.slice(idx + 1) : [];
-              const laterHasCoding = later.some((p) =>
-                isCodingAgent(p.run_reason)
-              );
-              baseShouldShow = laterHasCoding;
-            }
-          }
-          const shouldShow =
-            baseShouldShow || (anyRunning && !isRunningProc && isLatest);
+          const isCoding = proc?.run_reason === 'codingagent';
+          // Always show for coding agent processes
+          const shouldShow = !!isCoding;
 
           if (shouldShow) {
-            let disabled = anyRunning || restoreBusy;
+            const disabled = anyRunning || restoreBusy || isRunningProc;
             let disabledReason: string | undefined;
-            if (anyRunning)
-              disabledReason = 'Cannot restore while a process is running.';
-            else if (restoreBusy) disabledReason = 'Restore in progress.';
-            if (!proc?.after_head_commit) {
-              disabled = true;
-              disabledReason = 'No recorded commit for this process.';
-            }
+            if (isRunningProc)
+              disabledReason = 'Finish or stop this run to retry.';
+            else if (anyRunning)
+              disabledReason = 'Cannot retry while a process is running.';
+            else if (restoreBusy) disabledReason = 'Retry in progress.';
 
-            restore = {
-              restoreProcessId: group.processId,
-              restoreDisabled: disabled,
-              restoreDisabledReason: disabledReason,
-              onRestore: async (pid: string) => {
+            retry = {
+              retryProcessId: group.processId,
+              retryDisabled: disabled,
+              retryDisabledReason: disabledReason,
+              onRetry: async (pid: string, newPrompt: string) => {
                 const p2 = (attemptData.processes || []).find(
                   (p) => p.id === pid
                 );
-                const after = p2?.after_head_commit || null;
+                type WithBefore = { before_head_commit?: string | null };
+                const before =
+                  (p2 as WithBefore | undefined)?.before_head_commit || null;
                 let targetSubject = null;
                 let commitsToReset = null;
                 let isLinear = null;
 
-                if (after && selectedAttempt?.id) {
+                if (before && selectedAttempt?.id) {
                   try {
                     const { commitsApi } = await import('@/lib/api');
                     const info = await commitsApi.getInfo(
                       selectedAttempt.id,
-                      after
+                      before
                     );
                     targetSubject = info.subject;
                     const cmp = await commitsApi.compareToHead(
                       selectedAttempt.id,
-                      after
+                      before
                     );
                     commitsToReset = cmp.is_linear ? cmp.ahead_from_head : null;
                     isLinear = cmp.is_linear;
@@ -400,7 +361,7 @@ function LogsTab({ selectedAttempt }: Props) {
 
                 const head = branchStatus?.head_oid || null;
                 const dirty = !!branchStatus?.has_uncommitted_changes;
-                const needReset = !!(after && (after !== head || dirty));
+                const needReset = !!(before && (before !== head || dirty));
                 const canGitReset = needReset && !dirty;
 
                 // Calculate later process counts for dialog
@@ -426,7 +387,7 @@ function LogsTab({ selectedAttempt }: Props) {
                     performGitReset?: boolean;
                     forceWhenDirty?: boolean;
                   }>('restore-logs', {
-                    targetSha: after,
+                    targetSha: before,
                     targetSubject,
                     commitsToReset,
                     isLinear,
@@ -439,7 +400,8 @@ function LogsTab({ selectedAttempt }: Props) {
                     hasRisk: dirty,
                     uncommittedCount: branchStatus?.uncommitted_count ?? 0,
                     untrackedCount: branchStatus?.untracked_count ?? 0,
-                    initialWorktreeResetOn: !!canGitReset,
+                    // Always default to performing a worktree reset
+                    initialWorktreeResetOn: true,
                     initialForceReset: false,
                   });
 
@@ -447,9 +409,22 @@ function LogsTab({ selectedAttempt }: Props) {
                     const { attemptsApi } = await import('@/lib/api');
                     try {
                       setRestoreBusy(true);
-                      await attemptsApi.restore(selectedAttempt.id, pid, {
-                        performGitReset: result.performGitReset || false,
-                        forceWhenDirty: result.forceWhenDirty || false,
+                      // Determine variant from the original process executor profile if available
+                      let variant: string | null = null;
+                      const typ = p2?.executor_action?.typ;
+                      if (
+                        typ &&
+                        (typ.type === 'CodingAgentInitialRequest' ||
+                          typ.type === 'CodingAgentFollowUpRequest')
+                      ) {
+                        variant = typ.executor_profile_id?.variant ?? null;
+                      }
+                      await attemptsApi.replaceProcess(selectedAttempt.id, {
+                        process_id: pid,
+                        prompt: newPrompt,
+                        variant,
+                        perform_git_reset: result.performGitReset ?? true,
+                        force_when_dirty: result.forceWhenDirty ?? false,
                       });
                       await refetch();
                       await refetchBranch();
@@ -471,14 +446,13 @@ function LogsTab({ selectedAttempt }: Props) {
             entries={group.entries}
             isCollapsed={allCollapsedProcesses.has(group.processId)}
             onToggle={toggleProcessCollapse}
-            restore={restore}
+            retry={retry}
           />
         );
       })(),
     [
       allCollapsedProcesses,
       toggleProcessCollapse,
-      restoreSupported,
       anyRunning,
       restoreBusy,
       selectedAttempt?.id,

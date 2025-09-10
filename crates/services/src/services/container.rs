@@ -593,15 +593,28 @@ pub trait ContainerService {
             Task::update_status(&self.db().pool, task.id, TaskStatus::InProgress).await?;
         }
         // Create new execution process record
+        // Capture current HEAD as the "before" commit for this execution
+        let before_head_commit = {
+            if let Some(container_ref) = &task_attempt.container_ref {
+                let wt = std::path::Path::new(container_ref);
+                self.git().get_head_info(wt).ok().map(|h| h.oid)
+            } else {
+                None
+            }
+        };
         let create_execution_process = CreateExecutionProcess {
             task_attempt_id: task_attempt.id,
             executor_action: executor_action.clone(),
             run_reason: run_reason.clone(),
         };
 
-        let execution_process =
-            ExecutionProcess::create(&self.db().pool, &create_execution_process, Uuid::new_v4())
-                .await?;
+        let execution_process = ExecutionProcess::create(
+            &self.db().pool,
+            &create_execution_process,
+            Uuid::new_v4(),
+            before_head_commit.as_deref(),
+        )
+        .await?;
 
         if let Some(prompt) = match executor_action.typ() {
             ExecutorActionType::CodingAgentInitialRequest(coding_agent_request) => {

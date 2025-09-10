@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT after_head_commit FROM execution_processes\n               WHERE task_attempt_id = $1\n                 AND created_at < (SELECT created_at FROM execution_processes WHERE id = $2)\n               ORDER BY created_at DESC\n               LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "after_head_commit",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "f04191d1233076755f2c82f542d28b4997cb23578c6249346cc23abde5c34398"
+}

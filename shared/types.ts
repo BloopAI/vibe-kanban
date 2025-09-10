@@ -190,11 +190,19 @@ executor_profile_id: ExecutorProfileId, base_branch: string, };
 
 export type RebaseTaskAttemptRequest = { new_base_branch: string | null, };
 
-export type RestoreAttemptRequest = { 
+export type ReplaceProcessRequest = { 
 /**
- * Process to restore to (target = its after_head_commit)
+ * Process to replace (delete this and later ones)
  */
 process_id: string, 
+/**
+ * New prompt to use for the replacement follow-up
+ */
+prompt: string, 
+/**
+ * Optional variant override
+ */
+variant: string | null, 
 /**
  * If true, allow resetting Git even when uncommitted changes exist
  */
@@ -204,7 +212,7 @@ force_when_dirty: boolean | null,
  */
 perform_git_reset: boolean | null, };
 
-export type RestoreAttemptResult = { had_later_processes: boolean, git_reset_needed: boolean, git_reset_applied: boolean, target_after_oid: string | null, };
+export type ReplaceProcessResult = { deleted_count: bigint, git_reset_needed: boolean, git_reset_applied: boolean, target_before_oid: string | null, new_execution_id: string | null, };
 
 export type CommitInfo = { sha: string, subject: string, };
 
@@ -215,6 +223,10 @@ export type BranchStatus = { commits_behind: number | null, commits_ahead: numbe
 export type TaskAttempt = { id: string, task_id: string, container_ref: string | null, branch: string | null, base_branch: string, executor: string, worktree_deleted: boolean, setup_completed_at: string | null, created_at: string, updated_at: string, };
 
 export type ExecutionProcess = { id: string, task_attempt_id: string, run_reason: ExecutionProcessRunReason, executor_action: ExecutorAction, 
+/**
+ * Git HEAD commit OID captured before the process starts
+ */
+before_head_commit: string | null, 
 /**
  * Git HEAD commit OID captured after the process ends
  */

@@ -50,9 +50,13 @@ pub struct RebaseTaskAttemptRequest {
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]
-pub struct RestoreAttemptRequest {
-    /// Process to restore to (target = its after_head_commit)
+pub struct ReplaceProcessRequest {
+    /// Process to replace (delete this and later ones)
     pub process_id: Uuid,
+    /// New prompt to use for the replacement follow-up
+    pub prompt: String,
+    /// Optional variant override
+    pub variant: Option<String>,
     /// If true, allow resetting Git even when uncommitted changes exist
     pub force_when_dirty: Option<bool>,
     /// If false, skip performing the Git reset step (history drop still applies)
@@ -60,11 +64,12 @@ pub struct RestoreAttemptRequest {
 }
 
 #[derive(Debug, Serialize, TS)]
-pub struct RestoreAttemptResult {
-    pub had_later_processes: bool,
+pub struct ReplaceProcessResult {
+    pub deleted_count: i64,
     pub git_reset_needed: bool,
     pub git_reset_applied: bool,
-    pub target_after_oid: Option<String>,
+    pub target_before_oid: Option<String>,
+    pub new_execution_id: Option<Uuid>,
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -283,6 +288,7 @@ pub async fn follow_up(
     Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
 
+// Follow-up draft APIs and queueing
 #[derive(Debug, Serialize, TS)]
 pub struct FollowUpDraftResponse {
     pub task_attempt_id: Uuid,
@@ -751,11 +757,11 @@ async fn start_follow_up_from_draft(
 }
 
 #[axum::debug_handler]
-pub async fn restore_task_attempt(
+pub async fn replace_process(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
-    Json(payload): Json<RestoreAttemptRequest>,
-) -> Result<ResponseJson<ApiResponse<RestoreAttemptResult>>, ApiError> {
+    Json(payload): Json<ReplaceProcessRequest>,
+) -> Result<ResponseJson<ApiResponse<ReplaceProcessResult>>, ApiError> {
     let pool = &deployment.db().pool;
     let proc_id = payload.process_id;
     let force_when_dirty = payload.force_when_dirty.unwrap_or(false);
@@ -774,21 +780,19 @@ pub async fn restore_task_attempt(
         )));
     }
 
-    // Determine if there are later processes
-    let later = ExecutionProcess::count_later_than(pool, task_attempt.id, proc_id).await?;
-    let had_later_processes = later > 0;
-
-    // Mark later processes as dropped
-    if had_later_processes {
-        ExecutionProcess::set_restore_boundary(pool, task_attempt.id, proc_id).await?;
+    // Determine target reset OID: before the target process
+    let mut target_before_oid = process.before_head_commit.clone();
+    if target_before_oid.is_none() {
+        // Fallback: previous process's after_head_commit
+        target_before_oid =
+            ExecutionProcess::find_prev_after_head_commit(pool, task_attempt.id, proc_id).await?;
     }
 
-    // Attempt Git reset to this process's after_head_commit if needed
+    // Decide if Git reset is needed and apply it
     let mut git_reset_needed = false;
     let mut git_reset_applied = false;
-    let target_after_oid = process.after_head_commit.clone();
     if perform_git_reset {
-        if let Some(target_oid) = &target_after_oid {
+        if let Some(target_oid) = &target_before_oid {
             let container_ref = deployment
                 .container()
                 .ensure_container_exists(&task_attempt)
@@ -818,8 +822,8 @@ pub async fn restore_task_attempt(
             }
         }
     } else {
-        // Skipped git reset; still compute if it would be needed for informational result
-        if let Some(target_oid) = &target_after_oid {
+        // Only compute necessity
+        if let Some(target_oid) = &target_before_oid {
             let container_ref = deployment
                 .container()
                 .ensure_container_exists(&task_attempt)
@@ -835,15 +839,82 @@ pub async fn restore_task_attempt(
             if head_oid.as_deref() != Some(target_oid.as_str()) || is_dirty {
                 git_reset_needed = true;
             }
-            git_reset_applied = false;
         }
     }
 
-    Ok(ResponseJson(ApiResponse::success(RestoreAttemptResult {
-        had_later_processes,
+    // Stop any running processes for this attempt
+    deployment.container().try_stop(&task_attempt).await;
+
+    // Delete the target process and all later processes
+    let deleted_count =
+        ExecutionProcess::delete_at_and_after(pool, task_attempt.id, proc_id).await?;
+
+    // Build follow-up executor action using the original process profile
+    let initial_executor_profile_id = match &process
+        .executor_action()
+        .map_err(|e| ApiError::TaskAttempt(TaskAttemptError::ValidationError(e.to_string())))?
+        .typ
+    {
+        ExecutorActionType::CodingAgentInitialRequest(request) => {
+            Ok(request.executor_profile_id.clone())
+        }
+        ExecutorActionType::CodingAgentFollowUpRequest(request) => {
+            Ok(request.executor_profile_id.clone())
+        }
+        _ => Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
+            "Couldn't find profile from executor action".to_string(),
+        ))),
+    }?;
+
+    let executor_profile_id = ExecutorProfileId {
+        executor: initial_executor_profile_id.executor,
+        variant: payload
+            .variant
+            .or(initial_executor_profile_id.variant.clone()),
+    };
+
+    // Use latest session_id from remaining (earlier) processes; if none exists, start a fresh initial request
+    let latest_session_id =
+        ExecutionProcess::find_latest_session_id_by_task_attempt(pool, task_attempt.id).await?;
+
+    let action = if let Some(session_id) = latest_session_id {
+        let follow_up_request = CodingAgentFollowUpRequest {
+            prompt: payload.prompt.clone(),
+            session_id,
+            executor_profile_id,
+        };
+        ExecutorAction::new(
+            ExecutorActionType::CodingAgentFollowUpRequest(follow_up_request),
+            None,
+        )
+    } else {
+        // No prior session (e.g., replacing the first run) → start a fresh initial request
+        ExecutorAction::new(
+            ExecutorActionType::CodingAgentInitialRequest(
+                executors::actions::coding_agent_initial::CodingAgentInitialRequest {
+                    prompt: payload.prompt.clone(),
+                    executor_profile_id,
+                },
+            ),
+            None,
+        )
+    };
+
+    let execution_process = deployment
+        .container()
+        .start_execution(
+            &task_attempt,
+            &action,
+            &ExecutionProcessRunReason::CodingAgent,
+        )
+        .await?;
+
+    Ok(ResponseJson(ApiResponse::success(ReplaceProcessResult {
+        deleted_count,
         git_reset_needed,
         git_reset_applied,
-        target_after_oid,
+        target_before_oid,
+        new_execution_id: Some(execution_process.id),
     })))
 }
 
@@ -1548,7 +1619,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         )
         .route("/follow-up-draft/stream", get(stream_follow_up_draft))
         .route("/follow-up-draft/queue", post(set_follow_up_queue))
-        .route("/restore", post(restore_task_attempt))
+        .route("/replace-process", post(replace_process))
         .route("/commit-info", get(get_commit_info))
         .route("/commit-compare", get(compare_commit_to_head))
         .route("/start-dev-server", post(start_dev_server))

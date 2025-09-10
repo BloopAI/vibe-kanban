@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                run_reason as \"run_reason!: ExecutionProcessRunReason\",\n                executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\",\n                after_head_commit,\n                status as \"status!: ExecutionProcessStatus\",\n                exit_code,\n                dropped as \"dropped!: bool\",\n                started_at as \"started_at!: DateTime<Utc>\",\n                completed_at as \"completed_at?: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes \n               WHERE task_attempt_id = $1 \n               ORDER BY created_at ASC",
+  "query": "SELECT \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                run_reason as \"run_reason!: ExecutionProcessRunReason\",\n                executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\",\n                before_head_commit,\n                after_head_commit,\n                status as \"status!: ExecutionProcessStatus\",\n                exit_code,\n                dropped as \"dropped!: bool\",\n                started_at as \"started_at!: DateTime<Utc>\",\n                completed_at as \"completed_at?: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes \n               WHERE task_attempt_id = $1 \n               ORDER BY created_at ASC",
   "describe": {
     "columns": [
       {
@@ -24,43 +24,48 @@
         "type_info": "Text"
       },
       {
-        "name": "after_head_commit",
+        "name": "before_head_commit",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "status!: ExecutionProcessStatus",
+        "name": "after_head_commit",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "exit_code",
+        "name": "status!: ExecutionProcessStatus",
         "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "exit_code",
+        "ordinal": 7,
         "type_info": "Integer"
       },
       {
         "name": "dropped!: bool",
-        "ordinal": 7,
+        "ordinal": 8,
         "type_info": "Bool"
       },
       {
         "name": "started_at!: DateTime<Utc>",
-        "ordinal": 8,
-        "type_info": "Text"
-      },
-      {
-        "name": "completed_at?: DateTime<Utc>",
         "ordinal": 9,
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "completed_at?: DateTime<Utc>",
         "ordinal": 10,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 12,
         "type_info": "Text"
       }
     ],
@@ -73,6 +78,7 @@
       false,
       false,
       true,
+      true,
       false,
       true,
       false,
@@ -82,5 +88,5 @@
       false
     ]
   },
-  "hash": "d03849da109e7b50ff4dfa6a034c610f9d1b21529558d4dd9da298b34ca69680"
+  "hash": "4e822f8bf09b24f78d99f14b57ad00b3ea3e3e12699ffcf5d3cbe7e8a3375b00"
 }
