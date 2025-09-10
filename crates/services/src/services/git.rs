@@ -633,11 +633,9 @@ impl GitService {
                 let git_cli = GitCli::new();
 
                 // Safety check: no staged changes if target is in main repo
-                if target_checkout_path == repo_path
-                    && git_cli.has_staged_changes(repo_path).map_err(|e| {
-                        GitServiceError::InvalidRepository(format!("git diff --cached failed: {e}"))
-                    })?
-                {
+                if git_cli.has_staged_changes(repo_path).map_err(|e| {
+                    GitServiceError::InvalidRepository(format!("git diff --cached failed: {e}"))
+                })? {
                     return Err(GitServiceError::WorktreeDirty(
                         base_branch_name.to_string(),
                         "staged changes present".to_string(),
