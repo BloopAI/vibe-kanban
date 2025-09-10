@@ -627,89 +627,83 @@ impl GitService {
         let main_repo = self.open_repo(repo_path)?;
 
         // Check where target branch is checked out (if anywhere)
-        if let Some(target_checkout_path) =
-            self.find_checkout_path_for_branch(repo_path, base_branch_name)?
-        {
-            // Use CLI merge in target worktree context to avoid index inconsistencies
-            let git_cli = GitCli::new();
-            self.ensure_cli_commit_identity(&target_checkout_path)?;
-            let sha = git_cli
-                .merge_squash_commit(
-                    &target_checkout_path,
-                    base_branch_name,
-                    branch_name,
-                    commit_message,
-                )
-                .map_err(|e| {
-                    GitServiceError::InvalidRepository(format!("CLI merge failed: {e}"))
-                })?;
-            return Ok(sha);
-        }
+        match self.find_checkout_path_for_branch(repo_path, base_branch_name)? {
+            Some(target_checkout_path) => {
+                // Target branch is checked out somewhere - use CLI merge
+                let git_cli = GitCli::new();
 
-        // If main repo is currently on the base branch, perform a safe CLI
-        // squash merge directly in the main working tree, provided there are
-        // no staged changes (to avoid accidental inclusion).
-        if let Ok(head) = main_repo.head()
-            && let Some(cur) = head.shorthand()
-            && cur == base_branch_name
-        {
-            let git = GitCli::new();
-            if git.has_staged_changes(repo_path).map_err(|e| {
-                GitServiceError::InvalidRepository(format!("git diff --cached failed: {e}"))
-            })? {
-                return Err(GitServiceError::WorktreeDirty(
-                    base_branch_name.to_string(),
-                    "staged changes present".to_string(),
-                ));
+                // Safety check: no staged changes if target is in main repo
+                if target_checkout_path == repo_path
+                    && git_cli.has_staged_changes(repo_path).map_err(|e| {
+                        GitServiceError::InvalidRepository(format!("git diff --cached failed: {e}"))
+                    })?
+                {
+                    return Err(GitServiceError::WorktreeDirty(
+                        base_branch_name.to_string(),
+                        "staged changes present".to_string(),
+                    ));
+                }
+
+                // Use CLI merge in target context
+                self.ensure_cli_commit_identity(&target_checkout_path)?;
+                let sha = git_cli
+                    .merge_squash_commit(
+                        &target_checkout_path,
+                        base_branch_name,
+                        branch_name,
+                        commit_message,
+                    )
+                    .map_err(|e| {
+                        GitServiceError::InvalidRepository(format!("CLI merge failed: {e}"))
+                    })?;
+
+                // Update source branch ref for continuity (if target was main repo)
+                if target_checkout_path == repo_path {
+                    let task_refname = format!("refs/heads/{branch_name}");
+                    git_cli
+                        .update_ref(repo_path, &task_refname, &sha)
+                        .map_err(|e| {
+                            GitServiceError::InvalidRepository(format!(
+                                "git update-ref failed: {e}"
+                            ))
+                        })?;
+                }
+
+                Ok(sha)
             }
-            // This path updates both ref and working tree safely (git will refuse if unsafe)
-            // Ensure identity for the CLI commit
-            self.ensure_cli_commit_identity(repo_path)?;
-            let sha = git
-                .merge_squash_commit(repo_path, base_branch_name, branch_name, commit_message)
-                .map_err(|e| {
-                    GitServiceError::InvalidRepository(format!("git merge --squash failed: {e}"))
-                })?;
-            // Also update task branch ref to merged commit for continuity
-            let task_refname = format!("refs/heads/{branch_name}");
-            git.update_ref(repo_path, &task_refname, &sha)
-                .map_err(|e| {
-                    GitServiceError::InvalidRepository(format!("git update-ref failed: {e}"))
-                })?;
-            return Ok(sha);
+            None => {
+                // Target branch not checked out anywhere - use libgit2 pure ref operations
+                let task_branch = Self::find_branch(&worktree_repo, branch_name)?;
+                let base_branch = Self::find_branch(&worktree_repo, base_branch_name)?;
+
+                // Resolve commits
+                let base_commit = base_branch.get().peel_to_commit()?;
+                let task_commit = task_branch.get().peel_to_commit()?;
+
+                // Create the squash commit in-memory (no checkout) and update the base branch ref
+                let signature = self.signature_with_fallback(&worktree_repo)?;
+                let squash_commit_id = self.perform_squash_merge(
+                    &worktree_repo,
+                    &base_commit,
+                    &task_commit,
+                    &signature,
+                    commit_message,
+                    base_branch_name,
+                )?;
+
+                // Update the task branch to the new squash commit so follow-up
+                // work can continue from the merged state without conflicts.
+                let task_refname = format!("refs/heads/{branch_name}");
+                main_repo.reference(
+                    &task_refname,
+                    squash_commit_id,
+                    true,
+                    "Reset task branch after squash merge",
+                )?;
+
+                Ok(squash_commit_id.to_string())
+            }
         }
-
-        // Otherwise, fall back to libgit2 in-memory squash commit (no working tree changes)
-        // Locate branches in the shared repository (common.git across worktrees)
-        let task_branch = Self::find_branch(&worktree_repo, branch_name)?;
-        let base_branch = Self::find_branch(&worktree_repo, base_branch_name)?;
-
-        // Resolve commits
-        let base_commit = base_branch.get().peel_to_commit()?;
-        let task_commit = task_branch.get().peel_to_commit()?;
-
-        // Create the squash commit in-memory (no checkout) and update the base branch ref
-        let signature = self.signature_with_fallback(&worktree_repo)?;
-        let squash_commit_id = self.perform_squash_merge(
-            &main_repo,
-            &base_commit,
-            &task_commit,
-            &signature,
-            commit_message,
-            base_branch_name,
-        )?;
-
-        // Optionally update the task branch to the new squash commit so follow-up
-        // work can continue from the merged state without conflicts.
-        let task_refname = format!("refs/heads/{branch_name}");
-        main_repo.reference(
-            &task_refname,
-            squash_commit_id,
-            true,
-            "Reset task branch after squash merge",
-        )?;
-
-        Ok(squash_commit_id.to_string())
     }
     fn get_branch_status_inner(
         &self,
