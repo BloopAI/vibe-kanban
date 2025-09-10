@@ -1,8 +1,10 @@
 import { memo } from 'react';
-import type { UnifiedLogEntry } from '@/types/logs';
+import type { UnifiedLogEntry, ApprovalRequest, ApprovalResponse } from '@/types/logs';
 import type { NormalizedEntry } from 'shared/types';
 import StdoutEntry from './StdoutEntry';
 import StderrEntry from './StderrEntry';
+import ApprovalLogEntry from './ApprovalLogEntry';
+import ApprovalResponseEntry from './ApprovalResponseEntry';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 
 interface LogEntryRowProps {
@@ -29,6 +31,26 @@ function LogEntryRow({ entry, index }: LogEntryRowProps) {
             entry={entry.payload as NormalizedEntry}
             expansionKey={`${entry.processId}:${index}`}
             diffDeletable={false}
+          />
+        </div>
+      );
+    case 'approval_request':
+      return (
+        <div className="my-4">
+          <ApprovalLogEntry
+            approval={entry.payload as ApprovalRequest}
+            onRespond={(approved, reason) => {
+              // Optional callback for UI updates
+              console.log('Approval responded:', { approved, reason });
+            }}
+          />
+        </div>
+      );
+    case 'approval_response':
+      return (
+        <div className="my-2">
+          <ApprovalResponseEntry
+            response={entry.payload as ApprovalResponse}
           />
         </div>
       );

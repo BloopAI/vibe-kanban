@@ -10,6 +10,11 @@
         "CLAUDE_CODE": {
           "plan": true
         }
+      },
+      "APPROVALS": {
+        "CLAUDE_CODE": {
+          "approvals": true
+        }
       }
     },
     "AMP": {
