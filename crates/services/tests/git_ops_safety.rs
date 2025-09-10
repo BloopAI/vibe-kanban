@@ -401,15 +401,26 @@ fn merge_preserves_unstaged_changes_on_base() {
     write_file(&worktree_path, "merged.txt", "merged content\n");
     let wt_repo = Repository::open(&worktree_path).unwrap();
     commit_all(&wt_repo, "feature merged");
-    let _sha = s
-        .merge_changes(&repo_path, &worktree_path, "feature", "main", "squash")
-        .unwrap();
-    // local edit preserved
+
+    // Attempt merge - should fail because base advanced after feature was created
+    let before_main = s.get_branch_oid(&repo_path, "main").unwrap();
+    let res = s.merge_changes(&repo_path, &worktree_path, "feature", "main", "squash");
+
+    assert!(
+        res.is_err(),
+        "merge should fail when base branch has moved ahead"
+    );
+
+    // Verify nothing was changed by the failed merge attempt
+    let after_main = s.get_branch_oid(&repo_path, "main").unwrap();
+    assert_eq!(before_main, after_main, "main ref should be unchanged");
+
+    // Local unstaged changes should be preserved
     let loc = std::fs::read_to_string(repo_path.join("local.txt")).unwrap();
     assert_eq!(loc, "local edited\n");
-    // merged file updated
-    let m = std::fs::read_to_string(repo_path.join("merged.txt")).unwrap();
-    assert_eq!(m, "merged content\n");
+
+    // Feature file should not have been merged into main worktree
+    assert!(!repo_path.join("merged.txt").exists());
 }
 
 #[test]
@@ -583,7 +594,7 @@ fn rebase_applies_multiple_commits_onto_ahead_base() {
 }
 
 #[test]
-fn merge_when_base_ahead_and_feature_ahead_succeeds() {
+fn merge_when_base_ahead_and_feature_ahead_fails() {
     let td = TempDir::new().unwrap();
     let (repo_path, worktree_path) = setup_repo_with_worktree(&td);
     let repo = Repository::open(&repo_path).unwrap();
@@ -599,41 +610,28 @@ fn merge_when_base_ahead_and_feature_ahead_succeeds() {
 
     let g = GitService::new();
     let before_main = g.get_branch_oid(&repo_path, "main").unwrap();
-    // Merge (squash) into main
+
+    // Attempt to merge (squash) into main - should fail because base is ahead
     let service = GitService::new();
-    let merge_sha = service
-        .merge_changes(
-            &repo_path,
-            &worktree_path,
-            "feature",
-            "main",
-            "squash merge",
-        )
-        .expect("merge should succeed");
+    let res = service.merge_changes(
+        &repo_path,
+        &worktree_path,
+        "feature",
+        "main",
+        "squash merge",
+    );
 
+    assert!(
+        res.is_err(),
+        "merge should fail when base branch is ahead of task branch"
+    );
+
+    // Verify main branch was not modified
     let after_main = g.get_branch_oid(&repo_path, "main").unwrap();
-    assert_ne!(before_main, after_main, "main should advance");
-    assert_eq!(after_main, merge_sha);
-
-    // Verify squash commit introduced feature files via commit diff
-    let diffs = g
-        .get_diffs(
-            DiffTarget::Commit {
-                repo_path: Path::new(&repo_path),
-                commit_sha: &after_main,
-            },
-            None,
-        )
-        .unwrap();
-    let has_feat = diffs.iter().any(|d| {
-        d.new_path.as_deref() == Some("feat.txt")
-            && d.new_content.as_deref() == Some("feat change\n")
-    });
-    let has_another = diffs.iter().any(|d| {
-        d.new_path.as_deref() == Some("another.txt")
-            && d.new_content.as_deref() == Some("feature ahead\n")
-    });
-    assert!(has_feat && has_another);
+    assert_eq!(
+        before_main, after_main,
+        "main ref should remain unchanged when merge fails"
+    );
 }
 
 #[test]
@@ -663,7 +661,7 @@ fn merge_conflict_does_not_move_base_ref() {
 
 #[test]
 fn merge_delete_vs_modify_conflict_behaves_safely() {
-    // main modifies file, feature deletes it -> conflict
+    // main modifies file, feature deletes it -> but now blocked by branch ahead check
     let td = TempDir::new().unwrap();
     let (repo_path, worktree_path) = setup_repo_with_worktree(&td);
     let repo = Repository::open(&repo_path).unwrap();
@@ -672,8 +670,6 @@ fn merge_delete_vs_modify_conflict_behaves_safely() {
     checkout_branch(&repo, "main");
     write_file(&repo_path, "conflict_dm.txt", "base\n");
     commit_all(&repo, "add conflict file");
-    let g = GitService::new();
-    let before = g.get_branch_oid(&repo_path, "main").unwrap();
 
     // feature deletes it and commits
     let wt_repo = Repository::open(&worktree_path).unwrap();
@@ -683,9 +679,13 @@ fn merge_delete_vs_modify_conflict_behaves_safely() {
     }
     commit_all(&wt_repo, "delete in feature");
 
-    // main modifies same file
+    // main modifies same file (this puts main ahead of feature)
     write_file(&repo_path, "conflict_dm.txt", "main modify\n");
     commit_all(&repo, "modify in main");
+
+    // Capture main state AFTER all setup commits
+    let g = GitService::new();
+    let before = g.get_branch_oid(&repo_path, "main").unwrap();
 
     let service = GitService::new();
     let res = service.merge_changes(
@@ -695,24 +695,13 @@ fn merge_delete_vs_modify_conflict_behaves_safely() {
         "main",
         "squash merge",
     );
-    match res {
-        Err(_) => {
-            // On failure, ensure base ref unchanged
-            let after = g.get_branch_oid(&repo_path, "main").unwrap();
-            assert_eq!(before, after, "main ref must remain unchanged on failure");
-        }
-        Ok(merge_sha) => {
-            // On success, verify the resulting commit exists and the working tree was not touched
-            let after_oid = g.get_branch_oid(&repo_path, "main").unwrap();
-            assert_eq!(after_oid, merge_sha);
-            // File either preserved (modify wins) or deleted (delete wins); both are acceptable, but no crash
-            let path = repo_path.join("conflict_dm.txt");
-            if path.exists() {
-                let content = std::fs::read_to_string(&path).unwrap();
-                assert_eq!(content, "main modify\n");
-            }
-        }
-    }
+
+    // Should now fail due to base branch being ahead, not due to merge conflicts
+    assert!(res.is_err(), "merge should fail when base branch is ahead");
+
+    // Ensure base ref unchanged on failure
+    let after = g.get_branch_oid(&repo_path, "main").unwrap();
+    assert_eq!(before, after, "main ref must remain unchanged on failure");
 }
 
 #[test]
@@ -1010,7 +999,7 @@ fn merge_leaves_no_staged_changes_on_target_branch() {
 }
 
 #[test]
-fn worktree_to_worktree_merge_leaves_no_staged_changes() {
+fn worktree_to_worktree_merge_fails_when_target_ahead() {
     let td = TempDir::new().unwrap();
     let repo_path = td.path().join("repo");
     let worktree_a_path = td.path().join("wt-feature-a");
@@ -1050,7 +1039,7 @@ fn worktree_to_worktree_merge_leaves_no_staged_changes() {
     let wt_a_repo = Repository::open(&worktree_a_path).unwrap();
     commit_all(&wt_a_repo, "feature A changes");
 
-    // Make different changes in worktree B
+    // Make different changes in worktree B (this puts feature-b ahead of feature-a)
     write_file(
         &worktree_b_path,
         "feature_b.txt",
@@ -1062,18 +1051,32 @@ fn worktree_to_worktree_merge_leaves_no_staged_changes() {
     // Ensure main repo is on different branch (neither feature-a nor feature-b)
     checkout_branch(&repo, "main");
 
-    // Perform worktree-to-worktree merge: feature-a → feature-b
-    let _merge_sha = service
-        .merge_changes(
-            &repo_path,
-            &worktree_a_path,
-            "feature-a",
-            "feature-b",
-            "merge feature-a into feature-b",
-        )
-        .expect("worktree-to-worktree merge should succeed");
+    // Record state before merge attempt
+    let before_feature_b = service.get_branch_oid(&repo_path, "feature-b").unwrap();
 
-    // THE KEY CHECK: Verify no staged changes in target worktree (feature-b)
+    // Attempt worktree-to-worktree merge: feature-a → feature-b
+    // This should fail because feature-b is ahead of feature-a
+    let res = service.merge_changes(
+        &repo_path,
+        &worktree_a_path,
+        "feature-a",
+        "feature-b",
+        "merge feature-a into feature-b",
+    );
+
+    assert!(
+        res.is_err(),
+        "worktree-to-worktree merge should fail when target branch is ahead"
+    );
+
+    // Verify no changes were made
+    let after_feature_b = service.get_branch_oid(&repo_path, "feature-b").unwrap();
+    assert_eq!(
+        before_feature_b, after_feature_b,
+        "feature-b ref should be unchanged after failed merge"
+    );
+
+    // Verify no staged changes were introduced
     let git_cli = GitCli::new();
     let has_staged_main = git_cli
         .has_staged_changes(&repo_path)
@@ -1082,62 +1085,14 @@ fn worktree_to_worktree_merge_leaves_no_staged_changes() {
         .has_staged_changes(&worktree_b_path)
         .expect("should be able to check staged changes in target worktree");
 
-    // Show debug info regardless of pass/fail to understand what's happening
-    let main_status = git_cli.git(&repo_path, ["status", "--porcelain"]).unwrap();
-    let target_status = git_cli
-        .git(&worktree_b_path, ["status", "--porcelain"])
-        .unwrap();
-    let main_branch = service
-        .get_current_branch(&repo_path)
-        .unwrap_or_else(|_| "unknown".to_string());
-    let target_branch = service
-        .get_current_branch(&worktree_b_path)
-        .unwrap_or_else(|_| "unknown".to_string());
-
-    println!(
-        "DEBUG: Main repo (on {main_branch}): {}",
-        if main_status.is_empty() {
-            "(clean)"
-        } else {
-            &main_status
-        }
-    );
-    println!(
-        "DEBUG: Target worktree (on {target_branch}): {}",
-        if target_status.is_empty() {
-            "(clean)"
-        } else {
-            &target_status
-        }
-    );
-
     assert!(
         !has_staged_main,
-        "Main repo should have no staged changes after worktree-to-worktree merge"
+        "Main repo should have no staged changes after failed merge"
     );
     assert!(
         !has_staged_target,
-        "Target worktree should have no staged changes after worktree-to-worktree merge"
+        "Target worktree should have no staged changes after failed merge"
     );
-
-    // Debug info if test fails
-    if has_staged_main || has_staged_target {
-        let main_status = git_cli.git(&repo_path, ["status", "--porcelain"]).unwrap();
-        let target_status = git_cli
-            .git(&worktree_b_path, ["status", "--porcelain"])
-            .unwrap();
-        let main_branch = service
-            .get_current_branch(&repo_path)
-            .unwrap_or_else(|_| "unknown".to_string());
-        let target_branch = service
-            .get_current_branch(&worktree_b_path)
-            .unwrap_or_else(|_| "unknown".to_string());
-        panic!(
-            "Found staged changes after worktree-to-worktree merge!\n\
-                Main repo (on {main_branch}):\n{main_status}\n\
-                Target worktree (on {target_branch}):\n{target_status}"
-        );
-    }
 }
 
 #[test]
