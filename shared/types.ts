@@ -184,6 +184,8 @@ executor_profile_id: ExecutorProfileId, base_branch: string, };
 
 export type RebaseTaskAttemptRequest = { new_base_branch: string | null, };
 
+export type GitOperationError = { "type": "merge_conflicts", message: string, op: ConflictOp, } | { "type": "rebase_in_progress" };
+
 export type ReplaceProcessRequest = { 
 /**
  * Process to replace (delete this and later ones)
@@ -208,7 +210,21 @@ perform_git_reset: boolean | null, };
 
 export type CommitInfo = { sha: string, subject: string, };
 
-export type BranchStatus = { commits_behind: number | null, commits_ahead: number | null, has_uncommitted_changes: boolean | null, head_oid: string | null, uncommitted_count: number | null, untracked_count: number | null, base_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, merges: Array<Merge>, };
+export type BranchStatus = { commits_behind: number | null, commits_ahead: number | null, has_uncommitted_changes: boolean | null, head_oid: string | null, uncommitted_count: number | null, untracked_count: number | null, base_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, merges: Array<Merge>, 
+/**
+ * True if a `git rebase` is currently in progress in this worktree
+ */
+is_rebase_in_progress: boolean, 
+/**
+ * Current conflict operation if any
+ */
+conflict_op: ConflictOp | null, 
+/**
+ * List of files currently in conflicted (unmerged) state
+ */
+conflicted_files: Array<string>, };
+
+export type ConflictOp = "rebase" | "merge" | "cherry_pick" | "revert";
 
 export type TaskAttempt = { id: string, task_id: string, container_ref: string | null, branch: string | null, base_branch: string, executor: string, worktree_deleted: boolean, setup_completed_at: string | null, created_at: string, updated_at: string, };
 

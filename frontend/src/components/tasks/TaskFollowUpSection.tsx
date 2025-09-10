@@ -1,5 +1,4 @@
 import {
-  AlertCircle,
   CheckCircle2,
   ChevronDown,
   Clock,
@@ -8,6 +7,7 @@ import {
   Send,
   StopCircle,
   WifiOff,
+  AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ImageUploadSection } from '@/components/ui/ImageUploadSection';
@@ -38,6 +38,9 @@ import { useVariantCyclingShortcut } from '@/lib/keyboard-shortcuts';
 import { useReview } from '@/contexts/ReviewProvider';
 import { useJsonPatchStream } from '@/hooks/useJsonPatchStream';
 import { inIframe } from '@/vscode/bridge';
+import { buildResolveConflictsInstructions } from '@/lib/conflicts';
+import type { ConflictOp } from 'shared/types';
+import { ConflictBanner } from '@/components/tasks/ConflictBanner';
 
 interface TaskFollowUpSectionProps {
   task: TaskWithAttemptStatus;
@@ -61,7 +64,9 @@ export function TaskFollowUpSection({
     isStopping,
     processes,
   } = useAttemptExecution(selectedAttemptId, task.id);
-  const { data: branchStatus } = useBranchStatus(selectedAttemptId);
+  const { data: branchStatus, refetch: refetchBranchStatus } =
+    useBranchStatus(selectedAttemptId);
+  const [attemptBranch, setAttemptBranch] = useState<string | null>(null);
   const { profiles } = useUserSystem();
   const { comments, generateReviewMarkdown, clearComments } = useReview();
 
@@ -237,7 +242,7 @@ export function TaskFollowUpSection({
     ? `/api/task-attempts/${selectedAttemptId}/follow-up-draft/stream`
     : undefined;
   const makeInitialDraftData = useCallback(
-    () => ({
+    (): DraftStreamState => ({
       follow_up_draft: {
         id: '',
         task_attempt_id: selectedAttemptId || '',
@@ -247,10 +252,10 @@ export function TaskFollowUpSection({
         variant: null,
         image_ids: [],
         // version used only for local comparison; server will patch real value
-        version: 0 as unknown,
-        created_at: new Date().toISOString() as unknown,
-        updated_at: new Date().toISOString() as unknown,
-      } as any,
+        version: 0n,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
     }),
     [selectedAttemptId]
   );
@@ -275,9 +280,7 @@ export function TaskFollowUpSection({
         const draft = await attemptsApi.getFollowUpDraft(selectedAttemptId);
         if (cancelled) return;
         suppressNextSaveRef.current = true;
-        const incomingVersion = draft?.version
-          ? Number(draft.version as unknown)
-          : 0;
+        const incomingVersion = Number((draft as FollowUpDraft).version ?? 0n);
         lastServerVersionRef.current = incomingVersion;
         setFollowUpMessage(draft.prompt || '');
         setIsQueued(!!draft.queued);
@@ -295,6 +298,13 @@ export function TaskFollowUpSection({
         if (!isDraftReady) setIsDraftReady(true);
       } catch {
         // ignore, rely on SSE/poll fallback
+      }
+      // Also fetch attempt branch for UX context
+      try {
+        const attempt = await attemptsApi.get(selectedAttemptId);
+        if (!cancelled) setAttemptBranch(attempt.branch ?? null);
+      } catch {
+        /* no-op */
       }
     };
     hydrateOnce();
@@ -315,16 +325,16 @@ export function TaskFollowUpSection({
 
   useEffect(() => {
     if (!draftStream) return;
-    const d = draftStream.follow_up_draft as FollowUpDraft;
+    const d: FollowUpDraft = draftStream.follow_up_draft;
     // Ignore synthetic initial placeholder until real SSE snapshot arrives
-    if ((d as any).id === '') {
+    if (d.id === '') {
       return;
     }
-    const incomingVersion = d?.version ? Number(d.version as unknown) : 0;
+    const incomingVersion = Number(d.version ?? 0n);
 
     // Always reflect queued/sending flags immediately
     setIsQueued(!!d.queued);
-    const sendingNow = !!(d as any).sending;
+    const sendingNow = !!d.sending;
     setIsDraftSending(sendingNow);
 
     // If server indicates we're sending, ensure the editor is cleared for clarity.
@@ -451,9 +461,7 @@ export function TaskFollowUpSection({
         // Update immediate state, similar to SSE handler
         setIsQueued(!!draft.queued);
         // Polling response does not include 'sending'; preserve previous sending state
-        const incomingVersion = draft?.version
-          ? Number(draft.version as unknown)
-          : 0;
+        const incomingVersion = Number((draft as FollowUpDraft).version ?? 0n);
         if (incomingVersion !== lastServerVersionRef.current) {
           suppressNextSaveRef.current = true;
           setFollowUpMessage(draft.prompt || '');
@@ -494,14 +502,14 @@ export function TaskFollowUpSection({
 
     const saveDraft = async () => {
       const d = draftStream?.follow_up_draft;
-      const payload: any = {} as UpdateFollowUpDraftRequest;
+      const payload: Partial<UpdateFollowUpDraftRequest> = {};
       // prompt change
       if (d && followUpMessage !== (d.prompt || '')) {
         payload.prompt = followUpMessage;
       }
       // variant change (string | null)
       if ((d?.variant ?? null) !== (selectedVariant ?? null)) {
-        payload.variant = selectedVariant as any; // may be null
+        payload.variant = (selectedVariant ?? null) as string | null;
       }
       // images change (compare ids)
       const currentIds = images.map((img) => img.id);
@@ -522,7 +530,10 @@ export function TaskFollowUpSection({
       try {
         setIsSaving(true);
         setSaveStatus(navigator.onLine ? 'saving' : 'offline');
-        await attemptsApi.saveFollowUpDraft(selectedAttemptId, payload);
+        await attemptsApi.saveFollowUpDraft(
+          selectedAttemptId,
+          payload as UpdateFollowUpDraftRequest
+        );
         // pleasant linger + fade-out
         scheduleSavedStatus();
       } catch (e: unknown) {
@@ -536,7 +547,7 @@ export function TaskFollowUpSection({
             setSelectedVariant(draft.variant);
           }
           if (draft.version !== undefined && draft.version !== null) {
-            lastServerVersionRef.current = Number(draft.version as unknown);
+            lastServerVersionRef.current = Number(draft.version ?? 0n);
           }
         } catch {
           /* empty */
@@ -549,12 +560,7 @@ export function TaskFollowUpSection({
 
     // debounce 400ms
     if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = (
-      window.setTimeout as unknown as (
-        handler: () => void,
-        timeout?: number
-      ) => number
-    )(saveDraft, 400);
+    saveTimeoutRef.current = window.setTimeout(saveDraft, 400);
     return () => {
       if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
     };
@@ -643,6 +649,46 @@ export function TaskFollowUpSection({
   const isDraftLocked = isQueued || isQueuing || isUnqueuing || isDraftSending;
   const isInputDisabled = isDraftLocked || !isDraftReady;
 
+  // Quick helper to insert a conflict-resolution template into the draft
+  const insertResolveConflictsTemplate = useCallback(() => {
+    const op: ConflictOp | null = ((): ConflictOp | null => {
+      const v = branchStatus?.conflict_op;
+      if (
+        v === 'rebase' ||
+        v === 'merge' ||
+        v === 'cherry_pick' ||
+        v === 'revert'
+      )
+        return v;
+      return null;
+    })();
+    const template = buildResolveConflictsInstructions(
+      attemptBranch,
+      branchStatus?.base_branch_name,
+      branchStatus?.conflicted_files || [],
+      op
+    );
+    setFollowUpMessage((prev) => {
+      const sep =
+        prev.trim().length === 0 ? '' : prev.endsWith('\n') ? '\n' : '\n\n';
+      return prev + sep + template;
+    });
+  }, [
+    attemptBranch,
+    branchStatus?.base_branch_name,
+    branchStatus?.conflicted_files,
+    branchStatus?.conflict_op,
+  ]);
+
+  // When a process completes (e.g., agent resolved conflicts), refresh branch status promptly
+  const prevRunningRef = useRef<boolean>(isAttemptRunning);
+  useEffect(() => {
+    if (prevRunningRef.current && !isAttemptRunning && selectedAttemptId) {
+      refetchBranchStatus();
+    }
+    prevRunningRef.current = isAttemptRunning;
+  }, [isAttemptRunning, selectedAttemptId, refetchBranchStatus]);
+
   // Queue handler: ensure draft is persisted immediately, then toggle queued
   const onQueue = async () => {
     if (!selectedAttemptId) return;
@@ -659,15 +705,15 @@ export function TaskFollowUpSection({
       setIsSaving(true);
       setSaveStatus(navigator.onLine ? 'saving' : 'offline');
       // 1) Force-save current draft so the row exists and is up to date (no version to avoid conflicts)
-      const immediatePayload: any = {
+      const immediatePayload: Partial<UpdateFollowUpDraftRequest> = {
         // Do NOT send version here to avoid spurious 409; we'll use the returned version for queueing
         prompt: followUpMessage,
-      } as UpdateFollowUpDraftRequest;
+      };
       if (
         (draftStream?.follow_up_draft?.variant ?? null) !==
         (selectedVariant ?? null)
       ) {
-        immediatePayload.variant = selectedVariant as any;
+        immediatePayload.variant = (selectedVariant ?? null) as string | null;
       }
       const currentIds = images.map((img) => img.id);
       const serverIds =
@@ -678,7 +724,10 @@ export function TaskFollowUpSection({
       if (!idsEqual) {
         immediatePayload.image_ids = currentIds;
       }
-      await attemptsApi.saveFollowUpDraft(selectedAttemptId, immediatePayload);
+      await attemptsApi.saveFollowUpDraft(
+        selectedAttemptId,
+        immediatePayload as UpdateFollowUpDraftRequest
+      );
 
       // 2) Queue with optimistic concurrency using latest version from save
       try {
@@ -688,7 +737,7 @@ export function TaskFollowUpSection({
         );
         // Immediate local sync to avoid waiting for SSE
         if (resp?.version !== undefined) {
-          lastServerVersionRef.current = Number(resp.version as unknown);
+          lastServerVersionRef.current = Number(resp.version ?? 0n);
         }
         setIsQueued(!!resp.queued);
         if (resp.variant !== undefined && resp.variant !== null) {
@@ -699,7 +748,7 @@ export function TaskFollowUpSection({
         const latest = await attemptsApi.getFollowUpDraft(selectedAttemptId);
         suppressNextSaveRef.current = true;
         if (latest.version !== undefined && latest.version !== null) {
-          lastServerVersionRef.current = Number(latest.version as unknown);
+          lastServerVersionRef.current = Number(latest.version ?? 0n);
         }
         setIsQueued(!!latest.queued);
         if (latest.variant !== undefined && latest.variant !== null) {
@@ -719,7 +768,7 @@ export function TaskFollowUpSection({
           setSelectedVariant(draft.variant);
         }
         if (draft.version !== undefined && draft.version !== null) {
-          lastServerVersionRef.current = Number(draft.version as unknown);
+          lastServerVersionRef.current = Number(draft.version ?? 0n);
         }
       } catch {
         /* empty */
@@ -766,14 +815,58 @@ export function TaskFollowUpSection({
               </div>
             )}
 
+            {/* Rebase conflict notice and actions */}
+            {(branchStatus?.conflicted_files?.length ?? 0) > 0 &&
+              isDraftReady && (
+                <ConflictBanner
+                  attemptBranch={attemptBranch}
+                  baseBranch={branchStatus?.base_branch_name}
+                  conflictedFiles={branchStatus?.conflicted_files || []}
+                  isDraftLocked={isDraftLocked}
+                  isDraftReady={isDraftReady}
+                  op={
+                    branchStatus?.conflict_op === 'rebase' ||
+                    branchStatus?.conflict_op === 'merge' ||
+                    branchStatus?.conflict_op === 'cherry_pick' ||
+                    branchStatus?.conflict_op === 'revert'
+                      ? (branchStatus?.conflict_op as ConflictOp)
+                      : null
+                  }
+                  onOpenEditor={async () => {
+                    if (!selectedAttemptId) return;
+                    try {
+                      const first = branchStatus?.conflicted_files?.[0];
+                      await attemptsApi.openEditor(
+                        selectedAttemptId,
+                        undefined,
+                        first
+                      );
+                    } catch (e) {
+                      console.error('Failed to open editor', e);
+                    }
+                  }}
+                  onInsertInstructions={insertResolveConflictsTemplate}
+                  onAbort={async () => {
+                    if (!selectedAttemptId) return;
+                    try {
+                      await attemptsApi.abortConflicts(selectedAttemptId);
+                      refetchBranchStatus();
+                    } catch (e) {
+                      console.error('Failed to abort conflicts', e);
+                      setFollowUpError(
+                        'Failed to abort operation. Please try again in your editor.'
+                      );
+                    }
+                  }}
+                />
+              )}
+
             <div className="flex flex-col gap-2">
               <div
                 ref={wrapperRef}
                 className="relative"
                 style={
-                  lockedMinHeight
-                    ? ({ minHeight: lockedMinHeight } as any)
-                    : undefined
+                  lockedMinHeight ? { minHeight: lockedMinHeight } : undefined
                 }
               >
                 <FileSearchTextarea
@@ -1041,7 +1134,7 @@ export function TaskFollowUpSection({
                               );
                               if (resp?.version !== undefined) {
                                 lastServerVersionRef.current = Number(
-                                  resp.version as unknown
+                                  resp.version ?? 0n
                                 );
                               }
                               setIsQueued(!!resp.queued);
@@ -1065,7 +1158,7 @@ export function TaskFollowUpSection({
                                 latest.version !== null
                               ) {
                                 lastServerVersionRef.current = Number(
-                                  latest.version as unknown
+                                  latest.version ?? 0n
                                 );
                               }
                             }
@@ -1107,7 +1200,7 @@ export function TaskFollowUpSection({
                               );
                               if (resp?.version !== undefined) {
                                 lastServerVersionRef.current = Number(
-                                  resp.version as unknown
+                                  resp.version ?? 0n
                                 );
                               }
                               setIsQueued(!!resp.queued);
@@ -1131,7 +1224,7 @@ export function TaskFollowUpSection({
                                 latest.version !== null
                               ) {
                                 lastServerVersionRef.current = Number(
-                                  latest.version as unknown
+                                  latest.version ?? 0n
                                 );
                               }
                             }
