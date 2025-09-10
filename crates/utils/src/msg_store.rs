@@ -82,6 +82,14 @@ impl MsgStore {
         self.push(LogMsg::Finished);
     }
 
+    pub fn push_approval_request(&self, req: serde_json::Value) {
+        self.push(LogMsg::ApprovalRequest(req));
+    }
+
+    pub fn push_approval_response(&self, resp: serde_json::Value) {
+        self.push(LogMsg::ApprovalResponse(resp));
+    }
+
     pub fn get_receiver(&self) -> broadcast::Receiver<LogMsg> {
         self.sender.subscribe()
     }

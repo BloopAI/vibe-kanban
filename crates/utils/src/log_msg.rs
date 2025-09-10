@@ -7,6 +7,8 @@ pub const EV_STDERR: &str = "stderr";
 pub const EV_JSON_PATCH: &str = "json_patch";
 pub const EV_SESSION_ID: &str = "session_id";
 pub const EV_FINISHED: &str = "finished";
+pub const EV_APPROVAL_REQUEST: &str = "approval_request";
+pub const EV_APPROVAL_RESPONSE: &str = "approval_response";
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum LogMsg {
@@ -15,6 +17,8 @@ pub enum LogMsg {
     JsonPatch(Patch),
     SessionId(String),
     Finished,
+    ApprovalRequest(serde_json::Value),
+    ApprovalResponse(serde_json::Value),
 }
 
 impl LogMsg {
@@ -25,6 +29,8 @@ impl LogMsg {
             LogMsg::JsonPatch(_) => EV_JSON_PATCH,
             LogMsg::SessionId(_) => EV_SESSION_ID,
             LogMsg::Finished => EV_FINISHED,
+            LogMsg::ApprovalRequest(_) => EV_APPROVAL_REQUEST,
+            LogMsg::ApprovalResponse(_) => EV_APPROVAL_RESPONSE,
         }
     }
 
@@ -38,6 +44,14 @@ impl LogMsg {
             }
             LogMsg::SessionId(s) => Event::default().event(EV_SESSION_ID).data(s.clone()),
             LogMsg::Finished => Event::default().event(EV_FINISHED).data(""),
+            LogMsg::ApprovalRequest(req) => {
+                let data = serde_json::to_string(req).unwrap_or_else(|_| "{}".to_string());
+                Event::default().event(EV_APPROVAL_REQUEST).data(data)
+            }
+            LogMsg::ApprovalResponse(resp) => {
+                let data = serde_json::to_string(resp).unwrap_or_else(|_| "{}".to_string());
+                Event::default().event(EV_APPROVAL_RESPONSE).data(data)
+            }
         }
     }
 
@@ -74,6 +88,14 @@ impl LogMsg {
             }
             LogMsg::SessionId(s) => EV_SESSION_ID.len() + s.len() + OVERHEAD,
             LogMsg::Finished => EV_FINISHED.len() + OVERHEAD,
+            LogMsg::ApprovalRequest(req) => {
+                let json_len = serde_json::to_string(req).map(|s| s.len()).unwrap_or(2);
+                EV_APPROVAL_REQUEST.len() + json_len + OVERHEAD
+            }
+            LogMsg::ApprovalResponse(resp) => {
+                let json_len = serde_json::to_string(resp).map(|s| s.len()).unwrap_or(2);
+                EV_APPROVAL_RESPONSE.len() + json_len + OVERHEAD
+            }
         }
     }
 }

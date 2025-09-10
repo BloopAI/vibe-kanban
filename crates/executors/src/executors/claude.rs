@@ -1,4 +1,4 @@
-use std::{path::Path, process::Stdio, sync::Arc};
+use std::{os::unix::fs::PermissionsExt, path::Path, process::Stdio, sync::Arc};
 
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
@@ -25,6 +25,8 @@ use crate::{
     },
 };
 
+const CONFIRM_HOOK_SCRIPT: &str = include_str!("./hooks/confirm.py");
+
 fn base_command(claude_code_router: bool) -> &'static str {
     if claude_code_router {
         "npx -y @musistudio/claude-code-router code"
@@ -42,6 +44,8 @@ pub struct ClaudeCode {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub plan: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub approvals: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dangerously_skip_permissions: Option<bool>,
@@ -50,7 +54,7 @@ pub struct ClaudeCode {
 }
 
 impl ClaudeCode {
-    fn build_command_builder(&self) -> CommandBuilder {
+    async fn build_command_builder(&self) -> CommandBuilder {
         // If base_command_override is provided and claude_code_router is also set, log a warning
         if self.cmd.base_command_override.is_some() && self.claude_code_router.is_some() {
             tracing::warn!(
@@ -65,13 +69,20 @@ impl ClaudeCode {
         if self.plan.unwrap_or(false) {
             builder = builder.extend_params(["--permission-mode=plan"]);
         }
+        if self.approvals.unwrap_or(false) {
+            let settings = approvals_json();
+            // TODO: Handle quoting properly cross-platform
+            let quoted_settings =
+                shlex::try_quote(&settings).expect("Failed to quote approval JSON");
+            builder = builder.extend_params(["--settings", &quoted_settings]);
+        }
         if self.dangerously_skip_permissions.unwrap_or(false) {
             builder = builder.extend_params(["--dangerously-skip-permissions"]);
         }
         if let Some(model) = &self.model {
             builder = builder.extend_params(["--model", model]);
         }
-        builder = builder.extend_params(["--verbose", "--output-format=stream-json"]);
+        builder = builder.extend_params(["--debug", "--verbose", "--output-format=stream-json"]);
 
         apply_overrides(builder, &self.cmd)
     }
@@ -85,13 +96,18 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = self.build_command_builder();
+        let command_builder = self.build_command_builder().await;
         let base_command = command_builder.build_initial();
+
         let claude_command = if self.plan.unwrap_or(false) {
             create_watchkill_script(&base_command)
         } else {
             base_command
         };
+
+        if self.approvals.unwrap_or(false) {
+            write_python_hook(current_dir).await?
+        }
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
@@ -123,15 +139,20 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = self.build_command_builder();
+        let command_builder = self.build_command_builder().await;
         // Build follow-up command with --resume {session_id}
         let base_command =
             command_builder.build_follow_up(&["--resume".to_string(), session_id.to_string()]);
+
         let claude_command = if self.plan.unwrap_or(false) {
             create_watchkill_script(&base_command)
         } else {
             base_command
         };
+
+        if self.approvals.unwrap_or(false) {
+            write_python_hook(current_dir).await?
+        }
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
@@ -175,6 +196,49 @@ impl StandardCodingAgentExecutor for ClaudeCode {
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
         dirs::home_dir().map(|home| home.join(".claude.json"))
     }
+}
+
+async fn write_python_hook(current_dir: &Path) -> Result<(), ExecutorError> {
+    let hooks_dir = current_dir.join(".claude").join("hooks");
+    tokio::fs::create_dir_all(&hooks_dir).await?;
+    let hook_path = hooks_dir.join("confirm.py");
+
+    if tokio::fs::try_exists(&hook_path).await? {
+        return Ok(());
+    }
+
+    let mut file = tokio::fs::File::create(&hook_path).await?;
+    file.write_all(CONFIRM_HOOK_SCRIPT.as_bytes()).await?;
+    file.flush().await?;
+
+    // TODO: Handle Windows permissioning
+    #[cfg(unix)]
+    {
+        let perm = std::fs::Permissions::from_mode(0o755);
+        tokio::fs::set_permissions(&hook_path, perm).await?;
+    }
+
+    Ok(())
+}
+
+// Hook to configure approvals
+fn approvals_json() -> String {
+    serde_json::json!({
+        "hooks": {
+            "PreToolUse": [
+                {
+                    "matcher": "*",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/confirm.py"
+                       }
+                    ]
+                }
+            ]
+        }
+    })
+    .to_string()
 }
 
 fn create_watchkill_script(command: &str) -> String {
@@ -249,7 +313,11 @@ impl ClaudeLogProcessor {
             while let Some(Ok(msg)) = stream.next().await {
                 let chunk = match msg {
                     LogMsg::Stdout(x) => x,
-                    LogMsg::JsonPatch(_) | LogMsg::SessionId(_) | LogMsg::Stderr(_) => continue,
+                    LogMsg::JsonPatch(_)
+                    | LogMsg::SessionId(_)
+                    | LogMsg::Stderr(_)
+                    | LogMsg::ApprovalRequest(_)
+                    | LogMsg::ApprovalResponse(_) => continue,
                     LogMsg::Finished => break,
                 };
 
@@ -1554,6 +1622,7 @@ mod tests {
         let executor = ClaudeCode {
             claude_code_router: Some(false),
             plan: None,
+            approvals: None,
             model: None,
             append_prompt: AppendPrompt::default(),
             dangerously_skip_permissions: None,
