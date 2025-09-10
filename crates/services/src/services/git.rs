@@ -637,7 +637,7 @@ impl GitService {
         // Create the squash commit in-memory (no checkout) and update the base branch ref
         let signature = self.signature_with_fallback(&worktree_repo)?;
         let squash_commit_id = self.perform_squash_merge(
-            &worktree_repo,
+            &main_repo,
             &base_commit,
             &task_commit,
             &signature,
