@@ -586,19 +586,14 @@ impl GitService {
         branch_name: &str,
     ) -> Result<Option<std::path::PathBuf>, GitServiceError> {
         let git_cli = GitCli::new();
-        let worktree_list = git_cli
-            .git(repo_path, ["worktree", "list", "--porcelain"])
-            .map_err(|e| {
-                GitServiceError::InvalidRepository(format!("git worktree list failed: {e}"))
-            })?;
+        let worktrees = git_cli.list_worktrees(repo_path).map_err(|e| {
+            GitServiceError::InvalidRepository(format!("git worktree list failed: {e}"))
+        })?;
 
-        for line in worktree_list.lines() {
-            if let Some(wt_path_str) = line.strip_prefix("worktree ") {
-                let wt_path = std::path::Path::new(wt_path_str);
-                if let Ok(wt_branch) = self.get_current_branch(wt_path)
-                    && wt_branch == branch_name
-                {
-                    return Ok(Some(wt_path.to_path_buf()));
+        for worktree in worktrees {
+            if let Some(ref branch) = worktree.branch {
+                if branch == branch_name {
+                    return Ok(Some(std::path::PathBuf::from(worktree.path)));
                 }
             }
         }

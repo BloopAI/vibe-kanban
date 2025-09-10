@@ -58,6 +58,14 @@ pub struct StatusDiffEntry {
     pub old_path: Option<String>,
 }
 
+/// Parsed worktree entry from `git worktree list --porcelain`
+#[derive(Debug, Clone)]
+pub struct WorktreeEntry {
+    pub path: String,
+    pub head_sha: String,
+    pub branch: Option<String>,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct StatusDiffOptions {
     pub path_filter: Option<Vec<String>>, // pathspecs to limit diff
@@ -233,6 +241,49 @@ impl GitCli {
     pub fn add_all(&self, worktree_path: &Path) -> Result<(), GitCliError> {
         self.git(worktree_path, ["add", "-A"])?;
         Ok(())
+    }
+
+    pub fn list_worktrees(&self, repo_path: &Path) -> Result<Vec<WorktreeEntry>, GitCliError> {
+        let out = self.git(repo_path, ["worktree", "list", "--porcelain"])?;
+        let mut entries = Vec::new();
+        let mut current_path: Option<String> = None;
+        let mut current_head: Option<String> = None;
+        let mut current_branch: Option<String> = None;
+
+        for line in out.lines() {
+            let line = line.trim();
+
+            if line.is_empty() {
+                // End of current worktree entry, save it if we have required data
+                if let (Some(path), Some(head)) = (current_path.take(), current_head.take()) {
+                    entries.push(WorktreeEntry {
+                        path,
+                        head_sha: head,
+                        branch: current_branch.take(),
+                    });
+                }
+            } else if let Some(path) = line.strip_prefix("worktree ") {
+                current_path = Some(path.to_string());
+            } else if let Some(head) = line.strip_prefix("HEAD ") {
+                current_head = Some(head.to_string());
+            } else if let Some(branch_ref) = line.strip_prefix("branch ") {
+                // Extract branch name from refs/heads/branch-name
+                current_branch = branch_ref
+                    .strip_prefix("refs/heads/")
+                    .map(|name| name.to_string());
+            }
+        }
+
+        // Handle the last entry if no trailing empty line
+        if let (Some(path), Some(head)) = (current_path, current_head) {
+            entries.push(WorktreeEntry {
+                path,
+                head_sha: head,
+                branch: current_branch,
+            });
+        }
+
+        Ok(entries)
     }
 
     /// Commit staged changes with the given message.
