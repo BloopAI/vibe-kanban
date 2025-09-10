@@ -964,3 +964,38 @@ fn merge_rename_vs_modify_conflict_does_not_move_ref() {
         }
     }
 }
+
+#[test]
+fn merge_leaves_no_staged_changes_on_target_branch() {
+    let td = TempDir::new().unwrap();
+    let (repo_path, worktree_path) = setup_repo_with_worktree(&td);
+    
+    // Ensure main repo is on the base branch (triggers CLI merge path)
+    let s = GitService::new();
+    s.checkout_branch(&repo_path, "main").unwrap();
+    
+    // Feature branch makes some changes
+    write_file(&worktree_path, "feature_file.txt", "feature content\n");
+    write_file(&worktree_path, "common.txt", "modified by feature\n");
+    let wt_repo = Repository::open(&worktree_path).unwrap();
+    commit_all(&wt_repo, "feature changes");
+    
+    // Perform the merge
+    let _merge_sha = s
+        .merge_changes(&repo_path, &worktree_path, "feature", "main", "merge feature")
+        .expect("merge should succeed");
+    
+    // THE KEY CHECK: Verify no staged changes remain on target branch
+    let git_cli = GitCli::new();
+    let has_staged = git_cli
+        .has_staged_changes(&repo_path)
+        .expect("should be able to check staged changes");
+    
+    assert!(!has_staged, "Target branch should have no staged changes after merge");
+    
+    // Debug info if test fails
+    if has_staged {
+        let status_output = git_cli.git(&repo_path, ["status", "--porcelain"]).unwrap();
+        panic!("Found staged changes after merge:\n{status_output}");
+    }
+}
