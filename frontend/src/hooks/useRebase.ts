@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { attemptsApi } from '@/lib/api';
+import { ApiError, attemptsApi } from '@/lib/api';
+import type { GitOperationError } from 'shared/types';
 import type { RebaseTaskAttemptRequest } from 'shared/types';
 
 export function useRebase(
@@ -17,7 +18,17 @@ export function useRebase(
       const data: RebaseTaskAttemptRequest = {
         new_base_branch: newBaseBranch || null,
       };
-      return attemptsApi.rebase(attemptId, data);
+      return attemptsApi.rebase(attemptId, data).then((res) => {
+        if (!res.success) {
+          // Throw a typed ApiError so callers can branch on error_data
+          throw new ApiError<GitOperationError>(
+            res.message || 'Rebase failed',
+            409,
+            undefined,
+            res.error
+          );
+        }
+      });
     },
     onSuccess: () => {
       // Refresh branch status immediately
@@ -34,6 +45,8 @@ export function useRebase(
     },
     onError: (err) => {
       console.error('Failed to rebase:', err);
+      // Even on failure (likely conflicts), re-fetch branch status immediately to show rebase-in-progress
+      queryClient.invalidateQueries({ queryKey: ['branchStatus', attemptId] });
       onError?.(err);
     },
   });
