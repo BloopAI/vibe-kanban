@@ -318,11 +318,10 @@ export function ProjectTasks() {
             }}
             isFullScreen={isFullscreen}
             setFullScreen={(fullscreen) => {
-              let baseUrl, fullUrl;
-              baseUrl = selectedAttempt
-                ? (baseUrl = `/projects/${projectId}/tasks/${selectedTask!.id}/attempts/${selectedAttempt.id}`)
-                : (baseUrl = `/projects/${projectId}/tasks/${selectedTask!.id}`);
-              fullUrl = fullscreen ? `${baseUrl}/full` : baseUrl;
+              const baseUrl = selectedAttempt
+                ? `/projects/${projectId}/tasks/${selectedTask!.id}/attempts/${selectedAttempt.id}`
+                : `/projects/${projectId}/tasks/${selectedTask!.id}`;
+              const fullUrl = fullscreen ? `${baseUrl}/full` : baseUrl;
               navigate(fullUrl, { replace: true });
             }}
             selectedAttempt={selectedAttempt}
