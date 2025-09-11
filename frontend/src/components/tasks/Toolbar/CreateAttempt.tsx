@@ -146,16 +146,15 @@ function CreateAttempt({
           </label>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
           {/* Top Row: Executor Profile and Variant (spans 2 columns) */}
           {availableProfiles && (
-            <div className="col-span-2">
+            <div className="col-span-1 sm:col-span-2">
               <ExecutorProfileSelector
                 profiles={availableProfiles}
                 selectedProfile={selectedProfile}
                 onProfileSelect={setSelectedProfile}
                 showLabel={true}
-                layout="horizontal"
               />
             </div>
           )}

@@ -20,8 +20,6 @@ type Props = {
   disabled?: boolean;
   showLabel?: boolean;
   showVariantSelector?: boolean;
-  className?: string;
-  layout?: 'vertical' | 'horizontal';
 };
 
 function ExecutorProfileSelector({
@@ -31,8 +29,6 @@ function ExecutorProfileSelector({
   disabled = false,
   showLabel = true,
   showVariantSelector = true,
-  className = '',
-  layout = 'vertical',
 }: Props) {
   if (!profiles) {
     return null;
@@ -60,11 +56,9 @@ function ExecutorProfileSelector({
   const hasVariants = currentProfile && Object.keys(currentProfile).length > 0;
 
   return (
-    <div
-      className={`${layout === 'horizontal' ? 'flex gap-3' : 'space-y-3'} ${className}`}
-    >
+    <div className="flex gap-3 flex-col sm:flex-row">
       {/* Executor Profile Selector */}
-      <div className={layout === 'horizontal' ? 'flex-1' : ''}>
+      <div className="flex-1">
         {showLabel && (
           <Label htmlFor="executor-profile" className="text-sm font-medium">
             Agent
@@ -110,7 +104,7 @@ function ExecutorProfileSelector({
         selectedProfile &&
         hasVariants &&
         currentProfile && (
-          <div className={layout === 'horizontal' ? 'flex-1' : ''}>
+          <div className="flex-1">
             <Label htmlFor="executor-variant" className="text-sm font-medium">
               Configuration
             </Label>
@@ -150,7 +144,7 @@ function ExecutorProfileSelector({
         selectedProfile &&
         !hasVariants &&
         currentProfile && (
-          <div className={layout === 'horizontal' ? 'flex-1' : ''}>
+          <div className="flex-1">
             <Label htmlFor="executor-variant" className="text-sm font-medium">
               Configuration
             </Label>
@@ -167,7 +161,7 @@ function ExecutorProfileSelector({
 
       {/* Show placeholder for variant when no profile selected */}
       {showVariantSelector && !selectedProfile && (
-        <div className={layout === 'horizontal' ? 'flex-1' : ''}>
+        <div className="flex-1">
           <Label htmlFor="executor-variant" className="text-sm font-medium">
             Configuration
           </Label>
