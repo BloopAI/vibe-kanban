@@ -1,4 +1,4 @@
-import { ChevronDown, Edit3, Check } from 'lucide-react';
+import { ChevronDown, SquarePen, X, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -121,7 +121,7 @@ function ProcessStartCard({
         <div className="flex items-center gap-2 text-foreground min-w-0 flex-1">
           {isEditing && canRetry ? (
             <div
-              className="flex items-center gap-2 w-full"
+              className="flex items-center w-full"
               onClick={(e) => e.stopPropagation()}
             >
               <AutoExpandingTextarea
@@ -135,7 +135,7 @@ function ProcessStartCard({
                   }
                 }}
                 className={cn(
-                  'min-h-[36px] text-sm',
+                  'min-h-[36px] text-sm bg-inherit',
                   shouldTruncate ? 'truncate' : 'whitespace-normal break-words'
                 )}
                 maxRows={12}
@@ -143,6 +143,7 @@ function ProcessStartCard({
               />
               <Button
                 size="sm"
+                variant="ghost"
                 className="h-7"
                 disabled={!!retryDisabled || !(editValue || '').trim()}
                 onClick={(e) => {
@@ -162,8 +163,9 @@ function ProcessStartCard({
                   setIsEditing(false);
                   setEditValue(label);
                 }}
+                area-label="Cancel edit"
               >
-                Cancel
+                <X className="h-4 w-4" />
               </Button>
             </div>
           ) : (
@@ -207,7 +209,7 @@ function ProcessStartCard({
                     aria-label="Edit prompt and retry from here"
                     disabled={!!retryDisabled}
                   >
-                    <Edit3 className="h-4 w-4" />
+                    <SquarePen className="h-4 w-4" />
                   </button>
                 </span>
               </TooltipTrigger>
