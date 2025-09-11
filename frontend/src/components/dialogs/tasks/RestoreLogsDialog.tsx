@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, CheckCircle, GitCommit } from 'lucide-react';
+import { AlertTriangle, GitCommit } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 
 export interface RestoreLogsDialogProps {
@@ -355,21 +355,6 @@ export const RestoreLogsDialog = NiceModal.create<RestoreLogsDialogProps>(
                           </div>
                         </>
                       )}
-                    </div>
-                  </div>
-                )}
-
-                {!hasLater && !needGitReset && (
-                  <div className="flex items-start gap-3 rounded-md border border-green-300/60 bg-green-50/70 p-3">
-                    <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
-                    <div className="text-sm min-w-0 w-full break-words">
-                      <p className="font-medium text-green-700 mb-2">
-                        No resets required
-                      </p>
-                      <p className="mt-0.5">
-                        You are already at this checkpoint. Retrying will start
-                        a new run from here.
-                      </p>
                     </div>
                   </div>
                 )}
