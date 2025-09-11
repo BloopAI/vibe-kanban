@@ -247,6 +247,7 @@ const CollapsibleEntry: React.FC<{
         <MarkdownRenderer
           content={content}
           className="whitespace-pre-wrap break-words"
+          enableCopyButton={false}
         />
       ) : (
         content
@@ -261,6 +262,7 @@ const CollapsibleEntry: React.FC<{
         <MarkdownRenderer
           content={firstLine}
           className="whitespace-pre-wrap break-words"
+          enableCopyButton={false}
         />
       ) : (
         firstLine
@@ -318,6 +320,7 @@ const PlanPresentationCard: React.FC<{
               <MarkdownRenderer
                 content={plan}
                 className="whitespace-pre-wrap break-words"
+                enableCopyButton
               />
             </div>
           </div>
@@ -531,6 +534,7 @@ function DisplayConversationEntry({ entry, expansionKey }: Props) {
             <MarkdownRenderer
               content={isNormalizedEntry(entry) ? entry.content : ''}
               className="whitespace-pre-wrap break-words flex flex-col gap-1 font-light"
+              enableCopyButton={entryType.type === 'assistant_message'}
             />
           ) : isNormalizedEntry(entry) ? (
             entry.content
