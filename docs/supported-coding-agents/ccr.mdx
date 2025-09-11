@@ -1,9 +1,93 @@
 # CCR (Claude Code Router)
 
+CCR (Claude Code Router) lets you route coding prompts across different LLM providers and models, and select specialized models for specific tasks like long context, background work, or image understanding.
+
 ## Installation
 
-CCR is now available via `npx` - no separate installation required!
+CCR is available via `npx` – no separate installation required.
+
+```bash
+npx -y @musistudio/claude-code-router ui
+```
+
+This launches the CCR local UI where you configure providers and models.
 
 ## Authentication
 
-You need to authenticate with CCR outside of Vibe Kanban before using it. Please follow the authentication instructions on the [CCR GitHub page](https://github.com/musistudio/claude-code-router).
+Authenticate and configure CCR outside of Vibe Kanban. Follow the instructions on the CCR GitHub repo:
+
+- GitHub: https://github.com/musistudio/claude-code-router
+
+You’ll add providers, set API keys, and register model names in the CCR UI or via CCR’s JSON configuration (see the CCR repo for the schema and file location).
+
+## Configure CCR (Providers and Models)
+
+Configure CCR either via the UI or JSON config.
+
+In the CCR UI (`npx -y @musistudio/claude-code-router ui`):
+
+1) Add providers
+- Choose a provider (e.g., `openrouter`, `deepseek`, etc.).
+- Enter the required API key(s) and settings for that provider.
+
+2) Add models
+- For each provider, register the model identifier (e.g., `moonshotai/kimi-k2-0905`, `deepseek-chat`).
+- CCR supports configuring different models for specific cases:
+  - `default`: general coding
+  - `background`: lightweight/background operations
+  - `think`: models that support “thinking” modes
+  - `longContext`: very long inputs/files
+  - `webSearch`: models that support web/tool use
+  - `image`: models with vision capabilities
+
+Note: not all models support web search, thinking, or images. Choose models accordingly in the CCR UI.
+
+### Configure via JSON (optional)
+
+CCR can also be configured via its JSON configuration file. Refer to the CCR GitHub documentation for the exact schema, keys, and file location. Define providers (with API keys) and map the model cases (`default`, `background`, `think`, `longContext`, `webSearch`, `image`) to specific provider/model pairs.
+
+### Example: OpenRouter provider configured in CCR UI
+
+![OpenRouter configured in CCR UI](/images/ccr-openrouter-ui.png)
+
+### Example: CCR model mapping (default/background/think/etc.)
+
+![CCR models configuration example](/images/ccr-config-example.png)
+
+## Configure Vibe Kanban
+
+Vibe Kanban does not ship a default configuration for CCR. Add configurations to the existing Claude Code agent:
+
+1) Open the “Coding Agent Configurations” page.
+2) Add a new configuration for the Claude Code agent (or edit an existing one).
+3) Enable the `claude_code_router` checkbox.
+4) Optionally set a model string to target a specific CCR provider/model.
+
+See the [Agent Profiles & Variants](/docs/user-guide/agent-configurations) guide for managing agent configurations.
+
+Model string format: `<provider>,<model-name>`
+
+Examples:
+
+```text
+openrouter,moonshotai/kimi-k2-0905
+deepseek,deepseek-chat
+```
+
+Tips:
+- Create multiple configurations if you want easy switching between different models.
+- Leave the model string empty if you want CCR to use its own routing based on your CCR UI configuration (e.g., its `default`/`longContext`/etc. mappings).
+
+### Example: Claude Code agent configuration in Vibe Kanban
+
+![Claude Code agent configuration in Vibe Kanban](/images/vk-ccr-agent-config.png)
+
+## Using CCR in Vibe Kanban
+
+When creating a Task Attempt, select the coding agent and configuration: choose the Claude Code agent, then pick one of your CCR-enabled configurations.
+
+## Troubleshooting
+
+- Authentication errors: verify your API keys/provider settings in CCR (via UI or JSON config).
+- Model not found: confirm the model identifier is correct for the chosen provider.
+- Missing features (webSearch/think/image): switch to a model that supports the capability and update your CCR mapping (via UI or JSON config).
