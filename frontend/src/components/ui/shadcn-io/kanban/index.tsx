@@ -12,6 +12,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
+import { restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
 import type { ReactNode, Ref, KeyboardEvent } from 'react';
 
 export type { DragEndEvent } from '@dnd-kit/core';
@@ -181,6 +182,7 @@ export const KanbanProvider = ({
       collisionDetection={rectIntersection}
       onDragEnd={onDragEnd}
       sensors={sensors}
+      modifiers={[restrictToFirstScrollableAncestor]}
     >
       <div
         className={cn(
