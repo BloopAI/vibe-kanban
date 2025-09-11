@@ -23,6 +23,12 @@
         "null"
       ]
     },
+    "model": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "dangerously_skip_permissions": {
       "type": [
         "boolean",

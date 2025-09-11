@@ -42,6 +42,8 @@ pub struct ClaudeCode {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub plan: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dangerously_skip_permissions: Option<bool>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
@@ -65,6 +67,9 @@ impl ClaudeCode {
         }
         if self.dangerously_skip_permissions.unwrap_or(false) {
             builder = builder.extend_params(["--dangerously-skip-permissions"]);
+        }
+        if let Some(model) = &self.model {
+            builder = builder.extend_params(["--model", model]);
         }
         builder = builder.extend_params(["--verbose", "--output-format=stream-json"]);
 
@@ -1502,6 +1507,7 @@ mod tests {
         let executor = ClaudeCode {
             claude_code_router: Some(false),
             plan: None,
+            model: None,
             append_prompt: AppendPrompt::default(),
             dangerously_skip_permissions: None,
             cmd: crate::command::CmdOverrides {
