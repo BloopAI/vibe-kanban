@@ -109,8 +109,8 @@ async fn update_config(
             *config = new_config.clone();
             drop(config);
 
-            // Track onboarding events when fields transition from false → true
-            track_onboarding_events(&deployment, &old_config, &new_config).await;
+            // Track config events when fields transition from false → true
+            track_config_events(&deployment, &old_config, &new_config).await;
 
             ResponseJson(ApiResponse::success(new_config))
         }
@@ -118,8 +118,8 @@ async fn update_config(
     }
 }
 
-/// Track onboarding events when config fields transition from false → true
-async fn track_onboarding_events(deployment: &DeploymentImpl, old: &Config, new: &Config) {
+/// Track config events when fields transition from false → true
+async fn track_config_events(deployment: &DeploymentImpl, old: &Config, new: &Config) {
     let events = [
         (
             !old.disclaimer_acknowledged && new.disclaimer_acknowledged,
@@ -150,9 +150,12 @@ async fn track_onboarding_events(deployment: &DeploymentImpl, old: &Config, new:
         (
             !old.telemetry_acknowledged && new.telemetry_acknowledged,
             "onboarding_telemetry_choice",
-            serde_json::json!({
-                "analytics_enabled": new.analytics_enabled
-            }),
+            serde_json::json!({}),
+        ),
+        (
+            !old.analytics_enabled.unwrap_or(false) && new.analytics_enabled.unwrap_or(false),
+            "analytics_session_start",
+            serde_json::json!({}),
         ),
     ];
 
