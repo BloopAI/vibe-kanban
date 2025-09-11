@@ -21,6 +21,7 @@ type Props = {
   showLabel?: boolean;
   showVariantSelector?: boolean;
   className?: string;
+  layout?: 'vertical' | 'horizontal';
 };
 
 function ExecutorProfileSelector({
@@ -31,6 +32,7 @@ function ExecutorProfileSelector({
   showLabel = true,
   showVariantSelector = true,
   className = '',
+  layout = 'vertical',
 }: Props) {
   if (!profiles) {
     return null;
@@ -58,12 +60,14 @@ function ExecutorProfileSelector({
   const hasVariants = currentProfile && Object.keys(currentProfile).length > 0;
 
   return (
-    <div className={`space-y-3 ${className}`}>
+    <div
+      className={`${layout === 'horizontal' ? 'flex gap-3' : 'space-y-3'} ${className}`}
+    >
       {/* Executor Profile Selector */}
-      <div>
+      <div className={layout === 'horizontal' ? 'flex-1' : ''}>
         {showLabel && (
           <Label htmlFor="executor-profile" className="text-sm font-medium">
-            Executor Profile
+            Agent
           </Label>
         )}
         <DropdownMenu>
@@ -106,9 +110,9 @@ function ExecutorProfileSelector({
         selectedProfile &&
         hasVariants &&
         currentProfile && (
-          <div>
+          <div className={layout === 'horizontal' ? 'flex-1' : ''}>
             <Label htmlFor="executor-variant" className="text-sm font-medium">
-              Variant
+              Configuration
             </Label>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -146,9 +150,9 @@ function ExecutorProfileSelector({
         selectedProfile &&
         !hasVariants &&
         currentProfile && (
-          <div>
+          <div className={layout === 'horizontal' ? 'flex-1' : ''}>
             <Label htmlFor="executor-variant" className="text-sm font-medium">
-              Variant
+              Configuration
             </Label>
             <Button
               variant="outline"
@@ -163,9 +167,9 @@ function ExecutorProfileSelector({
 
       {/* Show placeholder for variant when no profile selected */}
       {showVariantSelector && !selectedProfile && (
-        <div>
+        <div className={layout === 'horizontal' ? 'flex-1' : ''}>
           <Label htmlFor="executor-variant" className="text-sm font-medium">
-            Variant
+            Configuration
           </Label>
           <Button
             variant="outline"
@@ -173,7 +177,7 @@ function ExecutorProfileSelector({
             disabled
             className="w-full text-xs justify-start mt-1.5"
           >
-            Select profile first
+            Select agent first
           </Button>
         </div>
       )}
