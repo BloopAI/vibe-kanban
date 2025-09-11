@@ -319,15 +319,10 @@ export function ProjectTasks() {
             isFullScreen={isFullscreen}
             setFullScreen={(fullscreen) => {
               let baseUrl, fullUrl;
-              if (selectedAttempt) {
-                // Existing logic with attempt ID
-                baseUrl = `/projects/${projectId}/tasks/${selectedTask!.id}/attempts/${selectedAttempt.id}`;
-                fullUrl = fullscreen ? `${baseUrl}/full` : baseUrl;
-              } else {
-                // New auto-resolution logic without attempt ID
-                baseUrl = `/projects/${projectId}/tasks/${selectedTask!.id}`;
-                fullUrl = fullscreen ? `${baseUrl}/full` : baseUrl;
-              }
+              baseUrl = selectedAttempt
+                ? (baseUrl = `/projects/${projectId}/tasks/${selectedTask!.id}/attempts/${selectedAttempt.id}`)
+                : (baseUrl = `/projects/${projectId}/tasks/${selectedTask!.id}`);
+              fullUrl = fullscreen ? `${baseUrl}/full` : baseUrl;
               navigate(fullUrl, { replace: true });
             }}
             selectedAttempt={selectedAttempt}
