@@ -542,7 +542,7 @@ export function GeneralSettings() {
             <div>
               <p className="font-medium">Disclaimer Acknowledgment</p>
               <p className="text-sm text-muted-foreground">
-                Reset the safety disclaimer to show it again on next startup.
+                Reset the safety disclaimer.
               </p>
             </div>
             <Button variant="outline" onClick={resetDisclaimer}>
@@ -553,7 +553,7 @@ export function GeneralSettings() {
             <div>
               <p className="font-medium">Onboarding</p>
               <p className="text-sm text-muted-foreground">
-                Reset the onboarding flow to show it again on next startup.
+                Reset the onboarding flow.
               </p>
             </div>
             <Button variant="outline" onClick={resetOnboarding}>

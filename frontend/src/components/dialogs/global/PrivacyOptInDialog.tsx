@@ -33,7 +33,7 @@ const PrivacyOptInDialog = NiceModal.create(() => {
         <DialogHeader>
           <div className="flex items-center gap-3">
             <Shield className="h-6 w-6 text-primary text-primary-foreground" />
-            <DialogTitle>Feedback Opt-In</DialogTitle>
+            <DialogTitle>Feedback</DialogTitle>
           </div>
           <DialogDescription className="text-left pt-1">
             Help us improve Vibe Kanban by sharing usage data and allowing us to
