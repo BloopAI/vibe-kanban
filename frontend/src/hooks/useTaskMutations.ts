@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { tasksApi } from '@/lib/api';
+import { useFullscreenState } from '@/hooks/useFullscreenState';
 import type {
   CreateTask,
   CreateAndStartTaskRequest,
@@ -12,6 +13,7 @@ import type {
 export function useTaskMutations(projectId?: string) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const isFullscreen = useFullscreenState();
 
   const invalidateQueries = (taskId?: string) => {
     queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
@@ -24,7 +26,9 @@ export function useTaskMutations(projectId?: string) {
     mutationFn: (data: CreateTask) => tasksApi.create(data),
     onSuccess: (createdTask: Task) => {
       invalidateQueries();
-      navigate(`/projects/${projectId}/tasks/${createdTask.id}`, {
+      const baseUrl = `/projects/${projectId}/tasks/${createdTask.id}`;
+      const targetUrl = isFullscreen ? `${baseUrl}/full` : baseUrl;
+      navigate(targetUrl, {
         replace: true,
       });
     },
@@ -38,7 +42,9 @@ export function useTaskMutations(projectId?: string) {
       tasksApi.createAndStart(data),
     onSuccess: (createdTask: TaskWithAttemptStatus) => {
       invalidateQueries();
-      navigate(`/projects/${projectId}/tasks/${createdTask.id}`, {
+      const baseUrl = `/projects/${projectId}/tasks/${createdTask.id}`;
+      const targetUrl = isFullscreen ? `${baseUrl}/full` : baseUrl;
+      navigate(targetUrl, {
         replace: true,
       });
     },

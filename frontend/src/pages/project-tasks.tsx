@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useMemo } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Plus } from 'lucide-react';
@@ -9,6 +9,7 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
 import { useSearch } from '@/contexts/search-context';
 import { useQuery } from '@tanstack/react-query';
+import { useFullscreenState } from '@/hooks/useFullscreenState';
 
 import {
   getKanbanSectionClasses,
@@ -32,7 +33,6 @@ export function ProjectTasks() {
     attemptId?: string;
   }>();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -60,8 +60,8 @@ export function ProjectTasks() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
-  // Fullscreen state from pathname
-  const isFullscreen = location.pathname.endsWith('/full');
+  // Fullscreen state using custom hook
+  const isFullscreen = useFullscreenState();
 
   // Attempts fetching (only when task is selected)
   const { data: attempts = [] } = useQuery({

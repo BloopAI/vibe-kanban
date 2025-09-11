@@ -4,11 +4,11 @@ import {
   Navigate,
   Route,
   Routes,
-  useLocation,
 } from 'react-router-dom';
 import { Navbar } from '@/components/layout/navbar';
 import { Projects } from '@/pages/projects';
 import { ProjectTasks } from '@/pages/project-tasks';
+import { useFullscreenState } from '@/hooks/useFullscreenState';
 
 import {
   AgentSettings,
@@ -38,9 +38,9 @@ const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
   const { config, updateAndSaveConfig, loading } = useUserSystem();
-  const location = useLocation();
+  const isFullscreen = useFullscreenState();
 
-  const showNavbar = !location.pathname.endsWith('/full');
+  const showNavbar = !isFullscreen;
 
   useEffect(() => {
     let cancelled = false;
