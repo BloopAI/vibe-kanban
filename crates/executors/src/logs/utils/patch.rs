@@ -2,8 +2,10 @@ use json_patch::Patch;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_value, json};
 use ts_rs::TS;
-use utils::approvals::{ApprovalRequest, ApprovalResponse};
-use utils::diff::Diff;
+use utils::{
+    approvals::{ApprovalRequest, ApprovalResponse},
+    diff::Diff,
+};
 
 use crate::logs::NormalizedEntry;
 

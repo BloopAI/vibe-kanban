@@ -1,5 +1,6 @@
 import { memo } from 'react';
-import type { UnifiedLogEntry, ApprovalRequest, ApprovalResponse } from '@/types/logs';
+import type { UnifiedLogEntry } from '@/types/logs';
+import type { ApprovalRequest, ApprovalResponse } from 'shared/types';
 import type { NormalizedEntry } from 'shared/types';
 import StdoutEntry from './StdoutEntry';
 import StderrEntry from './StderrEntry';
@@ -39,6 +40,7 @@ function LogEntryRow({ entry, index }: LogEntryRowProps) {
         <div className="my-4">
           <ApprovalLogEntry
             approval={entry.payload as ApprovalRequest}
+            executionProcessId={entry.processId}
             onRespond={(approved, reason) => {
               // Optional callback for UI updates
               console.log('Approval responded:', { approved, reason });
@@ -49,9 +51,7 @@ function LogEntryRow({ entry, index }: LogEntryRowProps) {
     case 'approval_response':
       return (
         <div className="my-2">
-          <ApprovalResponseEntry
-            response={entry.payload as ApprovalResponse}
-          />
+          <ApprovalResponseEntry response={entry.payload as ApprovalResponse} />
         </div>
       );
     default:

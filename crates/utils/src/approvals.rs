@@ -9,7 +9,6 @@ pub struct ApprovalRequest {
     pub id: String,
     pub tool_name: String,
     pub tool_input: serde_json::Value,
-    pub message: String,
     pub session_id: String,
     pub created_at: DateTime<Utc>,
     pub timeout_at: DateTime<Utc>,
@@ -22,7 +21,6 @@ impl ApprovalRequest {
             id: Uuid::new_v4().to_string(),
             tool_name: request.tool_name,
             tool_input: request.tool_input,
-            message: request.message,
             session_id: request.session_id,
             created_at: now,
             timeout_at: now + Duration::seconds(120),
@@ -35,7 +33,6 @@ impl ApprovalRequest {
 pub struct CreateApprovalRequest {
     pub tool_name: String,
     pub tool_input: serde_json::Value,
-    pub message: String,
     pub session_id: String,
 }
 

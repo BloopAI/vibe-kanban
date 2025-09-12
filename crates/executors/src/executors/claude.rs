@@ -82,7 +82,7 @@ impl ClaudeCode {
         if let Some(model) = &self.model {
             builder = builder.extend_params(["--model", model]);
         }
-        builder = builder.extend_params(["--debug", "--verbose", "--output-format=stream-json"]);
+        builder = builder.extend_params(["--verbose", "--output-format=stream-json"]);
 
         apply_overrides(builder, &self.cmd)
     }
@@ -313,9 +313,7 @@ impl ClaudeLogProcessor {
             while let Some(Ok(msg)) = stream.next().await {
                 let chunk = match msg {
                     LogMsg::Stdout(x) => x,
-                    LogMsg::JsonPatch(_)
-                    | LogMsg::SessionId(_)
-                    | LogMsg::Stderr(_) => continue,
+                    LogMsg::JsonPatch(_) | LogMsg::SessionId(_) | LogMsg::Stderr(_) => continue,
                     LogMsg::Finished => break,
                 };
 
