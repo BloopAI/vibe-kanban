@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { attemptsApi } from '@/lib/api';
+import { useFullscreenState } from '@/hooks/useFullscreenState';
 import type { TaskAttempt } from 'shared/types';
 import type { ExecutorProfileId } from 'shared/types';
 
@@ -8,6 +9,7 @@ export function useAttemptCreation(taskId: string) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
+  const isFullscreen = useFullscreenState();
 
   const mutation = useMutation({
     mutationFn: ({
@@ -31,10 +33,9 @@ export function useAttemptCreation(taskId: string) {
 
       // Navigate to new attempt (triggers polling switch)
       if (projectId) {
-        navigate(
-          `/projects/${projectId}/tasks/${taskId}/attempts/${newAttempt.id}`,
-          { replace: true }
-        );
+        const baseUrl = `/projects/${projectId}/tasks/${taskId}/attempts/${newAttempt.id}`;
+        const targetUrl = isFullscreen ? `${baseUrl}/full` : baseUrl;
+        navigate(targetUrl, { replace: true });
       }
     },
   });

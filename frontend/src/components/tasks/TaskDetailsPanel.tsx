@@ -43,6 +43,7 @@ interface TaskDetailsPanelProps {
   selectedAttempt: TaskAttempt | null;
   attempts: TaskAttempt[];
   setSelectedAttempt: (attempt: TaskAttempt | null) => void;
+  tasksById?: Record<string, TaskWithAttemptStatus>;
 }
 
 export function TaskDetailsPanel({
@@ -63,6 +64,7 @@ export function TaskDetailsPanel({
   selectedAttempt,
   attempts,
   setSelectedAttempt,
+  tasksById,
 }: TaskDetailsPanelProps) {
   // Attempt number, find the current attempt number
   const attemptNumber =
@@ -172,6 +174,8 @@ export function TaskDetailsPanel({
                         <TaskRelationshipViewer
                           selectedAttempt={selectedAttempt}
                           onNavigateToTask={onNavigateToTask}
+                          task={task}
+                          tasksById={tasksById}
                         />
                       </aside>
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useMemo } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Plus } from 'lucide-react';
@@ -9,6 +9,7 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
 import { useSearch } from '@/contexts/search-context';
 import { useQuery } from '@tanstack/react-query';
+import { useFullscreenState } from '@/hooks/useFullscreenState';
 
 import {
   getKanbanSectionClasses,
@@ -32,7 +33,6 @@ export function ProjectTasks() {
     attemptId?: string;
   }>();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -60,8 +60,8 @@ export function ProjectTasks() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
-  // Fullscreen state from pathname
-  const isFullscreen = location.pathname.endsWith('/full');
+  // Fullscreen state using custom hook
+  const isFullscreen = useFullscreenState();
 
   // Attempts fetching (only when task is selected)
   const { data: attempts = [] } = useQuery({
@@ -178,13 +178,14 @@ export function ProjectTasks() {
   );
 
   const handleViewTaskDetails = useCallback(
-    (task: Task, attemptIdToShow?: string) => {
+    (task: Task, attemptIdToShow?: string, fullscreen?: boolean) => {
       // setSelectedTask(task);
       // setIsPanelOpen(true);
       // Update URL to include task ID and optionally attempt ID
-      const targetUrl = attemptIdToShow
+      const baseUrl = attemptIdToShow
         ? `/projects/${projectId}/tasks/${task.id}/attempts/${attemptIdToShow}`
         : `/projects/${projectId}/tasks/${task.id}`;
+      const targetUrl = fullscreen ? `${baseUrl}/full` : baseUrl;
       navigate(targetUrl, { replace: true });
     },
     [projectId, navigate]
@@ -312,22 +313,21 @@ export function ProjectTasks() {
             onNavigateToTask={(taskId) => {
               const task = tasksById[taskId];
               if (task) {
-                handleViewTaskDetails(task);
+                handleViewTaskDetails(task, undefined, true);
               }
             }}
             isFullScreen={isFullscreen}
-            setFullScreen={
-              selectedAttempt
-                ? (fullscreen) => {
-                    const baseUrl = `/projects/${projectId}/tasks/${selectedTask!.id}/attempts/${selectedAttempt.id}`;
-                    const fullUrl = fullscreen ? `${baseUrl}/full` : baseUrl;
-                    navigate(fullUrl, { replace: true });
-                  }
-                : undefined
-            }
+            setFullScreen={(fullscreen) => {
+              const baseUrl = selectedAttempt
+                ? `/projects/${projectId}/tasks/${selectedTask!.id}/attempts/${selectedAttempt.id}`
+                : `/projects/${projectId}/tasks/${selectedTask!.id}`;
+              const fullUrl = fullscreen ? `${baseUrl}/full` : baseUrl;
+              navigate(fullUrl, { replace: true });
+            }}
             selectedAttempt={selectedAttempt}
             attempts={attempts}
             setSelectedAttempt={setSelectedAttempt}
+            tasksById={tasksById}
           />
         )}
       </div>
