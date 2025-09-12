@@ -1,149 +1,186 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc, time::Duration as StdDuration};
 
-use anyhow::Result;
-use chrono::{DateTime, Duration, Utc};
 use dashmap::DashMap;
-use serde::{Deserialize, Serialize};
-use tokio::sync::oneshot;
-use ts_rs::TS;
-use utils::msg_store::MsgStore;
+use db::models::executor_session::ExecutorSession;
+use executors::logs::utils::{entry_index::EntryIndexProvider, patch::ConversationPatch};
+use sqlx::{Error as SqlxError, SqlitePool};
+use thiserror::Error;
+use tokio::sync::{RwLock, oneshot};
+use utils::{
+    approvals::{ApprovalRequest, ApprovalResponseRequest, ApprovalStatus},
+    msg_store::MsgStore,
+};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct ApprovalRequest {
-    pub id: String,
-    pub tool_name: String,
-    pub tool_input: serde_json::Value,
-    pub session_id: String,
-    pub created_at: DateTime<Utc>,
-    pub timeout_at: DateTime<Utc>,
-}
-
-impl ApprovalRequest {
-    pub fn from_create(request: CreateApprovalRequest) -> Self {
-        let now = Utc::now();
-        Self {
-            id: Uuid::new_v4().to_string(),
-            tool_name: request.tool_name,
-            tool_input: request.tool_input,
-            session_id: request.session_id,
-            created_at: now,
-            timeout_at: now + Duration::seconds(120),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct CreateApprovalRequest {
-    pub tool_name: String,
-    pub tool_input: serde_json::Value,
-    pub session_id: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-#[serde(tag = "status", rename_all = "snake_case")]
-pub enum ApprovalStatus {
-    Pending,
-    Approved,
-    Denied { reason: Option<String> },
-    TimedOut,
-}
-
-pub struct PendingApproval {
-    pub request: ApprovalRequest,
-    pub response_tx: oneshot::Sender<ApprovalStatus>,
+#[derive(Debug)]
+struct PendingApproval {
+    request: ApprovalRequest,
+    response_tx: oneshot::Sender<ApprovalStatus>,
 }
 
 #[derive(Clone)]
 pub struct Approvals {
     pending: Arc<DashMap<String, PendingApproval>>,
     completed: Arc<DashMap<String, ApprovalStatus>>,
-    msg_store: Arc<MsgStore>,
+    db_pool: SqlitePool,
+    msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
+}
+
+#[derive(Debug, Error)]
+pub enum ApprovalError {
+    #[error("approval request not found")]
+    NotFound,
+    #[error("approval request already completed")]
+    AlreadyCompleted,
+    #[error("no executor session found for session_id: {0}")]
+    NoExecutorSession(String),
+    #[error(transparent)]
+    Storage(#[from] anyhow::Error),
+    #[error(transparent)]
+    Sqlx(#[from] SqlxError),
 }
 
 impl Approvals {
-    pub fn new(msg_store: Arc<MsgStore>) -> Self {
+    pub fn new(db_pool: SqlitePool, msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>) -> Self {
         Self {
             pending: Arc::new(DashMap::new()),
             completed: Arc::new(DashMap::new()),
-            msg_store,
+            db_pool,
+            msg_stores,
         }
     }
 
-    pub async fn create_approval(&self, request: ApprovalRequest) -> Result<ApprovalRequest> {
-        let approval_json = serde_json::to_value(&request)?;
-        self.msg_store.push_approval_request(approval_json);
+    pub async fn create(&self, request: ApprovalRequest) -> Result<ApprovalRequest, ApprovalError> {
+        let execution_process_id = if let Some(executor_session) =
+            ExecutorSession::find_by_session_id(&self.db_pool, &request.session_id).await?
+        {
+            executor_session.execution_process_id
+        } else {
+            tracing::warn!(
+                "No executor session found for session_id: {}",
+                request.session_id
+            );
+            return Err(ApprovalError::NoExecutorSession(request.session_id.clone()));
+        };
 
         let (tx, rx) = oneshot::channel();
-        let pending_approval = PendingApproval {
-            request: request.clone(),
-            response_tx: tx,
-        };
-        self.pending.insert(request.id.clone(), pending_approval);
+        let req_id = request.id.clone();
+        self.pending.insert(
+            req_id.clone(),
+            PendingApproval {
+                request: request.clone(),
+                response_tx: tx,
+            },
+        );
 
-        let pending = self.pending.clone();
-        let completed = self.completed.clone();
-        let msg_store = self.msg_store.clone();
-        let approval_id = request.id.clone();
+        self.spawn_timeout_watcher(req_id.clone(), request.timeout_at, rx);
 
-        tokio::spawn(async move {
-            match tokio::time::timeout(std::time::Duration::from_secs(300), rx).await {
-                Ok(Ok(status)) => {
-                    completed.insert(approval_id.clone(), status.clone());
-                    let response_json = serde_json::json!({
-                        "id": approval_id,
-                        "status": status
-                    });
-                    msg_store.push_approval_response(response_json);
-                }
-                _ => {
-                    completed.insert(
-                        approval_id.clone(),
-                        ApprovalStatus::Denied {
-                            reason: Some("User did not respond in time".to_string()),
-                        },
-                    );
-                }
-            }
-
-            pending.remove(&approval_id);
-        });
+        if let Some(store) = self.msg_store_by_id(&execution_process_id).await {
+            let idx = EntryIndexProvider::start_from(&store).next();
+            let patch = ConversationPatch::add_approval_request(idx, request.clone());
+            store.push_patch(patch);
+        } else {
+            tracing::warn!(
+                "No msg_store found for execution_process_id: {}",
+                execution_process_id
+            );
+        }
 
         Ok(request)
     }
 
-    pub async fn get_status(&self, id: &str) -> Option<ApprovalStatus> {
-        if let Some(entry) = self.completed.get(id) {
-            return Some(entry.clone());
+    pub async fn respond(
+        &self,
+        id: &str,
+        req: ApprovalResponseRequest,
+    ) -> Result<(), ApprovalError> {
+        if let Some((_, p)) = self.pending.remove(id) {
+            self.completed.insert(id.to_string(), req.status.clone());
+            let _ = p.response_tx.send(req.status.clone());
+
+            if let Some(store) = self.msg_store_by_id(&req.execution_process_id).await {
+                let idx = EntryIndexProvider::start_from(&store).next();
+                let patch = ConversationPatch::add_approval_response(
+                    idx,
+                    utils::approvals::ApprovalResponse {
+                        id: id.to_string(),
+                        status: req.status,
+                    },
+                );
+                store.push_patch(patch);
+            } else {
+                tracing::warn!(
+                    "No msg_store found for execution_process_id: {}",
+                    req.execution_process_id
+                );
+            }
+            Ok(())
+        } else if self.completed.contains_key(id) {
+            Err(ApprovalError::AlreadyCompleted)
+        } else {
+            Err(ApprovalError::NotFound)
         }
-        if self.pending.contains_key(id) {
+    }
+
+    pub async fn status(&self, id: &str) -> Option<ApprovalStatus> {
+        if let Some(f) = self.completed.get(id) {
+            return Some(f.clone());
+        }
+        if let Some(p) = self.pending.get(id) {
+            if chrono::Utc::now() >= p.request.timeout_at {
+                return Some(ApprovalStatus::TimedOut);
+            }
             return Some(ApprovalStatus::Pending);
         }
         None
     }
 
-    pub async fn respond_to_approval(&self, id: &str, response: ApprovalStatus) -> Result<()> {
-        if let Some((_, pending)) = self.pending.remove(id) {
-            self.completed.insert(id.to_string(), response.clone());
-            let _ = pending.response_tx.send(response.clone());
-
-            let response_json = serde_json::to_value(&response)?;
-            self.msg_store.push_approval_response(response_json);
-            Ok(())
-        } else if self.completed.contains_key(id) {
-            anyhow::bail!("Approval request already completed");
-        } else {
-            anyhow::bail!("Approval request not found");
-        }
-    }
-
-    pub async fn get_pending(&self) -> Vec<ApprovalRequest> {
+    pub async fn pending(&self) -> Vec<ApprovalRequest> {
         self.pending
             .iter()
-            .map(|entry| entry.value().request.clone())
+            .map(|e| e.value().request.clone())
             .collect()
+    }
+
+    fn spawn_timeout_watcher(
+        &self,
+        id: String,
+        timeout_at: chrono::DateTime<chrono::Utc>,
+        mut rx: oneshot::Receiver<ApprovalStatus>,
+    ) {
+        let pending = self.pending.clone();
+        let completed = self.completed.clone();
+
+        let now = chrono::Utc::now();
+        let to_wait = (timeout_at - now)
+            .to_std()
+            .unwrap_or_else(|_| StdDuration::from_secs(0));
+        let deadline = tokio::time::Instant::now() + to_wait;
+
+        tokio::spawn(async move {
+            tokio::select! {
+                biased;
+
+                r = &mut rx => {
+                    match r {
+                        Ok(status) => { completed.insert(id.clone(), status); }
+                        Err(_canceled) => {
+                            // The responder dropped; consider this a timeout
+                            completed.insert(id.clone(), ApprovalStatus::TimedOut);
+                        }
+                    }
+                }
+                _ = tokio::time::sleep_until(deadline) => {
+                    completed.insert(id.clone(), ApprovalStatus::TimedOut);
+                }
+            }
+
+            pending.remove(&id);
+        });
+    }
+
+    async fn msg_store_by_id(&self, execution_process_id: &Uuid) -> Option<Arc<MsgStore>> {
+        let map = self.msg_stores.read().await;
+        map.get(execution_process_id).cloned()
     }
 }

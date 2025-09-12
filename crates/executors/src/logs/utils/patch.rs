@@ -2,6 +2,7 @@ use json_patch::Patch;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_value, json};
 use ts_rs::TS;
+use utils::approvals::{ApprovalRequest, ApprovalResponse};
 use utils::diff::Diff;
 
 use crate::logs::NormalizedEntry;
@@ -22,6 +23,8 @@ pub enum PatchType {
     Stdout(String),
     Stderr(String),
     Diff(Diff),
+    ApprovalRequest(ApprovalRequest),
+    ApprovalResponse(ApprovalResponse),
 }
 
 #[derive(Serialize)]
@@ -109,6 +112,28 @@ impl ConversationPatch {
             op: PatchOperation::Replace,
             path: format!("/entries/{entry_index}"),
             value: PatchType::NormalizedEntry(entry),
+        };
+
+        from_value(json!([patch_entry])).unwrap()
+    }
+
+    /// Create an ADD patch for a new approval request at the given index
+    pub fn add_approval_request(entry_index: usize, request: ApprovalRequest) -> Patch {
+        let patch_entry = PatchEntry {
+            op: PatchOperation::Add,
+            path: format!("/entries/{entry_index}"),
+            value: PatchType::ApprovalRequest(request),
+        };
+
+        from_value(json!([patch_entry])).unwrap()
+    }
+
+    /// Create an ADD patch for a new approval response at the given index
+    pub fn add_approval_response(entry_index: usize, response: ApprovalResponse) -> Patch {
+        let patch_entry = PatchEntry {
+            op: PatchOperation::Add,
+            path: format!("/entries/{entry_index}"),
+            value: PatchType::ApprovalResponse(response),
         };
 
         from_value(json!([patch_entry])).unwrap()
