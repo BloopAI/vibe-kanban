@@ -1,6 +1,4 @@
 import {
-  CheckCircle2,
-  WifiOff,
   Clock,
   Send,
   ChevronDown,
@@ -41,6 +39,8 @@ import { inIframe } from '@/vscode/bridge';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 import type { ConflictOp } from 'shared/types';
 import { ConflictBanner } from '@/components/tasks/ConflictBanner';
+import { useTransientStatus } from '@/hooks/useTransientStatus';
+import { StatusPill } from '@/components/tasks/StatusPill';
 
 interface TaskFollowUpSectionProps {
   task: TaskWithAttemptStatus;
@@ -57,6 +57,11 @@ export function TaskFollowUpSection({
   selectedAttemptProfile,
   jumpToLogsTab,
 }: TaskFollowUpSectionProps) {
+  const arraysEqualOrdered = useCallback(
+    (a: string[], b: string[]) =>
+      a.length === b.length && a.every((id, i) => id === b[i]),
+    []
+  );
   const {
     attemptData,
     isAttemptRunning,
@@ -110,15 +115,19 @@ export function TaskFollowUpSection({
   }, [processes, selectedAttemptProfile, profiles]);
 
   const [followUpMessage, setFollowUpMessage] = useState('');
+  // Track latest local values in refs for unmount flush
+  const followUpMessageRef = useRef(followUpMessage);
   const [isSendingFollowUp, setIsSendingFollowUp] = useState(false);
   const [followUpError, setFollowUpError] = useState<string | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<string | null>(
     defaultFollowUpVariant
   );
+  const selectedVariantRef = useRef<string | null>(selectedVariant);
   const [isAnimating, setIsAnimating] = useState(false);
   const variantButtonRef = useRef<HTMLButtonElement>(null);
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [images, setImages] = useState<ImageResponse[]>([]);
+  const imagesRef = useRef<ImageResponse[]>(images);
   const [newlyUploadedImageIds, setNewlyUploadedImageIds] = useState<string[]>(
     []
   );
@@ -131,61 +140,97 @@ export function TaskFollowUpSection({
   const overlayFadeTimerRef = useRef<number | undefined>(undefined);
   const overlayHideTimerRef = useRef<number | undefined>(undefined);
   const [isQueued, setIsQueued] = useState(false);
+  const isQueuedRef = useRef<boolean>(isQueued);
   const [isDraftSending, setIsDraftSending] = useState(false);
+  const isDraftSendingRef = useRef<boolean>(isDraftSending);
   const [isQueuing, setIsQueuing] = useState(false);
   const [isUnqueuing, setIsUnqueuing] = useState(false);
   const [isDraftReady, setIsDraftReady] = useState(false);
   const saveTimeoutRef = useRef<number | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<
-    'idle' | 'saving' | 'saved' | 'offline' | 'sent'
-  >('idle');
-  const [isStatusFading, setIsStatusFading] = useState(false);
-  const statusFadeTimerRef = useRef<number | undefined>(undefined);
-  const statusClearTimerRef = useRef<number | undefined>(undefined);
+  const {
+    saveStatus,
+    setSaveStatus,
+    isStatusFading,
+    scheduleSaved,
+    scheduleSent,
+    scheduleConflict,
+  } = useTransientStatus();
   const lastSentRef = useRef<string>('');
   const suppressNextSaveRef = useRef<boolean>(false);
   const localDirtyRef = useRef<boolean>(false);
   // We auto-resolve conflicts silently by adopting server state.
   const lastServerVersionRef = useRef<number>(-1);
+  // Snapshot of latest server values (even if we did not adopt into input)
+  const serverPromptRef = useRef<string>('');
+  const serverVariantRef = useRef<string | null>(null);
+  const serverImageIdsRef = useRef<string[]>([]);
   const prevSendingRef = useRef<boolean>(false);
 
-  // Helper to show a pleasant fade for transient "Draft saved" status
-  const scheduleSavedStatus = useCallback(() => {
-    // Clear pending timers
-    if (statusFadeTimerRef.current)
-      window.clearTimeout(statusFadeTimerRef.current);
-    if (statusClearTimerRef.current)
-      window.clearTimeout(statusClearTimerRef.current);
-    setIsStatusFading(false);
-    setSaveStatus('saved');
-    // Fade out close to the end of visibility
-    statusFadeTimerRef.current = window.setTimeout(
-      () => setIsStatusFading(true),
-      1800
-    );
-    statusClearTimerRef.current = window.setTimeout(() => {
-      setSaveStatus('idle');
-      setIsStatusFading(false);
-    }, 2000);
-  }, []);
+  // Aliases for status scheduling
+  const scheduleSavedStatus = scheduleSaved;
 
-  const scheduleSentStatus = useCallback(() => {
-    if (statusFadeTimerRef.current)
-      window.clearTimeout(statusFadeTimerRef.current);
-    if (statusClearTimerRef.current)
-      window.clearTimeout(statusClearTimerRef.current);
-    setIsStatusFading(false);
-    setSaveStatus('sent');
-    statusFadeTimerRef.current = window.setTimeout(
-      () => setIsStatusFading(true),
-      1800
-    );
-    statusClearTimerRef.current = window.setTimeout(() => {
-      setSaveStatus('idle');
-      setIsStatusFading(false);
-    }, 2000);
-  }, []);
+  // Keep refs in sync with latest local values
+  useEffect(() => {
+    followUpMessageRef.current = followUpMessage;
+  }, [followUpMessage]);
+  useEffect(() => {
+    selectedVariantRef.current = selectedVariant;
+  }, [selectedVariant]);
+  useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
+  useEffect(() => {
+    isQueuedRef.current = isQueued;
+  }, [isQueued]);
+  useEffect(() => {
+    isDraftSendingRef.current = isDraftSending;
+  }, [isDraftSending]);
+
+  // Helper to immediately flush pending changes (e.g., on unmount) without debounce
+  const flushPendingSave = useCallback(async () => {
+    if (!selectedAttemptId) return;
+    // skip if edits disallowed
+    if (isDraftSendingRef.current) return;
+    if (isQueuing || isUnqueuing) return;
+    if (isQueuedRef.current) return;
+
+    const payload: Partial<UpdateFollowUpDraftRequest> = {};
+    // Compare against latest server snapshot
+    if (followUpMessageRef.current !== (serverPromptRef.current || '')) {
+      payload.prompt = followUpMessageRef.current;
+    }
+    if (
+      (selectedVariantRef.current ?? null) !==
+      (serverVariantRef.current ?? null)
+    ) {
+      payload.variant = (selectedVariantRef.current ?? null) as string | null;
+    }
+    const currentIds = imagesRef.current.map((img) => img.id);
+    const serverIds = serverImageIdsRef.current ?? [];
+    if (!arraysEqualOrdered(currentIds, serverIds)) {
+      payload.image_ids = currentIds;
+    }
+
+    const keys = Object.keys(payload).filter((k) => k !== 'version');
+    if (keys.length === 0) return;
+    try {
+      // Use optimistic concurrency with last known version
+      const resp = await attemptsApi.saveFollowUpDraft(selectedAttemptId, {
+        ...(payload as any),
+        version: lastServerVersionRef.current,
+      } as UpdateFollowUpDraftRequest);
+      if (resp?.version !== undefined && resp?.version !== null) {
+        lastServerVersionRef.current = Number(resp.version ?? 0n);
+      }
+    } catch {
+      // Ignore errors on flush; main flow will reconcile on next mount
+    }
+  }, [selectedAttemptId, isQueuing, isUnqueuing]);
+
+  const scheduleSentStatus = scheduleSent;
+
+  const scheduleConflictStatus = scheduleConflict;
 
   // Get the profile from the attempt data
   const selectedProfile = selectedAttemptProfile;
@@ -279,10 +324,17 @@ export function TaskFollowUpSection({
       try {
         const draft = await attemptsApi.getFollowUpDraft(selectedAttemptId);
         if (cancelled) return;
-        suppressNextSaveRef.current = true;
         const incomingVersion = Number((draft as FollowUpDraft).version ?? 0n);
         lastServerVersionRef.current = incomingVersion;
-        setFollowUpMessage(draft.prompt || '');
+        // Update server snapshot regardless of adoption
+        serverPromptRef.current = draft.prompt || '';
+        serverVariantRef.current =
+          draft.variant !== undefined ? (draft.variant as string | null) : null;
+        serverImageIdsRef.current = (draft.image_ids as string[] | null) || [];
+        if (!localDirtyRef.current) {
+          suppressNextSaveRef.current = true;
+          setFollowUpMessage(draft.prompt || '');
+        }
         setIsQueued(!!draft.queued);
         if (draft.variant !== undefined && draft.variant !== null)
           setSelectedVariant(draft.variant);
@@ -313,15 +365,12 @@ export function TaskFollowUpSection({
     };
   }, [selectedAttemptId]);
 
-  // Cleanup timers on unmount
+  // Cleanup and flush on unmount
   useEffect(() => {
     return () => {
-      if (statusFadeTimerRef.current)
-        window.clearTimeout(statusFadeTimerRef.current);
-      if (statusClearTimerRef.current)
-        window.clearTimeout(statusClearTimerRef.current);
+      void flushPendingSave();
     };
-  }, []);
+  }, [flushPendingSave]);
 
   useEffect(() => {
     if (!draftStream) return;
@@ -379,18 +428,23 @@ export function TaskFollowUpSection({
     }
     prevSendingRef.current = sendingNow;
 
+    // Update server snapshot refs with latest even if we do not adopt into input
+    serverPromptRef.current = d.prompt || '';
+    serverVariantRef.current = d.variant ?? null;
+    serverImageIdsRef.current = (d.image_ids as string[] | null) || [];
+
     // Skip if this is a duplicate of what we already processed
     if (incomingVersion === lastServerVersionRef.current) {
       if (!isDraftReady) setIsDraftReady(true);
       return;
     }
 
-    // Mark that next local change shouldn't auto-save (we're syncing from server)
-    suppressNextSaveRef.current = true;
+    let willAdoptPrompt = false;
 
     // Initial hydration: avoid clobbering locally typed text with empty server prompt
     if (lastServerVersionRef.current === -1) {
       if (!localDirtyRef.current && !sendingNow) {
+        willAdoptPrompt = true;
         setFollowUpMessage(d.prompt || '');
       }
       if (d.variant !== undefined) setSelectedVariant(d.variant);
@@ -400,10 +454,20 @@ export function TaskFollowUpSection({
     // Real server-side change: adopt new prompt/variant
     if (incomingVersion > lastServerVersionRef.current) {
       // If sending, keep the editor clear regardless of server prompt value
-      setFollowUpMessage(sendingNow ? '' : d.prompt || '');
+      if (sendingNow) {
+        willAdoptPrompt = true;
+        setFollowUpMessage('');
+      } else if (!localDirtyRef.current) {
+        willAdoptPrompt = true;
+        setFollowUpMessage(d.prompt || '');
+      }
       if (d.variant !== undefined) setSelectedVariant(d.variant);
       localDirtyRef.current = false;
       lastServerVersionRef.current = incomingVersion;
+    }
+    // Mark that next local change shouldn't auto-save only if we actually replaced the input value
+    if (willAdoptPrompt) {
+      suppressNextSaveRef.current = true;
     }
     if (!d.image_ids || d.image_ids.length === 0) {
       setImages([]);
@@ -463,8 +527,18 @@ export function TaskFollowUpSection({
         // Polling response does not include 'sending'; preserve previous sending state
         const incomingVersion = Number((draft as FollowUpDraft).version ?? 0n);
         if (incomingVersion !== lastServerVersionRef.current) {
-          suppressNextSaveRef.current = true;
-          setFollowUpMessage(draft.prompt || '');
+          // Update server snapshot regardless of adoption
+          serverPromptRef.current = draft.prompt || '';
+          serverVariantRef.current =
+            draft.variant !== undefined
+              ? (draft.variant as string | null)
+              : null;
+          serverImageIdsRef.current =
+            (draft.image_ids as string[] | null) || [];
+          if (!localDirtyRef.current) {
+            suppressNextSaveRef.current = true;
+            setFollowUpMessage(draft.prompt || '');
+          }
           if (draft.variant !== undefined && draft.variant !== null)
             setSelectedVariant(draft.variant);
           lastServerVersionRef.current = incomingVersion;
@@ -493,7 +567,8 @@ export function TaskFollowUpSection({
     if (isDraftSending) return;
     // skip saving while queue/unqueue transitions are in-flight
     if (isQueuing || isUnqueuing) return;
-    if (suppressNextSaveRef.current) {
+    if (suppressNextSaveRef.current && !localDirtyRef.current) {
+      // Skip a single cycle only for programmatic adoption; do not skip real user edits
       suppressNextSaveRef.current = false;
       return;
     }
@@ -501,23 +576,19 @@ export function TaskFollowUpSection({
     if (isQueued) return;
 
     const saveDraft = async () => {
-      const d = draftStream?.follow_up_draft;
       const payload: Partial<UpdateFollowUpDraftRequest> = {};
-      // prompt change
-      if (d && followUpMessage !== (d.prompt || '')) {
+      // Compare against latest server snapshot refs to avoid depending on SSE readiness
+      if (followUpMessage !== (serverPromptRef.current || '')) {
         payload.prompt = followUpMessage;
       }
       // variant change (string | null)
-      if ((d?.variant ?? null) !== (selectedVariant ?? null)) {
+      if ((selectedVariant ?? null) !== (serverVariantRef.current ?? null)) {
         payload.variant = (selectedVariant ?? null) as string | null;
       }
       // images change (compare ids)
       const currentIds = images.map((img) => img.id);
-      const serverIds = (d?.image_ids as string[] | undefined) ?? [];
-      const idsEqual =
-        currentIds.length === serverIds.length &&
-        currentIds.every((id, i) => id === serverIds[i]);
-      if (!idsEqual) {
+      const serverIds = serverImageIdsRef.current ?? [];
+      if (!arraysEqualOrdered(currentIds, serverIds)) {
         payload.image_ids = currentIds;
       }
 
@@ -530,29 +601,55 @@ export function TaskFollowUpSection({
       try {
         setIsSaving(true);
         setSaveStatus(navigator.onLine ? 'saving' : 'offline');
-        await attemptsApi.saveFollowUpDraft(
+        // Include optimistic concurrency version as a number to avoid BigInt serialization issues
+        const payloadWithVersion: any = {
+          ...payload,
+          version: lastServerVersionRef.current,
+        };
+        const resp = await attemptsApi.saveFollowUpDraft(
           selectedAttemptId,
-          payload as UpdateFollowUpDraftRequest
+          payloadWithVersion as UpdateFollowUpDraftRequest
         );
+        // Update last known server version from response to ignore the subsequent SSE echo
+        if (resp?.version !== undefined && resp?.version !== null) {
+          lastServerVersionRef.current = Number(resp.version ?? 0n);
+        }
+        // Update server snapshot refs from response to reflect acknowledged state
+        serverPromptRef.current = resp?.prompt || '';
+        serverVariantRef.current = (resp?.variant as string | null) ?? null;
+        serverImageIdsRef.current = (resp?.image_ids as string[] | null) || [];
+        // Our content is now acknowledged by server
+        if ((resp?.prompt ?? '') === followUpMessage) {
+          localDirtyRef.current = false;
+        }
         // pleasant linger + fade-out
         scheduleSavedStatus();
       } catch (e: unknown) {
-        // On conflict or error, silently adopt server state
-        try {
-          const draft = await attemptsApi.getFollowUpDraft(selectedAttemptId);
-          suppressNextSaveRef.current = true;
-          setFollowUpMessage(draft.prompt || '');
-          setIsQueued(!!draft.queued);
-          if (draft.variant !== undefined && draft.variant !== null) {
-            setSelectedVariant(draft.variant);
+        // If conflict (another client edited), adopt server and show notice; otherwise keep offline/idle
+        const status =
+          e && typeof e === 'object' && 'status' in (e as any)
+            ? (e as any).status
+            : undefined;
+        if (status === 409) {
+          try {
+            const draft = await attemptsApi.getFollowUpDraft(selectedAttemptId);
+            suppressNextSaveRef.current = true;
+            setFollowUpMessage(draft.prompt || '');
+            setIsQueued(!!draft.queued);
+            if (draft.variant !== undefined && draft.variant !== null) {
+              setSelectedVariant(draft.variant);
+            }
+            if (draft.version !== undefined && draft.version !== null) {
+              lastServerVersionRef.current = Number(draft.version ?? 0n);
+            }
+            localDirtyRef.current = false;
+            scheduleConflictStatus();
+          } catch {
+            setSaveStatus(navigator.onLine ? 'idle' : 'offline');
           }
-          if (draft.version !== undefined && draft.version !== null) {
-            lastServerVersionRef.current = Number(draft.version ?? 0n);
-          }
-        } catch {
-          /* empty */
+        } else {
+          setSaveStatus(navigator.onLine ? 'idle' : 'offline');
         }
-        setSaveStatus(navigator.onLine ? 'idle' : 'offline');
       } finally {
         setIsSaving(false);
       }
@@ -733,7 +830,9 @@ export function TaskFollowUpSection({
       try {
         const resp = await attemptsApi.setFollowUpQueue(
           selectedAttemptId,
-          true
+          true,
+          undefined,
+          lastServerVersionRef.current
         );
         // Immediate local sync to avoid waiting for SSE
         if (resp?.version !== undefined) {
@@ -926,38 +1025,11 @@ export function TaskFollowUpSection({
               <div className="flex items-center justify-between text-xs min-h-6 h-6 px-0.5">
                 {/* Left side: save state or conflicts */}
                 <div className="text-muted-foreground">
-                  {saveStatus === 'saving' ? (
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 bg-muted animate-in fade-in-0',
-                        isSaving && 'italic'
-                      )}
-                    >
-                      <Loader2 className="animate-spin h-3 w-3" /> Saving…
-                    </span>
-                  ) : saveStatus === 'offline' ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 bg-muted text-amber-700 animate-in fade-in-0">
-                      <WifiOff className="h-3 w-3" /> Offline — changes pending
-                    </span>
-                  ) : saveStatus === 'saved' ? (
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 bg-muted text-emerald-700 transition-opacity duration-200 animate-in fade-in-0',
-                        isStatusFading && 'opacity-0'
-                      )}
-                    >
-                      <CheckCircle2 className="h-3 w-3" /> Draft saved
-                    </span>
-                  ) : saveStatus === 'sent' ? (
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 bg-muted text-emerald-700 transition-opacity duration-200 animate-in fade-in-0',
-                        isStatusFading && 'opacity-0'
-                      )}
-                    >
-                      <Send className="h-3 w-3" /> Follow-up sent
-                    </span>
-                  ) : null}
+                  <StatusPill
+                    status={saveStatus}
+                    fading={isStatusFading}
+                    saving={isSaving}
+                  />
                 </div>
                 {/* Right side: queued/sending status */}
                 <div className="text-muted-foreground">
@@ -1130,7 +1202,9 @@ export function TaskFollowUpSection({
                             try {
                               const resp = await attemptsApi.setFollowUpQueue(
                                 selectedAttemptId,
-                                false
+                                false,
+                                undefined,
+                                lastServerVersionRef.current
                               );
                               if (resp?.version !== undefined) {
                                 lastServerVersionRef.current = Number(
@@ -1196,7 +1270,9 @@ export function TaskFollowUpSection({
                             try {
                               const resp = await attemptsApi.setFollowUpQueue(
                                 selectedAttemptId,
-                                false
+                                false,
+                                undefined,
+                                lastServerVersionRef.current
                               );
                               if (resp?.version !== undefined) {
                                 lastServerVersionRef.current = Number(
