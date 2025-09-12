@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                run_reason as \"run_reason!: ExecutionProcessRunReason\",\n                executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\",\n                before_head_commit,\n                after_head_commit,\n                status as \"status!: ExecutionProcessStatus\",\n                exit_code,\n                dropped as \"dropped!: bool\",\n                started_at as \"started_at!: DateTime<Utc>\",\n                completed_at as \"completed_at?: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes \n               WHERE task_attempt_id = $1 \n               ORDER BY created_at ASC",
+  "query": "SELECT id as \"id!: Uuid\", task_attempt_id as \"task_attempt_id!: Uuid\", run_reason as \"run_reason!: ExecutionProcessRunReason\", executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\", before_head_commit,\n                      after_head_commit, status as \"status!: ExecutionProcessStatus\", exit_code, dropped, started_at as \"started_at!: DateTime<Utc>\", completed_at as \"completed_at?: DateTime<Utc>\",\n                      created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes WHERE rowid = ?",
   "describe": {
     "columns": [
       {
@@ -44,7 +44,7 @@
         "type_info": "Integer"
       },
       {
-        "name": "dropped!: bool",
+        "name": "dropped",
         "ordinal": 8,
         "type_info": "Bool"
       },
@@ -88,5 +88,5 @@
       false
     ]
   },
-  "hash": "4e822f8bf09b24f78d99f14b57ad00b3ea3e3e12699ffcf5d3cbe7e8a3375b00"
+  "hash": "b965523f671c1732b03c24c90f2a66f524e657af536c1e767e82011720e17a9f"
 }

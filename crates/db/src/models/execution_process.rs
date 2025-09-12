@@ -92,13 +92,14 @@ pub struct MissingBeforeContext {
 impl ExecutionProcess {
     /// Find execution process by ID
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
-        sqlx::query_as::<_, ExecutionProcess>(
-            r#"SELECT id, task_attempt_id, run_reason, executor_action, before_head_commit,
-                      after_head_commit, status, exit_code, dropped, started_at, completed_at,
-                      created_at, updated_at
+        sqlx::query_as!(
+            ExecutionProcess,
+            r#"SELECT id as "id!: Uuid", task_attempt_id as "task_attempt_id!: Uuid", run_reason as "run_reason!: ExecutionProcessRunReason", executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>", before_head_commit,
+                      after_head_commit, status as "status!: ExecutionProcessStatus", exit_code, dropped, started_at as "started_at!: DateTime<Utc>", completed_at as "completed_at?: DateTime<Utc>",
+                      created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM execution_processes WHERE id = ?"#,
+            id
         )
-        .bind(id)
         .fetch_optional(pool)
         .await
     }
@@ -167,13 +168,14 @@ impl ExecutionProcess {
 
     /// Find execution process by rowid
     pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
-        sqlx::query_as::<_, ExecutionProcess>(
-            r#"SELECT id, task_attempt_id, run_reason, executor_action, before_head_commit,
-                      after_head_commit, status, exit_code, dropped, started_at, completed_at,
-                      created_at, updated_at
+        sqlx::query_as!(
+            ExecutionProcess,
+            r#"SELECT id as "id!: Uuid", task_attempt_id as "task_attempt_id!: Uuid", run_reason as "run_reason!: ExecutionProcessRunReason", executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>", before_head_commit,
+                      after_head_commit, status as "status!: ExecutionProcessStatus", exit_code, dropped, started_at as "started_at!: DateTime<Utc>", completed_at as "completed_at?: DateTime<Utc>",
+                      created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM execution_processes WHERE rowid = ?"#,
+            rowid
         )
-        .bind(rowid)
         .fetch_optional(pool)
         .await
     }
@@ -183,23 +185,25 @@ impl ExecutionProcess {
         pool: &SqlitePool,
         task_attempt_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
-        sqlx::query_as::<_, ExecutionProcess>(
-            r#"SELECT id, task_attempt_id, run_reason, executor_action, before_head_commit,
-                      after_head_commit, status, exit_code, dropped, started_at, completed_at,
-                      created_at, updated_at
+        sqlx::query_as!(
+            ExecutionProcess,
+            r#"SELECT id as "id!: Uuid", task_attempt_id as "task_attempt_id!: Uuid", run_reason as "run_reason!: ExecutionProcessRunReason", executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>", before_head_commit,
+                      after_head_commit, status as "status!: ExecutionProcessStatus", exit_code, dropped, started_at as "started_at!: DateTime<Utc>", completed_at as "completed_at?: DateTime<Utc>",
+                      created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM execution_processes WHERE task_attempt_id = ? ORDER BY created_at ASC"#,
+            task_attempt_id
         )
-        .bind(task_attempt_id)
         .fetch_all(pool)
         .await
     }
 
     /// Find running execution processes
     pub async fn find_running(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
-        sqlx::query_as::<_, ExecutionProcess>(
-            r#"SELECT id, task_attempt_id, run_reason, executor_action, before_head_commit,
-                      after_head_commit, status, exit_code, dropped, started_at, completed_at,
-                      created_at, updated_at
+        sqlx::query_as!(
+            ExecutionProcess,
+            r#"SELECT id as "id!: Uuid", task_attempt_id as "task_attempt_id!: Uuid", run_reason as "run_reason!: ExecutionProcessRunReason", executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>", before_head_commit,
+                      after_head_commit, status as "status!: ExecutionProcessStatus", exit_code, dropped, started_at as "started_at!: DateTime<Utc>", completed_at as "completed_at?: DateTime<Utc>",
+                      created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM execution_processes WHERE status = 'running' ORDER BY created_at ASC"#,
         )
         .fetch_all(pool)
@@ -211,17 +215,18 @@ impl ExecutionProcess {
         pool: &SqlitePool,
         project_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
-        sqlx::query_as::<_, ExecutionProcess>(
-            r#"SELECT ep.id, ep.task_attempt_id, ep.run_reason, ep.executor_action,
-                      ep.before_head_commit, ep.after_head_commit, ep.status, ep.exit_code,
-                      ep.dropped, ep.started_at, ep.completed_at, ep.created_at, ep.updated_at
+        sqlx::query_as!(
+            ExecutionProcess,
+            r#"SELECT ep.id as "id!: Uuid", ep.task_attempt_id as "task_attempt_id!: Uuid", ep.run_reason as "run_reason!: ExecutionProcessRunReason", ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>",
+                      ep.before_head_commit, ep.after_head_commit, ep.status as "status!: ExecutionProcessStatus", ep.exit_code,
+                      ep.dropped, ep.started_at as "started_at!: DateTime<Utc>", ep.completed_at as "completed_at?: DateTime<Utc>", ep.created_at as "created_at!: DateTime<Utc>", ep.updated_at as "updated_at!: DateTime<Utc>"
                FROM execution_processes ep
                JOIN task_attempts ta ON ep.task_attempt_id = ta.id
                JOIN tasks t ON ta.task_id = t.id
                WHERE ep.status = 'running' AND ep.run_reason = 'devserver' AND t.project_id = ?
                ORDER BY ep.created_at ASC"#,
+            project_id
         )
-        .bind(project_id)
         .fetch_all(pool)
         .await
     }
@@ -261,16 +266,17 @@ impl ExecutionProcess {
         task_attempt_id: Uuid,
         run_reason: &ExecutionProcessRunReason,
     ) -> Result<Option<Self>, sqlx::Error> {
-        sqlx::query_as::<_, ExecutionProcess>(
-            r#"SELECT id, task_attempt_id, run_reason, executor_action, before_head_commit,
-                      after_head_commit, status, exit_code, dropped, started_at, completed_at,
-                      created_at, updated_at
+        sqlx::query_as!(
+            ExecutionProcess,
+            r#"SELECT id as "id!: Uuid", task_attempt_id as "task_attempt_id!: Uuid", run_reason as "run_reason!: ExecutionProcessRunReason", executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>", before_head_commit,
+                      after_head_commit, status as "status!: ExecutionProcessStatus", exit_code, dropped, started_at as "started_at!: DateTime<Utc>", completed_at as "completed_at?: DateTime<Utc>",
+                      created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM execution_processes
                WHERE task_attempt_id = ? AND run_reason = ? AND dropped = 0
                ORDER BY created_at DESC LIMIT 1"#,
+            task_attempt_id,
+            run_reason
         )
-        .bind(task_attempt_id)
-        .bind(run_reason)
         .fetch_optional(pool)
         .await
     }
@@ -285,25 +291,26 @@ impl ExecutionProcess {
         let now = Utc::now();
         let executor_action_json = sqlx::types::Json(&data.executor_action);
 
-        sqlx::query_as::<_, ExecutionProcess>(
+        sqlx::query_as!(
+            ExecutionProcess,
             r#"INSERT INTO execution_processes (
                     id, task_attempt_id, run_reason, executor_action, before_head_commit,
                     after_head_commit, status, exit_code, started_at, completed_at, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?) RETURNING
-                    id, task_attempt_id, run_reason, executor_action, before_head_commit,
-                    after_head_commit, status, exit_code, dropped, started_at, completed_at, created_at, updated_at"#,
+                    id as "id!: Uuid", task_attempt_id as "task_attempt_id!: Uuid", run_reason as "run_reason!: ExecutionProcessRunReason", executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>", before_head_commit,
+                    after_head_commit, status as "status!: ExecutionProcessStatus", exit_code, dropped, started_at as "started_at!: DateTime<Utc>", completed_at as "completed_at?: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            process_id,
+            data.task_attempt_id,
+            data.run_reason,
+            executor_action_json,
+            before_head_commit,
+            ExecutionProcessStatus::Running,
+            None::<i64>,
+            now,
+            None::<DateTime<Utc>>,
+            now,
+            now
         )
-        .bind(process_id)
-        .bind(data.task_attempt_id)
-        .bind(&data.run_reason)
-        .bind(executor_action_json)
-        .bind(before_head_commit)
-        .bind(ExecutionProcessStatus::Running)
-        .bind(None::<i64>)
-        .bind(now)
-        .bind(None::<DateTime<Utc>>)
-        .bind(now)
-        .bind(now)
         .fetch_one(pool)
         .await
     }

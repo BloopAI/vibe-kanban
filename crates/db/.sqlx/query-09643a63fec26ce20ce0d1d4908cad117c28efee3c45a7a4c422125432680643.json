@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO execution_processes (\n                id, task_attempt_id, run_reason, executor_action, before_head_commit, after_head_commit, status, \n                exit_code, started_at, completed_at, created_at, updated_at\n               ) \n               VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9, $10, $11) \n               RETURNING \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                run_reason as \"run_reason!: ExecutionProcessRunReason\",\n                executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\",\n                before_head_commit,\n                after_head_commit,\n                status as \"status!: ExecutionProcessStatus\",\n                exit_code,\n                dropped as \"dropped!: bool\",\n                started_at as \"started_at!: DateTime<Utc>\",\n                completed_at as \"completed_at?: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT id as \"id!: Uuid\", task_attempt_id as \"task_attempt_id!: Uuid\", run_reason as \"run_reason!: ExecutionProcessRunReason\", executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\", before_head_commit,\n                      after_head_commit, status as \"status!: ExecutionProcessStatus\", exit_code, dropped, started_at as \"started_at!: DateTime<Utc>\", completed_at as \"completed_at?: DateTime<Utc>\",\n                      created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes\n               WHERE task_attempt_id = ? AND run_reason = ? AND dropped = 0\n               ORDER BY created_at DESC LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -44,7 +44,7 @@
         "type_info": "Integer"
       },
       {
-        "name": "dropped!: bool",
+        "name": "dropped",
         "ordinal": 8,
         "type_info": "Bool"
       },
@@ -70,7 +70,7 @@
       }
     ],
     "parameters": {
-      "Right": 11
+      "Right": 2
     },
     "nullable": [
       true,
@@ -88,5 +88,5 @@
       false
     ]
   },
-  "hash": "9108f73be5ad58ca6f368bb911b6cec943426b4e31039f9a1b90f54c8074152f"
+  "hash": "09643a63fec26ce20ce0d1d4908cad117c28efee3c45a7a4c422125432680643"
 }

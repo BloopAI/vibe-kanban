@@ -48,13 +48,14 @@ impl TaskTemplate {
     ) -> Result<Vec<Self>, sqlx::Error> {
         if let Some(pid) = project_id {
             // Return only project-specific templates
-            sqlx::query_as::<_, TaskTemplate>(
-                r#"SELECT id, project_id, title, description, template_name, created_at, updated_at
+            sqlx::query_as!(
+                TaskTemplate,
+                r#"SELECT id as "id!: Uuid", project_id as "project_id?: Uuid", title, description, template_name, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                    FROM task_templates 
                    WHERE project_id = ?
                    ORDER BY template_name ASC"#,
+                pid
             )
-            .bind(pid)
             .fetch_all(pool)
             .await
         } else {

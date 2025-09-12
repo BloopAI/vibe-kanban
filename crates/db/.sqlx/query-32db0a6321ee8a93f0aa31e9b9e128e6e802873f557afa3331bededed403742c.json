@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT \n                id as \"id!: Uuid\", \n                task_attempt_id as \"task_attempt_id!: Uuid\", \n                run_reason as \"run_reason!: ExecutionProcessRunReason\",\n                executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\",\n                before_head_commit,\n                after_head_commit,\n                status as \"status!: ExecutionProcessStatus\",\n                exit_code,\n                dropped as \"dropped!: bool\",\n                started_at as \"started_at!: DateTime<Utc>\",\n                completed_at as \"completed_at?: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\", \n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes \n               WHERE id = $1",
+  "query": "SELECT id as \"id!: Uuid\", task_attempt_id as \"task_attempt_id!: Uuid\", run_reason as \"run_reason!: ExecutionProcessRunReason\", executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\", before_head_commit,\n                      after_head_commit, status as \"status!: ExecutionProcessStatus\", exit_code, dropped, started_at as \"started_at!: DateTime<Utc>\", completed_at as \"completed_at?: DateTime<Utc>\",\n                      created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes WHERE status = 'running' ORDER BY created_at ASC",
   "describe": {
     "columns": [
       {
@@ -44,7 +44,7 @@
         "type_info": "Integer"
       },
       {
-        "name": "dropped!: bool",
+        "name": "dropped",
         "ordinal": 8,
         "type_info": "Bool"
       },
@@ -70,7 +70,7 @@
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 0
     },
     "nullable": [
       true,
@@ -88,5 +88,5 @@
       false
     ]
   },
-  "hash": "9c84065b24a8b2038f4e3e4fd9746870f79bb412a04edeb10a5397f6b74f33cd"
+  "hash": "32db0a6321ee8a93f0aa31e9b9e128e6e802873f557afa3331bededed403742c"
 }

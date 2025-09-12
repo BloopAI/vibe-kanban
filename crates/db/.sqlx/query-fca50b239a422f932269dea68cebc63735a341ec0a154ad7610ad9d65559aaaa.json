@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT \n                ep.id as \"id!: Uuid\", \n                ep.task_attempt_id as \"task_attempt_id!: Uuid\", \n                ep.run_reason as \"run_reason!: ExecutionProcessRunReason\",\n                ep.executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\",\n                ep.before_head_commit,\n                ep.after_head_commit,\n                ep.status as \"status!: ExecutionProcessStatus\",\n                ep.exit_code,\n                ep.dropped as \"dropped!: bool\",\n                ep.started_at as \"started_at!: DateTime<Utc>\",\n                ep.completed_at as \"completed_at?: DateTime<Utc>\",\n                ep.created_at as \"created_at!: DateTime<Utc>\", \n                ep.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes ep\n               JOIN task_attempts ta ON ep.task_attempt_id = ta.id\n               JOIN tasks t ON ta.task_id = t.id\n               WHERE ep.status = 'running' \n               AND ep.run_reason = 'devserver'\n               AND t.project_id = $1\n               ORDER BY ep.created_at ASC",
+  "query": "SELECT ep.id as \"id!: Uuid\", ep.task_attempt_id as \"task_attempt_id!: Uuid\", ep.run_reason as \"run_reason!: ExecutionProcessRunReason\", ep.executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\",\n                      ep.before_head_commit, ep.after_head_commit, ep.status as \"status!: ExecutionProcessStatus\", ep.exit_code,\n                      ep.dropped, ep.started_at as \"started_at!: DateTime<Utc>\", ep.completed_at as \"completed_at?: DateTime<Utc>\", ep.created_at as \"created_at!: DateTime<Utc>\", ep.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes ep\n               JOIN task_attempts ta ON ep.task_attempt_id = ta.id\n               JOIN tasks t ON ta.task_id = t.id\n               WHERE ep.status = 'running' AND ep.run_reason = 'devserver' AND t.project_id = ?\n               ORDER BY ep.created_at ASC",
   "describe": {
     "columns": [
       {
@@ -44,7 +44,7 @@
         "type_info": "Integer"
       },
       {
-        "name": "dropped!: bool",
+        "name": "dropped",
         "ordinal": 8,
         "type_info": "Bool"
       },
@@ -88,5 +88,5 @@
       false
     ]
   },
-  "hash": "3394648a72fc2268979b34a73b8cc75dbe7e9b58b2c8990febcd95371261438e"
+  "hash": "fca50b239a422f932269dea68cebc63735a341ec0a154ad7610ad9d65559aaaa"
 }
