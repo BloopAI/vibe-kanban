@@ -83,7 +83,9 @@ impl SessionHandler {
 
             while let Some(Ok(line)) = stderr_lines_stream.next().await {
                 if let Some(session_id) = Self::extract_session_id_from_line(&line) {
+                    tracing::debug!("Extracted session ID: {}", session_id);
                     msg_store.push_session_id(session_id);
+                    break; // Stop after finding the first session ID
                 }
             }
         });
@@ -95,12 +97,15 @@ impl SessionHandler {
         // 2025-07-23T15:47:59.877058Z  INFO codex_exec: Codex initialized with event: Event { id: "0", msg: SessionConfigured(SessionConfiguredEvent { session_id: 3cdcc4df-c7c3-4cca-8902-48c3d4a0f96b, model: "codex-mini-latest", history_log_id: 9104228, history_entry_count: 1 }) }
         static SESSION_ID_REGEX: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
         let regex = SESSION_ID_REGEX.get_or_init(|| {
-            Regex::new(r"session_id:\s*([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})").unwrap()
+            // Support both old and new formats:
+            // - Old: session_id: <uuid>
+            // - New: session_id: ConversationId(<uuid>)
+            Regex::new(r"session_id:\s*(?:ConversationId\()?(?P<id>[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\)?").unwrap()
         });
 
         regex
             .captures(line)
-            .and_then(|cap| cap.get(1))
+            .and_then(|cap| cap.name("id"))
             .map(|m| m.as_str().to_string())
     }
 
@@ -177,11 +182,7 @@ impl SessionHandler {
 
         // Generate new UUID for forked session
         let new_id = uuid::Uuid::new_v4().to_string();
-        if let serde_json::Value::Object(ref mut map) = meta {
-            map.insert("id".to_string(), serde_json::Value::String(new_id.clone()));
-        } else {
-            return Err("First line of rollout file is not a JSON object".to_string());
-        }
+        Self::set_session_id_in_rollout_meta(&mut meta, &new_id)?;
 
         // Prepare destination path in the same directory, following Codex rollout naming convention:
         // rollout-<YYYY>-<MM>-<DD>T<HH>-<mm>-<ss>-<session_id>.jsonl
@@ -222,6 +223,36 @@ impl SessionHandler {
 
         Ok((dest, new_id))
     }
+
+    // Update session id inside the first-line JSON meta, supporting both old and new formats.
+    // - Old format: top-level { "id": "<uuid>", ... }
+    // - New format: { "type": "session_meta", "payload": { "id": "<uuid>", ... }, ... }
+    // If both are present, the new format (payload.id) takes precedence; we update both when present.
+    fn set_session_id_in_rollout_meta(
+        meta: &mut serde_json::Value,
+        new_id: &str,
+    ) -> Result<(), String> {
+        match meta {
+            serde_json::Value::Object(map) => {
+                // Prefer updating payload.id when payload is an object
+                if let Some(serde_json::Value::Object(payload)) = map.get_mut("payload") {
+                    payload.insert(
+                        "id".to_string(),
+                        serde_json::Value::String(new_id.to_string()),
+                    );
+                    return Ok(());
+                }
+
+                // Fallback to top-level id for old format
+                map.insert(
+                    "id".to_string(),
+                    serde_json::Value::String(new_id.to_string()),
+                );
+                Ok(())
+            }
+            _ => Err("First line of rollout file is not a JSON object".to_string()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
@@ -246,7 +277,7 @@ pub struct Codex {
 
 impl Codex {
     fn build_command_builder(&self) -> CommandBuilder {
-        let mut builder = CommandBuilder::new("npx -y @openai/codex@0.29.0 exec")
+        let mut builder = CommandBuilder::new("npx -y @openai/codex@latest exec")
             .params(["--json", "--skip-git-repo-check"]);
 
         if let Some(approval) = &self.approval {
@@ -1054,6 +1085,18 @@ mod tests {
     }
 
     #[test]
+    fn test_extract_session_id_from_line_new_format() {
+        // Newer Codex versions wrap the UUID in ConversationId(...)
+        let line = "2025-09-12T14:36:32.515901Z  INFO codex_exec: Codex initialized with event: SessionConfiguredEvent { session_id: ConversationId(bd823d48-4bd8-4d9e-9d87-93a66afbf4d2), model: \"gpt-5\", history_log_id: 0, history_entry_count: 0, initial_messages: None, rollout_path: \"/home/user/.codex/sessions/2025/09/12/rollout-2025-09-12T14-36-32-bd823d48-4bd8-4d9e-9d87-93a66afbf4d2.jsonl\" }";
+
+        let session_id = SessionHandler::extract_session_id_from_line(line);
+        assert_eq!(
+            session_id,
+            Some("bd823d48-4bd8-4d9e-9d87-93a66afbf4d2".to_string())
+        );
+    }
+
+    #[test]
     fn test_normalize_logs_basic() {
         let logs = r#"{"id":"1","msg":{"type":"task_started"}}
 {"id":"1","msg":{"type":"agent_reasoning","text":"**Inspecting the directory tree**\n\nI want to check the root directory tree and I think using `ls -1` is acceptable since the guidelines don't explicitly forbid it, unlike `ls -R`, `find`, or `grep`. I could also consider using `rg --files`, but that might be too overwhelming if there are many files. Focusing on the top-level files and directories seems like a better approach. I'm particularly interested in `LICENSE`, `README.md`, and any relevant README files. So, let's start with `ls -1`."}}
@@ -1348,5 +1391,49 @@ invalid json line here
         let current_dir = PathBuf::from("/tmp");
         let entries = parsed.to_normalized_entries(&current_dir);
         assert!(entries.is_none()); // Should return None
+    }
+
+    #[test]
+    fn test_set_session_id_in_rollout_meta_old_format() {
+        let mut meta = serde_json::json!({
+            "id": "8724aa3f-efb7-4bbb-96a4-63fb3cb7ee90",
+            "timestamp": "2025-09-09T16:46:39.250Z",
+            "instructions": "# ...",
+            "git": {
+                "commit_hash": "70497c4cb9d64473e1e7602083badf338e59e75a",
+                "branch": "vk/9986-retry-with",
+                "repository_url": "https://github.com/bloopai/vibe-kanban"
+            }
+        });
+        let new_id = "11111111-2222-3333-4444-555555555555";
+        SessionHandler::set_session_id_in_rollout_meta(&mut meta, new_id).unwrap();
+        assert_eq!(meta["id"].as_str(), Some(new_id));
+    }
+
+    #[test]
+    fn test_set_session_id_in_rollout_meta_new_format() {
+        let mut meta = serde_json::json!({
+            "timestamp": "2025-09-12T15:34:41.080Z",
+            "type": "session_meta",
+            "payload": {
+                "id": "0c2061fc-1da8-4733-b33f-70159b4c57f2",
+                "timestamp": "2025-09-12T15:34:41.068Z",
+                "cwd": "/var/tmp/vibe-kanban-dev/worktrees/vk-f625-hi",
+                "originator": "codex_cli_rs",
+                "cli_version": "0.34.0",
+                "instructions": "# ...",
+                "git": {
+                    "commit_hash": "07fad5465fcdca9b719cea965372a0ea39f42d15",
+                    "branch": "vk/f625-hi",
+                    "repository_url": "https://github.com/bloopai/vibe-kanban"
+                }
+            }
+        });
+        let new_id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+        SessionHandler::set_session_id_in_rollout_meta(&mut meta, new_id).unwrap();
+        // New format takes precedence: payload.id updated
+        assert_eq!(meta["payload"]["id"].as_str(), Some(new_id));
+        // Top-level id should remain absent (new format only uses payload.id)
+        assert_eq!(meta["id"].as_str(), None);
     }
 }
