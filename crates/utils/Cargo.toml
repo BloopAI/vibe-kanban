@@ -27,6 +27,7 @@ base64 = "0.22"
 tokio = { workspace = true }
 futures = "0.3.31"
 tokio-stream = { version = "0.1.17", features = ["sync"] }
+async-stream = "0.3"
 shellexpand = "3.1.1"
 which = "8.0.0"
 similar = "2"
