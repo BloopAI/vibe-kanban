@@ -1,5 +1,5 @@
 import { Badge } from '@/components/ui/badge';
-import type { ApprovalResponse } from '@/types/logs';
+import type { ApprovalResponse } from 'shared/types';
 
 interface ApprovalResponseEntryProps {
   response: ApprovalResponse;
@@ -9,24 +9,38 @@ export const ApprovalResponseEntry: React.FC<ApprovalResponseEntryProps> = ({
   response,
 }) => {
   const getStatusInfo = () => {
-    switch (response.status) {
+    switch (response.status.status) {
       case 'approved':
         return {
-          color: 'border-l-green-500 bg-green-50',
-          badge: 'bg-green-100 text-green-800',
+          textClass: 'text-emerald-700',
+          badgeVariant: 'secondary' as const,
           text: 'Approved',
+          reason: null,
+          reasonClass: '',
         };
       case 'denied':
         return {
-          color: 'border-l-red-500 bg-red-50',
-          badge: 'bg-red-100 text-red-800',
+          textClass: 'text-destructive',
+          badgeVariant: 'secondary' as const,
           text: 'Denied',
+          reason: response.status.reason,
+          reasonClass: 'text-destructive',
         };
       case 'timed_out':
         return {
-          color: 'border-l-gray-500 bg-gray-50',
-          badge: 'bg-gray-100 text-gray-800',
+          textClass: 'text-destructive',
+          badgeVariant: 'secondary' as const,
           text: 'Timed Out',
+          reason: null,
+          reasonClass: 'text-destructive',
+        };
+      case 'pending':
+        return {
+          textClass: 'text-muted-foreground',
+          badgeVariant: 'secondary' as const,
+          text: 'Pending',
+          reason: null,
+          reasonClass: '',
         };
     }
   };
@@ -34,16 +48,19 @@ export const ApprovalResponseEntry: React.FC<ApprovalResponseEntryProps> = ({
   const statusInfo = getStatusInfo();
 
   return (
-    <div className={`border-l-4 ${statusInfo.color} p-3 my-1 rounded-r`}>
-      <div className="flex items-center gap-2">
-        <Badge className={statusInfo.badge}>
-          {statusInfo.text}
-        </Badge>
-        {response.reason && (
-          <span className="text-sm text-muted-foreground">
-            {response.reason}
-          </span>
-        )}
+    <div className="py-2">
+      <div className="px-4 py-2 text-sm border shadow-sm rounded-lg">
+        <div className="flex items-center gap-2">
+          <Badge
+            variant={statusInfo.badgeVariant}
+            className={statusInfo.textClass}
+          >
+            {statusInfo.text}
+          </Badge>
+          {statusInfo.reason && (
+            <span className={statusInfo.reasonClass}>{statusInfo.reason}</span>
+          )}
+        </div>
       </div>
     </div>
   );

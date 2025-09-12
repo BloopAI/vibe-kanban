@@ -1,6 +1,7 @@
 // Import all necessary types from shared types
 
 import {
+  ApprovalStatus,
   ApiResponse,
   BranchStatus,
   CheckTokenResponse,
@@ -793,5 +794,26 @@ export const imagesApi = {
 
   getImageUrl: (imageId: string): string => {
     return `/api/images/${imageId}/file`;
+  },
+};
+
+// Approval API
+export const approvalsApi = {
+  respond: async (
+    approvalId: string,
+    payload: {
+      execution_process_id: string;
+      status: ApprovalStatus;
+    },
+    signal?: AbortSignal
+  ): Promise<void> => {
+    const res = await makeRequest(`/api/approvals/${approvalId}/respond`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal,
+    });
+
+    await handleApiResponse<void>(res);
   },
 };

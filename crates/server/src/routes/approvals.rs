@@ -15,7 +15,6 @@ pub async fn create_approval(
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<CreateApprovalRequest>,
 ) -> Result<Json<ApprovalRequest>, StatusCode> {
-    tracing::info!("Received create approval request: {:?}", request);
     let service = deployment.approvals();
     let approval_request = ApprovalRequest::from_create(request);
 
@@ -32,10 +31,9 @@ pub async fn get_approval_status(
     State(deployment): State<DeploymentImpl>,
     Path(id): Path<String>,
 ) -> Result<Json<ApprovalStatus>, StatusCode> {
-    tracing::info!("Fetching approval status for ID: {}", id);
     let service = deployment.approvals();
     match service.status(&id).await {
-        Some(status) => Ok(Json(dbg!(status))),
+        Some(status) => Ok(Json(status)),
         None => Err(StatusCode::NOT_FOUND),
     }
 }

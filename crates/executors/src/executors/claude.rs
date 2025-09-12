@@ -5,13 +5,15 @@ use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use futures::StreamExt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use tokio::{io::AsyncWriteExt, process::Command};
+use tokio::{io::AsyncWriteExt, process::Command, sync::OnceCell};
 use ts_rs::TS;
 use utils::{
+    approvals::APPROVAL_TIMEOUT_SECONDS,
     diff::{concatenate_diff_hunks, create_unified_diff, create_unified_diff_hunk},
     log_msg::LogMsg,
     msg_store::MsgStore,
     path::make_path_relative,
+    port_file::read_port_file,
     shell::get_shell_command,
 };
 
@@ -24,6 +26,14 @@ use crate::{
         utils::{EntryIndexProvider, patch::ConversationPatch},
     },
 };
+
+static BACKEND_PORT: OnceCell<u16> = OnceCell::const_new();
+async fn get_backend_port() -> std::io::Result<u16> {
+    BACKEND_PORT
+        .get_or_try_init(|| async { read_port_file("vibe-kanban").await })
+        .await
+        .copied()
+}
 
 const CONFIRM_HOOK_SCRIPT: &str = include_str!("./hooks/confirm.py");
 
@@ -70,11 +80,22 @@ impl ClaudeCode {
             builder = builder.extend_params(["--permission-mode=plan"]);
         }
         if self.approvals.unwrap_or(false) {
-            let settings = approvals_json();
-            // TODO: Handle quoting properly cross-platform
-            let quoted_settings =
-                shlex::try_quote(&settings).expect("Failed to quote approval JSON");
-            builder = builder.extend_params(["--settings", &quoted_settings]);
+            match approvals_json().await {
+                // TODO: Avoid quoting
+                Ok(settings) => match shlex::try_quote(&settings) {
+                    Ok(quoted) => {
+                        builder = builder.extend_params(["--settings", &quoted]);
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to quote approvals JSON for --settings: {e}");
+                    }
+                },
+                Err(e) => {
+                    tracing::error!(
+                        "Failed to generate approvals JSON. Not running approvals: {e}"
+                    );
+                }
+            }
         }
         if self.dangerously_skip_permissions.unwrap_or(false) {
             builder = builder.extend_params(["--dangerously-skip-permissions"]);
@@ -82,7 +103,7 @@ impl ClaudeCode {
         if let Some(model) = &self.model {
             builder = builder.extend_params(["--model", model]);
         }
-        builder = builder.extend_params(["--debug", "--verbose", "--output-format=stream-json"]);
+        builder = builder.extend_params(["--verbose", "--output-format=stream-json"]);
 
         apply_overrides(builder, &self.cmd)
     }
@@ -218,27 +239,41 @@ async fn write_python_hook(current_dir: &Path) -> Result<(), ExecutorError> {
         tokio::fs::set_permissions(&hook_path, perm).await?;
     }
 
+    // ignore the confirm.py script
+    let gitignore_path = hooks_dir.join(".gitignore");
+    if !tokio::fs::try_exists(&gitignore_path).await? {
+        let mut gitignore_file = tokio::fs::File::create(&gitignore_path).await?;
+        gitignore_file
+            .write_all(b"confirm.py\n.gitignore\n")
+            .await?;
+        gitignore_file.flush().await?;
+    }
+
     Ok(())
 }
 
 // Hook to configure approvals
-fn approvals_json() -> String {
-    serde_json::json!({
+async fn approvals_json() -> Result<String, std::io::Error> {
+    let backend_port = get_backend_port().await?;
+    let backend_timeout = APPROVAL_TIMEOUT_SECONDS + 5; // add buffer
+
+    Ok(serde_json::json!({
         "hooks": {
             "PreToolUse": [
                 {
-                    "matcher": "*",
+                    "matcher": "^(?!(Glob|Grep|NotebookRead|Read|Task|TodoWrite)$).*",
                     "hooks": [
                         {
                             "type": "command",
-                            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/confirm.py"
+                            "command": format!("$CLAUDE_PROJECT_DIR/.claude/hooks/confirm.py --timeout-seconds {backend_timeout} --poll-interval 5 --backend-port {backend_port}"),
+                            "timeout": backend_timeout 
                        }
                     ]
                 }
             ]
         }
     })
-    .to_string()
+    .to_string())
 }
 
 fn create_watchkill_script(command: &str) -> String {
@@ -313,9 +348,7 @@ impl ClaudeLogProcessor {
             while let Some(Ok(msg)) = stream.next().await {
                 let chunk = match msg {
                     LogMsg::Stdout(x) => x,
-                    LogMsg::JsonPatch(_)
-                    | LogMsg::SessionId(_)
-                    | LogMsg::Stderr(_) => continue,
+                    LogMsg::JsonPatch(_) | LogMsg::SessionId(_) | LogMsg::Stderr(_) => continue,
                     LogMsg::Finished => break,
                 };
 

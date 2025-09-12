@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { type FileChange } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
 import { Trash2, FilePlus2, ArrowRight } from 'lucide-react';
@@ -7,11 +8,13 @@ import EditDiffRenderer from './EditDiffRenderer';
 import FileContentView from './FileContentView';
 import '@/styles/diff-style-overrides.css';
 import { useExpandable } from '@/stores/useExpandableStore';
+import { useAutoExpandOnce } from '@/hooks/useAutoExpandOnce';
 
 type Props = {
   path: string;
   change: FileChange;
   expansionKey: string;
+  autoExpand?: boolean;
 };
 
 function isWrite(
@@ -35,9 +38,27 @@ function isEdit(
   return change?.action === 'edit';
 }
 
-const FileChangeRenderer = ({ path, change, expansionKey }: Props) => {
+const FileChangeRenderer = ({
+  path,
+  change,
+  expansionKey,
+  autoExpand,
+}: Props) => {
   const { config } = useUserSystem();
   const [expanded, setExpanded] = useExpandable(expansionKey, false);
+
+  useAutoExpandOnce({
+    autoExpand,
+    expanded,
+    expand: () => setExpanded(true),
+    condition: isWrite(change),
+  });
+
+  useEffect(() => {
+    if (autoExpand === false && expanded) {
+      setExpanded(false);
+    }
+  }, [autoExpand, expanded, setExpanded]);
 
   const theme = getActualTheme(config?.theme);
 
@@ -49,6 +70,7 @@ const FileChangeRenderer = ({ path, change, expansionKey }: Props) => {
         unifiedDiff={change.unified_diff}
         hasLineNumbers={change.has_line_numbers}
         expansionKey={expansionKey}
+        autoExpand={autoExpand}
       />
     );
   }

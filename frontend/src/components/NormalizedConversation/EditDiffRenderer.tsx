@@ -13,12 +13,14 @@ import '@/styles/diff-style-overrides.css';
 import '@/styles/edit-diff-overrides.css';
 import { useDiffViewMode } from '@/stores/useDiffViewStore';
 import DiffViewSwitch from '@/components/diff-view-switch';
+import { useAutoExpandOnce } from '@/hooks/useAutoExpandOnce';
 
 type Props = {
   path: string;
   unifiedDiff: string;
   hasLineNumbers: boolean;
   expansionKey: string;
+  autoExpand?: boolean;
 };
 
 /**
@@ -64,9 +66,16 @@ function EditDiffRenderer({
   unifiedDiff,
   hasLineNumbers,
   expansionKey,
+  autoExpand,
 }: Props) {
   const { config } = useUserSystem();
   const [expanded, setExpanded] = useExpandable(expansionKey, false);
+
+  useAutoExpandOnce({
+    autoExpand,
+    expanded,
+    expand: () => setExpanded(true),
+  });
 
   const theme = getActualTheme(config?.theme);
   const globalMode = useDiffViewMode();

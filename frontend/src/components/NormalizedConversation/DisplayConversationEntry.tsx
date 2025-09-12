@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import RawLogText from '../common/RawLogText';
 import UserMessage from './UserMessage';
+import { useAutoExpandOnce } from '@/hooks/useAutoExpandOnce';
 
 type Props = {
   entry: NormalizedEntry | ProcessStartPayload;
@@ -34,6 +35,7 @@ type Props = {
   diffDeletable?: boolean;
   executionProcessId?: string;
   taskAttempt?: TaskAttempt;
+  autoExpand?: boolean;
 };
 
 type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
@@ -256,9 +258,24 @@ const CollapsibleEntry: React.FC<{
   expansionKey: string;
   variant: CollapsibleVariant;
   contentClassName: string;
-}> = ({ content, markdown, expansionKey, variant, contentClassName }) => {
+  autoExpand?: boolean;
+}> = ({
+  content,
+  markdown,
+  expansionKey,
+  variant,
+  contentClassName,
+  autoExpand,
+}) => {
   const multiline = content.includes('\n');
   const [expanded, toggle] = useExpandable(`entry:${expansionKey}`, false);
+
+  useAutoExpandOnce({
+    autoExpand,
+    expanded,
+    expand: toggle,
+    condition: multiline,
+  });
 
   const Inner = (
     <div className={contentClassName}>
@@ -355,7 +372,16 @@ const ToolCallCard: React.FC<{
   expansionKey: string;
   content?: string;
   entryContent?: string;
-}> = ({ entryType, action, expansionKey, content, entryContent }) => {
+  highlighted?: boolean;
+  autoExpand?: boolean;
+}> = ({
+  entryType,
+  action,
+  expansionKey,
+  content,
+  entryContent,
+  autoExpand,
+}) => {
   const at: any = entryType?.action_type || action;
   const [expanded, toggle] = useExpandable(`tool-entry:${expansionKey}`, false);
 
@@ -390,6 +416,13 @@ const ToolCallCard: React.FC<{
   const hasExpandableDetails = isCommand
     ? Boolean(argsText) || Boolean(output)
     : hasArgs || hasResult;
+
+  useAutoExpandOnce({
+    autoExpand,
+    expanded,
+    expand: toggle,
+    condition: hasExpandableDetails,
+  });
 
   const HeaderWrapper: React.ElementType = hasExpandableDetails
     ? 'button'
@@ -502,6 +535,7 @@ function DisplayConversationEntry({
   expansionKey,
   executionProcessId,
   taskAttempt,
+  autoExpand,
 }: Props) {
   const isNormalizedEntry = (
     entry: NormalizedEntry | ProcessStartPayload
@@ -518,6 +552,7 @@ function DisplayConversationEntry({
         action={toolAction}
         expansionKey={expansionKey}
         content={toolAction?.message ?? toolAction?.summary ?? undefined}
+        autoExpand={autoExpand}
       />
     );
   }
@@ -562,6 +597,7 @@ function DisplayConversationEntry({
               path={fileEditAction.path}
               change={change}
               expansionKey={`edit:${expansionKey}:${idx}`}
+              autoExpand={autoExpand}
             />
           ));
         })()
@@ -575,6 +611,7 @@ function DisplayConversationEntry({
           entryType={entryType}
           expansionKey={expansionKey}
           entryContent={isNormalizedEntry(entry) ? entry.content : ''}
+          autoExpand={autoExpand}
         />
       ) : isLoading ? (
         <LoadingCard />

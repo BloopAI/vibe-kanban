@@ -1,18 +1,14 @@
 #!/usr/bin/env python3
+import argparse
 import json
 import sys
 import time
 import urllib.error
 import urllib.request
-
-TIMEOUT_SECONDS = 30
-POLL_INTERVAL = 5
-
-BACKEND_URL = "http://127.0.0.1:3002"
-CREATE_URL = f"{BACKEND_URL}/api/approvals/create"
+from typing import Optional
 
 
-def json_error(reason: str) -> None:
+def json_error(reason: Optional[str]) -> None:
     """Emit a deny PreToolUse JSON to stdout and exit(0)."""
     payload = {
         "hookSpecificOutput": {
@@ -26,7 +22,6 @@ def json_error(reason: str) -> None:
 
 
 def json_success() -> None:
-    """Emit an allow PreToolUse JSON (plus suppressOutput) to stdout and exit(0)."""
     payload = {
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
@@ -70,10 +65,53 @@ def http_get_json(url: str) -> dict:
         json.JSONDecodeError,
     ) as e:
         json_error(f"Lost connection to approval backend: {e}")
-        raise  # unreachable
+        raise
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="PreToolUse approval gate. All parameters are passed via CLI."
+    )
+    parser.add_argument(
+        "-t",
+        "--timeout-seconds",
+        type=int,
+        required=True,
+        help="Maximum time to wait for approval before timing out (seconds).",
+    )
+    parser.add_argument(
+        "-p",
+        "--poll-interval",
+        type=int,
+        required=True,
+        help="Seconds between polling the backend for status.",
+    )
+    parser.add_argument(
+        "-b",
+        "--backend-port",
+        type=int,
+        required=True,
+        help="Port of the approval backend running on 127.0.0.1.",
+    )
+    args = parser.parse_args()
+
+    if args.timeout_seconds <= 0:
+        parser.error("--timeout-seconds must be a positive integer")
+    if args.poll_interval <= 0:
+        parser.error("--poll-interval must be a positive integer")
+    if args.poll_interval > args.timeout_seconds:
+        parser.error("--poll-interval cannot be greater than --timeout-seconds")
+
+    return args
 
 
 def main():
+    args = parse_args()
+    port = args.backend_port
+
+    url = f"http://127.0.0.1:{port}"
+    create_endpoint = f"{url}/api/approvals/create"
+
     try:
         raw_payload = sys.stdin.read()
         incoming = json.loads(raw_payload or "{}")
@@ -90,38 +128,37 @@ def main():
         "session_id": session_id,
     }
 
-    response = http_post_json(CREATE_URL, create_payload)
+    response = http_post_json(create_endpoint, create_payload)
     approval_id = response.get("id")
+    if not approval_id:
+        json_error("Invalid response from approval backend")
 
     print(
         f"Approval request created: {approval_id}. Waiting for user response...",
         file=sys.stderr,
     )
 
-    if not approval_id:
-        json_error("Invalid response from approval backend")
-
-    status_url = f"{BACKEND_URL}/api/approvals/{approval_id}/status"
-
-    elapsed = 1
-    while elapsed < TIMEOUT_SECONDS:
-        result = http_get_json(status_url)
+    elapsed = 0
+    while elapsed < args.timeout_seconds:
+        result = http_get_json(f"{url}/api/approvals/{approval_id}/status")
         status = result.get("status")
 
         if status == "approved":
             json_success()
         elif status == "denied":
-            reason = result.get("reason") or "User denied"
+            reason = result.get("reason")
             json_error(reason)
         elif status == "timed_out":
-            json_error(f"Approval request timed out after {TIMEOUT_SECONDS} seconds")
+            json_error(
+                f"Approval request timed out after {args.timeout_seconds} seconds"
+            )
         elif status == "pending":
-            time.sleep(POLL_INTERVAL)
-            elapsed += POLL_INTERVAL
+            time.sleep(args.poll_interval)
+            elapsed += args.poll_interval
         else:
             json_error(f"Unknown approval status: {status}")
 
-    json_error(f"Approval request timed out after {TIMEOUT_SECONDS} seconds")
+    json_error(f"Approval request timed out after {args.timeout_seconds} seconds")
 
 
 if __name__ == "__main__":

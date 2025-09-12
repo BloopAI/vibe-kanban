@@ -3,8 +3,10 @@ import type {
   ExecutionProcess,
   NormalizedEntry,
   PatchType,
+  ApprovalRequest,
+  ApprovalResponse,
 } from 'shared/types';
-import type { UnifiedLogEntry, ProcessStartPayload, ApprovalRequest, ApprovalResponse } from '@/types/logs';
+import type { UnifiedLogEntry, ProcessStartPayload } from '@/types/logs';
 import { useEventSourceManager } from './useEventSourceManager';
 
 interface UseProcessesLogsResult {
@@ -78,7 +80,11 @@ export const useProcessesLogs = (
           if (patchEntry.type === 'PROCESS_START') return;
 
           let channel: UnifiedLogEntry['channel'];
-          let payload: string | NormalizedEntry | ApprovalRequest | ApprovalResponse;
+          let payload:
+            | string
+            | NormalizedEntry
+            | ApprovalRequest
+            | ApprovalResponse;
 
           switch (patchEntry.type) {
             case 'STDOUT':
@@ -99,6 +105,10 @@ export const useProcessesLogs = (
               break;
             case 'APPROVAL_RESPONSE':
               channel = 'approval_response';
+              payload = patchEntry.content;
+              break;
+            case 'APPROVAL_PENDING':
+              channel = 'approval_pending';
               payload = patchEntry.content;
               break;
             default:
