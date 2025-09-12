@@ -5,7 +5,9 @@ use axum::{
     routing::{get, post},
 };
 use deployment::Deployment;
-use services::services::approvals::{ApprovalRequest, ApprovalStatus, CreateApprovalRequest};
+use utils::approvals::{
+    ApprovalRequest, ApprovalResponseRequest, ApprovalStatus, CreateApprovalRequest,
+};
 
 use crate::DeploymentImpl;
 
@@ -16,8 +18,9 @@ pub async fn create_approval(
     tracing::info!("Received create approval request: {:?}", request);
     let service = deployment.approvals();
     let approval_request = ApprovalRequest::from_create(request);
-    match service.create_approval(approval_request).await {
-        Ok(approval) => Ok(Json(dbg!(approval))),
+
+    match service.create(approval_request).await {
+        Ok(approval) => Ok(Json(approval)),
         Err(e) => {
             tracing::error!("Failed to create approval: {:?}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -31,7 +34,7 @@ pub async fn get_approval_status(
 ) -> Result<Json<ApprovalStatus>, StatusCode> {
     tracing::info!("Fetching approval status for ID: {}", id);
     let service = deployment.approvals();
-    match service.get_status(&id).await {
+    match service.status(&id).await {
         Some(status) => Ok(Json(dbg!(status))),
         None => Err(StatusCode::NOT_FOUND),
     }
@@ -40,10 +43,11 @@ pub async fn get_approval_status(
 pub async fn respond_to_approval(
     State(deployment): State<DeploymentImpl>,
     Path(id): Path<String>,
-    Json(request): Json<ApprovalStatus>,
+    Json(request): Json<ApprovalResponseRequest>,
 ) -> Result<(), StatusCode> {
     let service = deployment.approvals();
-    match service.respond_to_approval(&id, request).await {
+
+    match service.respond(&id, request).await {
         Ok(_) => Ok(()),
         Err(e) => {
             tracing::error!("Failed to respond to approval: {:?}", e);
@@ -56,7 +60,7 @@ pub async fn get_pending_approvals(
     State(deployment): State<DeploymentImpl>,
 ) -> Json<Vec<ApprovalRequest>> {
     let service = deployment.approvals();
-    let approvals = service.get_pending().await;
+    let approvals = service.pending().await;
     Json(approvals)
 }
 

@@ -105,7 +105,7 @@ impl Deployment for LocalDeployment {
             });
         }
 
-        let approvals = Approvals::new(events_msg_store.clone());
+        let approvals = Approvals::new(db.pool.clone(), msg_stores.clone());
 
         // We need to make analytics accessible to the ContainerService
         // TODO: Handle this more gracefully

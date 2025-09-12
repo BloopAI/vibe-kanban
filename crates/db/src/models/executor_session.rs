@@ -104,6 +104,29 @@ impl ExecutorSession {
         .await
     }
 
+    pub async fn find_by_session_id(
+        pool: &SqlitePool,
+        session_id: &str,
+    ) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            ExecutorSession,
+            r#"SELECT
+                id as "id!: Uuid",
+                task_attempt_id as "task_attempt_id!: Uuid",
+                execution_process_id as "execution_process_id!: Uuid",
+                session_id,
+                prompt,
+                summary,
+                created_at as "created_at!: DateTime<Utc>",
+                updated_at as "updated_at!: DateTime<Utc>"
+               FROM executor_sessions
+               WHERE session_id = ?"#,
+            session_id
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
     /// Create a new executor session
     pub async fn create(
         pool: &SqlitePool,

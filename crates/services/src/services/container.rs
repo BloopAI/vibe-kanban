@@ -481,9 +481,7 @@ pub trait ContainerService {
                         LogMsg::Finished => {
                             break;
                         }
-                        LogMsg::JsonPatch(_)
-                        | LogMsg::ApprovalRequest(_)
-                        | LogMsg::ApprovalResponse(_) => continue,
+                        LogMsg::JsonPatch(_) => continue,
                     }
                 }
             }

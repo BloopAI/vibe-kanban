@@ -315,9 +315,7 @@ impl ClaudeLogProcessor {
                     LogMsg::Stdout(x) => x,
                     LogMsg::JsonPatch(_)
                     | LogMsg::SessionId(_)
-                    | LogMsg::Stderr(_)
-                    | LogMsg::ApprovalRequest(_)
-                    | LogMsg::ApprovalResponse(_) => continue,
+                    | LogMsg::Stderr(_) => continue,
                     LogMsg::Finished => break,
                 };
 
