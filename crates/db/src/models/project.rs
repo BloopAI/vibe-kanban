@@ -59,40 +59,6 @@ pub struct UpdateProject {
 }
 
 #[derive(Debug, Serialize, TS)]
-pub struct ProjectWithBranch {
-    pub id: Uuid,
-    pub name: String,
-    pub git_repo_path: PathBuf,
-    pub setup_script: Option<String>,
-    pub dev_script: Option<String>,
-    pub cleanup_script: Option<String>,
-    pub copy_files: Option<String>,
-    pub current_branch: Option<String>,
-
-    #[ts(type = "Date")]
-    pub created_at: DateTime<Utc>,
-    #[ts(type = "Date")]
-    pub updated_at: DateTime<Utc>,
-}
-
-impl ProjectWithBranch {
-    pub fn from_project(project: Project, current_branch: Option<String>) -> Self {
-        Self {
-            id: project.id,
-            name: project.name,
-            git_repo_path: project.git_repo_path,
-            setup_script: project.setup_script,
-            dev_script: project.dev_script,
-            cleanup_script: project.cleanup_script,
-            copy_files: project.copy_files,
-            current_branch,
-            created_at: project.created_at,
-            updated_at: project.updated_at,
-        }
-    }
-}
-
-#[derive(Debug, Serialize, TS)]
 pub struct SearchResult {
     pub path: String,
     pub is_file: bool,
