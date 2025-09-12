@@ -1,3 +1,5 @@
+mod session;
+
 use std::{
     path::{Path, PathBuf},
     process::Stdio,
@@ -7,7 +9,6 @@ use std::{
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use futures::StreamExt;
-use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strum_macros::AsRefStr;
@@ -22,7 +23,9 @@ use utils::{
 
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
-    executors::{AppendPrompt, ExecutorError, StandardCodingAgentExecutor},
+    executors::{
+        AppendPrompt, ExecutorError, StandardCodingAgentExecutor, codex::session::SessionHandler,
+    },
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryType,
         utils::{EntryIndexProvider, patch::ConversationPatch},
@@ -72,158 +75,6 @@ pub enum ReasoningSummary {
     None,
 }
 
-/// Handles session management for Codex executor
-pub struct SessionHandler;
-
-impl SessionHandler {
-    /// Start monitoring stderr lines for session ID extraction
-    pub fn start_session_id_extraction(msg_store: Arc<MsgStore>) {
-        tokio::spawn(async move {
-            let mut stderr_lines_stream = msg_store.stderr_lines_stream();
-
-            while let Some(Ok(line)) = stderr_lines_stream.next().await {
-                if let Some(session_id) = Self::extract_session_id_from_line(&line) {
-                    msg_store.push_session_id(session_id);
-                }
-            }
-        });
-    }
-
-    /// Extract session ID from codex stderr output
-    pub fn extract_session_id_from_line(line: &str) -> Option<String> {
-        // Look for session_id in the log format:
-        // 2025-07-23T15:47:59.877058Z  INFO codex_exec: Codex initialized with event: Event { id: "0", msg: SessionConfigured(SessionConfiguredEvent { session_id: 3cdcc4df-c7c3-4cca-8902-48c3d4a0f96b, model: "codex-mini-latest", history_log_id: 9104228, history_entry_count: 1 }) }
-        static SESSION_ID_REGEX: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
-        let regex = SESSION_ID_REGEX.get_or_init(|| {
-            Regex::new(r"session_id:\s*([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})").unwrap()
-        });
-
-        regex
-            .captures(line)
-            .and_then(|cap| cap.get(1))
-            .map(|m| m.as_str().to_string())
-    }
-
-    /// Find codex rollout file path for given session_id. Used during follow-up execution.
-    pub fn find_rollout_file_path(session_id: &str) -> Result<PathBuf, String> {
-        let home_dir = dirs::home_dir().ok_or("Could not determine home directory")?;
-        let sessions_dir = home_dir.join(".codex").join("sessions");
-
-        // Scan the sessions directory recursively for rollout files matching the session_id
-        // Pattern: rollout-{YYYY}-{MM}-{DD}T{HH}-{mm}-{ss}-{session_id}.jsonl
-        Self::scan_directory(&sessions_dir, session_id)
-    }
-
-    // Helper for `find_rollout_file_path`.
-    // Recursively scan directory for rollout files matching the session_id
-    fn scan_directory(dir: &PathBuf, session_id: &str) -> Result<PathBuf, String> {
-        if !dir.exists() {
-            return Err(format!(
-                "Sessions directory does not exist: {}",
-                dir.display()
-            ));
-        }
-
-        let entries = std::fs::read_dir(dir)
-            .map_err(|e| format!("Failed to read directory {}: {}", dir.display(), e))?;
-
-        for entry in entries {
-            let entry = entry.map_err(|e| format!("Failed to read directory entry: {e}"))?;
-            let path = entry.path();
-
-            if path.is_dir() {
-                // Recursively search subdirectories
-                if let Ok(found) = Self::scan_directory(&path, session_id) {
-                    return Ok(found);
-                }
-            } else if path.is_file()
-                && let Some(filename) = path.file_name()
-                && let Some(filename_str) = filename.to_str()
-                && filename_str.contains(session_id)
-                && filename_str.starts_with("rollout-")
-                && filename_str.ends_with(".jsonl")
-            {
-                return Ok(path);
-            }
-        }
-
-        Err(format!(
-            "Could not find rollout file for session_id: {session_id}"
-        ))
-    }
-
-    /// Fork a Codex rollout file by copying it to a temp location and assigning a new session id.
-    /// Returns (new_rollout_path, new_session_id).
-    pub fn fork_rollout_file(session_id: &str) -> Result<(PathBuf, String), String> {
-        use std::io::{BufRead, BufReader, Write};
-
-        let original = Self::find_rollout_file_path(session_id)?;
-
-        let file = std::fs::File::open(&original)
-            .map_err(|e| format!("Failed to open rollout file {}: {e}", original.display()))?;
-        let mut reader = BufReader::new(file);
-
-        let mut first_line = String::new();
-        reader
-            .read_line(&mut first_line)
-            .map_err(|e| format!("Failed to read first line from {}: {e}", original.display()))?;
-
-        let mut meta: serde_json::Value = serde_json::from_str(first_line.trim()).map_err(|e| {
-            format!(
-                "Failed to parse first line JSON in {}: {e}",
-                original.display()
-            )
-        })?;
-
-        // Generate new UUID for forked session
-        let new_id = uuid::Uuid::new_v4().to_string();
-        if let serde_json::Value::Object(ref mut map) = meta {
-            map.insert("id".to_string(), serde_json::Value::String(new_id.clone()));
-        } else {
-            return Err("First line of rollout file is not a JSON object".to_string());
-        }
-
-        // Prepare destination path in the same directory, following Codex rollout naming convention:
-        // rollout-<YYYY>-<MM>-<DD>T<HH>-<mm>-<ss>-<session_id>.jsonl
-        let parent_dir = original
-            .parent()
-            .ok_or_else(|| format!("Unexpected path with no parent: {}", original.display()))?;
-        let filename = original
-            .file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or("rollout.jsonl");
-        let new_filename = if filename.starts_with("rollout-") && filename.ends_with(".jsonl") {
-            let stem = &filename[..filename.len() - ".jsonl".len()];
-            if let Some(idx) = stem.rfind('-') {
-                // Replace the trailing session id with the new id, keep timestamp intact
-                format!("{}-{}.jsonl", &stem[..idx], new_id)
-            } else {
-                format!("rollout-{new_id}.jsonl")
-            }
-        } else {
-            format!("rollout-{new_id}.jsonl")
-        };
-        let dest = parent_dir.join(new_filename);
-
-        // Write new file with modified first line and copy the rest as-is
-        let mut writer = std::fs::File::create(&dest)
-            .map_err(|e| format!("Failed to create forked rollout {}: {e}", dest.display()))?;
-        let meta_line = serde_json::to_string(&meta)
-            .map_err(|e| format!("Failed to serialize modified meta: {e}"))?;
-        writeln!(writer, "{meta_line}")
-            .map_err(|e| format!("Failed to write meta to {}: {e}", dest.display()))?;
-
-        for line in reader.lines() {
-            let line =
-                line.map_err(|e| format!("I/O error reading {}: {e}", original.display()))?;
-            writeln!(writer, "{line}")
-                .map_err(|e| format!("Failed to write to {}: {e}", dest.display()))?;
-        }
-
-        Ok((dest, new_id))
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct Codex {
     #[serde(default)]
@@ -246,7 +97,7 @@ pub struct Codex {
 
 impl Codex {
     fn build_command_builder(&self) -> CommandBuilder {
-        let mut builder = CommandBuilder::new("npx -y @openai/codex@0.29.0 exec")
+        let mut builder = CommandBuilder::new("npx -y @openai/codex@latest exec")
             .params(["--json", "--skip-git-repo-check"]);
 
         if let Some(approval) = &self.approval {
@@ -332,14 +183,13 @@ impl StandardCodingAgentExecutor for Codex {
         session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         // Fork rollout: copy and assign a new session id so each execution has a unique session
-        let (rollout_file_path, _new_session_id) = SessionHandler::fork_rollout_file(session_id)
+        let (_rollout_file_path, new_session_id) = SessionHandler::fork_rollout_file(session_id)
             .map_err(|e| ExecutorError::SpawnError(std::io::Error::other(e)))?;
 
         let (shell_cmd, shell_arg) = get_shell_command();
-        let codex_command = self.build_command_builder().build_follow_up(&[
-            "-c".to_string(),
-            format!("experimental_resume={}", rollout_file_path.display()),
-        ]);
+        let codex_command = self
+            .build_command_builder()
+            .build_follow_up(&["resume".to_string(), new_session_id]);
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
@@ -1054,6 +904,18 @@ mod tests {
     }
 
     #[test]
+    fn test_extract_session_id_from_line_new_format() {
+        // Newer Codex versions wrap the UUID in ConversationId(...)
+        let line = "2025-09-12T14:36:32.515901Z  INFO codex_exec: Codex initialized with event: SessionConfiguredEvent { session_id: ConversationId(bd823d48-4bd8-4d9e-9d87-93a66afbf4d2), model: \"gpt-5\", history_log_id: 0, history_entry_count: 0, initial_messages: None, rollout_path: \"/home/user/.codex/sessions/2025/09/12/rollout-2025-09-12T14-36-32-bd823d48-4bd8-4d9e-9d87-93a66afbf4d2.jsonl\" }";
+
+        let session_id = SessionHandler::extract_session_id_from_line(line);
+        assert_eq!(
+            session_id,
+            Some("bd823d48-4bd8-4d9e-9d87-93a66afbf4d2".to_string())
+        );
+    }
+
+    #[test]
     fn test_normalize_logs_basic() {
         let logs = r#"{"id":"1","msg":{"type":"task_started"}}
 {"id":"1","msg":{"type":"agent_reasoning","text":"**Inspecting the directory tree**\n\nI want to check the root directory tree and I think using `ls -1` is acceptable since the guidelines don't explicitly forbid it, unlike `ls -R`, `find`, or `grep`. I could also consider using `rg --files`, but that might be too overwhelming if there are many files. Focusing on the top-level files and directories seems like a better approach. I'm particularly interested in `LICENSE`, `README.md`, and any relevant README files. So, let's start with `ls -1`."}}
@@ -1348,5 +1210,56 @@ invalid json line here
         let current_dir = PathBuf::from("/tmp");
         let entries = parsed.to_normalized_entries(&current_dir);
         assert!(entries.is_none()); // Should return None
+    }
+
+    #[test]
+    fn test_set_session_id_in_rollout_meta_old_format() {
+        let mut meta = serde_json::json!({
+            "id": "8724aa3f-efb7-4bbb-96a4-63fb3cb7ee90",
+            "timestamp": "2025-09-09T16:46:39.250Z",
+            "instructions": "# ...",
+            "git": {
+                "commit_hash": "70497c4cb9d64473e1e7602083badf338e59e75a",
+                "branch": "vk/9986-retry-with",
+                "repository_url": "https://github.com/bloopai/vibe-kanban"
+            }
+        });
+        let new_id = "11111111-2222-3333-4444-555555555555";
+        SessionHandler::set_session_id_in_rollout_meta(&mut meta, new_id).unwrap();
+        // After migration, we should write new-format header
+        assert_eq!(meta["type"].as_str(), Some("session_meta"));
+        assert_eq!(meta["payload"]["id"].as_str(), Some(new_id));
+        // Preserve instructions and git inside payload when present
+        assert_eq!(meta["payload"]["instructions"].as_str(), Some("# ..."));
+        assert!(meta["payload"]["git"].is_object());
+        // Top-level id should be absent in new format
+        assert_eq!(meta.get("id").and_then(|v| v.as_str()), None);
+    }
+
+    #[test]
+    fn test_set_session_id_in_rollout_meta_new_format() {
+        let mut meta = serde_json::json!({
+            "timestamp": "2025-09-12T15:34:41.080Z",
+            "type": "session_meta",
+            "payload": {
+                "id": "0c2061fc-1da8-4733-b33f-70159b4c57f2",
+                "timestamp": "2025-09-12T15:34:41.068Z",
+                "cwd": "/var/tmp/vibe-kanban-dev/worktrees/vk-f625-hi",
+                "originator": "codex_cli_rs",
+                "cli_version": "0.34.0",
+                "instructions": "# ...",
+                "git": {
+                    "commit_hash": "07fad5465fcdca9b719cea965372a0ea39f42d15",
+                    "branch": "vk/f625-hi",
+                    "repository_url": "https://github.com/bloopai/vibe-kanban"
+                }
+            }
+        });
+        let new_id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+        SessionHandler::set_session_id_in_rollout_meta(&mut meta, new_id).unwrap();
+        // New format takes precedence: payload.id updated
+        assert_eq!(meta["payload"]["id"].as_str(), Some(new_id));
+        // Top-level id should remain absent (new format only uses payload.id)
+        assert_eq!(meta["id"].as_str(), None);
     }
 }
