@@ -6,14 +6,14 @@ use git2::{
     Remote, Repository, Sort, build::CheckoutBuilder,
 };
 use regex;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ts_rs::TS;
 use utils::diff::{Diff, DiffChangeKind, FileDiffDetails};
 
 // Import for file ranking functionality
 use super::file_ranker::FileStat;
-use super::git_cli::{ChangeType, GitCli, StatusDiffEntry, StatusDiffOptions};
+use super::git_cli::{ChangeType, GitCli, GitCliError, StatusDiffEntry, StatusDiffOptions};
 use crate::services::github_service::GitHubRepoInfo;
 
 #[derive(Debug, Error)]
@@ -45,6 +45,16 @@ pub enum GitServiceError {
 /// Service for managing Git operations in task execution workflows
 #[derive(Clone)]
 pub struct GitService {}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+#[ts(rename_all = "snake_case")]
+pub enum ConflictOp {
+    Rebase,
+    Merge,
+    CherryPick,
+    Revert,
+}
 
 #[derive(Debug, Serialize, TS)]
 pub struct GitBranch {
@@ -1202,10 +1212,59 @@ impl GitService {
         // Ensure identity for any commits produced by rebase
         self.ensure_cli_commit_identity(worktree_path)?;
         // Use git CLI rebase to carry out the operation safely
-        git.rebase_onto(worktree_path, &new_base_branch_name, old_base_branch)
-            .map_err(|e| {
-                GitServiceError::InvalidRepository(format!("git rebase --onto failed: {e}"))
-            })?;
+        match git.rebase_onto(worktree_path, &new_base_branch_name, old_base_branch) {
+            Ok(()) => {}
+            Err(GitCliError::RebaseInProgress) => {
+                return Err(GitServiceError::RebaseInProgress);
+            }
+            Err(GitCliError::CommandFailed(stderr)) => {
+                // If the CLI indicates conflicts, return a concise, actionable error.
+                let looks_like_conflict = stderr.contains("could not apply")
+                    || stderr.contains("CONFLICT")
+                    || stderr.to_lowercase().contains("resolve all conflicts");
+                if looks_like_conflict {
+                    // Determine current attempt branch name for clarity
+                    let attempt_branch = worktree_repo
+                        .head()
+                        .ok()
+                        .and_then(|h| h.shorthand().map(|s| s.to_string()))
+                        .unwrap_or_else(|| "(unknown)".to_string());
+                    // List conflicted files (best-effort)
+                    let conflicts = git.get_conflicted_files(worktree_path).unwrap_or_default();
+                    let files_part = if conflicts.is_empty() {
+                        "".to_string()
+                    } else {
+                        let mut sample = conflicts.clone();
+                        let total = sample.len();
+                        sample.truncate(10);
+                        let list = sample.join(", ");
+                        if total > sample.len() {
+                            format!(
+                                " Conflicted files (showing {} of {}): {}.",
+                                sample.len(),
+                                total,
+                                list
+                            )
+                        } else {
+                            format!(" Conflicted files: {list}.")
+                        }
+                    };
+                    let msg = format!(
+                        "Rebase encountered merge conflicts while rebasing '{attempt_branch}' onto '{new_base_branch_name}'.{files_part} Resolve conflicts and then continue or abort."
+                    );
+                    return Err(GitServiceError::MergeConflicts(msg));
+                }
+                return Err(GitServiceError::InvalidRepository(format!(
+                    "Rebase failed: {}",
+                    stderr.lines().next().unwrap_or("")
+                )));
+            }
+            Err(e) => {
+                return Err(GitServiceError::InvalidRepository(format!(
+                    "git rebase failed: {e}"
+                )));
+            }
+        }
 
         // Return resulting HEAD commit
         let final_commit = worktree_repo.head()?.peel_to_commit()?;
@@ -1229,6 +1288,93 @@ impl GitService {
                 }
             }
         }
+    }
+
+    /// Return true if a rebase is currently in progress in this worktree.
+    pub fn is_rebase_in_progress(&self, worktree_path: &Path) -> Result<bool, GitServiceError> {
+        let git = GitCli::new();
+        git.is_rebase_in_progress(worktree_path).map_err(|e| {
+            GitServiceError::InvalidRepository(format!("git rebase state check failed: {e}"))
+        })
+    }
+
+    pub fn detect_conflict_op(
+        &self,
+        worktree_path: &Path,
+    ) -> Result<Option<ConflictOp>, GitServiceError> {
+        let git = GitCli::new();
+        if git.is_rebase_in_progress(worktree_path).unwrap_or(false) {
+            return Ok(Some(ConflictOp::Rebase));
+        }
+        if git.is_merge_in_progress(worktree_path).unwrap_or(false) {
+            return Ok(Some(ConflictOp::Merge));
+        }
+        if git
+            .is_cherry_pick_in_progress(worktree_path)
+            .unwrap_or(false)
+        {
+            return Ok(Some(ConflictOp::CherryPick));
+        }
+        if git.is_revert_in_progress(worktree_path).unwrap_or(false) {
+            return Ok(Some(ConflictOp::Revert));
+        }
+        Ok(None)
+    }
+
+    /// List conflicted (unmerged) files in the worktree.
+    pub fn get_conflicted_files(
+        &self,
+        worktree_path: &Path,
+    ) -> Result<Vec<String>, GitServiceError> {
+        let git = GitCli::new();
+        git.get_conflicted_files(worktree_path).map_err(|e| {
+            GitServiceError::InvalidRepository(format!("git diff for conflicts failed: {e}"))
+        })
+    }
+
+    /// Abort an in-progress rebase in this worktree (no-op if none).
+    pub fn abort_rebase(&self, worktree_path: &Path) -> Result<(), GitServiceError> {
+        let git = GitCli::new();
+        git.abort_rebase(worktree_path).map_err(|e| {
+            GitServiceError::InvalidRepository(format!("git rebase --abort failed: {e}"))
+        })
+    }
+
+    pub fn abort_conflicts(&self, worktree_path: &Path) -> Result<(), GitServiceError> {
+        let git = GitCli::new();
+        if git.is_rebase_in_progress(worktree_path).unwrap_or(false) {
+            // If there are no conflicted files, prefer `git rebase --quit` to clean up metadata
+            let has_conflicts = !self
+                .get_conflicted_files(worktree_path)
+                .unwrap_or_default()
+                .is_empty();
+            if has_conflicts {
+                return self.abort_rebase(worktree_path);
+            } else {
+                return git.quit_rebase(worktree_path).map_err(|e| {
+                    GitServiceError::InvalidRepository(format!("git rebase --quit failed: {e}"))
+                });
+            }
+        }
+        if git.is_merge_in_progress(worktree_path).unwrap_or(false) {
+            return git.abort_merge(worktree_path).map_err(|e| {
+                GitServiceError::InvalidRepository(format!("git merge --abort failed: {e}"))
+            });
+        }
+        if git
+            .is_cherry_pick_in_progress(worktree_path)
+            .unwrap_or(false)
+        {
+            return git.abort_cherry_pick(worktree_path).map_err(|e| {
+                GitServiceError::InvalidRepository(format!("git cherry-pick --abort failed: {e}"))
+            });
+        }
+        if git.is_revert_in_progress(worktree_path).unwrap_or(false) {
+            return git.abort_revert(worktree_path).map_err(|e| {
+                GitServiceError::InvalidRepository(format!("git revert --abort failed: {e}"))
+            });
+        }
+        Ok(())
     }
 
     pub fn find_branch<'a>(

@@ -29,7 +29,9 @@ import {
   SetStateAction,
   useCallback,
   useMemo,
+  useRef,
   useState,
+  useEffect,
 } from 'react';
 import type {
   GitBranch,
@@ -42,6 +44,8 @@ import { useDevServer } from '@/hooks/useDevServer';
 import { useRebase } from '@/hooks/useRebase';
 import { useMerge } from '@/hooks/useMerge';
 import NiceModal from '@ebay/nice-modal-react';
+import { ApiError } from '@/lib/api';
+import type { GitOperationError } from 'shared/types';
 import { usePush } from '@/hooks/usePush';
 import { useUserSystem } from '@/components/config-provider.tsx';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
@@ -105,7 +109,27 @@ function CurrentAttempt({
     selectedAttempt?.id,
     task.id
   );
-  const { data: branchStatus } = useBranchStatus(selectedAttempt?.id);
+  const { data: branchStatus, refetch: refetchBranchStatus } = useBranchStatus(
+    selectedAttempt?.id
+  );
+  const hasConflicts = useMemo(
+    () => Boolean((branchStatus?.conflicted_files?.length ?? 0) > 0),
+    [branchStatus?.conflicted_files]
+  );
+  const conflictOpLabel = useMemo(() => {
+    const op = branchStatus?.conflict_op;
+    switch (op) {
+      case 'merge':
+        return 'Merge';
+      case 'cherry_pick':
+        return 'Cherry-pick';
+      case 'revert':
+        return 'Revert';
+      case 'rebase':
+      default:
+        return 'Rebase';
+    }
+  }, [branchStatus?.conflict_op]);
   const handleOpenInEditor = useOpenInEditor(selectedAttempt);
   const { jumpToProcess } = useProcessSelection();
 
@@ -220,7 +244,18 @@ function CurrentAttempt({
       await rebaseMutation.mutateAsync(undefined);
       setError(null); // Clear any previous errors on success
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to rebase branch');
+      // Distinguish conflicts/in-progress via typed error_data
+      const data: GitOperationError | undefined =
+        err instanceof ApiError
+          ? (err.error_data as GitOperationError | undefined)
+          : undefined;
+      const isConflict =
+        data?.type === 'merge_conflicts' || data?.type === 'rebase_in_progress';
+      if (!isConflict) {
+        const msg =
+          err instanceof Error ? err.message : 'Failed to rebase branch';
+        setError(msg);
+      }
     } finally {
       setRebasing(false);
     }
@@ -232,7 +267,17 @@ function CurrentAttempt({
       await rebaseMutation.mutateAsync(newBaseBranch);
       setError(null); // Clear any previous errors on success
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to rebase branch');
+      const data: GitOperationError | undefined =
+        err instanceof ApiError
+          ? (err.error_data as GitOperationError | undefined)
+          : undefined;
+      const isConflict =
+        data?.type === 'merge_conflicts' || data?.type === 'rebase_in_progress';
+      if (!isConflict) {
+        const msg =
+          err instanceof Error ? err.message : 'Failed to rebase branch';
+        setError(msg);
+      }
     } finally {
       setRebasing(false);
     }
@@ -271,6 +316,15 @@ function CurrentAttempt({
       projectId,
     });
   };
+
+  // Refresh branch status when a process completes (e.g., rebase resolved by agent)
+  const prevRunningRef = useRef<boolean>(isAttemptRunning);
+  useEffect(() => {
+    if (prevRunningRef.current && !isAttemptRunning && selectedAttempt?.id) {
+      refetchBranchStatus();
+    }
+    prevRunningRef.current = isAttemptRunning;
+  }, [isAttemptRunning, selectedAttempt?.id, refetchBranchStatus]);
 
   // Get display name for selected branch
   const selectedBranchDisplayName = useMemo(() => {
@@ -338,6 +392,22 @@ function CurrentAttempt({
 
   // Get status information for display
   const getStatusInfo = useCallback(() => {
+    if (hasConflicts) {
+      return {
+        dotColor: 'bg-orange-500',
+        textColor: 'text-orange-700',
+        text: `${conflictOpLabel} conflicts`,
+        isClickable: false,
+      } as const;
+    }
+    if (branchStatus?.is_rebase_in_progress) {
+      return {
+        dotColor: 'bg-orange-500',
+        textColor: 'text-orange-700',
+        text: 'Rebase in progress',
+        isClickable: false,
+      } as const;
+    }
     if (mergeInfo.hasMergedPR && mergeInfo.mergedPR?.type === 'pr') {
       const prMerge = mergeInfo.mergedPR;
       return {
@@ -434,7 +504,7 @@ function CurrentAttempt({
                     variant="ghost"
                     size="xs"
                     onClick={handleRebaseDialogOpen}
-                    disabled={rebasing || isAttemptRunning}
+                    disabled={rebasing || isAttemptRunning || hasConflicts}
                     className="h-4 w-4 p-0 hover:bg-muted"
                   >
                     <Settings className="h-3 w-3" />
@@ -476,6 +546,7 @@ function CurrentAttempt({
                   ) : (
                     <span
                       className={`text-sm font-medium ${statusInfo.textColor} truncate`}
+                      title={statusInfo.text}
                     >
                       {statusInfo.text}
                     </span>
@@ -534,7 +605,9 @@ function CurrentAttempt({
               onClick={() =>
                 runningDevServer ? stopDevServer() : startDevServer()
               }
-              disabled={isStartingDevServer || !projectHasDevScript}
+              disabled={
+                isStartingDevServer || !projectHasDevScript || hasConflicts
+              }
               className="gap-1 flex-1"
             >
               {runningDevServer ? (
@@ -577,7 +650,7 @@ function CurrentAttempt({
               {(branchStatus.commits_behind ?? 0) > 0 && (
                 <Button
                   onClick={handleRebaseClick}
-                  disabled={rebasing || isAttemptRunning}
+                  disabled={rebasing || isAttemptRunning || hasConflicts}
                   variant="outline"
                   size="xs"
                   className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1"
@@ -596,6 +669,7 @@ function CurrentAttempt({
                     pushing ||
                     Boolean((branchStatus.commits_behind ?? 0) > 0) ||
                     isAttemptRunning ||
+                    hasConflicts ||
                     (mergeInfo.hasOpenPR &&
                       branchStatus.remote_commits_ahead === 0) ||
                     ((branchStatus.commits_ahead ?? 0) === 0 &&
@@ -627,6 +701,7 @@ function CurrentAttempt({
                   disabled={
                     mergeInfo.hasOpenPR ||
                     merging ||
+                    hasConflicts ||
                     Boolean((branchStatus.commits_behind ?? 0) > 0) ||
                     isAttemptRunning ||
                     ((branchStatus.commits_ahead ?? 0) === 0 &&

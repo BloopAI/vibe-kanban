@@ -6,6 +6,7 @@ export function useBranchStatus(attemptId?: string) {
     queryKey: ['branchStatus', attemptId],
     queryFn: () => attemptsApi.getBranchStatus(attemptId!),
     enabled: !!attemptId,
-    refetchInterval: 5000,
+    // Poll faster to promptly reflect rebase/abort transitions
+    refetchInterval: 1500,
   });
 }
