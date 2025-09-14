@@ -7,9 +7,9 @@ import {
   Play,
   Plus,
   RefreshCw,
+  ScrollText,
   Settings,
   StopCircle,
-  ScrollText,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -365,7 +365,7 @@ function CurrentAttempt({
       const prMerge = mergeInfo.openPR;
       return {
         dotColor: 'bg-blue-500',
-        textColor: 'text-blue-700',
+        textColor: 'text-blue-700 dark:text-blue-400',
         text: `PR #${prMerge.pr_info.number}`,
         isClickable: true,
         onClick: () => window.open(prMerge.pr_info.url, '_blank'),
@@ -605,7 +605,7 @@ function CurrentAttempt({
                   }
                   variant="outline"
                   size="xs"
-                  className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1 min-w-[120px]"
+                  className="border-blue-300  dark:border-blue-700 text-blue-700 dark:text-blue-500 hover:bg-blue-50 dark:hover:bg-transparent dark:hover:text-blue-400 dark:hover:border-blue-400 gap-1 min-w-[120px]"
                 >
                   <GitPullRequest className="h-3 w-3" />
                   {mergeInfo.hasOpenPR
@@ -634,7 +634,7 @@ function CurrentAttempt({
                       !mergeSuccess)
                   }
                   size="xs"
-                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 gap-1 min-w-[120px]"
+                  className="bg-green-600 hover:bg-green-700 dark:bg-green-900 dark:hover:bg-green-700 gap-1 min-w-[120px]"
                 >
                   <GitBranchIcon className="h-3 w-3" />
                   {mergeSuccess ? 'Merged!' : merging ? 'Merging...' : 'Merge'}

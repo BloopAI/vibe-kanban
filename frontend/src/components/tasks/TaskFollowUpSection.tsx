@@ -1,31 +1,31 @@
 import {
   AlertCircle,
   CheckCircle2,
-  WifiOff,
-  Clock,
-  Send,
   ChevronDown,
+  Clock,
   ImageIcon,
+  Loader2,
+  Send,
   StopCircle,
+  WifiOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ImageUploadSection } from '@/components/ui/ImageUploadSection';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
-import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   attemptsApi,
   imagesApi,
   type UpdateFollowUpDraftRequest,
 } from '@/lib/api.ts';
 import type {
+  FollowUpDraft,
   ImageResponse,
   TaskWithAttemptStatus,
-  FollowUpDraft,
 } from 'shared/types';
 import { useBranchStatus } from '@/hooks';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
-import { Loader2 } from 'lucide-react';
 import { useUserSystem } from '@/components/config-provider';
 import {
   DropdownMenu,
@@ -890,7 +890,7 @@ export function TaskFollowUpSection({
                   ) : null}
                 </div>
               </div>
-              <div className="flex flex-row items-center">
+              <div className="flex flex-row gap-2 items-center">
                 <div className="flex-1 flex gap-2">
                   {/* Image button */}
                   <Button
@@ -923,7 +923,7 @@ export function TaskFollowUpSection({
                               variant="secondary"
                               size="sm"
                               className={cn(
-                                'w-24 px-2 flex items-center justify-between transition-all',
+                                'w-18 md:w-24 px-2 flex items-center justify-between transition-all',
                                 isAnimating && 'scale-105 bg-accent'
                               )}
                               disabled={isDraftLocked || !isDraftReady}
@@ -1090,7 +1090,7 @@ export function TaskFollowUpSection({
                   </div>
                 )}
                 {isAttemptRunning && (
-                  <div className="ml-2 flex items-center gap-2">
+                  <div className="flex items-center gap-2">
                     <Button
                       onClick={async () => {
                         if (!selectedAttemptId) return;
@@ -1156,7 +1156,7 @@ export function TaskFollowUpSection({
                       }
                       size="sm"
                       variant="default"
-                      className="min-w-[180px] transition-all"
+                      className="md:min-w-[180px] transition-all"
                     >
                       {isQueued ? (
                         isUnqueuing ? (
