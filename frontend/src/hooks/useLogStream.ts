@@ -14,6 +14,7 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
   const wsRef = useRef<WebSocket | null>(null);
   const retryCountRef = useRef<number>(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isIntentionallyClosed = useRef<boolean>(false);
 
   useEffect(() => {
     if (!processId) {
@@ -31,6 +32,7 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
         `${protocol}//${host}/api/execution-processes/${processId}/raw-logs/ws`
       );
       wsRef.current = ws;
+      isIntentionallyClosed.current = false;
 
       ws.onopen = () => {
         setError(null);
@@ -65,7 +67,8 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
                   break;
               }
             });
-          } else if ('Finished' in data) {
+          } else if (data.finished === true) {
+            isIntentionallyClosed.current = true;
             ws.close();
           }
         } catch (e) {
@@ -77,13 +80,15 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
         setError('Connection failed');
       };
 
-      ws.onclose = () => {
-        // Retry a few times with backoff in case of race before logs are ready
-        const next = retryCountRef.current + 1;
-        retryCountRef.current = next;
-        if (next <= 6) {
-          const delay = Math.min(1500, 250 * 2 ** (next - 1));
-          retryTimerRef.current = setTimeout(() => open(), delay);
+      ws.onclose = (event) => {
+        // Only retry if the close was not intentional and not a normal closure
+        if (!isIntentionallyClosed.current && event.code !== 1000) {
+          const next = retryCountRef.current + 1;
+          retryCountRef.current = next;
+          if (next <= 6) {
+            const delay = Math.min(1500, 250 * 2 ** (next - 1));
+            retryTimerRef.current = setTimeout(() => open(), delay);
+          }
         }
       };
     };
@@ -92,6 +97,7 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
 
     return () => {
       if (wsRef.current) {
+        isIntentionallyClosed.current = true;
         wsRef.current.close();
         wsRef.current = null;
       }
