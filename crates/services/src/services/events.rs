@@ -489,11 +489,11 @@ impl EventService {
         &self.msg_store
     }
 
-    /// Stream tasks for a specific project with initial snapshot
-    pub async fn stream_tasks_for_project(
+    /// Stream raw task messages for a specific project with initial snapshot
+    pub async fn stream_tasks_raw(
         &self,
         project_id: Uuid,
-    ) -> Result<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>, EventError>
+    ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
     {
         // Get initial snapshot of tasks
         let tasks = Task::find_by_project_id_with_attempt_status(&self.db.pool, project_id).await?;
@@ -612,11 +612,23 @@ impl EventService {
         // Start with initial snapshot, then live updates
         let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
         let combined_stream = initial_stream
-            .chain(filtered_stream)
-            .map_ok(|msg| msg.to_sse_event())
-            .boxed();
+        .chain(filtered_stream)
+        .boxed();
 
         Ok(combined_stream)
+    }
+
+    /// Stream tasks for a specific project with initial snapshot (SSE format)
+    pub async fn stream_tasks_for_project(
+        &self,
+        project_id: Uuid,
+    ) -> Result<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>, EventError>
+    {
+        Ok(self
+            .stream_tasks_raw(project_id)
+            .await?
+            .map_ok(|msg| msg.to_sse_event())
+            .boxed())
     }
 
     /// Stream execution processes for a specific task attempt with initial snapshot  

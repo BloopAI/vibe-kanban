@@ -1,11 +1,12 @@
 use std::path::PathBuf;
 
+use anyhow;
 use axum::{
     BoxError, Extension, Json, Router,
-    extract::{Query, State},
+    extract::{Query, State, ws::{WebSocket, WebSocketUpgrade, Message}},
     http::StatusCode,
     middleware::from_fn_with_state,
-    response::{Json as ResponseJson, Sse, sse::KeepAlive},
+    response::{Json as ResponseJson, Sse, sse::KeepAlive, IntoResponse},
     routing::{get, post},
 };
 use db::models::{
@@ -15,14 +16,14 @@ use db::models::{
 };
 use deployment::Deployment;
 use executors::profile::ExecutorProfileId;
-use futures_util::TryStreamExt;
+use futures_util::{TryStreamExt, StreamExt, SinkExt};
 use serde::Deserialize;
 use services::services::container::{
     ContainerService, WorktreeCleanupData, cleanup_worktrees_direct,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
-use utils::response::ApiResponse;
+use utils::{response::ApiResponse, log_msg::LogMsg};
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_task_middleware};
@@ -57,6 +58,59 @@ pub async fn stream_tasks(
         .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(Sse::new(stream.map_err(|e| -> BoxError { e.into() })).keep_alive(KeepAlive::default()))
+}
+
+pub async fn stream_tasks_ws(
+    ws: WebSocketUpgrade,
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<TaskQuery>,
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| async move {
+        if let Err(e) = handle_tasks_ws(socket, deployment, query.project_id).await {
+            tracing::warn!("tasks WS closed: {}", e);
+        }
+    })
+}
+
+async fn handle_tasks_ws(
+    socket: WebSocket,
+    deployment: DeploymentImpl,
+    project_id: Uuid,
+) -> anyhow::Result<()> {
+    // Get the raw stream and convert LogMsg to WebSocket messages
+    let mut stream = deployment
+        .events()
+        .stream_tasks_raw(project_id)
+        .await?
+        .map_ok(logmsg_to_ws);
+
+    // Split socket into sender and receiver
+    let (mut sender, mut receiver) = socket.split();
+
+    // Drain (and ignore) any client->server messages so pings/pongs work
+    tokio::spawn(async move {
+        while let Some(Ok(_)) = receiver.next().await {}
+    });
+
+    // Forward server messages
+    while let Some(item) = stream.next().await {
+        match item {
+            Ok(msg) => {
+                if sender.send(msg).await.is_err() {
+                    break; // client disconnected
+                }
+            }
+            Err(e) => {
+                tracing::error!("stream error: {}", e);
+                break;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn logmsg_to_ws(msg: LogMsg) -> Message {
+    Message::Text(serde_json::to_string(&msg).unwrap().into())
 }
 
 pub async fn get_task(
@@ -290,6 +344,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let inner = Router::new()
         .route("/", get(get_tasks).post(create_task))
         .route("/stream", get(stream_tasks))
+        .route("/stream/ws", get(stream_tasks_ws))
         .route("/create-and-start", post(create_task_and_start))
         .nest("/{task_id}", task_id_router);
 
