@@ -99,7 +99,7 @@ export const useJsonPatchWsStream = <T>(
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          
+
           // Handle JsonPatch messages (same as SSE json_patch event)
           if (msg.JsonPatch) {
             const patches: Operation[] = msg.JsonPatch;
@@ -118,7 +118,7 @@ export const useJsonPatchWsStream = <T>(
             // React re-render: dataRef.current is already a new object
             setData(dataRef.current);
           }
-          
+
           // Handle Finished messages (same as SSE finished event)
           if (msg.Finished !== undefined) {
             ws.close();

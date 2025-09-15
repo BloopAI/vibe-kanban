@@ -27,19 +27,16 @@ export const useProjectTasks = (
   transport: Transport = 'ws' // Default to WebSocket, can be overridden
 ): UseProjectTasksResult => {
   const baseEndpoint = `/api/tasks/stream`;
-  const endpoint = transport === 'ws'
-    ? `${baseEndpoint}/ws?project_id=${encodeURIComponent(projectId)}`
-    : `${baseEndpoint}?project_id=${encodeURIComponent(projectId)}`;
+  const endpoint =
+    transport === 'ws'
+      ? `${baseEndpoint}/ws?project_id=${encodeURIComponent(projectId)}`
+      : `${baseEndpoint}?project_id=${encodeURIComponent(projectId)}`;
 
   const initialData = useCallback((): TasksState => ({ tasks: {} }), []);
 
   // Choose the appropriate hook based on transport
   const hook = transport === 'ws' ? useJsonPatchWsStream : useJsonPatchStream;
-  const { data, isConnected, error } = hook(
-    endpoint,
-    !!projectId,
-    initialData
-  );
+  const { data, isConnected, error } = hook(endpoint, !!projectId, initialData);
 
   const tasksById = data?.tasks ?? {};
   const tasks = Object.values(tasksById).sort(
