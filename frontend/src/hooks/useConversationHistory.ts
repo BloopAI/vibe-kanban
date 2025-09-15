@@ -157,10 +157,11 @@ export const useConversationHistory = ({
   };
 
   const getRunningExecutionProcesses = (): ExecutionProcess | null => {
-    // If more than one, throw an error
+    // Filter for running processes, excluding dev server and other non-agent processes
     const runningProcesses = executionProcesses?.current.filter(
-      (p) => p.status === 'running'
+      (p) => p.status === 'running' && p.run_reason !== 'devserver'
     );
+    // Only throw error if there are multiple agent processes running
     if (runningProcesses.length > 1) {
       throw new Error('More than one running execution process found');
     }
