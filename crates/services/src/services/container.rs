@@ -290,17 +290,19 @@ pub trait ContainerService {
         }
     }
 
-    async fn stream_normalized_logs(
+    async fn stream_normalized_logs_raw(
         &self,
         id: &Uuid,
-    ) -> Option<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>> {
+    ) -> Option<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>> {
         // First try in-memory store (existing behavior)
         if let Some(store) = self.get_msg_store_by_id(id).await {
             Some(
                 store
                     .history_plus_stream() // BoxStream<Result<LogMsg, io::Error>>
                     .filter(|msg| future::ready(matches!(msg, Ok(LogMsg::JsonPatch(..)))))
-                    .map_ok(|m| m.to_sse_event()) // LogMsg -> Event
+                    .chain(futures::stream::once(async {
+                        Ok::<_, std::io::Error>(LogMsg::Finished)
+                    }))
                     .boxed(),
             )
         } else {
@@ -405,13 +407,24 @@ pub trait ContainerService {
                 temp_store
                     .history_plus_stream()
                     .filter(|msg| future::ready(matches!(msg, Ok(LogMsg::JsonPatch(..)))))
-                    .map_ok(|m| m.to_sse_event())
                     .chain(futures::stream::once(async {
-                        Ok::<_, std::io::Error>(LogMsg::Finished.to_sse_event())
+                        Ok::<_, std::io::Error>(LogMsg::Finished)
                     }))
                     .boxed(),
             )
         }
+    }
+
+    async fn stream_normalized_logs(
+        &self,
+        id: &Uuid,
+    ) -> Option<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>> {
+        Some(
+            self.stream_normalized_logs_raw(id)
+                .await?
+                .map_ok(|m| m.to_sse_event())
+                .boxed(),
+        )
     }
 
     fn spawn_stream_raw_logs_to_db(&self, execution_id: &Uuid) -> JoinHandle<()> {
