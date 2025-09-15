@@ -208,7 +208,7 @@ export function ProjectTasks() {
           parent_task_attempt: task.parent_task_attempt,
           image_ids: null,
         });
-        // UI will update via SSE stream
+        // UI will update via WebSocket stream
       } catch (err) {
         setError('Failed to update task status');
       }
