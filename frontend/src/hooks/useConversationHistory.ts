@@ -9,7 +9,7 @@ import {
 } from 'shared/types';
 import { useExecutionProcesses } from './useExecutionProcesses';
 import { useEffect, useMemo, useRef } from 'react';
-import { streamSseJsonPatchEntries } from '@/utils/streamSseJsonPatchEntries';
+import { streamJsonPatchEntries } from '@/utils/streamJsonPatchEntries';
 
 export type PatchTypeWithKey = PatchType & {
   patchKey: string;
@@ -76,11 +76,11 @@ export const useConversationHistory = ({
     if (executionProcess.executor_action.typ.type === 'ScriptRequest') {
       url = `/api/execution-processes/${executionProcess.id}/raw-logs`;
     } else {
-      url = `/api/execution-processes/${executionProcess.id}/normalized-logs`;
+      url = `/api/execution-processes/${executionProcess.id}/normalized-logs/ws`;
     }
 
     return new Promise<PatchType[]>((resolve) => {
-      const controller = streamSseJsonPatchEntries<PatchType>(url, {
+      const controller = streamJsonPatchEntries<PatchType>(url, {
         onFinished: (allEntries) => {
           controller.close();
           resolve(allEntries);
@@ -114,9 +114,9 @@ export const useConversationHistory = ({
       if (executionProcess.executor_action.typ.type === 'ScriptRequest') {
         url = `/api/execution-processes/${executionProcess.id}/raw-logs`;
       } else {
-        url = `/api/execution-processes/${executionProcess.id}/normalized-logs`;
+        url = `/api/execution-processes/${executionProcess.id}/normalized-logs/ws`;
       }
-      const controller = streamSseJsonPatchEntries<PatchType>(url, {
+      const controller = streamJsonPatchEntries<PatchType>(url, {
         onEntries(entries) {
           const patchesWithKey = entries.map((entry, index) =>
             patchWithKey(entry, executionProcess.id, index)
