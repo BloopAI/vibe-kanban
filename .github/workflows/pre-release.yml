@@ -53,7 +53,7 @@ jobs:
 
       - name: Install cargo-edit
         if: steps.cache-cargo-edit.outputs.cache-hit != 'true'
-        run: cargo install cargo-edit
+        run: cargo install cargo-edit --version 0.13.0 --locked
 
       - name: Generate branch suffix
         id: branch

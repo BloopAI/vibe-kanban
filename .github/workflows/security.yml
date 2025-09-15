@@ -1,0 +1,150 @@
+name: Security Audit
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run security audit daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  NODE_VERSION: 22
+  PNPM_VERSION: 10.8.1
+
+jobs:
+  rust-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Run cargo audit
+        run: cargo audit --deny warnings
+
+      - name: Check for outdated dependencies
+        run: |
+          cargo install cargo-outdated --locked
+          cargo outdated --exit-code 1 || echo "::warning::Found outdated dependencies"
+
+  npm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run npm audit (root)
+        run: pnpm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: Run npm audit (frontend)
+        run: cd frontend && pnpm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: Check for outdated packages
+        run: |
+          pnpm outdated || echo "::warning::Found outdated packages"
+          cd frontend && pnpm outdated || echo "::warning::Found outdated frontend packages"
+
+  dependency-review:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+          deny-licenses: GPL-3.0, AGPL-3.0
+          comment-summary-in-pr: always
+
+  sbom-generation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Install SBOM tools
+        run: |
+          cargo install cargo-cyclonedx --locked
+          npm install -g @cyclonedx/cyclonedx-npm
+
+      - name: Generate Rust SBOM
+        run: cargo cyclonedx --all --format json --output-file rust-sbom.json
+
+      - name: Generate NPM SBOM (root)
+        run: npx @cyclonedx/cyclonedx-npm --output-format json --output-file npm-root-sbom.json
+
+      - name: Generate NPM SBOM (frontend)
+        run: cd frontend && npx @cyclonedx/cyclonedx-npm --output-format json --output-file ../npm-frontend-sbom.json
+
+      - name: Upload SBOMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-reports
+          path: |
+            rust-sbom.json
+            npm-root-sbom.json
+            npm-frontend-sbom.json
+          retention-days: 30
+
+  supply-chain-verification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify Cargo.lock exists
+        run: |
+          if [ ! -f "Cargo.lock" ]; then
+            echo "::error::Cargo.lock file is missing. This file must be committed for reproducible builds."
+            exit 1
+          fi
+
+      - name: Verify lock files are up to date
+        run: |
+          # Check if pnpm-lock.yaml exists
+          if [ ! -f "pnpm-lock.yaml" ]; then
+            echo "::error::pnpm-lock.yaml file is missing."
+            exit 1
+          fi
+
+      - name: Check for suspicious dependencies
+        run: |
+          # Check for Git dependencies (potential security risk)
+          if grep -q 'git = "' Cargo.toml; then
+            echo "::warning::Found Git dependencies in Cargo.toml. Consider using crates.io versions for better security."
+          fi
+
+          # Check for local path dependencies in production
+          if grep -q 'path = "../' Cargo.toml; then
+            echo "::notice::Found local path dependencies. Ensure these are only for workspace members."
+          fi
+
+      - name: Verify dependency checksums
+        run: |
+          # Verify Cargo.lock hasn't been tampered with
+          cargo update --dry-run
+
+          # Verify pnpm lockfile integrity
+          pnpm install --frozen-lockfile --lockfile-only

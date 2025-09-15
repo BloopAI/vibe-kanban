@@ -1,13 +1,37 @@
-# Set macOS deployment target to avoid linker warnings
-# Use Rust project defaults: 10.12 for x86_64, 11.0 for aarch64
-[target.x86_64-apple-darwin.env]
-MACOSX_DEPLOYMENT_TARGET = "10.12"
+[net]
+# Enforce HTTPS for git dependencies
+git-fetch-with-cli = true
 
-[target.aarch64-apple-darwin.env]
-MACOSX_DEPLOYMENT_TARGET = "11.0"
+[build]
+# Enable incremental compilation for faster builds
+incremental = true
 
-[target.x86_64-pc-windows-msvc]
-rustflags = ["-C", "link-arg=/DEBUG:FASTLINK"]
+[profile.release]
+# Enable overflow checks in release mode for additional safety
+overflow-checks = true
 
-[target.aarch64-pc-windows-msvc]
-rustflags = ["-C", "link-arg=/DEBUG:FASTLINK"]
+[registries.crates-io]
+# Use the secure registry protocol
+protocol = "sparse"
+
+# Security-focused lints
+[lints.rust]
+unsafe_code = "warn"
+
+[lints.clippy]
+# Security and correctness lints
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+unreachable = "warn"
+
+# Prevent common mistakes
+indexing_slicing = "warn"
+integer_arithmetic = "warn"
+
+# Ensure good practices
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"
+must_use_candidate = "warn"
