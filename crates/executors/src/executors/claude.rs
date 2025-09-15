@@ -620,13 +620,15 @@ impl ClaudeLogProcessor {
         match src.as_deref() {
             Some("/login managed key") | None => None,
             Some(other) => {
-                tracing::warn!("apiKeySource '{}' is not managed – potential unexpected billing", other);
+                tracing::warn!(
+                    "apiKeySource '{}' is not managed – potential unexpected billing",
+                    other
+                );
                 Some(NormalizedEntry {
                     timestamp: None,
                     entry_type: NormalizedEntryType::SystemMessage,
                     content: format!(
-                        "⚠️  Using apiKeySource \"{}\" – calls will be billed to that key. Run `claude-code login` (or set `/login managed key`) if you want to route usage through the managed key.",
-                        other
+                        "⚠️  Using apiKeySource \"{other}\" – calls will be billed to that key. Run `claude-code login` (or set `/login managed key`) if you want to route usage through the managed key."
                     ),
                     metadata: None,
                 })
@@ -641,7 +643,11 @@ impl ClaudeLogProcessor {
         worktree_path: &str,
     ) -> Vec<NormalizedEntry> {
         match claude_json {
-            ClaudeJson::System { subtype, api_key_source, .. } => {
+            ClaudeJson::System {
+                subtype,
+                api_key_source,
+                ..
+            } => {
                 let mut entries = Vec::new();
 
                 // 1) emit billing warning if required
@@ -663,7 +669,8 @@ impl ClaudeLogProcessor {
                             entry_type: NormalizedEntryType::SystemMessage,
                             content,
                             metadata: Some(
-                                serde_json::to_value(claude_json).unwrap_or(serde_json::Value::Null),
+                                serde_json::to_value(claude_json)
+                                    .unwrap_or(serde_json::Value::Null),
                             ),
                         });
                     }
@@ -674,7 +681,8 @@ impl ClaudeLogProcessor {
                             entry_type: NormalizedEntryType::SystemMessage,
                             content,
                             metadata: Some(
-                                serde_json::to_value(claude_json).unwrap_or(serde_json::Value::Null),
+                                serde_json::to_value(claude_json)
+                                    .unwrap_or(serde_json::Value::Null),
                             ),
                         });
                     }
@@ -1819,7 +1827,7 @@ mod tests {
         let system_with_non_managed_key = r#"{"type":"system","subtype":"init","apiKeySource":"ANTHROPIC_API_KEY","session_id":"test123"}"#;
         let parsed: ClaudeJson = serde_json::from_str(system_with_non_managed_key).unwrap();
         let entries = ClaudeLogProcessor::new().normalize_entries(&parsed, "");
-        
+
         assert_eq!(entries.len(), 1);
         assert!(matches!(
             entries[0].entry_type,
@@ -1833,14 +1841,14 @@ mod tests {
         let system_with_managed_key = r#"{"type":"system","subtype":"init","apiKeySource":"/login managed key","session_id":"test123"}"#;
         let parsed_managed: ClaudeJson = serde_json::from_str(system_with_managed_key).unwrap();
         let entries_managed = ClaudeLogProcessor::new().normalize_entries(&parsed_managed, "");
-        
+
         assert_eq!(entries_managed.len(), 0); // No warning for managed key
 
-        // Test with missing apiKeySource - should not generate warning  
+        // Test with missing apiKeySource - should not generate warning
         let system_no_key = r#"{"type":"system","subtype":"init","session_id":"test123"}"#;
         let parsed_no_key: ClaudeJson = serde_json::from_str(system_no_key).unwrap();
         let entries_no_key = ClaudeLogProcessor::new().normalize_entries(&parsed_no_key, "");
-        
+
         assert_eq!(entries_no_key.len(), 0); // No warning when field is missing
     }
 
