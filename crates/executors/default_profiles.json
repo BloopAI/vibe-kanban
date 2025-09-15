@@ -36,13 +36,15 @@
     "CODEX": {
       "DEFAULT": {
         "CODEX": {
-          "sandbox": "auto"
+          "sandbox": "auto",
+          "model": "gpt-5-codex"
         }
       },
       "HIGH": {
         "CODEX": {
           "sandbox": "auto",
-          "model_reasoning_effort": "high"
+          "model_reasoning_effort": "high",
+          "model": "gpt-5-codex"
         }
       }
     },
