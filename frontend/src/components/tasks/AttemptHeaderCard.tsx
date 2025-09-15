@@ -12,7 +12,7 @@ import { useDevServer } from '@/hooks/useDevServer';
 import { useRebase } from '@/hooks/useRebase';
 import { useMerge } from '@/hooks/useMerge';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
-// import { useDiffSummary } from '@/hooks/useDiffSummary';
+import { useDiffSummary } from '@/hooks/useDiffSummary';
 import NiceModal from '@ebay/nice-modal-react';
 
 interface AttemptHeaderCardProps {
@@ -31,8 +31,7 @@ export function AttemptHeaderCard({
   selectedAttempt,
   task,
   projectId,
-  // onCreateNewAttempt,
-  // onJumpToDiffFullScreen,
+  onJumpToDiffFullScreen,
 }: AttemptHeaderCardProps) {
   const {
     start: startDevServer,
@@ -42,9 +41,9 @@ export function AttemptHeaderCard({
   const rebaseMutation = useRebase(selectedAttempt?.id, projectId);
   const mergeMutation = useMerge(selectedAttempt?.id);
   const openInEditor = useOpenInEditor(selectedAttempt);
-  // const { fileCount, added, deleted } = useDiffSummary(
-  //   selectedAttempt?.id ?? null
-  // );
+  const { fileCount, added, deleted } = useDiffSummary(
+    selectedAttempt?.id ?? null
+  );
   const handleCreatePR = () => {
     if (selectedAttempt) {
       NiceModal.show('create-pr', {
@@ -72,8 +71,7 @@ export function AttemptHeaderCard({
             {selectedAttempt.branch}
           </p>
         )}
-        {/* TODO: RE-ENABLE AFTER SSE->WEBSOCKET */}
-        {/* {fileCount > 0 && (
+        {fileCount > 0 && (
           <p className="text-secondary-foreground">
             <Button
               variant="ghost"
@@ -86,7 +84,7 @@ export function AttemptHeaderCard({
             &middot; <span className="text-success">+{added}</span>{' '}
             <span className="text-destructive">-{deleted}</span>
           </p>
-        )} */}
+        )}
       </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

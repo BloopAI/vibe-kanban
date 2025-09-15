@@ -22,6 +22,7 @@ import { ReviewProvider } from '@/contexts/ReviewProvider';
 import { AttemptHeaderCard } from './AttemptHeaderCard';
 import { inIframe } from '@/vscode/bridge';
 import { TaskRelationshipViewer } from './TaskRelationshipViewer';
+import { useTaskViewManager } from '@/hooks/useTaskViewManager.ts';
 
 interface TaskDetailsPanelProps {
   task: TaskWithAttemptStatus | null;
@@ -36,13 +37,13 @@ interface TaskDetailsPanelProps {
   className?: string;
   hideHeader?: boolean;
   isFullScreen?: boolean;
-  setFullScreen?: (value: boolean) => void;
   forceCreateAttempt?: boolean;
   onLeaveForceCreateAttempt?: () => void;
   onNewAttempt?: () => void;
   selectedAttempt: TaskAttempt | null;
   attempts: TaskAttempt[];
   setSelectedAttempt: (attempt: TaskAttempt | null) => void;
+  tasksById?: Record<string, TaskWithAttemptStatus>;
 }
 
 export function TaskDetailsPanel({
@@ -57,12 +58,12 @@ export function TaskDetailsPanel({
   hideBackdrop = false,
   className,
   isFullScreen,
-  setFullScreen,
   forceCreateAttempt,
   onLeaveForceCreateAttempt,
   selectedAttempt,
   attempts,
   setSelectedAttempt,
+  tasksById,
 }: TaskDetailsPanelProps) {
   // Attempt number, find the current attempt number
   const attemptNumber =
@@ -73,8 +74,10 @@ export function TaskDetailsPanel({
   const [activeTab, setActiveTab] = useState<TabType>('logs');
 
   // Handler for jumping to diff tab in full screen
+  const { toggleFullscreen } = useTaskViewManager();
+
   const jumpToDiffFullScreen = () => {
-    setFullScreen?.(true);
+    toggleFullscreen(true);
     setActiveTab('diffs');
   };
 
@@ -137,7 +140,6 @@ export function TaskDetailsPanel({
                       onDeleteTask={onDeleteTask}
                       hideCloseButton={hideBackdrop}
                       isFullScreen={isFullScreen}
-                      setFullScreen={setFullScreen}
                     />
                   )}
 
@@ -172,6 +174,8 @@ export function TaskDetailsPanel({
                         <TaskRelationshipViewer
                           selectedAttempt={selectedAttempt}
                           onNavigateToTask={onNavigateToTask}
+                          task={task}
+                          tasksById={tasksById}
                         />
                       </aside>
 

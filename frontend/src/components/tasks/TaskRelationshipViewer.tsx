@@ -2,26 +2,38 @@ import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { TaskRelationshipCard } from './TaskRelationshipCard';
 import { attemptsApi } from '@/lib/api';
-import type { TaskAttempt, TaskRelationships } from 'shared/types';
+import type {
+  TaskAttempt,
+  TaskRelationships,
+  TaskWithAttemptStatus,
+} from 'shared/types';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface TaskRelationshipViewerProps {
   selectedAttempt: TaskAttempt | null;
   onNavigateToTask?: (taskId: string) => void;
+  task?: TaskWithAttemptStatus | null;
+  tasksById?: Record<string, TaskWithAttemptStatus>;
 }
 
 export function TaskRelationshipViewer({
   selectedAttempt,
   onNavigateToTask,
+  task,
+  tasksById,
 }: TaskRelationshipViewerProps) {
   const [relationships, setRelationships] = useState<TaskRelationships | null>(
+    null
+  );
+  const [parentTask, setParentTask] = useState<TaskWithAttemptStatus | null>(
     null
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [childrenExpanded, setChildrenExpanded] = useState(true);
 
+  // Effect for attempt-based relationships (existing behavior)
   useEffect(() => {
     if (!selectedAttempt?.id) {
       setRelationships(null);
@@ -47,9 +59,31 @@ export function TaskRelationshipViewer({
     fetchRelationships();
   }, [selectedAttempt?.id]);
 
-  const parentTask = relationships?.parent_task;
+  // Effect for parent task when child has no attempts (one request + tasksById lookup)
+  useEffect(() => {
+    if (selectedAttempt?.id) {
+      // If we have an attempt, clear parent task since relationships will handle it
+      setParentTask(null);
+      return;
+    }
+
+    if (task?.parent_task_attempt && tasksById) {
+      attemptsApi
+        .get(task.parent_task_attempt)
+        .then((parentAttempt) => {
+          // Use existing tasksById instead of second API call
+          const parentTaskData = tasksById[parentAttempt.task_id];
+          setParentTask(parentTaskData || null);
+        })
+        .catch(() => setParentTask(null));
+    } else {
+      setParentTask(null);
+    }
+  }, [selectedAttempt?.id, task?.parent_task_attempt, tasksById]);
+
+  const displayParentTask = relationships?.parent_task || parentTask;
   const childTasks = relationships?.children || [];
-  const hasParent = parentTask !== null;
+  const hasParent = displayParentTask !== null;
   const hasChildren = childTasks.length > 0;
 
   // Don't render if no relationships and no current task
@@ -74,7 +108,7 @@ export function TaskRelationshipViewer({
         ) : (
           <div className="space-y-6">
             {/* Parent Task Section */}
-            {hasParent && parentTask && (
+            {hasParent && displayParentTask && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -85,9 +119,9 @@ export function TaskRelationshipViewer({
                 <div className="flex justify-center">
                   <div className="w-full max-w-md">
                     <TaskRelationshipCard
-                      task={parentTask}
+                      task={displayParentTask}
                       isCurrentTask={false}
-                      onClick={() => onNavigateToTask?.(parentTask.id)}
+                      onClick={() => onNavigateToTask?.(displayParentTask.id)}
                       className="shadow-sm"
                     />
                   </div>

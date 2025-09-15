@@ -605,10 +605,17 @@ impl LocalContainerService {
 
         let live_stream = {
             let git_service = git_service.clone();
+            let worktree_path_for_spawn = worktree_path.clone();
             try_stream! {
-                let (_debouncer, mut rx, canonical_worktree_path) =
-                    filesystem_watcher::async_watcher(worktree_path.clone())
-                        .map_err(|e| io::Error::other(e.to_string()))?;
+                // Move the expensive watcher setup to blocking thread to avoid blocking the async runtime
+                let watcher_result = tokio::task::spawn_blocking(move || {
+                    filesystem_watcher::async_watcher(worktree_path_for_spawn)
+                })
+                .await
+                .map_err(|e| io::Error::other(format!("Failed to spawn watcher setup: {e}")))?;
+
+                let (_debouncer, mut rx, canonical_worktree_path) = watcher_result
+                    .map_err(|e| io::Error::other(e.to_string()))?;
 
                 while let Some(result) = rx.next().await {
                     match result {

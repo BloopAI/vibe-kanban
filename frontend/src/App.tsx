@@ -1,14 +1,9 @@
 import { useEffect } from 'react';
-import {
-  BrowserRouter,
-  Navigate,
-  Route,
-  Routes,
-  useLocation,
-} from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Navbar } from '@/components/layout/navbar';
 import { Projects } from '@/pages/projects';
 import { ProjectTasks } from '@/pages/project-tasks';
+import { useTaskViewManager } from '@/hooks/useTaskViewManager';
 
 import {
   AgentSettings,
@@ -38,9 +33,9 @@ const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
   const { config, updateAndSaveConfig, loading } = useUserSystem();
-  const location = useLocation();
+  const { isFullscreen } = useTaskViewManager();
 
-  const showNavbar = !location.pathname.endsWith('/full');
+  const showNavbar = !isFullscreen;
 
   useEffect(() => {
     let cancelled = false;
@@ -163,6 +158,10 @@ function AppContent() {
                 />
                 <Route
                   path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
+                  element={<ProjectTasks />}
+                />
+                <Route
+                  path="/projects/:projectId/tasks/:taskId/full"
                   element={<ProjectTasks />}
                 />
                 <Route

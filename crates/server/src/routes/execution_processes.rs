@@ -70,7 +70,7 @@ async fn handle_raw_logs_ws(
     // Get the raw stream and convert to JSON patches on-the-fly
     let raw_stream = deployment
         .container()
-        .stream_raw_logs_raw(&exec_id)
+        .stream_raw_logs(&exec_id)
         .await
         .ok_or_else(|| anyhow::anyhow!("Execution process not found"))?;
 
@@ -136,7 +136,7 @@ async fn handle_normalized_logs_ws(
     // Get the raw stream and convert LogMsg to WebSocket messages
     let mut stream = deployment
         .container()
-        .stream_normalized_logs_raw(&exec_id)
+        .stream_normalized_logs(&exec_id)
         .await
         .ok_or_else(|| anyhow::anyhow!("Execution process not found"))?
         .map_ok(|msg| msg.to_ws_message_unchecked());
