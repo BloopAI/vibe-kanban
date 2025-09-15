@@ -1,11 +1,10 @@
-// streamJsonPatchEntries.ts - Transport-agnostic JSON patch streaming utility
+// streamJsonPatchEntries.ts - WebSocket JSON patch streaming utility
 import { applyPatch, type Operation } from 'rfc6902';
 
 type PatchContainer<E = unknown> = { entries: E[] };
 
 export interface StreamOptions<E = unknown> {
   initial?: PatchContainer<E>;
-  eventSourceInit?: EventSourceInit;
   /** called after each successful patch application */
   onEntries?: (entries: E[]) => void;
   onConnect?: () => void;
@@ -28,94 +27,13 @@ interface StreamController<E = unknown> {
 }
 
 /**
- * Create SSE-based stream controller
+ * Connect to a WebSocket endpoint that emits JSON messages containing:
+ *   {"JsonPatch": [{"op": "add", "path": "/entries/0", "value": {...}}, ...]}
+ *   {"Finished": ""}
+ *
+ * Maintains an in-memory { entries: [] } snapshot and returns a controller.
  */
-function createSseStream<E = unknown>(
-  url: string,
-  opts: StreamOptions<E> = {}
-): StreamController<E> {
-  let connected = false;
-  let snapshot: PatchContainer<E> = structuredClone(
-    opts.initial ?? ({ entries: [] } as PatchContainer<E>)
-  );
-
-  const subscribers = new Set<(entries: E[]) => void>();
-  if (opts.onEntries) subscribers.add(opts.onEntries);
-
-  const es = new EventSource(url, opts.eventSourceInit);
-
-  const notify = () => {
-    for (const cb of subscribers) {
-      try {
-        cb(snapshot.entries);
-      } catch {
-        /* swallow subscriber errors */
-      }
-    }
-  };
-
-  const handlePatchEvent = (e: MessageEvent<string>) => {
-    try {
-      const raw = JSON.parse(e.data) as Operation[];
-      const ops = dedupeOps(raw);
-
-      // Apply to a working copy (applyPatch mutates)
-      const next = structuredClone(snapshot);
-      applyPatch(next as unknown as object, ops);
-
-      snapshot = next;
-      notify();
-    } catch (err) {
-      opts.onError?.(err);
-    }
-  };
-
-  es.addEventListener('open', () => {
-    connected = true;
-    opts.onConnect?.();
-  });
-
-  // The server uses a named event: "json_patch"
-  es.addEventListener('json_patch', handlePatchEvent);
-
-  es.addEventListener('finished', () => {
-    opts.onFinished?.(snapshot.entries);
-    es.close();
-  });
-
-  es.addEventListener('error', (err) => {
-    connected = false; // EventSource will auto-retry; this just reflects current state
-    opts.onError?.(err);
-  });
-
-  return {
-    getEntries(): E[] {
-      return snapshot.entries;
-    },
-    getSnapshot(): PatchContainer<E> {
-      return snapshot;
-    },
-    isConnected(): boolean {
-      return connected;
-    },
-    onChange(cb: (entries: E[]) => void): () => void {
-      subscribers.add(cb);
-      // push current state immediately
-      cb(snapshot.entries);
-      return () => subscribers.delete(cb);
-    },
-    close(): void {
-      es.close();
-      subscribers.clear();
-      connected = false;
-    },
-  };
-}
-
-/**
- * Create WebSocket-based stream controller
- */
-function createWsStream<E = unknown>(
+export function streamJsonPatchEntries<E = unknown>(
   url: string,
   opts: StreamOptions<E> = {}
 ): StreamController<E> {
@@ -159,7 +77,7 @@ function createWsStream<E = unknown>(
       }
 
       // Handle Finished messages
-      if (msg.Finished !== undefined) {
+      if (msg.finished !== undefined) {
         opts.onFinished?.(snapshot.entries);
         ws.close();
       }
@@ -207,24 +125,6 @@ function createWsStream<E = unknown>(
     },
   };
 }
-
-/**
- * Connect to an endpoint that emits JSON patches via SSE or WebSocket.
- * Auto-detects transport based on URL pattern (ends with /ws = WebSocket).
- * Maintains an in-memory { entries: [] } snapshot and returns a controller.
- */
-export function streamJsonPatchEntries<E = unknown>(
-  url: string,
-  opts: StreamOptions<E> = {}
-): StreamController<E> {
-  if (url.endsWith('/ws')) {
-    return createWsStream<E>(url, opts);
-  }
-  return createSseStream<E>(url, opts);
-}
-
-// Backward compatibility alias
-export { streamJsonPatchEntries as streamSseJsonPatchEntries };
 
 /**
  * Dedupe multiple ops that touch the same path within a single event.

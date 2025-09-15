@@ -52,8 +52,13 @@ impl LogMsg {
     /// This method mirrors the behavior of the original logmsg_to_ws function
     /// but with better error handling than unwrap().
     pub fn to_ws_message_unchecked(&self) -> Message {
-        let json = serde_json::to_string(self)
-            .unwrap_or_else(|_| r#"{"error":"serialization_failed"}"#.to_string());
+        // Finished becomes JSON {finished: true}
+        let json = match self {
+            LogMsg::Finished => r#"{"finished":true}"#.to_string(),
+            _ => serde_json::to_string(self)
+                .unwrap_or_else(|_| r#"{"error":"serialization_failed"}"#.to_string()),
+        };
+
         Message::Text(json.into())
     }
 
