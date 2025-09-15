@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useJsonPatchStream } from './useJsonPatchStream';
+import { useJsonPatchWsStream } from './useJsonPatchWsStream';
 import type { ExecutionProcess } from 'shared/types';
 
 type ExecutionProcessState = {
@@ -15,14 +15,14 @@ interface UseExecutionProcessesResult {
 }
 
 /**
- * Stream tasks for a project via SSE (JSON Patch) and expose as array + map.
- * Server sends initial snapshot: replace /tasks with an object keyed by id.
- * Live updates arrive at /tasks/<id> via add/replace/remove operations.
+ * Stream execution processes for a task attempt via WebSocket (JSON Patch) and expose as array + map.
+ * Server sends initial snapshot: replace /execution_processes with an object keyed by id.
+ * Live updates arrive at /execution_processes/<id> via add/replace/remove operations.
  */
 export const useExecutionProcesses = (
   taskAttemptId: string
 ): UseExecutionProcessesResult => {
-  const endpoint = `/api/execution-processes/stream?task_attempt_id=${encodeURIComponent(taskAttemptId)}`;
+  const endpoint = `/api/execution-processes/stream/ws?task_attempt_id=${encodeURIComponent(taskAttemptId)}`;
 
   const initialData = useCallback(
     (): ExecutionProcessState => ({ execution_processes: {} }),
@@ -30,7 +30,7 @@ export const useExecutionProcesses = (
   );
 
   const { data, isConnected, error } =
-    useJsonPatchStream<ExecutionProcessState>(
+    useJsonPatchWsStream<ExecutionProcessState>(
       endpoint,
       !!taskAttemptId,
       initialData

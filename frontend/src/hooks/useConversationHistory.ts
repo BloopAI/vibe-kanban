@@ -130,6 +130,7 @@ export const useConversationHistory = ({
           emitEntries(localEntries, 'running', false);
         },
         onFinished: () => {
+          emitEntries(displayedExecutionProcesses.current, 'running', true);
           controller.close();
           resolve();
         },
