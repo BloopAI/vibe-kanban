@@ -1,10 +1,7 @@
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
-    sync::{
-        Arc,
-        atomic::{AtomicUsize, Ordering},
-    },
+    sync::Arc,
 };
 
 use anyhow::{Error as AnyhowError, anyhow};
@@ -30,10 +27,9 @@ use executors::{
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
     executors::{ExecutorError, StandardCodingAgentExecutor},
-    logs::utils::patch::ConversationPatch,
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
-use futures::{StreamExt, TryStreamExt, future};
+use futures::{StreamExt, future};
 use sqlx::Error as SqlxError;
 use thiserror::Error;
 use tokio::{sync::RwLock, task::JoinHandle};
@@ -208,7 +204,7 @@ pub trait ContainerService {
         map.get(uuid).cloned()
     }
 
-    async fn stream_raw_logs_raw(
+    async fn stream_raw_logs(
         &self,
         id: &Uuid,
     ) -> Option<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>> {
@@ -259,37 +255,7 @@ pub trait ContainerService {
         }
     }
 
-    async fn stream_raw_logs(
-        &self,
-        id: &Uuid,
-    ) -> Option<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>> {
-        let raw_stream = self.stream_raw_logs_raw(id).await?;
-
-        let counter = Arc::new(AtomicUsize::new(0));
-        Some(
-            raw_stream
-                .map_ok({
-                    let counter = counter.clone();
-                    move |m| match m {
-                        LogMsg::Stdout(content) => {
-                            let index = counter.fetch_add(1, Ordering::SeqCst);
-                            let patch = ConversationPatch::add_stdout(index, content);
-                            LogMsg::JsonPatch(patch).to_sse_event()
-                        }
-                        LogMsg::Stderr(content) => {
-                            let index = counter.fetch_add(1, Ordering::SeqCst);
-                            let patch = ConversationPatch::add_stderr(index, content);
-                            LogMsg::JsonPatch(patch).to_sse_event()
-                        }
-                        LogMsg::Finished => LogMsg::Finished.to_sse_event(),
-                        _ => unreachable!("Raw stream should only have Stdout/Stderr/Finished"),
-                    }
-                })
-                .boxed(),
-        )
-    }
-
-    async fn stream_normalized_logs_raw(
+    async fn stream_normalized_logs(
         &self,
         id: &Uuid,
     ) -> Option<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>> {
@@ -412,18 +378,6 @@ pub trait ContainerService {
                     .boxed(),
             )
         }
-    }
-
-    async fn stream_normalized_logs(
-        &self,
-        id: &Uuid,
-    ) -> Option<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>> {
-        Some(
-            self.stream_normalized_logs_raw(id)
-                .await?
-                .map_ok(|m| m.to_sse_event())
-                .boxed(),
-        )
     }
 
     fn spawn_stream_raw_logs_to_db(&self, execution_id: &Uuid) -> JoinHandle<()> {
