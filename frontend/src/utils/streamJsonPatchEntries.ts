@@ -144,7 +144,7 @@ function createWsStream<E = unknown>(
   const handleMessage = (event: MessageEvent) => {
     try {
       const msg = JSON.parse(event.data);
-      
+
       // Handle JsonPatch messages (from LogMsg::to_ws_message)
       if (msg.JsonPatch) {
         const raw = msg.JsonPatch as Operation[];
@@ -157,7 +157,7 @@ function createWsStream<E = unknown>(
         snapshot = next;
         notify();
       }
-      
+
       // Handle Finished messages
       if (msg.Finished !== undefined) {
         opts.onFinished?.(snapshot.entries);
