@@ -129,6 +129,20 @@ export default function DiffCard({
     };
   }, [commentsForFile]);
 
+  const getCodeLine = (lineNumber: number, side: SplitSide) => {
+    if (!diffFile) return '';
+    try {
+      const plainLine =
+        side === SplitSide.old
+          ? diffFile.getOldPlainLine(lineNumber)
+          : diffFile.getNewPlainLine(lineNumber);
+      return plainLine?.value ?? '';
+    } catch (error) {
+      console.error('Failed to read line content for review comment', error);
+      return '';
+    }
+  };
+
   const handleAddWidgetClick = (lineNumber: number, side: SplitSide) => {
     const widgetKey = `${filePath}-${side}-${lineNumber}`;
     const draft: ReviewDraft = {
@@ -136,6 +150,7 @@ export default function DiffCard({
       side,
       lineNumber,
       text: '',
+      codeLine: getCodeLine(lineNumber, side),
     };
     setDraft(widgetKey, draft);
   };

@@ -7,6 +7,7 @@ export interface ReviewComment {
   lineNumber: number;
   side: SplitSide;
   text: string;
+  codeLine?: string;
 }
 
 export interface ReviewDraft {
@@ -14,6 +15,7 @@ export interface ReviewDraft {
   side: SplitSide;
   lineNumber: number;
   text: string;
+  codeLine?: string;
 }
 
 interface ReviewContextType {
@@ -83,11 +85,23 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
     const commentsNum = comments.length;
 
     const header = `## Review Comments (${commentsNum})\n\n`;
+    const formatCodeLine = (line?: string) => {
+      if (!line) return '';
+      if (line.includes('`')) {
+        return `\`\`\`\n${line}\n\`\`\``;
+      }
+      return `\`${line}\``;
+    };
+
     const commentsMd = comments
-      .map(
-        (comment) =>
-          `**${comment.filePath}** (Line ${comment.lineNumber})\n\n> ${comment.text.trim()}\n`
-      )
+      .map((comment) => {
+        const codeLine = formatCodeLine(comment.codeLine);
+        const commentBody = comment.text.trim();
+        if (codeLine) {
+          return `**${comment.filePath}** (Line ${comment.lineNumber})\n${codeLine}\n\n> ${commentBody}\n`;
+        }
+        return `**${comment.filePath}** (Line ${comment.lineNumber})\n\n> ${commentBody}\n`;
+      })
       .join('\n');
 
     return header + commentsMd;

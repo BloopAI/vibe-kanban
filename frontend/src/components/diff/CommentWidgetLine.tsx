@@ -30,6 +30,7 @@ export function CommentWidgetLine({
         side: draft.side,
         lineNumber: draft.lineNumber,
         text: value.trim(),
+        codeLine: draft.codeLine,
       });
     }
     setDraft(widgetKey, null);
