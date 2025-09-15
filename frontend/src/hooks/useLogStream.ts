@@ -11,7 +11,7 @@ interface UseLogStreamResult {
 export const useLogStream = (processId: string): UseLogStreamResult => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
   const retryCountRef = useRef<number>(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -25,12 +25,14 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
     setError(null);
 
     const open = () => {
-      const eventSource = new EventSource(
-        `/api/execution-processes/${processId}/raw-logs`
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      const ws = new WebSocket(
+        `${protocol}//${host}/api/execution-processes/${processId}/raw-logs/ws`
       );
-      eventSourceRef.current = eventSource;
+      wsRef.current = ws;
 
-      eventSource.onopen = () => {
+      ws.onopen = () => {
         setError(null);
         // Reset logs on new connection since server replays history
         setLogs([]);
@@ -41,36 +43,41 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
         setLogs((prev) => [...prev, entry]);
       };
 
-      // Handle json_patch events (new format from server)
-      eventSource.addEventListener('json_patch', (event) => {
+      // Handle WebSocket messages
+      ws.onmessage = (event) => {
         try {
-          const patches = JSON.parse(event.data);
-          patches.forEach((patch: any) => {
-            const value = patch?.value;
-            if (!value || !value.type) return;
+          const data = JSON.parse(event.data);
 
-            switch (value.type) {
-              case 'STDOUT':
-              case 'STDERR':
-                addLogEntry({ type: value.type, content: value.content });
-                break;
-              // Ignore other patch types (NORMALIZED_ENTRY, DIFF, etc.)
-              default:
-                break;
-            }
-          });
+          // Handle different message types based on LogMsg enum
+          if ('JsonPatch' in data) {
+            const patches = data.JsonPatch;
+            patches.forEach((patch: any) => {
+              const value = patch?.value;
+              if (!value || !value.type) return;
+
+              switch (value.type) {
+                case 'STDOUT':
+                case 'STDERR':
+                  addLogEntry({ type: value.type, content: value.content });
+                  break;
+                // Ignore other patch types (NORMALIZED_ENTRY, DIFF, etc.)
+                default:
+                  break;
+              }
+            });
+          } else if ('Finished' in data) {
+            ws.close();
+          }
         } catch (e) {
-          console.error('Failed to parse json_patch:', e);
+          console.error('Failed to parse message:', e);
         }
-      });
+      };
 
-      eventSource.addEventListener('finished', () => {
-        eventSource.close();
-      });
-
-      eventSource.onerror = () => {
+      ws.onerror = () => {
         setError('Connection failed');
-        eventSource.close();
+      };
+
+      ws.onclose = () => {
         // Retry a few times with backoff in case of race before logs are ready
         const next = retryCountRef.current + 1;
         retryCountRef.current = next;
@@ -84,9 +91,9 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
     open();
 
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
       }
       if (retryTimerRef.current) {
         clearTimeout(retryTimerRef.current);
