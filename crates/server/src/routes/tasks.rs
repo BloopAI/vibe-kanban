@@ -3,10 +3,13 @@ use std::path::PathBuf;
 use anyhow;
 use axum::{
     BoxError, Extension, Json, Router,
-    extract::{Query, State, ws::{WebSocket, WebSocketUpgrade, Message}},
+    extract::{
+        Query, State,
+        ws::{Message, WebSocket, WebSocketUpgrade},
+    },
     http::StatusCode,
     middleware::from_fn_with_state,
-    response::{Json as ResponseJson, Sse, sse::KeepAlive, IntoResponse},
+    response::{IntoResponse, Json as ResponseJson, Sse, sse::KeepAlive},
     routing::{get, post},
 };
 use db::models::{
@@ -16,14 +19,14 @@ use db::models::{
 };
 use deployment::Deployment;
 use executors::profile::ExecutorProfileId;
-use futures_util::{TryStreamExt, StreamExt, SinkExt};
+use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::Deserialize;
 use services::services::container::{
     ContainerService, WorktreeCleanupData, cleanup_worktrees_direct,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
-use utils::{response::ApiResponse, log_msg::LogMsg};
+use utils::{log_msg::LogMsg, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_task_middleware};
@@ -88,9 +91,7 @@ async fn handle_tasks_ws(
     let (mut sender, mut receiver) = socket.split();
 
     // Drain (and ignore) any client->server messages so pings/pongs work
-    tokio::spawn(async move {
-        while let Some(Ok(_)) = receiver.next().await {}
-    });
+    tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
 
     // Forward server messages
     while let Some(item) = stream.next().await {

@@ -611,9 +611,7 @@ impl EventService {
 
         // Start with initial snapshot, then live updates
         let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
-        let combined_stream = initial_stream
-        .chain(filtered_stream)
-        .boxed();
+        let combined_stream = initial_stream.chain(filtered_stream).boxed();
 
         Ok(combined_stream)
     }
