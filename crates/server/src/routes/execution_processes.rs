@@ -6,9 +6,7 @@ use axum::{
         ws::{WebSocket, WebSocketUpgrade},
     },
     middleware::from_fn_with_state,
-    response::{
-        IntoResponse, Json as ResponseJson,
-    },
+    response::{IntoResponse, Json as ResponseJson},
     routing::{get, post},
 };
 use db::models::execution_process::ExecutionProcess;
@@ -43,8 +41,6 @@ pub async fn get_execution_process_by_id(
 ) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, ApiError> {
     Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
-
-
 
 pub async fn stream_raw_logs_ws(
     ws: WebSocketUpgrade,
@@ -120,8 +116,6 @@ async fn handle_raw_logs_ws(
     Ok(())
 }
 
-
-
 pub async fn stream_normalized_logs_ws(
     ws: WebSocketUpgrade,
     State(deployment): State<DeploymentImpl>,
@@ -188,7 +182,9 @@ pub async fn stream_execution_processes_ws(
     Query(query): Query<ExecutionProcessQuery>,
 ) -> impl IntoResponse {
     ws.on_upgrade(move |socket| async move {
-        if let Err(e) = handle_execution_processes_ws(socket, deployment, query.task_attempt_id).await {
+        if let Err(e) =
+            handle_execution_processes_ws(socket, deployment, query.task_attempt_id).await
+        {
             tracing::warn!("execution processes WS closed: {}", e);
         }
     })
