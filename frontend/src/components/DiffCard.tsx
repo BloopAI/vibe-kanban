@@ -138,7 +138,8 @@ export default function DiffCard({
           : diffFile.getNewPlainLine(lineNumber);
       const value = plainLine?.value ?? '';
       if (value.endsWith('\r\n')) return value.slice(0, -2);
-      if (value.endsWith('\n') || value.endsWith('\r')) return value.slice(0, -1);
+      if (value.endsWith('\n') || value.endsWith('\r'))
+        return value.slice(0, -1);
       return value;
     } catch (error) {
       console.error('Failed to read line content for review comment', error);
