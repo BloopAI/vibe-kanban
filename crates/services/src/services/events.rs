@@ -616,19 +616,6 @@ impl EventService {
         Ok(combined_stream)
     }
 
-    /// Stream tasks for a specific project with initial snapshot (SSE format)
-    pub async fn stream_tasks_for_project(
-        &self,
-        project_id: Uuid,
-    ) -> Result<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>, EventError>
-    {
-        Ok(self
-            .stream_tasks_raw(project_id)
-            .await?
-            .map_ok(|msg| msg.to_sse_event())
-            .boxed())
-    }
-
     /// Stream execution processes for a specific task attempt with initial snapshot  
     pub async fn stream_execution_processes_for_attempt(
         &self,

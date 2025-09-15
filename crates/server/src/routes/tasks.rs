@@ -2,14 +2,14 @@ use std::path::PathBuf;
 
 use anyhow;
 use axum::{
-    BoxError, Extension, Json, Router,
+    Extension, Json, Router,
     extract::{
         Query, State,
         ws::{Message, WebSocket, WebSocketUpgrade},
     },
     http::StatusCode,
     middleware::from_fn_with_state,
-    response::{IntoResponse, Json as ResponseJson, Sse, sse::KeepAlive},
+    response::{IntoResponse, Json as ResponseJson},
     routing::{get, post},
 };
 use db::models::{
@@ -45,22 +45,6 @@ pub async fn get_tasks(
             .await?;
 
     Ok(ResponseJson(ApiResponse::success(tasks)))
-}
-
-pub async fn stream_tasks(
-    State(deployment): State<DeploymentImpl>,
-    Query(query): Query<TaskQuery>,
-) -> Result<
-    Sse<impl futures_util::Stream<Item = Result<axum::response::sse::Event, BoxError>>>,
-    axum::http::StatusCode,
-> {
-    let stream = deployment
-        .events()
-        .stream_tasks_for_project(query.project_id)
-        .await
-        .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    Ok(Sse::new(stream.map_err(|e| -> BoxError { e.into() })).keep_alive(KeepAlive::default()))
 }
 
 pub async fn stream_tasks_ws(
@@ -344,7 +328,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 
     let inner = Router::new()
         .route("/", get(get_tasks).post(create_task))
-        .route("/stream", get(stream_tasks))
         .route("/stream/ws", get(stream_tasks_ws))
         .route("/create-and-start", post(create_task_and_start))
         .nest("/{task_id}", task_id_router);
