@@ -218,7 +218,10 @@ pub trait ContainerService {
                 store
                     .history_plus_stream()
                     .filter(|msg| {
-                        future::ready(matches!(msg, Ok(LogMsg::Stdout(..) | LogMsg::Stderr(..) | LogMsg::Finished)))
+                        future::ready(matches!(
+                            msg,
+                            Ok(LogMsg::Stdout(..) | LogMsg::Stderr(..) | LogMsg::Finished)
+                        ))
                     })
                     .boxed(),
             );
@@ -248,7 +251,7 @@ pub trait ContainerService {
                     .into_iter()
                     .filter(|m| matches!(m, LogMsg::Stdout(_) | LogMsg::Stderr(_)))
                     .chain(std::iter::once(LogMsg::Finished))
-                    .map(|m| Ok::<_, std::io::Error>(m)),
+                    .map(Ok::<_, std::io::Error>),
             )
             .boxed();
 
@@ -261,27 +264,25 @@ pub trait ContainerService {
         id: &Uuid,
     ) -> Option<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>> {
         let raw_stream = self.stream_raw_logs_raw(id).await?;
-        
+
         let counter = Arc::new(AtomicUsize::new(0));
         Some(
             raw_stream
                 .map_ok({
                     let counter = counter.clone();
-                    move |m| {
-                        match m {
-                            LogMsg::Stdout(content) => {
-                                let index = counter.fetch_add(1, Ordering::SeqCst);
-                                let patch = ConversationPatch::add_stdout(index, content);
-                                LogMsg::JsonPatch(patch).to_sse_event()
-                            }
-                            LogMsg::Stderr(content) => {
-                                let index = counter.fetch_add(1, Ordering::SeqCst);
-                                let patch = ConversationPatch::add_stderr(index, content);
-                                LogMsg::JsonPatch(patch).to_sse_event()
-                            }
-                            LogMsg::Finished => LogMsg::Finished.to_sse_event(),
-                            _ => unreachable!("Raw stream should only have Stdout/Stderr/Finished"),
+                    move |m| match m {
+                        LogMsg::Stdout(content) => {
+                            let index = counter.fetch_add(1, Ordering::SeqCst);
+                            let patch = ConversationPatch::add_stdout(index, content);
+                            LogMsg::JsonPatch(patch).to_sse_event()
                         }
+                        LogMsg::Stderr(content) => {
+                            let index = counter.fetch_add(1, Ordering::SeqCst);
+                            let patch = ConversationPatch::add_stderr(index, content);
+                            LogMsg::JsonPatch(patch).to_sse_event()
+                        }
+                        LogMsg::Finished => LogMsg::Finished.to_sse_event(),
+                        _ => unreachable!("Raw stream should only have Stdout/Stderr/Finished"),
                     }
                 })
                 .boxed(),

@@ -78,9 +78,13 @@ async fn handle_raw_logs_ws(
     deployment: DeploymentImpl,
     exec_id: Uuid,
 ) -> anyhow::Result<()> {
-    use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
-    use utils::log_msg::LogMsg;
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+
     use executors::logs::utils::patch::ConversationPatch;
+    use utils::log_msg::LogMsg;
 
     // Get the raw stream and convert to JSON patches on-the-fly
     let raw_stream = deployment
@@ -90,36 +94,29 @@ async fn handle_raw_logs_ws(
         .ok_or_else(|| anyhow::anyhow!("Execution process not found"))?;
 
     let counter = Arc::new(AtomicUsize::new(0));
-    let mut stream = raw_stream
-        .map_ok({
-            let counter = counter.clone();
-            move |m| {
-                match m {
-                    LogMsg::Stdout(content) => {
-                        let index = counter.fetch_add(1, Ordering::SeqCst);
-                        let patch = ConversationPatch::add_stdout(index, content);
-                        LogMsg::JsonPatch(patch).to_ws_message_unchecked()
-                    }
-                    LogMsg::Stderr(content) => {
-                        let index = counter.fetch_add(1, Ordering::SeqCst);
-                        let patch = ConversationPatch::add_stderr(index, content);
-                        LogMsg::JsonPatch(patch).to_ws_message_unchecked()
-                    }
-                    LogMsg::Finished => {
-                        LogMsg::Finished.to_ws_message_unchecked()
-                    }
-                    _ => unreachable!("Raw stream should only have Stdout/Stderr/Finished"),
-                }
+    let mut stream = raw_stream.map_ok({
+        let counter = counter.clone();
+        move |m| match m {
+            LogMsg::Stdout(content) => {
+                let index = counter.fetch_add(1, Ordering::SeqCst);
+                let patch = ConversationPatch::add_stdout(index, content);
+                LogMsg::JsonPatch(patch).to_ws_message_unchecked()
             }
-        });
+            LogMsg::Stderr(content) => {
+                let index = counter.fetch_add(1, Ordering::SeqCst);
+                let patch = ConversationPatch::add_stderr(index, content);
+                LogMsg::JsonPatch(patch).to_ws_message_unchecked()
+            }
+            LogMsg::Finished => LogMsg::Finished.to_ws_message_unchecked(),
+            _ => unreachable!("Raw stream should only have Stdout/Stderr/Finished"),
+        }
+    });
 
     // Split socket into sender and receiver
     let (mut sender, mut receiver) = socket.split();
 
     // Drain (and ignore) any client->server messages so pings/pongs work
-    tokio::spawn(async move {
-        while let Some(Ok(_)) = receiver.next().await {}
-    });
+    tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
 
     // Forward server messages
     while let Some(item) = stream.next().await {
