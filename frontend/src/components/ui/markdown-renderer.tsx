@@ -77,20 +77,14 @@ function MarkdownRenderer({
       },
       ul: {
         component: ({ children, ...props }: any) => (
-          <ul
-            {...props}
-            className="list-disc list-outside space-y-1 ps-6"
-          >
+          <ul {...props} className="list-disc list-outside space-y-1 ps-6">
             {children}
           </ul>
         ),
       },
       ol: {
         component: ({ children, ...props }: any) => (
-          <ol
-            {...props}
-            className="list-decimal list-outside space-y-1 ps-6"
-          >
+          <ol {...props} className="list-decimal list-outside space-y-1 ps-6">
             {children}
           </ol>
         ),
