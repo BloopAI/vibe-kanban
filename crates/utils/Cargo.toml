@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 tokio-util = { version = "0.7", features = ["io", "codec"] }
 bytes = "1.0"
-axum = { workspace = true }
+axum = { workspace = true, features = ["ws"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }

@@ -1,4 +1,5 @@
 use axum::response::sse::Event;
+use axum::extract::ws::Message;
 use json_patch::Patch;
 use serde::{Deserialize, Serialize};
 
@@ -39,6 +40,22 @@ impl LogMsg {
             LogMsg::SessionId(s) => Event::default().event(EV_SESSION_ID).data(s.clone()),
             LogMsg::Finished => Event::default().event(EV_FINISHED).data(""),
         }
+    }
+
+    /// Convert LogMsg to WebSocket message with proper error handling
+    pub fn to_ws_message(&self) -> Result<Message, serde_json::Error> {
+        let json = serde_json::to_string(self)?;
+        Ok(Message::Text(json.into()))
+    }
+
+    /// Convert LogMsg to WebSocket message with fallback error handling
+    /// 
+    /// This method mirrors the behavior of the original logmsg_to_ws function
+    /// but with better error handling than unwrap().
+    pub fn to_ws_message_unchecked(&self) -> Message {
+        let json = serde_json::to_string(self)
+            .unwrap_or_else(|_| r#"{"error":"serialization_failed"}"#.to_string());
+        Message::Text(json.into())
     }
 
     /// Rough size accounting for your byte‑budgeted history.

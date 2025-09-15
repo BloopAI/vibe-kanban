@@ -5,7 +5,7 @@ use axum::{
     Extension, Json, Router,
     extract::{
         Query, State,
-        ws::{Message, WebSocket, WebSocketUpgrade},
+        ws::{WebSocket, WebSocketUpgrade},
     },
     http::StatusCode,
     middleware::from_fn_with_state,
@@ -26,7 +26,7 @@ use services::services::container::{
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
-use utils::{log_msg::LogMsg, response::ApiResponse};
+use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_task_middleware};
@@ -69,7 +69,7 @@ async fn handle_tasks_ws(
         .events()
         .stream_tasks_raw(project_id)
         .await?
-        .map_ok(logmsg_to_ws);
+        .map_ok(|msg| msg.to_ws_message_unchecked());
 
     // Split socket into sender and receiver
     let (mut sender, mut receiver) = socket.split();
@@ -92,10 +92,6 @@ async fn handle_tasks_ws(
         }
     }
     Ok(())
-}
-
-fn logmsg_to_ws(msg: LogMsg) -> Message {
-    Message::Text(serde_json::to_string(&msg).unwrap().into())
 }
 
 pub async fn get_task(
