@@ -1012,7 +1012,6 @@ export function TaskFollowUpSection({
                         !canSendFollowUp ||
                         isDraftLocked ||
                         !isDraftReady ||
-                        !followUpMessage.trim() ||
                         isSendingFollowUp
                       }
                       size="sm"
@@ -1153,7 +1152,6 @@ export function TaskFollowUpSection({
                           ? isUnqueuing
                           : !canSendFollowUp ||
                             !isDraftReady ||
-                            !followUpMessage.trim() ||
                             isQueuing ||
                             isUnqueuing ||
                             isDraftSending
