@@ -579,7 +579,7 @@ impl LocalContainerService {
     ) -> Result<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>, ContainerError>
     {
         let start_time = std::time::Instant::now();
-        
+
         // Get initial snapshot
         let git_service = self.git().clone();
         let initial_diffs = git_service.get_diffs(
@@ -620,7 +620,7 @@ impl LocalContainerService {
                     filesystem_watcher::async_watcher(worktree_path_for_spawn)
                 })
                 .await
-                .map_err(|e| io::Error::other(format!("Failed to spawn watcher setup: {}", e)))?;
+                .map_err(|e| io::Error::other(format!("Failed to spawn watcher setup: {e}")))?;
 
                 let (_debouncer, mut rx, canonical_worktree_path) = watcher_result
                     .map_err(|e| io::Error::other(e.to_string()))?;
