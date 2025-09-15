@@ -43,7 +43,7 @@ interface UseConversationHistoryParams {
   onEntriesUpdated: OnEntriesUpdated;
 }
 
-interface UseConversationHistoryResult { }
+interface UseConversationHistoryResult {}
 
 const MIN_INITIAL_ENTRIES = 10;
 const REMAINING_BATCH_SIZE = 50;
@@ -79,17 +79,17 @@ export const useConversationHistory = ({
       url = `/api/execution-processes/${executionProcess.id}/normalized-logs/ws`;
     }
 
-    console.log("DEBUG1", url);
+    console.log('DEBUG1', url);
 
     return new Promise<PatchType[]>((resolve) => {
       const controller = streamJsonPatchEntries<PatchType>(url, {
         onFinished: (allEntries) => {
-          console.log("DEBUG2", url);
+          console.log('DEBUG2', url);
           controller.close();
           resolve(allEntries);
         },
         onError: (err) => {
-          console.log("DEBUG3", url);
+          console.log('DEBUG3', url);
 
           console.warn!(
             `Error loading entries for historic execution process ${executionProcess.id}`,
@@ -178,9 +178,9 @@ export const useConversationHistory = ({
       .filter(
         (p) =>
           p.executionProcess.executor_action.typ.type ===
-          'CodingAgentFollowUpRequest' ||
+            'CodingAgentFollowUpRequest' ||
           p.executionProcess.executor_action.typ.type ===
-          'CodingAgentInitialRequest'
+            'CodingAgentInitialRequest'
       )
       .sort(
         (a, b) =>
@@ -221,9 +221,9 @@ export const useConversationHistory = ({
         const entries: PatchTypeWithKey[] = [];
         if (
           p.executionProcess.executor_action.typ.type ===
-          'CodingAgentInitialRequest' ||
+            'CodingAgentInitialRequest' ||
           p.executionProcess.executor_action.typ.type ===
-          'CodingAgentFollowUpRequest'
+            'CodingAgentFollowUpRequest'
         ) {
           // New user message
           const userNormalizedEntry: NormalizedEntry = {
@@ -280,9 +280,9 @@ export const useConversationHistory = ({
             executionProcess?.status === 'running'
               ? null
               : {
-                type: 'exit_code',
-                code: Number(executionProcess?.exit_code) || 0,
-              };
+                  type: 'exit_code',
+                  code: Number(executionProcess?.exit_code) || 0,
+                };
           const output = p.entries.map((line) => line.content).join('\n');
 
           const toolNormalizedEntry: NormalizedEntry = {
