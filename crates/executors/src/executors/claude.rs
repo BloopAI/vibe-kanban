@@ -615,24 +615,19 @@ impl ClaudeLogProcessor {
         }
     }
 
-    /// Generate warning entry if API key source is not managed
+    /// Generate warning entry if API key source is ANTHROPIC_API_KEY
     fn warn_if_unmanaged_key(src: &Option<String>) -> Option<NormalizedEntry> {
         match src.as_deref() {
-            Some("/login managed key") | None => None,
-            Some(other) => {
-                tracing::warn!(
-                    "apiKeySource '{}' is not managed – potential unexpected billing",
-                    other
-                );
+            Some("ANTHROPIC_API_KEY") => {
+                tracing::warn!("ANTHROPIC_API_KEY env variable detected, your Anthropic subscription is not being used");
                 Some(NormalizedEntry {
                     timestamp: None,
                     entry_type: NormalizedEntryType::SystemMessage,
-                    content: format!(
-                        "⚠️  Using apiKeySource \"{other}\" – calls will be billed to that key. Run `claude-code login` (or set `/login managed key`) if you want to route usage through the managed key."
-                    ),
+                    content: "ANTHROPIC_API_KEY env variable detected, your Anthropic subscription is not being used".to_string(),
                     metadata: None,
                 })
             }
+            _ => None,
         }
     }
 
@@ -1823,33 +1818,38 @@ mod tests {
 
     #[test]
     fn test_api_key_source_warning() {
-        // Test with non-managed API key source - should generate warning
-        let system_with_non_managed_key = r#"{"type":"system","subtype":"init","apiKeySource":"ANTHROPIC_API_KEY","session_id":"test123"}"#;
-        let parsed: ClaudeJson = serde_json::from_str(system_with_non_managed_key).unwrap();
+    // Test with ANTHROPIC_API_KEY - should generate warning
+        let system_with_env_key = r#"{"type":"system","subtype":"init","apiKeySource":"ANTHROPIC_API_KEY","session_id":"test123"}"#;
+        let parsed: ClaudeJson = serde_json::from_str(system_with_env_key).unwrap();
         let entries = ClaudeLogProcessor::new().normalize_entries(&parsed, "");
-
+        
         assert_eq!(entries.len(), 1);
         assert!(matches!(
             entries[0].entry_type,
             NormalizedEntryType::SystemMessage
         ));
-        assert!(entries[0].content.contains("⚠️"));
-        assert!(entries[0].content.contains("ANTHROPIC_API_KEY"));
-        assert!(entries[0].content.contains("claude-code login"));
+        assert_eq!(entries[0].content, "ANTHROPIC_API_KEY env variable detected, your Anthropic subscription is not being used");
 
         // Test with managed API key source - should not generate warning
-        let system_with_managed_key = r#"{"type":"system","subtype":"init","apiKeySource":"/login managed key","session_id":"test123"}"#;
+    let system_with_managed_key = r#"{"type":"system","subtype":"init","apiKeySource":"/login managed key","session_id":"test123"}"#;
         let parsed_managed: ClaudeJson = serde_json::from_str(system_with_managed_key).unwrap();
         let entries_managed = ClaudeLogProcessor::new().normalize_entries(&parsed_managed, "");
-
+        
         assert_eq!(entries_managed.len(), 0); // No warning for managed key
 
-        // Test with missing apiKeySource - should not generate warning
-        let system_no_key = r#"{"type":"system","subtype":"init","session_id":"test123"}"#;
-        let parsed_no_key: ClaudeJson = serde_json::from_str(system_no_key).unwrap();
-        let entries_no_key = ClaudeLogProcessor::new().normalize_entries(&parsed_no_key, "");
+        // Test with other apiKeySource values - should not generate warning  
+    let system_other_key = r#"{"type":"system","subtype":"init","apiKeySource":"OTHER_KEY","session_id":"test123"}"#;
+        let parsed_other: ClaudeJson = serde_json::from_str(system_other_key).unwrap();
+        let entries_other = ClaudeLogProcessor::new().normalize_entries(&parsed_other, "");
+        
+        assert_eq!(entries_other.len(), 0); // No warning for other keys
 
-        assert_eq!(entries_no_key.len(), 0); // No warning when field is missing
+        // Test with missing apiKeySource - should not generate warning  
+    let system_no_key = r#"{"type":"system","subtype":"init","session_id":"test123"}"#;
+    let parsed_no_key: ClaudeJson = serde_json::from_str(system_no_key).unwrap();
+    let entries_no_key = ClaudeLogProcessor::new().normalize_entries(&parsed_no_key, "");
+    
+    assert_eq!(entries_no_key.len(), 0); // No warning when field is missing
     }
 
     #[test]
