@@ -67,6 +67,7 @@ export default defineConfig({
       "/api": {
         target: `http://localhost:${process.env.BACKEND_PORT || "3001"}`,
         changeOrigin: true,
+        ws: true,
       },
     },
     fs: {
