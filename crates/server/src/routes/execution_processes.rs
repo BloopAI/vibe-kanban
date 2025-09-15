@@ -1,18 +1,21 @@
+use anyhow;
 use axum::{
     BoxError, Extension, Router,
-    extract::{Path, Query, State, ws::{WebSocket, WebSocketUpgrade}},
+    extract::{
+        Path, Query, State,
+        ws::{WebSocket, WebSocketUpgrade},
+    },
     http::StatusCode,
     middleware::from_fn_with_state,
     response::{
-        Json as ResponseJson, Sse, IntoResponse,
+        IntoResponse, Json as ResponseJson, Sse,
         sse::{Event, KeepAlive},
     },
     routing::{get, post},
 };
-use anyhow;
 use db::models::execution_process::ExecutionProcess;
 use deployment::Deployment;
-use futures_util::{Stream, TryStreamExt, StreamExt, SinkExt};
+use futures_util::{SinkExt, Stream, StreamExt, TryStreamExt};
 use serde::Deserialize;
 use services::services::container::ContainerService;
 use utils::response::ApiResponse;
@@ -102,9 +105,7 @@ async fn handle_normalized_logs_ws(
     let (mut sender, mut receiver) = socket.split();
 
     // Drain (and ignore) any client->server messages so pings/pongs work
-    tokio::spawn(async move {
-        while let Some(Ok(_)) = receiver.next().await {}
-    });
+    tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
 
     // Forward server messages
     while let Some(item) = stream.next().await {
