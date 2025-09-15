@@ -1,4 +1,4 @@
-import ReactMarkdown, { Components } from 'react-markdown';
+import Markdown from 'markdown-to-jsx';
 import { memo, useMemo, useState, useCallback } from 'react';
 import {
   Tooltip,
@@ -21,67 +21,87 @@ function MarkdownRenderer({
   className = '',
   enableCopyButton = false,
 }: MarkdownRendererProps) {
-  const components: Components = useMemo(
+  const overrides = useMemo(
     () => ({
-      code: ({ children, ...props }) => (
-        <code
-          {...props}
-          className="bg-background px-1 py-0.5 text-sm font-mono"
-        >
-          {children}
-        </code>
-      ),
-      strong: ({ children, ...props }) => (
-        <span {...props} className="">
-          {children}
-        </span>
-      ),
-      em: ({ children, ...props }) => (
-        <em {...props} className="italic">
-          {children}
-        </em>
-      ),
-      p: ({ children, ...props }) => (
-        <p {...props} className="leading-tight">
-          {children}
-        </p>
-      ),
-      h1: ({ children, ...props }) => (
-        <h1 {...props} className="text-lg leading-tight font-medium">
-          {children}
-        </h1>
-      ),
-      h2: ({ children, ...props }) => (
-        <h2 {...props} className="text-baseleading-tight font-medium">
-          {children}
-        </h2>
-      ),
-      h3: ({ children, ...props }) => (
-        <h3 {...props} className="text-sm leading-tight">
-          {children}
-        </h3>
-      ),
-      ul: ({ children, ...props }) => (
-        <ul
-          {...props}
-          className="list-disc list-inside flex flex-col gap-1 pl-4"
-        >
-          {children}
-        </ul>
-      ),
-      ol: ({ children, ...props }) => (
-        <ol
-          {...props}
-          className="list-decimal list-inside flex flex-col gap-1 pl-4"
-        >
-          {children}
-        </ol>
-      ),
-      li: ({ children, ...props }) => (
-        <li {...props} className="leading-tight">
-          {children}
-        </li>
-      ),
+      code: {
+        component: ({ children, ...props }: any) => (
+          <code
+            {...props}
+            className="bg-background px-1 py-0.5 text-sm font-mono"
+          >
+            {children}
+          </code>
+        ),
+      },
+      strong: {
+        component: ({ children, ...props }: any) => (
+          <span {...props} className="">
+            {children}
+          </span>
+        ),
+      },
+      em: {
+        component: ({ children, ...props }: any) => (
+          <em {...props} className="italic">
+            {children}
+          </em>
+        ),
+      },
+      p: {
+        component: ({ children, ...props }: any) => (
+          <p {...props} className="leading-tight">
+            {children}
+          </p>
+        ),
+      },
+      h1: {
+        component: ({ children, ...props }: any) => (
+          <h1 {...props} className="text-lg leading-tight font-medium">
+            {children}
+          </h1>
+        ),
+      },
+      h2: {
+        component: ({ children, ...props }: any) => (
+          <h2 {...props} className="text-baseleading-tight font-medium">
+            {children}
+          </h2>
+        ),
+      },
+      h3: {
+        component: ({ children, ...props }: any) => (
+          <h3 {...props} className="text-sm leading-tight">
+            {children}
+          </h3>
+        ),
+      },
+      ul: {
+        component: ({ children, ...props }: any) => (
+          <ul
+            {...props}
+            className="list-disc list-outside space-y-1 ps-6"
+          >
+            {children}
+          </ul>
+        ),
+      },
+      ol: {
+        component: ({ children, ...props }: any) => (
+          <ol
+            {...props}
+            className="list-decimal list-outside space-y-1 ps-6"
+          >
+            {children}
+          </ol>
+        ),
+      },
+      li: {
+        component: ({ children, ...props }: any) => (
+          <li {...props} className="leading-tight">
+            {children}
+          </li>
+        ),
+      },
     }),
     []
   );
@@ -141,7 +161,7 @@ function MarkdownRenderer({
         </div>
       )}
       <div className={className}>
-        <ReactMarkdown components={components}>{content}</ReactMarkdown>
+        <Markdown options={{ overrides }}>{content}</Markdown>
       </div>
     </div>
   );
