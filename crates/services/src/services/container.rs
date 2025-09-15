@@ -208,35 +208,17 @@ pub trait ContainerService {
         map.get(uuid).cloned()
     }
 
-    async fn stream_raw_logs(
+    async fn stream_raw_logs_raw(
         &self,
         id: &Uuid,
-    ) -> Option<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>> {
+    ) -> Option<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>> {
         if let Some(store) = self.get_msg_store_by_id(id).await {
             // First try in-memory store
-            let counter = Arc::new(AtomicUsize::new(0));
             return Some(
                 store
                     .history_plus_stream()
                     .filter(|msg| {
-                        future::ready(matches!(msg, Ok(LogMsg::Stdout(..) | LogMsg::Stderr(..))))
-                    })
-                    .map_ok({
-                        let counter = counter.clone();
-                        move |m| {
-                            let index = counter.fetch_add(1, Ordering::SeqCst);
-                            match m {
-                                LogMsg::Stdout(content) => {
-                                    let patch = ConversationPatch::add_stdout(index, content);
-                                    LogMsg::JsonPatch(patch).to_sse_event()
-                                }
-                                LogMsg::Stderr(content) => {
-                                    let patch = ConversationPatch::add_stderr(index, content);
-                                    LogMsg::JsonPatch(patch).to_sse_event()
-                                }
-                                _ => unreachable!("Filter should only pass Stdout/Stderr"),
-                            }
-                        }
+                        future::ready(matches!(msg, Ok(LogMsg::Stdout(..) | LogMsg::Stderr(..) | LogMsg::Finished)))
                     })
                     .boxed(),
             );
@@ -260,34 +242,50 @@ pub trait ContainerService {
                 }
             };
 
-            // Direct stream from parsed messages converted to JSON patches
+            // Direct stream from parsed messages
             let stream = futures::stream::iter(
                 messages
                     .into_iter()
                     .filter(|m| matches!(m, LogMsg::Stdout(_) | LogMsg::Stderr(_)))
-                    .enumerate()
-                    .map(|(index, m)| {
-                        let event = match m {
-                            LogMsg::Stdout(content) => {
-                                let patch = ConversationPatch::add_stdout(index, content);
-                                LogMsg::JsonPatch(patch).to_sse_event()
-                            }
-                            LogMsg::Stderr(content) => {
-                                let patch = ConversationPatch::add_stderr(index, content);
-                                LogMsg::JsonPatch(patch).to_sse_event()
-                            }
-                            _ => unreachable!("Filter should only pass Stdout/Stderr"),
-                        };
-                        Ok::<_, std::io::Error>(event)
-                    }),
+                    .chain(std::iter::once(LogMsg::Finished))
+                    .map(|m| Ok::<_, std::io::Error>(m)),
             )
-            .chain(futures::stream::once(async {
-                Ok::<_, std::io::Error>(LogMsg::Finished.to_sse_event())
-            }))
             .boxed();
 
             Some(stream)
         }
+    }
+
+    async fn stream_raw_logs(
+        &self,
+        id: &Uuid,
+    ) -> Option<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>> {
+        let raw_stream = self.stream_raw_logs_raw(id).await?;
+        
+        let counter = Arc::new(AtomicUsize::new(0));
+        Some(
+            raw_stream
+                .map_ok({
+                    let counter = counter.clone();
+                    move |m| {
+                        match m {
+                            LogMsg::Stdout(content) => {
+                                let index = counter.fetch_add(1, Ordering::SeqCst);
+                                let patch = ConversationPatch::add_stdout(index, content);
+                                LogMsg::JsonPatch(patch).to_sse_event()
+                            }
+                            LogMsg::Stderr(content) => {
+                                let index = counter.fetch_add(1, Ordering::SeqCst);
+                                let patch = ConversationPatch::add_stderr(index, content);
+                                LogMsg::JsonPatch(patch).to_sse_event()
+                            }
+                            LogMsg::Finished => LogMsg::Finished.to_sse_event(),
+                            _ => unreachable!("Raw stream should only have Stdout/Stderr/Finished"),
+                        }
+                    }
+                })
+                .boxed(),
+        )
     }
 
     async fn stream_normalized_logs_raw(

@@ -74,7 +74,7 @@ export const useConversationHistory = ({
   ) => {
     let url = '';
     if (executionProcess.executor_action.typ.type === 'ScriptRequest') {
-      url = `/api/execution-processes/${executionProcess.id}/raw-logs`;
+      url = `/api/execution-processes/${executionProcess.id}/raw-logs/ws`;
     } else {
       url = `/api/execution-processes/${executionProcess.id}/normalized-logs/ws`;
     }
@@ -117,7 +117,7 @@ export const useConversationHistory = ({
     return new Promise((resolve, reject) => {
       let url = '';
       if (executionProcess.executor_action.typ.type === 'ScriptRequest') {
-        url = `/api/execution-processes/${executionProcess.id}/raw-logs`;
+        url = `/api/execution-processes/${executionProcess.id}/raw-logs/ws`;
       } else {
         url = `/api/execution-processes/${executionProcess.id}/normalized-logs/ws`;
       }

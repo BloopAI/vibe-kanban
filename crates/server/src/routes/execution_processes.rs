@@ -61,6 +61,83 @@ pub async fn stream_raw_logs(
     Ok(Sse::new(stream.map_err(|e| -> BoxError { e.into() })).keep_alive(KeepAlive::default()))
 }
 
+pub async fn stream_raw_logs_ws(
+    ws: WebSocketUpgrade,
+    State(deployment): State<DeploymentImpl>,
+    Path(exec_id): Path<Uuid>,
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| async move {
+        if let Err(e) = handle_raw_logs_ws(socket, deployment, exec_id).await {
+            tracing::warn!("raw logs WS closed: {}", e);
+        }
+    })
+}
+
+async fn handle_raw_logs_ws(
+    socket: WebSocket,
+    deployment: DeploymentImpl,
+    exec_id: Uuid,
+) -> anyhow::Result<()> {
+    use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
+    use utils::log_msg::LogMsg;
+    use executors::logs::utils::patch::ConversationPatch;
+
+    // Get the raw stream and convert to JSON patches on-the-fly
+    let raw_stream = deployment
+        .container()
+        .stream_raw_logs_raw(&exec_id)
+        .await
+        .ok_or_else(|| anyhow::anyhow!("Execution process not found"))?;
+
+    let counter = Arc::new(AtomicUsize::new(0));
+    let mut stream = raw_stream
+        .map_ok({
+            let counter = counter.clone();
+            move |m| {
+                match m {
+                    LogMsg::Stdout(content) => {
+                        let index = counter.fetch_add(1, Ordering::SeqCst);
+                        let patch = ConversationPatch::add_stdout(index, content);
+                        LogMsg::JsonPatch(patch).to_ws_message_unchecked()
+                    }
+                    LogMsg::Stderr(content) => {
+                        let index = counter.fetch_add(1, Ordering::SeqCst);
+                        let patch = ConversationPatch::add_stderr(index, content);
+                        LogMsg::JsonPatch(patch).to_ws_message_unchecked()
+                    }
+                    LogMsg::Finished => {
+                        LogMsg::Finished.to_ws_message_unchecked()
+                    }
+                    _ => unreachable!("Raw stream should only have Stdout/Stderr/Finished"),
+                }
+            }
+        });
+
+    // Split socket into sender and receiver
+    let (mut sender, mut receiver) = socket.split();
+
+    // Drain (and ignore) any client->server messages so pings/pongs work
+    tokio::spawn(async move {
+        while let Some(Ok(_)) = receiver.next().await {}
+    });
+
+    // Forward server messages
+    while let Some(item) = stream.next().await {
+        match item {
+            Ok(msg) => {
+                if sender.send(msg).await.is_err() {
+                    break; // client disconnected
+                }
+            }
+            Err(e) => {
+                tracing::error!("stream error: {}", e);
+                break;
+            }
+        }
+    }
+    Ok(())
+}
+
 pub async fn stream_normalized_logs(
     State(deployment): State<DeploymentImpl>,
     Path(exec_id): Path<Uuid>,
@@ -154,6 +231,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/", get(get_execution_process_by_id))
         .route("/stop", post(stop_execution_process))
         .route("/raw-logs", get(stream_raw_logs))
+        .route("/raw-logs/ws", get(stream_raw_logs_ws))
         .route("/normalized-logs", get(stream_normalized_logs))
         .route("/normalized-logs/ws", get(stream_normalized_logs_ws))
         .layer(from_fn_with_state(
