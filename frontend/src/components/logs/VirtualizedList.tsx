@@ -1,17 +1,17 @@
 import {
-  VirtuosoMessageListProps,
-  VirtuosoMessageListMethods,
-  VirtuosoMessageListLicense,
-  VirtuosoMessageList,
   DataWithScrollModifier,
   ScrollModifier,
+  VirtuosoMessageList,
+  VirtuosoMessageListLicense,
+  VirtuosoMessageListMethods,
+  VirtuosoMessageListProps,
 } from '@virtuoso.dev/message-list';
 import { useEffect, useRef, useState } from 'react';
 import DisplayConversationEntry from '../NormalizedConversation/DisplayConversationEntry';
 import {
-  useConversationHistory,
-  PatchTypeWithKey,
   AddEntryType,
+  PatchTypeWithKey,
+  useConversationHistory,
 } from '@/hooks/useConversationHistory';
 import { TaskAttempt } from 'shared/types';
 import { Loader2 } from 'lucide-react';
@@ -102,7 +102,7 @@ const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
   return (
     <>
       <VirtuosoMessageListLicense
-        licenseKey={import.meta.env.PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
+        licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
       >
         <VirtuosoMessageList<PatchTypeWithKey, null>
           ref={messageListRef}
