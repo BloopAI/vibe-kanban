@@ -1,5 +1,4 @@
-use axum::response::sse::Event;
-use axum::extract::ws::Message;
+use axum::{extract::ws::Message, response::sse::Event};
 use json_patch::Patch;
 use serde::{Deserialize, Serialize};
 
@@ -49,7 +48,7 @@ impl LogMsg {
     }
 
     /// Convert LogMsg to WebSocket message with fallback error handling
-    /// 
+    ///
     /// This method mirrors the behavior of the original logmsg_to_ws function
     /// but with better error handling than unwrap().
     pub fn to_ws_message_unchecked(&self) -> Message {
