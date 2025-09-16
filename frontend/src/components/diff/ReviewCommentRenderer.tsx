@@ -9,7 +9,10 @@ interface ReviewCommentRendererProps {
   projectId?: string;
 }
 
-export function ReviewCommentRenderer({ comment, projectId }: ReviewCommentRendererProps) {
+export function ReviewCommentRenderer({
+  comment,
+  projectId,
+}: ReviewCommentRendererProps) {
   const { deleteComment, updateComment } = useReview();
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(comment.text);

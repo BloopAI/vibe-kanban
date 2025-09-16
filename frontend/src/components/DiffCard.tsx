@@ -181,7 +181,9 @@ export default function DiffCard({
   };
 
   const renderExtendLine = (lineData: any) => {
-    return <ReviewCommentRenderer comment={lineData.data} projectId={projectId} />;
+    return (
+      <ReviewCommentRenderer comment={lineData.data} projectId={projectId} />
+    );
   };
 
   // Title row
