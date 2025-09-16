@@ -46,12 +46,21 @@ pub async fn stream_raw_logs_ws(
     ws: WebSocketUpgrade,
     State(deployment): State<DeploymentImpl>,
     Path(exec_id): Path<Uuid>,
-) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| async move {
+) -> Result<impl IntoResponse, ApiError> {
+    // Check if the stream exists before upgrading the WebSocket
+    let _stream = deployment
+        .container()
+        .stream_raw_logs(&exec_id)
+        .await
+        .ok_or_else(|| {
+            ApiError::ExecutionProcess(ExecutionProcessError::ExecutionProcessNotFound)
+        })?;
+
+    Ok(ws.on_upgrade(move |socket| async move {
         if let Err(e) = handle_raw_logs_ws(socket, deployment, exec_id).await {
             tracing::warn!("raw logs WS closed: {}", e);
         }
-    })
+    }))
 }
 
 async fn handle_raw_logs_ws(
