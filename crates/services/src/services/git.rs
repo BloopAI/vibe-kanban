@@ -1471,20 +1471,9 @@ impl GitService {
         let url = remote
             .url()
             .ok_or_else(|| GitServiceError::InvalidRepository("Remote has no URL".to_string()))?;
-
-        // Parse GitHub URL (supports both HTTPS and SSH formats)
-        let github_regex = regex::Regex::new(r"github\.com[:/]([^/]+)/(.+?)(?:\.git)?/?$")
-            .map_err(|e| GitServiceError::InvalidRepository(format!("Regex error: {e}")))?;
-
-        if let Some(captures) = github_regex.captures(url) {
-            let owner = captures.get(1).unwrap().as_str().to_string();
-            let repo_name = captures.get(2).unwrap().as_str().to_string();
-            Ok(GitHubRepoInfo { owner, repo_name })
-        } else {
-            Err(GitServiceError::InvalidRepository(format!(
-                "Not a GitHub repository: {url}"
-            )))
-        }
+        GitHubRepoInfo::from_remote_url(url).map_err(|e| {
+            GitServiceError::InvalidRepository(format!("Failed to parse remote URL: {e}"))
+        })
     }
 
     pub fn get_remote_name_from_branch_name(

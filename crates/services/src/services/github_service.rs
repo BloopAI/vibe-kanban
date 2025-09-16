@@ -99,12 +99,14 @@ pub struct GitHubRepoInfo {
     pub repo_name: String,
 }
 impl GitHubRepoInfo {
-    pub fn from_pr_url(pr_url: &str) -> Result<Self, sqlx::Error> {
-        let re = regex::Regex::new(r"github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)").unwrap();
-        let caps = re
-            .captures(pr_url)
-            .ok_or_else(|| sqlx::Error::ColumnNotFound("Invalid URL format".into()))?;
-
+    pub fn from_remote_url(pr_url: &str) -> Result<Self, GitHubServiceError> {
+        let re =
+            regex::Regex::new(r"github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)").map_err(|e| {
+                GitHubServiceError::Repository(format!("Failed to compile regex: {}", e))
+            })?;
+        let caps = re.captures(pr_url).ok_or({
+            GitHubServiceError::Repository(format!("Invalid GitHub URL format: {}", pr_url))
+        })?;
         let owner = caps.name("owner").unwrap().as_str().to_string();
         let repo_name = caps.name("repo").unwrap().as_str().to_string();
 

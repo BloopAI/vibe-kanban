@@ -94,7 +94,7 @@ impl PrMonitorService {
 
         let github_service = GitHubService::new(&github_token)?;
 
-        let repo_info = GitHubRepoInfo::from_pr_url(&pr_merge.pr_info.url)?;
+        let repo_info = GitHubRepoInfo::from_remote_url(&pr_merge.pr_info.url)?;
 
         let pr_status = github_service
             .update_pr_status(&repo_info, pr_merge.pr_info.number)
