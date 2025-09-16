@@ -199,7 +199,8 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
                               'CodingAgentFollowUpRequest' ? (
                               <ProfileVariantBadge
                                 profileVariant={
-                                  process.executor_action.typ.executor_profile_id
+                                  process.executor_action.typ
+                                    .executor_profile_id
                                 }
                               />
                             ) : null}
@@ -226,7 +227,9 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
                     <div className="flex justify-between">
                       <span>Started: {formatDate(process.started_at)}</span>
                       {process.completed_at && (
-                        <span>Completed: {formatDate(process.completed_at)}</span>
+                        <span>
+                          Completed: {formatDate(process.completed_at)}
+                        </span>
                       )}
                     </div>
                     <div className="mt-1">Process ID: {process.id}</div>
