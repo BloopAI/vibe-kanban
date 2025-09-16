@@ -271,12 +271,10 @@ export function useVariantCyclingShortcut({
   currentProfile,
   selectedVariant,
   setSelectedVariant,
-  setIsAnimating,
 }: {
   currentProfile: ExecutorConfig | null | undefined;
   selectedVariant: string | null;
   setSelectedVariant: (variant: string | null) => void;
-  setIsAnimating: (animating: boolean) => void;
 }) {
   useEffect(() => {
     if (!currentProfile || Object.keys(currentProfile).length === 0) {
@@ -300,14 +298,10 @@ export function useVariantCyclingShortcut({
         const nextVariant = variantLabels[nextIndex];
 
         setSelectedVariant(nextVariant);
-
-        // Trigger animation
-        setIsAnimating(true);
-        setTimeout(() => setIsAnimating(false), 300);
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [currentProfile, selectedVariant, setSelectedVariant, setIsAnimating]);
+  }, [currentProfile, selectedVariant, setSelectedVariant]);
 }
