@@ -6,7 +6,7 @@ use tokio::time::{Duration, Instant, sleep_until};
 use crate::log_msg::LogMsg;
 
 const WINDOW_MS: u64 = 10;
-const WINDOW_LIMIT: usize = 10 * 1024; // 10 KiB per window
+const WINDOW_LIMIT: usize = 100 * 1024; // 100 KiB per window
 
 // helper that flushes buf + optional [truncated] marker
 fn flush_buf(
