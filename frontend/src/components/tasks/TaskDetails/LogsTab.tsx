@@ -6,7 +6,7 @@ type Props = {
 };
 
 function LogsTab({ selectedAttempt }: Props) {
-  return <VirtualizedList attempt={selectedAttempt} />;
+  return <VirtualizedList key={selectedAttempt.id} attempt={selectedAttempt} />;
 }
 
 export default LogsTab;
