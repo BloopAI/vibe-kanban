@@ -26,6 +26,7 @@ import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
 import { CommentWidgetLine } from '@/components/diff/CommentWidgetLine';
 import { ReviewCommentRenderer } from '@/components/diff/ReviewCommentRenderer';
 import { useDiffViewMode } from '@/stores/useDiffViewStore';
+import { useProject } from '@/contexts/project-context';
 
 type Props = {
   diff: Diff;
@@ -75,6 +76,7 @@ export default function DiffCard({
   const theme = getActualTheme(config?.theme);
   const { comments, drafts, setDraft } = useReview();
   const globalMode = useDiffViewMode();
+  const { projectId } = useProject();
 
   const oldName = diff.oldPath || undefined;
   const newName = diff.newPath || oldName || 'unknown';
@@ -173,12 +175,13 @@ export default function DiffCard({
         widgetKey={widgetKey}
         onSave={props.onClose}
         onCancel={props.onClose}
+        projectId={projectId}
       />
     );
   };
 
   const renderExtendLine = (lineData: any) => {
-    return <ReviewCommentRenderer comment={lineData.data} />;
+    return <ReviewCommentRenderer comment={lineData.data} projectId={projectId} />;
   };
 
   // Title row

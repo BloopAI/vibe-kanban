@@ -1,13 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Trash2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
 import { useReview, type ReviewComment } from '@/contexts/ReviewProvider';
 
 interface ReviewCommentRendererProps {
   comment: ReviewComment;
+  projectId?: string;
 }
 
-export function ReviewCommentRenderer({ comment }: ReviewCommentRendererProps) {
+export function ReviewCommentRenderer({ comment, projectId }: ReviewCommentRendererProps) {
   const { deleteComment, updateComment } = useReview();
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(comment.text);
@@ -51,14 +53,15 @@ export function ReviewCommentRenderer({ comment }: ReviewCommentRendererProps) {
   if (isEditing) {
     return (
       <div className="border-y bg-background p-4">
-        <textarea
-          ref={textareaRef}
+        <FileSearchTextarea
           value={editText}
-          onChange={(e) => setEditText(e.target.value)}
+          onChange={setEditText}
           onKeyDown={handleKeyDown}
           placeholder="Edit comment..."
-          className="w-full bg-background text-foreground text-sm font-mono resize-none min-h-[60px] focus:outline-none"
           rows={3}
+          maxRows={10}
+          className="w-full bg-background text-foreground text-sm font-mono resize-none min-h-[60px] focus:outline-none"
+          projectId={projectId}
         />
         <div className="mt-2 flex gap-2">
           <Button size="xs" onClick={handleSave} disabled={!editText.trim()}>

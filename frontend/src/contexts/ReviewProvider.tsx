@@ -96,11 +96,15 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
     const commentsMd = comments
       .map((comment) => {
         const codeLine = formatCodeLine(comment.codeLine);
-        const commentBody = comment.text.trim();
+        // Format file paths in comment body with backticks
+        const bodyWithFormattedPaths = comment.text.trim().replace(
+          /([/\\]?[\w.-]+(?:[/\\][\w.-]+)+)/g,
+          '`$1`'
+        );
         if (codeLine) {
-          return `**${comment.filePath}** (Line ${comment.lineNumber})\n${codeLine}\n\n> ${commentBody}\n`;
+          return `**${comment.filePath}** (Line ${comment.lineNumber})\n${codeLine}\n\n> ${bodyWithFormattedPaths}\n`;
         }
-        return `**${comment.filePath}** (Line ${comment.lineNumber})\n\n> ${commentBody}\n`;
+        return `**${comment.filePath}** (Line ${comment.lineNumber})\n\n> ${bodyWithFormattedPaths}\n`;
       })
       .join('\n');
 

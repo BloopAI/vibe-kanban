@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
 import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
 
 interface CommentWidgetLineProps {
@@ -7,6 +8,7 @@ interface CommentWidgetLineProps {
   widgetKey: string;
   onSave: () => void;
   onCancel: () => void;
+  projectId?: string;
 }
 
 export function CommentWidgetLine({
@@ -14,6 +16,7 @@ export function CommentWidgetLine({
   widgetKey,
   onSave,
   onCancel,
+  projectId,
 }: CommentWidgetLineProps) {
   const { setDraft, addComment } = useReview();
   const [value, setValue] = useState(draft.text);
@@ -52,14 +55,15 @@ export function CommentWidgetLine({
 
   return (
     <div className="p-4 border-y">
-      <textarea
-        ref={textareaRef}
+      <FileSearchTextarea
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={setValue}
         onKeyDown={handleKeyDown}
         placeholder="Add a comment..."
-        className="w-full bg-primary text-primary-foreground text-sm font-mono resize-none min-h-[60px] focus:outline-none focus:ring-1 focus:ring-primary"
         rows={3}
+        maxRows={10}
+        className="w-full bg-primary text-primary-foreground text-sm font-mono resize-none min-h-[60px] focus:outline-none focus:ring-1 focus:ring-primary"
+        projectId={projectId}
       />
       <div className="mt-2 flex gap-2">
         <Button size="xs" onClick={handleSave} disabled={!value.trim()}>
