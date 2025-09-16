@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE projects SET github_issues_last_sync_at = $2 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "110a1e3f6e5ab627fafc7d9e535a2883f1920c7d27f47381a185ee6058b143c0"
+}

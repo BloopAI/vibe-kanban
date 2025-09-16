@@ -8,3 +8,4 @@ pub mod project;
 pub mod task;
 pub mod task_attempt;
 pub mod task_template;
+pub mod github_issue_link;

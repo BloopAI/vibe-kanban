@@ -1,0 +1,92 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT \n                id as \"id!: Uuid\",\n                project_id as \"project_id!: Uuid\",\n                task_id as \"task_id!: Uuid\",\n                issue_id,\n                issue_number,\n                repo_owner,\n                repo_name,\n                html_url,\n                title,\n                state,\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\",\n                last_synced_at as \"last_synced_at?: DateTime<Utc>\"\n            FROM github_issue_links WHERE issue_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "project_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Blob"
+      },
+      {
+        "name": "issue_id",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "issue_number",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "repo_owner",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "repo_name",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "html_url",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "title",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "state",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_synced_at?: DateTime<Utc>",
+        "ordinal": 12,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "be66a1f4ef62d25caa5ce324ac8140b3b9ac4971256b244247f160f73e28785c"
+}

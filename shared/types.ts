@@ -8,11 +8,11 @@ export type DirectoryEntry = { name: string, path: string, is_directory: boolean
 
 export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_path: string, };
 
-export type Project = { id: string, name: string, git_repo_path: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, created_at: Date, updated_at: Date, };
+export type Project = { id: string, name: string, git_repo_path: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, github_issues_sync_enabled: boolean, github_issues_create_on_new_tasks: boolean, github_issues_last_sync_at: Date | null, created_at: Date, updated_at: Date, };
 
 export type CreateProject = { name: string, git_repo_path: string, use_existing_repo: boolean, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, };
 
-export type UpdateProject = { name: string | null, git_repo_path: string | null, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, };
+export type UpdateProject = { name: string | null, git_repo_path: string | null, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, github_issues_sync_enabled: boolean | null, github_issues_create_on_new_tasks: boolean | null, };
 
 export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, };
 

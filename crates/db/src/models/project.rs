@@ -30,6 +30,10 @@ pub struct Project {
     pub dev_script: Option<String>,
     pub cleanup_script: Option<String>,
     pub copy_files: Option<String>,
+    pub github_issues_sync_enabled: bool,
+    pub github_issues_create_on_new_tasks: bool,
+    #[ts(type = "Date | null")]
+    pub github_issues_last_sync_at: Option<DateTime<Utc>>,
 
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
@@ -56,6 +60,8 @@ pub struct UpdateProject {
     pub dev_script: Option<String>,
     pub cleanup_script: Option<String>,
     pub copy_files: Option<String>,
+    pub github_issues_sync_enabled: Option<bool>,
+    pub github_issues_create_on_new_tasks: Option<bool>,
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -76,7 +82,12 @@ impl Project {
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Project,
-            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects ORDER BY created_at DESC"#
+            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files,
+                       github_issues_sync_enabled as "github_issues_sync_enabled!: bool",
+                       github_issues_create_on_new_tasks as "github_issues_create_on_new_tasks!: bool",
+                       github_issues_last_sync_at as "github_issues_last_sync_at?: DateTime<Utc>",
+                       created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+               FROM projects ORDER BY created_at DESC"#
         )
         .fetch_all(pool)
         .await
@@ -88,6 +99,9 @@ impl Project {
             Project,
             r#"
             SELECT p.id as "id!: Uuid", p.name, p.git_repo_path, p.setup_script, p.dev_script, p.cleanup_script, p.copy_files, 
+                   p.github_issues_sync_enabled as "github_issues_sync_enabled!: bool",
+                   p.github_issues_create_on_new_tasks as "github_issues_create_on_new_tasks!: bool",
+                   p.github_issues_last_sync_at as "github_issues_last_sync_at?: DateTime<Utc>",
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
             WHERE p.id IN (
@@ -107,7 +121,12 @@ impl Project {
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Project,
-            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects WHERE id = $1"#,
+            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files,
+                      github_issues_sync_enabled as "github_issues_sync_enabled!: bool",
+                      github_issues_create_on_new_tasks as "github_issues_create_on_new_tasks!: bool",
+                      github_issues_last_sync_at as "github_issues_last_sync_at?: DateTime<Utc>",
+                      created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+               FROM projects WHERE id = $1"#,
             id
         )
         .fetch_optional(pool)
@@ -120,7 +139,12 @@ impl Project {
     ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Project,
-            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects WHERE git_repo_path = $1"#,
+            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files,
+                      github_issues_sync_enabled as "github_issues_sync_enabled!: bool",
+                      github_issues_create_on_new_tasks as "github_issues_create_on_new_tasks!: bool",
+                      github_issues_last_sync_at as "github_issues_last_sync_at?: DateTime<Utc>",
+                      created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+               FROM projects WHERE git_repo_path = $1"#,
             git_repo_path
         )
         .fetch_optional(pool)
@@ -134,7 +158,12 @@ impl Project {
     ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Project,
-            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects WHERE git_repo_path = $1 AND id != $2"#,
+            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files,
+                      github_issues_sync_enabled as "github_issues_sync_enabled!: bool",
+                      github_issues_create_on_new_tasks as "github_issues_create_on_new_tasks!: bool",
+                      github_issues_last_sync_at as "github_issues_last_sync_at?: DateTime<Utc>",
+                      created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+               FROM projects WHERE git_repo_path = $1 AND id != $2"#,
             git_repo_path,
             exclude_id
         )
@@ -149,7 +178,13 @@ impl Project {
     ) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
             Project,
-            r#"INSERT INTO projects (id, name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO projects (id, name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)
+               RETURNING id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files,
+                         github_issues_sync_enabled as "github_issues_sync_enabled!: bool",
+                         github_issues_create_on_new_tasks as "github_issues_create_on_new_tasks!: bool",
+                         github_issues_last_sync_at as "github_issues_last_sync_at?: DateTime<Utc>",
+                         created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             project_id,
             data.name,
             data.git_repo_path,
@@ -172,17 +207,29 @@ impl Project {
         dev_script: Option<String>,
         cleanup_script: Option<String>,
         copy_files: Option<String>,
+        github_issues_sync_enabled: bool,
+        github_issues_create_on_new_tasks: bool,
     ) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
             Project,
-            r#"UPDATE projects SET name = $2, git_repo_path = $3, setup_script = $4, dev_script = $5, cleanup_script = $6, copy_files = $7 WHERE id = $1 RETURNING id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"UPDATE projects SET name = $2, git_repo_path = $3, setup_script = $4, dev_script = $5, cleanup_script = $6, copy_files = $7,
+                         github_issues_sync_enabled = $8,
+                         github_issues_create_on_new_tasks = $9
+               WHERE id = $1
+               RETURNING id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files,
+                         github_issues_sync_enabled as "github_issues_sync_enabled!: bool",
+                         github_issues_create_on_new_tasks as "github_issues_create_on_new_tasks!: bool",
+                         github_issues_last_sync_at as "github_issues_last_sync_at?: DateTime<Utc>",
+                         created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             name,
             git_repo_path,
             setup_script,
             dev_script,
             cleanup_script,
-            copy_files
+            copy_files,
+            github_issues_sync_enabled,
+            github_issues_create_on_new_tasks
         )
         .fetch_one(pool)
         .await
@@ -193,6 +240,32 @@ impl Project {
             .execute(pool)
             .await?;
         Ok(result.rows_affected())
+    }
+
+    pub async fn update_github_issues_last_sync(
+        pool: &SqlitePool,
+        id: Uuid,
+        at: DateTime<Utc>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            r#"UPDATE projects SET github_issues_last_sync_at = $2 WHERE id = $1"#,
+            id,
+            at
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn clear_github_issues_last_sync(
+        pool: &SqlitePool,
+        id: Uuid,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query("UPDATE projects SET github_issues_last_sync_at = NULL WHERE id = ?")
+            .bind(id)
+            .execute(pool)
+            .await?;
+        Ok(())
     }
 
     pub async fn exists(pool: &SqlitePool, id: Uuid) -> Result<bool, sqlx::Error> {

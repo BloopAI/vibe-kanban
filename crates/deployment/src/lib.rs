@@ -15,8 +15,8 @@ use executors::executors::ExecutorError;
 use futures::{StreamExt, TryStreamExt};
 use git2::Error as Git2Error;
 use serde_json::Value;
-use services::services::{
-    analytics::AnalyticsService,
+    use services::services::{
+        analytics::AnalyticsService,
     auth::{AuthError, AuthService},
     config::{Config, ConfigError},
     container::{ContainerError, ContainerService},
@@ -27,6 +27,7 @@ use services::services::{
     git::{GitService, GitServiceError},
     image::{ImageError, ImageService},
     pr_monitor::PrMonitorService,
+    issue_monitor::IssueMonitorService,
     sentry::SentryService,
     worktree_manager::WorktreeError,
 };
@@ -116,6 +117,13 @@ pub trait Deployment: Clone + Send + Sync + 'static {
         let db = self.db().clone();
         let config = self.config().clone();
         PrMonitorService::spawn(db, config).await
+    }
+
+    async fn spawn_issue_monitor_service(&self) -> tokio::task::JoinHandle<()> {
+        let db = self.db().clone();
+        let config = self.config().clone();
+        let git = self.git().clone();
+        IssueMonitorService::spawn(db, config, git).await
     }
 
     async fn track_if_analytics_allowed(&self, event_name: &str, properties: Value) {

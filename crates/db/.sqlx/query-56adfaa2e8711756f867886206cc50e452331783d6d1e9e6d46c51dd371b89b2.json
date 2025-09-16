@@ -1,0 +1,86 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO projects (id, name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files)\n               VALUES ($1, $2, $3, $4, $5, $6, $7)\n               RETURNING id as \"id!: Uuid\", name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files,\n                         github_issues_sync_enabled as \"github_issues_sync_enabled!: bool\",\n                         github_issues_create_on_new_tasks as \"github_issues_create_on_new_tasks!: bool\",\n                         github_issues_last_sync_at as \"github_issues_last_sync_at?: DateTime<Utc>\",\n                         created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "git_repo_path",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "setup_script",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "dev_script",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "cleanup_script",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "copy_files",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "github_issues_sync_enabled!: bool",
+        "ordinal": 7,
+        "type_info": "Bool"
+      },
+      {
+        "name": "github_issues_create_on_new_tasks!: bool",
+        "ordinal": 8,
+        "type_info": "Bool"
+      },
+      {
+        "name": "github_issues_last_sync_at?: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 11,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "56adfaa2e8711756f867886206cc50e452331783d6d1e9e6d46c51dd371b89b2"
+}

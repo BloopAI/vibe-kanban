@@ -44,6 +44,7 @@ async fn main() -> Result<(), VibeKanbanError> {
     deployment.cleanup_orphan_executions().await?;
     deployment.backfill_before_head_commits().await?;
     deployment.spawn_pr_monitor_service().await;
+    deployment.spawn_issue_monitor_service().await;
     deployment
         .track_if_analytics_allowed("session_start", serde_json::json!({}))
         .await;

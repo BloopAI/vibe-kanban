@@ -1,0 +1,92 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO github_issue_links (\n                id, project_id, task_id, issue_id, issue_number, repo_owner, repo_name,\n                html_url, title, state, created_at, updated_at\n            ) VALUES (\n                $1, $2, $3, $4, $5, $6, $7,\n                $8, $9, $10, $11, $12\n            ) RETURNING\n                id as \"id!: Uuid\",\n                project_id as \"project_id!: Uuid\",\n                task_id as \"task_id!: Uuid\",\n                issue_id,\n                issue_number,\n                repo_owner,\n                repo_name,\n                html_url,\n                title,\n                state,\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\",\n                last_synced_at as \"last_synced_at?: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "project_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Blob"
+      },
+      {
+        "name": "issue_id",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "issue_number",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "repo_owner",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "repo_name",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "html_url",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "title",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "state",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_synced_at?: DateTime<Utc>",
+        "ordinal": 12,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 12
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "594a1f494eb43398168e3a5ad975232e5dff25f67adafc2e4a4d9290e461fd56"
+}

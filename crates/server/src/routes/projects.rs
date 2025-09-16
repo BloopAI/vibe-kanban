@@ -44,6 +44,7 @@ pub async fn get_project_branches(
     Ok(ResponseJson(ApiResponse::success(branches)))
 }
 
+
 pub async fn create_project(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateProject>,
@@ -184,6 +185,8 @@ pub async fn update_project(
         dev_script,
         cleanup_script,
         copy_files,
+        github_issues_sync_enabled,
+        github_issues_create_on_new_tasks,
     } = payload;
     // If git_repo_path is being changed, check if the new path is already used by another project
     let git_repo_path = if let Some(new_git_repo_path) = git_repo_path.map(|s| expand_tilde(&s))
@@ -211,7 +214,7 @@ pub async fn update_project(
         existing_project.git_repo_path
     };
 
-    match Project::update(
+    let result = Project::update(
         &deployment.db().pool,
         existing_project.id,
         name.unwrap_or(existing_project.name),
@@ -220,10 +223,25 @@ pub async fn update_project(
         dev_script,
         cleanup_script,
         copy_files,
+        github_issues_sync_enabled.unwrap_or(existing_project.github_issues_sync_enabled),
+        github_issues_create_on_new_tasks
+            .unwrap_or(existing_project.github_issues_create_on_new_tasks),
     )
-    .await
-    {
-        Ok(project) => Ok(ResponseJson(ApiResponse::success(project))),
+    .await;
+
+    match result {
+        Ok(mut project) => {
+            let old_enabled = existing_project.github_issues_sync_enabled;
+            let new_enabled = project.github_issues_sync_enabled;
+            if !old_enabled && new_enabled {
+                if let Err(e) = Project::clear_github_issues_last_sync(&deployment.db().pool, project.id).await {
+                    tracing::warn!("Failed to clear last sync for project {}: {}", project.id, e);
+                } else if let Ok(Some(refreshed)) = Project::find_by_id(&deployment.db().pool, project.id).await {
+                    project = refreshed;
+                }
+            }
+            Ok(ResponseJson(ApiResponse::success(project)))
+        }
         Err(e) => {
             tracing::error!("Failed to update project: {}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -478,6 +496,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             get(get_project).put(update_project).delete(delete_project),
         )
         .route("/branches", get(get_project_branches))
+        // sync settings saved via PUT /projects/{id}
         .route("/search", get(search_project_files))
         .route("/open-editor", post(open_project_in_editor))
         .layer(from_fn_with_state(

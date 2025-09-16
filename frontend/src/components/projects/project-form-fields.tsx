@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -46,6 +47,10 @@ interface ProjectFormFieldsProps {
   setError: (error: string) => void;
   projectId?: string;
   onCreateProject?: (path: string, name: string) => void;
+  ghSyncEnabled: boolean | null;
+  setGhSyncEnabled: (v: boolean) => void;
+  ghCreateOnNew: boolean;
+  setGhCreateOnNew: (v: boolean) => void;
 }
 
 export function ProjectFormFields({
@@ -71,6 +76,10 @@ export function ProjectFormFields({
   setError,
   projectId,
   onCreateProject,
+  ghSyncEnabled,
+  setGhSyncEnabled,
+  ghCreateOnNew,
+  setGhCreateOnNew,
 }: ProjectFormFieldsProps) {
   const { system } = useUserSystem();
 
@@ -92,6 +101,8 @@ export function ProjectFormFields({
   const [reposError, setReposError] = useState('');
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [showRecentRepos, setShowRecentRepos] = useState(false);
+  // GitHub Issues sync state is lifted to the dialog and saved on submit
+  // Values are passed via props below
 
   // Lazy-load repositories when the user navigates to the repo list
   useEffect(() => {
@@ -114,6 +125,8 @@ export function ProjectFormFields({
       setLoading(false);
     }
   };
+
+  // (no immediate saving here)
 
   return (
     <>
@@ -428,6 +441,37 @@ export function ProjectFormFields({
 
       {isEditing && (
         <div className="space-y-4 pt-4 border-t border-border">
+          {/* GitHub Issues Sync (saved with Save Changes) */}
+          <div className="space-y-2">
+            <Label>GitHub Issues Sync</Label>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={!!ghSyncEnabled}
+                  onCheckedChange={(enabled) => {
+                    setGhSyncEnabled(enabled);
+                    if (!enabled) setGhCreateOnNew(false);
+                  }}
+                />
+                <span>Sync GitHub Issues for this project</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm opacity-100">
+                <Checkbox
+                  checked={ghCreateOnNew}
+                  disabled={!ghSyncEnabled}
+                  onCheckedChange={(v) => setGhCreateOnNew(v)}
+                />
+                <span className={ghSyncEnabled ? '' : 'text-muted-foreground'}>
+                  Create GitHub Issue on new tasks
+                </span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Requires a configured GitHub token and a GitHub remote on this repository.
+              When enabled, open issues are imported as tasks; closing a task closes the GitHub issue, and vice versa.
+            </p>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="setup-script">Setup Script</Label>
             <textarea

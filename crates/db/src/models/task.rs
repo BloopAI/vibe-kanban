@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool, Type};
+use sqlx::{FromRow, SqlitePool, Type, Sqlite, Transaction};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -216,6 +216,27 @@ ORDER BY t.created_at DESC"#,
             data.parent_task_attempt
         )
         .fetch_one(pool)
+        .await
+    }
+
+    pub async fn create_tx(
+        tx: &mut Transaction<'_, Sqlite>,
+        data: &CreateTask,
+        task_id: Uuid,
+    ) -> Result<Self, sqlx::Error> {
+        sqlx::query_as!(
+            Task,
+            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_task_attempt) 
+               VALUES ($1, $2, $3, $4, $5, $6) 
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            task_id,
+            data.project_id,
+            data.title,
+            data.description,
+            TaskStatus::Todo as TaskStatus,
+            data.parent_task_attempt
+        )
+        .fetch_one(&mut **tx)
         .await
     }
 

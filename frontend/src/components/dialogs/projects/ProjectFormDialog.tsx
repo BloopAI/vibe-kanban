@@ -23,7 +23,7 @@ export interface ProjectFormDialogProps {
 export type ProjectFormDialogResult = 'saved' | 'canceled';
 
 export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
-  ({ project }) => {
+  ({ project }: ProjectFormDialogProps) => {
     const modal = useModal();
     const [name, setName] = useState(project?.name || '');
     const [gitRepoPath, setGitRepoPath] = useState(
@@ -35,6 +35,8 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
       project?.cleanup_script ?? ''
     );
     const [copyFiles, setCopyFiles] = useState(project?.copy_files ?? '');
+    const [ghSyncEnabled, setGhSyncEnabled] = useState<boolean>(false);
+    const [ghCreateOnNew, setGhCreateOnNew] = useState<boolean>(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [repoMode, setRepoMode] = useState<'existing' | 'new'>('existing');
@@ -52,6 +54,8 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
         setDevScript(project.dev_script ?? '');
         setCleanupScript(project.cleanup_script ?? '');
         setCopyFiles(project.copy_files ?? '');
+        setGhSyncEnabled(project.github_issues_sync_enabled || false);
+        setGhCreateOnNew(project.github_issues_create_on_new_tasks || false);
       } else {
         setName('');
         setGitRepoPath('');
@@ -59,6 +63,8 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
         setDevScript('');
         setCleanupScript('');
         setCopyFiles('');
+        setGhSyncEnabled(false);
+        setGhCreateOnNew(false);
       }
     }, [project]);
 
@@ -126,6 +132,9 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
             dev_script: devScript.trim() || null,
             cleanup_script: cleanupScript.trim() || null,
             copy_files: copyFiles.trim() || null,
+            github_issues_sync_enabled: ghSyncEnabled,
+            github_issues_create_on_new_tasks:
+              (ghSyncEnabled ?? false) ? ghCreateOnNew : false,
           };
 
           await projectsApi.update(project!.id, updateData);
@@ -227,6 +236,10 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
                       error={error}
                       setError={setError}
                       projectId={project ? project.id : undefined}
+                      ghSyncEnabled={ghSyncEnabled}
+                      setGhSyncEnabled={(v: boolean) => setGhSyncEnabled(v)}
+                      ghCreateOnNew={ghCreateOnNew}
+                      setGhCreateOnNew={setGhCreateOnNew}
                     />
                     <DialogFooter>
                       <Button
@@ -269,6 +282,10 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
                   setError={setError}
                   projectId={undefined}
                   onCreateProject={handleDirectCreate}
+                  ghSyncEnabled={ghSyncEnabled}
+                  setGhSyncEnabled={setGhSyncEnabled}
+                  ghCreateOnNew={ghCreateOnNew}
+                  setGhCreateOnNew={setGhCreateOnNew}
                 />
                 {repoMode === 'new' && (
                   <DialogFooter>

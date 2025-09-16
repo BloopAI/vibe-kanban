@@ -1,0 +1,86 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id as \"id!: Uuid\", name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files,\n                      github_issues_sync_enabled as \"github_issues_sync_enabled!: bool\",\n                      github_issues_create_on_new_tasks as \"github_issues_create_on_new_tasks!: bool\",\n                      github_issues_last_sync_at as \"github_issues_last_sync_at?: DateTime<Utc>\",\n                      created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "git_repo_path",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "setup_script",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "dev_script",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "cleanup_script",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "copy_files",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "github_issues_sync_enabled!: bool",
+        "ordinal": 7,
+        "type_info": "Bool"
+      },
+      {
+        "name": "github_issues_create_on_new_tasks!: bool",
+        "ordinal": 8,
+        "type_info": "Bool"
+      },
+      {
+        "name": "github_issues_last_sync_at?: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 11,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "bc0b81107171fd19df20edaa841ab8806acba174b5215ff6115923d6a650cc5d"
+}

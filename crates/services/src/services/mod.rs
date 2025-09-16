@@ -11,6 +11,7 @@ pub mod git;
 pub mod git_cli;
 pub mod github_service;
 pub mod image;
+pub mod issue_monitor;
 pub mod notification;
 pub mod pr_monitor;
 pub mod sentry;

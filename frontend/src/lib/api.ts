@@ -50,19 +50,17 @@ export type {
   UpdateFollowUpDraftRequest,
 } from 'shared/types';
 
+
 export class ApiError<E = unknown> extends Error {
   public status?: number;
   public error_data?: E;
+  public response?: Response;
 
-  constructor(
-    message: string,
-    public statusCode?: number,
-    public response?: Response,
-    error_data?: E
-  ) {
+  constructor(message: string, status?: number, response?: Response, error_data?: E) {
     super(message);
     this.name = 'ApiError';
-    this.status = statusCode;
+    this.status = status;
+    this.response = response;
     this.error_data = error_data;
   }
 }
@@ -166,12 +164,7 @@ const handleApiResponse = async <T, E = T>(response: Response): Promise<T> => {
         timestamp: new Date().toISOString(),
       });
       // Throw a properly typed error with the error data
-      throw new ApiError<E>(
-        result.message || 'API request failed',
-        response.status,
-        response,
-        result.error_data
-      );
+      throw new ApiError<E>(result.message || 'API request failed', response.status, response, result.error_data);
     }
 
     console.error('[API Error]', {
@@ -181,11 +174,7 @@ const handleApiResponse = async <T, E = T>(response: Response): Promise<T> => {
       endpoint: response.url,
       timestamp: new Date().toISOString(),
     });
-    throw new ApiError<E>(
-      result.message || 'API request failed',
-      response.status,
-      response
-    );
+    throw new ApiError<E>(result.message || 'API request failed', response.status, response);
   }
 
   return result.data as T;
@@ -244,17 +233,19 @@ export const projectsApi = {
     return handleApiResponse<GitBranch[]>(response);
   },
 
+
   searchFiles: async (
     id: string,
     query: string,
     mode?: string,
-    options?: RequestInit
+    options?: Pick<RequestInit, 'signal' | 'headers' | 'credentials'>
   ): Promise<SearchResult[]> => {
-    const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
-    const response = await makeRequest(
-      `/api/projects/${id}/search?q=${encodeURIComponent(query)}${modeParam}`,
-      options
-    );
+    const params = new URLSearchParams({ q: query });
+    if (mode) params.set('mode', mode);
+    const response = await makeRequest(`/api/projects/${id}/search?${params.toString()}`, {
+      ...options,
+      method: 'GET',
+    });
     return handleApiResponse<SearchResult[]>(response);
   },
 };
@@ -304,6 +295,7 @@ export const tasksApi = {
     return handleApiResponse<void>(response);
   },
 };
+
 
 // Task Attempts APIs
 export const attemptsApi = {

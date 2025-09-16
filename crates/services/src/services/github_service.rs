@@ -138,8 +138,39 @@ pub struct GitHubService {
     client: Octocrab,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[ts(use_ts_enum)]
+pub enum IssueStateFilter {
+    Open,
+    Closed,
+    All,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "lowercase")]
+#[ts(use_ts_enum)]
+pub enum IssueState {
+    Open,
+    Closed,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct GitHubIssue {
+    pub id: i64,
+    pub number: i64,
+    pub title: String,
+    pub body: Option<String>,
+    pub state: IssueState,
+    pub html_url: String,
+    pub labels: Vec<String>,
+    #[ts(type = "Date")]
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    #[ts(type = "Date")]
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
 impl GitHubService {
-    /// Create a new GitHub service with authentication
     pub fn new(github_token: &str) -> Result<Self, GitHubServiceError> {
         let client = OctocrabBuilder::new()
             .personal_token(github_token.to_string())
@@ -151,6 +182,136 @@ impl GitHubService {
     pub async fn check_token(&self) -> Result<(), GitHubServiceError> {
         self.client.current().user().await?;
         Ok(())
+    }
+
+    pub async fn list_issues(
+        &self,
+        owner: &str,
+        repo: &str,
+        state: IssueStateFilter,
+        labels: Option<&[String]>,
+        since: Option<chrono::DateTime<chrono::Utc>>,
+        page: Option<u32>,
+        per_page: Option<u8>,
+    ) -> Result<Vec<GitHubIssue>, GitHubServiceError> {
+        use octocrab::params::State;
+
+        let issues_api = self.client.issues(owner, repo);
+        let mut builder = issues_api.list();
+
+        builder = builder.state(match state {
+            IssueStateFilter::Open => State::Open,
+            IssueStateFilter::Closed => State::Closed,
+            IssueStateFilter::All => State::All,
+        });
+
+        if let Some(ls) = labels {
+            if !ls.is_empty() {
+                builder = builder.labels(ls);
+            }
+        }
+        if let Some(since) = since {
+            builder = builder.since(since);
+        }
+        if let Some(per) = per_page {
+            builder = builder.per_page(per.min(100));
+        } else {
+            builder = builder.per_page(50);
+        }
+        if let Some(p) = page {
+            builder = builder.page(p);
+        }
+
+        let mut issues = Vec::new();
+        let page = builder.send().await?;
+        for item in page.items {
+            // Filter out PRs (they appear in issues feed with pull_request field)
+            if item.pull_request.is_some() {
+                continue;
+            }
+            issues.push(Self::map_issue(item));
+        }
+        Ok(issues)
+    }
+
+    pub async fn get_issue(
+        &self,
+        owner: &str,
+        repo: &str,
+        number: i64,
+    ) -> Result<GitHubIssue, GitHubServiceError> {
+        let issue = self
+            .client
+            .issues(owner, repo)
+            .get(number as u64)
+            .await?;
+        if issue.pull_request.is_some() {
+            return Err(GitHubServiceError::PullRequest(format!(
+                "Requested issue #{number} is a pull request"
+            )));
+        }
+        Ok(Self::map_issue(issue))
+    }
+
+    /// Update issue state (open=false -> close; open=true -> reopen)
+    pub async fn update_issue_state(
+        &self,
+        owner: &str,
+        repo: &str,
+        number: i64,
+        open: bool,
+    ) -> Result<(), GitHubServiceError> {
+        (|| async {
+            self.client
+                .issues(owner, repo)
+                .update(number as u64)
+                .state(if open {
+                    octocrab::models::IssueState::Open
+                } else {
+                    octocrab::models::IssueState::Closed
+                })
+                .send()
+                .await?;
+            Ok(())
+        })
+        .retry(
+            &ExponentialBuilder::default()
+                .with_min_delay(Duration::from_secs(1))
+                .with_max_delay(Duration::from_secs(15))
+                .with_max_times(3)
+                .with_jitter(),
+        )
+        .when(|e| {
+            !matches!(
+                e,
+                GitHubServiceError::TokenInvalid | GitHubServiceError::InsufficientPermissions
+            )
+        })
+        .await
+    }
+
+    fn map_issue(issue: octocrab::models::issues::Issue) -> GitHubIssue {
+        let labels = issue
+            .labels
+            .into_iter()
+            .map(|l| l.name)
+            .filter(|s| !s.trim().is_empty())
+            .collect::<Vec<_>>();
+        GitHubIssue {
+            id: issue.id.0 as i64,
+            number: issue.number as i64,
+            title: issue.title,
+            body: issue.body,
+            state: match issue.state {
+                octocrab::models::IssueState::Open => IssueState::Open,
+                octocrab::models::IssueState::Closed => IssueState::Closed,
+                _ => IssueState::Open,
+            },
+            html_url: issue.html_url.to_string(),
+            labels,
+            created_at: issue.created_at,
+            updated_at: issue.updated_at,
+        }
     }
 
     /// Create a pull request on GitHub
