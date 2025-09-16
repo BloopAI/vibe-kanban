@@ -3,6 +3,7 @@ use std::time::Duration;
 use backon::{ExponentialBuilder, Retryable};
 use db::models::merge::{MergeStatus, PullRequestInfo};
 use octocrab::{Octocrab, OctocrabBuilder};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::info;
@@ -67,9 +68,9 @@ impl From<GitServiceError> for GitHubServiceError {
             GitServiceError::GitCLI(GitCliError::AuthFailed(_)) => Self::TokenInvalid,
             GitServiceError::GitCLI(GitCliError::CommandFailed(msg)) => {
                 let lower = msg.to_ascii_lowercase();
-                if lower.contains("The requested URL returned error: 403") {
+                if lower.contains("the requested url returned error: 403") {
                     Self::InsufficientPermissions
-                } else if lower.contains("The requested URL returned error: 404") {
+                } else if lower.contains("the requested url returned error: 404") {
                     Self::RepoNotFoundOrNoAccess
                 } else {
                     Self::GitService(GitServiceError::GitCLI(GitCliError::CommandFailed(msg)))
@@ -97,18 +98,20 @@ pub struct GitHubRepoInfo {
     pub repo_name: String,
 }
 impl GitHubRepoInfo {
-    pub fn from_remote_url(pr_url: &str) -> Result<Self, GitHubServiceError> {
-        let re =
-            regex::Regex::new(r"github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)").map_err(|e| {
-                GitHubServiceError::Repository(format!("Failed to compile regex: {}", e))
-            })?;
-        let caps = re.captures(pr_url).ok_or({
-            GitHubServiceError::Repository(format!("Invalid GitHub URL format: {}", pr_url))
+    pub fn from_remote_url(remote_url: &str) -> Result<Self, GitHubServiceError> {
+        let re = Regex::new(r"github\.com[:/](?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?(?:/|$)")
+            .map_err(|e| {
+            GitHubServiceError::Repository(format!("Failed to compile regex: {e}"))
         })?;
-        let owner = caps.name("owner").unwrap().as_str().to_string();
-        let repo_name = caps.name("repo").unwrap().as_str().to_string();
 
-        Ok(Self { owner, repo_name })
+        let caps = re.captures(remote_url).ok_or_else(|| {
+            GitHubServiceError::Repository(format!("Invalid GitHub URL format: {remote_url}"))
+        })?;
+
+        Ok(Self {
+            owner: caps.name("owner").unwrap().as_str().to_string(),
+            repo_name: caps.name("repo").unwrap().as_str().to_string(),
+        })
     }
 }
 

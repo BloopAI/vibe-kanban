@@ -759,7 +759,7 @@ impl GitService {
         }
         .into_reference();
         let remote = self.get_remote_from_branch_ref(&repo, &base_branch_ref)?;
-        self.fetch_branch_from_remote(&repo, &github_token, &remote, &branch_name)?;
+        self.fetch_all_from_remote(&repo, &github_token, &remote)?;
         self.get_branch_status_inner(&repo, &branch_ref, &base_branch_ref)
     }
 
@@ -1591,7 +1591,7 @@ impl GitService {
         // Create temporary HTTPS remote
         let git_cli = GitCli::new();
         if let Err(e) =
-            git_cli.fetch_with_token_and_refspec(repo.path(), &https_url, &refspec, github_token)
+            git_cli.fetch_with_token_and_refspec(repo.path(), &https_url, refspec, github_token)
         {
             tracing::error!("Fetch from GitHub failed: {}", e);
             return Err(e.into());
@@ -1613,18 +1613,18 @@ impl GitService {
         self.fetch_from_remote(repo, github_token, remote, &refspec)
     }
 
-    // /// Fetch from remote repository using GitHub token authentication
-    // fn fetch_all_from_remote(
-    //     &self,
-    //     repo: &Repository,
-    //     github_token: &str,
-    //     remote: &Remote,
-    // ) -> Result<(), GitServiceError> {
-    //     let default_remote_name = self.default_remote_name(repo);
-    //     let remote_name = remote.name().unwrap_or(&default_remote_name);
-    //     let refspec = format!("+refs/heads/*:refs/remotes/{remote_name}/*");
-    //     self.fetch_from_remote(repo, github_token, remote, &refspec)
-    // }
+    /// Fetch from remote repository using GitHub token authentication
+    fn fetch_all_from_remote(
+        &self,
+        repo: &Repository,
+        github_token: &str,
+        remote: &Remote,
+    ) -> Result<(), GitServiceError> {
+        let default_remote_name = self.default_remote_name(repo);
+        let remote_name = remote.name().unwrap_or(&default_remote_name);
+        let refspec = format!("+refs/heads/*:refs/remotes/{remote_name}/*");
+        self.fetch_from_remote(repo, github_token, remote, &refspec)
+    }
 
     /// Clone a repository to the specified directory
     #[cfg(feature = "cloud")]
