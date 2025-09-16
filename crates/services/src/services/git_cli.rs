@@ -21,6 +21,7 @@ use std::{
     process::Command,
 };
 
+use base64::{Engine, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use thiserror::Error;
 use utils::shell::resolve_executable_path;
 
@@ -303,23 +304,26 @@ impl GitCli {
         refspec: &str,
         token: &str,
     ) -> Result<(), GitCliError> {
-        let remote_url_with_token = format!(
-            "https://x-access-token:{token}@{}",
-            remote_url.trim_start_matches("https://")
-        );
+        let auth_value = BASE64_STANDARD.encode(format!("x-access-token:{token}"));
+        let auth_header = format!("Authorization: Basic {auth_value}");
 
         let envs = [
             (OsString::from("GIT_TERMINAL_PROMPT"), OsString::from("0")),
             (OsString::from("GIT_ASKPASS"), OsString::from("")),
             (OsString::from("SSH_ASKPASS"), OsString::from("")),
-            (OsString::from("GIT_CREDENTIAL_HELPER"), OsString::from("")),
+            (
+                OsString::from("GIT_HTTP_EXTRAHEADER"),
+                OsString::from(auth_header),
+            ),
         ];
 
         let args = [
             OsString::from("-c"),
             OsString::from("credential.helper="),
+            OsString::from("--config-env"),
+            OsString::from("http.extraHeader=GIT_HTTP_EXTRAHEADER"),
             OsString::from("fetch"),
-            OsString::from(remote_url_with_token),
+            OsString::from(remote_url),
             OsString::from(refspec),
         ];
 
@@ -339,23 +343,26 @@ impl GitCli {
         token: &str,
     ) -> Result<(), GitCliError> {
         let refspec = format!("refs/heads/{branch}:refs/heads/{branch}");
-        let remote_url_with_token = format!(
-            "https://x-access-token:{token}@{}",
-            remote_url.trim_start_matches("https://")
-        );
+        let auth_value = BASE64_STANDARD.encode(format!("x-access-token:{token}"));
+        let auth_header = format!("Authorization: Basic {auth_value}");
 
         let envs = [
             (OsString::from("GIT_TERMINAL_PROMPT"), OsString::from("0")),
             (OsString::from("GIT_ASKPASS"), OsString::from("")),
             (OsString::from("SSH_ASKPASS"), OsString::from("")),
-            (OsString::from("GIT_CREDENTIAL_HELPER"), OsString::from("")),
+            (
+                OsString::from("GIT_HTTP_EXTRAHEADER"),
+                OsString::from(auth_header),
+            ),
         ];
 
         let args = [
             OsString::from("-c"),
             OsString::from("credential.helper="),
+            OsString::from("--config-env"),
+            OsString::from("http.extraHeader=GIT_HTTP_EXTRAHEADER"),
             OsString::from("push"),
-            OsString::from(remote_url_with_token),
+            OsString::from(remote_url),
             OsString::from(refspec),
         ];
 
