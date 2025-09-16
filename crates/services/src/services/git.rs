@@ -2,8 +2,8 @@ use std::{collections::HashMap, path::Path};
 
 use chrono::{DateTime, Utc};
 use git2::{
-    BranchType, Delta, DiffFindOptions, DiffOptions, Error as GitError, FetchOptions, Reference,
-    Remote, Repository, Sort, build::CheckoutBuilder,
+    BranchType, Delta, DiffFindOptions, DiffOptions, Error as GitError, Reference, Remote,
+    Repository, Sort, build::CheckoutBuilder,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -31,18 +31,13 @@ pub enum GitServiceError {
     MergeConflicts(String),
     #[error("Branches diverged: {0}")]
     BranchesDiverged(String),
-    #[error("Invalid path: {0}")]
-    InvalidPath(String),
     #[error("{0} has uncommitted changes: {1}")]
     WorktreeDirty(String, String),
-    #[error("Invalid file paths: {0}")]
-    InvalidFilePaths(String),
     #[error("No GitHub token available.")]
     TokenUnavailable,
     #[error("Rebase in progress; resolve or abort it before retrying")]
     RebaseInProgress,
 }
-
 /// Service for managing Git operations in task execution workflows
 #[derive(Clone)]
 pub struct GitService {}
@@ -1537,17 +1532,15 @@ impl GitService {
             .ok_or_else(|| GitServiceError::InvalidRepository("Remote has no URL".to_string()))?;
         let https_url = self.convert_to_https_url(remote_url);
         let git_cli = GitCli::new();
-        if let Err(err) =
+        if let Err(e) =
             git_cli.push_with_token(worktree_path, &https_url, branch_name, github_token)
         {
-            tracing::error!(?err, "git push via CLI failed");
-            return Err(GitServiceError::GitCLI(err.into()));
+            tracing::error!("Push to GitHub failed: {}", e);
+            return Err(e.into());
         }
 
         let mut branch = Self::find_branch(&repo, branch_name)?;
         if !branch.get().is_remote() {
-            branch.set_upstream(Some(&format!("{remote_name}/{branch_name}")))?;
-            // Mirror the upstream reference locally so callers see the updated remote tracking ref
             if let Some(branch_target) = branch.get().target() {
                 let remote_ref = format!("refs/remotes/{remote_name}/{branch_name}");
                 repo.reference(
@@ -1557,6 +1550,7 @@ impl GitService {
                     "update remote tracking branch",
                 )?;
             }
+            branch.set_upstream(Some(&format!("{remote_name}/{branch_name}")))?;
         }
 
         Ok(())
@@ -1596,11 +1590,11 @@ impl GitService {
         let https_url = self.convert_to_https_url(remote_url);
         // Create temporary HTTPS remote
         let git_cli = GitCli::new();
-        if let Err(err) =
+        if let Err(e) =
             git_cli.fetch_with_token_and_refspec(repo.path(), &https_url, &refspec, github_token)
         {
-            tracing::error!(?err, "git fetch via CLI failed");
-            return Err(GitServiceError::GitCLI(err.into()));
+            tracing::error!("Fetch from GitHub failed: {}", e);
+            return Err(e.into());
         }
         Ok(())
     }

@@ -64,33 +64,18 @@ impl From<octocrab::Error> for GitHubServiceError {
 impl From<GitServiceError> for GitHubServiceError {
     fn from(error: GitServiceError) -> Self {
         match error {
-            GitServiceError::Git(err) => {
-                if err
-                    .message()
-                    .contains("too many redirects or authentication replays")
-                {
-                    Self::TokenInvalid
-                } else if err.message().contains("status code: 403") {
-                    Self::InsufficientPermissions
-                } else if err.message().contains("status code: 404") {
-                    Self::RepoNotFoundOrNoAccess
-                } else {
-                    Self::GitService(GitServiceError::Git(err))
-                }
-            }
+            GitServiceError::GitCLI(GitCliError::AuthFailed(_)) => Self::TokenInvalid,
             GitServiceError::GitCLI(GitCliError::CommandFailed(msg)) => {
-                let lower = msg.to_lowercase();
-                if lower.contains("authentication failed") {
-                    Self::TokenInvalid
-                } else if lower.contains("status code: 403") {
+                let lower = msg.to_ascii_lowercase();
+                if lower.contains("The requested URL returned error: 403") {
                     Self::InsufficientPermissions
-                } else if lower.contains("status code: 404") {
+                } else if lower.contains("The requested URL returned error: 404") {
                     Self::RepoNotFoundOrNoAccess
                 } else {
                     Self::GitService(GitServiceError::GitCLI(GitCliError::CommandFailed(msg)))
                 }
             }
-            _ => Self::GitService(error),
+            other => Self::GitService(other),
         }
     }
 }

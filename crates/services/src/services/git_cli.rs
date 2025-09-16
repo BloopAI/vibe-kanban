@@ -30,6 +30,10 @@ pub enum GitCliError {
     NotAvailable,
     #[error("git command failed: {0}")]
     CommandFailed(String),
+    #[error("authentication failed: {0}")]
+    AuthFailed(String),
+    #[error("push rejected: {0}")]
+    PushRejected(String),
     #[error("rebase in progress in this worktree")]
     RebaseInProgress,
 }
@@ -319,7 +323,11 @@ impl GitCli {
             OsString::from(refspec),
         ];
 
-        self.git_with_env(repo_path, args, &envs).map(|_| ())
+        match self.git_with_env(repo_path, args, &envs) {
+            Ok(_) => Ok(()),
+            Err(GitCliError::CommandFailed(msg)) => Err(classify_cli_error(msg)),
+            Err(err) => Err(err),
+        }
     }
 
     /// Push a branch to the given remote using an HTTPS token for authentication.
@@ -351,7 +359,11 @@ impl GitCli {
             OsString::from(refspec),
         ];
 
-        self.git_with_env(repo_path, args, &envs).map(|_| ())
+        match self.git_with_env(repo_path, args, &envs) {
+            Ok(_) => Ok(()),
+            Err(GitCliError::CommandFailed(msg)) => Err(classify_cli_error(msg)),
+            Err(err) => Err(err),
+        }
     }
 
     // Parse `git diff --name-status` output into structured entries.
@@ -564,6 +576,20 @@ impl GitCli {
             }
         }
         Ok(files)
+    }
+}
+
+fn classify_cli_error(msg: String) -> GitCliError {
+    let lower = msg.to_ascii_lowercase();
+    if lower.contains("authentication failed")
+        || lower.contains("could not read username")
+        || lower.contains("invalid username or password")
+    {
+        GitCliError::AuthFailed(msg)
+    } else if lower.contains("non-fast-forward") {
+        GitCliError::PushRejected(msg)
+    } else {
+        GitCliError::CommandFailed(msg)
     }
 }
 
