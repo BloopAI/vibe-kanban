@@ -3,10 +3,25 @@ use executors::actions::ExecutorAction;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{FromRow, SqlitePool, Type};
+use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{task::Task, task_attempt::TaskAttempt};
+
+#[derive(Debug, Error)]
+pub enum ExecutionProcessError {
+    #[error(transparent)]
+    Database(#[from] sqlx::Error),
+    #[error("Execution process not found")]
+    ExecutionProcessNotFound,
+    #[error("Failed to create execution process: {0}")]
+    CreateFailed(String),
+    #[error("Failed to update execution process: {0}")]
+    UpdateFailed(String),
+    #[error("Invalid executor action format")]
+    InvalidExecutorAction,
+}
 
 #[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
 #[sqlx(type_name = "execution_process_status", rename_all = "lowercase")]

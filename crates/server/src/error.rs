@@ -4,7 +4,9 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use db::models::{project::ProjectError, task_attempt::TaskAttemptError};
+use db::models::{
+    execution_process::ExecutionProcessError, project::ProjectError, task_attempt::TaskAttemptError,
+};
 use deployment::DeploymentError;
 use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
@@ -22,6 +24,8 @@ pub enum ApiError {
     Project(#[from] ProjectError),
     #[error(transparent)]
     TaskAttempt(#[from] TaskAttemptError),
+    #[error(transparent)]
+    ExecutionProcess(#[from] ExecutionProcessError),
     #[error(transparent)]
     GitService(#[from] GitServiceError),
     #[error(transparent)]
@@ -61,6 +65,12 @@ impl IntoResponse for ApiError {
         let (status_code, error_type) = match &self {
             ApiError::Project(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ProjectError"),
             ApiError::TaskAttempt(_) => (StatusCode::INTERNAL_SERVER_ERROR, "TaskAttemptError"),
+            ApiError::ExecutionProcess(err) => match err {
+                ExecutionProcessError::ExecutionProcessNotFound => {
+                    (StatusCode::NOT_FOUND, "ExecutionProcessError")
+                }
+                _ => (StatusCode::INTERNAL_SERVER_ERROR, "ExecutionProcessError"),
+            },
             // Promote certain GitService errors to conflict status with concise messages
             ApiError::GitService(git_err) => match git_err {
                 services::services::git::GitServiceError::MergeConflicts(_) => {
