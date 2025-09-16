@@ -8,7 +8,7 @@ use thiserror::Error;
 use tracing::info;
 use ts_rs::TS;
 
-use crate::services::git::GitServiceError;
+use crate::services::{git::GitServiceError, git_cli::GitCliError};
 
 #[derive(Debug, Error, Serialize, Deserialize, TS)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -63,21 +63,34 @@ impl From<octocrab::Error> for GitHubServiceError {
 }
 impl From<GitServiceError> for GitHubServiceError {
     fn from(error: GitServiceError) -> Self {
-        if let GitServiceError::Git(err) = error {
-            if err
-                .message()
-                .contains("too many redirects or authentication replays")
-            {
-                Self::TokenInvalid
-            } else if err.message().contains("status code: 403") {
-                Self::InsufficientPermissions
-            } else if err.message().contains("status code: 404") {
-                Self::RepoNotFoundOrNoAccess
-            } else {
-                Self::GitService(GitServiceError::Git(err))
+        match error {
+            GitServiceError::Git(err) => {
+                if err
+                    .message()
+                    .contains("too many redirects or authentication replays")
+                {
+                    Self::TokenInvalid
+                } else if err.message().contains("status code: 403") {
+                    Self::InsufficientPermissions
+                } else if err.message().contains("status code: 404") {
+                    Self::RepoNotFoundOrNoAccess
+                } else {
+                    Self::GitService(GitServiceError::Git(err))
+                }
             }
-        } else {
-            Self::GitService(error)
+            GitServiceError::GitCLI(GitCliError::CommandFailed(msg)) => {
+                let lower = msg.to_lowercase();
+                if lower.contains("authentication failed") {
+                    Self::TokenInvalid
+                } else if lower.contains("status code: 403") {
+                    Self::InsufficientPermissions
+                } else if lower.contains("status code: 404") {
+                    Self::RepoNotFoundOrNoAccess
+                } else {
+                    Self::GitService(GitServiceError::GitCLI(GitCliError::CommandFailed(msg)))
+                }
+            }
+            _ => Self::GitService(error),
         }
     }
 }

@@ -1118,13 +1118,6 @@ pub async fn create_github_pr(
     };
     // Create GitHub service instance
     let github_service = GitHubService::new(&github_token)?;
-    if let Err(e) = github_service.check_token().await {
-        if e.is_api_data() {
-            return Ok(ResponseJson(ApiResponse::error_with_data(e)));
-        } else {
-            return Err(ApiError::GitHubService(e));
-        }
-    }
     // Get the task attempt to access the stored base branch
     let base_branch = request.base_branch.unwrap_or_else(|| {
         // Use the stored base branch from the task attempt as the default
@@ -1147,11 +1140,6 @@ pub async fn create_github_pr(
     let project = Project::find_by_id(pool, task.project_id)
         .await?
         .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
-
-    // Use GitService to get the remote URL, then create GitHubRepoInfo
-    let repo_info = deployment
-        .git()
-        .get_github_repo_info(&project.git_repo_path)?;
 
     // Get branch name from task attempt
     let branch_name = task_attempt.branch.as_ref().ok_or_else(|| {
@@ -1208,6 +1196,10 @@ pub async fn create_github_pr(
         head_branch: branch_name.clone(),
         base_branch: norm_base_branch_name.clone(),
     };
+    // Use GitService to get the remote URL, then create GitHubRepoInfo
+    let repo_info = deployment
+        .git()
+        .get_github_repo_info(&project.git_repo_path)?;
 
     match github_service.create_pr(&repo_info, &pr_request).await {
         Ok(pr_info) => {

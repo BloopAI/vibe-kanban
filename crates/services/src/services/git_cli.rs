@@ -291,6 +291,68 @@ impl GitCli {
         self.git(worktree_path, ["commit", "-m", message])?;
         Ok(())
     }
+    /// Fetch a branch to the given remote using an HTTPS token for authentication.
+    pub fn fetch_with_token_and_refspec(
+        &self,
+        repo_path: &Path,
+        remote_url: &str,
+        refspec: &str,
+        token: &str,
+    ) -> Result<(), GitCliError> {
+        let remote_url_with_token = format!(
+            "https://x-access-token:{token}@{}",
+            remote_url.trim_start_matches("https://")
+        );
+
+        let envs = [
+            (OsString::from("GIT_TERMINAL_PROMPT"), OsString::from("0")),
+            (OsString::from("GIT_ASKPASS"), OsString::from("")),
+            (OsString::from("SSH_ASKPASS"), OsString::from("")),
+            (OsString::from("GIT_CREDENTIAL_HELPER"), OsString::from("")),
+        ];
+
+        let args = [
+            OsString::from("-c"),
+            OsString::from("credential.helper="),
+            OsString::from("fetch"),
+            OsString::from(remote_url_with_token),
+            OsString::from(refspec),
+        ];
+
+        self.git_with_env(repo_path, args, &envs).map(|_| ())
+    }
+
+    /// Push a branch to the given remote using an HTTPS token for authentication.
+    pub fn push_with_token(
+        &self,
+        repo_path: &Path,
+        remote_url: &str,
+        branch: &str,
+        token: &str,
+    ) -> Result<(), GitCliError> {
+        let refspec = format!("refs/heads/{branch}:refs/heads/{branch}");
+        let remote_url_with_token = format!(
+            "https://x-access-token:{token}@{}",
+            remote_url.trim_start_matches("https://")
+        );
+
+        let envs = [
+            (OsString::from("GIT_TERMINAL_PROMPT"), OsString::from("0")),
+            (OsString::from("GIT_ASKPASS"), OsString::from("")),
+            (OsString::from("SSH_ASKPASS"), OsString::from("")),
+            (OsString::from("GIT_CREDENTIAL_HELPER"), OsString::from("")),
+        ];
+
+        let args = [
+            OsString::from("-c"),
+            OsString::from("credential.helper="),
+            OsString::from("push"),
+            OsString::from(remote_url_with_token),
+            OsString::from(refspec),
+        ];
+
+        self.git_with_env(repo_path, args, &envs).map(|_| ())
+    }
 
     // Parse `git diff --name-status` output into structured entries.
     // Handles rename/copy scores like `R100` by matching the first letter.
