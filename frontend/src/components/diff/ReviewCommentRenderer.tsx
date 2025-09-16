@@ -60,7 +60,7 @@ export function ReviewCommentRenderer({
           value={editText}
           onChange={setEditText}
           onKeyDown={handleKeyDown}
-          placeholder="Edit comment..."
+          placeholder="Edit comment... (type @ to search files)"
           rows={3}
           maxRows={10}
           className="w-full bg-background text-foreground text-sm font-mono resize-none min-h-[60px] focus:outline-none"
