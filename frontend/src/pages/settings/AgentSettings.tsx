@@ -524,20 +524,22 @@ export function AgentSettings() {
         </CardContent>
       </Card>
 
-      {/* Save button for JSON editor mode */}
-      <div className="sticky bottom-0 z-10 bg-background/80 backdrop-blur-sm border-t py-4">
-        <div className="flex justify-end">
-          <Button
-            onClick={handleSaveProfiles}
-            disabled={!isDirty || profilesSaving || !!profilesError}
-          >
-            {profilesSaving && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            Save Agent Configurations
-          </Button>
+      {/* Save button for JSON editor mode only */}
+      {!useFormEditor && (
+        <div className="sticky bottom-0 z-10 bg-background/80 backdrop-blur-sm border-t py-4">
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSaveProfiles}
+              disabled={!isDirty || profilesSaving || !!profilesError}
+            >
+              {profilesSaving && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Save Agent Configurations
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
