@@ -41,7 +41,7 @@ export function AgentSettings() {
   // Local editor state (draft that may differ from server)
   const [localProfilesContent, setLocalProfilesContent] = useState('');
   const [profilesSuccess, setProfilesSuccess] = useState(false);
-  const [profilesError, setProfilesError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Form-based editor state
   const [useFormEditor, setUseFormEditor] = useState(true);
@@ -162,7 +162,7 @@ export function AgentSettings() {
     }
 
     // Clear any previous errors
-    setProfilesError(null);
+    setSaveError(null);
 
     try {
       // Validate that the configuration exists
@@ -225,7 +225,7 @@ export function AgentSettings() {
         reloadSystem();
       } catch (saveError: unknown) {
         console.error('Failed to save deletion to backend:', saveError);
-        setProfilesError('Failed to delete configuration. Please try again.');
+        setSaveError('Failed to delete configuration. Please try again.');
       }
     } catch (error) {
       console.error('Error deleting configuration:', error);
@@ -250,7 +250,7 @@ export function AgentSettings() {
 
   const handleSaveProfiles = async () => {
     // Clear any previous errors
-    setProfilesError(null);
+    setSaveError(null);
 
     try {
       const contentToSave =
@@ -272,9 +272,7 @@ export function AgentSettings() {
       reloadSystem();
     } catch (err: unknown) {
       console.error('Failed to save profiles:', err);
-      setProfilesError(
-        'Failed to save agent configurations. Please try again.'
-      );
+      setSaveError('Failed to save agent configurations. Please try again.');
     }
   };
 
@@ -306,7 +304,7 @@ export function AgentSettings() {
     if (!localParsedProfiles || !localParsedProfiles.executors) return;
 
     // Clear any previous errors
-    setProfilesError(null);
+    setSaveError(null);
 
     // Update the parsed profiles with the saved config
     const updatedProfiles = {
@@ -341,7 +339,7 @@ export function AgentSettings() {
       reloadSystem();
     } catch (err: unknown) {
       console.error('Failed to save profiles:', err);
-      setProfilesError('Failed to save configuration. Please try again.');
+      setSaveError('Failed to save configuration. Please try again.');
     }
   };
 
@@ -374,9 +372,9 @@ export function AgentSettings() {
         </Alert>
       )}
 
-      {profilesError && (
+      {saveError && (
         <Alert variant="destructive">
-          <AlertDescription>{profilesError}</AlertDescription>
+          <AlertDescription>{saveError}</AlertDescription>
         </Alert>
       )}
 
