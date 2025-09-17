@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { TodoItem } from 'shared/types';
+import type { PatchTypeWithKey } from '@/hooks/useConversationHistory';
 
 interface UsePinnedTodosResult {
   todos: TodoItem[];
@@ -10,14 +11,14 @@ interface UsePinnedTodosResult {
  * Hook that extracts and maintains the latest TODO state from normalized conversation entries.
  * Filters for TodoManagement ActionType entries and returns the most recent todo list.
  */
-export const usePinnedTodos = (entries: any[]): UsePinnedTodosResult => {
+export const usePinnedTodos = (entries: PatchTypeWithKey[]): UsePinnedTodosResult => {
   return useMemo(() => {
     let latestTodos: TodoItem[] = [];
     let lastUpdatedTime: string | null = null;
 
     for (const entry of entries) {
-      if (entry.channel === 'normalized' && entry.payload) {
-        const normalizedEntry = entry.payload as any;
+      if (entry.type === 'NORMALIZED_ENTRY' && entry.content) {
+        const normalizedEntry = entry.content as any;
 
         if (
           normalizedEntry.entry_type?.type === 'tool_use' &&

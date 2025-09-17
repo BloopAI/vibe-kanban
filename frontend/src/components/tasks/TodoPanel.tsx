@@ -17,7 +17,7 @@ interface TodoPanelProps {
   selectedAttempt: TaskAttempt | null;
 }
 
-export function TodoPanel({}: TodoPanelProps) {
+export function TodoPanel(_props: TodoPanelProps) {
   const { entries } = useEntries();
   const { todos } = usePinnedTodos(entries);
 
