@@ -30,7 +30,7 @@ fn repo_https_remote(repo_path: &Path) -> Option<String> {
 fn assert_auth_failed(result: Result<(), GitCliError>) {
     match result {
         Err(GitCliError::AuthFailed(_)) => {}
-        Err(other) => panic!("expected auth failure, got {:?}", other),
+        Err(other) => panic!("expected auth failure, got {other:?}"),
         Ok(_) => panic!("operation unexpectedly succeeded"),
     }
 }

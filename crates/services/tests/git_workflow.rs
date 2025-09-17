@@ -4,8 +4,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use services::services::git::{DiffTarget, GitService};
-use services::services::github_service::{GitHubRepoInfo, GitHubServiceError};
+use services::services::{
+    git::{DiffTarget, GitService},
+    github_service::{GitHubRepoInfo, GitHubServiceError},
+};
 use tempfile::TempDir;
 use utils::diff::DiffChangeKind;
 
@@ -571,10 +573,7 @@ fn github_repo_info_parses_https_and_ssh_urls() {
     assert_eq!(info.owner, "owner");
     assert_eq!(info.repo_name, "repo");
 
-    let info = GitHubRepoInfo::from_remote_url(
-        "https://github.com/owner/repo/pull/123",
-    )
-    .unwrap();
+    let info = GitHubRepoInfo::from_remote_url("https://github.com/owner/repo/pull/123").unwrap();
     assert_eq!(info.owner, "owner");
     assert_eq!(info.repo_name, "repo");
 
