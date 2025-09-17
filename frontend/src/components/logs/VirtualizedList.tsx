@@ -20,6 +20,10 @@ interface VirtualizedListProps {
   attempt: TaskAttempt;
 }
 
+interface MessageListContext {
+  attempt: TaskAttempt;
+}
+
 type ChannelData = DataWithScrollModifier<PatchTypeWithKey> | null;
 
 const InitialDataScrollModifier: ScrollModifier = {
@@ -39,6 +43,27 @@ const AutoScrollToBottom: ScrollModifier = {
     }
     return false;
   },
+};
+
+const ItemContent: VirtuosoMessageListProps<
+  PatchTypeWithKey,
+  MessageListContext
+>['ItemContent'] = ({ data, context }) => {
+  if (data.type === 'STDOUT') {
+    return <p>{data.content}</p>;
+  } else if (data.type === 'STDERR') {
+    return <p>{data.content}</p>;
+  } else if (data.type === 'NORMALIZED_ENTRY') {
+    return (
+      <DisplayConversationEntry
+        key={data.patchKey}
+        expansionKey={data.patchKey}
+        entry={data.content}
+        executionProcessId={data.executionProcessId}
+        taskAttempt={context.attempt}
+      />
+    );
+  }
 };
 
 const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
@@ -71,44 +96,18 @@ const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
 
   const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
 
-  const ItemContent: VirtuosoMessageListProps<
-    PatchTypeWithKey,
-    null
-  >['ItemContent'] = ({ data }) => {
-    if (data.type === 'STDOUT') {
-      return <p>{data.content}</p>;
-    } else if (data.type === 'STDERR') {
-      return <p>{data.content}</p>;
-    } else if (data.type === 'NORMALIZED_ENTRY') {
-      return (
-        <DisplayConversationEntry
-          key={data.patchKey}
-          expansionKey={data.patchKey}
-          entry={data.content}
-          executionProcessId={data.executionProcessId}
-          taskAttempt={attempt}
-        />
-      );
-    }
-  };
-
-  const computeItemKey: VirtuosoMessageListProps<
-    PatchTypeWithKey,
-    null
-  >['computeItemKey'] = ({ data }) => {
-    return `l-${data.patchKey}`;
-  };
-
   return (
     <>
       <VirtuosoMessageListLicense
         licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
       >
-        <VirtuosoMessageList<PatchTypeWithKey, null>
+        <VirtuosoMessageList<PatchTypeWithKey, MessageListContext>
           ref={messageListRef}
           className="flex-1"
           data={channelData}
-          computeItemKey={computeItemKey}
+          context={{ attempt }}
+          itemIdentity={(item) => item.patchKey}
+          computeItemKey={({ data }) => data.patchKey}
           ItemContent={ItemContent}
           Header={() => <div className="h-2"></div>} // Padding
           Footer={() => <div className="h-2"></div>} // Padding
