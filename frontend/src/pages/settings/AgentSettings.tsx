@@ -29,7 +29,6 @@ export function AgentSettings() {
   // Use profiles hook for server state
   const {
     profilesContent: serverProfilesContent,
-    parsedProfiles: serverParsedProfiles,
     profilesPath,
     isLoading: profilesLoading,
     isSaving: profilesSaving,
@@ -38,12 +37,6 @@ export function AgentSettings() {
   } = useProfiles();
 
   const { reloadSystem } = useUserSystem();
-
-  useEffect(() => {
-    return () => {
-      reloadSystem();
-    };
-  }, []);
 
   // Local editor state (draft that may differ from server)
   const [localProfilesContent, setLocalProfilesContent] = useState('');
@@ -62,9 +55,16 @@ export function AgentSettings() {
   useEffect(() => {
     if (!isDirty && serverProfilesContent) {
       setLocalProfilesContent(serverProfilesContent);
-      setLocalParsedProfiles(serverParsedProfiles);
+      // Parse JSON inside effect to avoid object dependency
+      try {
+        const parsed = JSON.parse(serverProfilesContent);
+        setLocalParsedProfiles(parsed);
+      } catch (err) {
+        console.error('Failed to parse profiles JSON:', err);
+        setLocalParsedProfiles(null);
+      }
     }
-  }, [serverProfilesContent, serverParsedProfiles, isDirty]);
+  }, [serverProfilesContent, isDirty]);
 
   // Sync raw profiles with parsed profiles
   const syncRawProfiles = (profiles: unknown) => {
@@ -256,6 +256,9 @@ export function AgentSettings() {
       if (useFormEditor && localParsedProfiles) {
         setLocalProfilesContent(contentToSave);
       }
+
+      // Refresh global system so new profiles are available elsewhere
+      reloadSystem();
     } catch (err: unknown) {
       console.error('Failed to save profiles:', err);
     }
@@ -316,6 +319,9 @@ export function AgentSettings() {
 
       // Update the local content as well
       setLocalProfilesContent(contentToSave);
+
+      // Refresh global system so new profiles are available elsewhere
+      reloadSystem();
     } catch (err: unknown) {
       console.error('Failed to save profiles:', err);
     }
