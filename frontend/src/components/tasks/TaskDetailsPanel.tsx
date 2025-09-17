@@ -19,6 +19,7 @@ import TodoPanel from '@/components/tasks/TodoPanel';
 import { TabNavContext } from '@/contexts/TabNavigationContext';
 import { ProcessSelectionProvider } from '@/contexts/ProcessSelectionContext';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
+import { EntriesProvider } from '@/contexts/EntriesContext';
 import { AttemptHeaderCard } from './AttemptHeaderCard';
 import { inIframe } from '@/vscode/bridge';
 import { TaskRelationshipViewer } from './TaskRelationshipViewer';
@@ -117,6 +118,7 @@ export function TaskDetailsPanel({
         <TabNavContext.Provider value={{ activeTab, setActiveTab }}>
           <ProcessSelectionProvider>
             <ReviewProvider>
+              <EntriesProvider>
               {/* Backdrop - only on smaller screens (overlay mode) */}
               {!hideBackdrop && (
                 <div
@@ -252,6 +254,7 @@ export function TaskDetailsPanel({
                   )}
                 </div>
               </div>
+              </EntriesProvider>
             </ReviewProvider>
           </ProcessSelectionProvider>
         </TabNavContext.Provider>

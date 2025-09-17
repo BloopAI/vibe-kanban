@@ -8,6 +8,7 @@ import {
 } from '@virtuoso.dev/message-list';
 import { useEffect, useRef, useState } from 'react';
 import DisplayConversationEntry from '../NormalizedConversation/DisplayConversationEntry';
+import { useEntries } from '@/contexts/EntriesContext';
 import {
   AddEntryType,
   PatchTypeWithKey,
@@ -69,11 +70,13 @@ const ItemContent: VirtuosoMessageListProps<
 const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
   const [channelData, setChannelData] = useState<ChannelData>(null);
   const [loading, setLoading] = useState(true);
+  const { setEntries, reset } = useEntries();
 
-  // When attempt changes, set loading
+  // When attempt changes, set loading and reset entries
   useEffect(() => {
     setLoading(true);
-  }, [attempt.id]);
+    reset();
+  }, [attempt.id, reset]);
 
   const onEntriesUpdated = (
     newEntries: PatchTypeWithKey[],
@@ -88,6 +91,7 @@ const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
     }
 
     setChannelData({ data: newEntries, scrollModifier });
+    setEntries(newEntries); // Update shared context
     if (loading) {
       setLoading(newLoading);
     }

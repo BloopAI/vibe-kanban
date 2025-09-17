@@ -1,9 +1,6 @@
-import { useMemo } from 'react';
 import { Circle, CircleCheckBig, CircleDotDashed } from 'lucide-react';
-import { useProcessesLogs } from '@/hooks/useProcessesLogs';
+import { useEntries } from '@/contexts/EntriesContext';
 import { usePinnedTodos } from '@/hooks/usePinnedTodos';
-import { useAttemptExecution } from '@/hooks';
-import { shouldShowInLogs } from '@/constants/processes';
 import type { TaskAttempt } from 'shared/types';
 import { Card } from '../ui/card';
 
@@ -20,22 +17,8 @@ interface TodoPanelProps {
   selectedAttempt: TaskAttempt | null;
 }
 
-export function TodoPanel({ selectedAttempt }: TodoPanelProps) {
-  const { attemptData } = useAttemptExecution(selectedAttempt?.id);
-
-  const filteredProcesses = useMemo(
-    () =>
-      (attemptData.processes || []).filter(
-        (p) => shouldShowInLogs(p.run_reason) && !p.dropped
-      ),
-    [
-      attemptData.processes
-        ?.map((p) => `${p.id}:${p.status}:${p.dropped}`)
-        .join(','),
-    ]
-  );
-
-  const { entries } = useProcessesLogs(filteredProcesses, true);
+export function TodoPanel({}: TodoPanelProps) {
+  const { entries } = useEntries();
   const { todos } = usePinnedTodos(entries);
 
   // Only show once the agent has created subtasks
