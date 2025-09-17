@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { ImageUploadSection } from '@/components/ui/ImageUploadSection';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 //
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { imagesApi } from '@/lib/api.ts';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { useBranchStatus } from '@/hooks';
@@ -26,7 +26,6 @@ import { FollowUpConflictSection } from '@/components/tasks/follow-up/FollowUpCo
 import { FollowUpEditorCard } from '@/components/tasks/follow-up/FollowUpEditorCard';
 import { useDraftStream } from '@/hooks/follow-up/useDraftStream';
 import { useDraftEdits } from '@/hooks/follow-up/useDraftEdits';
-import { useDraftImages } from '@/hooks/follow-up/useDraftImages';
 import { useDraftAutosave } from '@/hooks/follow-up/useDraftAutosave';
 import { useDraftQueue } from '@/hooks/follow-up/useDraftQueue';
 import { useFollowUpSend } from '@/hooks/follow-up/useFollowUpSend';
@@ -34,14 +33,12 @@ import { useDefaultVariant } from '@/hooks/follow-up/useDefaultVariant';
 
 interface TaskFollowUpSectionProps {
   task: TaskWithAttemptStatus;
-  projectId: string;
   selectedAttemptId?: string;
   jumpToLogsTab: () => void;
 }
 
 export function TaskFollowUpSection({
   task,
-  projectId,
   selectedAttemptId,
   jumpToLogsTab,
 }: TaskFollowUpSectionProps) {
@@ -69,22 +66,21 @@ export function TaskFollowUpSection({
   } = useDraftStream(selectedAttemptId);
 
   // Editor state
-  const { message: followUpMessage, setMessage: setFollowUpMessage } =
-    useDraftEdits({
-      draft,
-      lastServerVersionRef,
-      suppressNextSaveRef,
-      forceNextApplyRef,
-    });
-
-  // Images manager
   const {
+    message: followUpMessage,
+    setMessage: setFollowUpMessage,
     images,
     setImages,
     newlyUploadedImageIds,
     handleImageUploaded,
     clearImagesAndUploads,
-  } = useDraftImages({ draft, taskId: task.id });
+  } = useDraftEdits({
+    draft,
+    lastServerVersionRef,
+    suppressNextSaveRef,
+    forceNextApplyRef,
+    taskId: task.id,
+  });
 
   // Presentation-only: show/hide image upload panel
   const [showImageUpload, setShowImageUpload] = useState(false);
@@ -119,10 +115,12 @@ export function TaskFollowUpSection({
   // Autosave draft when editing
   const { isSaving, saveStatus } = useDraftAutosave({
     attemptId: selectedAttemptId,
-    draft,
-    message: followUpMessage,
-    selectedVariant,
-    images,
+    serverDraft: draft,
+    current: {
+      prompt: followUpMessage,
+      variant: selectedVariant,
+      image_ids: images.map((img) => img.id),
+    },
     isQueuedUI: displayQueued,
     isDraftSending: !!draft?.sending,
     isQueuing: isQueuing,
@@ -187,18 +185,13 @@ export function TaskFollowUpSection({
     displayQueued || isQueuing || isUnqueuing || !!draft?.sending;
   const isEditable = isDraftLoaded && !isDraftLocked;
 
-  const appendToFollowUpMessage = useCallback(
-    (text: string) => {
+  const appendToFollowUpMessage = (text: string) => {
+    setFollowUpMessage((prev) => {
       const sep =
-        followUpMessage.trim().length === 0
-          ? ''
-          : followUpMessage.endsWith('\n')
-            ? '\n'
-            : '\n\n';
-      setFollowUpMessage(followUpMessage + sep + text);
-    },
-    [followUpMessage, setFollowUpMessage]
-  );
+        prev.trim().length === 0 ? '' : prev.endsWith('\n') ? '\n' : '\n\n';
+      return prev + sep + text;
+    });
+  };
 
   // When a process completes (e.g., agent resolved conflicts), refresh branch status promptly
   const prevRunningRef = useRef<boolean>(isAttemptRunning);
@@ -333,9 +326,6 @@ export function TaskFollowUpSection({
                   }
                 }}
                 disabled={!isEditable}
-                projectId={projectId}
-                rows={1}
-                maxRows={6}
                 showLoadingOverlay={isUnqueuing || !isDraftLoaded}
               />
               <FollowUpStatusRow

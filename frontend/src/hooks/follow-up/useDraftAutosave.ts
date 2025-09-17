@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { attemptsApi, type UpdateFollowUpDraftRequest } from '@/lib/api';
-import type { FollowUpDraft, ImageResponse } from 'shared/types';
+import type { FollowUpDraft } from 'shared/types';
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'offline' | 'sent';
 
+type DraftData = Pick<FollowUpDraft, 'prompt' | 'variant' | 'image_ids'>;
+
 type Args = {
   attemptId?: string;
-  draft: FollowUpDraft | null;
-  message: string;
-  selectedVariant: string | null;
-  images: ImageResponse[];
+  serverDraft: FollowUpDraft | null;
+  current: DraftData;
   isQueuedUI: boolean;
   isDraftSending: boolean;
   isQueuing: boolean;
@@ -21,10 +21,8 @@ type Args = {
 
 export function useDraftAutosave({
   attemptId,
-  draft,
-  message,
-  selectedVariant,
-  images,
+  serverDraft,
+  current,
   isQueuedUI,
   isDraftSending,
   isQueuing,
@@ -52,11 +50,12 @@ export function useDraftAutosave({
 
     const saveDraft = async () => {
       const payload: Partial<UpdateFollowUpDraftRequest> = {};
-      if (draft && message !== (draft.prompt || '')) payload.prompt = message;
-      if ((draft?.variant ?? null) !== (selectedVariant ?? null))
-        payload.variant = (selectedVariant ?? null) as string | null;
-      const currentIds = images.map((img) => img.id);
-      const serverIds = (draft?.image_ids as string[] | undefined) ?? [];
+      if (serverDraft && current.prompt !== (serverDraft.prompt || ''))
+        payload.prompt = current.prompt || '';
+      if ((serverDraft?.variant ?? null) !== (current.variant ?? null))
+        payload.variant = (current.variant ?? null) as string | null;
+      const currentIds = (current.image_ids as string[] | null) ?? [];
+      const serverIds = (serverDraft?.image_ids as string[] | undefined) ?? [];
       const idsEqual =
         currentIds.length === serverIds.length &&
         currentIds.every((id, i) => id === serverIds[i]);
@@ -96,12 +95,12 @@ export function useDraftAutosave({
     };
   }, [
     attemptId,
-    draft?.prompt,
-    draft?.variant,
-    draft?.image_ids,
-    message,
-    selectedVariant,
-    images,
+    serverDraft?.prompt,
+    serverDraft?.variant,
+    serverDraft?.image_ids,
+    current.prompt,
+    current.variant,
+    current.image_ids,
     isQueuedUI,
     isDraftSending,
     isQueuing,

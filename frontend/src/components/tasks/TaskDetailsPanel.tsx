@@ -201,7 +201,6 @@ export function TaskDetailsPanel({
 
                             <TaskFollowUpSection
                               task={task}
-                              projectId={projectId}
                               selectedAttemptId={selectedAttempt?.id}
                               jumpToLogsTab={jumpToLogsTab}
                             />
@@ -244,7 +243,6 @@ export function TaskDetailsPanel({
 
                           <TaskFollowUpSection
                             task={task}
-                            projectId={projectId}
                             selectedAttemptId={selectedAttempt?.id}
                             jumpToLogsTab={jumpToLogsTab}
                           />
