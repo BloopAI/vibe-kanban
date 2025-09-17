@@ -79,7 +79,6 @@ const CreatePrDialog = NiceModal.create(() => {
 
     if (result.success) {
       setError(null); // Clear any previous errors on success
-      window.open(result.data, '_blank');
       // Reset form and close dialog
       setPrTitle('');
       setPrBody('');
