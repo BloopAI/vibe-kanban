@@ -117,26 +117,12 @@ impl SessionHandler {
         let new_id = uuid::Uuid::new_v4().to_string();
         Self::set_session_id_in_rollout_meta(&mut meta, &new_id)?;
 
-        // Prepare destination path in the same directory, following Codex rollout naming convention:
-        // rollout-<YYYY>-<MM>-<DD>T<HH>-<mm>-<ss>-<session_id>.jsonl
+        // Prepare destination path in the same directory, following Codex rollout naming convention.
+        // Always create a fresh filename: rollout-<YYYY>-<MM>-<DD>T<HH>-<mm>-<ss>-<session_id>.jsonl
         let parent_dir = original
             .parent()
             .ok_or_else(|| format!("Unexpected path with no parent: {}", original.display()))?;
-        let filename = original
-            .file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or("rollout.jsonl");
-        let new_filename = if filename.starts_with("rollout-") && filename.ends_with(".jsonl") {
-            let stem = &filename[..filename.len() - ".jsonl".len()];
-            if let Some(idx) = stem.rfind('-') {
-                // Replace the trailing session id with the new id, keep timestamp intact
-                format!("{}-{}.jsonl", &stem[..idx], new_id)
-            } else {
-                format!("rollout-{new_id}.jsonl")
-            }
-        } else {
-            format!("rollout-{new_id}.jsonl")
-        };
+        let new_filename = Self::new_rollout_filename(&new_id);
         let dest = parent_dir.join(new_filename);
 
         // Write new file with modified first line and copy the rest with migration as needed
@@ -270,5 +256,27 @@ impl SessionHandler {
             }
             _ => Err("First line of rollout file is not a JSON object".to_string()),
         }
+    }
+
+    // Build a new rollout filename, ignoring any original name.
+    // Always returns: rollout-<timestamp>-<id>.jsonl
+    fn new_rollout_filename(new_id: &str) -> String {
+        let now_ts = chrono::Local::now().format("%Y-%m-%dT%H-%M-%S").to_string();
+        format!("rollout-{now_ts}-{new_id}.jsonl")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SessionHandler;
+
+    #[test]
+    fn test_new_rollout_filename_pattern() {
+        let id = "ID-123";
+        let out = SessionHandler::new_rollout_filename(id);
+        // rollout-YYYY-MM-DDTHH-MM-SS-ID-123.jsonl
+        let re = regex::Regex::new(r"^rollout-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-ID-123\.jsonl$")
+            .unwrap();
+        assert!(re.is_match(&out), "Unexpected filename: {out}");
     }
 }
