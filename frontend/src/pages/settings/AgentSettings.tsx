@@ -41,6 +41,7 @@ export function AgentSettings() {
   // Local editor state (draft that may differ from server)
   const [localProfilesContent, setLocalProfilesContent] = useState('');
   const [profilesSuccess, setProfilesSuccess] = useState(false);
+  const [profilesError, setProfilesError] = useState<string | null>(null);
 
   // Form-based editor state
   const [useFormEditor, setUseFormEditor] = useState(true);
@@ -160,6 +161,9 @@ export function AgentSettings() {
       return;
     }
 
+    // Clear any previous errors
+    setProfilesError(null);
+
     try {
       // Validate that the configuration exists
       if (
@@ -216,8 +220,12 @@ export function AgentSettings() {
         // Show success
         setProfilesSuccess(true);
         setTimeout(() => setProfilesSuccess(false), 3000);
+
+        // Refresh global system so deleted configs are removed elsewhere
+        reloadSystem();
       } catch (saveError: unknown) {
         console.error('Failed to save deletion to backend:', saveError);
+        setProfilesError('Failed to delete configuration. Please try again.');
       }
     } catch (error) {
       console.error('Error deleting configuration:', error);
@@ -241,6 +249,9 @@ export function AgentSettings() {
   };
 
   const handleSaveProfiles = async () => {
+    // Clear any previous errors
+    setProfilesError(null);
+
     try {
       const contentToSave =
         useFormEditor && localParsedProfiles
@@ -261,6 +272,9 @@ export function AgentSettings() {
       reloadSystem();
     } catch (err: unknown) {
       console.error('Failed to save profiles:', err);
+      setProfilesError(
+        'Failed to save agent configurations. Please try again.'
+      );
     }
   };
 
@@ -290,6 +304,9 @@ export function AgentSettings() {
 
   const handleExecutorConfigSave = async (formData: unknown) => {
     if (!localParsedProfiles || !localParsedProfiles.executors) return;
+
+    // Clear any previous errors
+    setProfilesError(null);
 
     // Update the parsed profiles with the saved config
     const updatedProfiles = {
@@ -324,6 +341,7 @@ export function AgentSettings() {
       reloadSystem();
     } catch (err: unknown) {
       console.error('Failed to save profiles:', err);
+      setProfilesError('Failed to save configuration. Please try again.');
     }
   };
 
@@ -353,6 +371,12 @@ export function AgentSettings() {
           <AlertDescription className="font-medium">
             ✓ Executor configurations saved successfully!
           </AlertDescription>
+        </Alert>
+      )}
+
+      {profilesError && (
+        <Alert variant="destructive">
+          <AlertDescription>{profilesError}</AlertDescription>
         </Alert>
       )}
 
