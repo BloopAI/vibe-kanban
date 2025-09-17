@@ -304,18 +304,8 @@ impl GitCli {
         refspec: &str,
         token: &str,
     ) -> Result<(), GitCliError> {
-        let auth_value = BASE64_STANDARD.encode(format!("x-access-token:{token}"));
-        let auth_header = format!("Authorization: Basic {auth_value}");
-
-        let envs = [
-            (OsString::from("GIT_TERMINAL_PROMPT"), OsString::from("0")),
-            (OsString::from("GIT_ASKPASS"), OsString::from("")),
-            (OsString::from("SSH_ASKPASS"), OsString::from("")),
-            (
-                OsString::from("GIT_HTTP_EXTRAHEADER"),
-                OsString::from(auth_header),
-            ),
-        ];
+        let auth_header = self.build_auth_header(token);
+        let envs = self.build_token_env(&auth_header);
 
         let args = [
             OsString::from("-c"),
@@ -329,7 +319,7 @@ impl GitCli {
 
         match self.git_with_env(repo_path, args, &envs) {
             Ok(_) => Ok(()),
-            Err(GitCliError::CommandFailed(msg)) => Err(classify_cli_error(msg)),
+            Err(GitCliError::CommandFailed(msg)) => Err(self.classify_cli_error(msg)),
             Err(err) => Err(err),
         }
     }
@@ -343,18 +333,8 @@ impl GitCli {
         token: &str,
     ) -> Result<(), GitCliError> {
         let refspec = format!("refs/heads/{branch}:refs/heads/{branch}");
-        let auth_value = BASE64_STANDARD.encode(format!("x-access-token:{token}"));
-        let auth_header = format!("Authorization: Basic {auth_value}");
-
-        let envs = [
-            (OsString::from("GIT_TERMINAL_PROMPT"), OsString::from("0")),
-            (OsString::from("GIT_ASKPASS"), OsString::from("")),
-            (OsString::from("SSH_ASKPASS"), OsString::from("")),
-            (
-                OsString::from("GIT_HTTP_EXTRAHEADER"),
-                OsString::from(auth_header),
-            ),
-        ];
+        let auth_header = self.build_auth_header(token);
+        let envs = self.build_token_env(&auth_header);
 
         let args = [
             OsString::from("-c"),
@@ -368,7 +348,7 @@ impl GitCli {
 
         match self.git_with_env(repo_path, args, &envs) {
             Ok(_) => Ok(()),
-            Err(GitCliError::CommandFailed(msg)) => Err(classify_cli_error(msg)),
+            Err(GitCliError::CommandFailed(msg)) => Err(self.classify_cli_error(msg)),
             Err(err) => Err(err),
         }
     }
@@ -586,22 +566,39 @@ impl GitCli {
     }
 }
 
-fn classify_cli_error(msg: String) -> GitCliError {
-    let lower = msg.to_ascii_lowercase();
-    if lower.contains("authentication failed")
-        || lower.contains("could not read username")
-        || lower.contains("invalid username or password")
-    {
-        GitCliError::AuthFailed(msg)
-    } else if lower.contains("non-fast-forward") {
-        GitCliError::PushRejected(msg)
-    } else {
-        GitCliError::CommandFailed(msg)
-    }
-}
-
 // Private methods
 impl GitCli {
+    fn classify_cli_error(&self, msg: String) -> GitCliError {
+        let lower = msg.to_ascii_lowercase();
+        if lower.contains("authentication failed")
+            || lower.contains("could not read username")
+            || lower.contains("invalid username or password")
+        {
+            GitCliError::AuthFailed(msg)
+        } else if lower.contains("non-fast-forward") {
+            GitCliError::PushRejected(msg)
+        } else {
+            GitCliError::CommandFailed(msg)
+        }
+    }
+
+    fn build_auth_header(&self, token: &str) -> String {
+        let auth_value = BASE64_STANDARD.encode(format!("x-access-token:{token}"));
+        format!("Authorization: Basic {auth_value}")
+    }
+
+    fn build_token_env(&self, auth_header: &str) -> Vec<(OsString, OsString)> {
+        vec![
+            (OsString::from("GIT_TERMINAL_PROMPT"), OsString::from("0")),
+            (OsString::from("GIT_ASKPASS"), OsString::from("")),
+            (OsString::from("SSH_ASKPASS"), OsString::from("")),
+            (
+                OsString::from("GIT_HTTP_EXTRAHEADER"),
+                OsString::from(auth_header),
+            ),
+        ]
+    }
+
     /// Ensure `git` is available on PATH
     fn ensure_available(&self) -> Result<(), GitCliError> {
         let git = resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?;
