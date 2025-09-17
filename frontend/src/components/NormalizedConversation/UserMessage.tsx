@@ -4,7 +4,8 @@ import { Pencil, Send, X } from 'lucide-react';
 import { useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { useProcessRetry } from '@/hooks/useProcessRetry';
-import { TaskAttempt } from 'shared/types';
+import { TaskAttempt, type BaseAgentCapability } from 'shared/types';
+import { useUserSystem } from '@/components/config-provider';
 
 const UserMessage = ({
   content,
@@ -18,6 +19,14 @@ const UserMessage = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(content);
   const retryHook = useProcessRetry(taskAttempt);
+  const { capabilities } = useUserSystem();
+
+  const canFork = !!(
+    taskAttempt?.executor &&
+    capabilities?.[taskAttempt.executor]?.includes(
+      'SESSION_FORK' as BaseAgentCapability
+    )
+  );
 
   const handleEdit = () => {
     if (!executionProcessId) return;
@@ -42,7 +51,7 @@ const UserMessage = ({
             />
           )}
         </div>
-        {executionProcessId && (
+        {executionProcessId && canFork && (
           <div className="flex flex-col">
             <Button
               onClick={() => setIsEditing(!isEditing)}

@@ -64,7 +64,7 @@ pub struct UserSystemInfo {
     #[serde(flatten)]
     pub profiles: ExecutorConfigs,
     pub environment: Environment,
-    /// Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["RESTORE_CHECKPOINT"] })
+    /// Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
     pub capabilities: HashMap<String, Vec<BaseAgentCapability>>,
 }
 

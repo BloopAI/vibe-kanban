@@ -31,7 +31,7 @@ pub mod qwen;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum BaseAgentCapability {
-    RestoreCheckpoint,
+    SessionFork,
 }
 
 #[derive(Debug, Error)]
@@ -122,9 +122,9 @@ impl CodingAgent {
 
     pub fn capabilities(&self) -> Vec<BaseAgentCapability> {
         match self {
-            Self::ClaudeCode(_) => vec![BaseAgentCapability::RestoreCheckpoint],
-            Self::Amp(_) => vec![BaseAgentCapability::RestoreCheckpoint],
-            Self::Codex(_) => vec![BaseAgentCapability::RestoreCheckpoint],
+            Self::ClaudeCode(_) => vec![BaseAgentCapability::SessionFork],
+            Self::Amp(_) => vec![BaseAgentCapability::SessionFork],
+            Self::Codex(_) => vec![BaseAgentCapability::SessionFork],
             Self::Gemini(_) | Self::Opencode(_) | Self::Cursor(_) | Self::QwenCode(_) => vec![],
         }
     }

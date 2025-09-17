@@ -60,7 +60,7 @@ export type ApiResponse<T, E = T> = { success: boolean, data: T | null, error_da
 
 export type UserSystemInfo = { config: Config, environment: Environment, 
 /**
- * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["RESTORE_CHECKPOINT"] })
+ * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
  */
 capabilities: { [key in string]?: Array<BaseAgentCapability> }, executors: { [key in BaseCodingAgent]?: ExecutorConfig }, };
 
@@ -136,7 +136,7 @@ variant: string | null, };
 
 export type ExecutorConfig = { [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor } | { "QWEN_CODE": QwenCode } };
 
-export type BaseAgentCapability = "RESTORE_CHECKPOINT";
+export type BaseAgentCapability = "SESSION_FORK";
 
 export type ClaudeCode = { append_prompt: AppendPrompt, claude_code_router?: boolean | null, plan?: boolean | null, model?: string | null, dangerously_skip_permissions?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, };
 
