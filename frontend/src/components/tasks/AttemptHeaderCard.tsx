@@ -13,6 +13,9 @@ import { useRebase } from '@/hooks/useRebase';
 import { useMerge } from '@/hooks/useMerge';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import { useDiffSummary } from '@/hooks/useDiffSummary';
+import { useBranchStatus } from '@/hooks';
+import { useAttemptExecution } from '@/hooks/useAttemptExecution';
+import { useMemo, useState } from 'react';
 import NiceModal from '@ebay/nice-modal-react';
 
 interface AttemptHeaderCardProps {
@@ -44,6 +47,55 @@ export function AttemptHeaderCard({
   const { fileCount, added, deleted } = useDiffSummary(
     selectedAttempt?.id ?? null
   );
+
+  // Branch status and execution state
+  const { data: branchStatus } = useBranchStatus(selectedAttempt?.id);
+  const { isAttemptRunning } = useAttemptExecution(selectedAttempt?.id, task.id);
+
+  // Loading states
+  const [rebasing, setRebasing] = useState(false);
+  const [merging, setMerging] = useState(false);
+
+  // Check for conflicts
+  const hasConflicts = useMemo(
+    () => Boolean((branchStatus?.conflicted_files?.length ?? 0) > 0),
+    [branchStatus?.conflicted_files]
+  );
+
+  // Merge status information
+  const mergeInfo = useMemo(() => {
+    if (!branchStatus?.merges)
+      return {
+        hasOpenPR: false,
+        openPR: null,
+        hasMergedPR: false,
+        mergedPR: null,
+        hasMerged: false,
+      };
+
+    const openPR = branchStatus.merges.find(
+      (m) => m.type === 'pr' && m.pr_info.status === 'open'
+    );
+
+    const mergedPR = branchStatus.merges.find(
+      (m) => m.type === 'pr' && m.pr_info.status === 'merged'
+    );
+
+    const merges = branchStatus.merges.filter(
+      (m) =>
+        m.type === 'direct' ||
+        (m.type === 'pr' && m.pr_info.status === 'merged')
+    );
+
+    return {
+      hasOpenPR: !!openPR,
+      openPR,
+      hasMergedPR: !!mergedPR,
+      mergedPR,
+      hasMerged: merges.length > 0,
+    };
+  }, [branchStatus?.merges]);
+
   const handleCreatePR = () => {
     if (selectedAttempt) {
       NiceModal.show('create-pr', {
@@ -51,6 +103,28 @@ export function AttemptHeaderCard({
         task,
         projectId,
       });
+    }
+  };
+
+  const handleRebaseClick = async () => {
+    setRebasing(true);
+    try {
+      await rebaseMutation.mutateAsync(undefined);
+    } catch (error) {
+      // Error handling is done by the mutation
+    } finally {
+      setRebasing(false);
+    }
+  };
+
+  const handleMergeClick = async () => {
+    setMerging(true);
+    try {
+      await mergeMutation.mutateAsync();
+    } catch (error) {
+      // Error handling is done by the mutation
+    } finally {
+      setMerging(false);
     }
   };
 
@@ -109,24 +183,35 @@ export function AttemptHeaderCard({
           >
             {runningDevServer ? 'Stop dev server' : 'Start dev server'}
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => rebaseMutation.mutate(undefined)}
-            disabled={!selectedAttempt}
-          >
-            Rebase
-          </DropdownMenuItem>
+          {selectedAttempt && branchStatus && !mergeInfo.hasMergedPR && (branchStatus.commits_behind ?? 0) > 0 && (
+            <DropdownMenuItem
+              onClick={handleRebaseClick}
+              disabled={rebasing || isAttemptRunning || hasConflicts}
+            >
+              {rebasing ? 'Rebasing...' : 'Rebase'}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             onClick={handleCreatePR}
             disabled={!selectedAttempt}
           >
             Create PR
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => mergeMutation.mutate()}
-            disabled={!selectedAttempt}
-          >
-            Merge
-          </DropdownMenuItem>
+          {selectedAttempt && branchStatus && !mergeInfo.hasMergedPR && (
+            <DropdownMenuItem
+              onClick={handleMergeClick}
+              disabled={
+                mergeInfo.hasOpenPR ||
+                merging ||
+                hasConflicts ||
+                Boolean((branchStatus.commits_behind ?? 0) > 0) ||
+                isAttemptRunning ||
+                ((branchStatus.commits_ahead ?? 0) === 0)
+              }
+            >
+              {merging ? 'Merging...' : 'Merge'}
+            </DropdownMenuItem>
+          )}
           {/* <DropdownMenuItem
             onClick={onCreateNewAttempt}
             disabled={!onCreateNewAttempt}
