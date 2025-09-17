@@ -21,7 +21,7 @@ pub async fn read_port_file(app_name: &str) -> std::io::Result<u16> {
         env::temp_dir()
     };
 
-    let path = base.join(app_name).join(format!("{}.port", app_name));
+    let path = base.join(app_name).join(format!("{app_name}.port"));
     tracing::debug!("Reading port from {:?}", path);
 
     let content = fs::read_to_string(&path).await?;

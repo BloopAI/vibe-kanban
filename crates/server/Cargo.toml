@@ -25,7 +25,7 @@ tracing-subscriber = { workspace = true }
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
-ts-rs = { workspace = true, features = ["serde-json-impl"]}
+ts-rs = { workspace = true }
 async-trait = "0.1"
 command-group = { version = "5.0", features = ["with-tokio"] }
 nix = { version = "0.29", features = ["signal", "process"] }

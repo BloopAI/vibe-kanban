@@ -1,20 +1,20 @@
-import { useEffect } from 'react';
 import { type FileChange } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
-import { Trash2, FilePlus2, ArrowRight } from 'lucide-react';
+import { Trash2, FilePlus2, ArrowRight, FileX, FileClock } from 'lucide-react';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import { getActualTheme } from '@/utils/theme';
 import EditDiffRenderer from './EditDiffRenderer';
 import FileContentView from './FileContentView';
 import '@/styles/diff-style-overrides.css';
 import { useExpandable } from '@/stores/useExpandableStore';
-import { useAutoExpandOnce } from '@/hooks/useAutoExpandOnce';
+import { cn } from '@/lib/utils';
 
 type Props = {
   path: string;
   change: FileChange;
   expansionKey: string;
-  autoExpand?: boolean;
+  defaultExpanded?: boolean;
+  statusAppearance?: 'default' | 'denied' | 'timed_out';
 };
 
 function isWrite(
@@ -42,25 +42,32 @@ const FileChangeRenderer = ({
   path,
   change,
   expansionKey,
-  autoExpand,
+  defaultExpanded = false,
+  statusAppearance = 'default',
 }: Props) => {
   const { config } = useUserSystem();
-  const [expanded, setExpanded] = useExpandable(expansionKey, false);
-
-  useAutoExpandOnce({
-    autoExpand,
-    expanded,
-    expand: () => setExpanded(true),
-    condition: isWrite(change),
-  });
-
-  useEffect(() => {
-    if (autoExpand === false && expanded) {
-      setExpanded(false);
-    }
-  }, [autoExpand, expanded, setExpanded]);
+  const [expanded, setExpanded] = useExpandable(expansionKey, defaultExpanded);
 
   const theme = getActualTheme(config?.theme);
+  const headerClass = cn('flex items-center gap-1.5 text-secondary-foreground');
+
+  const statusIcon =
+    statusAppearance === 'denied' ? (
+      <FileX className="h-3 w-3" />
+    ) : statusAppearance === 'timed_out' ? (
+      <FileClock className="h-3 w-3" />
+    ) : null;
+
+  if (statusIcon) {
+    return (
+      <div>
+        <div className={headerClass}>
+          {statusIcon}
+          <p className="text-sm font-light overflow-x-auto flex-1">{path}</p>
+        </div>
+      </div>
+    );
+  }
 
   // Edit: delegate to EditDiffRenderer for identical styling and behavior
   if (isEdit(change)) {
@@ -70,7 +77,8 @@ const FileChangeRenderer = ({
         unifiedDiff={change.unified_diff}
         hasLineNumbers={change.has_line_numbers}
         expansionKey={expansionKey}
-        autoExpand={autoExpand}
+        defaultExpanded={defaultExpanded}
+        statusAppearance={statusAppearance}
       />
     );
   }
@@ -120,7 +128,7 @@ const FileChangeRenderer = ({
 
   return (
     <div>
-      <div className="flex items-center text-secondary-foreground gap-1.5">
+      <div className={headerClass}>
         {icon}
         <p
           onClick={() => expandable && setExpanded()}

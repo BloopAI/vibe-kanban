@@ -3,8 +3,6 @@ import type {
   ExecutionProcess,
   NormalizedEntry,
   PatchType,
-  ApprovalRequest,
-  ApprovalResponse,
 } from 'shared/types';
 import type { UnifiedLogEntry, ProcessStartPayload } from '@/types/logs';
 import { useEventSourceManager } from './useEventSourceManager';
@@ -71,20 +69,14 @@ export const useProcessesLogs = (
         (
           patchEntry:
             | PatchType
-            | { type: 'PROCESS_START'; content: ProcessStartPayload }
-            | { type: 'APPROVAL_REQUEST'; content: ApprovalRequest }
-            | { type: 'APPROVAL_RESPONSE'; content: ApprovalResponse },
+            | { type: 'PROCESS_START'; content: ProcessStartPayload },
           index: number
         ) => {
           // Skip the injected PROCESS_START entry since we handle it above
           if (patchEntry.type === 'PROCESS_START') return;
 
           let channel: UnifiedLogEntry['channel'];
-          let payload:
-            | string
-            | NormalizedEntry
-            | ApprovalRequest
-            | ApprovalResponse;
+          let payload: string | NormalizedEntry;
 
           switch (patchEntry.type) {
             case 'STDOUT':
@@ -97,18 +89,6 @@ export const useProcessesLogs = (
               break;
             case 'NORMALIZED_ENTRY':
               channel = 'normalized';
-              payload = patchEntry.content;
-              break;
-            case 'APPROVAL_REQUEST':
-              channel = 'approval_request';
-              payload = patchEntry.content;
-              break;
-            case 'APPROVAL_RESPONSE':
-              channel = 'approval_response';
-              payload = patchEntry.content;
-              break;
-            case 'APPROVAL_PENDING':
-              channel = 'approval_pending';
               payload = patchEntry.content;
               break;
             default:

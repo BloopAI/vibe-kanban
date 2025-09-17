@@ -1,11 +1,8 @@
 use json_patch::Patch;
 use serde::{Deserialize, Serialize};
-use serde_json::{from_value, json};
+use serde_json::{from_value, json, to_value};
 use ts_rs::TS;
-use utils::{
-    approvals::{ApprovalId, ApprovalRequest, ApprovalResponse},
-    diff::Diff,
-};
+use workspace_utils::diff::Diff;
 
 use crate::logs::NormalizedEntry;
 
@@ -25,9 +22,6 @@ pub enum PatchType {
     Stdout(String),
     Stderr(String),
     Diff(Diff),
-    ApprovalRequest(ApprovalRequest),
-    ApprovalResponse(ApprovalResponse),
-    ApprovalPending(ApprovalId),
 }
 
 #[derive(Serialize)]
@@ -119,37 +113,21 @@ impl ConversationPatch {
 
         from_value(json!([patch_entry])).unwrap()
     }
+}
 
-    /// Create an ADD patch for a new approval request at the given index
-    pub fn add_approval_request(entry_index: usize, request: ApprovalRequest) -> Patch {
-        let patch_entry = PatchEntry {
-            op: PatchOperation::Add,
-            path: format!("/entries/{entry_index}"),
-            value: PatchType::ApprovalRequest(request),
-        };
+/// Extract the entry index and `NormalizedEntry` from a JsonPatch if it contains one
+pub fn extract_normalized_entry_from_patch(patch: &Patch) -> Option<(usize, NormalizedEntry)> {
+    let value = to_value(patch).ok()?;
+    let ops = value.as_array()?;
+    ops.iter().rev().find_map(|op| {
+        let path = op.get("path")?.as_str()?;
+        let entry_index = path.strip_prefix("/entries/")?.parse::<usize>().ok()?;
 
-        from_value(json!([patch_entry])).unwrap()
-    }
-
-    /// Create an ADD patch for an approval pending placeholder at the given index
-    pub fn add_approval_pending(entry_index: usize, id: ApprovalId) -> Patch {
-        let patch_entry = PatchEntry {
-            op: PatchOperation::Add,
-            path: format!("/entries/{entry_index}"),
-            value: PatchType::ApprovalPending(id),
-        };
-
-        from_value(json!([patch_entry])).unwrap()
-    }
-
-    /// Create a REPLACE patch for replacing an approval pending placeholder with a response
-    pub fn replace_approval_response(entry_index: usize, response: ApprovalResponse) -> Patch {
-        let patch_entry = PatchEntry {
-            op: PatchOperation::Replace,
-            path: format!("/entries/{entry_index}"),
-            value: PatchType::ApprovalResponse(response),
-        };
-
-        from_value(json!([patch_entry])).unwrap()
-    }
+        let value = op.get("value")?;
+        (value.get("type")?.as_str()? == "NORMALIZED_ENTRY")
+            .then(|| value.get("content"))
+            .flatten()
+            .and_then(|c| from_value::<NormalizedEntry>(c.clone()).ok())
+            .map(|entry| (entry_index, entry))
+    })
 }

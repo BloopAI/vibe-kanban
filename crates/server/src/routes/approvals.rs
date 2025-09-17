@@ -4,9 +4,12 @@ use axum::{
     http::StatusCode,
     routing::{get, post},
 };
+use db::models::execution_process::ExecutionProcess;
 use deployment::Deployment;
+use services::services::container::ContainerService;
 use utils::approvals::{
-    ApprovalRequest, ApprovalResponseRequest, ApprovalStatus, CreateApprovalRequest,
+    ApprovalPendingInfo, ApprovalRequest, ApprovalResponse, ApprovalStatus, CreateApprovalRequest,
+    EXIT_PLAN_MODE_TOOL_NAME,
 };
 
 use crate::DeploymentImpl;
@@ -19,7 +22,7 @@ pub async fn create_approval(
     let approval_request = ApprovalRequest::from_create(request);
 
     match service.create(approval_request).await {
-        Ok(approval) => Ok(Json(approval)),
+        Ok(approval) => Ok(Json(dbg!(approval))),
         Err(e) => {
             tracing::error!("Failed to create approval: {:?}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -41,12 +44,30 @@ pub async fn get_approval_status(
 pub async fn respond_to_approval(
     State(deployment): State<DeploymentImpl>,
     Path(id): Path<String>,
-    Json(request): Json<ApprovalResponseRequest>,
-) -> Result<(), StatusCode> {
+    Json(request): Json<ApprovalResponse>,
+) -> Result<Json<ApprovalStatus>, StatusCode> {
     let service = deployment.approvals();
 
     match service.respond(&id, request).await {
-        Ok(_) => Ok(()),
+        Ok((status, context)) => {
+            if matches!(status, ApprovalStatus::Approved)
+                && context.tool_name == EXIT_PLAN_MODE_TOOL_NAME
+            {
+                // If exiting plan mode, automatically start a new execution process with different
+                // permissions
+                if let Ok(ctx) = ExecutionProcess::load_context(
+                    &deployment.db().pool,
+                    context.execution_process_id,
+                )
+                .await
+                    && let Err(e) = deployment.container().exit_plan_mode_tool(ctx).await
+                {
+                    tracing::error!("failed to exit plan mode: {:?}", e);
+                    return Err(StatusCode::INTERNAL_SERVER_ERROR);
+                }
+            }
+            Ok(Json(status))
+        }
         Err(e) => {
             tracing::error!("Failed to respond to approval: {:?}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -56,7 +77,7 @@ pub async fn respond_to_approval(
 
 pub async fn get_pending_approvals(
     State(deployment): State<DeploymentImpl>,
-) -> Json<Vec<ApprovalRequest>> {
+) -> Json<Vec<ApprovalPendingInfo>> {
     let service = deployment.approvals();
     let approvals = service.pending().await;
     Json(approvals)

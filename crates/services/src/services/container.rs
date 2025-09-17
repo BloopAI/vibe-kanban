@@ -23,11 +23,12 @@ use db::{
 use executors::{
     actions::{
         ExecutorAction, ExecutorActionType,
+        coding_agent_follow_up::CodingAgentFollowUpRequest,
         coding_agent_initial::CodingAgentInitialRequest,
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
     executors::{ExecutorError, StandardCodingAgentExecutor},
-    profile::{ExecutorConfigs, ExecutorProfileId},
+    profile::{ExecutorConfigs, ExecutorProfileId, to_default_variant},
 };
 use futures::{StreamExt, future};
 use sqlx::Error as SqlxError;
@@ -687,6 +688,68 @@ pub trait ContainerService {
             .await?;
 
         tracing::debug!("Started next action: {:?}", next_action);
+        Ok(())
+    }
+
+    async fn exit_plan_mode_tool(&self, ctx: ExecutionContext) -> Result<(), ContainerError> {
+        let execution_id = ctx.execution_process.id;
+
+        if let Err(err) = self.stop_execution(&ctx.execution_process).await {
+            tracing::error!("Failed to stop execution process {}: {}", execution_id, err);
+            return Err(err);
+        }
+        let _ = ExecutionProcess::update_completion(
+            &self.db().pool,
+            execution_id,
+            ExecutionProcessStatus::Completed,
+            Some(0),
+        )
+        .await;
+
+        let action = ctx.execution_process.executor_action()?;
+        let executor_profile_id = match action.typ() {
+            ExecutorActionType::CodingAgentInitialRequest(req) => req.executor_profile_id.clone(),
+            ExecutorActionType::CodingAgentFollowUpRequest(req) => req.executor_profile_id.clone(),
+            _ => {
+                return Err(ContainerError::Other(anyhow::anyhow!(
+                    "exit plan mode tool called on non-coding agent action"
+                )));
+            }
+        };
+        let cleanup_chain = action.next_action().cloned();
+
+        let session_id =
+            ExecutorSession::find_by_execution_process_id(&self.db().pool, execution_id)
+                .await?
+                .and_then(|s| s.session_id);
+        if session_id.is_none() {
+            tracing::warn!(
+                "No executor session found for execution process {}",
+                execution_id
+            );
+            return Err(ContainerError::Other(anyhow::anyhow!(
+                "No executor session found"
+            )));
+        }
+
+        let default_profile = to_default_variant(&executor_profile_id);
+        let follow_up = CodingAgentFollowUpRequest {
+            prompt: String::from("The plan has been approved, please execute it."),
+            session_id: session_id.unwrap(),
+            executor_profile_id: default_profile,
+        };
+        let action = ExecutorAction::new(
+            ExecutorActionType::CodingAgentFollowUpRequest(follow_up),
+            cleanup_chain.map(Box::new),
+        );
+
+        let _ = self
+            .start_execution(
+                &ctx.task_attempt,
+                &action,
+                &ExecutionProcessRunReason::CodingAgent,
+            )
+            .await?;
         Ok(())
     }
 }

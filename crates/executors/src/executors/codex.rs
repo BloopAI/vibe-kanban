@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use strum_macros::AsRefStr;
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
-use utils::{
+use workspace_utils::{
     diff::{concatenate_diff_hunks, extract_unified_diff_hunks},
     msg_store::MsgStore,
     path::make_path_relative,
@@ -24,7 +24,7 @@ use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{AppendPrompt, ExecutorError, StandardCodingAgentExecutor},
     logs::{
-        ActionType, FileChange, NormalizedEntry, NormalizedEntryType,
+        ActionType, FileChange, NormalizedEntry, NormalizedEntryType, ToolStatus,
         utils::{EntryIndexProvider, patch::ConversationPatch},
     },
 };
@@ -412,6 +412,7 @@ impl StandardCodingAgentExecutor for Codex {
                                             command: command_str.clone(),
                                             result: None,
                                         },
+                                        status: ToolStatus::Created,
                                     },
                                     content: format!("`{command_str}`"),
                                     metadata: None,
@@ -484,6 +485,24 @@ impl StandardCodingAgentExecutor for Codex {
                                             crate::logs::CommandExitStatus::ExitCode { code: *code }
                                         })
                                     };
+
+                                    let status = if let Some(s) = success {
+                                        if *s {
+                                            ToolStatus::Success
+                                        } else {
+                                            ToolStatus::Failed
+                                        }
+                                    } else if let Some(code) = exit_code {
+                                        if *code == 0 {
+                                            ToolStatus::Success
+                                        } else {
+                                            ToolStatus::Failed
+                                        }
+                                    } else {
+                                        // Default to failed status
+                                        ToolStatus::Failed
+                                    };
+
                                     let entry = NormalizedEntry {
                                         timestamp: None,
                                         entry_type: NormalizedEntryType::ToolUse {
@@ -495,6 +514,7 @@ impl StandardCodingAgentExecutor for Codex {
                                                     output,
                                                 }),
                                             },
+                                            status,
                                         },
                                         content: prev_content,
                                         metadata: None,
@@ -518,6 +538,7 @@ impl StandardCodingAgentExecutor for Codex {
                                             arguments: invocation.arguments.clone(),
                                             result: None,
                                         },
+                                        status: ToolStatus::Created,
                                     },
                                     content: content_str.clone(),
                                     metadata: None,
@@ -553,6 +574,7 @@ impl StandardCodingAgentExecutor for Codex {
                                                     value: result.clone(),
                                                 }),
                                             },
+                                            status: ToolStatus::Success,
                                         },
                                         content: prev_content,
                                         metadata: None,
@@ -877,6 +899,7 @@ impl CodexJson {
                                         path: relative_path.clone(),
                                         changes,
                                     },
+                                    status: ToolStatus::Success,
                                 },
                                 content: relative_path,
                                 metadata: None,
@@ -1264,6 +1287,7 @@ invalid json line here
         if let NormalizedEntryType::ToolUse {
             tool_name,
             action_type,
+            status: _,
         } = &entries[0].entry_type
         {
             assert_eq!(tool_name, "edit");

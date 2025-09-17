@@ -1,5 +1,7 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
+use workspace_utils::approvals::ApprovalStatus;
 
 pub mod plain_text_processor;
 pub mod stderr_processor;
@@ -45,6 +47,7 @@ pub struct NormalizedConversation {
     pub summary: Option<String>,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum NormalizedEntryType {
@@ -53,6 +56,7 @@ pub enum NormalizedEntryType {
     ToolUse {
         tool_name: String,
         action_type: ActionType,
+        status: ToolStatus,
     },
     SystemMessage,
     ErrorMessage,
@@ -67,6 +71,59 @@ pub struct NormalizedEntry {
     pub content: String,
     #[ts(skip)]
     pub metadata: Option<serde_json::Value>,
+}
+
+impl NormalizedEntry {
+    pub fn with_tool_status(&self, status: ToolStatus) -> Option<Self> {
+        if let NormalizedEntryType::ToolUse {
+            tool_name,
+            action_type,
+            ..
+        } = &self.entry_type
+        {
+            Some(Self {
+                entry_type: NormalizedEntryType::ToolUse {
+                    tool_name: tool_name.clone(),
+                    action_type: action_type.clone(),
+                    status,
+                },
+                ..self.clone()
+            })
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum ToolStatus {
+    Created,
+    Success,
+    Failed,
+    Denied {
+        reason: Option<String>,
+    },
+    PendingApproval {
+        approval_id: String,
+        requested_at: DateTime<Utc>,
+        timeout_at: DateTime<Utc>,
+    },
+    TimedOut,
+}
+
+impl ToolStatus {
+    pub fn from_approval_status(status: &ApprovalStatus) -> Option<Self> {
+        match status {
+            ApprovalStatus::Approved => Some(ToolStatus::Created),
+            ApprovalStatus::Denied { reason } => Some(ToolStatus::Denied {
+                reason: reason.clone(),
+            }),
+            ApprovalStatus::TimedOut => Some(ToolStatus::TimedOut),
+            ApprovalStatus::Pending => None, // this should not happen
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

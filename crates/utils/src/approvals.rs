@@ -3,11 +3,10 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-pub type ApprovalId = String;
 pub const APPROVAL_TIMEOUT_SECONDS: i64 = 120;
+pub const EXIT_PLAN_MODE_TOOL_NAME: &str = "ExitPlanMode";
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct ApprovalRequest {
     pub id: String,
     pub tool_name: String,
@@ -55,13 +54,16 @@ pub enum ApprovalStatus {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct ApprovalResponse {
-    pub id: String,
+    pub execution_process_id: Uuid,
     pub status: ApprovalStatus,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
-pub struct ApprovalResponseRequest {
+pub struct ApprovalPendingInfo {
+    pub approval_id: String,
     pub execution_process_id: Uuid,
-    pub status: ApprovalStatus,
+    pub tool_name: String,
+    pub requested_at: DateTime<Utc>,
+    pub timeout_at: DateTime<Utc>,
 }

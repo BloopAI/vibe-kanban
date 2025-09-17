@@ -362,7 +362,7 @@ impl PlainTextLogProcessor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::logs::NormalizedEntryType;
+    use crate::logs::{NormalizedEntryType, ToolStatus};
 
     #[test]
     fn test_plain_buffer_flush() {
@@ -432,6 +432,7 @@ mod tests {
                         action_type: super::super::ActionType::Other {
                             description: tool_name.to_string(),
                         },
+                        status: ToolStatus::Success,
                     },
                     content,
                     metadata: None,

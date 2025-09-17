@@ -16,7 +16,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
-use utils::{msg_store::MsgStore, path::make_path_relative, shell::get_shell_command};
+use workspace_utils::{msg_store::MsgStore, path::make_path_relative, shell::get_shell_command};
 
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
@@ -25,7 +25,7 @@ use crate::{
         opencode::share_bridge::Bridge as ShareBridge,
     },
     logs::{
-        ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem,
+        ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem, ToolStatus,
         utils::EntryIndexProvider,
     },
     stdout_dup,
@@ -796,6 +796,7 @@ impl Opencode {
                         entry_type: NormalizedEntryType::ToolUse {
                             tool_name: tool.clone(),
                             action_type: resolved_action_type,
+                            status: ToolStatus::Success,
                         },
                         content: content_text,
                         metadata: None,

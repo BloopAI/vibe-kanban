@@ -266,7 +266,7 @@ export type CommandRunResult = { exit_status: CommandExitStatus | null, output: 
 
 export type NormalizedEntry = { timestamp: string | null, entry_type: NormalizedEntryType, content: string, };
 
-export type NormalizedEntryType = { "type": "user_message" } | { "type": "assistant_message" } | { "type": "tool_use", tool_name: string, action_type: ActionType, } | { "type": "system_message" } | { "type": "error_message" } | { "type": "thinking" } | { "type": "loading" };
+export type NormalizedEntryType = { "type": "user_message" } | { "type": "assistant_message" } | { "type": "tool_use", tool_name: string, action_type: ActionType, status: ToolStatus, } | { "type": "system_message" } | { "type": "error_message" } | { "type": "thinking" } | { "type": "loading" };
 
 export type FileChange = { "action": "write", content: string, } | { "action": "delete" } | { "action": "rename", new_path: string, } | { "action": "edit", 
 /**
@@ -290,16 +290,14 @@ value: JsonValue, };
 
 export type ToolResultValueType = { "type": "markdown" } | { "type": "json" };
 
-export type PatchType = { "type": "NORMALIZED_ENTRY", "content": NormalizedEntry } | { "type": "STDOUT", "content": string } | { "type": "STDERR", "content": string } | { "type": "DIFF", "content": Diff } | { "type": "APPROVAL_REQUEST", "content": ApprovalRequest } | { "type": "APPROVAL_RESPONSE", "content": ApprovalResponse } | { "type": "APPROVAL_PENDING", "content": string };
+export type ToolStatus = { "status": "created" } | { "status": "success" } | { "status": "failed" } | { "status": "denied", reason: string | null, } | { "status": "pending_approval", approval_id: string, requested_at: string, timeout_at: string, } | { "status": "timed_out" };
 
-export type ApprovalRequest = { id: string, tool_name: string, tool_input: JsonValue, session_id: string, created_at: string, timeout_at: string, };
-
-export type ApprovalResponse = { id: string, status: ApprovalStatus, };
+export type PatchType = { "type": "NORMALIZED_ENTRY", "content": NormalizedEntry } | { "type": "STDOUT", "content": string } | { "type": "STDERR", "content": string } | { "type": "DIFF", "content": Diff };
 
 export type ApprovalStatus = { "status": "pending" } | { "status": "approved" } | { "status": "denied", reason?: string, } | { "status": "timed_out" };
 
 export type CreateApprovalRequest = { tool_name: string, tool_input: JsonValue, session_id: string, };
 
-export type ApprovalResponseRequest = { execution_process_id: string, status: ApprovalStatus, };
+export type ApprovalResponse = { execution_process_id: string, status: ApprovalStatus, };
 
 export type JsonValue = number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null;

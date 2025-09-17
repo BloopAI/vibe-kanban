@@ -806,7 +806,7 @@ export const approvalsApi = {
       status: ApprovalStatus;
     },
     signal?: AbortSignal
-  ): Promise<void> => {
+  ): Promise<ApprovalStatus> => {
     const res = await makeRequest(`/api/approvals/${approvalId}/respond`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -814,6 +814,6 @@ export const approvalsApi = {
       signal,
     });
 
-    await handleApiResponse<void>(res);
+    return handleApiResponse<ApprovalStatus>(res);
   },
 };
