@@ -561,6 +561,9 @@ fn convert_to_https_url_handles_common_git_forms() {
         svc.convert_to_https_url(https_without_suffix),
         "https://github.com/owner/repo.git"
     );
+
+    let converted = svc.convert_to_https_url("https://github.com/owner/repo/");
+    assert_eq!(converted, "https://github.com/owner/repo.git");
 }
 
 #[test]

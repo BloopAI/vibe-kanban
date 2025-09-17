@@ -1567,11 +1567,12 @@ impl GitService {
         } else {
             url.to_string()
         };
-        if new_url.ends_with(".git") {
-            new_url
-        } else {
-            format!("{new_url}.git")
+        let mut normalized = new_url.trim_end_matches('/').to_string();
+        if !normalized.ends_with(".git") {
+            normalized.push_str(".git");
         }
+
+        normalized
     }
 
     /// Fetch from remote repository using GitHub token authentication

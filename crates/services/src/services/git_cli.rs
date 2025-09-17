@@ -575,7 +575,11 @@ impl GitCli {
             || lower.contains("invalid username or password")
         {
             GitCliError::AuthFailed(msg)
-        } else if lower.contains("non-fast-forward") {
+        } else if lower.contains("non-fast-forward")
+            || lower.contains("failed to push some refs")
+            || lower.contains("fetch first")
+            || lower.contains("updates were rejected because the tip")
+        {
             GitCliError::PushRejected(msg)
         } else {
             GitCliError::CommandFailed(msg)
