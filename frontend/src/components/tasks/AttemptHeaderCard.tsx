@@ -50,7 +50,10 @@ export function AttemptHeaderCard({
 
   // Branch status and execution state
   const { data: branchStatus } = useBranchStatus(selectedAttempt?.id);
-  const { isAttemptRunning } = useAttemptExecution(selectedAttempt?.id, task.id);
+  const { isAttemptRunning } = useAttemptExecution(
+    selectedAttempt?.id,
+    task.id
+  );
 
   // Loading states
   const [rebasing, setRebasing] = useState(false);
@@ -183,14 +186,17 @@ export function AttemptHeaderCard({
           >
             {runningDevServer ? 'Stop dev server' : 'Start dev server'}
           </DropdownMenuItem>
-          {selectedAttempt && branchStatus && !mergeInfo.hasMergedPR && (branchStatus.commits_behind ?? 0) > 0 && (
-            <DropdownMenuItem
-              onClick={handleRebaseClick}
-              disabled={rebasing || isAttemptRunning || hasConflicts}
-            >
-              {rebasing ? 'Rebasing...' : 'Rebase'}
-            </DropdownMenuItem>
-          )}
+          {selectedAttempt &&
+            branchStatus &&
+            !mergeInfo.hasMergedPR &&
+            (branchStatus.commits_behind ?? 0) > 0 && (
+              <DropdownMenuItem
+                onClick={handleRebaseClick}
+                disabled={rebasing || isAttemptRunning || hasConflicts}
+              >
+                {rebasing ? 'Rebasing...' : 'Rebase'}
+              </DropdownMenuItem>
+            )}
           <DropdownMenuItem
             onClick={handleCreatePR}
             disabled={!selectedAttempt}
@@ -206,7 +212,7 @@ export function AttemptHeaderCard({
                 hasConflicts ||
                 Boolean((branchStatus.commits_behind ?? 0) > 0) ||
                 isAttemptRunning ||
-                ((branchStatus.commits_ahead ?? 0) === 0)
+                (branchStatus.commits_ahead ?? 0) === 0
               }
             >
               {merging ? 'Merging...' : 'Merge'}
