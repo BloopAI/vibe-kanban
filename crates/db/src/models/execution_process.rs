@@ -446,16 +446,18 @@ impl ExecutionProcess {
         Ok(())
     }
 
-    /// Delete processes at and after the specified boundary (inclusive)
-    pub async fn delete_at_and_after(
+    /// Soft-drop processes at and after the specified boundary (inclusive)
+    pub async fn drop_at_and_after(
         pool: &SqlitePool,
         task_attempt_id: Uuid,
         boundary_process_id: Uuid,
     ) -> Result<i64, sqlx::Error> {
         let result = sqlx::query!(
-            r#"DELETE FROM execution_processes
-               WHERE task_attempt_id = $1
-                 AND created_at >= (SELECT created_at FROM execution_processes WHERE id = $2)"#,
+            r#"UPDATE execution_processes
+               SET dropped = 1
+             WHERE task_attempt_id = $1
+               AND created_at >= (SELECT created_at FROM execution_processes WHERE id = $2)
+               AND dropped = 0"#,
             task_attempt_id,
             boundary_process_id
         )

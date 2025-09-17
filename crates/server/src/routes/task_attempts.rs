@@ -854,9 +854,8 @@ pub async fn replace_process(
     // Stop any running processes for this attempt
     deployment.container().try_stop(&task_attempt).await;
 
-    // Delete the target process and all later processes
-    let deleted_count =
-        ExecutionProcess::delete_at_and_after(pool, task_attempt.id, proc_id).await?;
+    // Soft-drop the target process and all later processes
+    let deleted_count = ExecutionProcess::drop_at_and_after(pool, task_attempt.id, proc_id).await?;
 
     // Build follow-up executor action using the original process profile
     let initial_executor_profile_id = match &process
