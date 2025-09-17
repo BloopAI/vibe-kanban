@@ -11,7 +11,9 @@ interface UsePinnedTodosResult {
  * Hook that extracts and maintains the latest TODO state from normalized conversation entries.
  * Filters for TodoManagement ActionType entries and returns the most recent todo list.
  */
-export const usePinnedTodos = (entries: PatchTypeWithKey[]): UsePinnedTodosResult => {
+export const usePinnedTodos = (
+  entries: PatchTypeWithKey[]
+): UsePinnedTodosResult => {
   return useMemo(() => {
     let latestTodos: TodoItem[] = [];
     let lastUpdatedTime: string | null = null;

@@ -1,7 +1,6 @@
 import { Circle, CircleCheckBig, CircleDotDashed } from 'lucide-react';
 import { useEntries } from '@/contexts/EntriesContext';
 import { usePinnedTodos } from '@/hooks/usePinnedTodos';
-import type { TaskAttempt } from 'shared/types';
 import { Card } from '../ui/card';
 
 function getStatusIcon(status?: string) {
@@ -13,11 +12,7 @@ function getStatusIcon(status?: string) {
   return <Circle aria-hidden className="h-4 w-4 text-muted-foreground" />;
 }
 
-interface TodoPanelProps {
-  selectedAttempt: TaskAttempt | null;
-}
-
-export function TodoPanel(_props: TodoPanelProps) {
+export function TodoPanel() {
   const { entries } = useEntries();
   const { todos } = usePinnedTodos(entries);
 

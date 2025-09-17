@@ -1,4 +1,12 @@
-import { createContext, useContext, useRef, useState, useMemo, useCallback, ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useRef,
+  useState,
+  useMemo,
+  useCallback,
+  ReactNode,
+} from 'react';
 import type { PatchTypeWithKey } from '@/hooks/useConversationHistory';
 
 interface EntriesContextType {
@@ -19,24 +27,27 @@ export const EntriesProvider = ({ children }: EntriesProviderProps) => {
 
   const setEntries = useCallback((newEntries: PatchTypeWithKey[]) => {
     entriesRef.current = newEntries;
-    forceRerender(prev => prev + 1);
+    forceRerender((prev) => prev + 1);
   }, []);
 
   const reset = useCallback(() => {
     entriesRef.current = [];
-    forceRerender(prev => prev + 1);
+    forceRerender((prev) => prev + 1);
   }, []);
 
-  const value = useMemo(() => ({
-    get entries() { return entriesRef.current; },
-    setEntries,
-    reset,
-  }), [setEntries, reset]);
+  const value = useMemo(
+    () => ({
+      get entries() {
+        return entriesRef.current;
+      },
+      setEntries,
+      reset,
+    }),
+    [setEntries, reset]
+  );
 
   return (
-    <EntriesContext.Provider value={value}>
-      {children}
-    </EntriesContext.Provider>
+    <EntriesContext.Provider value={value}>{children}</EntriesContext.Provider>
   );
 };
 
