@@ -21,6 +21,7 @@ import {
   TaskWithAttemptStatus,
 } from 'shared/types';
 import { projectsApi } from '@/lib/api.ts';
+import { Loader2 } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 const CreatePrDialog = NiceModal.create(() => {
   const modal = useModal();
@@ -180,7 +181,14 @@ const CreatePrDialog = NiceModal.create(() => {
               disabled={creatingPR || !prTitle.trim()}
               className="bg-blue-600 hover:bg-blue-700"
             >
-              {creatingPR ? 'Creating...' : 'Create PR'}
+              {creatingPR ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create PR'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
