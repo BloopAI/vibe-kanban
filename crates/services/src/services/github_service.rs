@@ -200,7 +200,7 @@ impl GitHubService {
                     "Cannot access repository {}/{}: {}",
                     repo_info.owner, repo_info.repo_name, source
                 )),
-                other => other.into(),
+                other => other,
             })?;
 
         // Check if the base branch exists
@@ -215,7 +215,7 @@ impl GitHubService {
                     "Base branch '{}' does not exist: {}",
                     request.base_branch, source
                 )),
-                other => other.into(),
+                other => other,
             })?;
 
         // Check if the head branch exists
@@ -230,7 +230,7 @@ impl GitHubService {
                     "Head branch '{}' does not exist: {}",
                     request.head_branch, source
                 )),
-                other => other.into(),
+                other => other,
             })?;
 
         // Create the pull request
@@ -247,7 +247,7 @@ impl GitHubService {
                     "Failed to create PR for '{} -> {}': {}",
                     request.head_branch, request.base_branch, source
                 )),
-                other => other.into(),
+                other => other,
             })?;
 
         info!(
@@ -272,10 +272,9 @@ impl GitHubService {
                 .map(Self::map_pull_request)
                 .map_err(|err| match GitHubServiceError::from(err) {
                     GitHubServiceError::Client(source) => GitHubServiceError::PullRequest(format!(
-                        "Failed to get PR #{pr_number}: {}",
-                        source
+                        "Failed to get PR #{pr_number}: {source}",
                     )),
-                    other => other.into(),
+                    other => other,
                 })
         })
         .retry(

@@ -47,6 +47,7 @@ fn can_reach_github() -> bool {
     }
 }
 
+#[ignore]
 #[test]
 fn fetch_with_invalid_token_returns_auth_error() {
     let repo_path = workspace_root();
@@ -67,6 +68,7 @@ fn fetch_with_invalid_token_returns_auth_error() {
     assert_auth_failed(result);
 }
 
+#[ignore]
 #[test]
 fn push_with_invalid_token_returns_auth_error() {
     let repo_path = workspace_root();

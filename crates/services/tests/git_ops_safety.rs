@@ -292,6 +292,121 @@ fn push_with_token_reports_non_fast_forward() {
 }
 
 #[test]
+fn fetch_with_token_missing_ref_returns_error() {
+    let temp_dir = TempDir::new().unwrap();
+    let remote_path = temp_dir.path().join("remote.git");
+    Repository::init_bare(&remote_path).expect("init bare remote");
+    let remote_url = remote_path.to_str().expect("remote path str");
+
+    let seed_path = temp_dir.path().join("seed");
+    let service = GitService::new();
+    service
+        .initialize_repo_with_main_branch(&seed_path)
+        .expect("init seed repo");
+    let seed_repo = Repository::open(&seed_path).expect("open seed repo");
+    configure_user(&seed_repo);
+    seed_repo.remote("origin", remote_url).expect("add remote");
+    push_ref(&seed_repo, "refs/heads/main", "refs/heads/main");
+    Repository::open_bare(&remote_path)
+        .expect("open bare remote")
+        .set_head("refs/heads/main")
+        .expect("set remote HEAD");
+
+    let local_path = temp_dir.path().join("local");
+    Repository::clone(remote_url, &local_path).expect("clone local");
+
+    let git_cli = GitCli::new();
+    let refspec = "+refs/heads/missing:refs/remotes/origin/missing";
+    let result =
+        git_cli.fetch_with_token_and_refspec(&local_path, remote_url, refspec, "dummy-token");
+    match result {
+        Err(GitCliError::CommandFailed(msg)) => {
+            assert!(
+                msg.to_ascii_lowercase()
+                    .contains("couldn't find remote ref"),
+                "unexpected stderr: {msg}"
+            );
+        }
+        Err(other) => panic!("expected command failed, got {other:?}"),
+        Ok(_) => panic!("fetch unexpectedly succeeded"),
+    }
+}
+
+#[test]
+fn push_and_fetch_roundtrip_updates_tracking_branch() {
+    let temp_dir = TempDir::new().unwrap();
+    let remote_path = temp_dir.path().join("remote.git");
+    Repository::init_bare(&remote_path).expect("init bare remote");
+    let remote_url = remote_path.to_str().expect("remote path str");
+
+    let seed_path = temp_dir.path().join("seed");
+    let service = GitService::new();
+    service
+        .initialize_repo_with_main_branch(&seed_path)
+        .expect("init seed repo");
+    let seed_repo = Repository::open(&seed_path).expect("open seed repo");
+    configure_user(&seed_repo);
+    seed_repo.remote("origin", remote_url).expect("add remote");
+    push_ref(&seed_repo, "refs/heads/main", "refs/heads/main");
+    Repository::open_bare(&remote_path)
+        .expect("open bare remote")
+        .set_head("refs/heads/main")
+        .expect("set remote HEAD");
+
+    let producer_path = temp_dir.path().join("producer");
+    let producer_repo = Repository::clone(remote_url, &producer_path).expect("clone producer");
+    configure_user(&producer_repo);
+    checkout_branch(&producer_repo, "main");
+
+    let consumer_path = temp_dir.path().join("consumer");
+    let consumer_repo = Repository::clone(remote_url, &consumer_path).expect("clone consumer");
+    configure_user(&consumer_repo);
+    checkout_branch(&consumer_repo, "main");
+    let old_oid = consumer_repo
+        .find_reference("refs/remotes/origin/main")
+        .expect("consumer tracking ref")
+        .target()
+        .expect("consumer tracking ref");
+
+    write_file(&producer_path, "file.txt", "new work\n");
+    commit_all(&producer_repo, "producer commit");
+
+    let remote = producer_repo.find_remote("origin").expect("origin remote");
+    let remote_url_string = remote.url().expect("origin url").to_string();
+
+    let git_cli = GitCli::new();
+    git_cli
+        .push_with_token(&producer_path, &remote_url_string, "main", "dummy-token")
+        .expect("push succeeded");
+
+    let new_oid = producer_repo
+        .head()
+        .expect("producer head")
+        .target()
+        .expect("producer head oid");
+    assert_ne!(old_oid, new_oid, "producer created new commit");
+
+    git_cli
+        .fetch_with_token_and_refspec(
+            &consumer_path,
+            &remote_url_string,
+            "+refs/heads/main:refs/remotes/origin/main",
+            "dummy-token",
+        )
+        .expect("fetch succeeded");
+
+    let updated_oid = consumer_repo
+        .find_reference("refs/remotes/origin/main")
+        .expect("updated tracking ref")
+        .target()
+        .expect("updated tracking ref");
+    assert_eq!(
+        updated_oid, new_oid,
+        "tracking branch advanced to remote head"
+    );
+}
+
+#[test]
 fn rebase_preserves_untracked_files() {
     let td = TempDir::new().unwrap();
     let (repo_path, worktree_path) = setup_repo_with_worktree(&td);
