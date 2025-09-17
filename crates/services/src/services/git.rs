@@ -1556,7 +1556,7 @@ impl GitService {
         Ok(())
     }
 
-    fn convert_to_https_url(&self, url: &str) -> String {
+    pub fn convert_to_https_url(&self, url: &str) -> String {
         // Convert SSH URL to HTTPS URL if necessary
         let new_url = if url.starts_with("git@github.com:") {
             // Convert git@github.com:owner/repo.git to https://github.com/owner/repo.git
