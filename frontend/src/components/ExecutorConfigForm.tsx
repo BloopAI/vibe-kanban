@@ -28,7 +28,6 @@ interface ExecutorConfigFormProps {
   disabled?: boolean;
   isSaving?: boolean;
   isDirty?: boolean;
-  hideSaveButton?: boolean;
 }
 
 import schemas from 'virtual:executor-schemas';
@@ -42,7 +41,6 @@ export function ExecutorConfigForm({
   disabled = false,
   isSaving = false,
   isDirty = false,
-  hideSaveButton = false,
 }: ExecutorConfigFormProps) {
   const [formData, setFormData] = useState(value || {});
   const [validationErrors, setValidationErrors] = useState<
@@ -105,7 +103,7 @@ export function ExecutorConfigForm({
             widgets={shadcnTheme.widgets}
             templates={shadcnTheme.templates}
           >
-            {onSave && !hideSaveButton && (
+            {onSave && (
               <div className="flex justify-end pt-4">
                 <Button
                   type="submit"

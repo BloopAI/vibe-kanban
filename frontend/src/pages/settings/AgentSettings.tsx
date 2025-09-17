@@ -29,6 +29,7 @@ export function AgentSettings() {
   // Use profiles hook for server state
   const {
     profilesContent: serverProfilesContent,
+    parsedProfiles: serverParsedProfiles,
     profilesPath,
     isLoading: profilesLoading,
     isSaving: profilesSaving,
@@ -37,6 +38,12 @@ export function AgentSettings() {
   } = useProfiles();
 
   const { reloadSystem } = useUserSystem();
+
+  useEffect(() => {
+    return () => {
+      reloadSystem();
+    };
+  }, []);
 
   // Local editor state (draft that may differ from server)
   const [localProfilesContent, setLocalProfilesContent] = useState('');
@@ -51,23 +58,13 @@ export function AgentSettings() {
   const [localParsedProfiles, setLocalParsedProfiles] = useState<any>(null);
   const [isDirty, setIsDirty] = useState(false);
 
-  // After successful saves, we refresh the global system state
-  // so other parts of the app see new/updated profiles immediately.
-
   // Sync server state to local state when not dirty
   useEffect(() => {
     if (!isDirty && serverProfilesContent) {
       setLocalProfilesContent(serverProfilesContent);
-      // Parse JSON inside effect to avoid object dependency
-      try {
-        const parsed = JSON.parse(serverProfilesContent);
-        setLocalParsedProfiles(parsed);
-      } catch (err) {
-        console.error('Failed to parse profiles JSON:', err);
-        setLocalParsedProfiles(null);
-      }
+      setLocalParsedProfiles(serverParsedProfiles);
     }
-  }, [serverProfilesContent, isDirty]);
+  }, [serverProfilesContent, serverParsedProfiles, isDirty]);
 
   // Sync raw profiles with parsed profiles
   const syncRawProfiles = (profiles: unknown) => {
@@ -219,9 +216,6 @@ export function AgentSettings() {
         // Show success
         setProfilesSuccess(true);
         setTimeout(() => setProfilesSuccess(false), 3000);
-
-        // Refresh global system so new profiles are available elsewhere
-        reloadSystem();
       } catch (saveError: unknown) {
         console.error('Failed to save deletion to backend:', saveError);
       }
@@ -262,9 +256,6 @@ export function AgentSettings() {
       if (useFormEditor && localParsedProfiles) {
         setLocalProfilesContent(contentToSave);
       }
-
-      // Ensure other parts of the app get the new profiles
-      reloadSystem();
     } catch (err: unknown) {
       console.error('Failed to save profiles:', err);
     }
@@ -292,6 +283,42 @@ export function AgentSettings() {
     };
 
     markDirty(updatedProfiles);
+  };
+
+  const handleExecutorConfigSave = async (formData: unknown) => {
+    if (!localParsedProfiles || !localParsedProfiles.executors) return;
+
+    // Update the parsed profiles with the saved config
+    const updatedProfiles = {
+      ...localParsedProfiles,
+      executors: {
+        ...localParsedProfiles.executors,
+        [selectedExecutorType]: {
+          ...localParsedProfiles.executors[selectedExecutorType],
+          [selectedConfiguration]: {
+            [selectedExecutorType]: formData,
+          },
+        },
+      },
+    };
+
+    // Update state
+    setLocalParsedProfiles(updatedProfiles);
+
+    // Save the updated profiles directly
+    try {
+      const contentToSave = JSON.stringify(updatedProfiles, null, 2);
+
+      await saveProfiles(contentToSave);
+      setProfilesSuccess(true);
+      setIsDirty(false);
+      setTimeout(() => setProfilesSuccess(false), 3000);
+
+      // Update the local content as well
+      setLocalProfilesContent(contentToSave);
+    } catch (err: unknown) {
+      console.error('Failed to save profiles:', err);
+    }
   };
 
   if (profilesLoading) {
@@ -363,13 +390,13 @@ export function AgentSettings() {
                       <SelectValue placeholder="Select executor type" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.keys(localParsedProfiles.executors)
-                        .sort((a, b) => a.localeCompare(b))
-                        .map((type) => (
+                      {Object.keys(localParsedProfiles.executors).map(
+                        (type) => (
                           <SelectItem key={type} value={type}>
                             {type}
                           </SelectItem>
-                        ))}
+                        )
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -397,16 +424,11 @@ export function AgentSettings() {
                         {Object.keys(
                           localParsedProfiles.executors[selectedExecutorType] ||
                             {}
-                        )
-                          .sort((a, b) => a.localeCompare(b))
-                          .map((configuration) => (
-                            <SelectItem
-                              key={configuration}
-                              value={configuration}
-                            >
-                              {configuration}
-                            </SelectItem>
-                          ))}
+                        ).map((configuration) => (
+                          <SelectItem key={configuration} value={configuration}>
+                            {configuration}
+                          </SelectItem>
+                        ))}
                         <SelectItem value="__create__">
                           Create new...
                         </SelectItem>
@@ -457,10 +479,10 @@ export function AgentSettings() {
                       formData
                     )
                   }
+                  onSave={handleExecutorConfigSave}
                   disabled={profilesSaving}
                   isSaving={profilesSaving}
                   isDirty={isDirty}
-                  hideSaveButton
                 />
               )}
             </div>
@@ -496,7 +518,7 @@ export function AgentSettings() {
         </CardContent>
       </Card>
 
-      {/* Sticky Save bar (used for both editors) */}
+      {/* Save button for JSON editor mode */}
       <div className="sticky bottom-0 z-10 bg-background/80 backdrop-blur-sm border-t py-4">
         <div className="flex justify-end">
           <Button
