@@ -7,6 +7,7 @@ use db::{
     DBService,
     models::{
         execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
+        project::{CreateProject, Project},
         task::{Task, TaskStatus},
         task_attempt::{TaskAttempt, TaskAttemptError},
     },
@@ -238,6 +239,58 @@ pub trait Deployment: Clone + Send + Sync + 'static {
         }
 
         Ok(())
+    }
+
+    /// Trigger background auto-setup of default projects for new users
+    async fn trigger_auto_project_setup(&self) {
+        // soft timeout to give the filesystem search a chance to complete
+        let soft_timeout_ms = 800;
+        // hard timeout to ensure the background task doesn't run indefinitely
+        let hard_timeout_ms = 1_000;
+        let project_count = Project::count(&self.db().pool).await.unwrap_or(0);
+
+        // Only proceed if no projects exist
+        if project_count == 0 {
+            // Discover local git repositories
+            if let Ok(repos) = self
+                .filesystem()
+                .list_common_git_repos(soft_timeout_ms, hard_timeout_ms, Some(3))
+                .await
+            {
+                // Take first 3 repositories and create projects
+                for repo in repos.into_iter().take(3) {
+                    // Generate clean project name from path
+                    let project_name = repo.name;
+
+                    let create_data = CreateProject {
+                        name: project_name,
+                        git_repo_path: repo.path,
+                        use_existing_repo: true,
+                        setup_script: None,
+                        dev_script: None,
+                        cleanup_script: None,
+                        copy_files: None,
+                    };
+
+                    // Create project (ignore individual failures)
+                    let project_id = Uuid::new_v4();
+                    if let Err(e) = Project::create(&self.db().pool, &create_data, project_id).await
+                    {
+                        tracing::warn!(
+                            "Failed to auto-create project '{}': {}",
+                            create_data.name,
+                            e
+                        );
+                    } else {
+                        tracing::info!(
+                            "Auto-created project '{}' from {}",
+                            create_data.name,
+                            create_data.git_repo_path
+                        );
+                    }
+                }
+            }
+        }
     }
 
     async fn stream_events(

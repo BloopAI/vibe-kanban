@@ -109,8 +109,8 @@ async fn update_config(
             *config = new_config.clone();
             drop(config);
 
-            // Track config events when fields transition from false → true
-            track_config_events(&deployment, &old_config, &new_config).await;
+            // Track config events when fields transition from false → true and run side effects
+            handle_config_events(&deployment, &old_config, &new_config).await;
 
             ResponseJson(ApiResponse::success(new_config))
         }
@@ -165,6 +165,14 @@ async fn track_config_events(deployment: &DeploymentImpl, old: &Config, new: &Co
                 .track_if_analytics_allowed(event_name, properties)
                 .await;
         }
+    }
+}
+
+async fn handle_config_events(deployment: &DeploymentImpl, old: &Config, new: &Config) {
+    track_config_events(deployment, old, new).await;
+
+    if !old.disclaimer_acknowledged && new.disclaimer_acknowledged {
+        deployment.trigger_auto_project_setup().await;
     }
 }
 

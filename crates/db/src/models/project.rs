@@ -73,6 +73,12 @@ pub enum SearchMatchType {
 }
 
 impl Project {
+    pub async fn count(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
+        sqlx::query_scalar!(r#"SELECT COUNT(*) as "count!: i64" FROM projects"#)
+            .fetch_one(pool)
+            .await
+    }
+
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Project,

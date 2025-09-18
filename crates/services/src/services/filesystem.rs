@@ -7,7 +7,9 @@ use std::{
 use ignore::WalkBuilder;
 use serde::Serialize;
 use thiserror::Error;
+use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
+
 #[derive(Clone)]
 pub struct FilesystemService {}
 
@@ -87,19 +89,114 @@ impl FilesystemService {
     pub async fn list_git_repos(
         &self,
         path: Option<String>,
+        timeout_ms: u64,
+        hard_timeout_ms: u64,
         max_depth: Option<usize>,
     ) -> Result<Vec<DirectoryEntry>, FilesystemError> {
         let base_path = path
             .map(PathBuf::from)
             .unwrap_or_else(Self::get_home_directory);
         Self::verify_directory(&base_path)?;
+        self.list_git_repos_with_timeout(vec![base_path], timeout_ms, hard_timeout_ms, max_depth)
+            .await
+    }
+
+    async fn list_git_repos_with_timeout(
+        &self,
+        paths: Vec<PathBuf>,
+        timeout_ms: u64,
+        hard_timeout_ms: u64,
+        max_depth: Option<usize>,
+    ) -> Result<Vec<DirectoryEntry>, FilesystemError> {
+        let cancel_token = CancellationToken::new();
+        let cancel_after_delay = cancel_token.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_millis(timeout_ms)).await;
+            cancel_after_delay.cancel();
+        });
+        let service = self.clone();
+        let cancel_for_scan = cancel_token.clone();
+        let mut scan_handle = tokio::spawn(async move {
+            service
+                .list_git_repos_inner(paths, max_depth, Some(&cancel_for_scan))
+                .await
+        });
+
+        let hard_timeout = tokio::time::sleep(std::time::Duration::from_millis(hard_timeout_ms));
+        tokio::pin!(hard_timeout);
+
+        tokio::select! {
+            res = &mut scan_handle => {
+                match res {
+                    Ok(Ok(repos)) => Ok(repos),
+                    Ok(Err(err)) => Err(err),
+                    Err(join_err) => Err(FilesystemError::Io(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        join_err.to_string(),
+                    ))),
+                }
+            }
+            _ = &mut hard_timeout => {
+                scan_handle.abort();
+                tracing::warn!("list_git_repos_with_timeout: hard timeout reached after {}ms", hard_timeout_ms);
+                Err(FilesystemError::Io(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "Operation forcibly terminated due to hard timeout",
+                )))
+            }
+        }
+    }
+
+    pub async fn list_common_git_repos(
+        &self,
+        timeout_ms: u64,
+        hard_timeout_ms: u64,
+        max_depth: Option<usize>,
+    ) -> Result<Vec<DirectoryEntry>, FilesystemError> {
+        let search_strings = vec!["repos", "dev", "work", "code", "projects"];
+        let home_dir = Self::get_home_directory();
+        let mut paths: Vec<PathBuf> = search_strings
+            .iter()
+            .map(|s| home_dir.join(s))
+            .filter(|p| p.exists() && p.is_dir())
+            .collect();
+        paths.insert(0, home_dir);
+        if let Some(cwd) = std::env::current_dir().ok()
+            && cwd.exists()
+            && cwd.is_dir()
+        {
+            paths.insert(0, cwd);
+        }
+        self.list_git_repos_with_timeout(paths, timeout_ms, hard_timeout_ms, max_depth)
+            .await
+    }
+
+    async fn list_git_repos_inner(
+        &self,
+        path: Vec<PathBuf>,
+        max_depth: Option<usize>,
+        cancel: Option<&CancellationToken>,
+    ) -> Result<Vec<DirectoryEntry>, FilesystemError> {
+        let base_dir = match path.first() {
+            Some(dir) => dir,
+            None => return Ok(vec![]),
+        };
         let skip_dirs = Self::get_directories_to_skip();
-        let mut git_repos: Vec<DirectoryEntry> = WalkBuilder::new(&base_path)
+        let mut walker_builder = WalkBuilder::new(base_dir);
+        walker_builder
             .follow_links(false)
             .hidden(true) // true to skip hidden files
             .git_ignore(true)
             .filter_entry({
+                let cancel = cancel.cloned();
                 move |entry| {
+                    if let Some(token) = cancel.as_ref() {
+                        if token.is_cancelled() {
+                            tracing::debug!("Cancellation token triggered");
+                            return false;
+                        }
+                    }
+
                     let path = entry.path();
                     if !path.is_dir() {
                         return false;
@@ -116,7 +213,11 @@ impl FilesystemService {
                 }
             })
             .max_depth(max_depth)
-            .git_exclude(true)
+            .git_exclude(true);
+        for p in path.iter().skip(1) {
+            walker_builder.add(p);
+        }
+        let mut git_repos: Vec<DirectoryEntry> = walker_builder
             .build()
             .filter_map(|entry| {
                 let entry = entry.ok()?;

@@ -42,11 +42,18 @@ pub async fn list_git_repos(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ListDirectoryQuery>,
 ) -> Result<ResponseJson<ApiResponse<Vec<DirectoryEntry>>>, ApiError> {
-    match deployment
-        .filesystem()
-        .list_git_repos(query.path, Some(3))
-        .await
-    {
+    let res = if let Some(ref path) = query.path {
+        deployment
+            .filesystem()
+            .list_git_repos(Some(path.clone()), 800, 1200, Some(3))
+            .await
+    } else {
+        deployment
+            .filesystem()
+            .list_common_git_repos(800, 1200, Some(4))
+            .await
+    };
+    match res {
         Ok(response) => Ok(ResponseJson(ApiResponse::success(response))),
         Err(FilesystemError::DirectoryDoesNotExist) => {
             Ok(ResponseJson(ApiResponse::error("Directory does not exist")))
