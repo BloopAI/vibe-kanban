@@ -1,7 +1,6 @@
 import {
   createContext,
   useContext,
-  useRef,
   useState,
   useMemo,
   useCallback,
@@ -22,28 +21,23 @@ interface EntriesProviderProps {
 }
 
 export const EntriesProvider = ({ children }: EntriesProviderProps) => {
-  const entriesRef = useRef<PatchTypeWithKey[]>([]);
-  const [, forceRerender] = useState(0);
+  const [entries, setEntriesState] = useState<PatchTypeWithKey[]>([]);
 
   const setEntries = useCallback((newEntries: PatchTypeWithKey[]) => {
-    entriesRef.current = newEntries;
-    forceRerender((prev) => prev + 1);
+    setEntriesState(newEntries);
   }, []);
 
   const reset = useCallback(() => {
-    entriesRef.current = [];
-    forceRerender((prev) => prev + 1);
+    setEntriesState([]);
   }, []);
 
   const value = useMemo(
     () => ({
-      get entries() {
-        return entriesRef.current;
-      },
+      entries,
       setEntries,
       reset,
     }),
-    [setEntries, reset]
+    [entries, setEntries, reset]
   );
 
   return (
