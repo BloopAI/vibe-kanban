@@ -89,10 +89,7 @@ impl GitHubServiceError {
     }
 
     pub fn should_retry(&self) -> bool {
-        !matches!(
-            self,
-            GitHubServiceError::TokenInvalid | GitHubServiceError::InsufficientPermissions
-        )
+        !self.is_api_data()
     }
 }
 
@@ -103,6 +100,7 @@ pub struct GitHubRepoInfo {
 }
 impl GitHubRepoInfo {
     pub fn from_remote_url(remote_url: &str) -> Result<Self, GitHubServiceError> {
+        // Supports SSH, HTTPS and PR GitHub URLs. See tests for examples.
         let re = Regex::new(r"github\.com[:/](?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?(?:/|$)")
             .map_err(|e| {
             GitHubServiceError::Repository(format!("Failed to compile regex: {e}"))
