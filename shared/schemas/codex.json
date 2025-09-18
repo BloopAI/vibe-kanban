@@ -25,20 +25,6 @@
         null
       ]
     },
-    "approval": {
-      "description": "Approval policy for Codex",
-      "type": [
-        "string",
-        "null"
-      ],
-      "enum": [
-        "untrusted",
-        "on-failure",
-        "on-request",
-        "never",
-        null
-      ]
-    },
     "oss": {
       "type": [
         "boolean",
