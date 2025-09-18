@@ -2,11 +2,14 @@ use std::path::PathBuf;
 
 use axum::{
     BoxError, Extension, Json, Router,
-    extract::{Query, State},
+    extract::{
+        Query, State,
+        ws::{WebSocket, WebSocketUpgrade},
+    },
     http::StatusCode,
     middleware::from_fn_with_state,
     response::{
-        Json as ResponseJson, Sse,
+        IntoResponse, Json as ResponseJson, Sse,
         sse::{Event, KeepAlive},
     },
     routing::{get, post},
@@ -513,22 +516,52 @@ pub async fn save_follow_up_draft(
 }
 
 #[axum::debug_handler]
-pub async fn stream_follow_up_draft(
+pub async fn stream_follow_up_draft_ws(
+    ws: WebSocketUpgrade,
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<
-    Sse<impl futures_util::Stream<Item = Result<Event, Box<dyn std::error::Error + Send + Sync>>>>,
-    ApiError,
-> {
-    let stream = deployment
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| async move {
+        if let Err(e) = handle_follow_up_draft_ws(socket, deployment, task_attempt.id).await {
+            tracing::warn!("follow-up draft WS closed: {}", e);
+        }
+    })
+}
+
+async fn handle_follow_up_draft_ws(
+    socket: WebSocket,
+    deployment: DeploymentImpl,
+    task_attempt_id: uuid::Uuid,
+) -> anyhow::Result<()> {
+    use futures_util::{SinkExt, StreamExt, TryStreamExt};
+
+    let mut stream = deployment
         .events()
-        .stream_follow_up_draft_for_attempt(task_attempt.id)
-        .await
-        .map_err(|e| ApiError::from(deployment::DeploymentError::from(e)))?;
-    Ok(
-        Sse::new(stream.map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) }))
-            .keep_alive(KeepAlive::default()),
-    )
+        .stream_follow_up_draft_for_attempt_raw(task_attempt_id)
+        .await?
+        .map_ok(|msg| msg.to_ws_message_unchecked());
+
+    // Split socket into sender and receiver
+    let (mut sender, mut receiver) = socket.split();
+
+    // Drain (and ignore) any client->server messages so pings/pongs work
+    tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
+
+    // Forward server messages
+    while let Some(item) = stream.next().await {
+        match item {
+            Ok(msg) => {
+                if sender.send(msg).await.is_err() {
+                    break;
+                }
+            }
+            Err(e) => {
+                tracing::error!("stream error: {}", e);
+                break;
+            }
+        }
+    }
+    Ok(())
 }
 
 #[axum::debug_handler]
@@ -1691,7 +1724,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             "/follow-up-draft",
             get(get_follow_up_draft).put(save_follow_up_draft),
         )
-        .route("/follow-up-draft/stream", get(stream_follow_up_draft))
+        .route("/follow-up-draft/stream/ws", get(stream_follow_up_draft_ws))
         .route("/follow-up-draft/queue", post(set_follow_up_queue))
         .route("/replace-process", post(replace_process))
         .route("/commit-info", get(get_commit_info))

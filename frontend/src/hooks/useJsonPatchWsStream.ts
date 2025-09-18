@@ -2,6 +2,10 @@ import { useEffect, useState, useRef } from 'react';
 import { applyPatch } from 'rfc6902';
 import type { Operation } from 'rfc6902';
 
+type WsJsonPatchMsg = { JsonPatch: Operation[] };
+type WsFinishedMsg = { finished: boolean };
+type WsMsg = WsJsonPatchMsg | WsFinishedMsg;
+
 interface UseJsonPatchStreamOptions<T> {
   /**
    * Called once when the stream starts to inject initial data
@@ -98,10 +102,10 @@ export const useJsonPatchWsStream = <T>(
 
       ws.onmessage = (event) => {
         try {
-          const msg = JSON.parse(event.data);
+          const msg: WsMsg = JSON.parse(event.data);
 
           // Handle JsonPatch messages (same as SSE json_patch event)
-          if (msg.JsonPatch) {
+          if ('JsonPatch' in msg) {
             const patches: Operation[] = msg.JsonPatch;
             const filtered = options.deduplicatePatches
               ? options.deduplicatePatches(patches)
@@ -119,8 +123,8 @@ export const useJsonPatchWsStream = <T>(
             setData(dataRef.current);
           }
 
-          // Handle Finished messages (same as SSE finished event)
-          if (msg.Finished !== undefined) {
+          // Handle finished messages ({finished: true})
+          if ('finished' in msg) {
             ws.close();
             wsRef.current = null;
             setIsConnected(false);

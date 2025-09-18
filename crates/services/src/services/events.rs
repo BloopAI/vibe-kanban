@@ -1,7 +1,6 @@
 use std::{str::FromStr, sync::Arc};
 
 use anyhow::Error as AnyhowError;
-use axum::response::sse::Event;
 use db::{
     DBService,
     models::{
@@ -10,7 +9,7 @@ use db::{
         task_attempt::TaskAttempt,
     },
 };
-use futures::{StreamExt, TryStreamExt};
+use futures::StreamExt;
 use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation, ReplaceOperation};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -722,11 +721,11 @@ impl EventService {
         Ok(combined_stream)
     }
 
-    /// Stream follow-up draft for a specific task attempt with initial snapshot
-    pub async fn stream_follow_up_draft_for_attempt(
+    /// Stream follow-up draft for a specific task attempt (raw LogMsg format for WebSocket)
+    pub async fn stream_follow_up_draft_for_attempt_raw(
         &self,
         task_attempt_id: Uuid,
-    ) -> Result<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>, EventError>
+    ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
     {
         // Get initial snapshot of follow-up draft
         let draft = db::models::follow_up_draft::FollowUpDraft::find_by_task_attempt_id(
@@ -747,11 +746,13 @@ impl EventService {
             version: 0,
         });
 
-        let initial_patch = json!([{
-            "op": "replace",
-            "path": "/",
-            "value": { "follow_up_draft": draft }
-        }]);
+        let initial_patch = json!([
+            {
+                "op": "replace",
+                "path": "/",
+                "value": { "follow_up_draft": draft }
+            }
+        ]);
         let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
 
         // Filtered live stream, mapped into direct JSON patches that update /follow_up_draft
@@ -768,11 +769,13 @@ impl EventService {
                                 RecordTypes::FollowUpDraft(draft) => {
                                     if draft.task_attempt_id == task_attempt_id {
                                         // Build a direct patch to replace /follow_up_draft
-                                        let direct = json!([{
-                                            "op": "replace",
-                                            "path": "/follow_up_draft",
-                                            "value": draft
-                                        }]);
+                                        let direct = json!([
+                                            {
+                                                "op": "replace",
+                                                "path": "/follow_up_draft",
+                                                "value": draft
+                                            }
+                                        ]);
                                         let direct_patch = serde_json::from_value(direct).unwrap();
                                         return Some(Ok(LogMsg::JsonPatch(direct_patch)));
                                     }
@@ -795,11 +798,13 @@ impl EventService {
                                             "updated_at": chrono::Utc::now(),
                                             "version": 0
                                         });
-                                        let direct = json!([{
-                                            "op": "replace",
-                                            "path": "/follow_up_draft",
-                                            "value": empty
-                                        }]);
+                                        let direct = json!([
+                                            {
+                                                "op": "replace",
+                                                "path": "/follow_up_draft",
+                                                "value": empty
+                                            }
+                                        ]);
                                         let direct_patch = serde_json::from_value(direct).unwrap();
                                         return Some(Ok(LogMsg::JsonPatch(direct_patch)));
                                     }
@@ -816,10 +821,7 @@ impl EventService {
         );
 
         let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
-        let combined_stream = initial_stream
-            .chain(filtered_stream)
-            .map_ok(|msg| msg.to_sse_event())
-            .boxed();
+        let combined_stream = initial_stream.chain(filtered_stream).boxed();
 
         Ok(combined_stream)
     }

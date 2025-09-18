@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useJsonPatchStream } from '@/hooks/useJsonPatchStream';
+import { useJsonPatchWsStream } from '@/hooks/useJsonPatchWsStream';
 import { attemptsApi } from '@/lib/api';
 import type { FollowUpDraft } from 'shared/types';
 import { inIframe } from '@/vscode/bridge';
@@ -14,7 +14,7 @@ export function useDraftStream(attemptId?: string) {
   const forceNextApplyRef = useRef<boolean>(false);
 
   const endpoint = attemptId
-    ? `/api/task-attempts/${attemptId}/follow-up-draft/stream`
+    ? `/api/task-attempts/${attemptId}/follow-up-draft/stream/ws`
     : undefined;
 
   const makeInitial = useCallback(
@@ -35,7 +35,7 @@ export function useDraftStream(attemptId?: string) {
     [attemptId]
   );
 
-  const { data, isConnected, error } = useJsonPatchStream<DraftStreamState>(
+  const { data, isConnected, error } = useJsonPatchWsStream<DraftStreamState>(
     endpoint,
     !!endpoint,
     makeInitial
@@ -64,7 +64,7 @@ export function useDraftStream(attemptId?: string) {
         });
         if (!isDraftLoaded) setIsDraftLoaded(true);
       } catch {
-        // ignore, rely on SSE
+        // ignore, rely on stream
       }
     };
     hydrate();
@@ -73,7 +73,7 @@ export function useDraftStream(attemptId?: string) {
     };
   }, [attemptId, isDraftLoaded]);
 
-  // Handle SSE stream
+  // Handle stream updates
   useEffect(() => {
     if (!data) return;
     const d = data.follow_up_draft;
