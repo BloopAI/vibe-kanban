@@ -14,7 +14,7 @@ use futures::{StreamExt, TryStreamExt};
 use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation, ReplaceOperation};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use sqlx::{Error as SqlxError, sqlite::SqliteOperation};
+use sqlx::{Error as SqlxError, SqlitePool, sqlite::SqliteOperation};
 use strum_macros::{Display, EnumString};
 use thiserror::Error;
 use tokio::sync::RwLock;
@@ -196,6 +196,37 @@ impl EventService {
             db,
             entry_count,
         }
+    }
+
+    async fn push_task_update_for_task(
+        pool: &SqlitePool,
+        msg_store: Arc<MsgStore>,
+        task_id: Uuid,
+    ) -> Result<(), SqlxError> {
+        if let Some(task) = Task::find_by_id(pool, task_id).await? {
+            let tasks = Task::find_by_project_id_with_attempt_status(pool, task.project_id).await?;
+
+            if let Some(task_with_status) = tasks
+                .into_iter()
+                .find(|task_with_status| task_with_status.id == task_id)
+            {
+                msg_store.push_patch(task_patch::replace(&task_with_status));
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn push_task_update_for_attempt(
+        pool: &SqlitePool,
+        msg_store: Arc<MsgStore>,
+        attempt_id: Uuid,
+    ) -> Result<(), SqlxError> {
+        if let Some(attempt) = TaskAttempt::find_by_id(pool, attempt_id).await? {
+            Self::push_task_update_for_task(pool, msg_store, attempt.task_id).await?;
+        }
+
+        Ok(())
     }
 
     /// Creates the hook function that should be used with DBService::new_with_after_connect
@@ -440,14 +471,45 @@ impl EventService {
                                         _ => execution_process_patch::replace(process), // fallback
                                     };
                                     msg_store_for_hook.push_patch(patch);
+
+                                    if let Err(err) = EventService::push_task_update_for_attempt(
+                                        &db.pool,
+                                        msg_store_for_hook.clone(),
+                                        process.task_attempt_id,
+                                    )
+                                    .await
+                                    {
+                                        tracing::error!(
+                                            "Failed to push task update after execution process change: {:?}",
+                                            err
+                                        );
+                                    }
+
                                     return;
                                 }
                                 RecordTypes::DeletedExecutionProcess {
                                     process_id: Some(process_id),
+                                    task_attempt_id,
                                     ..
                                 } => {
                                     let patch = execution_process_patch::remove(*process_id);
                                     msg_store_for_hook.push_patch(patch);
+
+                                    if let Some(task_attempt_id) = task_attempt_id
+                                        && let Err(err) =
+                                            EventService::push_task_update_for_attempt(
+                                                &db.pool,
+                                                msg_store_for_hook.clone(),
+                                                *task_attempt_id,
+                                            )
+                                            .await
+                                        {
+                                            tracing::error!(
+                                                "Failed to push task update after execution process removal: {:?}",
+                                                err
+                                            );
+                                        }
+
                                     return;
                                 }
                                 _ => {}
