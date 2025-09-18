@@ -219,7 +219,7 @@ impl GitHubService {
                         "Base branch '{}' does not exist: {}{}",
                         request.base_branch, source, hint
                     ))
-                },
+                }
                 other => other,
             })?;
 
