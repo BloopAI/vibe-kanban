@@ -209,10 +209,17 @@ impl GitHubService {
             ))
             .await
             .map_err(|err| match GitHubServiceError::from(err) {
-                GitHubServiceError::Client(source) => GitHubServiceError::Branch(format!(
-                    "Base branch '{}' does not exist: {}",
-                    request.base_branch, source
-                )),
+                GitHubServiceError::Client(source) => {
+                    let hint = if request.base_branch != "main" {
+                        " Perhaps you meant to use main as your base branch instead?"
+                    } else {
+                        ""
+                    };
+                    GitHubServiceError::Branch(format!(
+                        "Base branch '{}' does not exist: {}{}",
+                        request.base_branch, source, hint
+                    ))
+                },
                 other => other,
             })?;
 
