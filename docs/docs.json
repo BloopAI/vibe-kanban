@@ -23,7 +23,11 @@
     "groups": [
       {
         "group": "Getting started",
-        "pages": ["index", "getting-started", "supported-coding-agents"]
+        "pages": [
+          "index",
+          "getting-started",
+          "supported-coding-agents"
+        ]
       },
       {
         "group": "Core Features",
@@ -87,7 +91,7 @@
   },
   "integrations": {
     "posthog": {
-      "apiKey": "phc_tUHOX3YsGW4d9cEKyIvxjrFDHTRQ8nCfzG65McGZEuC",
+      "apiKey": "phc_V5XpxUvgOfEWk38iGHr0Kve2oZTmWFjDe3mIwTCXzx0",
       "apiHost": "https://eu.i.posthog.com"
     }
   },
