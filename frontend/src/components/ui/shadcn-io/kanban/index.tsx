@@ -149,7 +149,7 @@ export const KanbanHeader = (props: KanbanHeaderProps) =>
         props.className
       )}
       style={{
-        backgroundImage: `linear-gradient(hsl(var(${props.color}) / 0.03), hsl(var(${props.color}) / 0.03))`,
+        backgroundColor: `hsl(var(${props.color}) / 0.03)`,
       }}
     >
       <div
