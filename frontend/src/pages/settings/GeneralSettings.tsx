@@ -445,6 +445,14 @@ export function GeneralSettings() {
             </div>
           )}
 
+          <div className="flex items-center gap-4 my-6">
+            <div className="flex-1 border-t border-border"></div>
+            <span className="text-sm text-muted-foreground font-medium">
+              OR
+            </span>
+            <div className="flex-1 border-t border-border"></div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="github-token">Personal Access Token</Label>
             <Input
@@ -462,7 +470,9 @@ export function GeneralSettings() {
               }
             />
             <p className="text-sm text-muted-foreground">
-              GitHub Personal Access Token with 'repo' permissions.{' '}
+              GitHub Personal Access Token with 'repo' permissions. Use this if
+              OAuth permissions are insufficient for private repositories and
+              organisation owned repositories.{' '}
               <a
                 href="https://github.com/settings/tokens"
                 target="_blank"
