@@ -21,5 +21,19 @@
     "en": "English",
     "ja": "日本語",
     "browserDefault": "Browser Default"
+  },
+  "conversation": {
+    "plan": "Plan",
+    "planToggle": {
+      "show": "Show plan",
+      "hide": "Hide plan"
+    },
+    "toolDetailsToggle": {
+      "show": "Show details",
+      "hide": "Hide details"
+    },
+    "args": "Args",
+    "output": "Output",
+    "result": "Result"
   }
 }

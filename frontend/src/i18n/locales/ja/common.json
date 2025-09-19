@@ -21,5 +21,19 @@
     "en": "English",
     "ja": "日本語",
     "browserDefault": "ブラウザ設定"
+  },
+  "conversation": {
+    "plan": "計画",
+    "planToggle": {
+      "show": "計画を表示",
+      "hide": "計画を非表示"
+    },
+    "toolDetailsToggle": {
+      "show": "詳細を表示",
+      "hide": "詳細を非表示"
+    },
+    "args": "引数",
+    "output": "出力",
+    "result": "結果"
   }
 }

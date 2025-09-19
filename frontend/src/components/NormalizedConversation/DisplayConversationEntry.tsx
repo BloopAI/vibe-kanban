@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import MarkdownRenderer from '@/components/ui/markdown-renderer.tsx';
 import {
   ActionType,
@@ -356,6 +357,7 @@ const PlanPresentationCard: React.FC<{
   defaultExpanded = false,
   statusAppearance = 'default',
 }) => {
+  const { t } = useTranslation('common');
   const [expanded, toggle] = useExpandable(
     `plan-entry:${expansionKey}`,
     defaultExpanded
@@ -372,7 +374,11 @@ const PlanPresentationCard: React.FC<{
             e.preventDefault();
             toggle();
           }}
-          title={expanded ? 'Hide plan' : 'Show plan'}
+          title={
+            expanded
+              ? t('conversation.planToggle.hide')
+              : t('conversation.planToggle.show')
+          }
           className={cn(
             'w-full px-2 py-1.5 flex items-center gap-1.5 text-left border-b',
             tone.headerBg,
@@ -381,7 +387,7 @@ const PlanPresentationCard: React.FC<{
           )}
         >
           <span className=" min-w-0 truncate">
-            <span className="font-semibold">Plan</span>
+            <span className="font-semibold">{t('conversation.plan')}</span>
           </span>
           <div className="ml-auto flex items-center gap-2">
             <ExpandChevron
@@ -430,6 +436,7 @@ const ToolCallCard: React.FC<{
   entryContent,
   defaultExpanded = false,
 }) => {
+  const { t } = useTranslation('common');
   const at: any = entryType?.action_type || action;
   const [expanded, toggle] = useExpandable(
     `tool-entry:${expansionKey}`,
@@ -477,7 +484,9 @@ const ToolCallCard: React.FC<{
           e.preventDefault();
           toggle();
         },
-        title: expanded ? 'Hide details' : 'Show details',
+        title: expanded
+          ? t('conversation.toolDetailsToggle.hide')
+          : t('conversation.toolDetailsToggle.show'),
       }
     : {};
 
@@ -509,7 +518,7 @@ const ToolCallCard: React.FC<{
               {argsText && (
                 <>
                   <div className="font-normal uppercase bg-background border-b border-dashed px-2 py-1">
-                    Args
+                    {t('conversation.args')}
                   </div>
                   <div className="px-2 py-1">{argsText}</div>
                 </>
@@ -518,7 +527,7 @@ const ToolCallCard: React.FC<{
               {output && (
                 <>
                   <div className="font-normal uppercase bg-background border-y border-dashed px-2 py-1">
-                    Output
+                    {t('conversation.output')}
                   </div>
                   <div className="px-2 py-1">
                     <RawLogText content={output} />
@@ -531,13 +540,13 @@ const ToolCallCard: React.FC<{
               {entryType?.action_type.action === 'tool' && (
                 <>
                   <div className="font-normal uppercase bg-background border-b border-dashed px-2 py-1">
-                    Args
+                    {t('conversation.args')}
                   </div>
                   <div className="px-2 py-1">
                     {renderJson(entryType.action_type.arguments)}
                   </div>
                   <div className="font-normal uppercase bg-background border-y border-dashed px-2 py-1">
-                    Result
+                    {t('conversation.result')}
                   </div>
                   <div className="px-2 py-1">
                     {entryType.action_type.result?.type.type === 'markdown' &&
