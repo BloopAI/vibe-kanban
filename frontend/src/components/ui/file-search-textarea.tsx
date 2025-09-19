@@ -106,7 +106,6 @@ export function FileSearchTextarea({
 
   // Handle keyboard navigation
 
-
   // Select a file and insert it into the text
   const selectFile = (file: FileSearchResult) => {
     if (atSymbolPosition === -1) return;
@@ -208,7 +207,6 @@ export function FileSearchTextarea({
         ref={textareaRef}
         value={value}
         onChange={handleChange}
-
         placeholder={placeholder}
         rows={rows}
         disabled={disabled}

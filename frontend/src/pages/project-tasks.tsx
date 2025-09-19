@@ -10,6 +10,7 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { useSearch } from '@/contexts/search-context';
 import { useQuery } from '@tanstack/react-query';
 import { useTaskViewManager } from '@/hooks/useTaskViewManager';
+import { useKeyboardShortcut } from '@/hooks';
 
 import {
   getKanbanSectionClasses,
@@ -54,11 +55,17 @@ export function ProjectTasks() {
       openTaskForm({ projectId: project.id, initialTask: task });
     }
   };
-  const { query: searchQuery } = useSearch();
+  const { query: searchQuery, focusInput } = useSearch();
 
   // Panel state
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+  // Keyboard navigation state
+  const [keyboardCursor, setKeyboardCursor] = useState<{
+    columnId: string;
+    taskIndex: number;
+  } | null>(null);
 
   // Fullscreen state using custom hook
   const { isFullscreen, navigateToTask, navigateToAttempt } =
@@ -122,6 +129,182 @@ export function ProjectTasks() {
   const handleCreateNewTask = useCallback(() => {
     handleCreateTask();
   }, [handleCreateTask]);
+
+  // Keyboard shortcuts for kanban page
+  useKeyboardShortcut({
+    keys: 'c',
+    callback: (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handleCreateNewTask();
+    },
+    description: 'Create new task',
+    group: 'Kanban',
+    scope: 'kanban',
+  });
+
+  useKeyboardShortcut({
+    keys: '/',
+    callback: () => focusInput(),
+    description: 'Focus search',
+    group: 'Navigation',
+    scope: 'kanban',
+  });
+
+  useKeyboardShortcut({
+    keys: 'esc',
+    callback: () => {
+      if (isPanelOpen) {
+        handleClosePanel();
+      } else {
+        navigate('/projects');
+      }
+    },
+    description: 'Close panel or navigate to projects',
+    group: 'Navigation',
+    scope: 'kanban',
+  });
+
+  // Arrow navigation shortcuts (disabled when panel is open)
+  const taskStatuses = [
+    'todo',
+    'inprogress',
+    'inreview',
+    'done',
+    'cancelled',
+  ] as const;
+
+  const getTasksByStatus = useCallback(() => {
+    return taskStatuses.reduce(
+      (acc, status) => {
+        acc[status] = tasks.filter((task) => task.status === status);
+        return acc;
+      },
+      {} as Record<string, Task[]>
+    );
+  }, [tasks]);
+
+  const tasksByStatus = getTasksByStatus();
+
+  useKeyboardShortcut({
+    keys: 'up',
+    callback: () => {
+      if (!keyboardCursor) {
+        // Initialize cursor on first task if available
+        for (const status of taskStatuses) {
+          if (tasksByStatus[status]?.length > 0) {
+            setKeyboardCursor({ columnId: status, taskIndex: 0 });
+            break;
+          }
+        }
+        return;
+      }
+
+      if (keyboardCursor.taskIndex > 0) {
+        setKeyboardCursor({
+          ...keyboardCursor,
+          taskIndex: keyboardCursor.taskIndex - 1,
+        });
+      }
+    },
+    description: 'Move up within column',
+    group: 'Navigation',
+    scope: 'kanban',
+    when: () => !isPanelOpen,
+  });
+
+  useKeyboardShortcut({
+    keys: 'down',
+    callback: () => {
+      if (!keyboardCursor) {
+        // Initialize cursor on first task if available
+        for (const status of taskStatuses) {
+          if (tasksByStatus[status]?.length > 0) {
+            setKeyboardCursor({ columnId: status, taskIndex: 0 });
+            break;
+          }
+        }
+        return;
+      }
+
+      const currentTasks = tasksByStatus[keyboardCursor.columnId] || [];
+      if (keyboardCursor.taskIndex < currentTasks.length - 1) {
+        setKeyboardCursor({
+          ...keyboardCursor,
+          taskIndex: keyboardCursor.taskIndex + 1,
+        });
+      }
+    },
+    description: 'Move down within column',
+    group: 'Navigation',
+    scope: 'kanban',
+    when: () => !isPanelOpen,
+  });
+
+  useKeyboardShortcut({
+    keys: 'left',
+    callback: () => {
+      const currentIndex = taskStatuses.findIndex(
+        (status) => status === keyboardCursor?.columnId
+      );
+      if (currentIndex > 0) {
+        const newColumnId = taskStatuses[currentIndex - 1];
+        const newTasks = tasksByStatus[newColumnId] || [];
+        setKeyboardCursor({
+          columnId: newColumnId,
+          taskIndex: Math.min(
+            keyboardCursor?.taskIndex || 0,
+            Math.max(0, newTasks.length - 1)
+          ),
+        });
+      }
+    },
+    description: 'Move to previous column',
+    group: 'Navigation',
+    scope: 'kanban',
+    when: () => !isPanelOpen && !!keyboardCursor,
+  });
+
+  useKeyboardShortcut({
+    keys: 'right',
+    callback: () => {
+      const currentIndex = taskStatuses.findIndex(
+        (status) => status === keyboardCursor?.columnId
+      );
+      if (currentIndex < taskStatuses.length - 1) {
+        const newColumnId = taskStatuses[currentIndex + 1];
+        const newTasks = tasksByStatus[newColumnId] || [];
+        setKeyboardCursor({
+          columnId: newColumnId,
+          taskIndex: Math.min(
+            keyboardCursor?.taskIndex || 0,
+            Math.max(0, newTasks.length - 1)
+          ),
+        });
+      }
+    },
+    description: 'Move to next column',
+    group: 'Navigation',
+    scope: 'kanban',
+    when: () => !isPanelOpen && !!keyboardCursor,
+  });
+
+  useKeyboardShortcut({
+    keys: 'enter',
+    callback: () => {
+      if (keyboardCursor) {
+        const currentTasks = tasksByStatus[keyboardCursor.columnId] || [];
+        const task = currentTasks[keyboardCursor.taskIndex];
+        if (task) {
+          handleViewTaskDetails(task);
+        }
+      }
+    },
+    description: 'Open selected task details',
+    group: 'Kanban',
+    scope: 'kanban',
+    when: () => !isPanelOpen && !!keyboardCursor,
+  });
 
   // Full screen
 
@@ -214,8 +397,6 @@ export function ProjectTasks() {
     [tasksById]
   );
 
-
-
   // Initialize project when projectId changes
   useEffect(() => {
     if (projectId) {
@@ -285,7 +466,6 @@ export function ProjectTasks() {
                 onDeleteTask={handleDeleteTask}
                 onDuplicateTask={handleDuplicateTaskCallback}
                 onViewTaskDetails={handleViewTaskDetails}
-                isPanelOpen={isPanelOpen}
               />
             </div>
           )}

@@ -58,8 +58,6 @@ export const TaskTemplateEditDialog =
         setError(null);
       }, [template]);
 
-
-
       const handleSave = async () => {
         if (!formData.template_name.trim() || !formData.title.trim()) {
           setError('Template name and title are required');

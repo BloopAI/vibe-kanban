@@ -13,34 +13,41 @@ interface SearchBarProps {
   project: Project | null;
 }
 
-export function SearchBar({
-  className,
-  value = '',
-  onChange,
-  disabled = false,
+export const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(
+  (
+    {
+      className,
+      value = '',
+      onChange,
+      disabled = false,
 
-  project,
-}: SearchBarProps) {
-  const inputRef = React.useRef<HTMLInputElement>(null);
+      project,
+    },
+    ref
+  ) => {
+    const inputRef = React.useRef<HTMLInputElement>(null);
 
+    // Combine refs
+    React.useImperativeHandle(ref, () => inputRef.current!, []);
 
+    if (disabled) {
+      return null;
+    }
 
-  if (disabled) {
-    return null;
+    return (
+      <div className={cn('relative w-64 sm:w-72', className)}>
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          ref={inputRef}
+          value={value}
+          onChange={(e) => onChange?.(e.target.value)}
+          disabled={disabled}
+          placeholder={project ? `Search ${project.name}...` : 'Search...'}
+          className="pl-8 pr-14 h-8 bg-muted"
+        />
+      </div>
+    );
   }
+);
 
-  return (
-    <div className={cn('relative w-64 sm:w-72', className)}>
-      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-      <Input
-        ref={inputRef}
-        value={value}
-        onChange={(e) => onChange?.(e.target.value)}
-        disabled={disabled}
-        placeholder={project ? `Search ${project.name}...` : 'Search...'}
-        className="pl-8 pr-14 h-8 bg-muted"
-      />
-
-    </div>
-  );
-}
+SearchBar.displayName = 'SearchBar';

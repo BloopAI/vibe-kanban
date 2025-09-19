@@ -24,7 +24,6 @@ import {
   Trash2,
 } from 'lucide-react';
 
-
 interface ProjectDetailProps {
   projectId: string;
   onBack: () => void;
@@ -35,8 +34,6 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-
 
   const fetchProject = useCallback(async () => {
     setLoading(true);

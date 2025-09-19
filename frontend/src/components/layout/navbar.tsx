@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -44,8 +45,13 @@ const EXTERNAL_LINKS = [
 export function Navbar() {
   const location = useLocation();
   const { projectId, project } = useProject();
-  const { query, setQuery, active, clear } = useSearch();
+  const { query, setQuery, active, clear, registerInputRef } = useSearch();
   const handleOpenInEditor = useOpenProjectInEditor(project || null);
+  const searchBarRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    registerInputRef(searchBarRef.current);
+  }, [registerInputRef]);
 
   const handleCreateTask = () => {
     if (projectId) {
@@ -77,6 +83,7 @@ export function Navbar() {
           </div>
 
           <SearchBar
+            ref={searchBarRef}
             className="hidden sm:flex"
             value={query}
             onChange={setQuery}

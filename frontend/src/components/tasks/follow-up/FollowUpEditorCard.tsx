@@ -28,7 +28,6 @@ export function FollowUpEditorCard({
         placeholder={placeholder}
         value={value}
         onChange={onChange}
-
         className={cn('flex-1 min-h-[40px] resize-none')}
         disabled={disabled}
         projectId={projectId}
