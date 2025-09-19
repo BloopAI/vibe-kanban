@@ -120,7 +120,6 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         let command_builder = self.build_command_builder().await;
         let base_command = command_builder.build_initial();
 
-        let claude_command = base_command;
         if self.approvals.unwrap_or(false) {
             write_python_hook(current_dir).await?
         }
@@ -135,7 +134,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .arg(shell_arg)
-            .arg(&claude_command);
+            .arg(&base_command);
 
         let mut child = command.group_spawn()?;
 
@@ -160,7 +159,6 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         let base_command =
             command_builder.build_follow_up(&["--resume".to_string(), session_id.to_string()]);
 
-        let claude_command = base_command;
         if self.approvals.unwrap_or(false) {
             write_python_hook(current_dir).await?
         }
@@ -175,7 +173,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .arg(shell_arg)
-            .arg(&claude_command);
+            .arg(&base_command);
 
         let mut child = command.group_spawn()?;
 

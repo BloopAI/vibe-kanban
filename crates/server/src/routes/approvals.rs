@@ -22,7 +22,7 @@ pub async fn create_approval(
     let approval_request = ApprovalRequest::from_create(request);
 
     match service.create(approval_request).await {
-        Ok(approval) => Ok(Json(dbg!(approval))),
+        Ok(approval) => Ok(Json(approval)),
         Err(e) => {
             tracing::error!("Failed to create approval: {:?}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)

@@ -164,7 +164,6 @@ impl Approvals {
         }
         if let Some(p) = self.pending.get(id) {
             if chrono::Utc::now() >= p.timeout_at {
-                dbg!("Approval timed out");
                 return Some(ApprovalStatus::TimedOut);
             }
             return Some(ApprovalStatus::Pending);

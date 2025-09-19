@@ -97,11 +97,6 @@ impl MsgStore {
             .collect()
     }
 
-    pub fn get_back(&self) -> Option<LogMsg> {
-        let history = self.get_history();
-        history.iter().rev().nth(1).cloned()
-    }
-
     /// History then live, as `LogMsg`.
     pub fn history_plus_stream(
         &self,
