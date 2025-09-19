@@ -41,7 +41,8 @@
           "placeholder": "Select profile",
           "helper": "Choose the default agent configuration to use when creating a task attempt."
         },
-        "variant": "DEFAULT"
+        "variant": "DEFAULT",
+        "defaultLabel": "Default"
       },
       "editor": {
         "title": "Editor",
@@ -58,7 +59,13 @@
         "connectButton": "Connect GitHub Account",
         "manage": "Manage",
         "disconnect": "Disconnect",
-        "helper": "Connect your GitHub account to access private repositories and enable advanced Git operations."
+        "helper": "Connect your GitHub account to access private repositories and enable advanced Git operations.",
+        "or": "OR",
+        "pat": {
+          "label": "Personal Access Token",
+          "helper": "GitHub Personal Access Token with 'repo' permissions. Use this if OAuth permissions are insufficient for private repositories and organisation owned repositories.",
+          "createTokenLink": "Create token here"
+        }
       },
       "notifications": {
         "title": "Notifications",

@@ -41,7 +41,8 @@
           "placeholder": "プロファイルを選択",
           "helper": "タスク試行を作成する際に使用するデフォルトエージェント設定を選択してください。"
         },
-        "variant": "デフォルト"
+        "variant": "デフォルト",
+        "defaultLabel": "デフォルト"
       },
       "editor": {
         "title": "エディター",
@@ -58,7 +59,13 @@
         "connectButton": "GitHubアカウントを接続",
         "manage": "管理",
         "disconnect": "切断",
-        "helper": "GitHubアカウントを接続して、プライベートリポジトリへのアクセスと高度なGit操作を有効にします。"
+        "helper": "GitHubアカウントを接続して、プライベートリポジトリへのアクセスと高度なGit操作を有効にします。",
+        "or": "または",
+        "pat": {
+          "label": "個人用アクセストークン",
+          "helper": "「repo」権限を持つGitHub個人用アクセストークン。OAuthの権限がプライベートリポジトリや組織所有のリポジトリに対して不十分な場合に使用してください。",
+          "createTokenLink": "ここでトークンを作成"
+        }
       },
       "notifications": {
         "title": "通知",

@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ChevronDown, Key, Loader2, Volume2 } from 'lucide-react';
@@ -262,7 +263,11 @@ export function GeneralSettings() {
                 disabled={!profiles}
               >
                 <SelectTrigger id="executor">
-                  <SelectValue placeholder="Select profile" />
+                  <SelectValue
+                    placeholder={t(
+                      'settings.general.taskExecution.executor.placeholder'
+                    )}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {profiles &&
@@ -334,7 +339,7 @@ export function GeneralSettings() {
                       disabled
                     >
                       <span className="text-sm truncate flex-1 text-left">
-                        Default
+                        {t('settings.general.taskExecution.defaultLabel')}
                       </span>
                     </Button>
                   );
@@ -443,6 +448,45 @@ export function GeneralSettings() {
               </Button>
             </div>
           )}
+
+          <div className="flex items-center gap-4 my-6">
+            <div className="flex-1 border-t border-border"></div>
+            <span className="text-sm text-muted-foreground font-medium">
+              {t('settings:general.github.or')}
+            </span>
+            <div className="flex-1 border-t border-border"></div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="github-token">
+              {t('settings.general.github.pat.label')}
+            </Label>
+            <Input
+              id="github-token"
+              type="password"
+              placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+              value={config.github.pat || ''}
+              onChange={(e) =>
+                updateConfig({
+                  github: {
+                    ...config.github,
+                    pat: e.target.value || null,
+                  },
+                })
+              }
+            />
+            <p className="text-sm text-muted-foreground">
+              {t('settings.general.github.pat.helper')}{' '}
+              <a
+                href="https://github.com/settings/tokens"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                {t('settings.general.github.pat.createTokenLink')}
+              </a>
+            </p>
+          </div>
         </CardContent>
       </Card>
 
