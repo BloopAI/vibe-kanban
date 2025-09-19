@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 utils = { path = "../utils" }
 tokio = { workspace = true }
-tokio-util = { version = "0.7", features = ["io"] }
 bytes = "1.0"
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
@@ -41,3 +40,9 @@ strum_macros = "0.27.2"
 convert_case = "0.6"
 sqlx = "0.8.6"
 axum = { workspace = true }
+agent-client-protocol = "0.4"
+anyhow = "1"
+
+[dependencies.tokio-util]
+version = "0.7"
+features = ["io", "compat"]

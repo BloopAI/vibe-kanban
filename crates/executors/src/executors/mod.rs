@@ -125,7 +125,9 @@ impl CodingAgent {
             Self::ClaudeCode(_) => vec![BaseAgentCapability::SessionFork],
             Self::Amp(_) => vec![BaseAgentCapability::SessionFork],
             Self::Codex(_) => vec![BaseAgentCapability::SessionFork],
-            Self::Gemini(_) | Self::Opencode(_) | Self::Cursor(_) | Self::QwenCode(_) => vec![],
+            Self::Gemini(_) => vec![BaseAgentCapability::SessionFork],
+            Self::QwenCode(_) => vec![BaseAgentCapability::SessionFork],
+            Self::Opencode(_) | Self::Cursor(_) => vec![],
         }
     }
 }
