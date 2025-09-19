@@ -10,16 +10,16 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { useSearch } from '@/contexts/search-context';
 import { useQuery } from '@tanstack/react-query';
 import { useTaskViewManager } from '@/hooks/useTaskViewManager';
-import { 
-  useKeyCreate, 
-  useKeyExit, 
-  useKeyFocusSearch, 
-  useKeyNavUp, 
-  useKeyNavDown, 
-  useKeyNavLeft, 
-  useKeyNavRight, 
+import {
+  useKeyCreate,
+  useKeyExit,
+  useKeyFocusSearch,
+  useKeyNavUp,
+  useKeyNavDown,
+  useKeyNavLeft,
+  useKeyNavRight,
   useKeyOpenDetails,
-  Scope 
+  Scope,
 } from '@/keyboard';
 
 import {
@@ -141,108 +141,148 @@ export function ProjectTasks() {
   }, [handleCreateTask]);
 
   // Semantic keyboard shortcuts for kanban page
-  useKeyCreate((e) => {
-    e?.preventDefault();
-    e?.stopPropagation();
-    handleCreateNewTask();
-  }, { scope: Scope.KANBAN });
+  useKeyCreate(
+    (e) => {
+      e?.preventDefault();
+      e?.stopPropagation();
+      handleCreateNewTask();
+    },
+    { scope: Scope.KANBAN }
+  );
 
   useKeyFocusSearch(() => focusInput(), { scope: Scope.KANBAN });
 
-  useKeyExit(() => {
-    if (isPanelOpen) {
-      handleClosePanel();
-    } else {
-      navigate('/projects');
-    }
-  }, { scope: Scope.KANBAN });
+  useKeyExit(
+    () => {
+      if (isPanelOpen) {
+        handleClosePanel();
+      } else {
+        navigate('/projects');
+      }
+    },
+    { scope: Scope.KANBAN }
+  );
 
   // Navigation shortcuts using semantic hooks
-  const taskStatuses = ['todo', 'inprogress', 'inreview', 'done', 'cancelled'] as const;
-  
+  const taskStatuses = [
+    'todo',
+    'inprogress',
+    'inreview',
+    'done',
+    'cancelled',
+  ] as const;
+
   const getTasksByStatus = useCallback(() => {
-    return taskStatuses.reduce((acc, status) => {
-      acc[status] = tasks.filter(task => task.status === status);
-      return acc;
-    }, {} as Record<string, Task[]>);
+    return taskStatuses.reduce(
+      (acc, status) => {
+        acc[status] = tasks.filter((task) => task.status === status);
+        return acc;
+      },
+      {} as Record<string, Task[]>
+    );
   }, [tasks]);
 
   const tasksByStatus = getTasksByStatus();
 
-  useKeyNavUp(() => {
-    if (!keyboardCursor) {
-      // Initialize cursor on first task if available
-      for (const status of taskStatuses) {
-        if (tasksByStatus[status]?.length > 0) {
-          setKeyboardCursor({ columnId: status, taskIndex: 0 });
-          break;
+  useKeyNavUp(
+    () => {
+      if (!keyboardCursor) {
+        // Initialize cursor on first task if available
+        for (const status of taskStatuses) {
+          if (tasksByStatus[status]?.length > 0) {
+            setKeyboardCursor({ columnId: status, taskIndex: 0 });
+            break;
+          }
         }
+        return;
       }
-      return;
-    }
 
-    if (keyboardCursor.taskIndex > 0) {
-      setKeyboardCursor({
-        ...keyboardCursor,
-        taskIndex: keyboardCursor.taskIndex - 1
-      });
-    }
-  }, { scope: Scope.KANBAN, when: () => !isPanelOpen });
+      if (keyboardCursor.taskIndex > 0) {
+        setKeyboardCursor({
+          ...keyboardCursor,
+          taskIndex: keyboardCursor.taskIndex - 1,
+        });
+      }
+    },
+    { scope: Scope.KANBAN, when: () => !isPanelOpen }
+  );
 
-  useKeyNavDown(() => {
-    if (!keyboardCursor) {
-      // Initialize cursor on first task if available
-      for (const status of taskStatuses) {
-        if (tasksByStatus[status]?.length > 0) {
-          setKeyboardCursor({ columnId: status, taskIndex: 0 });
-          break;
+  useKeyNavDown(
+    () => {
+      if (!keyboardCursor) {
+        // Initialize cursor on first task if available
+        for (const status of taskStatuses) {
+          if (tasksByStatus[status]?.length > 0) {
+            setKeyboardCursor({ columnId: status, taskIndex: 0 });
+            break;
+          }
         }
+        return;
       }
-      return;
-    }
 
-    const currentTasks = tasksByStatus[keyboardCursor.columnId] || [];
-    if (keyboardCursor.taskIndex < currentTasks.length - 1) {
-      setKeyboardCursor({
-        ...keyboardCursor,
-        taskIndex: keyboardCursor.taskIndex + 1
-      });
-    }
-  }, { scope: Scope.KANBAN, when: () => !isPanelOpen });
-
-  useKeyNavLeft(() => {
-    const currentIndex = taskStatuses.findIndex(status => status === keyboardCursor?.columnId);
-    if (currentIndex > 0) {
-      const newColumnId = taskStatuses[currentIndex - 1];
-      const newTasks = tasksByStatus[newColumnId] || [];
-      setKeyboardCursor({
-        columnId: newColumnId,
-        taskIndex: Math.min(keyboardCursor?.taskIndex || 0, Math.max(0, newTasks.length - 1))
-      });
-    }
-  }, { scope: Scope.KANBAN, when: () => !isPanelOpen && !!keyboardCursor });
-
-  useKeyNavRight(() => {
-    const currentIndex = taskStatuses.findIndex(status => status === keyboardCursor?.columnId);
-    if (currentIndex < taskStatuses.length - 1) {
-      const newColumnId = taskStatuses[currentIndex + 1];
-      const newTasks = tasksByStatus[newColumnId] || [];
-      setKeyboardCursor({
-        columnId: newColumnId,
-        taskIndex: Math.min(keyboardCursor?.taskIndex || 0, Math.max(0, newTasks.length - 1))
-      });
-    }
-  }, { scope: Scope.KANBAN, when: () => !isPanelOpen && !!keyboardCursor });
-
-  useKeyOpenDetails(() => {
-    if (keyboardCursor) {
       const currentTasks = tasksByStatus[keyboardCursor.columnId] || [];
-      const task = currentTasks[keyboardCursor.taskIndex];
-      if (task) {
-        handleViewTaskDetails(task);
+      if (keyboardCursor.taskIndex < currentTasks.length - 1) {
+        setKeyboardCursor({
+          ...keyboardCursor,
+          taskIndex: keyboardCursor.taskIndex + 1,
+        });
       }
-    }
-  }, { scope: Scope.KANBAN, when: () => !isPanelOpen && !!keyboardCursor });
+    },
+    { scope: Scope.KANBAN, when: () => !isPanelOpen }
+  );
+
+  useKeyNavLeft(
+    () => {
+      const currentIndex = taskStatuses.findIndex(
+        (status) => status === keyboardCursor?.columnId
+      );
+      if (currentIndex > 0) {
+        const newColumnId = taskStatuses[currentIndex - 1];
+        const newTasks = tasksByStatus[newColumnId] || [];
+        setKeyboardCursor({
+          columnId: newColumnId,
+          taskIndex: Math.min(
+            keyboardCursor?.taskIndex || 0,
+            Math.max(0, newTasks.length - 1)
+          ),
+        });
+      }
+    },
+    { scope: Scope.KANBAN, when: () => !isPanelOpen && !!keyboardCursor }
+  );
+
+  useKeyNavRight(
+    () => {
+      const currentIndex = taskStatuses.findIndex(
+        (status) => status === keyboardCursor?.columnId
+      );
+      if (currentIndex < taskStatuses.length - 1) {
+        const newColumnId = taskStatuses[currentIndex + 1];
+        const newTasks = tasksByStatus[newColumnId] || [];
+        setKeyboardCursor({
+          columnId: newColumnId,
+          taskIndex: Math.min(
+            keyboardCursor?.taskIndex || 0,
+            Math.max(0, newTasks.length - 1)
+          ),
+        });
+      }
+    },
+    { scope: Scope.KANBAN, when: () => !isPanelOpen && !!keyboardCursor }
+  );
+
+  useKeyOpenDetails(
+    () => {
+      if (keyboardCursor) {
+        const currentTasks = tasksByStatus[keyboardCursor.columnId] || [];
+        const task = currentTasks[keyboardCursor.taskIndex];
+        if (task) {
+          handleViewTaskDetails(task);
+        }
+      }
+    },
+    { scope: Scope.KANBAN, when: () => !isPanelOpen && !!keyboardCursor }
+  );
 
   // Full screen
 

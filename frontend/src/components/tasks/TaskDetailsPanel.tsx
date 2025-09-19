@@ -86,9 +86,9 @@ export function TaskDetailsPanel({
   };
 
   // Semantic keyboard shortcut for closing panel
-  useKeyExit(() => onClose(), { 
-    scope: Scope.TASK_PANEL, 
-    when: () => !!task && !isFullScreen 
+  useKeyExit(() => onClose(), {
+    scope: Scope.TASK_PANEL,
+    when: () => !!task && !isFullScreen,
   });
 
   // Reset to logs tab when task changes
