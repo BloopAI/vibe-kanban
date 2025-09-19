@@ -264,13 +264,18 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
                     let create_data = CreateProject {
                         name: project_name,
-                        git_repo_path: repo.path,
+                        git_repo_path: repo.path.to_string_lossy().to_string(),
                         use_existing_repo: true,
                         setup_script: None,
                         dev_script: None,
                         cleanup_script: None,
                         copy_files: None,
                     };
+                    // Ensure existing repo has a main branch if it's empty
+                    if let Err(e) = self.git().ensure_main_branch_exists(&repo.path) {
+                        tracing::error!("Failed to ensure main branch exists: {}", e);
+                        continue;
+                    }
 
                     // Create project (ignore individual failures)
                     let project_id = Uuid::new_v4();

@@ -31,7 +31,7 @@ pub struct DirectoryListResponse {
 #[derive(Debug, Serialize, TS)]
 pub struct DirectoryEntry {
     pub name: String,
-    pub path: String,
+    pub path: PathBuf,
     pub is_directory: bool,
     pub is_git_repo: bool,
     pub last_modified: Option<u64>,
@@ -230,7 +230,7 @@ impl FilesystemService {
                     .map(|t| t.elapsed().unwrap_or_default().as_secs());
                 Some(DirectoryEntry {
                     name: name.to_string(),
-                    path: entry.path().to_string_lossy().to_string(),
+                    path: entry.into_path(),
                     is_directory: true,
                     is_git_repo: true,
                     last_modified,
@@ -296,7 +296,7 @@ impl FilesystemService {
 
                 directory_entries.push(DirectoryEntry {
                     name: name.to_string(),
-                    path: path.to_string_lossy().to_string(),
+                    path,
                     is_directory,
                     is_git_repo,
                     last_modified: None,
