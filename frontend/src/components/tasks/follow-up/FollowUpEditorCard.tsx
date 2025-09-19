@@ -7,7 +7,7 @@ type Props = {
   placeholder: string;
   value: string;
   onChange: (v: string) => void;
-  onKeyDown: (e: React.KeyboardEvent<Element>) => void;
+  onKeyDown?: (e: React.KeyboardEvent<Element>) => void;
   disabled: boolean;
   // Loading overlay
   showLoadingOverlay: boolean;
@@ -17,7 +17,7 @@ export function FollowUpEditorCard({
   placeholder,
   value,
   onChange,
-  onKeyDown,
+
   disabled,
   showLoadingOverlay,
 }: Props) {
@@ -28,7 +28,7 @@ export function FollowUpEditorCard({
         placeholder={placeholder}
         value={value}
         onChange={onChange}
-        onKeyDown={onKeyDown}
+
         className={cn('flex-1 min-h-[40px] resize-none')}
         disabled={disabled}
         projectId={projectId}

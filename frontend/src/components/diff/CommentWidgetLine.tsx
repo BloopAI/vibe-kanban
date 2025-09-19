@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
 import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
@@ -45,20 +45,14 @@ export function CommentWidgetLine({
     onCancel();
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      handleCancel();
-    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-      handleSave();
-    }
-  };
+
 
   return (
     <div className="p-4 border-y">
       <FileSearchTextarea
         value={value}
         onChange={setValue}
-        onKeyDown={handleKeyDown}
+
         placeholder="Add a comment... (type @ to search files)"
         rows={3}
         maxRows={10}

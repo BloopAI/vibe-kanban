@@ -18,28 +18,12 @@ export function SearchBar({
   value = '',
   onChange,
   disabled = false,
-  onClear,
+
   project,
 }: SearchBarProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
 
-  React.useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
 
-      if (e.key === 'Escape' && document.activeElement === inputRef.current) {
-        e.preventDefault();
-        onClear?.();
-        inputRef.current?.blur();
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClear]);
 
   if (disabled) {
     return null;
@@ -56,9 +40,7 @@ export function SearchBar({
         placeholder={project ? `Search ${project.name}...` : 'Search...'}
         className="pl-8 pr-14 h-8 bg-muted"
       />
-      <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none select-none font-mono text-[10px] text-muted-foreground rounded border bg-muted px-1 py-0.5">
-        ⌘S
-      </kbd>
+
     </div>
   );
 }

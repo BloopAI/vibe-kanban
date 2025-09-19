@@ -1,4 +1,4 @@
-import { KeyboardEvent, useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -51,16 +51,7 @@ export function TaskCard({
     }
   }, [isFocused]);
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Backspace') {
-        onDelete(task.id);
-      } else if (e.key === 'Enter' || e.key === ' ') {
-        onViewDetails(task);
-      }
-    },
-    [task, onDelete, onViewDetails]
-  );
+
 
   const handleClick = useCallback(() => {
     onViewDetails(task);
@@ -76,7 +67,7 @@ export function TaskCard({
       onClick={handleClick}
       tabIndex={tabIndex}
       forwardedRef={localRef}
-      onKeyDown={handleKeyDown}
+
     >
       <div className="flex flex-1 gap-2 items-center min-w-0">
         <h4 className="flex-1 min-w-0 line-clamp-2 font-light text-sm">
@@ -100,7 +91,7 @@ export function TaskCard({
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
+
           >
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

@@ -6,7 +6,7 @@ import { AlertTriangle, Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { projectsApi, tasksApi, attemptsApi } from '@/lib/api';
 import { openTaskForm } from '@/lib/openTaskForm';
-import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
+
 import { useSearch } from '@/contexts/search-context';
 import { useQuery } from '@tanstack/react-query';
 import { useTaskViewManager } from '@/hooks/useTaskViewManager';
@@ -214,14 +214,7 @@ export function ProjectTasks() {
     [tasksById]
   );
 
-  // Setup keyboard shortcuts
-  useKeyboardShortcuts({
-    navigate,
-    currentPath: window.location.pathname,
-    hasOpenDialog: false,
-    closeDialog: () => {},
-    onC: handleCreateNewTask,
-  });
+
 
   // Initialize project when projectId changes
   useEffect(() => {

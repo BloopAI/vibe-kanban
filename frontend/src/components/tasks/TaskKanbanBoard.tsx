@@ -9,10 +9,7 @@ import {
 import { TaskCard } from './TaskCard';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import { useNavigate, useParams } from 'react-router-dom';
-import {
-  useKeyboardShortcuts,
-  useKanbanKeyboardNavigation,
-} from '@/lib/keyboard-shortcuts.ts';
+
 import { statusBoardColors, statusLabels } from '@/utils/status-labels';
 
 type Task = TaskWithAttemptStatus;
@@ -52,10 +49,7 @@ function TaskKanbanBoard({
   }>();
   const navigate = useNavigate();
 
-  useKeyboardShortcuts({
-    navigate,
-    currentPath: `/projects/${projectId}/tasks${taskId ? `/${taskId}` : ''}`,
-  });
+
 
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(
     taskId || null
@@ -116,24 +110,7 @@ function TaskKanbanBoard({
     }
   }, [taskId, focusedTaskId, groupedTasks]);
 
-  // Keyboard navigation handler
-  useKanbanKeyboardNavigation({
-    focusedTaskId,
-    setFocusedTaskId: (id) => {
-      setFocusedTaskId(id as string | null);
-      if (isPanelOpen) {
-        const task = filteredTasks.find((t: any) => t.id === id);
-        if (task) {
-          onViewTaskDetails(task);
-        }
-      }
-    },
-    focusedStatus,
-    setFocusedStatus: (status) => setFocusedStatus(status as TaskStatus | null),
-    groupedTasks,
-    filteredTasks,
-    allTaskStatuses,
-  });
+
 
   return (
     <KanbanProvider onDragEnd={onDragEnd}>

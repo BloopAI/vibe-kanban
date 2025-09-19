@@ -129,41 +129,7 @@ function BranchSelector({
               value={branchSearchTerm}
               onChange={(e) => setBranchSearchTerm(e.target.value)}
               className="pl-8"
-              onKeyDown={(e) => {
-                // Handle keyboard navigation
-                switch (e.key) {
-                  case 'ArrowDown':
-                    e.preventDefault();
-                    e.stopPropagation();
-                    moveHighlight(1);
-                    break;
-                  case 'ArrowUp':
-                    e.preventDefault();
-                    e.stopPropagation();
-                    moveHighlight(-1);
-                    break;
-                  case 'Enter':
-                    if (highlighted !== null && filteredBranches[highlighted]) {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const branch = filteredBranches[highlighted];
-                      const isCurrentAndExcluded =
-                        excludeCurrentBranch && branch.is_current;
-                      if (!isCurrentAndExcluded) {
-                        handleBranchSelect(branch.name);
-                      }
-                    }
-                    break;
-                  case 'Escape':
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setOpen(false);
-                    break;
-                  default:
-                    // Prevent dropdown from closing when typing
-                    e.stopPropagation();
-                }
-              }}
+
               autoFocus
             />
           </div>
