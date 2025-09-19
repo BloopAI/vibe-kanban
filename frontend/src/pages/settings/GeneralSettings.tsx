@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ChevronDown, Key, Loader2, Volume2 } from 'lucide-react';
@@ -443,6 +444,35 @@ export function GeneralSettings() {
               </Button>
             </div>
           )}
+
+          <div className="space-y-2">
+            <Label htmlFor="github-token">Personal Access Token</Label>
+            <Input
+              id="github-token"
+              type="password"
+              placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+              value={config.github.pat || ''}
+              onChange={(e) =>
+                updateConfig({
+                  github: {
+                    ...config.github,
+                    pat: e.target.value || null,
+                  },
+                })
+              }
+            />
+            <p className="text-sm text-muted-foreground">
+              GitHub Personal Access Token with 'repo' permissions.{' '}
+              <a
+                href="https://github.com/settings/tokens"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                Create token here
+              </a>
+            </p>
+          </div>
         </CardContent>
       </Card>
 
