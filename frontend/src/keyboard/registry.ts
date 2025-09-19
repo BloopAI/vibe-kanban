@@ -135,21 +135,28 @@ export const keyBindings: KeyBinding[] = [
  */
 export function getKeysFor(action: Action, scope?: Scope): string[] {
   const bindings = keyBindings
-    .filter(binding => 
-      binding.action === action && 
-      (!scope || !binding.scopes || binding.scopes.includes(scope))
+    .filter(
+      (binding) =>
+        binding.action === action &&
+        (!scope || !binding.scopes || binding.scopes.includes(scope))
     )
-    .flatMap(binding => Array.isArray(binding.keys) ? binding.keys : [binding.keys]);
-  
+    .flatMap((binding) =>
+      Array.isArray(binding.keys) ? binding.keys : [binding.keys]
+    );
+
   return bindings;
 }
 
 /**
  * Get binding info for a specific action and scope
  */
-export function getBindingFor(action: Action, scope?: Scope): KeyBinding | undefined {
-  return keyBindings.find(binding => 
-    binding.action === action && 
-    (!scope || !binding.scopes || binding.scopes.includes(scope))
+export function getBindingFor(
+  action: Action,
+  scope?: Scope
+): KeyBinding | undefined {
+  return keyBindings.find(
+    (binding) =>
+      binding.action === action &&
+      (!scope || !binding.scopes || binding.scopes.includes(scope))
   );
 }
