@@ -3,7 +3,7 @@ import TaskDetailsHeader from './TaskDetailsHeader';
 import { TaskFollowUpSection } from './TaskFollowUpSection';
 import { TaskTitleDescription } from './TaskDetails/TaskTitleDescription';
 import type { TaskAttempt } from 'shared/types';
-import { useKeyboardShortcut } from '@/hooks';
+import { useKeyExit, Scope } from '@/keyboard';
 import {
   getBackdropClasses,
   getTaskPanelClasses,
@@ -85,14 +85,10 @@ export function TaskDetailsPanel({
     setActiveTab('logs');
   };
 
-  // Keyboard shortcut for closing panel
-  useKeyboardShortcut({
-    keys: 'esc',
-    callback: onClose,
-    description: 'Close task details panel',
-    group: 'Task Details',
-    scope: 'task-panel',
-    when: () => !!task && !isFullScreen,
+  // Semantic keyboard shortcut for closing panel
+  useKeyExit(() => onClose(), { 
+    scope: Scope.TASK_PANEL, 
+    when: () => !!task && !isFullScreen 
   });
 
   // Reset to logs tab when task changes

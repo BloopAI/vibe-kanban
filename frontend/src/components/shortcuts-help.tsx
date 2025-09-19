@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useKeyboardShortcutsRegistry } from '@/contexts/keyboard-shortcuts-context';
-import { useKeyboardShortcut } from '@/hooks';
+import { useKeyShowHelp, Scope } from '@/keyboard';
 import {
   Dialog,
   DialogContent,
@@ -12,14 +12,8 @@ export function ShortcutsHelp() {
   const [isOpen, setIsOpen] = useState(false);
   const { shortcuts } = useKeyboardShortcutsRegistry();
 
-  // Global shortcut to open help
-  useKeyboardShortcut({
-    keys: '?',
-    callback: () => setIsOpen(true),
-    description: 'Show keyboard shortcuts help',
-    group: 'Global',
-    scope: 'global',
-  });
+  // Global shortcut to open help using semantic hook
+  useKeyShowHelp(() => setIsOpen(true), { scope: Scope.GLOBAL });
 
   const groupedShortcuts = shortcuts.reduce(
     (acc, shortcut) => {

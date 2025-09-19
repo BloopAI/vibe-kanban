@@ -9,7 +9,7 @@ import { showProjectForm } from '@/lib/modals';
 import { projectsApi } from '@/lib/api';
 import { AlertCircle, Loader2, Plus } from 'lucide-react';
 import ProjectCard from '@/components/projects/ProjectCard.tsx';
-import { useKeyboardShortcut } from '@/hooks';
+import { useKeyCreate, Scope } from '@/keyboard';
 
 export function ProjectList() {
   const { t } = useTranslation('projects');
@@ -44,18 +44,12 @@ export function ProjectList() {
     }
   };
 
-  // Keyboard shortcut for creating new project
-  useKeyboardShortcut({
-    keys: 'c',
-    callback: (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      handleCreateProject();
-    },
-    description: 'Create new project',
-    group: 'Projects',
-    scope: 'projects',
-  });
+  // Semantic keyboard shortcut for creating new project
+  useKeyCreate((e) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    handleCreateProject();
+  }, { scope: Scope.PROJECTS });
 
   const handleEditProject = async (project: Project) => {
     try {
