@@ -29,6 +29,11 @@ jobs:
       - name: Lint frontend
         run: cd frontend && npm run lint
 
+      - name: Check i18n regressions
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref || 'main' }}
+        run: ./scripts/check-i18n.sh
+
       - name: Format check frontend
         run: cd frontend && npm run format:check
 
