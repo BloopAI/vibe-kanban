@@ -41,8 +41,7 @@
           "placeholder": "プロファイルを選択",
           "helper": "タスク試行を作成する際に使用するデフォルトエージェント設定を選択してください。"
         },
-        "variant": "デフォルト",
-        "defaultVariant": "デフォルト"
+        "variant": "デフォルト"
       },
       "editor": {
         "title": "エディター",
