@@ -1108,7 +1108,7 @@ impl ContainerService for LocalContainerService {
                 && !parent.exists()
             {
                 std::fs::create_dir_all(parent).map_err(|e| {
-                    ContainerError::Other(anyhow!("Failed to create directory {:?}: {}", parent, e))
+                    ContainerError::Other(anyhow!("Failed to create directory {parent:?}: {e}"))
                 })?;
             }
 
@@ -1116,17 +1116,13 @@ impl ContainerService for LocalContainerService {
             if source_file.exists() {
                 std::fs::copy(&source_file, &target_file).map_err(|e| {
                     ContainerError::Other(anyhow!(
-                        "Failed to copy file {:?} to {:?}: {}",
-                        source_file,
-                        target_file,
-                        e
+                        "Failed to copy file {source_file:?} to {target_file:?}: {e}"
                     ))
                 })?;
                 tracing::info!("Copied file {:?} to worktree", file_path);
             } else {
                 return Err(ContainerError::Other(anyhow!(
-                    "File {:?} does not exist in the project directory",
-                    source_file
+                    "File {source_file:?} does not exist in the project directory"
                 )));
             }
         }
