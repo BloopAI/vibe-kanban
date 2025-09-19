@@ -263,7 +263,11 @@ export function GeneralSettings() {
                 disabled={!profiles}
               >
                 <SelectTrigger id="executor">
-                  <SelectValue placeholder="Select profile" />
+                  <SelectValue
+                    placeholder={t(
+                      'settings.general.taskExecution.executor.placeholder'
+                    )}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {profiles &&
@@ -335,7 +339,7 @@ export function GeneralSettings() {
                       disabled
                     >
                       <span className="text-sm truncate flex-1 text-left">
-                        Default
+                        {t('settings.general.taskExecution.defaultLabel')}
                       </span>
                     </Button>
                   );
@@ -479,7 +483,7 @@ export function GeneralSettings() {
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:underline"
               >
-                Create token here
+                {t('settings.general.github.pat.createTokenLink')}
               </a>
             </p>
           </div>
