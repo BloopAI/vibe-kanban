@@ -24,8 +24,6 @@ interface VirtualizedListProps {
 
 interface MessageListContext {
   attempt: TaskAttempt;
-  items: PatchTypeWithKey[];
-  lastMeaningfulIndex: number | null;
 }
 
 const INITIAL_TOP_ITEM = { index: 'LAST' as const, align: 'end' as const };
@@ -41,44 +39,11 @@ const AutoScrollToBottom: ScrollModifier = {
   autoScroll: 'smooth',
 };
 
-const isLoadingEntry = (item: PatchTypeWithKey) =>
-  item.type === 'NORMALIZED_ENTRY' &&
-  item.content.entry_type?.type === 'loading';
-
-const findPreviousMeaningfulIndex = (
-  items: PatchTypeWithKey[],
-  startIndex: number,
-  options: { normalizedOnly?: boolean } = {}
-) => {
-  const { normalizedOnly = false } = options;
-
-  for (let i = startIndex - 1; i >= 0; i -= 1) {
-    const candidate = items[i];
-    if (normalizedOnly && candidate.type !== 'NORMALIZED_ENTRY') continue;
-    if (isLoadingEntry(candidate)) continue;
-
-    return i;
-  }
-
-  return null;
-};
-
-const getLastMeaningfulIndex = (items: PatchTypeWithKey[]) => {
-  const index = findPreviousMeaningfulIndex(items, items.length);
-  if (index !== null) {
-    return index;
-  }
-
-  return items.length > 0 ? items.length - 1 : null;
-};
-
 const ItemContent: VirtuosoMessageListProps<
   PatchTypeWithKey,
   MessageListContext
 >['ItemContent'] = ({ data, index, context }) => {
-  const items = context?.items ?? [];
   const attempt = context?.attempt;
-  const lastMeaningfulIndex = context?.lastMeaningfulIndex ?? null;
 
   if (data.type === 'STDOUT') {
     return <p>{data.content}</p>;
@@ -87,33 +52,12 @@ const ItemContent: VirtuosoMessageListProps<
     return <p>{data.content}</p>;
   }
   if (data.type === 'NORMALIZED_ENTRY' && attempt) {
-    const entryType = data.content.entry_type;
-
-    if (entryType?.type === 'loading') {
-      const previousIndex = findPreviousMeaningfulIndex(items, index, {
-        normalizedOnly: true,
-      });
-      const previous =
-        previousIndex === null ? null : (items[previousIndex] ?? null);
-
-      if (
-        previous?.type === 'NORMALIZED_ENTRY' &&
-        previous.content.entry_type?.type === 'tool_use' &&
-        previous.content.entry_type.status?.status === 'pending_approval'
-      ) {
-        return null;
-      }
-    }
-
     return (
       <DisplayConversationEntry
         expansionKey={data.patchKey}
         entry={data.content}
         executionProcessId={data.executionProcessId}
         taskAttempt={attempt}
-        lastEntry={
-          lastMeaningfulIndex !== null && index === lastMeaningfulIndex
-        }
       />
     );
   }
@@ -131,15 +75,6 @@ const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
     useState<DataWithScrollModifier<PatchTypeWithKey> | null>(null);
   const [loading, setLoading] = useState(true);
   const { setEntries, reset } = useEntries();
-
-  const lastMeaningfulIndex = useMemo<number | null>(() => {
-    const items = channelData?.data ?? [];
-    if (items.length === 0) {
-      return null;
-    }
-
-    return getLastMeaningfulIndex(items);
-  }, [channelData]);
 
   useEffect(() => {
     setLoading(true);
@@ -169,11 +104,7 @@ const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
   useConversationHistory({ attempt, onEntriesUpdated });
 
   const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
-  const items = channelData?.data ?? [];
-  const messageListContext = useMemo(
-    () => ({ attempt, items, lastMeaningfulIndex }),
-    [attempt, items, lastMeaningfulIndex]
-  );
+  const messageListContext = useMemo(() => ({ attempt }), [attempt]);
 
   return (
     <>

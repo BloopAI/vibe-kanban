@@ -40,7 +40,6 @@ type Props = {
   diffDeletable?: boolean;
   executionProcessId?: string;
   taskAttempt?: TaskAttempt;
-  lastEntry?: boolean;
 };
 
 type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
@@ -599,7 +598,6 @@ function DisplayConversationEntry({
   expansionKey,
   executionProcessId,
   taskAttempt,
-  lastEntry,
 }: Props) {
   const isNormalizedEntry = (
     entry: NormalizedEntry | ProcessStartPayload
@@ -717,7 +715,7 @@ function DisplayConversationEntry({
 
     const content = <div className="px-4 py-2 text-sm space-y-3">{body}</div>;
 
-    if (isPendingApprovalStatus(status) && lastEntry) {
+    if (isPendingApprovalStatus(status)) {
       return (
         <PendingApprovalEntry
           entry={entry}
