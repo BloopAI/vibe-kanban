@@ -22,6 +22,7 @@ type Props = {
   expansionKey: string;
   defaultExpanded?: boolean;
   statusAppearance?: 'default' | 'denied' | 'timed_out';
+  forceExpanded?: boolean;
 };
 
 /**
@@ -69,9 +70,11 @@ function EditDiffRenderer({
   expansionKey,
   defaultExpanded = false,
   statusAppearance = 'default',
+  forceExpanded = false,
 }: Props) {
   const { config } = useUserSystem();
   const [expanded, setExpanded] = useExpandable(expansionKey, defaultExpanded);
+  const effectiveExpanded = forceExpanded || expanded;
 
   const theme = getActualTheme(config?.theme);
   const globalMode = useDiffViewMode();
@@ -116,7 +119,7 @@ function EditDiffRenderer({
         </p>
       </div>
 
-      {expanded && (
+      {effectiveExpanded && (
         <div className={'mt-2 border ' + hideLineNumbersClass}>
           <div className="flex items-center justify-end border-b px-2 py-1">
             <DiffViewSwitch />

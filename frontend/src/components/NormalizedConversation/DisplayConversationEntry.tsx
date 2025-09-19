@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import MarkdownRenderer from '@/components/ui/markdown-renderer.tsx';
 import {
@@ -11,8 +10,7 @@ import {
 import type { ProcessStartPayload } from '@/types/logs';
 import FileChangeRenderer from './FileChangeRenderer';
 import { renderJson } from './ToolDetails';
-import { useExpandable, useExpandableStore } from '@/stores/useExpandableStore';
-import { useEntryExpansion } from '@/hooks/useEntryExpansion';
+import { useExpandable } from '@/stores/useExpandableStore';
 import {
   AlertCircle,
   Bot,
@@ -427,6 +425,7 @@ const ToolCallCard: React.FC<{
   highlighted?: boolean;
   defaultExpanded?: boolean;
   statusAppearance?: ToolStatusAppearance;
+  forceExpanded?: boolean;
 }> = ({
   entryType,
   action,
@@ -434,6 +433,7 @@ const ToolCallCard: React.FC<{
   content,
   entryContent,
   defaultExpanded = false,
+  forceExpanded = false,
 }) => {
   const { t } = useTranslation('common');
   const at: any = entryType?.action_type || action;
@@ -441,6 +441,7 @@ const ToolCallCard: React.FC<{
     `tool-entry:${expansionKey}`,
     defaultExpanded
   );
+  const effectiveExpanded = forceExpanded || expanded;
 
   const label =
     at?.action === 'command_run'
@@ -483,7 +484,7 @@ const ToolCallCard: React.FC<{
           e.preventDefault();
           toggle();
         },
-        title: expanded
+        title: effectiveExpanded
           ? t('conversation.toolDetailsToggle.hide')
           : t('conversation.toolDetailsToggle.show'),
       }
@@ -510,7 +511,7 @@ const ToolCallCard: React.FC<{
         </span>
       </HeaderWrapper>
 
-      {expanded && (
+      {effectiveExpanded && (
         <div className="max-h-[200px] overflow-y-auto border">
           {isCommand ? (
             <>
@@ -607,28 +608,6 @@ function DisplayConversationEntry({
     entry: NormalizedEntry | ProcessStartPayload
   ): entry is ProcessStartPayload => 'processId' in entry;
 
-  const expansionConfigs = useEntryExpansion(entry, expansionKey);
-  const setExpandableKey = useExpandableStore((s) => s.setKey);
-
-  useEffect(() => {
-    if (!('entry_type' in entry)) return;
-    const currentEntryType = entry.entry_type;
-    if (currentEntryType.type !== 'tool_use') return;
-
-    const isPlanPresentation =
-      currentEntryType.action_type.action === 'plan_presentation';
-    if (
-      currentEntryType.status.status === 'pending_approval' ||
-      isPlanPresentation
-    )
-      return;
-
-    expansionConfigs.forEach(({ key }) => {
-      if (key.startsWith('plan-entry:')) return;
-      setExpandableKey(key, false);
-    });
-  }, [entry, expansionConfigs, setExpandableKey]);
-
   if (isProcessStart(entry)) {
     const toolAction: any = entry.action ?? null;
     return (
@@ -669,8 +648,8 @@ function DisplayConversationEntry({
     const statusAppearance = getToolStatusAppearance(status);
     const isPlanPresentation =
       toolEntry.action_type.action === 'plan_presentation';
-    const defaultExpanded =
-      status.status === 'pending_approval' || isPlanPresentation;
+    const isPendingApproval = status.status === 'pending_approval';
+    const defaultExpanded = isPendingApproval || isPlanPresentation;
 
     const body = (() => {
       if (isFileEdit(toolEntry.action_type)) {
@@ -685,6 +664,7 @@ function DisplayConversationEntry({
                 expansionKey={`edit:${expansionKey}:${idx}`}
                 defaultExpanded={defaultExpanded}
                 statusAppearance={statusAppearance}
+                forceExpanded={isPendingApproval}
               />
             ))}
           </div>
@@ -709,6 +689,7 @@ function DisplayConversationEntry({
           entryContent={entry.content}
           defaultExpanded={defaultExpanded}
           statusAppearance={statusAppearance}
+          forceExpanded={isPendingApproval}
         />
       );
     })();
@@ -718,18 +699,12 @@ function DisplayConversationEntry({
     if (isPendingApprovalStatus(status)) {
       return (
         <PendingApprovalEntry
-          entry={entry}
-          expansionKey={expansionKey}
           pendingStatus={status}
           executionProcessId={executionProcessId}
         >
           {content}
         </PendingApprovalEntry>
       );
-    }
-
-    if (isPendingApprovalStatus(status)) {
-      return null;
     }
 
     return content;

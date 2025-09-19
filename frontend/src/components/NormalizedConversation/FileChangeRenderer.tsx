@@ -15,6 +15,7 @@ type Props = {
   expansionKey: string;
   defaultExpanded?: boolean;
   statusAppearance?: 'default' | 'denied' | 'timed_out';
+  forceExpanded?: boolean;
 };
 
 function isWrite(
@@ -44,9 +45,11 @@ const FileChangeRenderer = ({
   expansionKey,
   defaultExpanded = false,
   statusAppearance = 'default',
+  forceExpanded = false,
 }: Props) => {
   const { config } = useUserSystem();
   const [expanded, setExpanded] = useExpandable(expansionKey, defaultExpanded);
+  const effectiveExpanded = forceExpanded || expanded;
 
   const theme = getActualTheme(config?.theme);
   const headerClass = cn('flex items-center gap-1.5 text-secondary-foreground');
@@ -79,6 +82,7 @@ const FileChangeRenderer = ({
         expansionKey={expansionKey}
         defaultExpanded={defaultExpanded}
         statusAppearance={statusAppearance}
+        forceExpanded={forceExpanded}
       />
     );
   }
@@ -139,7 +143,7 @@ const FileChangeRenderer = ({
       </div>
 
       {/* Body */}
-      {isWrite(change) && expanded && (
+      {isWrite(change) && effectiveExpanded && (
         <FileContentView
           content={change.content}
           lang={getHighLightLanguageFromPath(path)}

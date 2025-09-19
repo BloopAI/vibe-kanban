@@ -42,7 +42,7 @@ const AutoScrollToBottom: ScrollModifier = {
 const ItemContent: VirtuosoMessageListProps<
   PatchTypeWithKey,
   MessageListContext
->['ItemContent'] = ({ data, index, context }) => {
+>['ItemContent'] = ({ data, context }) => {
   const attempt = context?.attempt;
 
   if (data.type === 'STDOUT') {

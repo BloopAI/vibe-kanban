@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { useExpandableStore } from '@/stores/useExpandableStore';
-import type { ApprovalStatus, NormalizedEntry, ToolStatus } from 'shared/types';
+import type { ApprovalStatus, ToolStatus } from 'shared/types';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -12,14 +11,11 @@ import {
 import { CircularProgress } from '@/components/ui/circular-progress';
 import { approvalsApi } from '@/lib/api';
 import { Check, X } from 'lucide-react';
-import { useEntryExpansion } from '@/hooks/useEntryExpansion';
 import { Textarea } from '@/components/ui/textarea';
 
 const DEFAULT_DENIAL_REASON = 'User denied this tool use request.';
 
 interface PendingApprovalEntryProps {
-  entry: NormalizedEntry;
-  expansionKey: string;
   pendingStatus: Extract<ToolStatus, { status: 'pending_approval' }>;
   executionProcessId?: string;
   children: ReactNode;
@@ -33,13 +29,10 @@ function formatSeconds(s: number) {
 }
 
 const PendingApprovalEntry = ({
-  entry,
-  expansionKey,
   pendingStatus,
   executionProcessId,
   children,
 }: PendingApprovalEntryProps) => {
-  const setExpandableKey = useExpandableStore((s) => s.setKey);
   const [timeLeft, setTimeLeft] = useState<number>(() => {
     const remaining = new Date(pendingStatus.timeout_at).getTime() - Date.now();
     return Math.max(0, Math.floor(remaining / 1000));
@@ -51,9 +44,6 @@ const PendingApprovalEntry = ({
   const [denyReason, setDenyReason] = useState('');
   const abortRef = useRef<AbortController | null>(null);
   const denyReasonRef = useRef<HTMLTextAreaElement | null>(null);
-  const expansionConfigs = useEntryExpansion(entry, expansionKey, {
-    forceExpand: !hasResponded,
-  });
 
   const percent = useMemo(() => {
     const total = Math.max(
@@ -144,11 +134,7 @@ const PendingApprovalEntry = ({
 
   useEffect(() => {
     if (!hasResponded) return;
-    for (const cfg of expansionConfigs) {
-      if (cfg.key.startsWith('plan-entry:')) continue;
-      setExpandableKey(cfg.key, false);
-    }
-  }, [hasResponded, expansionConfigs, setExpandableKey]);
+  }, [hasResponded]);
 
   useEffect(() => {
     if (!isEnteringReason) return;
