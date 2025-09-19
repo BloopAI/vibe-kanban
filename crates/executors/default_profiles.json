@@ -8,8 +8,7 @@
       },
       "PLAN": {
         "CLAUDE_CODE": {
-          "plan": true,
-          "approvals": true
+          "plan": true
         }
       },
       "APPROVALS": {
@@ -88,4 +87,3 @@
     }
   }
 }
-

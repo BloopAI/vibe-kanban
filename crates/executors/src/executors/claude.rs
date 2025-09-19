@@ -76,11 +76,18 @@ impl ClaudeCode {
             CommandBuilder::new(base_command(self.claude_code_router.unwrap_or(false)))
                 .params(["-p"]);
 
-        if self.plan.unwrap_or(false) {
+        let plan = self.plan.unwrap_or(false);
+        let approvals = self.approvals.unwrap_or(false);
+        if plan && approvals {
+            tracing::warn!("Both plan and approvals are enabled. Plan will take precedence.");
+        }
+
+        if plan {
             builder = builder.extend_params(["--permission-mode=plan"]);
         }
-        if self.approvals.unwrap_or(false) {
-            match approvals_json().await {
+
+        if plan || approvals {
+            match settings_json(plan).await {
                 // TODO: Avoid quoting
                 Ok(settings) => match shlex::try_quote(&settings) {
                     Ok(quoted) => {
@@ -97,6 +104,7 @@ impl ClaudeCode {
                 }
             }
         }
+
         if self.dangerously_skip_permissions.unwrap_or(false) {
             builder = builder.extend_params(["--dangerously-skip-permissions"]);
         }
@@ -120,7 +128,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         let command_builder = self.build_command_builder().await;
         let base_command = command_builder.build_initial();
 
-        if self.approvals.unwrap_or(false) {
+        if self.approvals.unwrap_or(false) || self.plan.unwrap_or(false) {
             write_python_hook(current_dir).await?
         }
 
@@ -159,7 +167,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         let base_command =
             command_builder.build_follow_up(&["--resume".to_string(), session_id.to_string()]);
 
-        if self.approvals.unwrap_or(false) {
+        if self.approvals.unwrap_or(false) || self.plan.unwrap_or(false) {
             write_python_hook(current_dir).await?
         }
 
@@ -240,16 +248,22 @@ async fn write_python_hook(current_dir: &Path) -> Result<(), ExecutorError> {
     Ok(())
 }
 
-// Hook to configure approvals
-async fn approvals_json() -> Result<String, std::io::Error> {
+// Configure settings json
+async fn settings_json(plan: bool) -> Result<String, std::io::Error> {
     let backend_port = get_backend_port().await?;
     let backend_timeout = APPROVAL_TIMEOUT_SECONDS + 5; // add buffer
+
+    let matcher = if plan {
+        "^ExitPlanMode$"
+    } else {
+        "^(?!(Glob|Grep|NotebookRead|Read|Task|TodoWrite)$).*"
+    };
 
     Ok(serde_json::json!({
         "hooks": {
             "PreToolUse": [
                 {
-                    "matcher": "^(?!(Glob|Grep|NotebookRead|Read|Task|TodoWrite)$).*",
+                    "matcher": matcher,
                     "hooks": [
                         {
                             "type": "command",
