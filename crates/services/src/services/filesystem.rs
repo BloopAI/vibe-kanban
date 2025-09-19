@@ -130,12 +130,10 @@ impl FilesystemService {
                 match res {
                     Ok(Ok(repos)) => Ok(repos),
                     Ok(Err(err)) => Err(err),
-                    Err(join_err) => Err(FilesystemError::Io(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        join_err.to_string(),
-                    ))),
+                    Err(join_err) => Err(FilesystemError::Io(
+                        std::io::Error::other(join_err.to_string())))
                 }
-            }
+                }
             _ = &mut hard_timeout => {
                 scan_handle.abort();
                 tracing::warn!("list_git_repos_with_timeout: hard timeout reached after {}ms", hard_timeout_ms);
@@ -153,7 +151,7 @@ impl FilesystemService {
         hard_timeout_ms: u64,
         max_depth: Option<usize>,
     ) -> Result<Vec<DirectoryEntry>, FilesystemError> {
-        let search_strings = vec!["repos", "dev", "work", "code", "projects"];
+        let search_strings = ["repos", "dev", "work", "code", "projects"];
         let home_dir = Self::get_home_directory();
         let mut paths: Vec<PathBuf> = search_strings
             .iter()
@@ -190,11 +188,11 @@ impl FilesystemService {
             .filter_entry({
                 let cancel = cancel.cloned();
                 move |entry| {
-                    if let Some(token) = cancel.as_ref() {
-                        if token.is_cancelled() {
-                            tracing::debug!("Cancellation token triggered");
-                            return false;
-                        }
+                    if let Some(token) = cancel.as_ref()
+                        && token.is_cancelled()
+                    {
+                        tracing::debug!("Cancellation token triggered");
+                        return false;
                     }
 
                     let path = entry.path();
