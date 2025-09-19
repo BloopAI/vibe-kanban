@@ -1,0 +1,14 @@
+{
+  "title": "Projects",
+  "subtitle": "Manage your projects and track their progress",
+  "createProject": "Create Project",
+  "loading": "Loading projects...",
+  "errors": {
+    "fetchFailed": "Failed to fetch projects"
+  },
+  "empty": {
+    "title": "No projects yet",
+    "description": "Get started by creating your first project.",
+    "createFirst": "Create your first project"
+  }
+}

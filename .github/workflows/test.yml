@@ -32,9 +32,7 @@ jobs:
       - name: Check i18n regressions
         env:
           GITHUB_BASE_REF: ${{ github.base_ref || 'main' }}
-        run: |
-          cd frontend
-          ./scripts/check-i18n.sh
+        run: ./scripts/check-i18n.sh
 
       - name: Format check frontend
         run: cd frontend && npm run format:check

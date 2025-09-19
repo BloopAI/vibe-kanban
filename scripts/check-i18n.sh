@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# i18n regression check script
+# Compares i18next/no-literal-string violations between PR and main branch
+# Initial implementation: This script will show high violation counts until enforcement is enabled
 set -eo pipefail
 
 WORKTREE_BASE="$(mktemp -d)"
@@ -14,9 +17,9 @@ lint_count() {
   
   (
     set -eo pipefail
-    cd "$dir/frontend"
-    # Use npx directly and output to file to avoid npm banners
-    LINT_I18N=true npx eslint . \
+    cd "$REPO_ROOT/frontend"
+    # Use ESLint from main workspace but lint files in the target directory
+    LINT_I18N=true npx eslint "$dir/frontend" \
       --ext ts,tsx \
       --format json \
       --output-file "$tmp" \
@@ -31,16 +34,17 @@ lint_count() {
 }
 
 echo "▶️  Counting literal strings in PR branch..."
-PR_COUNT=$(lint_count "$PWD/..")
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PR_COUNT=$(lint_count "$REPO_ROOT")
 
 BASE_REF="${GITHUB_BASE_REF:-main}"
 echo "▶️  Checking out $BASE_REF for baseline..."
-git fetch --depth=1 origin "$BASE_REF" 2>/dev/null || git fetch --depth=1 origin main
+git fetch --depth=1 origin "$BASE_REF" 2>/dev/null || git fetch --depth=1 origin "$BASE_REF"
 git worktree add "$WORKTREE_BASE" "origin/$BASE_REF" 2>/dev/null || {
   echo "Could not create worktree, falling back to direct checkout"
   TEMP_BRANCH="temp-i18n-check-$$"
   git checkout -b "$TEMP_BRANCH" "origin/$BASE_REF" 2>/dev/null || git checkout "origin/$BASE_REF"
-  BASE_COUNT=$(lint_count "$PWD/..")
+  BASE_COUNT=$(lint_count "$REPO_ROOT")
   git checkout - 2>/dev/null || true
   git branch -D "$TEMP_BRANCH" 2>/dev/null || true
 }
@@ -68,7 +72,7 @@ if (( PR_COUNT > BASE_COUNT )); then
   echo "   After:  <Button>{t('buttons.save')}</Button>"
   echo ""
   echo "Files with new violations:"
-  (LINT_I18N=true npx eslint . --ext ts,tsx --rule "$RULE:error" -f codeframe 2>/dev/null || true)
+  (cd "$REPO_ROOT/frontend" && LINT_I18N=true npx eslint . --ext ts,tsx --rule "$RULE:error" -f codeframe 2>/dev/null || true)
   exit 1
 elif (( PR_COUNT < BASE_COUNT )); then
   echo "🎉 Great job! PR removes $((BASE_COUNT - PR_COUNT)) hard-coded strings."

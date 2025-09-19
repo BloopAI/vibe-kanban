@@ -5,17 +5,21 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 // Import translation files
 import enCommon from './locales/en/common.json';
 import enSettings from './locales/en/settings.json';
+import enProjects from './locales/en/projects.json';
 import jaCommon from './locales/ja/common.json';
 import jaSettings from './locales/ja/settings.json';
+import jaProjects from './locales/ja/projects.json';
 
 const resources = {
   en: {
     common: enCommon,
     settings: enSettings,
+    projects: enProjects,
   },
   ja: {
     common: jaCommon,
     settings: jaSettings,
+    projects: jaProjects,
   },
 };
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   useKanbanKeyboardNavigation,
   useKeyboardShortcuts,
@@ -15,6 +16,7 @@ import ProjectCard from '@/components/projects/ProjectCard.tsx';
 
 export function ProjectList() {
   const navigate = useNavigate();
+  const { t } = useTranslation('projects');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -30,7 +32,7 @@ export function ProjectList() {
       setProjects(result);
     } catch (error) {
       console.error('Failed to fetch projects:', error);
-      setError('Failed to fetch projects');
+      setError(t('errors.fetchFailed'));
     } finally {
       setLoading(false);
     }
@@ -145,14 +147,12 @@ export function ProjectList() {
     <div className="space-y-6 p-8 pb-16 md:pb-8 h-full overflow-auto">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
-          <p className="text-muted-foreground">
-            Manage your projects and track their progress
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+          <p className="text-muted-foreground">{t('subtitle')}</p>
         </div>
         <Button onClick={handleCreateProject}>
           <Plus className="mr-2 h-4 w-4" />
-          Create Project
+          {t('createProject')}
         </Button>
       </div>
 
@@ -166,7 +166,7 @@ export function ProjectList() {
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Loading projects...
+          {t('loading')}
         </div>
       ) : projects.length === 0 ? (
         <Card>
@@ -174,13 +174,13 @@ export function ProjectList() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
               <Plus className="h-6 w-6" />
             </div>
-            <h3 className="mt-4 text-lg font-semibold">No projects yet</h3>
+            <h3 className="mt-4 text-lg font-semibold">{t('empty.title')}</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Get started by creating your first project.
+              {t('empty.description')}
             </p>
             <Button className="mt-4" onClick={handleCreateProject}>
               <Plus className="mr-2 h-4 w-4" />
-              Create your first project
+              {t('empty.createFirst')}
             </Button>
           </CardContent>
         </Card>
