@@ -2,7 +2,7 @@
 
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import type { DragEndEvent } from '@dnd-kit/core';
+import type { DragEndEvent, Modifier } from '@dnd-kit/core';
 import {
   DndContext,
   PointerSensor,
@@ -12,9 +12,10 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
-import type { ReactNode, Ref, KeyboardEvent } from 'react';
+import { type ReactNode, type Ref, type KeyboardEvent } from 'react';
 
+import type { ClientRect } from '@dnd-kit/core';
+import type { Transform } from '@dnd-kit/utilities';
 export type { DragEndEvent } from '@dnd-kit/core';
 
 export type Status = {
@@ -160,6 +161,66 @@ export const KanbanHeader = (props: KanbanHeaderProps) =>
     </Card>
   );
 
+function restrictToBoundingRectWithRightPadding(
+  transform: Transform,
+  rect: ClientRect,
+  boundingRect: ClientRect,
+  rightPadding: number
+): Transform {
+  console.log(rect, boundingRect);
+  const value = {
+    ...transform,
+  };
+
+  if (rect.top + transform.y <= boundingRect.top) {
+    value.y = boundingRect.top - rect.top;
+  } else if (
+    rect.bottom + transform.y >=
+    boundingRect.top + boundingRect.height
+  ) {
+    value.y = boundingRect.top + boundingRect.height - rect.bottom;
+  }
+
+  if (rect.left + transform.x <= boundingRect.left) {
+    value.x = boundingRect.left - rect.left;
+  } else if (
+    // branch that checks if the right edge of the dragged element is beyond
+    // the right edge of the bounding rectangle
+    rect.right + transform.x + rightPadding >=
+    boundingRect.left + boundingRect.width
+  ) {
+    value.x =
+      boundingRect.left + boundingRect.width - rect.right - rightPadding;
+  }
+
+  return {
+    ...value,
+    x: value.x,
+  };
+}
+
+// An alternative to `restrictToFirstScrollableAncestor` from the dnd-kit library
+const restrictToFirstScrollableAncestorCustom: Modifier = (args) => {
+  const { draggingNodeRect, transform, scrollableAncestorRects } = args;
+  const firstScrollableAncestorRect = scrollableAncestorRects[0];
+
+  if (!draggingNodeRect || !firstScrollableAncestorRect) {
+    return transform;
+  }
+
+  // Inset the right edge that the rect can be dragged to by this amount.
+  // This is a workaround for the kanban board where dragging a card too far
+  // to the right causes infinite horizontal scrolling if there are also
+  // enough cards for vertical scrolling to be enabled.
+  const rightPadding = 16;
+  return restrictToBoundingRectWithRightPadding(
+    transform,
+    draggingNodeRect,
+    firstScrollableAncestorRect,
+    rightPadding
+  );
+};
+
 export type KanbanProviderProps = {
   children: ReactNode;
   onDragEnd: (event: DragEndEvent) => void;
@@ -182,7 +243,7 @@ export const KanbanProvider = ({
       collisionDetection={rectIntersection}
       onDragEnd={onDragEnd}
       sensors={sensors}
-      modifiers={[restrictToFirstScrollableAncestor]}
+      modifiers={[restrictToFirstScrollableAncestorCustom]}
     >
       <div
         className={cn(
