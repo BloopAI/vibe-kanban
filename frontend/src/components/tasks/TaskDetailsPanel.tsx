@@ -3,6 +3,7 @@ import TaskDetailsHeader from './TaskDetailsHeader';
 import { TaskFollowUpSection } from './TaskFollowUpSection';
 import { TaskTitleDescription } from './TaskDetails/TaskTitleDescription';
 import type { TaskAttempt } from 'shared/types';
+import { useKeyboardShortcut } from '@/hooks';
 import {
   getBackdropClasses,
   getTaskPanelClasses,
@@ -33,7 +34,6 @@ interface TaskDetailsPanelProps {
   onEditTask?: (task: TaskWithAttemptStatus) => void;
   onDeleteTask?: (taskId: string) => void;
   onNavigateToTask?: (taskId: string) => void;
-  isDialogOpen?: boolean;
   hideBackdrop?: boolean;
   className?: string;
   hideHeader?: boolean;
@@ -55,7 +55,6 @@ export function TaskDetailsPanel({
   onEditTask,
   onDeleteTask,
   onNavigateToTask,
-  isDialogOpen = false,
   hideBackdrop = false,
   className,
   isFullScreen,
@@ -86,6 +85,16 @@ export function TaskDetailsPanel({
     setActiveTab('logs');
   };
 
+  // Keyboard shortcut for closing panel
+  useKeyboardShortcut({
+    keys: 'esc',
+    callback: onClose,
+    description: 'Close task details panel',
+    group: 'Task Details',
+    scope: 'task-panel',
+    when: () => !!task && !isFullScreen,
+  });
+
   // Reset to logs tab when task changes
   useEffect(() => {
     if (task?.id) {
@@ -97,7 +106,6 @@ export function TaskDetailsPanel({
   // (now received as props instead of hook)
 
   // Handle ESC key locally to prevent global navigation
-
 
   return (
     <>

@@ -159,8 +159,6 @@ function CurrentAttempt({
 
   // Use the stopExecution function from the hook
 
-
-
   const handleAttemptChange = useCallback(
     (attempt: TaskAttempt) => {
       setSelectedAttempt(attempt);

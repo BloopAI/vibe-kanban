@@ -45,14 +45,11 @@ export function CommentWidgetLine({
     onCancel();
   };
 
-
-
   return (
     <div className="p-4 border-y">
       <FileSearchTextarea
         value={value}
         onChange={setValue}
-
         placeholder="Add a comment... (type @ to search files)"
         rows={3}
         maxRows={10}

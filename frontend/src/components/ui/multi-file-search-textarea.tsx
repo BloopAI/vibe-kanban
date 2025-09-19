@@ -173,7 +173,6 @@ export function MultiFileSearchTextarea({
 
   // Handle keyboard navigation
 
-
   // Select a file and insert it into the text
   const selectFile = (file: FileSearchResult) => {
     if (currentTokenStart === -1) return;
@@ -285,7 +284,6 @@ export function MultiFileSearchTextarea({
         ref={textareaRef}
         value={value}
         onChange={handleChange}
-
         placeholder={placeholder}
         rows={rows}
         disabled={disabled}

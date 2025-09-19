@@ -2,7 +2,8 @@ import * as React from 'react';
 import { X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-
+import { useKeyboardShortcut } from '@/hooks';
+import { useHotkeysContext } from 'react-hotkeys-hook';
 
 const Dialog = React.forwardRef<
   HTMLDivElement,
@@ -12,7 +13,100 @@ const Dialog = React.forwardRef<
     uncloseable?: boolean;
   }
 >(({ className, open, onOpenChange, children, uncloseable, ...props }, ref) => {
+  const { enableScope, disableScope } = useHotkeysContext();
 
+  // Manage dialog scope when open/closed
+  React.useEffect(() => {
+    if (open) {
+      enableScope('dialog');
+      disableScope('kanban');
+      disableScope('projects');
+    } else {
+      disableScope('dialog');
+      enableScope('kanban'); // Re-enable based on current page
+      enableScope('projects');
+    }
+  }, [open, enableScope, disableScope]);
+  // Keyboard shortcuts for dialog
+  useKeyboardShortcut(
+    {
+      keys: 'esc',
+      callback: (e) => {
+        if (uncloseable) return;
+
+        // Two-step Esc behavior:
+        // 1. If input/textarea is focused, blur it first
+        const activeElement = document.activeElement as HTMLElement;
+        if (
+          activeElement &&
+          (activeElement.tagName === 'INPUT' ||
+            activeElement.tagName === 'TEXTAREA' ||
+            activeElement.isContentEditable)
+        ) {
+          activeElement.blur();
+          e.preventDefault();
+          return;
+        }
+
+        // 2. Otherwise close the dialog
+        onOpenChange?.(false);
+      },
+      description: 'Close dialog or blur input',
+      group: 'Dialog',
+      scope: 'dialog',
+      when: () => !!open,
+    },
+    { enableOnFormTags: true }
+  );
+
+  // Enter key to submit forms or trigger primary action
+  useKeyboardShortcut(
+    {
+      keys: 'enter',
+      callback: (e) => {
+        // Don't interfere if user is typing in textarea (allow new lines)
+        const activeElement = document.activeElement as HTMLElement;
+        if (activeElement?.tagName === 'TEXTAREA') {
+          return;
+        }
+
+        // Look for submit button or primary action button within this dialog
+        if (ref && typeof ref === 'object' && ref.current) {
+          // First try to find a submit button
+          const submitButton = ref.current.querySelector(
+            'button[type="submit"]'
+          ) as HTMLButtonElement;
+          if (submitButton && !submitButton.disabled) {
+            e.preventDefault();
+            submitButton.click();
+            return;
+          }
+
+          // If no submit button, look for primary action button (usually the last button that's not Cancel/Close)
+          const buttons = Array.from(
+            ref.current.querySelectorAll('button')
+          ) as HTMLButtonElement[];
+          const primaryButton = buttons.find(
+            (btn) =>
+              !btn.disabled &&
+              !btn.textContent?.toLowerCase().includes('cancel') &&
+              !btn.textContent?.toLowerCase().includes('close') &&
+              btn.type !== 'button'
+          );
+
+          if (primaryButton) {
+            e.preventDefault();
+            primaryButton.click();
+          }
+        }
+      },
+      description: 'Submit form or confirm action',
+      group: 'Dialog',
+      scope: 'dialog',
+      when: () => !!open,
+    },
+    { enableOnFormTags: true }
+  );
 
   if (!open) return null;
 

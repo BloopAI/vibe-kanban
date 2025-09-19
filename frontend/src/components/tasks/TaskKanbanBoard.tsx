@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/shadcn-io/kanban';
 import { TaskCard } from './TaskCard';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
 import { statusBoardColors, statusLabels } from '@/utils/status-labels';
 
@@ -22,7 +22,6 @@ interface TaskKanbanBoardProps {
   onDeleteTask: (taskId: string) => void;
   onDuplicateTask?: (task: Task) => void;
   onViewTaskDetails: (task: Task) => void;
-  isPanelOpen: boolean;
 }
 
 const allTaskStatuses: TaskStatus[] = [
@@ -41,20 +40,15 @@ function TaskKanbanBoard({
   onDeleteTask,
   onDuplicateTask,
   onViewTaskDetails,
-  isPanelOpen,
 }: TaskKanbanBoardProps) {
-  const { projectId, taskId } = useParams<{
+  const { taskId } = useParams<{
     projectId: string;
     taskId?: string;
   }>();
-  const navigate = useNavigate();
-
-
 
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(
     taskId || null
   );
-  const [focusedStatus, setFocusedStatus] = useState<TaskStatus | null>(null);
 
   // Memoize filtered tasks
   const filteredTasks = useMemo(() => {
@@ -92,7 +86,6 @@ function TaskKanbanBoard({
       const found = filteredTasks.find((t) => t.id === taskId);
       if (found) {
         setFocusedTaskId(taskId);
-        setFocusedStatus((found.status.toLowerCase() as TaskStatus) || null);
       }
     }
   }, [taskId, filteredTasks]);
@@ -103,14 +96,11 @@ function TaskKanbanBoard({
       for (const status of allTaskStatuses) {
         if (groupedTasks[status] && groupedTasks[status].length > 0) {
           setFocusedTaskId(groupedTasks[status][0].id);
-          setFocusedStatus(status);
           break;
         }
       }
     }
   }, [taskId, focusedTaskId, groupedTasks]);
-
-
 
   return (
     <KanbanProvider onDragEnd={onDragEnd}>

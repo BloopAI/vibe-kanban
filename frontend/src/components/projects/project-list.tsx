@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/ui/button';
@@ -10,15 +9,14 @@ import { showProjectForm } from '@/lib/modals';
 import { projectsApi } from '@/lib/api';
 import { AlertCircle, Loader2, Plus } from 'lucide-react';
 import ProjectCard from '@/components/projects/ProjectCard.tsx';
+import { useKeyboardShortcut } from '@/hooks';
 
 export function ProjectList() {
-  const navigate = useNavigate();
   const { t } = useTranslation('projects');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [focusedProjectId, setFocusedProjectId] = useState<string | null>(null);
-  const [focusedColumn, setFocusedColumn] = useState<string | null>(null);
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -46,6 +44,19 @@ export function ProjectList() {
     }
   };
 
+  // Keyboard shortcut for creating new project
+  useKeyboardShortcut({
+    keys: 'c',
+    callback: (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handleCreateProject();
+    },
+    description: 'Create new project',
+    group: 'Projects',
+    scope: 'projects',
+  });
+
   const handleEditProject = async (project: Project) => {
     try {
       const result = await showProjectForm({ project });
@@ -57,66 +68,12 @@ export function ProjectList() {
     }
   };
 
-  // Group projects by grid columns (3 columns for lg, 2 for md, 1 for sm)
-  const getGridColumns = () => {
-    const screenWidth = window.innerWidth;
-    if (screenWidth >= 1024) return 3; // lg
-    if (screenWidth >= 768) return 2; // md
-    return 1; // sm
-  };
-
-  const groupProjectsByColumns = (projects: Project[], columns: number) => {
-    const grouped: Record<string, Project[]> = {};
-    for (let i = 0; i < columns; i++) {
-      grouped[`column-${i}`] = [];
-    }
-
-    projects.forEach((project, index) => {
-      const columnIndex = index % columns;
-      grouped[`column-${columnIndex}`].push(project);
-    });
-
-    return grouped;
-  };
-
-  const columns = getGridColumns();
-  const groupedProjects = groupProjectsByColumns(projects, columns);
-  const allColumnKeys = Object.keys(groupedProjects);
-
   // Set initial focus when projects are loaded
   useEffect(() => {
     if (projects.length > 0 && !focusedProjectId) {
       setFocusedProjectId(projects[0].id);
-      setFocusedColumn('column-0');
     }
   }, [projects, focusedProjectId]);
-
-  const handleViewProjectDetails = (project: Project) => {
-    navigate(`/projects/${project.id}/tasks`);
-  };
-
-
-
-  // Handle window resize to update column layout
-  useEffect(() => {
-    const handleResize = () => {
-      // Reset focus when layout changes
-      if (focusedProjectId && projects.length > 0) {
-        const newColumns = getGridColumns();
-
-        // Find which column the focused project should be in
-        const focusedProject = projects.find((p) => p.id === focusedProjectId);
-        if (focusedProject) {
-          const projectIndex = projects.indexOf(focusedProject);
-          const newColumnIndex = projectIndex % newColumns;
-          setFocusedColumn(`column-${newColumnIndex}`);
-        }
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [focusedProjectId, projects]);
 
   useEffect(() => {
     fetchProjects();

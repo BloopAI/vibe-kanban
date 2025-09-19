@@ -6,7 +6,6 @@ import type {
   ExecutorProfileId,
 } from 'shared/types';
 
-
 type Args = {
   processes: ExecutionProcess[];
   profiles?: Record<string, ExecutorConfig> | null;
@@ -58,8 +57,6 @@ export function useDefaultVariant({ processes, profiles }: Args) {
     if (!latestProfileId) return null;
     return profiles?.[latestProfileId.executor] ?? null;
   }, [latestProfileId, profiles]);
-
-
 
   return { selectedVariant, setSelectedVariant, currentProfile } as const;
 }

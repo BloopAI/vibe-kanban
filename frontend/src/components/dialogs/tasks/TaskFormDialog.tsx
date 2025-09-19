@@ -433,7 +433,6 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
 
     // Handle keyboard shortcuts
 
-
     // Handle dialog close attempt
     const handleDialogOpenChange = (open: boolean) => {
       if (!open && hasUnsavedChanges()) {

@@ -307,7 +307,6 @@ export function TaskFollowUpSection({
                   setFollowUpMessage(value);
                   if (followUpError) setFollowUpError(null);
                 }}
-
                 disabled={!isEditable}
                 showLoadingOverlay={isUnqueuing || !isDraftLoaded}
               />

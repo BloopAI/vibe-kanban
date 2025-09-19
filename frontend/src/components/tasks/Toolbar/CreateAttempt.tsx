@@ -94,8 +94,6 @@ function CreateAttempt({
     [task.status, actuallyCreateAttempt, setIsInCreateAttemptMode]
   );
 
-
-
   const handleExitCreateAttemptMode = () => {
     setIsInCreateAttemptMode(false);
   };

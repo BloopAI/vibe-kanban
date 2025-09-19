@@ -45,15 +45,12 @@ export function ReviewCommentRenderer({
     setIsEditing(false);
   };
 
-
-
   if (isEditing) {
     return (
       <div className="border-y bg-background p-4">
         <FileSearchTextarea
           value={editText}
           onChange={setEditText}
-
           placeholder="Edit comment... (type @ to search files)"
           rows={3}
           maxRows={10}
