@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Trash2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
@@ -45,13 +45,7 @@ export function ReviewCommentRenderer({
     setIsEditing(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      handleCancel();
-    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-      handleSave();
-    }
-  };
+
 
   if (isEditing) {
     return (
@@ -59,7 +53,7 @@ export function ReviewCommentRenderer({
         <FileSearchTextarea
           value={editText}
           onChange={setEditText}
-          onKeyDown={handleKeyDown}
+
           placeholder="Edit comment... (type @ to search files)"
           rows={3}
           maxRows={10}

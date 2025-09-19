@@ -97,20 +97,7 @@ export function TaskDetailsPanel({
   // (now received as props instead of hook)
 
   // Handle ESC key locally to prevent global navigation
-  useEffect(() => {
-    if (isDialogOpen) return;
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        event.stopPropagation();
-        onClose();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown, true);
-    return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [onClose, isDialogOpen]);
 
   return (
     <>

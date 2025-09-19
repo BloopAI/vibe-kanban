@@ -432,53 +432,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     }, [modal]);
 
     // Handle keyboard shortcuts
-    useEffect(() => {
-      const handleKeyDown = (event: KeyboardEvent) => {
-        // ESC to close dialog (prevent it from reaching TaskDetailsPanel)
-        if (event.key === 'Escape') {
-          event.preventDefault();
-          event.stopPropagation();
-          handleCancel();
-          return;
-        }
 
-        // Command/Ctrl + Enter to Create & Start (create mode) or Save (edit mode)
-        if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-          if (
-            !isEditMode &&
-            title.trim() &&
-            !isSubmitting &&
-            !isSubmittingAndStart
-          ) {
-            event.preventDefault();
-            handleCreateAndStart();
-          } else if (
-            isEditMode &&
-            title.trim() &&
-            !isSubmitting &&
-            !isSubmittingAndStart
-          ) {
-            event.preventDefault();
-            handleSubmit();
-          }
-        }
-      };
-
-      if (modal.visible) {
-        document.addEventListener('keydown', handleKeyDown, true); // Use capture phase to get priority
-        return () =>
-          document.removeEventListener('keydown', handleKeyDown, true);
-      }
-    }, [
-      modal.visible,
-      isEditMode,
-      title,
-      handleSubmit,
-      isSubmitting,
-      isSubmittingAndStart,
-      handleCreateAndStart,
-      handleCancel,
-    ]);
 
     // Handle dialog close attempt
     const handleDialogOpenChange = (open: boolean) => {

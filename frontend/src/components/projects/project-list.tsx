@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import {
-  useKanbanKeyboardNavigation,
-  useKeyboardShortcuts,
-} from '@/lib/keyboard-shortcuts';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -98,25 +95,7 @@ export function ProjectList() {
     navigate(`/projects/${project.id}/tasks`);
   };
 
-  // Setup keyboard navigation
-  useKanbanKeyboardNavigation({
-    focusedTaskId: focusedProjectId,
-    setFocusedTaskId: setFocusedProjectId,
-    focusedStatus: focusedColumn,
-    setFocusedStatus: setFocusedColumn,
-    groupedTasks: groupedProjects,
-    filteredTasks: projects,
-    allTaskStatuses: allColumnKeys,
-    onViewTaskDetails: handleViewProjectDetails,
-    preserveIndexOnColumnSwitch: true,
-  });
 
-  useKeyboardShortcuts({
-    ignoreEscape: true,
-    onC: handleCreateProject,
-    navigate,
-    currentPath: '/projects',
-  });
 
   // Handle window resize to update column layout
   useEffect(() => {

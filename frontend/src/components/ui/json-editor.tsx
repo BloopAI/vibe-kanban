@@ -59,7 +59,7 @@ export const JSONEditor: React.FC<JSONEditorProps> = ({
           autocompletion: true,
           bracketMatching: true,
           closeBrackets: true,
-          searchKeymap: true,
+          searchKeymap: false,
         }}
         extensions={[
           json(),
