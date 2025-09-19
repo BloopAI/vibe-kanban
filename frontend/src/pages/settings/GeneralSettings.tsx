@@ -80,10 +80,10 @@ export function GeneralSettings() {
         setTheme(config.theme);
         setTimeout(() => setSuccess(false), 3000);
       } else {
-        setError(t('settings.general.save.error'));
+        setError('Failed to save configuration');
       }
     } catch (err) {
-      setError(t('settings.general.save.error'));
+      setError('Failed to save configuration');
       console.error('Error saving config:', err);
     } finally {
       setSaving(false);
@@ -294,7 +294,7 @@ export function GeneralSettings() {
                           className="w-full h-10 px-2 flex items-center justify-between"
                         >
                           <span className="text-sm truncate flex-1 text-left">
-                            {currentProfileVariant?.variant || t('settings.general.taskExecution.defaultVariant')}
+                            {currentProfileVariant?.variant || 'DEFAULT'}
                           </span>
                           <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
                         </Button>

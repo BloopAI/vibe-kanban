@@ -41,8 +41,7 @@
           "placeholder": "Select profile",
           "helper": "Choose the default agent configuration to use when creating a task attempt."
         },
-        "variant": "DEFAULT",
-        "defaultVariant": "Default"
+        "variant": "DEFAULT"
       },
       "editor": {
         "title": "Editor",
