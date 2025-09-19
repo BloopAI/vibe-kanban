@@ -603,6 +603,25 @@ function DisplayConversationEntry({
   const expansionConfigs = useEntryExpansion(entry, expansionKey);
   const setExpandableKey = useExpandableStore((s) => s.setKey);
 
+  useEffect(() => {
+    if (!('entry_type' in entry)) return;
+    const currentEntryType = entry.entry_type;
+    if (currentEntryType.type !== 'tool_use') return;
+
+    const isPlanPresentation =
+      currentEntryType.action_type.action === 'plan_presentation';
+    if (
+      currentEntryType.status.status === 'pending_approval' ||
+      isPlanPresentation
+    )
+      return;
+
+    expansionConfigs.forEach(({ key }) => {
+      if (key.startsWith('plan-entry:')) return;
+      setExpandableKey(key, false);
+    });
+  }, [entry, expansionConfigs, setExpandableKey]);
+
   if (isProcessStart(entry)) {
     const toolAction: any = entry.action ?? null;
     return (
@@ -623,25 +642,6 @@ function DisplayConversationEntry({
   const isLoading = entryType.type === 'loading';
   const isFileEdit = (a: ActionType): a is FileEditAction =>
     a.action === 'file_edit';
-
-  useEffect(() => {
-    if (!('entry_type' in entry)) return;
-    const currentEntryType = entry.entry_type;
-    if (currentEntryType.type !== 'tool_use') return;
-
-    const isPlanPresentation =
-      currentEntryType.action_type.action === 'plan_presentation';
-    if (
-      currentEntryType.status.status === 'pending_approval' ||
-      isPlanPresentation
-    )
-      return;
-
-    expansionConfigs.forEach(({ key }) => {
-      if (key.startsWith('plan-entry:')) return;
-      setExpandableKey(key, false);
-    });
-  }, [entry, expansionConfigs, setExpandableKey]);
 
   if (isUserMessage) {
     return (

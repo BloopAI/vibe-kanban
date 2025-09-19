@@ -111,7 +111,9 @@ const ItemContent: VirtuosoMessageListProps<
         entry={data.content}
         executionProcessId={data.executionProcessId}
         taskAttempt={attempt}
-        lastEntry={lastMeaningfulIndex !== null && index === lastMeaningfulIndex}
+        lastEntry={
+          lastMeaningfulIndex !== null && index === lastMeaningfulIndex
+        }
       />
     );
   }
