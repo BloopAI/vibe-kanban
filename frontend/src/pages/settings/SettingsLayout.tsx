@@ -1,6 +1,7 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Settings, Cpu, Server } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
 
 const settingsNavigation = [
   {
@@ -24,6 +25,14 @@ const settingsNavigation = [
 ];
 
 export function SettingsLayout() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useKeyboardShortcuts({
+    navigate,
+    currentPath: location.pathname,
+  });
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col lg:flex-row gap-8">
