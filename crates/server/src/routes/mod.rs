@@ -1,7 +1,12 @@
 use axum::{
     Router,
+    http::{
+        Method,
+        header::{AUTHORIZATION, CONTENT_TYPE},
+    },
     routing::{IntoMakeService, get},
 };
+use tower_http::cors::{Any, CorsLayer};
 
 use crate::DeploymentImpl;
 
@@ -21,6 +26,19 @@ pub mod task_templates;
 pub mod tasks;
 
 pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
+    // CORS layer - allow all origins for development flexibility
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::PATCH,
+            Method::DELETE,
+            Method::OPTIONS,
+        ])
+        .allow_headers([AUTHORIZATION, CONTENT_TYPE]);
+
     // Create routers with different middleware layers
     let base_routes = Router::new()
         .route("/health", get(health::health_check))
@@ -41,5 +59,6 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .route("/", get(frontend::serve_frontend_root))
         .route("/{*path}", get(frontend::serve_frontend))
         .nest("/api", base_routes)
+        .layer(cors)
         .into_make_service()
 }

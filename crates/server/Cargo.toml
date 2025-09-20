@@ -47,6 +47,7 @@ mime_guess = "2.0"
 rust-embed = "8.2"
 octocrab = "0.44"
 dirs = "5.0"
+tower-http = { version = "0.5", features = ["cors"] }
 
 [dev-dependencies]
 tempfile = "3.8"
