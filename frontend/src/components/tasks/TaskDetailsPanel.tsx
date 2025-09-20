@@ -3,6 +3,7 @@ import TaskDetailsHeader from './TaskDetailsHeader';
 import { TaskFollowUpSection } from './TaskFollowUpSection';
 import { TaskTitleDescription } from './TaskDetails/TaskTitleDescription';
 import type { TaskAttempt } from 'shared/types';
+import { useKeyExit, Scope } from '@/keyboard';
 import {
   getBackdropClasses,
   getTaskPanelClasses,
@@ -33,7 +34,6 @@ interface TaskDetailsPanelProps {
   onEditTask?: (task: TaskWithAttemptStatus) => void;
   onDeleteTask?: (taskId: string) => void;
   onNavigateToTask?: (taskId: string) => void;
-  isDialogOpen?: boolean;
   hideBackdrop?: boolean;
   className?: string;
   hideHeader?: boolean;
@@ -55,7 +55,6 @@ export function TaskDetailsPanel({
   onEditTask,
   onDeleteTask,
   onNavigateToTask,
-  isDialogOpen = false,
   hideBackdrop = false,
   className,
   isFullScreen,
@@ -86,6 +85,12 @@ export function TaskDetailsPanel({
     setActiveTab('logs');
   };
 
+  // Semantic keyboard shortcut for closing panel
+  useKeyExit(() => onClose(), {
+    scope: Scope.TASK_PANEL,
+    when: () => !!task && !isFullScreen,
+  });
+
   // Reset to logs tab when task changes
   useEffect(() => {
     if (task?.id) {
@@ -97,20 +102,6 @@ export function TaskDetailsPanel({
   // (now received as props instead of hook)
 
   // Handle ESC key locally to prevent global navigation
-  useEffect(() => {
-    if (isDialogOpen) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        event.stopPropagation();
-        onClose();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown, true);
-    return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [onClose, isDialogOpen]);
 
   return (
     <>

@@ -72,26 +72,6 @@ function BranchSelector({
     setOpen(false);
   };
 
-  const moveHighlight = (delta: 1 | -1) => {
-    if (filteredBranches.length === 0) return;
-
-    setHighlighted((prev) => {
-      const next =
-        prev === null
-          ? delta === 1
-            ? 0
-            : filteredBranches.length - 1
-          : (prev + delta + filteredBranches.length) % filteredBranches.length;
-
-      // Focus the matching item for scroll behavior
-      setTimeout(
-        () => itemRefs.current[next]?.scrollIntoView({ block: 'nearest' }),
-        0
-      );
-      return next;
-    });
-  };
-
   // Reset highlight when filtered branches change
   useEffect(() => {
     if (highlighted !== null && highlighted >= filteredBranches.length) {
@@ -129,41 +109,6 @@ function BranchSelector({
               value={branchSearchTerm}
               onChange={(e) => setBranchSearchTerm(e.target.value)}
               className="pl-8"
-              onKeyDown={(e) => {
-                // Handle keyboard navigation
-                switch (e.key) {
-                  case 'ArrowDown':
-                    e.preventDefault();
-                    e.stopPropagation();
-                    moveHighlight(1);
-                    break;
-                  case 'ArrowUp':
-                    e.preventDefault();
-                    e.stopPropagation();
-                    moveHighlight(-1);
-                    break;
-                  case 'Enter':
-                    if (highlighted !== null && filteredBranches[highlighted]) {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const branch = filteredBranches[highlighted];
-                      const isCurrentAndExcluded =
-                        excludeCurrentBranch && branch.is_current;
-                      if (!isCurrentAndExcluded) {
-                        handleBranchSelect(branch.name);
-                      }
-                    }
-                    break;
-                  case 'Escape':
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setOpen(false);
-                    break;
-                  default:
-                    // Prevent dropdown from closing when typing
-                    e.stopPropagation();
-                }
-              }}
               autoFocus
             />
           </div>

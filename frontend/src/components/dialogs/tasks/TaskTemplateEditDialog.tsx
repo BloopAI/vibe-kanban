@@ -58,25 +58,6 @@ export const TaskTemplateEditDialog =
         setError(null);
       }, [template]);
 
-      // Handle keyboard shortcuts
-      useEffect(() => {
-        const handleKeyDown = (event: KeyboardEvent) => {
-          // Command/Ctrl + Enter to save template
-          if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-            if (modal.visible && !saving) {
-              event.preventDefault();
-              handleSave();
-            }
-          }
-        };
-
-        if (modal.visible) {
-          document.addEventListener('keydown', handleKeyDown, true);
-          return () =>
-            document.removeEventListener('keydown', handleKeyDown, true);
-        }
-      }, [modal.visible, saving]);
-
       const handleSave = async () => {
         if (!formData.template_name.trim() || !formData.title.trim()) {
           setError('Template name and title are required');

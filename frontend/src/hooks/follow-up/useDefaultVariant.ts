@@ -5,7 +5,6 @@ import type {
   ExecutionProcess,
   ExecutorProfileId,
 } from 'shared/types';
-import { useVariantCyclingShortcut } from '@/lib/keyboard-shortcuts';
 
 type Args = {
   processes: ExecutionProcess[];
@@ -58,12 +57,6 @@ export function useDefaultVariant({ processes, profiles }: Args) {
     if (!latestProfileId) return null;
     return profiles?.[latestProfileId.executor] ?? null;
   }, [latestProfileId, profiles]);
-
-  useVariantCyclingShortcut({
-    currentProfile,
-    selectedVariant,
-    setSelectedVariant,
-  });
 
   return { selectedVariant, setSelectedVariant, currentProfile } as const;
 }
