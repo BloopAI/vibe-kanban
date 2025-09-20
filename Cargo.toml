@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/server", "crates/db", "crates/executors", "crates/services", "crates/utils", "crates/local-deployment", "crates/deployment"]
+members = ["crates/server", "crates/db", "crates/executors", "crates/services", "crates/utils", "crates/local-deployment", "crates/deployment", "forge-extensions/omni", "forge-extensions/branch-templates", "forge-extensions/config", "forge-extensions/genie", "forge-app"]
 
 [workspace.dependencies]
 tokio = { version = "1.0", features = ["full"] }
@@ -15,6 +15,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 openssl-sys = { version = "0.9", features = ["vendored"] }
 ts-rs = { git = "https://github.com/xazukx/ts-rs.git", branch = "use-ts-enum", features = ["uuid-impl", "chrono-impl", "no-serde-warnings"] }
 schemars = { version = "1.0.4", features = ["derive", "chrono04", "uuid1", "preserve_order"] }
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid"] }
+reqwest = { version = "0.11", features = ["json"] }
 
 [profile.release]
 debug = true

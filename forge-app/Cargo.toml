@@ -1,0 +1,12 @@
+[package]
+name = "forge-app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = { workspace = true }
+sqlx = { workspace = true, features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid"] }
+forge-omni = { path = "../forge-extensions/omni" }
+forge-branch-templates = { path = "../forge-extensions/branch-templates" }
+forge-config = { path = "../forge-extensions/config" }
+forge-genie = { path = "../forge-extensions/genie" }
