@@ -1,0 +1,171 @@
+{
+  "settings": {
+    "layout": {
+      "nav": {
+        "title": "Configuración",
+        "general": "General",
+        "generalDesc": "Tema, notificaciones y preferencias",
+        "agents": "Agentes",
+        "agentsDesc": "Configuraciones de agentes",
+        "mcp": "Servidores MCP",
+        "mcpDesc": "Servidores de Protocolo de Contexto de Modelo (MCP)"
+      }
+    },
+    "general": {
+      "loading": "Cargando configuración...",
+      "loadError": "Error al cargar la configuración.",
+      "save": {
+        "button": "Guardar Configuración",
+        "success": "✓ ¡Configuración guardada!",
+        "error": "Error al guardar la configuración"
+      },
+      "appearance": {
+        "title": "Apariencia",
+        "description": "Personaliza cómo se ve la aplicación.",
+        "theme": {
+          "label": "Tema",
+          "placeholder": "Seleccionar tema",
+          "helper": "Elige tus colores preferidos."
+        },
+        "language": {
+          "label": "Idioma",
+          "placeholder": "Selecciona tu idioma",
+          "helper": "Elige tu idioma preferido. El predeterminado del navegador sigue el idioma de tu sistema."
+        }
+      },
+      "taskExecution": {
+        "title": "Ejecución de Tareas",
+        "description": "Configura cómo se ejecutan y procesan las tareas.",
+        "executor": {
+          "label": "Configuración predeterminada del Agente",
+          "placeholder": "Seleccionar perfil",
+          "helper": "Define la configuración predeterminada del agente que se usará al iniciar una tarea."
+        },
+        "variant": "PREDETERMINADO"
+      },
+      "editor": {
+        "title": "Editor",
+        "description": "Configura cómo quieres editar tu código.",
+        "type": {
+          "label": "Tipo de Editor",
+          "placeholder": "Seleccionar editor",
+          "helper": "Elige tu editor de código preferido."
+        }
+      },
+      "github": {
+        "title": "Integración con GitHub",
+        "connected": "Conectado como {{username}}",
+        "connectButton": "Conectar Cuenta de GitHub",
+        "manage": "Gestionar",
+        "disconnect": "Desconectar",
+        "helper": "Conecta tu cuenta de GitHub para acceder a repositorios privados y habilitar acciones avanzadas de Git."
+      },
+      "notifications": {
+        "title": "Notificaciones",
+        "description": "Controla cuándo y cómo recibes notificaciones.",
+        "sound": {
+          "label": "Notificaciones de Sonido",
+          "helper": "Reproduce un sonido cuando una tarea termina de ejecutarse.",
+          "fileLabel": "Sonido",
+          "filePlaceholder": "Seleccionar sonido",
+          "fileHelper": "Elige el sonido que se reproducirá al completar las tareas. Haz clic en el botón de volumen para escucharlo."
+        },
+        "push": {
+          "label": "Notificaciones Push",
+          "helper": "Muestra notificaciones del sistema cuando las tareas terminan de ejecutarse."
+        }
+      },
+      "privacy": {
+        "title": "Privacidad",
+        "description": "Ayuda a mejorar Vibe-Kanban compartiendo datos de uso anónimos.",
+        "telemetry": {
+          "label": "Habilitar Telemetría",
+          "helper": "Habilita el seguimiento anónimo para ayudar a mejorar la aplicación. No se recopilan prompts ni información del proyecto."
+        }
+      },
+      "taskTemplates": {
+        "title": "Plantillas de Tareas",
+        "description": "Gestiona las plantillas globales que se pueden usar en todos los proyectos."
+      },
+      "safety": {
+        "title": "Avisos legales y de seguridad",
+        "description": "Reinicia las confirmaciones de seguridad y de introducción.",
+        "disclaimer": {
+          "title": "Confirmación de Descargo",
+          "description": "Restablecer el aviso de seguridad.",
+          "button": "Restablecer"
+        },
+        "onboarding": {
+          "title": "Introducción",
+          "description": "Restablece el flujo de Introducción.",
+          "button": "Restablecer"
+        }
+      }
+    },
+    "agents": {
+      "title": "Configuraciones de Agentes de Código",
+      "description": "Personaliza el comportamiento de los agentes con diferentes configuraciones.",
+      "loading": "Cargando configuraciones de agentes...",
+      "save": {
+        "button": "Guardar Configuraciones de Agentes",
+        "success": "✓ ¡Configuración guardada con éxito”!"
+      },
+      "editor": {
+        "formLabel": "Editar JSON",
+        "agentLabel": "Agente",
+        "agentPlaceholder": "Seleccionar tipo",
+        "configLabel": "Configuración",
+        "configPlaceholder": "Seleccionar configuración",
+        "createNew": "Crear nuevo...",
+        "deleteTitle": "No se puede eliminar la última configuración",
+        "deleteButton": "Eliminar {{name}}",
+        "deleteText": "Eliminar",
+        "jsonLabel": "Configuración de Agente (JSON)",
+        "jsonPlaceholder": "Cargando perfiles...",
+        "jsonLoading": "Cargando...",
+        "pathLabel": "Ubicación del archivo de configuración:"
+      },
+      "errors": {
+        "deleteFailed": "Error al eliminar la configuración. Por favor, inténtalo de nuevo.",
+        "saveFailed": "Error al guardar la configuración de los agentes. Por favor, inténtalo de nuevo.",
+        "saveConfigFailed": "Error al guardar la configuración. Por favor, inténtalo de nuevo."
+      }
+    },
+    "mcp": {
+      "title": "Configuración de Servidor MCP",
+      "description": "Configura los servidores del Protocolo de Contexto de Modelos (MCP) para ampliar las capacidades del agente de codificación con herramientas y recursos personalizados.",
+      "loading": "Cargando configuración MCP...",
+      "applying": "Aplicando configuración...",
+      "labels": {
+        "agent": "Agente",
+        "agentPlaceholder": "Seleccionar",
+        "agentHelper": "Elige para qué agente configurar los servidores MCP.",
+        "serverConfig": "Configuración de Servidor (JSON)",
+        "popularServers": "Servidores populares",
+        "serverHelper": "Haz clic en una tarjeta para insertar ese Servidor MCP en el JSON de arriba.",
+        "saveLocation": "Los cambios se guardarán en:"
+      },
+      "loading": {
+        "jsonEditor": "Cargando...",
+        "configuration": "Cargando configuración actual del servidor MCP..."
+      },
+      "errors": {
+        "loadFailed": "Error al cargar la configuración.",
+        "invalidJson": "Formato JSON inválido",
+        "validationError": "Error de validación",
+        "saveFailed": "Error al guardar servidores MCP",
+        "applyFailed": "Error al aplicar la configuración del servidor MCP",
+        "addServerFailed": "Error al agregar servidor preconfigurado",
+        "mcpError": "Error de Configuración MCP: {{error}}",
+        "notSupported": "MCP No Soportado",
+        "supportMessage": "Para usar servidores MCP, por favor selecciona un agente diferente que soporte MCP (Claude, Amp, Gemini, Codex, o Opencode) arriba."
+      },
+      "save": {
+        "button": "Guardar Configuración MCP",
+        "success": "¡Configuración Guardada!",
+        "successMessage": "✓ ¡Configuración MCP guardada exitosamente!",
+        "loading": "Cargando configuración actual del servidor MCP..."
+      }
+    }
+  }
+}

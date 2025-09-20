@@ -1,0 +1,26 @@
+{
+  "buttons": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "continue": "Continuar",
+    "reset": "Restablecer",
+    "manage": "Gestionar",
+    "connect": "Conectar",
+    "disconnect": "Desconectar"
+  },
+  "states": {
+    "loading": "Cargando...",
+    "saving": "Guardando...",
+    "error": "Error",
+    "success": "Éxito"
+  },
+  "language": {
+    "en": "English",
+    "ja": "日本語",
+    "es": "Español",
+    "browserDefault": "Predeterminado del navegador"
+  }
+}
