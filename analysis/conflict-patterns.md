@@ -1,190 +1,65 @@
-# Historical Conflict Patterns Analysis
+# Historical conflict pattern analysis
 
-## Executive Summary
+## Merge history reviewed
+A review of `git log --merges --grep upstream` surfaces nine upstream integration commits between 2025-09-02 and 2025-09-18. No additional upstream merges exist in the last 90 days, so the analysis below covers **all available upstream merge attempts**.
 
-Based on analysis of recent merge attempts from upstream vibe-kanban, this report identifies recurring conflict patterns and resolution strategies employed in the automagik-forge fork.
+| Commit | Date | Files changed | Insertions | Deletions | Notes |
+|--------|------|---------------|-----------|-----------|-------|
+| `b29eca4e` | 2025-09-18 | 230 | 13452 | 15174 | Merge upstream vibe-kanban updates (76 commits) (#3) |
+| `4647853d` | 2025-09-18 | 16 | 278 | 198 | Merge upstream/main (46d3f3c7) into branch with pnpm guardrails |
+| `c239b3aa` | 2025-09-18 | 52 | 1331 | 800 | Merge upstream/main into upstream-merge-20250917-173057 honoring fork customizations |
+| `8acfc749` | 2025-09-17 | 194 | 10879 | 14369 | Merge upstream vibe-kanban (76 new commits) |
+| `3185ac62` | 2025-09-10 | 58 | 4202 | 526 | merge from upstream and omni modal to nicemodal |
+| `6e8785b7` | 2025-09-08 | 74 | 4257 | 3863 | merge: upstream |
+| `b876f9f5` | 2025-09-06 | 126 | 7409 | 3687 | Merge branch 'main' of upstream vibe-kanban |
+| `3d2d40f6` | 2025-09-03 | 52 | 815 | 626 | Merge upstream/main - keep automagik-forge v0.3.6 naming and versioning |
+| `576ae2ba` | 2025-09-02 | 71 | 4147 | 1532 | merge: sync with upstream vibe-kanban v0.0.73 |
 
-**Analysis Period**: August 2025 - September 2025
-**Major Merges Analyzed**: 9 upstream merge attempts
-**Conflict Resolution Pattern**: Manual merge with customization preservation
+## Recurring conflict zones
 
-## Recent Merge History
+### 1. Task & follow-up lifecycle (schema + API + UI)
+- Appears in merges `576ae2ba`, `3d2d40f6`, `3185ac62`, `4647853d`, `b29eca4e`.
+- Files: `crates/db/src/models/task.rs`, `task_attempt.rs`, SQLx metadata, `crates/server/src/routes/tasks.rs`, `task_attempts.rs`, `frontend/src/components/tasks/TaskFollowUpSection.tsx`, `frontend/src/components/dialogs/tasks/TaskFormDialog.tsx`, `shared/types.ts`.
+- Conflict driver: fork adds branch template fields and follow-up UX, upstream refactors the same structures.
+- Resolution pattern: preserve fork-only fields (branch template, Omni hooks), then replay upstream enum/struct changes (`3185ac62`, `4647853d`).
 
-### Major Upstream Integration Attempts
+### 2. Omni notification stack
+- Introduced by commits `edfa30e4`, `66196ef7`, `a3c8c7ff` and merged through `3185ac62`, `8acfc749`, `c239b3aa`.
+- Files: `crates/services/src/services/omni/*`, `config/versions/v7.rs`, `crates/server/src/routes/omni.rs`, `frontend/src/components/omni/*`, `frontend/src/pages/settings/GeneralSettings.tsx`.
+- Conflict driver: upstream has no Omni feature, but touches adjacent config structures and settings UIs that the fork now owns.
+- Resolution pattern: manual reapplication of Omni-specific wiring after upstream rewrites config or settings pages (`c239b3aa`, `8acfc749`).
 
-| Date | Commit | Description | Scope |
-|------|---------|-------------|-------|
-| 2025-09-18 | `4647853d` | Merge upstream/main (46d3f3c7) with pnpm guardrails | 12 files |
-| 2025-09-18 | `c239b3aa` | Merge upstream/main honoring fork customizations | 14 files |
-| 2025-09-17 | `8acfc749` | **Major merge**: upstream vibe-kanban (76 commits) | 25 files |
-| 2025-09-10 | `3185ac62` | Merge upstream with omni modal to nicemodal | Unknown |
-| 2025-09-08 | `6e8785b7` | Basic upstream merge | Unknown |
-| 2025-09-06 | `b876f9f5` | Merge upstream vibe-kanban main | Unknown |
-| 2025-09-03 | `3d2d40f6` | Merge upstream/main - preserve v0.3.6 naming | Unknown |
-| 2025-09-02 | `576ae2ba` | Sync with upstream vibe-kanban v0.0.73 | Unknown |
-| 2025-08-29 | `abdf9d2d` | Merge from upstream into dev branch | Unknown |
+### 3. Git services and worktree management
+- Highlighted in `576ae2ba`, `b876f9f5`, `c239b3aa`, `8acfc749`.
+- Files: `crates/services/src/services/git.rs`, `worktree_manager.rs`, `crates/services/tests/git_workflow.rs`, `crates/local-deployment/src/container.rs`.
+- Conflict driver: both upstream and fork iterate on git safety guarantees; fork also injects custom worktree behaviour for branch templates.
+- Resolution pattern: adopt upstream safety fixes, then reapply fork-specific logging and template propagation (`b876f9f5`, `c239b3aa`).
 
-## Recurring Conflict Areas
+### 4. Release automation & dependency manifests
+- Present in `b29eca4e`, `4647853d`, `3d2d40f6`, `b876f9f5`.
+- Files: `.github/workflows/*.yml`, `.github/actions/setup-node/action.yml`, `Makefile`, `gh-build.sh`, `package.json`, `frontend/package.json`, `pnpm-lock.yaml`, root/ crate `Cargo.toml` files.
+- Conflict driver: fork runs bespoke npm publish + multi-platform builds, upstream constantly evolves workflows and dependency pins.
+- Resolution pattern: keep Automagik Forge workflow files (retain npm publish, Windows OpenSSL patch) while cherry-picking upstream reliability fixes (`b876f9f5`, `4647853d`).
 
-### 🔴 Critical Conflict Hotspots (High Frequency)
+### 5. Frontend dialog/navigation framework
+- Appears in `6e8785b7`, `3185ac62`, `8acfc749`, `b29eca4e`.
+- Files: `frontend/src/components/dialogs/**`, `layout/navbar.tsx`, `frontend/src/components/ui/{button,dialog}.tsx`, `frontend/src/pages/project-tasks.tsx`, `frontend/src/styles/index.css`.
+- Conflict driver: fork reorganised dialogs into dedicated namespaces and added Omni UI; upstream continues to redesign modals and tasks screens.
+- Resolution pattern: accept upstream structural improvements, then reapply forge-specific layout, branding and Omni entry points (`6e8785b7`, `3185ac62`).
 
-#### 1. Database Models & Shared Types
-**Files**:
-- `crates/db/src/models/task.rs` (appears in 3/3 recent merges)
-- `crates/db/src/models/task_attempt.rs` (appears in 3/3 recent merges)
-- `shared/types.ts` (appears in 3/3 recent merges)
+## Resolution strategies observed
+- **Preserve fork feature flags:** merge commit messages explicitly note keeping Automagik Forge versioning and branding (`b876f9f5`, `3d2d40f6`).
+- **Replay fork patches post-merge:** large merges (`8acfc749`, `b29eca4e`) show fork scripts restoring Omni config, CLAUDE automation, and release workflows after upstream rewrites.
+- **Manual schema reconciliation:** merges `4647853d` and `3185ac62` regenerate SQLx metadata and rerun type generation to sync Task/TaskAttempt models.
+- **UI regression testing:** follow-up commits immediately after merges (`a1716cc2`, `b893b6b1`) fix Omni modal regressions introduced during conflict resolution.
 
-**Conflict Pattern**: Schema divergence - fork has branch template features
-**Resolution Strategy**: Manual merge preserving fork's branch template functionality
-**Time Investment**: High (schema conflicts require careful coordination)
+## Effort outlook
+- **Large-scale merges:** `b29eca4e` and `8acfc749` each modified >190 files and >10k lines — multi-day efforts with high review load.
+- **Medium merges:** `3185ac62`, `6e8785b7`, `c239b3aa` average 50–75 files, 4k insertions; expect several engineer-days including verification.
+- **Quick merges:** `4647853d`, `3d2d40f6`, `576ae2ba` modify ≤16 files but touch sensitive schema/config areas requiring targeted testing.
 
-#### 2. API Route Endpoints
-**Files**:
-- `crates/server/src/routes/tasks.rs` (appears in 3/3 recent merges)
-- `crates/server/src/routes/task_attempts.rs` (appears in 3/3 recent merges)
-
-**Conflict Pattern**: API endpoint modifications and new route additions
-**Resolution Strategy**: Preserve fork's API extensions while adopting upstream improvements
-**Time Investment**: Medium-High (API compatibility critical)
-
-#### 3. MCP Server Integration
-**Files**:
-- `crates/server/src/mcp/task_server.rs` (appears in 2/3 recent merges)
-
-**Conflict Pattern**: Both fork and upstream evolving MCP integration
-**Resolution Strategy**: Accept upstream MCP refactoring while preserving fork customizations
-**Time Investment**: Medium
-
-### 🟡 Moderate Conflict Areas
-
-#### 4. Build & Configuration
-**Files**:
-- `package.json` (appears in 2/3 recent merges)
-- `frontend/package.json` (appears in 3/3 recent merges)
-- `frontend/vite.config.ts` (appears in 2/3 recent merges)
-- Various `Cargo.toml` files
-
-**Conflict Pattern**: Dependency version conflicts and build script differences
-**Resolution Strategy**: Preserve fork's npm publishing setup and automagik-forge branding
-**Time Investment**: Medium
-
-#### 5. Executor Systems
-**Files**:
-- `crates/executors/src/executors/codex.rs` (appears in 2/3 recent merges)
-- `crates/local-deployment/src/container.rs` (appears in 2/3 recent merges)
-
-**Conflict Pattern**: Both sides improving executor implementations
-**Resolution Strategy**: Merge improvements while preserving fork-specific executor configurations
-**Time Investment**: Medium
-
-#### 6. Frontend Components
-**Files**:
-- `frontend/src/components/dialogs/tasks/CreatePRDialog.tsx` (multiple merges)
-- `frontend/src/components/tasks/TaskFollowUpSection.tsx` (multiple merges)
-- Various dialog components
-
-**Conflict Pattern**: UI improvements conflicting with theme/branding changes
-**Resolution Strategy**: Accept upstream UX improvements, reapply fork styling
-**Time Investment**: Low-Medium
-
-### 🟢 Low Conflict Areas
-
-#### 7. Git & Worktree Management
-**Files**:
-- `crates/services/src/services/git.rs` (periodic conflicts)
-- `crates/services/src/services/worktree_manager.rs` (occasional)
-
-**Conflict Pattern**: Both sides fixing git-related bugs
-**Resolution Strategy**: Generally accept upstream fixes
-**Time Investment**: Low
-
-## Conflict Resolution Strategies Observed
-
-### 1. **Preservation-First Strategy**
-- **Approach**: Always preserve fork-specific features (Omni, Genie, branch templates)
-- **Evidence**: Merge commit messages explicitly mention "honoring fork customizations"
-- **Success Rate**: High for feature preservation
-
-### 2. **Selective Upstream Adoption**
-- **Approach**: Cherry-pick beneficial upstream changes while avoiding disruptive ones
-- **Evidence**: "Adopted upstream performance improvements and bug fixes" in merge messages
-- **Success Rate**: High for non-conflicting improvements
-
-### 3. **Manual Merge with Documentation**
-- **Approach**: Detailed merge commit messages documenting what was preserved vs. adopted
-- **Evidence**: Comprehensive merge commit descriptions listing specific changes
-- **Success Rate**: High for maintaining merge history clarity
-
-### 4. **Incremental Integration**
-- **Approach**: Multiple smaller merges rather than large batch integrations
-- **Evidence**: 9 merge attempts in ~2 months
-- **Success Rate**: Medium (frequent conflicts but manageable scope)
-
-## Time & Effort Estimates
-
-### Per-Merge Effort (Based on Recent Patterns)
-
-| Conflict Area | Files Affected | Estimated Resolution Time |
-|---------------|----------------|---------------------------|
-| Database Models | 2-3 files | 4-6 hours (schema coordination) |
-| API Routes | 2-4 files | 3-5 hours (endpoint testing) |
-| Build Configuration | 5-8 files | 2-4 hours (dependency management) |
-| Frontend Components | 3-6 files | 2-3 hours (styling reapplication) |
-| Executor Systems | 1-3 files | 1-3 hours (config merging) |
-| Git/Worktree | 1-2 files | 1-2 hours (simple fixes) |
-
-**Total Estimated Merge Time**: 13-23 hours per major upstream integration
-
-### Cumulative Maintenance Overhead
-
-- **Frequency**: ~1 major merge every 2-3 weeks
-- **Annual Time Investment**: ~200-400 hours for upstream sync maintenance
-- **Risk**: Increasing technical debt as divergence grows
-
-## Optimization Opportunities
-
-### 1. **Automated Conflict Detection**
-- Pre-merge analysis to identify potential conflicts
-- Automated testing of merge scenarios
-
-### 2. **Modular Architecture**
-- Isolate fork-specific features to reduce core conflicts
-- Use feature flags for optional functionality
-
-### 3. **Upstream Contribution Strategy**
-- Contribute generic improvements back to upstream
-- Reduce fork-specific modifications where possible
-
-### 4. **Merge Scheduling**
-- Coordinate merge timing with upstream release cycles
-- Batch related upstream changes together
-
-## Risk Assessment
-
-### Low Risk Areas
-- Frontend styling and theming
-- Documentation and branding
-- Fork-specific feature files
-
-### Medium Risk Areas
-- Build configuration and dependencies
-- Frontend component functionality
-- Executor implementations
-
-### High Risk Areas
-- Database schema changes
-- Core API modifications
-- MCP server integration
-- Type system modifications
-
-## Recommendations
-
-1. **Establish Merge Windows**: Schedule upstream merges during low-activity periods
-2. **Conflict Prevention**: Regular communication with upstream about planned changes
-3. **Automated Testing**: Comprehensive test suite to validate post-merge functionality
-4. **Documentation**: Maintain clear documentation of fork-specific modifications
-5. **Modularization**: Isolate custom features to minimize core conflicts
-
----
-*Generated: 2025-09-19*
-*Analysis Branch: analysis/merge-optimization-foundation-1481*
+## Risk mitigation recommendations
+1. **Pre-merge diff audit:** generate SQLx metadata and TypeScript types before merging to surface schema drift early.
+2. **Workflow isolation:** factor fork-only CI (publish, Makefile, gh-build) into separate reusable actions to reduce repeated conflicts.
+3. **Feature toggles for Omni & branch templates:** gating fork features simplifies future upstream alignment if upstream ships competing solutions.
+4. **Frontend module boundaries:** encapsulate Omni dialogs and Task follow-up widgets into lazy-loaded packages to minimise cross-file churn during upstream UI refactors.

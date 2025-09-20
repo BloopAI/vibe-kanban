@@ -1,0 +1,118 @@
+e6afaae0 Analysis: Complete upstream divergence and conflict pattern analysis (automagik-forge ca2b7bb5)
+e243ac42 NEW WISH (automagik-forge a64e7760)
+ed237ad1 newwish
+afd1536b feat: revolutionize release pipeline with intelligent code analysis
+91578730 fix: restore working vendored OpenSSL approach for Windows builds (revert to v0.3.9 method)
+650d5e22 fix: use --no-frozen-lockfile for pnpm install in CI
+7702b30a fix: remove explicit pnpm version to use packageManager from package.json
+32ab65c8 fix: reorder pnpm setup before Node.js cache to fix workflow failure
+cf4f2db9 Merge branch 'main' of https://github.com/namastexlabs/automagik-forge
+40afad7c chore: bump version to 0.3.10
+b29eca4e Merge upstream vibe-kanban updates (76 commits) (#3)
+1bec5e59 final fixes
+43615aa0 docs: sync analysis after websocket merge
+4647853d Merge upstream/main (46d3f3c7) into branch with pnpm guardrails
+244bd4c5 docs: add review-merge-pr command
+87c7c81a upd upmerge
+dc34506c docs: log upstream merge status in review report
+8f3410b4 docs: refresh upstream merge analysis after validations
+c239b3aa Merge upstream/main into upstream-merge-20250917-173057 honoring fork customizations
+4e8aa43d adding upmerge command
+7052602c merge fixes
+9c2ab7f6 fix: regenerate SQLx metadata with correct schema
+8a999f3b add wish
+8acfc749 Merge upstream vibe-kanban (76 new commits)
+fac833b3 fix publish workflow
+5ac67d4d github actions fix
+43e57a6a fix: restore exact v0.3.8 Windows OpenSSL configuration
+270d4c46 fix: restore Windows OpenSSL build by removing workspace vendored feature
+c737dd5b fix: build action
+472f9d74 fix: build action
+08f1f1d5 fix: build action
+4dd91f65 ci: enable npm publish workflow (Publish to npm)
+08ec4391 Merge branch 'main' of https://github.com/namastexlabs/automagik-forge
+36a76553 fix(frontend): sync package-lock.json for ci
+0fd02e23 chore: bump version to 0.3.9
+b893b6b1 fix: omni modal
+3185ac62 merge from upstream and omni modal to nicemodal
+20a9e994 fix: custom branch
+6e8785b7 merge: upstream
+849b4b11 notification final review
+f127ac0a fix: omni modal
+edfa30e4 feat: omni notification system
+732a4bdb temporary solution
+72018446 fix: update notification callers with omni_config parameter (automagik-forge c4798f4e)
+73b248fc add wish file
+990b4e10 feat: implement frontend API client for Omni (automagik-forge f6e34ede)
+0468bcdc feat: create OmniCard settings component (automagik-forge 0c7bfb04)
+53cd45c0 feat: integrate Omni with notification system hook (automagik-forge 109a2495)
+66196ef7 feat: create API endpoints for Omni integration (automagik-forge 4ce9c5f0)
+a3c8c7ff feat: implement OmniService with API client (automagik-forge a56d676b)
+84873608 feat: create Omni type definitions in Rust (automagik-forge c166881c)
+4570c047 chore: extend config system to v7 with Omni field (automagik-forge 91a44c8f)
+ba8cca72 feat: create TypeScript type definitions for Omni (automagik-forge cd521ede)
+cdee569f genie structure
+342c4b2a fix: dracula theme css
+347a4e33 feat: enable branch template editing in task edit mode (automagik-forge 4262eff6)
+a1716cc2 post upstream merge fixes
+b876f9f5 Merge branch 'main' of upstream vibe-kanban
+3f359872 chore: remove unused vibe-kanban agents and update build config
+46eafdbc fix: allow manual workflow dispatch with tag for publishing
+160cfd58 fix: disable redundant publish.yml workflow
+8e88dac9 refactor: separate version bump from build workflows
+26c70152 fix: remove ARM64 cross-compilation targets from pre-release workflow
+3897dcfd fix: use rust-toolchain@master to support nightly toolchain
+a6a4df29 fix: handle already-bumped version in pre-release workflow
+9f399a4b chore: version bump
+e2323a2b fix: don't try to stage Cargo.lock if it's gitignored
+d40f212a feat: persist release notes between retry attempts
+fb2c5344 fix: handle missing pre-release when resuming
+ee66b1e6 fix: resolve variable scope issue in resume workflow
+d8cbbbde fix: skip release notes generation when resuming with existing pre-release
+263f54c8 fix: handle resume workflow without triggering with invalid version_type
+2632116e fix:prerelease
+c29c560f feat: add resume capability to publish workflow
+9917d825 fix: pre-release workflow package-lock.json handling
+1618ebc8 chore: bump version to 0.3.8
+44faf31c feat: add user-controlled branch naming templates for tasks
+4d20e468 chore: bump version to 0.3.6
+72096159 fix: update pre-release workflow to use automagik-forge naming
+1aac96bf feat: make publish now handles complete release pipeline
+400ecfdf fix: make publish now properly triggers build-all-platforms workflow
+1fce29cd chore: bump version to 0.3.7
+3d2d40f6 Merge upstream/main - keep automagik-forge v0.3.6 naming and versioning
+928abecb fix: resolve NPM publish workflow issues
+2c4dbce1 chore: bump version to 0.3.6
+e5d8f911 fix: add missing semicolon in git.rs after merge
+576ae2ba merge: sync with upstream vibe-kanban v0.0.73
+2ee978c7 fix: add PostHog secrets to build workflow for telemetry
+fc8cfc05 fix: improve GitHub auth modal UX and fix invisible URL issue
+3e06c80b revert: restore version to 0.3.4 after accidental 0.3.5 publish
+8429d024 automations
+2b851959 feat: update npm package metadata with Vibe Coding++™ messaging
+0ffc0485 feat: add publishing functionality to gh-build.sh
+ee32de4f fix: remove PNPM_VERSION from all workflows to use packageManager field
+f6ae41bb fix: remove explicit pnpm version from setup-node action to use packageManager field
+2c38620b fix: update pnpm version to 10.12.4 in publish workflow
+f7b6b0ac ci: stop caching ~/.cargo/bin and verify cargo on macOS
+e96b3625 ci: install cross only if missing
+02140c96 ci: fix Windows packaging and matrix
+49dff6ba fix: use proper macOS runners for cross-compilation
+703543b3 fix: improve OpenSSL handling in Windows build workflow
+9f123679 Merge branch 'dev' of https://github.com/namastexlabs/automagik-forge into dev
+1e38da91 chore: version bump
+9e1380da Update roadmap-plan.md
+f79f2ae1 Update README.md
+7cfb6b6e Update README.md
+34bc1958 Update README.md
+5982fe45 readme
+eecadb49 roadmap update
+09967ffc README update
+e819997e README update
+33f203f8 refactor: complete Vibe Kanban to Automagik Forge rebranding
+84959c67 cleanup
+92e905a4 ui updates
+b76cb358 Revert "chore(build): revert local-build changes to upstream shape and restore CLI/bin names"
+c95cde8d chore(build): revert local-build changes to upstream shape and restore CLI/bin names
+887ee213 sync(backend): restore backend Rust files to upstream state
+a030035c re-add: restore UI/theme changes (Dracula etc.) — my mistake; Rust-only review continues

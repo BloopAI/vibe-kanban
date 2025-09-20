@@ -1,0 +1,144 @@
+ {.github => .claude/agents/.github}/workflows/publish.yml                        |    3 +-
+ .claude/agents/forge-master.md                                                   |  216 ++++++++
+ .claude/commands/forge.md                                                        |  163 ++++++
+ .claude/commands/prompt.md                                                       |  642 ++++++++++++++++++++++
+ .claude/commands/review-merge-pr.md                                              |  133 +++++
+ .claude/commands/upmerge.md                                                      |  190 +++++++
+ .claude/commands/wish-agent.md                                                   |  868 ++++++++++++++++++++++++++++++
+ .claude/commands/wish.md                                                         |  625 ++++++++++++++++++++++
+ .claude/hooks/examples/README.md                                                 |   13 +
+ .claude/hooks/examples/settings.json                                             |   11 +
+ .claude/hooks/examples/tdd-hook.sh                                               |   20 +
+ .claude/minimal-hook.sh                                                          |   12 +
+ .github/actions/setup-node/action.yml                                            |    2 -
+ .github/workflows/build-all-platforms.yml                                        |  244 +++++++++
+ .github/workflows/pre-release-simple.yml                                         |  123 +++++
+ .github/workflows/pre-release.yml                                                |  177 ++++---
+ .github/workflows/publish.yml.disabled                                           |  144 +++++
+ .github/workflows/test.yml                                                       |    1 -
+ .gitignore                                                                       |    8 +
+ .mcp.json                                                                        |   27 +
+ AGENTS.md                                                                        |   16 +-
+ CLAUDE.md                                                                        |  105 +++-
+ DEVELOPER.md                                                                     |  207 ++++++++
+ Dockerfile                                                                       |    6 +-
+ Makefile                                                                         |  142 +++++
+ README.md                                                                        |  532 ++++++++++++++++---
+ analysis/conflict-patterns.md                                                    |  190 +++++++
+ analysis/integration-points.md                                                   |  335 ++++++++++++
+ analysis/upstream-divergence-report.md                                           |  133 +++++
+ assets/scripts/toast-notification.ps1                                            |    2 +-
+ check-both.sh                                                                    |   23 -
+ ... query-1bacc6c2253a92ee3b5c282b58bcae91a9eb264082d434b61c895fcf418e52e5.json} |   16 +-
+ ... query-2296414bd6baa4ff3b00c1844e2e76714f6b359d7b1fa524027116edbc506467.json} |   16 +-
+ ... query-29e8d701efbd44e99fee76e61833c89fe85c4ac09fbe06e3087d7915ca3d8e56.json} |   18 +-
+ ... query-52c1b04069cb9887d33724bc3dafbd790b84f40021acc9598365ca2e2e16cbf5.json} |   16 +-
+ ... query-6ff74bb31912078933ee96e9d893242838e12dd2f6eeb440801d5598a9935855.json} |   22 +-
+ ... query-8f575b3611d69314df63d59636683636bdfae03e03c5102f9499652b43d64020.json} |   18 +-
+ ... query-be2c9141eb8405c6590397adbda54f2b6b918f298934c7a34645ca5c834268fd.json} |   16 +-
+ crates/db/Cargo.toml                                                             |    2 +-
+ crates/db/migrations/20250903172012_add_branch_template_to_tasks.sql             |    2 +
+ crates/db/src/models/task.rs                                                     |   35 +-
+ crates/db/src/models/task_attempt.rs                                             |   68 ++-
+ crates/deployment/Cargo.toml                                                     |    3 +-
+ crates/executors/Cargo.toml                                                      |    2 +-
+ crates/executors/default_mcp.json                                                |   10 +-
+ crates/executors/src/executors/codex.rs                                          |   22 +-
+ crates/executors/src/executors/gemini.rs                                         |    6 +-
+ crates/local-deployment/Cargo.toml                                               |    2 +-
+ crates/local-deployment/src/container.rs                                         |   77 ++-
+ crates/server/Cargo.toml                                                         |    3 +-
+ crates/server/src/bin/generate_types.rs                                          |    3 +
+ crates/server/src/mcp/task_server.rs                                             |   10 +-
+ crates/server/src/routes/mod.rs                                                  |    2 +
+ crates/server/src/routes/omni.rs                                                 |  150 ++++++
+ crates/server/src/routes/task_attempts.rs                                        |    5 +-
+ crates/server/src/routes/tasks.rs                                                |    2 +
+ crates/services/Cargo.toml                                                       |    2 +-
+ crates/services/src/services/auth.rs                                             |    6 +-
+ crates/services/src/services/config/mod.rs                                       |   16 +-
+ crates/services/src/services/config/versions/mod.rs                              |    1 +
+ crates/services/src/services/config/versions/v1.rs                               |    2 +
+ crates/services/src/services/config/versions/v2.rs                               |    4 +
+ crates/services/src/services/config/versions/v7.rs                               |  116 ++++
+ crates/services/src/services/git.rs                                              |    6 +-
+ crates/services/src/services/mod.rs                                              |    1 +
+ crates/services/src/services/omni/client.rs                                      |   56 ++
+ crates/services/src/services/omni/mod.rs                                         |   73 +++
+ crates/services/src/services/omni/types.rs                                       |  189 +++++++
+ crates/services/src/services/worktree_manager.rs                                 |    2 +-
+ crates/services/tests/git_workflow.rs                                            |   12 +-
+ crates/utils/Cargo.toml                                                          |    2 +-
+ crates/utils/src/assets.rs                                                       |   23 +-
+ crates/utils/src/path.rs                                                         |   10 +-
+ crates/utils/src/port_file.rs                                                    |    4 +-
+ dev_assets_seed/config.json                                                      |   19 -
+ frontend/index.html                                                              |   18 +-
+ frontend/package.json                                                            |    5 +-
+ frontend/public/favicon-16x16.png                                                |  Bin 601 -> 659 bytes
+ frontend/public/favicon-32x32.png                                                |  Bin 1293 -> 1434 bytes
+ frontend/public/favicon.ico                                                      |  Bin 15406 -> 15406 bytes
+ frontend/public/forge-clear.png                                                  |  Bin 0 -> 40441 bytes
+ frontend/public/forge-clear.svg                                                  |    1 +
+ frontend/public/forge-dark.png                                                   |  Bin 0 -> 44495 bytes
+ frontend/public/forge-dark.svg                                                   |    1 +
+ frontend/public/screenshot.png                                                   |  Bin 0 -> 120487 bytes
+ frontend/public/site.webmanifest                                                 |    2 +-
+ frontend/public/vibe-kanban-logo-dark.svg                                        |    3 -
+ frontend/public/vibe-kanban-logo.svg                                             |    3 -
+ frontend/public/vibe-kanban-screenshot-overview.png                              |  Bin 1849253 -> 0 bytes
+ frontend/src/components/dialogs/auth/GitHubLoginDialog.tsx                       |    2 +-
+ frontend/src/components/dialogs/auth/ProvidePatDialog.tsx                        |    2 +-
+ frontend/src/components/dialogs/global/OnboardingDialog.tsx                      |    2 +-
+ frontend/src/components/dialogs/global/PrivacyOptInDialog.tsx                    |    4 +-
+ frontend/src/components/dialogs/global/ReleaseNotesDialog.tsx                    |    4 +-
+ frontend/src/components/dialogs/projects/ProjectEditorSelectionDialog.tsx        |    2 +-
+ frontend/src/components/dialogs/projects/ProjectFormDialog.tsx                   |    2 +-
+ frontend/src/components/dialogs/settings/CreateConfigurationDialog.tsx           |    2 +-
+ frontend/src/components/dialogs/settings/DeleteConfigurationDialog.tsx           |    2 +-
+ frontend/src/components/dialogs/shared/FolderPickerDialog.tsx                    |    2 +-
+ frontend/src/components/dialogs/tasks/CreatePRDialog.tsx                         |    2 +-
+ frontend/src/components/dialogs/tasks/DeleteTaskConfirmationDialog.tsx           |    2 +-
+ frontend/src/components/dialogs/tasks/EditorSelectionDialog.tsx                  |    2 +-
+ frontend/src/components/dialogs/tasks/RebaseDialog.tsx                           |    2 +-
+ frontend/src/components/dialogs/tasks/RestoreLogsDialog.tsx                      |    2 +-
+ frontend/src/components/dialogs/tasks/TaskFormDialog.tsx                         |   31 ++
+ frontend/src/components/dialogs/tasks/TaskTemplateEditDialog.tsx                 |    2 +-
+ frontend/src/components/layout/navbar.tsx                                        |    4 +-
+ frontend/src/components/logo.tsx                                                 |   19 +-
+ frontend/src/components/omni/OmniCard.tsx                                        |  128 +++++
+ frontend/src/components/omni/OmniModal.tsx                                       |  230 ++++++++
+ frontend/src/components/omni/api.ts                                              |   29 +
+ frontend/src/components/omni/types.ts                                            |   27 +
+ frontend/src/components/projects/ProjectCard.tsx                                 |    2 +-
+ frontend/src/components/tasks/TaskFollowUpSection.tsx                            |    2 +-
+ frontend/src/components/theme-provider.tsx                                       |    4 +-
+ frontend/src/components/ui/button.tsx                                            |    2 +-
+ frontend/src/components/ui/dialog.tsx                                            |    2 +-
+ frontend/src/lib/api.ts                                                          |    3 +
+ frontend/src/main.tsx                                                            |    2 +
+ frontend/src/pages/project-tasks.tsx                                             |    1 +
+ frontend/src/pages/settings/GeneralSettings.tsx                                  |    5 +-
+ frontend/src/styles/index.css                                                    |  719 ++++++++++++++++++++++++-
+ frontend/tailwind.config.js                                                      |    5 +-
+ frontend/vite.config.ts                                                          |   64 ++-
+ genie.sh                                                                         |   16 +
+ dev_assets_seed/db.sqlite => genie/wishes/.gitkeep                               |    0
+ genie/wishes/fork-merge-pain-relief-wish.md                                      |  238 +++++++++
+ genie/wishes/omni-notification-wish.md                                           | 1087 ++++++++++++++++++++++++++++++++++++++
+ genie/wishes/per-agent-mcp-tool-selection-wish.md                                |  445 ++++++++++++++++
+ genie/wishes/upstream-merge-wish.md                                              |  317 +++++++++++
+ gh-build.sh                                                                      | 1028 +++++++++++++++++++++++++++++++++++
+ local-build.sh                                                                   |   65 ++-
+ npx-cli/README.md                                                                |   10 +-
+ npx-cli/automagik-forge-0.3.4.tgz                                                |  Bin 0 -> 25399225 bytes
+ npx-cli/bin/cli.js                                                               |   44 +-
+ npx-cli/package.json                                                             |   10 +-
+ package.json                                                                     |   54 +-
+ pnpm-lock.yaml                                                                   |    7 +-
+ roadmap-plan.md                                                                  |  136 +++++
+ rust-toolchain.toml                                                              |    2 +-
+ scripts/release-analyzer.sh                                                      |  353 +++++++++++++
+ shared/types.ts                                                                  |   18 +-
+ test-npm-package.sh                                                              |   42 --
+ 143 files changed, 11095 insertions(+), 508 deletions(-)

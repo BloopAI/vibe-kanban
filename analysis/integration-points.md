@@ -1,335 +1,94 @@
-# Integration Points & Dependency Chain Analysis
+# Integration touchpoints and dependency map
 
-## Executive Summary
+## Snapshot
+- Diff scope: 143 files, 11k insertions, 508 deletions (see `diff-stats.txt`).
+- Extension themes: branch-template workflow, Omni notifications, release automation/CLI packaging, agent tooling (Claude + Genie), branding + UX updates.
+- Classification: 4 critical chains, 3 important support layers, 2 optional/custom branding zones.
 
-This analysis maps the integration touchpoints where automagik-forge extends the upstream vibe-kanban architecture, documenting dependency chains and identifying critical vs. optional customizations for merge optimization planning.
+## Critical extension chains
 
-**Key Finding**: Fork implements 4 major integration layers with 7 critical dependency chains that must be preserved during upstream merges.
+### 1. Branch template workflow (critical)
+**Goal:** allow per-task branch name templates and surface them end-to-end.
 
-## Fork Extension Architecture Overview
+| Layer | Files | Notes |
+|-------|-------|-------|
+| Database | `crates/db/migrations/20250903172012_add_branch_template_to_tasks.sql`, SQLx query renames, `crates/db/src/models/{task.rs,task_attempt.rs}` | Adds `branch_template` column and query bindings. |
+| Backend API | `crates/server/src/routes/{tasks.rs,task_attempts.rs}`, `crates/server/src/mcp/task_server.rs` | Propagates template through CRUD and MCP flows. |
+| Shared types | `shared/types.ts` | Regenerated to expose template in TS clients. |
+| Frontend | `frontend/src/components/dialogs/tasks/TaskFormDialog.tsx`, `TaskTemplateEditDialog.tsx`, `frontend/src/pages/project-tasks.tsx` | Captures template input, ensures payload compatibility. |
+| Automation | `genie/wishes/upstream-merge-wish.md` | Wish scripts enforce template consistency during merges. |
 
+**Dependencies:** configuration managers, SQLx metadata regeneration, front-end forms. **Conflicts:** recorded in merges `3185ac62`, `4647853d`, `576ae2ba` when upstream touched the same structs.
+
+### 2. Omni notification system (critical)
+**Goal:** deliver Omni-based notifications across backend and UI.
+
+| Layer | Files | Notes |
+|-------|-------|-------|
+| Config | `crates/services/src/services/config/versions/v7.rs` | Introduces v7 config with embedded `OmniConfig` (commit `4570c047`). |
+| Service | `crates/services/src/services/omni/{mod.rs,client.rs,types.rs}` | HTTP client + DTOs (`a3c8c7ff`, `84873608`). |
+| API | `crates/server/src/routes/omni.rs`, `routes/mod.rs` | `/api/omni/*` endpoints for validation + instance listing (`66196ef7`). |
+| Frontend | `frontend/src/components/omni/*`, `frontend/src/components/tasks/TaskFollowUpSection.tsx`, `frontend/src/pages/settings/GeneralSettings.tsx`, `frontend/src/lib/api.ts` | Settings UI and task notifications (`0468bcdc`, `990b4e10`, `53cd45c0`, `72018446`). |
+| Docs/Wishes | `genie/wishes/omni-notification-wish.md` | Operational guidance for Omni rollout. |
+
+**Dependencies:** requires config migration, API client updates, UI state handling. **Conflicts:** merges `3185ac62`, `8acfc749`, `c239b3aa` had to manually reapply Omni wiring when upstream edited settings screens.
+
+### 3. Release automation and packaging (critical)
+**Goal:** maintain Automagik Forge release pipeline across platforms + npm.
+
+| Component | Files | Purpose |
+|-----------|-------|---------|
+| Workflows | `.github/workflows/{build-all-platforms.yml,pre-release.yml,pre-release-simple.yml}`, `.github/actions/setup-node/action.yml` | Custom build/publish orchestration (`1aac96bf`, `400ecfdf`, `4dd91f65`). |
+| Scripts | `Makefile`, `gh-build.sh`, `scripts/release-analyzer.sh`, `local-build.sh`, `genie.sh` | CLI wrappers, release validation, dev bootstrap. |
+| Packaging | `npx-cli/` (including `automagik-forge-0.3.4.tgz`, `bin/cli.js`, `package.json`) | Distributes Forge CLI through npm (`0ffc0485`). |
+| Manifests | Root + crate `Cargo.toml`, `package.json`, `frontend/package.json`, `pnpm-lock.yaml`, `rust-toolchain.toml` | Pin dependencies for custom workflows (multiple CI fix commits). |
+
+**Dependencies:** scripts assume workflow outputs; CLI package depends on generated artefacts; `.mcp.json` coordinates with CLI to expose MCP server endpoints. **Conflicts:** merges `b29eca4e`, `b876f9f5`, `3d2d40f6`, `4647853d` repeatedly touched these files.
+
+### 4. Git operations safety (critical)
+**Goal:** extend git/worktree handling for branch templates and reliability.
+
+| Layer | Files | Notes |
+|-------|-------|-------|
+| Services | `crates/services/src/services/git.rs`, `worktree_manager.rs`, `auth.rs` | Custom branch template propagation, additional logging. |
+| Tests | `crates/services/tests/git_workflow.rs` | Regression coverage for fork workflow. |
+| Deployment | `crates/local-deployment/src/container.rs`, `crates/deployment/Cargo.toml` | Ensure worktree config in local containers. |
+
+**Dependencies:** shares logic with branch template workflow; interacts with release automation (worktrees for build pipelines). **Conflicts:** merges `576ae2ba`, `b876f9f5`, `c239b3aa` show repeated manual resolutions.
+
+## Important (should preserve) integrations
+
+1. **Agent automation & Genie** (commits `244bd4c5`, `4e8aa43d`, `cdee569f`): `.claude/commands`, `.claude/hooks`, `genie/wishes/*.md`, `genie.sh`. Provides operational tooling and release playbooks; interacts with CI scripts and analysis output but not upstream.
+2. **Frontend dialog/navigation layer**: reorganised under `frontend/src/components/dialogs/**`, `layout/navbar.tsx`, UI primitives. Required for Omni controls and branch-template UX but can be reapplied if upstream overwrites layout.
+3. **Executor adjustments**: `crates/executors/src/executors/codex.rs`, `gemini.rs`, `default_mcp.json`, plus `frontend/src/components/dialogs/settings/*.tsx` for configuration. Needed for Omni + branch template tasks; merges `576ae2ba`, `6e8785b7`, `3185ac62` kept these bespoke behaviours.
+
+## Optional/custom layers
+- **Branding & assets:** `frontend/public/forge-*.{png,svg}`, favicons, `frontend/src/components/logo.tsx`, `frontend/src/styles/index.css`. Purely cosmetic; can be re-applied after upstream sync.
+- **Documentation & planning:** `README.md`, `CLAUDE.md`, `DEVELOPER.md`, `roadmap-plan.md`, `analysis/*`. Inform stakeholders but do not affect runtime behaviour.
+
+## Dependency interactions summary
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                 Automagik Forge Extensions                  │
-├─────────────────────────────────────────────────────────────┤
-│  🧞 Genie Layer    │  🔔 Omni Layer    │  🎨 Theme Layer    │
-│  (.claude/*)       │  (omni/*)         │  (forge-*)         │
-├─────────────────────────────────────────────────────────────┤
-│              🔧 Configuration Extensions (v7)               │
-├─────────────────────────────────────────────────────────────┤
-│                   🗄️ Database Extensions                    │
-│                  (branch_template fields)                   │
-├─────────────────────────────────────────────────────────────┤
-│                  📦 Build System Extensions                 │
-│               (npm packaging, CI/CD, MCP)                   │
-├─────────────────────────────────────────────────────────────┤
-│                    🎯 Upstream Core System                  │
-│              (vibe-kanban base functionality)               │
-└─────────────────────────────────────────────────────────────┘
-```
+Branch templates ─┬─ DB migrations ── SQLx metadata
+                  ├─ REST routes ── shared/types.ts ── frontend dialogs
+                  └─ git services ── release workflows (worktree naming)
 
-## Critical Integration Points
+Omni system ──────┬─ Config v7 ── service client
+                  ├─ REST /api/omni ── frontend Omni settings
+                  └─ Genie wishes (operational docs)
 
-### 🔴 1. Configuration System Integration (HIGH PRIORITY)
-
-**Integration Point**: `crates/services/src/services/config/versions/v7.rs`
-
-**Dependency Chain**:
-```
-Config v7 → OmniConfig → Notification System → UI Integration
-           ↓
-         Task Model → Branch Templates → MCP Server
-```
-
-**Files Involved**:
-- `crates/services/src/services/config/versions/v7.rs` (116 lines)
-- `crates/services/src/services/omni/types.rs` (189 lines)
-- `shared/types.ts` (TypeScript types)
-
-**Integration Strategy**:
-- Omni configuration embedded directly in v7 config
-- Single source of truth for OmniConfig type
-- Backward compatibility with v6 maintained
-
-**Merge Risk**: **HIGH** - Config system changes require careful schema migration
-
----
-
-### 🔴 2. Database Schema Extensions (HIGH PRIORITY)
-
-**Integration Point**: Task model with branch template support
-
-**Dependency Chain**:
-```
-DB Migration → Task Model → Task API → Frontend UI → User Features
-    ↓
-MCP Server → External Integrations
-```
-
-**Files Involved**:
-- `crates/db/migrations/20250903172012_add_branch_template_to_tasks.sql`
-- `crates/db/src/models/task.rs` (35 line changes)
-- `crates/db/src/models/task_attempt.rs` (68 line changes)
-- Multiple SQLx query metadata files
-
-**Integration Strategy**:
-- Added `branch_template` field to tasks table
-- Extended task model with template functionality
-- Preserved upstream task core functionality
-
-**Merge Risk**: **CRITICAL** - Schema conflicts require coordination
-
----
-
-### 🔴 3. API Route Extensions (HIGH PRIORITY)
-
-**Integration Point**: REST API with Omni endpoints and task enhancements
-
-**Dependency Chain**:
-```
-API Router → Route Modules → Service Layer → Frontend Client
-     ↓
-MCP Server → External Tool Integration
+Release pipeline ─┬─ GitHub workflows
+                  ├─ Makefile / gh-build.sh / scripts
+                  ├─ npx-cli artefact
+                  └─ .mcp.json + CLI consumers
 ```
 
-**Files Involved**:
-- `crates/server/src/routes/mod.rs` (omni router integration)
-- `crates/server/src/routes/omni.rs` (150 lines, NEW)
-- `crates/server/src/routes/tasks.rs` (branch template support)
-- `frontend/src/lib/api.ts` (client integration)
+## Critical vs optional checklist
+- **Critical:** branch template chain, Omni system, release automation + packaging, git/worktree services.
+- **Important:** executor/profile customisations, frontend dialog framework, agent automation/Genie.
+- **Optional:** branding assets, documentation, generated wish content.
 
-**Integration Strategy**:
-- New `/api/omni/*` endpoint namespace
-- Extended existing task endpoints
-- Maintained API backward compatibility
-
-**Merge Risk**: **HIGH** - API changes affect client-server contract
-
----
-
-### 🟡 4. MCP Server Integration (MEDIUM PRIORITY)
-
-**Integration Point**: Model Context Protocol server customization
-
-**Dependency Chain**:
-```
-.mcp.json → MCP Server → Task Server → External Agents
-    ↓
-Forge CLI → NPX Package → User Workflow
-```
-
-**Files Involved**:
-- `.mcp.json` (forge-specific MCP config)
-- `crates/server/src/mcp/task_server.rs`
-- `npx-cli/` directory (complete CLI package)
-
-**Integration Strategy**:
-- Automagik Forge as MCP server
-- Custom tool integration
-- NPX package distribution
-
-**Merge Risk**: **MEDIUM** - MCP interface evolution in both codebases
-
----
-
-### 🟡 5. Executor System Extensions (MEDIUM PRIORITY)
-
-**Integration Point**: AI executor enhancements and configuration
-
-**Dependency Chain**:
-```
-Executor Profiles → Codex/Gemini Executors → Container Deployment
-                                            ↓
-                                    Task Execution Engine
-```
-
-**Files Involved**:
-- `crates/executors/src/executors/codex.rs` (22 line changes)
-- `crates/executors/src/executors/gemini.rs`
-- `crates/executors/default_mcp.json`
-- `crates/local-deployment/src/container.rs` (77 line changes)
-
-**Integration Strategy**:
-- Enhanced executor implementations
-- Custom MCP tool selection
-- Container deployment improvements
-
-**Merge Risk**: **MEDIUM** - Both sides evolving executor capabilities
-
----
-
-### 🟢 6. Frontend Theme Integration (LOW PRIORITY)
-
-**Integration Point**: UI theming and branding system
-
-**Dependency Chain**:
-```
-Theme Provider → Component Styling → Asset Loading → User Experience
-                      ↓
-              Logo Component → Branding Assets
-```
-
-**Files Involved**:
-- `frontend/src/components/theme-provider.tsx`
-- `frontend/src/components/logo.tsx`
-- `frontend/src/styles/index.css` (719 line changes)
-- `frontend/public/forge-*` assets
-
-**Integration Strategy**:
-- Extended theme system for custom branding
-- Asset replacement strategy
-- CSS customization overlay
-
-**Merge Risk**: **LOW** - Mostly additive theming changes
-
----
-
-### 🟢 7. Build System Integration (LOW PRIORITY)
-
-**Integration Point**: NPM packaging and CI/CD customization
-
-**Dependency Chain**:
-```
-Package.json → Build Scripts → CI Workflows → Distribution
-     ↓
-NPX CLI → User Installation → Runtime Integration
-```
-
-**Files Involved**:
-- `package.json` (automagik-forge branding)
-- `.github/workflows/` (custom workflows)
-- `Makefile` (142 lines, NEW)
-- `local-build.sh` (modifications)
-
-**Integration Strategy**:
-- Preserved npm publishing capability
-- Custom build automation
-- Maintained CLI distribution
-
-**Merge Risk**: **LOW** - Build system can be maintained separately
-
-## Dependency Matrix
-
-| Extension | Config v7 | DB Schema | API Routes | MCP | Executors | Themes | Build |
-|-----------|-----------|-----------|------------|-----|-----------|--------|-------|
-| **Omni System** | ✅ Core | ❌ None | ✅ Core | ⚠️ Optional | ❌ None | ✅ UI | ❌ None |
-| **Branch Templates** | ⚠️ Optional | ✅ Core | ✅ Core | ✅ Integration | ❌ None | ✅ UI | ❌ None |
-| **Genie System** | ❌ None | ❌ None | ❌ None | ✅ Core | ❌ None | ✅ Branding | ✅ CLI |
-| **Theme Customization** | ✅ Storage | ❌ None | ❌ None | ❌ None | ❌ None | ✅ Core | ✅ Assets |
-
-**Legend**: ✅ Core dependency | ⚠️ Optional integration | ❌ No dependency
-
-## Critical vs Optional Customizations
-
-### 🔴 CRITICAL (Must Preserve)
-1. **Omni Notification System** - Core user-facing feature
-2. **Branch Template Functionality** - Database schema dependency
-3. **Config v7 System** - Configuration architecture
-4. **Task Model Extensions** - API compatibility requirement
-
-### 🟡 IMPORTANT (Should Preserve)
-1. **MCP Server Customization** - External integration capability
-2. **Executor Enhancements** - Performance improvements
-3. **API Route Extensions** - Frontend functionality
-
-### 🟢 OPTIONAL (Can Modify)
-1. **Theme/Branding Assets** - Can be reapplied post-merge
-2. **Build System Customization** - Independent of core functionality
-3. **Documentation/README** - Can be regenerated
-
-## Refactoring Opportunities
-
-### 1. **Modularize Omni System**
-```rust
-// Current: Embedded in config v7
-// Proposed: Feature-flagged module
-#[cfg(feature = "omni")]
-pub mod omni_integration;
-```
-
-### 2. **Extract Branch Templates**
-```rust
-// Current: Mixed in task model
-// Proposed: Trait-based extension
-trait BranchTemplateExt {
-    fn with_template(&self, template: String) -> Self;
-}
-```
-
-### 3. **Plugin Architecture for Extensions**
-```rust
-// Proposed: Plugin system for fork features
-pub trait ForgeExtension {
-    fn register_routes(&self) -> Router;
-    fn extend_config(&self) -> ConfigExtension;
-}
-```
-
-## Merge Optimization Strategies
-
-### 1. **Layer-Based Merge Strategy**
-1. **Foundation Layer**: Merge upstream core changes first
-2. **Extension Layer**: Re-apply fork-specific features
-3. **Integration Layer**: Reconnect dependency chains
-4. **Validation Layer**: Test all integration points
-
-### 2. **Dependency-First Approach**
-1. **Critical Dependencies**: Config v7, Database schema
-2. **Core Dependencies**: API routes, MCP integration
-3. **UI Dependencies**: Frontend components, themes
-4. **Build Dependencies**: CI/CD, packaging
-
-### 3. **Feature Flag Strategy**
-```rust
-// Enable gradual feature rollout during merge
-#[cfg(feature = "forge-extensions")]
-mod automagik_extensions;
-
-// Runtime configuration
-if deployment.config.enable_fork_features {
-    router = router.merge(omni::router());
-}
-```
-
-## Risk Mitigation
-
-### High-Risk Mitigation
-- **Database Schema**: Coordinate migration scripts with upstream
-- **API Compatibility**: Maintain versioned API endpoints
-- **Type System**: Use feature-gated type extensions
-
-### Medium-Risk Mitigation
-- **MCP Integration**: Abstract MCP interface for compatibility
-- **Executor System**: Plugin-based executor architecture
-- **Configuration**: Backward-compatible config versioning
-
-### Low-Risk Mitigation
-- **Theme System**: CSS-only overlay approach
-- **Build System**: Separate forge-specific build scripts
-- **Documentation**: Automated regeneration tooling
-
-## Monitoring & Validation
-
-### Integration Health Checks
-1. **Config Migration**: Verify v7 config backward compatibility
-2. **Database Integrity**: Validate schema migration success
-3. **API Contract**: Test all endpoint backward compatibility
-4. **MCP Connectivity**: Verify external tool integration
-5. **UI Functionality**: Test all fork-specific features
-
-### Automated Testing Strategy
-```bash
-# Pre-merge validation
-npm run test:integration:omni
-npm run test:api:compatibility
-npm run test:db:migration
-npm run test:mcp:connectivity
-
-# Post-merge validation
-npm run test:fork:features
-npm run test:upstream:regression
-```
-
----
-*Generated: 2025-09-19*
-*Analysis Branch: analysis/merge-optimization-foundation-1481*
+## Refactoring opportunities
+1. **Feature flag Omni & branch templates**: wrap Omni routes/services and branch-template fields behind `cfg(feature = "forge-omni")` / `cfg(feature = "forge-branch-template")` to simplify future upstream merges.
+2. **Modularise release scripts**: publish Makefile targets and `gh-build.sh` as reusable GitHub actions to reduce diff surface with upstream workflows.
+3. **API client boundary**: expose Omni + branch template methods via dedicated TypeScript modules (`frontend/src/lib/api.ts`) to minimise churn when upstream restyles dialogs.
+4. **Automated artefact regen**: wire SQLx + TS generation into CI so conflicts surface before manual merges (`scripts/release-analyzer.sh` already shells out commands; integrate upstream).
