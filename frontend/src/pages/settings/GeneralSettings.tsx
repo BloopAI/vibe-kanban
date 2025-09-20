@@ -218,6 +218,9 @@ export function GeneralSettings() {
                 <SelectItem value="JA">
                   {t('language.ja', { ns: 'common', defaultValue: '日本語' })}
                 </SelectItem>
+                <SelectItem value="ES">
+                  {t('language.es', { ns: 'common', defaultValue: 'Español' })}
+                </SelectItem>
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">

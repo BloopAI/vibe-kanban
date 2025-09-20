@@ -9,6 +9,9 @@ import enProjects from './locales/en/projects.json';
 import jaCommon from './locales/ja/common.json';
 import jaSettings from './locales/ja/settings.json';
 import jaProjects from './locales/ja/projects.json';
+import esCommon from './locales/es/common.json';
+import esSettings from './locales/es/settings.json';
+import esProjects from './locales/es/projects.json';
 
 const resources = {
   en: {
@@ -20,6 +23,11 @@ const resources = {
     common: jaCommon,
     settings: jaSettings,
     projects: jaProjects,
+  },
+  es: {
+    common: esCommon,
+    settings: esSettings,
+    projects: esProjects,
   },
 };
 

@@ -17,6 +17,7 @@ pub enum UiLanguage {
     Browser, // Detect from browser
     En, // Force English
     Ja, // Force Japanese
+    Es, // Force Spanish
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
