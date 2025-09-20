@@ -1,8 +1,10 @@
+import { useTranslation } from 'react-i18next';
 import MarkdownRenderer from '@/components/ui/markdown-renderer.tsx';
 import {
   ActionType,
   NormalizedEntry,
   TaskAttempt,
+  ToolStatus,
   type NormalizedEntryType,
 } from 'shared/types.ts';
 import type { ProcessStartPayload } from '@/types/logs';
@@ -27,6 +29,8 @@ import {
 } from 'lucide-react';
 import RawLogText from '../common/RawLogText';
 import UserMessage from './UserMessage';
+import PendingApprovalEntry from './PendingApprovalEntry';
+import { cn } from '@/lib/utils';
 
 type Props = {
   entry: NormalizedEntry | ProcessStartPayload;
@@ -304,38 +308,101 @@ const CollapsibleEntry: React.FC<{
   );
 };
 
+type ToolStatusAppearance = 'default' | 'denied' | 'timed_out';
+
+const PLAN_APPEARANCE: Record<
+  ToolStatusAppearance,
+  {
+    border: string;
+    headerBg: string;
+    headerText: string;
+    contentBg: string;
+    contentText: string;
+  }
+> = {
+  default: {
+    border: 'border-blue-400/40',
+    headerBg: 'bg-blue-50 dark:bg-blue-950/20',
+    headerText: 'text-blue-700 dark:text-blue-300',
+    contentBg: 'bg-blue-50 dark:bg-blue-950/20',
+    contentText: 'text-blue-700 dark:text-blue-300',
+  },
+  denied: {
+    border: 'border-red-400/40',
+    headerBg: 'bg-red-50 dark:bg-red-950/20',
+    headerText: 'text-red-700 dark:text-red-300',
+    contentBg: 'bg-red-50 dark:bg-red-950/10',
+    contentText: 'text-red-700 dark:text-red-300',
+  },
+  timed_out: {
+    border: 'border-amber-400/40',
+    headerBg: 'bg-amber-50 dark:bg-amber-950/20',
+    headerText: 'text-amber-700 dark:text-amber-200',
+    contentBg: 'bg-amber-50 dark:bg-amber-950/10',
+    contentText: 'text-amber-700 dark:text-amber-200',
+  },
+};
+
 const PlanPresentationCard: React.FC<{
   plan: string;
   expansionKey: string;
-}> = ({ plan, expansionKey }) => {
-  const [expanded, toggle] = useExpandable(`plan-entry:${expansionKey}`, true);
+  defaultExpanded?: boolean;
+  statusAppearance?: ToolStatusAppearance;
+}> = ({
+  plan,
+  expansionKey,
+  defaultExpanded = false,
+  statusAppearance = 'default',
+}) => {
+  const { t } = useTranslation('common');
+  const [expanded, toggle] = useExpandable(
+    `plan-entry:${expansionKey}`,
+    defaultExpanded
+  );
+  const tone = PLAN_APPEARANCE[statusAppearance];
 
   return (
     <div className="inline-block w-full">
-      <div className="border w-full overflow-hidden  border-blue-400/40">
+      <div
+        className={cn('border w-full overflow-hidden rounded-sm', tone.border)}
+      >
         <button
           onClick={(e: React.MouseEvent) => {
             e.preventDefault();
             toggle();
           }}
-          title={expanded ? 'Hide plan' : 'Show plan'}
-          className="w-full px-2 py-1.5 flex items-center gap-1.5 text-left bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 border-b border-blue-400/40"
+          title={
+            expanded
+              ? t('conversation.planToggle.hide')
+              : t('conversation.planToggle.show')
+          }
+          className={cn(
+            'w-full px-2 py-1.5 flex items-center gap-1.5 text-left border-b',
+            tone.headerBg,
+            tone.headerText,
+            tone.border
+          )}
         >
           <span className=" min-w-0 truncate">
-            <span className="font-semibold">Plan</span>
+            <span className="font-semibold">{t('conversation.plan')}</span>
           </span>
           <div className="ml-auto flex items-center gap-2">
             <ExpandChevron
               expanded={expanded}
               onClick={toggle}
-              variant="system"
+              variant={statusAppearance === 'denied' ? 'error' : 'system'}
             />
           </div>
         </button>
 
         {expanded && (
-          <div className="px-3 py-2 max-h-[65vh] overflow-y-auto overscroll-contain bg-blue-50 dark:bg-blue-950/20">
-            <div className=" text-blue-700 dark:text-blue-300">
+          <div
+            className={cn(
+              'px-3 py-2 max-h-[65vh] overflow-y-auto overscroll-contain',
+              tone.contentBg
+            )}
+          >
+            <div className={cn('text-sm', tone.contentText)}>
               <MarkdownRenderer
                 content={plan}
                 className="whitespace-pre-wrap break-words"
@@ -355,9 +422,26 @@ const ToolCallCard: React.FC<{
   expansionKey: string;
   content?: string;
   entryContent?: string;
-}> = ({ entryType, action, expansionKey, content, entryContent }) => {
+  highlighted?: boolean;
+  defaultExpanded?: boolean;
+  statusAppearance?: ToolStatusAppearance;
+  forceExpanded?: boolean;
+}> = ({
+  entryType,
+  action,
+  expansionKey,
+  content,
+  entryContent,
+  defaultExpanded = false,
+  forceExpanded = false,
+}) => {
+  const { t } = useTranslation('common');
   const at: any = entryType?.action_type || action;
-  const [expanded, toggle] = useExpandable(`tool-entry:${expansionKey}`, false);
+  const [expanded, toggle] = useExpandable(
+    `tool-entry:${expansionKey}`,
+    defaultExpanded
+  );
+  const effectiveExpanded = forceExpanded || expanded;
 
   const label =
     at?.action === 'command_run'
@@ -400,16 +484,18 @@ const ToolCallCard: React.FC<{
           e.preventDefault();
           toggle();
         },
-        title: expanded ? 'Hide details' : 'Show details',
+        title: effectiveExpanded
+          ? t('conversation.toolDetailsToggle.hide')
+          : t('conversation.toolDetailsToggle.show'),
       }
     : {};
 
+  const headerClassName = cn(
+    'w-full flex items-center gap-1.5 text-left text-secondary-foreground'
+  );
   return (
-    <div className="inline-block w-full  flex flex-col gap-4">
-      <HeaderWrapper
-        {...headerProps}
-        className="w-full flex items-center gap-1.5 text-left text-secondary-foreground"
-      >
+    <div className="inline-block w-full flex flex-col gap-4">
+      <HeaderWrapper {...headerProps} className={headerClassName}>
         <span className=" min-w-0 flex items-center gap-1.5">
           {entryType ? (
             <span>
@@ -425,14 +511,14 @@ const ToolCallCard: React.FC<{
         </span>
       </HeaderWrapper>
 
-      {expanded && (
+      {effectiveExpanded && (
         <div className="max-h-[200px] overflow-y-auto border">
           {isCommand ? (
             <>
               {argsText && (
                 <>
                   <div className="font-normal uppercase bg-background border-b border-dashed px-2 py-1">
-                    Args
+                    {t('conversation.args')}
                   </div>
                   <div className="px-2 py-1">{argsText}</div>
                 </>
@@ -441,7 +527,7 @@ const ToolCallCard: React.FC<{
               {output && (
                 <>
                   <div className="font-normal uppercase bg-background border-y border-dashed px-2 py-1">
-                    Output
+                    {t('conversation.output')}
                   </div>
                   <div className="px-2 py-1">
                     <RawLogText content={output} />
@@ -454,13 +540,13 @@ const ToolCallCard: React.FC<{
               {entryType?.action_type.action === 'tool' && (
                 <>
                   <div className="font-normal uppercase bg-background border-b border-dashed px-2 py-1">
-                    Args
+                    {t('conversation.args')}
                   </div>
                   <div className="px-2 py-1">
                     {renderJson(entryType.action_type.arguments)}
                   </div>
                   <div className="font-normal uppercase bg-background border-y border-dashed px-2 py-1">
-                    Result
+                    {t('conversation.result')}
                   </div>
                   <div className="px-2 py-1">
                     {entryType.action_type.result?.type.type === 'markdown' &&
@@ -491,6 +577,17 @@ const LoadingCard = () => {
       <div className="flex-1 h-3"></div>
     </div>
   );
+};
+
+const isPendingApprovalStatus = (
+  status: ToolStatus
+): status is Extract<ToolStatus, { status: 'pending_approval' }> =>
+  status.status === 'pending_approval';
+
+const getToolStatusAppearance = (status: ToolStatus): ToolStatusAppearance => {
+  if (status.status === 'denied') return 'denied';
+  if (status.status === 'timed_out') return 'timed_out';
+  return 'default';
 };
 
 /*******************
@@ -541,10 +638,85 @@ function DisplayConversationEntry({
       />
     );
   }
+  const renderToolUse = () => {
+    if (!isNormalizedEntry(entry)) return null;
 
-  return (
-    <div className="px-4 py-2 text-sm">
-      {isSystem || isError ? (
+    if (entryType.type !== 'tool_use') return null;
+    const toolEntry = entryType;
+
+    const status = toolEntry.status;
+    const statusAppearance = getToolStatusAppearance(status);
+    const isPlanPresentation =
+      toolEntry.action_type.action === 'plan_presentation';
+    const isPendingApproval = status.status === 'pending_approval';
+    const defaultExpanded = isPendingApproval || isPlanPresentation;
+
+    const body = (() => {
+      if (isFileEdit(toolEntry.action_type)) {
+        const fileEditAction = toolEntry.action_type as FileEditAction;
+        return (
+          <div className="space-y-3">
+            {fileEditAction.changes.map((change, idx) => (
+              <FileChangeRenderer
+                key={idx}
+                path={fileEditAction.path}
+                change={change}
+                expansionKey={`edit:${expansionKey}:${idx}`}
+                defaultExpanded={defaultExpanded}
+                statusAppearance={statusAppearance}
+                forceExpanded={isPendingApproval}
+              />
+            ))}
+          </div>
+        );
+      }
+
+      if (toolEntry.action_type.action === 'plan_presentation') {
+        return (
+          <PlanPresentationCard
+            plan={toolEntry.action_type.plan}
+            expansionKey={expansionKey}
+            defaultExpanded={defaultExpanded}
+            statusAppearance={statusAppearance}
+          />
+        );
+      }
+
+      return (
+        <ToolCallCard
+          entryType={toolEntry}
+          expansionKey={expansionKey}
+          entryContent={entry.content}
+          defaultExpanded={defaultExpanded}
+          statusAppearance={statusAppearance}
+          forceExpanded={isPendingApproval}
+        />
+      );
+    })();
+
+    const content = <div className="px-4 py-2 text-sm space-y-3">{body}</div>;
+
+    if (isPendingApprovalStatus(status)) {
+      return (
+        <PendingApprovalEntry
+          pendingStatus={status}
+          executionProcessId={executionProcessId}
+        >
+          {content}
+        </PendingApprovalEntry>
+      );
+    }
+
+    return content;
+  };
+
+  if (isToolUse) {
+    return renderToolUse();
+  }
+
+  if (isSystem || isError) {
+    return (
+      <div className="px-4 py-2 text-sm">
         <CollapsibleEntry
           content={isNormalizedEntry(entry) ? entry.content : ''}
           markdown={shouldRenderMarkdown(entryType)}
@@ -552,47 +724,33 @@ function DisplayConversationEntry({
           variant={isSystem ? 'system' : 'error'}
           contentClassName={getContentClassName(entryType)}
         />
-      ) : isToolUse && isFileEdit(entryType.action_type) ? (
-        // Only FileChangeRenderer for file_edit
-        (() => {
-          const fileEditAction = entryType.action_type as FileEditAction;
-          return fileEditAction.changes.map((change, idx) => (
-            <FileChangeRenderer
-              key={idx}
-              path={fileEditAction.path}
-              change={change}
-              expansionKey={`edit:${expansionKey}:${idx}`}
-            />
-          ));
-        })()
-      ) : isToolUse && entryType.action_type.action === 'plan_presentation' ? (
-        <PlanPresentationCard
-          plan={entryType.action_type.plan}
-          expansionKey={expansionKey}
-        />
-      ) : isToolUse ? (
-        <ToolCallCard
-          entryType={entryType}
-          expansionKey={expansionKey}
-          entryContent={isNormalizedEntry(entry) ? entry.content : ''}
-        />
-      ) : isLoading ? (
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="px-4 py-2 text-sm">
         <LoadingCard />
-      ) : (
-        <div className={getContentClassName(entryType)}>
-          {shouldRenderMarkdown(entryType) ? (
-            <MarkdownRenderer
-              content={isNormalizedEntry(entry) ? entry.content : ''}
-              className="whitespace-pre-wrap break-words flex flex-col gap-1 font-light"
-              enableCopyButton={entryType.type === 'assistant_message'}
-            />
-          ) : isNormalizedEntry(entry) ? (
-            entry.content
-          ) : (
-            ''
-          )}
-        </div>
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-4 py-2 text-sm">
+      <div className={getContentClassName(entryType)}>
+        {shouldRenderMarkdown(entryType) ? (
+          <MarkdownRenderer
+            content={isNormalizedEntry(entry) ? entry.content : ''}
+            className="whitespace-pre-wrap break-words flex flex-col gap-1 font-light"
+            enableCopyButton={entryType.type === 'assistant_message'}
+          />
+        ) : isNormalizedEntry(entry) ? (
+          entry.content
+        ) : (
+          ''
+        )}
+      </div>
     </div>
   );
 }

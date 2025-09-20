@@ -67,6 +67,7 @@ impl MsgStore {
     pub fn push_stdout<S: Into<String>>(&self, s: S) {
         self.push(LogMsg::Stdout(s.into()));
     }
+
     pub fn push_stderr<S: Into<String>>(&self, s: S) {
         self.push(LogMsg::Stderr(s.into()));
     }
@@ -85,6 +86,7 @@ impl MsgStore {
     pub fn get_receiver(&self) -> broadcast::Receiver<LogMsg> {
         self.sender.subscribe()
     }
+
     pub fn get_history(&self) -> Vec<LogMsg> {
         self.inner
             .read()

@@ -1,17 +1,21 @@
 import { type FileChange } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
-import { Trash2, FilePlus2, ArrowRight } from 'lucide-react';
+import { Trash2, FilePlus2, ArrowRight, FileX, FileClock } from 'lucide-react';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import { getActualTheme } from '@/utils/theme';
 import EditDiffRenderer from './EditDiffRenderer';
 import FileContentView from './FileContentView';
 import '@/styles/diff-style-overrides.css';
 import { useExpandable } from '@/stores/useExpandableStore';
+import { cn } from '@/lib/utils';
 
 type Props = {
   path: string;
   change: FileChange;
   expansionKey: string;
+  defaultExpanded?: boolean;
+  statusAppearance?: 'default' | 'denied' | 'timed_out';
+  forceExpanded?: boolean;
 };
 
 function isWrite(
@@ -35,11 +39,38 @@ function isEdit(
   return change?.action === 'edit';
 }
 
-const FileChangeRenderer = ({ path, change, expansionKey }: Props) => {
+const FileChangeRenderer = ({
+  path,
+  change,
+  expansionKey,
+  defaultExpanded = false,
+  statusAppearance = 'default',
+  forceExpanded = false,
+}: Props) => {
   const { config } = useUserSystem();
-  const [expanded, setExpanded] = useExpandable(expansionKey, false);
+  const [expanded, setExpanded] = useExpandable(expansionKey, defaultExpanded);
+  const effectiveExpanded = forceExpanded || expanded;
 
   const theme = getActualTheme(config?.theme);
+  const headerClass = cn('flex items-center gap-1.5 text-secondary-foreground');
+
+  const statusIcon =
+    statusAppearance === 'denied' ? (
+      <FileX className="h-3 w-3" />
+    ) : statusAppearance === 'timed_out' ? (
+      <FileClock className="h-3 w-3" />
+    ) : null;
+
+  if (statusIcon) {
+    return (
+      <div>
+        <div className={headerClass}>
+          {statusIcon}
+          <p className="text-sm font-light overflow-x-auto flex-1">{path}</p>
+        </div>
+      </div>
+    );
+  }
 
   // Edit: delegate to EditDiffRenderer for identical styling and behavior
   if (isEdit(change)) {
@@ -49,6 +80,9 @@ const FileChangeRenderer = ({ path, change, expansionKey }: Props) => {
         unifiedDiff={change.unified_diff}
         hasLineNumbers={change.has_line_numbers}
         expansionKey={expansionKey}
+        defaultExpanded={defaultExpanded}
+        statusAppearance={statusAppearance}
+        forceExpanded={forceExpanded}
       />
     );
   }
@@ -98,7 +132,7 @@ const FileChangeRenderer = ({ path, change, expansionKey }: Props) => {
 
   return (
     <div>
-      <div className="flex items-center text-secondary-foreground gap-1.5">
+      <div className={headerClass}>
         {icon}
         <p
           onClick={() => expandable && setExpanded()}
@@ -109,7 +143,7 @@ const FileChangeRenderer = ({ path, change, expansionKey }: Props) => {
       </div>
 
       {/* Body */}
-      {isWrite(change) && expanded && (
+      {isWrite(change) && effectiveExpanded && (
         <FileContentView
           content={change.content}
           lang={getHighLightLanguageFromPath(path)}

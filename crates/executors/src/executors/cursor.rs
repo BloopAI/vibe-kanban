@@ -8,7 +8,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
-use utils::{
+use workspace_utils::{
     diff::{
         concatenate_diff_hunks, create_unified_diff, create_unified_diff_hunk,
         extract_unified_diff_hunks,
@@ -22,7 +22,7 @@ use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{AppendPrompt, ExecutorError, StandardCodingAgentExecutor},
     logs::{
-        ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem,
+        ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem, ToolStatus,
         plain_text_processor::PlainTextLogProcessor,
         utils::{ConversationPatch, EntryIndexProvider},
     },
@@ -255,6 +255,7 @@ impl StandardCodingAgentExecutor for Cursor {
                                 entry_type: NormalizedEntryType::ToolUse {
                                     tool_name,
                                     action_type,
+                                    status: ToolStatus::Created,
                                 },
                                 content,
                                 metadata: None,
@@ -358,6 +359,7 @@ impl StandardCodingAgentExecutor for Cursor {
                                     }),
                                 };
                             }
+
                             let entry = NormalizedEntry {
                                 timestamp: None,
                                 entry_type: NormalizedEntryType::ToolUse {
@@ -374,6 +376,7 @@ impl StandardCodingAgentExecutor for Cursor {
                                         _ => tool_call.get_name().to_string(),
                                     },
                                     action_type: new_action,
+                                    status: ToolStatus::Success,
                                 },
                                 content: content_str,
                                 metadata: None,
@@ -1063,7 +1066,7 @@ Tests
 mod tests {
     use std::sync::Arc;
 
-    use utils::msg_store::MsgStore;
+    use workspace_utils::msg_store::MsgStore;
 
     use super::*;
 
@@ -1103,7 +1106,7 @@ mod tests {
         let history = msg_store.get_history();
         let patch_count = history
             .iter()
-            .filter(|m| matches!(m, utils::log_msg::LogMsg::JsonPatch(_)))
+            .filter(|m| matches!(m, workspace_utils::log_msg::LogMsg::JsonPatch(_)))
             .count();
         assert!(
             patch_count >= 2,

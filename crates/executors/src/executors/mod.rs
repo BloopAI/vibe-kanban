@@ -10,7 +10,7 @@ use sqlx::Type;
 use strum_macros::{Display, EnumDiscriminants, EnumString, VariantNames};
 use thiserror::Error;
 use ts_rs::TS;
-use utils::msg_store::MsgStore;
+use workspace_utils::msg_store::MsgStore;
 
 use crate::{
     executors::{

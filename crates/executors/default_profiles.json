@@ -8,7 +8,13 @@
       },
       "PLAN": {
         "CLAUDE_CODE": {
-          "plan": true
+          "plan": true,
+          "approvals": true
+        }
+      },
+      "APPROVALS": {
+        "CLAUDE_CODE": {
+          "approvals": true
         }
       }
     },
@@ -82,3 +88,4 @@
     }
   }
 }
+

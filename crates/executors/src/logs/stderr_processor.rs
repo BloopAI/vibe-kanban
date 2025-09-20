@@ -11,7 +11,7 @@
 use std::{sync::Arc, time::Duration};
 
 use futures::StreamExt;
-use utils::msg_store::MsgStore;
+use workspace_utils::msg_store::MsgStore;
 
 use super::{NormalizedEntry, NormalizedEntryType, plain_text_processor::PlainTextLogProcessor};
 use crate::logs::utils::EntryIndexProvider;

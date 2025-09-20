@@ -15,7 +15,7 @@ use tokio::{
     process::Command,
 };
 use ts_rs::TS;
-use utils::{msg_store::MsgStore, shell::get_shell_command};
+use workspace_utils::{msg_store::MsgStore, shell::get_shell_command};
 
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
@@ -381,7 +381,7 @@ You are continuing work on the above task. The execution history shows the previ
 
     fn get_legacy_sessions_base_dir() -> PathBuf {
         // Previous location was under the temp-based vibe-kanban dir
-        utils::path::get_vibe_kanban_temp_dir().join("gemini_sessions")
+        workspace_utils::path::get_vibe_kanban_temp_dir().join("gemini_sessions")
     }
 
     async fn get_session_file_path(current_dir: &Path) -> PathBuf {

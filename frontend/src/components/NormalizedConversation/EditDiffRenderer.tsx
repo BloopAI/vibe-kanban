@@ -13,12 +13,16 @@ import '@/styles/diff-style-overrides.css';
 import '@/styles/edit-diff-overrides.css';
 import { useDiffViewMode } from '@/stores/useDiffViewStore';
 import DiffViewSwitch from '@/components/diff-view-switch';
+import { cn } from '@/lib/utils';
 
 type Props = {
   path: string;
   unifiedDiff: string;
   hasLineNumbers: boolean;
   expansionKey: string;
+  defaultExpanded?: boolean;
+  statusAppearance?: 'default' | 'denied' | 'timed_out';
+  forceExpanded?: boolean;
 };
 
 /**
@@ -64,9 +68,13 @@ function EditDiffRenderer({
   unifiedDiff,
   hasLineNumbers,
   expansionKey,
+  defaultExpanded = false,
+  statusAppearance = 'default',
+  forceExpanded = false,
 }: Props) {
   const { config } = useUserSystem();
-  const [expanded, setExpanded] = useExpandable(expansionKey, false);
+  const [expanded, setExpanded] = useExpandable(expansionKey, defaultExpanded);
+  const effectiveExpanded = forceExpanded || expanded;
 
   const theme = getActualTheme(config?.theme);
   const globalMode = useDiffViewMode();
@@ -87,9 +95,15 @@ function EditDiffRenderer({
     };
   }, [hunks, path]);
 
+  const headerClass = cn(
+    'flex items-center gap-1.5 text-secondary-foreground',
+    statusAppearance === 'denied' && 'text-red-700 dark:text-red-300',
+    statusAppearance === 'timed_out' && 'text-amber-700 dark:text-amber-200'
+  );
+
   return (
     <div>
-      <div className="flex items-center text-secondary-foreground gap-1.5">
+      <div className={headerClass}>
         <SquarePen className="h-3 w-3" />
         <p
           onClick={() => setExpanded()}
@@ -105,7 +119,7 @@ function EditDiffRenderer({
         </p>
       </div>
 
-      {expanded && (
+      {effectiveExpanded && (
         <div className={'mt-2 border ' + hideLineNumbersClass}>
           <div className="flex items-center justify-end border-b px-2 py-1">
             <DiffViewSwitch />

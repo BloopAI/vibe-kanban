@@ -1,17 +1,19 @@
-use std::{path::Path, process::Stdio, sync::Arc};
+use std::{os::unix::fs::PermissionsExt, path::Path, process::Stdio, sync::Arc};
 
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use futures::StreamExt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use tokio::{io::AsyncWriteExt, process::Command};
+use tokio::{io::AsyncWriteExt, process::Command, sync::OnceCell};
 use ts_rs::TS;
-use utils::{
+use workspace_utils::{
+    approvals::APPROVAL_TIMEOUT_SECONDS,
     diff::{concatenate_diff_hunks, create_unified_diff, create_unified_diff_hunk},
     log_msg::LogMsg,
     msg_store::MsgStore,
     path::make_path_relative,
+    port_file::read_port_file,
     shell::get_shell_command,
 };
 
@@ -19,11 +21,21 @@ use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{AppendPrompt, ExecutorError, StandardCodingAgentExecutor},
     logs::{
-        ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem,
+        ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem, ToolStatus,
         stderr_processor::normalize_stderr_logs,
         utils::{EntryIndexProvider, patch::ConversationPatch},
     },
 };
+
+static BACKEND_PORT: OnceCell<u16> = OnceCell::const_new();
+async fn get_backend_port() -> std::io::Result<u16> {
+    BACKEND_PORT
+        .get_or_try_init(|| async { read_port_file("vibe-kanban").await })
+        .await
+        .copied()
+}
+
+const CONFIRM_HOOK_SCRIPT: &str = include_str!("./hooks/confirm.py");
 
 fn base_command(claude_code_router: bool) -> &'static str {
     if claude_code_router {
@@ -42,6 +54,8 @@ pub struct ClaudeCode {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub plan: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub approvals: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dangerously_skip_permissions: Option<bool>,
@@ -50,7 +64,7 @@ pub struct ClaudeCode {
 }
 
 impl ClaudeCode {
-    fn build_command_builder(&self) -> CommandBuilder {
+    async fn build_command_builder(&self) -> CommandBuilder {
         // If base_command_override is provided and claude_code_router is also set, log a warning
         if self.cmd.base_command_override.is_some() && self.claude_code_router.is_some() {
             tracing::warn!(
@@ -64,6 +78,24 @@ impl ClaudeCode {
 
         if self.plan.unwrap_or(false) {
             builder = builder.extend_params(["--permission-mode=plan"]);
+        }
+        if self.approvals.unwrap_or(false) {
+            match approvals_json().await {
+                // TODO: Avoid quoting
+                Ok(settings) => match shlex::try_quote(&settings) {
+                    Ok(quoted) => {
+                        builder = builder.extend_params(["--settings", &quoted]);
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to quote approvals JSON for --settings: {e}");
+                    }
+                },
+                Err(e) => {
+                    tracing::error!(
+                        "Failed to generate approvals JSON. Not running approvals: {e}"
+                    );
+                }
+            }
         }
         if self.dangerously_skip_permissions.unwrap_or(false) {
             builder = builder.extend_params(["--dangerously-skip-permissions"]);
@@ -85,13 +117,12 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         prompt: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = self.build_command_builder();
+        let command_builder = self.build_command_builder().await;
         let base_command = command_builder.build_initial();
-        let claude_command = if self.plan.unwrap_or(false) {
-            create_watchkill_script(&base_command)
-        } else {
-            base_command
-        };
+
+        if self.approvals.unwrap_or(false) {
+            write_python_hook(current_dir).await?
+        }
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
@@ -103,7 +134,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .arg(shell_arg)
-            .arg(&claude_command);
+            .arg(&base_command);
 
         let mut child = command.group_spawn()?;
 
@@ -123,15 +154,14 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         session_id: &str,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = self.build_command_builder();
+        let command_builder = self.build_command_builder().await;
         // Build follow-up command with --resume {session_id}
         let base_command =
             command_builder.build_follow_up(&["--resume".to_string(), session_id.to_string()]);
-        let claude_command = if self.plan.unwrap_or(false) {
-            create_watchkill_script(&base_command)
-        } else {
-            base_command
-        };
+
+        if self.approvals.unwrap_or(false) {
+            write_python_hook(current_dir).await?
+        }
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
@@ -143,7 +173,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .arg(shell_arg)
-            .arg(&claude_command);
+            .arg(&base_command);
 
         let mut child = command.group_spawn()?;
 
@@ -177,27 +207,61 @@ impl StandardCodingAgentExecutor for ClaudeCode {
     }
 }
 
-fn create_watchkill_script(command: &str) -> String {
-    let claude_plan_stop_indicator = concat!("Exit ", "plan mode?");
-    format!(
-        r#"#!/usr/bin/env bash
-set -euo pipefail
+async fn write_python_hook(current_dir: &Path) -> Result<(), ExecutorError> {
+    let hooks_dir = current_dir.join(".claude").join("hooks");
+    tokio::fs::create_dir_all(&hooks_dir).await?;
+    let hook_path = hooks_dir.join("confirm.py");
 
-word="{claude_plan_stop_indicator}"
-command="{command}"
+    if tokio::fs::try_exists(&hook_path).await? {
+        return Ok(());
+    }
 
-exit_code=0
-while IFS= read -r line; do
-    printf '%s\n' "$line"
-    if [[ $line == *"$word"* ]]; then
-        exit 0
-    fi
-done < <($command <&0 2>&1)
+    let mut file = tokio::fs::File::create(&hook_path).await?;
+    file.write_all(CONFIRM_HOOK_SCRIPT.as_bytes()).await?;
+    file.flush().await?;
 
-exit_code=${{PIPESTATUS[0]}}
-exit "$exit_code"
-"#
-    )
+    // TODO: Handle Windows permissioning
+    #[cfg(unix)]
+    {
+        let perm = std::fs::Permissions::from_mode(0o755);
+        tokio::fs::set_permissions(&hook_path, perm).await?;
+    }
+
+    // ignore the confirm.py script
+    let gitignore_path = hooks_dir.join(".gitignore");
+    if !tokio::fs::try_exists(&gitignore_path).await? {
+        let mut gitignore_file = tokio::fs::File::create(&gitignore_path).await?;
+        gitignore_file
+            .write_all(b"confirm.py\n.gitignore\n")
+            .await?;
+        gitignore_file.flush().await?;
+    }
+
+    Ok(())
+}
+
+// Hook to configure approvals
+async fn approvals_json() -> Result<String, std::io::Error> {
+    let backend_port = get_backend_port().await?;
+    let backend_timeout = APPROVAL_TIMEOUT_SECONDS + 5; // add buffer
+
+    Ok(serde_json::json!({
+        "hooks": {
+            "PreToolUse": [
+                {
+                    "matcher": "^(?!(Glob|Grep|NotebookRead|Read|Task|TodoWrite)$).*",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": format!("$CLAUDE_PROJECT_DIR/.claude/hooks/confirm.py --timeout-seconds {backend_timeout} --poll-interval 5 --backend-port {backend_port}"),
+                            "timeout": backend_timeout 
+                       }
+                    ]
+                }
+            ]
+        }
+    })
+    .to_string())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -325,6 +389,7 @@ impl ClaudeLogProcessor {
                                                     entry_type: NormalizedEntryType::ToolUse {
                                                         tool_name: tool_name.clone(),
                                                         action_type,
+                                                        status: ToolStatus::Created,
                                                     },
                                                     content: content_text.clone(),
                                                     metadata: Some(
@@ -457,6 +522,12 @@ impl ClaudeLogProcessor {
                                                     })
                                                 };
 
+                                                let status = if is_error.unwrap_or(false) {
+                                                    ToolStatus::Failed
+                                                } else {
+                                                    ToolStatus::Success
+                                                };
+
                                                 let entry = NormalizedEntry {
                                                     timestamp: None,
                                                     entry_type: NormalizedEntryType::ToolUse {
@@ -465,6 +536,7 @@ impl ClaudeLogProcessor {
                                                             command: info.content.clone(),
                                                             result,
                                                         },
+                                                        status,
                                                     },
                                                     content: info.content.clone(),
                                                     metadata: None,
@@ -520,6 +592,12 @@ impl ClaudeLogProcessor {
                                                         tool_name.clone()
                                                     };
 
+                                                    let status = if is_error.unwrap_or(false) {
+                                                        ToolStatus::Failed
+                                                    } else {
+                                                        ToolStatus::Success
+                                                    };
+
                                                     let entry = NormalizedEntry {
                                                         timestamp: None,
                                                         entry_type: NormalizedEntryType::ToolUse {
@@ -534,6 +612,7 @@ impl ClaudeLogProcessor {
                                                                     },
                                                                 ),
                                                             },
+                                                            status,
                                                         },
                                                         content: info.content.clone(),
                                                         metadata: None,
@@ -727,6 +806,7 @@ impl ClaudeLogProcessor {
                     entry_type: NormalizedEntryType::ToolUse {
                         tool_name: tool_name.to_string(),
                         action_type,
+                        status: ToolStatus::Created,
                     },
                     content,
                     metadata: Some(
@@ -834,6 +914,7 @@ impl ClaudeLogProcessor {
                     entry_type: NormalizedEntryType::ToolUse {
                         tool_name: name.to_string(),
                         action_type,
+                        status: ToolStatus::Created,
                     },
                     content,
                     metadata: Some(
@@ -1549,11 +1630,12 @@ mod tests {
     async fn test_streaming_patch_generation() {
         use std::sync::Arc;
 
-        use utils::msg_store::MsgStore;
+        use workspace_utils::msg_store::MsgStore;
 
         let executor = ClaudeCode {
             claude_code_router: Some(false),
             plan: None,
+            approvals: None,
             model: None,
             append_prompt: AppendPrompt::default(),
             dangerously_skip_permissions: None,
@@ -1582,7 +1664,7 @@ mod tests {
         let history = msg_store.get_history();
         let patch_count = history
             .iter()
-            .filter(|msg| matches!(msg, utils::log_msg::LogMsg::JsonPatch(_)))
+            .filter(|msg| matches!(msg, workspace_utils::log_msg::LogMsg::JsonPatch(_)))
             .count();
         assert!(
             patch_count > 0,

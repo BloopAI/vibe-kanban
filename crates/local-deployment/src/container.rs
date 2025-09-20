@@ -33,8 +33,11 @@ use deployment::DeploymentError;
 use executors::{
     actions::{Executable, ExecutorAction},
     logs::{
-        NormalizedEntry, NormalizedEntryType,
-        utils::{ConversationPatch, patch::escape_json_pointer_segment},
+        NormalizedEntryType,
+        utils::{
+            ConversationPatch,
+            patch::{escape_json_pointer_segment, extract_normalized_entry_from_patch},
+        },
     },
 };
 use futures::{StreamExt, TryStreamExt, stream::select};
@@ -1298,7 +1301,7 @@ impl LocalContainerService {
         for msg in history.iter().rev() {
             if let LogMsg::JsonPatch(patch) = msg {
                 // Try to extract a NormalizedEntry from the patch
-                if let Some(entry) = self.extract_normalized_entry_from_patch(patch)
+                if let Some((_, entry)) = extract_normalized_entry_from_patch(patch)
                     && matches!(entry.entry_type, NormalizedEntryType::AssistantMessage)
                 {
                     let content = entry.content.trim();
@@ -1314,32 +1317,6 @@ impl LocalContainerService {
             }
         }
 
-        None
-    }
-
-    /// Extract a NormalizedEntry from a JsonPatch if it contains one
-    fn extract_normalized_entry_from_patch(
-        &self,
-        patch: &json_patch::Patch,
-    ) -> Option<NormalizedEntry> {
-        // Convert the patch to JSON to examine its structure
-        if let Ok(patch_json) = serde_json::to_value(patch)
-            && let Some(operations) = patch_json.as_array()
-        {
-            for operation in operations {
-                if let Some(value) = operation.get("value") {
-                    // Try to extract a NormalizedEntry from the value
-                    if let Some(patch_type) = value.get("type").and_then(|t| t.as_str())
-                        && patch_type == "NORMALIZED_ENTRY"
-                        && let Some(content) = value.get("content")
-                        && let Ok(entry) =
-                            serde_json::from_value::<NormalizedEntry>(content.clone())
-                    {
-                        return Some(entry);
-                    }
-                }
-            }
-        }
         None
     }
 

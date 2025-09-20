@@ -6,7 +6,8 @@ import {
   VirtuosoMessageListMethods,
   VirtuosoMessageListProps,
 } from '@virtuoso.dev/message-list';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+
 import DisplayConversationEntry from '../NormalizedConversation/DisplayConversationEntry';
 import { useEntries } from '@/contexts/EntriesContext';
 import {
@@ -14,8 +15,8 @@ import {
   PatchTypeWithKey,
   useConversationHistory,
 } from '@/hooks/useConversationHistory';
-import { TaskAttempt } from 'shared/types';
 import { Loader2 } from 'lucide-react';
+import { TaskAttempt } from 'shared/types';
 
 interface VirtualizedListProps {
   attempt: TaskAttempt;
@@ -25,56 +26,59 @@ interface MessageListContext {
   attempt: TaskAttempt;
 }
 
-type ChannelData = DataWithScrollModifier<PatchTypeWithKey> | null;
+const INITIAL_TOP_ITEM = { index: 'LAST' as const, align: 'end' as const };
 
 const InitialDataScrollModifier: ScrollModifier = {
   type: 'item-location',
-  location: {
-    index: 'LAST',
-    align: 'end',
-  },
+  location: INITIAL_TOP_ITEM,
   purgeItemSizes: true,
 };
 
 const AutoScrollToBottom: ScrollModifier = {
   type: 'auto-scroll-to-bottom',
-  autoScroll: ({ atBottom, scrollInProgress }) => {
-    if (atBottom || scrollInProgress) {
-      return 'smooth';
-    }
-    return false;
-  },
+  autoScroll: 'smooth',
 };
 
 const ItemContent: VirtuosoMessageListProps<
   PatchTypeWithKey,
   MessageListContext
 >['ItemContent'] = ({ data, context }) => {
+  const attempt = context?.attempt;
+
   if (data.type === 'STDOUT') {
     return <p>{data.content}</p>;
-  } else if (data.type === 'STDERR') {
+  }
+  if (data.type === 'STDERR') {
     return <p>{data.content}</p>;
-  } else if (data.type === 'NORMALIZED_ENTRY') {
+  }
+  if (data.type === 'NORMALIZED_ENTRY' && attempt) {
     return (
       <DisplayConversationEntry
-        key={data.patchKey}
         expansionKey={data.patchKey}
         entry={data.content}
         executionProcessId={data.executionProcessId}
-        taskAttempt={context.attempt}
+        taskAttempt={attempt}
       />
     );
   }
+
+  return null;
 };
 
+const computeItemKey: VirtuosoMessageListProps<
+  PatchTypeWithKey,
+  MessageListContext
+>['computeItemKey'] = ({ data }) => `l-${data.patchKey}`;
+
 const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
-  const [channelData, setChannelData] = useState<ChannelData>(null);
+  const [channelData, setChannelData] =
+    useState<DataWithScrollModifier<PatchTypeWithKey> | null>(null);
   const [loading, setLoading] = useState(true);
   const { setEntries, reset } = useEntries();
 
-  // When attempt changes, set loading and reset entries
   useEffect(() => {
     setLoading(true);
+    setChannelData(null);
     reset();
   }, [attempt.id, reset]);
 
@@ -83,7 +87,6 @@ const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
     addType: AddEntryType,
     newLoading: boolean
   ) => {
-    // initial defaults to scrolling to the latest
     let scrollModifier: ScrollModifier = InitialDataScrollModifier;
 
     if (addType === 'running' && !loading) {
@@ -91,14 +94,17 @@ const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
     }
 
     setChannelData({ data: newEntries, scrollModifier });
-    setEntries(newEntries); // Update shared context
+    setEntries(newEntries);
+
     if (loading) {
       setLoading(newLoading);
     }
   };
+
   useConversationHistory({ attempt, onEntriesUpdated });
 
   const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
+  const messageListContext = useMemo(() => ({ attempt }), [attempt]);
 
   return (
     <>
@@ -109,12 +115,12 @@ const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
           ref={messageListRef}
           className="flex-1"
           data={channelData}
-          context={{ attempt }}
-          itemIdentity={(item) => item.patchKey}
-          computeItemKey={({ data }) => data.patchKey}
+          initialLocation={INITIAL_TOP_ITEM}
+          context={messageListContext}
+          computeItemKey={computeItemKey}
           ItemContent={ItemContent}
-          Header={() => <div className="h-2"></div>} // Padding
-          Footer={() => <div className="h-2"></div>} // Padding
+          Header={() => <div className="h-2"></div>}
+          Footer={() => <div className="h-2"></div>}
         />
       </VirtuosoMessageListLicense>
       {loading && (

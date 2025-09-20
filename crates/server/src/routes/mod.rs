@@ -5,6 +5,7 @@ use axum::{
 
 use crate::DeploymentImpl;
 
+pub mod approvals;
 pub mod auth;
 pub mod config;
 pub mod containers;
@@ -34,6 +35,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(auth::router(&deployment))
         .merge(filesystem::router())
         .merge(events::router(&deployment))
+        .merge(approvals::router())
         .nest("/images", images::routes())
         .with_state(deployment);
 

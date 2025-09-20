@@ -5,7 +5,7 @@ use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 use ts_rs::TS;
-use utils::shell::get_shell_command;
+use workspace_utils::shell::get_shell_command;
 
 use crate::{actions::Executable, executors::ExecutorError};
 

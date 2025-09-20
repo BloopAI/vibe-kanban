@@ -18,6 +18,7 @@ use git2::Error as Git2Error;
 use serde_json::Value;
 use services::services::{
     analytics::AnalyticsService,
+    approvals::Approvals,
     auth::{AuthError, AuthService},
     config::{Config, ConfigError},
     container::{ContainerError, ContainerService},
@@ -101,6 +102,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn events(&self) -> &EventService;
 
     fn file_search_cache(&self) -> &Arc<FileSearchCache>;
+
+    fn approvals(&self) -> &Approvals;
 
     async fn update_sentry_scope(&self) -> Result<(), DeploymentError> {
         let user_id = self.user_id();

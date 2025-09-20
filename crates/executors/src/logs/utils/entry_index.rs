@@ -6,7 +6,7 @@ use std::sync::{
 };
 
 use json_patch::PatchOperation;
-use utils::{log_msg::LogMsg, msg_store::MsgStore};
+use workspace_utils::{log_msg::LogMsg, msg_store::MsgStore};
 
 /// Thread-safe provider for monotonically increasing entry indexes
 #[derive(Debug, Clone)]

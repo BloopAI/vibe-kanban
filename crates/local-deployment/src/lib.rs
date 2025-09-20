@@ -6,6 +6,7 @@ use deployment::{Deployment, DeploymentError};
 use executors::profile::ExecutorConfigs;
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
+    approvals::Approvals,
     auth::AuthService,
     config::{Config, load_config_from_file, save_config_to_file},
     container::ContainerService,
@@ -40,6 +41,7 @@ pub struct LocalDeployment {
     filesystem: FilesystemService,
     events: EventService,
     file_search_cache: Arc<FileSearchCache>,
+    approvals: Approvals,
 }
 
 #[async_trait]
@@ -103,6 +105,8 @@ impl Deployment for LocalDeployment {
             });
         }
 
+        let approvals = Approvals::new(db.pool.clone(), msg_stores.clone());
+
         // We need to make analytics accessible to the ContainerService
         // TODO: Handle this more gracefully
         let analytics_ctx = analytics.as_ref().map(|s| AnalyticsContext {
@@ -136,6 +140,7 @@ impl Deployment for LocalDeployment {
             filesystem,
             events,
             file_search_cache,
+            approvals,
         })
     }
 
@@ -192,5 +197,9 @@ impl Deployment for LocalDeployment {
 
     fn file_search_cache(&self) -> &Arc<FileSearchCache> {
         &self.file_search_cache
+    }
+
+    fn approvals(&self) -> &Approvals {
+        &self.approvals
     }
 }
