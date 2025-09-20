@@ -42,6 +42,10 @@ pub enum GitServiceError {
 #[derive(Clone)]
 pub struct GitService {}
 
+// Max inline diff size for UI (in bytes). Files larger than this will have
+// their contents omitted from the diff stream to avoid UI crashes.
+const MAX_INLINE_DIFF_BYTES: usize = 50 * 1024; // ~50KB
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 #[ts(rename_all = "snake_case")]
@@ -350,6 +354,7 @@ impl GitService {
     ) -> Result<Vec<Diff>, GitServiceError> {
         let mut file_diffs = Vec::new();
 
+        let mut delta_index: usize = 0;
         diff.foreach(
             &mut |delta, _| {
                 if delta.status() == Delta::Unreadable {
@@ -358,24 +363,72 @@ impl GitService {
 
                 let status = delta.status();
 
-                // Only build old_file for non-added entries
-                let old_file = if matches!(status, Delta::Added) {
-                    None
+                // Decide if we should omit content due to size
+                let mut content_omitted = false;
+                // Check old blob size when applicable
+                if !matches!(status, Delta::Added) {
+                    let oid = delta.old_file().id();
+                    if !oid.is_zero()
+                        && let Ok(blob) = repo.find_blob(oid)
+                        && !blob.is_binary()
+                        && blob.size() > MAX_INLINE_DIFF_BYTES
+                    {
+                        content_omitted = true;
+                    }
+                }
+                // Check new blob size when applicable
+                if !matches!(status, Delta::Deleted) {
+                    let oid = delta.new_file().id();
+                    if !oid.is_zero()
+                        && let Ok(blob) = repo.find_blob(oid)
+                        && !blob.is_binary()
+                        && blob.size() > MAX_INLINE_DIFF_BYTES
+                    {
+                        content_omitted = true;
+                    }
+                }
+
+                // Only build old/new content if not omitted
+                let (old_path, old_content) = if matches!(status, Delta::Added) {
+                    (None, None)
                 } else {
-                    delta
+                    let path_opt = delta
                         .old_file()
                         .path()
-                        .map(|p| self.create_file_details(p, &delta.old_file().id(), repo))
+                        .map(|p| p.to_string_lossy().to_string());
+                    if content_omitted {
+                        (path_opt, None)
+                    } else {
+                        let details = delta
+                            .old_file()
+                            .path()
+                            .map(|p| self.create_file_details(p, &delta.old_file().id(), repo));
+                        (
+                            details.as_ref().and_then(|f| f.file_name.clone()),
+                            details.and_then(|f| f.content),
+                        )
+                    }
                 };
 
-                // Only build new_file for non-deleted entries
-                let new_file = if matches!(status, Delta::Deleted) {
-                    None
+                let (new_path, new_content) = if matches!(status, Delta::Deleted) {
+                    (None, None)
                 } else {
-                    delta
+                    let path_opt = delta
                         .new_file()
                         .path()
-                        .map(|p| self.create_file_details(p, &delta.new_file().id(), repo))
+                        .map(|p| p.to_string_lossy().to_string());
+                    if content_omitted {
+                        (path_opt, None)
+                    } else {
+                        let details = delta
+                            .new_file()
+                            .path()
+                            .map(|p| self.create_file_details(p, &delta.new_file().id(), repo));
+                        (
+                            details.as_ref().and_then(|f| f.file_name.clone()),
+                            details.and_then(|f| f.content),
+                        )
+                    }
                 };
 
                 let mut change = match status {
@@ -388,23 +441,26 @@ impl GitService {
                     _ => DiffChangeKind::Modified,
                 };
 
-                let old_path = old_file.as_ref().and_then(|f| f.file_name.clone());
-                let new_path = new_file.as_ref().and_then(|f| f.file_name.clone());
-                let old_content = old_file.and_then(|f| f.content);
-                let new_content = new_file.and_then(|f| f.content);
-
                 // Detect pure mode changes (e.g., chmod +/-x) and classify as PermissionChange
                 if matches!(status, Delta::Modified)
                     && delta.old_file().mode() != delta.new_file().mode()
                 {
-                    // If content unchanged or unavailable, prefer PermissionChange label
-                    if old_content
-                        .as_ref()
-                        .zip(new_content.as_ref())
-                        .is_none_or(|(o, n)| o == n)
+                    // Only downgrade to PermissionChange if we KNOW content is unchanged
+                    if old_content.is_some() && new_content.is_some() && old_content == new_content
                     {
                         change = DiffChangeKind::PermissionChange;
                     }
+                }
+
+                // If contents are omitted, try to compute line stats via libgit2 Patch
+                let mut additions: Option<usize> = None;
+                let mut deletions: Option<usize> = None;
+                if content_omitted
+                    && let Ok(Some(patch)) = git2::Patch::from_diff(&diff, delta_index)
+                    && let Ok((_ctx, adds, dels)) = patch.line_stats()
+                {
+                    additions = Some(adds);
+                    deletions = Some(dels);
                 }
 
                 file_diffs.push(Diff {
@@ -413,8 +469,12 @@ impl GitService {
                     new_path,
                     old_content,
                     new_content,
+                    content_omitted,
+                    additions,
+                    deletions,
                 });
 
+                delta_index += 1;
                 true
             },
             None,
@@ -458,11 +518,11 @@ impl GitService {
             }
         };
 
-        // Size guard - skip files larger than 1MB
-        if bytes.len() > 1_048_576 {
+        // Size guard - skip files larger than UI inline threshold
+        if bytes.len() > MAX_INLINE_DIFF_BYTES {
             tracing::debug!(
-                "Skipping large file ({}MB): {:?}",
-                bytes.len() / 1_048_576,
+                "Skipping large file ({}KB): {:?}",
+                bytes.len() / 1024,
                 abs_path
             );
             return None;
@@ -544,34 +604,65 @@ impl GitService {
             ChangeType::Unknown(_) => (e.old_path.clone(), Some(e.path.clone())),
         };
 
-        // Load old content from base tree if possible
-        let old_content = if let Some(ref oldp) = old_path_opt {
+        // Decide if we should omit content by size (either side)
+        let mut content_omitted = false;
+        // Old side (from base tree)
+        if let Some(ref oldp) = old_path_opt {
             let rel = std::path::Path::new(oldp);
-            match base_tree.get_path(rel) {
-                Ok(entry) if entry.kind() == Some(git2::ObjectType::Blob) => repo
-                    .find_blob(entry.id())
-                    .ok()
-                    .and_then(|b| Self::blob_to_string(&b)),
-                _ => None,
+            if let Ok(entry) = base_tree.get_path(rel)
+                && entry.kind() == Some(git2::ObjectType::Blob)
+                && let Ok(blob) = repo.find_blob(entry.id())
+                && !blob.is_binary()
+                && blob.size() > MAX_INLINE_DIFF_BYTES
+            {
+                content_omitted = true;
             }
-        } else {
-            None
-        };
+        }
+        // New side (from filesystem)
+        if let Some(ref newp) = new_path_opt
+            && let Some(workdir) = repo.workdir()
+        {
+            let abs = workdir.join(newp);
+            if let Ok(md) = std::fs::metadata(&abs)
+                && (md.len() as usize) > MAX_INLINE_DIFF_BYTES
+            {
+                content_omitted = true;
+            }
+        }
 
-        // Load new content from filesystem (worktree) when available
-        let new_content = if let Some(ref newp) = new_path_opt {
-            let rel = std::path::Path::new(newp);
-            Self::read_file_to_string(repo, rel)
+        // Load contents only if not omitted
+        let (old_content, new_content) = if content_omitted {
+            (None, None)
         } else {
-            None
+            // Load old content from base tree if possible
+            let old_content = if let Some(ref oldp) = old_path_opt {
+                let rel = std::path::Path::new(oldp);
+                match base_tree.get_path(rel) {
+                    Ok(entry) if entry.kind() == Some(git2::ObjectType::Blob) => repo
+                        .find_blob(entry.id())
+                        .ok()
+                        .and_then(|b| Self::blob_to_string(&b)),
+                    _ => None,
+                }
+            } else {
+                None
+            };
+
+            // Load new content from filesystem (worktree) when available
+            let new_content = if let Some(ref newp) = new_path_opt {
+                let rel = std::path::Path::new(newp);
+                Self::read_file_to_string(repo, rel)
+            } else {
+                None
+            };
+            (old_content, new_content)
         };
 
         // If reported as Modified but content is identical, treat as a permission-only change
         if matches!(change, DiffChangeKind::Modified)
-            && old_content
-                .as_ref()
-                .zip(new_content.as_ref())
-                .is_none_or(|(o, n)| o == n)
+            && old_content.is_some()
+            && new_content.is_some()
+            && old_content == new_content
         {
             change = DiffChangeKind::PermissionChange;
         }
@@ -582,6 +673,9 @@ impl GitService {
             new_path: new_path_opt,
             old_content,
             new_content,
+            content_omitted,
+            additions: None,
+            deletions: None,
         }
     }
 

@@ -20,6 +20,11 @@ pub struct Diff {
     pub new_path: Option<String>,
     pub old_content: Option<String>,
     pub new_content: Option<String>,
+    /// True when file contents are intentionally omitted (e.g., too large)
+    pub content_omitted: bool,
+    /// Optional precomputed stats for omitted content
+    pub additions: Option<usize>,
+    pub deletions: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

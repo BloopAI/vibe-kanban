@@ -14,6 +14,11 @@ export function useDiffSummary(attemptId: string | null) {
     return diffs.reduce(
       (acc, d) => {
         try {
+          if (d.contentOmitted) {
+            acc.added += d.additions ?? 0;
+            acc.deleted += d.deletions ?? 0;
+            return acc;
+          }
           const oldName = d.oldPath || d.newPath || 'old';
           const newName = d.newPath || d.oldPath || 'new';
           const oldContent = d.oldContent || '';

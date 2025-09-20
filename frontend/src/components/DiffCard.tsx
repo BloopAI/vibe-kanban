@@ -85,6 +85,7 @@ export default function DiffCard({
   const newLang =
     getHighLightLanguageFromPath(newName || oldName || '') || 'plaintext';
   const { label, Icon } = labelAndIcon(diff);
+  const isOmitted = !!diff.contentOmitted;
 
   // Build a diff from raw contents so the viewer can expand beyond hunks
   const oldContentSafe = diff.oldContent || '';
@@ -92,7 +93,7 @@ export default function DiffCard({
   const isContentEqual = oldContentSafe === newContentSafe;
 
   const diffFile = useMemo(() => {
-    if (isContentEqual) return null;
+    if (isContentEqual || isOmitted) return null;
     try {
       const oldFileName = oldName || newName || 'unknown';
       const newFileName = newName || oldName || 'unknown';
@@ -112,6 +113,7 @@ export default function DiffCard({
     }
   }, [
     isContentEqual,
+    isOmitted,
     oldName,
     newName,
     oldLang,
@@ -120,8 +122,12 @@ export default function DiffCard({
     newContentSafe,
   ]);
 
-  const add = diffFile?.additionLength ?? 0;
-  const del = diffFile?.deletionLength ?? 0;
+  const add = isOmitted
+    ? (diff.additions ?? 0)
+    : (diffFile?.additionLength ?? 0);
+  const del = isOmitted
+    ? (diff.deletions ?? 0)
+    : (diffFile?.deletionLength ?? 0);
 
   // Review functionality
   const filePath = newName || oldName || 'unknown';
@@ -293,13 +299,15 @@ export default function DiffCard({
           className="px-4 pb-4 text-xs font-mono"
           style={{ color: 'hsl(var(--muted-foreground) / 0.9)' }}
         >
-          {isContentEqual
-            ? diff.change === 'renamed'
-              ? 'File renamed with no content changes.'
-              : diff.change === 'permissionChange'
-                ? 'File permission changed.'
-                : 'No content changes to display.'
-            : 'Failed to render diff for this file.'}
+          {isOmitted
+            ? 'Content omitted due to file size. Open in editor to view.'
+            : isContentEqual
+              ? diff.change === 'renamed'
+                ? 'File renamed with no content changes.'
+                : diff.change === 'permissionChange'
+                  ? 'File permission changed.'
+                  : 'No content changes to display.'
+              : 'Failed to render diff for this file.'}
         </div>
       )}
     </div>
