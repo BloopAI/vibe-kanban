@@ -220,136 +220,291 @@ cargo build --release --bin forge-app
 ./package-npm.sh
 ```
 
-## 🚀 Migration Phases (Preserving Existing Features)
+## 🚀 Migration Execution Strategy
 
-### Phase 0: Pre-Migration Backup (Day 1)
+### Phase 1: Repository Structure Setup
 ```bash
-# Create backup branch with current state
-git checkout -b pre-migration-backup
-git push origin pre-migration-backup
+# Work in migration branch
+git checkout -b migration/upstream-library
 
-# Document current modifications
-git diff upstream/main...HEAD --stat > migration-audit.txt
-
-# Backup database with existing data
-cp dev_assets/db.sqlite dev_assets/db.sqlite.backup
-```
-
-### Phase 1: Repository Structure Setup (Day 2)
-```bash
-# 1. Add upstream as submodule (keeping current code intact)
+# Add upstream as submodule
 git submodule add https://github.com/BloopAI/vibe-kanban.git upstream
 cd upstream && git checkout main && cd ..
 
-# 2. Create parallel forge structure (don't delete anything yet)
+# Create new structure
 mkdir -p forge-{extensions,overrides,app}/src
-mkdir -p frontend-new/src  # New frontend alongside current
-
-# 3. Setup new workspace Cargo.toml
-cp Cargo.toml Cargo.toml.backup
+mkdir -p frontend-new/src
 ```
 
-### Phase 2: Extract Backend Modifications (Day 3-5)
-**Critical: Extract without breaking current functionality**
+### Phase 2: Extract Current Modifications
 
-1. **Copy Omni System**
-   ```bash
-   cp -r crates/services/src/services/omni forge-extensions/omni
-   cp crates/server/src/routes/omni.rs forge-extensions/omni/routes.rs
-   ```
+#### 2.1 Extract Omni System
+```bash
+# Analyze omni modifications
+git diff upstream/main...HEAD -- '**/omni*' > omni-changes.diff
 
-2. **Extract Branch Template Logic**
-   - Create `forge-extensions/branch-templates/`
-   - Move branch_template field logic to auxiliary table handler
-   - Create migration script for existing data
+# Extract to forge-extensions
+mkdir -p forge-extensions/omni/src/{services,routes}
+cp -r crates/services/src/services/omni/* forge-extensions/omni/src/services/
+cp crates/server/src/routes/omni.rs forge-extensions/omni/src/routes/
 
-3. **Extract Config v7**
-   ```bash
-   cp crates/services/src/services/config/versions/v7.rs \
-      forge-extensions/config/v7_omni.rs
-   ```
+# Create Cargo.toml for omni extension
+cat > forge-extensions/omni/Cargo.toml << 'EOF'
+[package]
+name = "forge-omni"
+version = "0.1.0"
 
-4. **Create Service Compositions**
-   ```rust
-   // forge-app/src/services/task_service.rs
-   pub struct ForgeTaskService {
-       upstream: upstream::TaskService,
-       branch_templates: BranchTemplateService,
-       omni: OmniService,
-   }
-   ```
+[dependencies]
+upstream-services = { path = "../../upstream/crates/services" }
+sqlx = { workspace = true }
+reqwest = { workspace = true }
+EOF
+```
 
-### Phase 3: Database Migration (Day 6-7)
-**Data preservation is critical**
+#### 2.2 Extract Branch Templates
+```bash
+# Extract branch template feature
+mkdir -p forge-extensions/branch-templates/src
 
-1. **Create Auxiliary Tables**
-   ```sql
-   -- Migration script: migrate_to_auxiliary.sql
-   CREATE TABLE forge_task_extensions (
-       task_id TEXT PRIMARY KEY,
-       branch_template TEXT,
-       omni_settings TEXT,
-       migrated_from_fork BOOLEAN DEFAULT TRUE
-   );
+# Create extension trait over upstream Task
+cat > forge-extensions/branch-templates/src/lib.rs << 'EOF'
+use upstream::db::models::Task;
 
-   -- Migrate existing data
-   INSERT INTO forge_task_extensions (task_id, branch_template)
-   SELECT id, branch_template FROM tasks
-   WHERE branch_template IS NOT NULL;
-   ```
+pub trait BranchTemplateExt {
+    async fn get_branch_template(&self) -> Option<String>;
+    async fn set_branch_template(&mut self, template: String);
+}
 
-2. **Update Models**
-   - Create new models using auxiliary tables
-   - Keep old models temporarily for rollback
+impl BranchTemplateExt for Task {
+    async fn get_branch_template(&self) -> Option<String> {
+        // Query auxiliary table
+        sqlx::query_scalar!(
+            "SELECT branch_template FROM forge_task_extensions WHERE task_id = ?",
+            self.id
+        ).fetch_optional(&*DB_POOL).await.ok()?
+    }
+}
+EOF
+```
 
-3. **Create Views for Compatibility**
-   ```sql
-   CREATE VIEW tasks_enhanced AS
-   SELECT t.*, fx.branch_template, fx.omni_settings
-   FROM tasks t
-   LEFT JOIN forge_task_extensions fx ON t.id = fx.task_id;
-   ```
+#### 2.3 Extract Config v7
+```bash
+# Extract config extensions
+mkdir -p forge-extensions/config/src
 
-### Phase 4: Frontend Migration (Day 8-10)
-1. **Extract Custom Components**
-   - Copy modified components to `frontend-new/src/components/forge/`
-   - Identify pure upstream components vs modified ones
+cat > forge-extensions/config/src/lib.rs << 'EOF'
+use upstream::services::config as upstream_config;
 
-2. **Migrate Branding Assets**
-   ```bash
-   cp -r frontend/public/forge-* frontend-new/public/
-   cp frontend/src/styles/custom.css frontend-new/src/styles/
-   ```
+#[derive(Clone, Serialize, Deserialize)]
+pub struct ForgeConfig {
+    #[serde(flatten)]
+    pub base: upstream_config::Config,
+    pub omni: Option<OmniConfig>,
+    pub branch_templates_enabled: bool,
+}
+EOF
+```
 
-3. **Wire Up Dual Frontend**
-   - Configure router to serve both UIs
-   - Test feature parity
+### Phase 3: Bootstrap Composition Layer
 
-### Phase 5: Integration & Validation (Day 11-12)
-1. **Update Build Scripts**
-   ```bash
-   # Update local-build.sh to use new structure
-   # Modify Makefile targets
-   # Update CI/CD workflows
-   ```
+#### 3.1 Create Main App Compositor
+```rust
+// forge-app/src/main.rs
+use upstream::server::Server as UpstreamServer;
+use forge_extensions::{omni::OmniService, branch_templates::BranchTemplateService};
 
-2. **Validate All Features**
-   - [ ] Omni notifications working
-   - [ ] Branch templates preserved
-   - [ ] MCP server functional
-   - [ ] NPM package builds
-   - [ ] All data migrated correctly
+pub struct ForgeApp {
+    upstream: UpstreamServer,
+    omni: OmniService,
+    branch_templates: BranchTemplateService,
+}
 
-3. **Parallel Running Test**
-   - Run old and new architecture side by side
-   - Compare outputs
-   - Ensure data consistency
+impl ForgeApp {
+    pub fn new() -> Self {
+        Self {
+            upstream: UpstreamServer::new(),
+            omni: OmniService::new(),
+            branch_templates: BranchTemplateService::new(),
+        }
+    }
 
-### Phase 6: Cutover (Day 13-14)
-1. **Final Data Sync**
-2. **Switch to New Architecture**
-3. **Keep Old Code for 30 Days** (safety rollback)
-4. **Monitor for Issues**
+    pub async fn run(self) -> Result<()> {
+        // Compose services
+        let router = self.compose_router();
+        axum::Server::bind(&"0.0.0.0:8887".parse()?)
+            .serve(router.into_make_service())
+            .await?;
+        Ok(())
+    }
+}
+```
+
+#### 3.2 Service Composition Pattern
+```rust
+// forge-app/src/services/task_service.rs
+use upstream::services::TaskService as UpstreamTaskService;
+
+pub struct ForgeTaskService {
+    upstream: UpstreamTaskService,
+    extensions_db: SqlitePool, // For auxiliary tables
+}
+
+impl ForgeTaskService {
+    // Pass through unchanged methods
+    pub async fn get_task(&self, id: i64) -> Result<Task> {
+        self.upstream.get_task(id).await
+    }
+
+    // Enhance methods that need extensions
+    pub async fn create_task(&self, data: CreateTask) -> Result<Task> {
+        // Extract forge-specific fields
+        let branch_template = data.branch_template.clone();
+
+        // Create via upstream
+        let task = self.upstream.create_task(data).await?;
+
+        // Store extensions in auxiliary table
+        if let Some(template) = branch_template {
+            sqlx::query!(
+                "INSERT INTO forge_task_extensions (task_id, branch_template) VALUES (?, ?)",
+                task.id, template
+            ).execute(&self.extensions_db).await?;
+        }
+
+        // Trigger forge features
+        if let Some(omni) = &self.omni {
+            omni.notify_task_created(&task).await?;
+        }
+
+        Ok(task)
+    }
+}
+```
+
+### Phase 4: Database Migration to Auxiliary Tables
+
+#### 4.1 Create Auxiliary Schema
+```sql
+-- forge-app/migrations/001_auxiliary_tables.sql
+CREATE TABLE forge_task_extensions (
+    task_id INTEGER PRIMARY KEY REFERENCES tasks(id) ON DELETE CASCADE,
+    branch_template TEXT,
+    omni_settings JSONB,
+    genie_metadata JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE forge_project_settings (
+    project_id INTEGER PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+    custom_executors JSONB,
+    forge_config JSONB
+);
+
+-- Compatibility views
+CREATE VIEW enhanced_tasks AS
+SELECT
+    t.*,
+    fx.branch_template,
+    fx.omni_settings
+FROM tasks t
+LEFT JOIN forge_task_extensions fx ON t.id = fx.task_id;
+```
+
+#### 4.2 Migrate Existing Data
+```sql
+-- forge-app/migrations/002_migrate_data.sql
+-- Migrate branch_template from tasks to auxiliary
+INSERT INTO forge_task_extensions (task_id, branch_template)
+SELECT id, branch_template
+FROM tasks
+WHERE branch_template IS NOT NULL;
+```
+
+### Phase 5: Frontend Dual Routing
+
+#### 5.1 Configure Dual Frontend Serving
+```rust
+// forge-app/src/router.rs
+use rust_embed::RustEmbed;
+
+#[derive(RustEmbed)]
+#[folder = "../frontend-new/dist"]
+struct ForgeFrontend;
+
+#[derive(RustEmbed)]
+#[folder = "../upstream/frontend/dist"]
+struct LegacyFrontend;
+
+pub fn create_router() -> Router {
+    Router::new()
+        // API routes (composed services)
+        .nest("/api", api_router())
+
+        // Legacy frontend at /legacy
+        .nest("/legacy", serve_embedded::<LegacyFrontend>())
+
+        // New frontend at root
+        .fallback(serve_embedded::<ForgeFrontend>())
+}
+```
+
+### Phase 6: Update Build & CI/CD
+
+#### 6.1 Update Workspace Cargo.toml
+```toml
+[workspace]
+members = [
+    "upstream/crates/*",      # Their code
+    "forge-extensions/*",      # Our additions
+    "forge-app"               # Main app
+]
+
+# Patch only if absolutely necessary
+[patch.crates-io]
+# upstream-server = { path = "forge-overrides/server" }
+```
+
+#### 6.2 Update Build Scripts
+```bash
+# local-build.sh modifications
+#!/bin/bash
+
+# Build upstream frontend (for /legacy)
+(cd upstream/frontend && pnpm build)
+
+# Build new frontend
+(cd frontend-new && pnpm build)
+
+# Build Rust with both frontends
+cargo build --release --bin forge-app
+
+# Package for npm (unchanged paths)
+./package-npm.sh
+```
+
+### Phase 7: Validation & Testing
+
+#### 7.1 Feature Validation Checklist
+```bash
+# Test all forge features
+- [ ] Omni notifications send successfully
+- [ ] Branch templates create and apply
+- [ ] MCP server responds correctly
+- [ ] NPM package installs and runs
+- [ ] Both frontends accessible (/legacy and /)
+- [ ] All API endpoints return expected data
+```
+
+#### 7.2 Upstream Update Test
+```bash
+# Test that upstream updates work
+cd upstream
+git pull origin main
+cd ..
+cargo build --release
+
+# Should compile without conflicts
+```
 
 ## ✅ Success Metrics
 - Upstream updates: `cd upstream && git pull` (no conflicts)
