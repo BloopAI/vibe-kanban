@@ -11,13 +11,16 @@ pub mod config;
 pub mod containers;
 pub mod filesystem;
 // pub mod github;
+pub mod drafts;
 pub mod events;
 pub mod execution_processes;
 pub mod frontend;
 pub mod health;
 pub mod images;
 pub mod projects;
+pub mod task_attempt_drafts;
 pub mod task_attempts;
+pub mod task_attempts_util;
 pub mod task_templates;
 pub mod tasks;
 
@@ -28,6 +31,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(config::router())
         .merge(containers::router(&deployment))
         .merge(projects::router(&deployment))
+        .merge(drafts::router(&deployment))
         .merge(tasks::router(&deployment))
         .merge(task_attempts::router(&deployment))
         .merge(execution_processes::router(&deployment))
