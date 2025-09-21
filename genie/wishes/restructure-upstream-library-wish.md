@@ -32,6 +32,8 @@
 ❌ Diverge from shared workspace dependency management (no duplicate crate versions).
 ❌ Skip upstream diff checks before cutover; always reconcile with `git fetch upstream && git diff upstream/main`.
 ❌ Skip regression harness or baseline maintenance before declaring readiness.
+❌ Commit `dev_assets_seed/forge-snapshot/from_home/` or any personal snapshot data.
+❌ Author git commits, push branches, or open pull requests—hand off code-ready changes for maintainers to review.
 
 ## 🎯 Objective
 Migrate the existing automagik-forge fork (143 modified files, 11k+ changes) to a new architecture using upstream vibe-kanban as an untouched library, while preserving ALL current forge features and reducing merge conflicts from 13-23 hours to near-zero.
@@ -40,7 +42,7 @@ Migrate the existing automagik-forge fork (143 modified files, 11k+ changes) to 
 
 **Git / Workspace**
 - Active branch `restructure/upstream-as-library-migration` at HEAD `781fc66c117f11a7e68ef97eab1fb22e1fd3a7ad`.
-- Working tree contains tracked edits to `genie/prep/wish-prep-pr-battle-royale.md` and this wish, plus untracked prep artifacts (`docs/regression/`, `docs/upstream-diff-*.{txt,log,patch}`, `prompt-task{1,2,3}.md`, `scripts/run-*.sh`).
+- Working tree contains this wish and supporting prep artifacts (`docs/regression/`, `docs/upstream-diff-*.{txt,log,patch}`, `prompt-task{1,2,3}.md`, `scripts/run-*.sh`).
 - Upstream diff audit artefacts already match `docs/upstream-diff-latest.txt`.
 
 **Tooling Versions**
@@ -66,12 +68,17 @@ Migrate the existing automagik-forge fork (143 modified files, 11k+ changes) to 
 **Baseline Sign-off**
 - All gating commands above are green as of 2025-09-21T16:45Z; treat these hashes, versions, and command transcripts as the gold reference for migration parity and regression comparisons.
 
+**Local Snapshot Handling**
+- Populate `dev_assets_seed/forge-snapshot/from_home/` locally with `./scripts/collect-forge-snapshot.sh` (defaults to `~/.automagik-forge`).
+- The generated files are git-ignored; agents must run the script before executing regression harnesses or data migrations.
+- Re-run the script whenever baseline data changes; record updated hashes externally if parity expectations shift.
+
 ### Verification Commands Per Task
 - **Task 1**: `cargo check --workspace`; `cargo check -p forge-app`; `pnpm install` (or document sandbox restrictions); `git submodule status upstream`.
 - **Task 2**: `cargo fmt`; `cargo clippy --workspace --all-targets`; `cargo test -p forge-extensions-omni`; `sqlx migrate run --dry-run`; `curl http://localhost:8887/api/forge/omni/instances`.
 - **Task 3**: `pnpm run lint`; `pnpm run build`; `cargo test --workspace` (or targeted crates including Genie); `cargo run -p forge-app` followed by `curl` smoke checks for `/health`, `/legacy`, `/api/forge/genie/wishes`.
 - **Ongoing**: `git fetch upstream && git diff upstream/main...origin/main --stat`; `cd upstream && git pull --ff-only` to validate submodule cleanliness.
-- **Regression**: Run `./scripts/run-forge-regression.sh` (added in this wish) to exercise CLI, API, and key UI flows against snapshot data.
+- **Regression**: Populate `dev_assets_seed/forge-snapshot/from_home/` with `./scripts/collect-forge-snapshot.sh`, then run `./scripts/run-forge-regression.sh` to exercise CLI, API, and key UI flows against snapshot data.
 
 **Tooling prerequisites:** `jq`, `pnpm`, and `curl` must be available for regression scripts.
 Set `FORGE_SAMPLE_TASK_ID` if the snapshot requires a specific task identifier for branch template checks.
@@ -81,14 +88,14 @@ Set `FORGE_SAMPLE_TASK_ID` if the snapshot requires a specific task identifier f
 ### Task 1 – Scaffold
 - Create submodule structure, empty crates, and updated manifests/scripts per prompt.
 - Run `./scripts/run-upstream-audit.sh` and capture summary in docs.
-- Archive current forge data (`~/.automagik-forge/`) into a new `dev_assets_seed/forge-snapshot/` directory (copy from existing `dev_assets/` plus home snapshot) for use in later regression harness.
+- Archive current forge data by running `./scripts/collect-forge-snapshot.sh` (copies `~/.automagik-forge/` into the git-ignored `dev_assets_seed/forge-snapshot/from_home/`) and verifying committed seeds remain untouched in `from_repo/`.
 - Data preservation note: Production data can be reset—capture snapshot for parity checks only; no requirement to migrate historic data in-place.
 - Confirm repository still builds (`cargo check --workspace`, `pnpm install`).
 
 ### Task 2 – Backend Extraction & Data Lifting
 - Extract Omni, branch template, config v7, and Genie logic into extension crates.
 - Create auxiliary tables & migrations with idempotent guards for branch templates, Omni settings, Genie metadata, and config snapshots.
-- Copy existing forge data from snapshot into auxiliary tables using dedicated migrations/scripts; acceptable to re-import from `~/.automagik-forge/forge.sqlite` fixture if live DB reset is fine.
+- Copy existing forge data from the locally populated snapshot (`dev_assets_seed/forge-snapshot/from_home/` generated by `collect-forge-snapshot.sh`) into auxiliary tables using dedicated migrations/scripts; acceptable to re-import from `~/.automagik-forge/forge.sqlite` fixture if live DB reset is fine.
 - Replace downstream hooks in upstream crates with composition layer adapters.
 - Implement regression harness back-end checks:
   - Seed DB with fixture (import script provided).
@@ -715,6 +722,7 @@ cargo build --release
 - [ ] Backup database with production data
 - [ ] Notify team of migration plan
 - [ ] Create rollback procedure
+- [ ] Run `./scripts/collect-forge-snapshot.sh` to stage local snapshot (kept out of git)
 
 ### Structure Migration
 - [ ] Add upstream as git submodule
