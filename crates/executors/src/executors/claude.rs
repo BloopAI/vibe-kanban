@@ -126,7 +126,11 @@ impl StandardCodingAgentExecutor for ClaudeCode {
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let command_builder = self.build_command_builder().await;
-        let base_command = command_builder.build_initial();
+        let mut base_command = command_builder.build_initial();
+
+        if self.plan.unwrap_or(false) {
+            base_command = create_watchkill_script(&base_command);
+        }
 
         if self.approvals.unwrap_or(false) || self.plan.unwrap_or(false) {
             write_python_hook(current_dir).await?
@@ -164,8 +168,12 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         let (shell_cmd, shell_arg) = get_shell_command();
         let command_builder = self.build_command_builder().await;
         // Build follow-up command with --resume {session_id}
-        let base_command =
+        let mut base_command =
             command_builder.build_follow_up(&["--resume".to_string(), session_id.to_string()]);
+
+        if self.plan.unwrap_or(false) {
+            base_command = create_watchkill_script(&base_command);
+        }
 
         if self.approvals.unwrap_or(false) || self.plan.unwrap_or(false) {
             write_python_hook(current_dir).await?
@@ -268,7 +276,7 @@ async fn settings_json(plan: bool) -> Result<String, std::io::Error> {
                         {
                             "type": "command",
                             "command": format!("$CLAUDE_PROJECT_DIR/.claude/hooks/confirm.py --timeout-seconds {backend_timeout} --poll-interval 5 --backend-port {backend_port}"),
-                            "timeout": backend_timeout 
+                            "timeout": backend_timeout + 10
                        }
                     ]
                 }
@@ -276,6 +284,30 @@ async fn settings_json(plan: bool) -> Result<String, std::io::Error> {
         }
     })
     .to_string())
+}
+
+fn create_watchkill_script(command: &str) -> String {
+    let claude_plan_stop_indicator = "Approval request timed out";
+    let cmd = shlex::try_quote(command).unwrap().to_string();
+
+    format!(
+        r#"#!/usr/bin/env bash
+set -euo pipefail
+
+word="{claude_plan_stop_indicator}"
+
+exit_code=0
+while IFS= read -r line; do
+    printf '%s\n' "$line"
+    if [[ $line == *"$word"* ]]; then
+        exit 0
+    fi
+done < <(bash -lc {cmd} <&0 2>&1)
+
+exit_code=${{PIPESTATUS[0]}}
+exit "$exit_code"
+"#
+    )
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
