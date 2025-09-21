@@ -1,0 +1,17 @@
+
+> automagik-forge@0.3.10 check /home/namastex/workspace/automagik-forge
+> pnpm run frontend:check && pnpm run backend:check
+
+
+> automagik-forge@0.3.10 frontend:check /home/namastex/workspace/automagik-forge
+> cd frontend && pnpm run check
+
+
+> automagik-forge@0.3.10 check /home/namastex/workspace/automagik-forge/frontend
+> tsc --noEmit
+
+
+> automagik-forge@0.3.10 backend:check /home/namastex/workspace/automagik-forge
+> cargo check
+
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.28s

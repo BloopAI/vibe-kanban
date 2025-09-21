@@ -1,0 +1,59 @@
+
+> automagik-forge@0.3.10 build:npx /home/namastex/workspace/automagik-forge
+> bash ./local-build.sh
+
+🧹 Cleaning previous builds...
+📦 Building for platform: linux-x64
+🔨 Building frontend...
+
+> automagik-forge@0.3.10 build
+> tsc && vite build
+
+vite v5.4.20 building for production...
+[sentry-vite-plugin] Info: Sending telemetry data on issues and performance to Sentry. To disable telemetry, set `options.telemetry` to `false`.
+transforming...
+✓ 3561 modules transformed.
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /home/namastex/workspace/automagik-forge/frontend/src/lib/api.ts is dynamically imported by /home/namastex/workspace/automagik-forge/frontend/src/hooks/useProcessRetry.ts, /home/namastex/workspace/automagik-forge/frontend/src/hooks/useProcessRetry.ts but also statically imported by /home/namastex/workspace/automagik-forge/frontend/src/components/DiffCard.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/TaskTemplateManager.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/config-provider.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/dialogs/auth/GitHubLoginDialog.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/dialogs/projects/ProjectFormDialog.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/dialogs/shared/FolderPickerDialog.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/dialogs/tasks/CreatePRDialog.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/dialogs/tasks/DeleteTaskConfirmationDialog.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/dialogs/tasks/TaskFormDialog.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/dialogs/tasks/TaskTemplateEditDialog.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/omni/api.ts, /home/namastex/workspace/automagik-forge/frontend/src/components/projects/ProjectCard.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/projects/project-detail.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/projects/project-form-fields.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/projects/project-list.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/tasks/TaskDetails/ProcessesTab.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/tasks/TaskDetailsToolbar.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/tasks/TaskFollowUpSection.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/tasks/TaskRelationshipViewer.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/tasks/follow-up/FollowUpConflictSection.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/ui/ImageUploadSection.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/ui/file-search-textarea.tsx, /home/namastex/workspace/automagik-forge/frontend/src/components/ui/multi-file-search-textarea.tsx, /home/namastex/workspace/automagik-forge/frontend/src/contexts/project-context.tsx, /home/namastex/workspace/automagik-forge/frontend/src/hooks/follow-up/useDraftAutosave.ts, /home/namastex/workspace/automagik-forge/frontend/src/hooks/follow-up/useDraftEdits.ts, /home/namastex/workspace/automagik-forge/frontend/src/hooks/follow-up/useDraftQueue.ts, /home/namastex/workspace/automagik-forge/frontend/src/hooks/follow-up/useDraftStream.ts, /home/namastex/workspace/automagik-forge/frontend/src/hooks/follow-up/useFollowUpSend.ts, /home/namastex/workspace/automagik-forge/frontend/src/hooks/useAttemptBranch.ts, /home/namastex/workspace/automagik-forge/frontend/src/hooks/useAttemptCreation.ts, /home/namastex/workspace/automagik-forge/frontend/src/hooks/useAttemptExecution.ts, /home/namastex/workspace/automagik-forge/frontend/src/hooks/useBranchStatus.ts, /home/namastex/workspace/automagik-forge/frontend/src/hooks/useCreatePR.ts, /home/namastex/workspace/automagik-forge/frontend/src/hooks/useDevServer.ts, /home/namastex/workspace/automagik-forge/frontend/src/hooks/useMerge.ts, /home/namastex/workspace/automagik-forge/frontend/src/hooks/useOpenInEditor.ts, /home/namastex/workspace/automagik-forge/frontend/src/hooks/useOpenProjectInEditor.ts, /home/namastex/workspace/automagik-forge/frontend/src/hooks/useProfiles.ts, /home/namastex/workspace/automagik-forge/frontend/src/hooks/useProjectBranches.ts, /home/namastex/workspace/automagik-forge/frontend/src/hooks/usePush.ts, /home/namastex/workspace/automagik-forge/frontend/src/hooks/useRebase.ts, /home/namastex/workspace/automagik-forge/frontend/src/hooks/useTaskMutations.ts, /home/namastex/workspace/automagik-forge/frontend/src/pages/project-tasks.tsx, /home/namastex/workspace/automagik-forge/frontend/src/pages/settings/McpSettings.tsx, dynamic import will not move module into another chunk.
+
+rendering chunks...
+computing gzip size...
+dist/index.html                     1.24 kB │ gzip:   0.54 kB
+dist/assets/index-DSRjlLTs.css     86.76 kB │ gzip:  15.60 kB
+dist/assets/index-DGeDXIbD.js   2,811.70 kB │ gzip: 891.18 kB │ map: 10,785.99 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+> Found 2 files
+> Analyzing 2 sources
+> Adding source map references
+> Bundled 2 files for upload
+> Bundle ID: d53c02ab-1acc-5a10-bcb8-59722539e3e4
+> Nothing to upload, all files are on the server
+> File processing complete
+> Organization: namastex-labs
+> Projects: automagik-forge
+> Release: 781fc66c117f11a7e68ef97eab1fb22e1fd3a7ad
+> Dist: None
+> Upload type: artifact bundle
+
+Source Map Upload Report
+  Scripts
+    ~/c3a87a73-70f2-4a28-a7c6-871de6090858-0.js (sourcemap at index-DGeDXIbD.js.map, debug id c3a87a73-70f2-4a28-a7c6-871de6090858)
+  Source Maps
+    ~/c3a87a73-70f2-4a28-a7c6-871de6090858-0.js.map (debug id c3a87a73-70f2-4a28-a7c6-871de6090858)
+[sentry-vite-plugin] Info: Successfully uploaded source maps to Sentry
+✓ built in 16.07s
+🔨 Building Rust binaries...
+   Compiling server v0.3.10 (/home/namastex/workspace/automagik-forge/crates/server)
+    Finished `release` profile [optimized + debuginfo] target(s) in 42.79s
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.25s
+📦 Creating distribution package...
+📦 Packaging binaries for linux-x64...
+✅ NPM package ready!
+📁 Files created:
+   - npx-cli/dist/linux-x64/automagik-forge.zip
+   - npx-cli/dist/linux-x64/automagik-forge-mcp.zip
+📋 Other platform placeholders created under npx-cli/dist/

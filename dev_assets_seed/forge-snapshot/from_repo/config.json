@@ -1,0 +1,39 @@
+{
+  "config_version": "v7",
+  "theme": "DARK",
+  "executor_profile": {
+    "executor": "CLAUDE_CODE"
+  },
+  "disclaimer_acknowledged": true,
+  "onboarding_acknowledged": true,
+  "github_login_acknowledged": true,
+  "telemetry_acknowledged": true,
+  "notifications": {
+    "sound_enabled": true,
+    "push_enabled": true,
+    "sound_file": "COW_MOOING"
+  },
+  "editor": {
+    "editor_type": "CURSOR",
+    "custom_command": null
+  },
+  "github": {
+    "pat": null,
+    "oauth_token": null,
+    "username": null,
+    "primary_email": null,
+    "default_pr_base": "main"
+  },
+  "analytics_enabled": true,
+  "workspace_dir": null,
+  "last_app_version": "0.3.8",
+  "show_release_notes": true,
+  "omni": {
+    "enabled": false,
+    "host": null,
+    "api_key": null,
+    "instance": null,
+    "recipient": null,
+    "recipient_type": null
+  }
+}

@@ -1,0 +1,249 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.28s
+     Running unittests src/lib.rs (target/debug/deps/db-42e3aa6d9da36fb4)
+
+running 2 tests
+test models::task_attempt::tests::generate_branch_name_uses_template_suffix ... ok
+test models::task_attempt::tests::generate_branch_name_falls_back_to_forge_pattern ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/deployment-233678c521564dc9)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/executors-45f12bb5c8e30ac2)
+
+running 59 tests
+test executors::claude::tests::test_api_key_source_warning ... ok
+test executors::claude::tests::test_amp_bash_and_task_content ... ok
+test executors::claude::tests::test_amp_tool_aliases_oracle_mermaid_codebase_undo ... ok
+test executors::claude::tests::test_amp_tool_aliases_create_file_and_edit_file ... ok
+test executors::claude::tests::test_assistant_message_parsing ... ok
+test executors::claude::tests::test_content_item_tool_result_ignored ... ok
+test executors::claude::tests::test_glob_tool_content_extraction ... ok
+test executors::claude::tests::test_claude_json_parsing ... ok
+test executors::claude::tests::test_glob_tool_pattern_only ... ok
+test executors::claude::tests::test_mixed_content_with_thinking_ignores_tool_result ... ok
+test executors::claude::tests::test_ls_tool_content_extraction ... ok
+test executors::claude::tests::test_path_relative_conversion ... ok
+test executors::claude::tests::test_result_message_ignored ... ok
+test executors::claude::tests::test_session_id_extraction ... ok
+test executors::claude::tests::test_thinking_content ... ok
+test executors::claude::tests::test_task_description_or_prompt_backticks ... ok
+test executors::claude::tests::test_tool_result_parsing_ignored ... ok
+test executors::claude::tests::test_todo_tool_empty_list ... ok
+test executors::codex::tests::test_codex_json_prompt_parsing ... ok
+test executors::codex::tests::test_codex_json_system_config_parsing ... ok
+test executors::codex::tests::test_normalize_logs_agent_message ... ok
+test executors::codex::tests::test_normalize_logs_error_message ... ok
+test executors::codex::tests::test_normalize_logs_basic ... ok
+test executors::codex::tests::test_normalize_logs_malformed_json ... ok
+test executors::codex::tests::test_normalize_logs_mcp_tool_call_multiple ... ok
+test executors::codex::tests::test_normalize_logs_error_message_no_content ... ok
+test executors::codex::tests::test_normalize_logs_mcp_tool_calls ... ok
+test executors::codex::tests::test_normalize_logs_partial_config ... ok
+test executors::codex::tests::test_normalize_logs_prompt_ignored ... ok
+test executors::codex::tests::test_normalize_logs_skip_task_messages ... ok
+test executors::codex::tests::test_extract_session_id_no_match ... ok
+test executors::codex::tests::test_set_session_id_in_rollout_meta_new_format ... ok
+test executors::codex::tests::test_normalize_logs_real_example ... ok
+test executors::codex::tests::test_normalize_logs_patch_apply ... ok
+test executors::codex::tests::test_normalize_logs_token_count_skipped ... ok
+test executors::cursor::tests::test_cursor_tool_call_parsing ... ok
+test executors::codex::tests::test_normalize_logs_shell_vs_bash_mapping ... ok
+test executors::codex::tests::test_extract_session_id_from_line_new_format ... ok
+test executors::codex::tests::test_extract_session_id_from_line ... ok
+test executors::cursor::tests::test_session_id_extraction_from_system_line ... ok
+test logs::plain_text_processor::tests::test_drain_until_size ... ok
+test logs::plain_text_processor::tests::test_plain_buffer_flush ... ok
+test logs::plain_text_processor::tests::test_plain_buffer_len ... ok
+test logs::plain_text_processor::tests::test_processor_custom_log_formatter ... ok
+test logs::utils::entry_index::tests::test_entry_index_provider ... ok
+test logs::utils::entry_index::tests::test_entry_index_provider_clone ... ok
+test logs::plain_text_processor::tests::test_processor_simple ... ok
+test logs::utils::entry_index::tests::test_current_index ... ok
+test executors::codex::tests::test_set_session_id_in_rollout_meta_old_format ... ok
+test logs::plain_text_processor::tests::test_processor_transform_lines_clears_first_line ... ok
+test executors::codex::session::tests::test_new_rollout_filename_pattern ... ok
+test logs::export_bindings_commandexitstatus ... ok
+test logs::export_bindings_toolresultvaluetype ... ok
+test logs::export_bindings_todoitem ... ok
+test logs::export_bindings_commandrunresult ... ok
+test logs::export_bindings_toolresult ... ok
+test logs::export_bindings_actiontype ... ok
+test executors::claude::tests::test_streaming_patch_generation ... ok
+test executors::cursor::tests::test_cursor_streaming_patch_generation ... ok
+
+test result: ok. 59 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+     Running unittests src/lib.rs (target/debug/deps/local_deployment-85fc69b5e6a9aedc)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/server-16c0f89ffb08adc5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/generate_types.rs (target/debug/deps/generate_types-a11ad2864b42a101)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/mcp_task_server.rs (target/debug/deps/mcp_task_server-dd99640b8a899402)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/server-2b846bcb8f1ab20a)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/services-bebb7fbee2aa43e2)
+
+running 6 tests
+test services::analytics::tests::test_generate_user_id_format ... ok
+test services::analytics::tests::test_consistency ... ok
+test services::omni::types::tests::test_omni_config_defaults ... ok
+test services::omni::types::tests::test_raw_instance_conversion ... ok
+test services::omni::types::tests::test_recipient_type_serialization ... ok
+test services::omni::types::tests::test_send_text_request_serialization ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/git_ops_safety.rs (target/debug/deps/git_ops_safety-66aab310b9574243)
+
+running 28 tests
+test merge_base_ahead_of_task_should_error ... ok
+test merge_conflict_does_not_move_base_ref ... ok
+test rebase_aborts_if_untracked_would_be_overwritten_by_base ... ok
+test rebase_aborts_on_uncommitted_tracked_changes ... ok
+test fetch_with_token_missing_ref_returns_error ... ok
+test libgit2_merge_updates_base_ref_in_both_repos ... ok
+test merge_when_base_ahead_and_feature_ahead_fails ... ok
+test merge_does_not_touch_tracked_uncommitted_changes_in_base_worktree ... ok
+test libgit2_merge_updates_task_ref_and_feature_head_preserves_dirty ... ok
+test merge_delete_vs_modify_conflict_behaves_safely ... ok
+test rebase_fast_forwards_when_no_unique_commits ... ok
+test merge_into_orphaned_branch_uses_libgit2_fallback ... ok
+test merge_refuses_with_staged_changes_on_base ... ok
+test merge_does_not_overwrite_main_repo_untracked_files ... ok
+test merge_binary_conflict_does_not_move_ref ... ok
+test push_with_token_reports_non_fast_forward ... ok
+test merge_rename_vs_modify_conflict_does_not_move_ref ... ok
+test rebase_preserves_untracked_files ... ok
+test rebase_preserves_rename_changes ... ok
+test merge_leaves_no_staged_changes_on_target_branch ... ok
+test update_ref_does_not_destroy_feature_worktree_dirty_state ... ok
+test merge_preserves_unstaged_changes_on_base ... ok
+test rebase_refuses_to_abort_existing_rebase ... ok
+test merge_refreshes_main_worktree_when_on_base ... ok
+test rebase_applies_multiple_commits_onto_ahead_base ... ok
+test sparse_checkout_respected_in_worktree_diffs_and_commit ... ok
+test worktree_to_worktree_merge_leaves_no_staged_changes ... ok
+test push_and_fetch_roundtrip_updates_tracking_branch ... ok
+
+test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+
+     Running tests/git_remote_ops.rs (target/debug/deps/git_remote_ops-a5f93081e5c9a524)
+
+running 2 tests
+test fetch_with_invalid_token_returns_auth_error ... ignored
+test push_with_invalid_token_returns_auth_error ... ignored
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/git_workflow.rs (target/debug/deps/git_workflow-7628da3042cefac2)
+
+running 27 tests
+test convert_to_https_url_handles_common_git_forms ... ok
+test github_repo_info_parses_https_and_ssh_urls ... ok
+test initialize_repo_without_user_creates_initial_commit ... ok
+test worktree_clean_detects_staged_deleted_and_renamed ... ok
+test get_github_repo_info_parses_origin ... ok
+test delete_file_commit_has_author_without_user ... ok
+test get_branch_oid_nonexistent_errors ... ok
+test get_all_branches_lists_current_and_others ... ok
+test initialize_and_default_branch_and_head_info ... ok
+test commit_and_is_worktree_clean ... ok
+test delete_file_and_commit_creates_new_commit ... ok
+test commit_fails_when_index_locked ... ok
+test commit_empty_message_behaviour ... ok
+test commit_without_user_config_succeeds ... ok
+test delete_nonexistent_file_creates_noop_commit ... ok
+test create_unicode_branch_and_list ... ok
+test delete_with_uncommitted_changes_succeeds ... ok
+test worktree_diff_permission_only_change ... ok
+test delete_directory_path_errors ... ok
+test staged_but_uncommitted_changes_is_dirty ... ok
+test diff_added_binary_file_has_no_content ... ok
+test get_branch_diffs_between_branches ... ok
+test squash_merge_libgit2_sets_author_without_user ... ok
+test worktree_diff_respects_path_filter ... ok
+test commit_in_detached_head_succeeds_via_service ... ok
+test delete_symlink_and_commit ... ok
+test branch_status_ahead_and_behind ... ok
+
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+     Running unittests src/lib.rs (target/debug/deps/utils-5f92f4cf02beba28)
+
+running 2 tests
+test path::tests::test_make_path_relative ... ok
+test diff::export_bindings_diffchangekind ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+   Doc-tests db
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests deployment
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests executors
+
+running 2 tests
+test crates/executors/src/executors/gemini.rs - executors::gemini::Gemini::normalize_logs (line 173) ... ignored
+test crates/executors/src/logs/stderr_processor.rs - logs::stderr_processor (line 7) ... ignored
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests local_deployment
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests server
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests services
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests utils
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

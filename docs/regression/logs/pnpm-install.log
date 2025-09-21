@@ -1,0 +1,10 @@
+Scope: all 2 workspace projects
+ WARN  A pnpm-lock.yaml file exists. The current configuration prohibits to read or write a lockfile
+Progress: resolved 0, reused 1, downloaded 0, added 0
+frontend                                 |  WARN  deprecated eslint@8.57.1
+Progress: resolved 554, reused 480, downloaded 0, added 0
+ WARN  6 deprecated subdependencies found: @floating-ui/react-dom-interactions@0.3.1, @humanwhocodes/config-array@0.13.0, @humanwhocodes/object-schema@2.0.3, glob@7.2.3, inflight@1.0.6, rimraf@3.0.2
+Already up to date
+Progress: resolved 554, reused 480, downloaded 0, added 0, done
+
+Done in 2s using pnpm v10.12.4

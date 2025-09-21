@@ -26,6 +26,22 @@ Found patterns:
 - zen consensus tools available (gemini-2.5-pro, grok-4)
 - codex exec available for final review
 
+### Upstream Diff Audit (pending)
+- Command plan:
+  - `git fetch upstream`
+  - `git checkout origin/main`
+- `git diff upstream/main...origin/main --stat`
+- `git diff upstream/main...origin/main --name-status | tee docs/upstream-diff-latest.txt`
+- Status: **PENDING** – blocked in sandbox (no outbound network); rerun on unrestricted machine and attach summary before evaluations proceed.
+- Shortcut: run `./scripts/run-upstream-audit.sh` to execute the full sequence and save outputs under `docs/`.
+
+### Regression Harness Prep (pending)
+- Command plan:
+  - Sanitize and copy `~/.automagik-forge/forge.sqlite` to `dev_assets_seed/forge-snapshot/forge.sqlite`
+  - Establish initial baselines in `docs/regression/baseline/`
+  - Run `./scripts/run-forge-regression.sh`
+- Status: **PENDING** – requires sanitized snapshot; run after Task 2 extraction is complete.
+
 Early stop: 100% patterns identified
 </context_gathering>
 
@@ -53,121 +69,146 @@ Found 6 implementations for evaluation:
 5. **PR #12** - gemini (branch: forge-feat-found-cf50) - OPEN
 6. **PR #11** - opencode-kimi-k2 (branch: forge-feat-found-3e6d) - OPEN
 
-## CONFIRMED DECISIONS
+## EVALUATION APPROACH
 
-DEC-1: **Multi-dimensional weighted scoring** (Option C confirmed)
-- Technical implementation (30%)
-- Architecture quality (25%)
-- Safety & rollback (20%)
-- Documentation (15%)
-- Innovation (10%)
+### Scoring System
+**Scale**: 1-100 points per category
+**Reviewers**:
+- Claude Opus 4.1
+- Gemini 2.5-Pro
+- GPT-5-Codex-High
+- Human Evaluator (optional override)
 
-DEC-2: **Multi-round consensus with discussion** (Option C confirmed)
-- Round 1: Individual scoring
-- Round 2: Discussion and alignment
-- Round 3: Final consensus
+### Evaluation Categories & Weights
 
-DEC-3: **1-100 percentage based** (Option B confirmed)
-- Clear granularity
-- Easy averaging
-- Human-friendly
+#### 1. **Technical Correctness** (30%)
+**Score 90-100**: All requirements met, works flawlessly, handles all edge cases
+**Score 70-89**: Core requirements met, minor issues or missing edge cases
+**Score 50-69**: Basic functionality works but significant gaps
+**Score 30-49**: Partially works, major requirements missing
+**Score 0-29**: Doesn't work or fundamentally broken
 
-### Validated Assumptions
-✓ ASM-1: Three tasks confirmed (foundation, dual-frontend, build-validation)
-✓ ASM-2: 6 PRs exist for foundation task evaluation
-✓ ASM-3: LLM consensus + human validation confirmed
+*Check for*:
+- Submodule integration correctness
+- Feature extraction completeness
+- Build/compilation success
+- Runtime behavior matches spec
+
+#### 2. **Code Quality** (25%)
+**Score 90-100**: Exemplary code, follows all patterns, exceptionally clean
+**Score 70-89**: Good quality, minor style issues, mostly follows patterns
+**Score 50-69**: Acceptable but inconsistent, some anti-patterns
+**Score 30-49**: Poor quality, hard to maintain, many issues
+**Score 0-29**: Unreadable, unmaintainable mess
+
+*Check for*:
+- Readability and clarity
+- DRY principle adherence
+- Error handling completeness
+- Type safety (TypeScript/Rust idioms)
+- Project pattern consistency
+
+#### 3. **Architecture & Design** (20%)
+**Score 90-100**: Excellent design, highly scalable, perfect separation
+**Score 70-89**: Good architecture, minor coupling issues
+**Score 50-69**: Adequate design, some architectural concerns
+**Score 30-49**: Poor design choices, significant coupling
+**Score 0-29**: No clear architecture, spaghetti code
+
+*Check for*:
+- Module boundaries
+- Dependency management
+- Future extensibility
+- Performance considerations
+- Integration cleanliness
+
+#### 4. **Safety & Robustness** (15%)
+**Score 90-100**: Bulletproof, handles all failure modes gracefully
+**Score 70-89**: Safe with minor gaps in error handling
+**Score 50-69**: Basic safety measures, some risks
+**Score 30-49**: Unsafe operations, data loss possible
+**Score 0-29**: Dangerous, corrupts data or breaks system
+
+*Check for*:
+- Migration rollback capability
+- Data integrity preservation
+- Graceful failure handling
+- Recovery mechanisms
+- State consistency
+
+#### 5. **Documentation & Tests** (10%)
+**Score 90-100**: Comprehensive tests and docs, excellent coverage
+**Score 70-89**: Good coverage, minor gaps
+**Score 50-69**: Basic tests/docs present
+**Score 30-49**: Minimal documentation or tests
+**Score 0-29**: No tests or documentation
+
+*Check for*:
+- Test coverage percentage
+- Edge case testing
+- Documentation completeness
+- Code comments (where needed)
+- Migration guides
 
 ## SUCCESS CRITERIA
 ✅ SC-1: Complete evaluation framework covering all agent implementations
-✅ SC-2: Consensus-based evaluation using multiple LLMs
-✅ SC-3: Scoring sheet with clear metrics and human evaluation columns
+✅ SC-2: Independent evaluation by multiple expert reviewers
+✅ SC-3: Clear scoring sheet with transparent metrics
 ✅ SC-4: Actionable insights on winner selection and feature absorption
 ✅ SC-5: Repeatable process for future PR comparisons
 
-## EVALUATION FRAMEWORK DESIGN (DRAFT)
+## PR EVALUATION WORKFLOW
 
-### Phase 1: Foundation Setup Evaluation
-**Task**: Upstream submodule integration and feature extraction
-**Competitors**:
-- opencode
-- code-supernova
-- [others to be identified]
+### Task 1: Foundation Setup (6 PRs)
+**Implementations to evaluate**:
+1. PR #7 - claude (migrate/upstream-foundation-b9b2)
+2. PR #8/9 - cursor-cli-grok (forge-feat-found-a4a4)
+3. PR #6 - codex-medium (forge-feat-found-aafd)
+4. PR #10 - opencode-code-supernova (forge-feat-found-21c8)
+5. PR #12 - gemini (forge-feat-found-cf50)
+6. PR #11 - opencode-kimi-k2 (forge-feat-found-3e6d)
 
-### Evaluation Categories (Preliminary)
-1. **Core Implementation Quality** (25%)
-   - Correctness of submodule setup
-   - Feature extraction completeness
-   - Code organization
+### Evaluation Process
+1. **Independent Review**
+   - Each reviewer scores all PRs independently
+   - No discussion between reviewers
+   - Focus on objective criteria
 
-2. **Architecture Decisions** (20%)
-   - Separation of concerns
-   - Maintainability design
-   - Scalability considerations
+2. **Scoring**
+   - Each category scored 1-100
+   - Weighted total calculated automatically
+   - Comments/notes for standout features or issues
 
-3. **Migration Safety** (20%)
-   - Data preservation
-   - Rollback capability
-   - Risk mitigation
+3. **Winner Selection**
+   - Highest weighted score wins
+   - Document features worth absorbing from non-winners
+   - Human can override with justification
 
-4. **Documentation & Clarity** (15%)
-   - Code comments
-   - README updates
-   - Migration guides
+## SCORING SHEET SCHEMA
 
-5. **Testing & Validation** (10%)
-   - Test coverage
-   - Migration validation
-   - Edge case handling
-
-6. **Innovation & Extras** (10%)
-   - Creative solutions
-   - Additional helpful features
-   - Performance optimizations
-
-### Consensus Workflow Design
-```
-1. Individual Analysis (Each LLM)
-   - Review PR against wish requirements
-   - Score each category
-   - Provide justification
-
-2. Consensus Round 1 (Discussion)
-   - Share individual scores
-   - Discuss major differences
-   - Identify standout features
-
-3. Consensus Round 2 (Voting)
-   - Final scores per category
-   - Winner selection
-   - Feature absorption recommendations
-
-4. Human Validation
-   - 3 independent human reviews
-   - Override capability
-   - Final decision
-```
-
-## SCORING SHEET SCHEMA (DRAFT)
-
+### CSV Format
 ```csv
-Agent/LLM, Task, Cat1_LLM1, Cat1_LLM2, Cat1_Consensus, Cat2_LLM1, ..., Total_LLM, Human1, Human2, Human3, Final_Score, Winner, Features_to_Absorb
+PR#, Agent, Tech_Opus, Tech_Gemini, Tech_Codex, Quality_Opus, Quality_Gemini, Quality_Codex, Arch_Opus, Arch_Gemini, Arch_Codex, Safety_Opus, Safety_Gemini, Safety_Codex, Docs_Opus, Docs_Gemini, Docs_Codex, Total_Opus, Total_Gemini, Total_Codex, Avg_Total, Human_Override, Final_Score, Rank, Winner, Absorb_Features, Notes
 ```
 
-### Detailed Schema:
-- **Agent/LLM**: Name of coding agent/model
-- **Task**: Foundation/Task2/Task3
-- **Category Scores**: Individual and consensus for each category
-- **Total_LLM**: Weighted total from LLM evaluation
-- **Human1-3**: Independent human evaluator scores (0-100)
-- **Final_Score**: Combined LLM + Human weighted
-- **Winner**: Boolean flag
-- **Features_to_Absorb**: JSON list of valuable features from non-winners
+### Column Definitions
+- **PR#**: Pull request number
+- **Agent**: Coding agent/model that created the PR
+- **[Category]_[Reviewer]**: Individual scores (1-100) for each category by each reviewer
+- **Total_[Reviewer]**: Weighted total for each reviewer
+- **Avg_Total**: Average of all reviewer totals
+- **Human_Override**: Optional human score override (blank if not used)
+- **Final_Score**: Human_Override if present, else Avg_Total
+- **Rank**: Position (1st, 2nd, etc.)
+- **Winner**: TRUE/FALSE
+- **Absorb_Features**: Features worth adopting from non-winners
+- **Notes**: Additional observations
 
 ## NEVER DO
-❌ ND-1: Skip consensus building between LLMs
+❌ ND-1: Allow reviewers to discuss scores before submitting
 ❌ ND-2: Ignore existing PR implementations
 ❌ ND-3: Create biased evaluation criteria
-❌ ND-4: Exclude human validation step
+❌ ND-4: Skip documenting valuable features from non-winners
 ❌ ND-5: Make evaluation non-repeatable
 
 ## INVESTIGATION LOG
@@ -180,14 +221,13 @@ Agent/LLM, Task, Cat1_LLM1, Cat1_LLM2, Cat1_Consensus, Cat2_LLM1, ..., Total_LLM
 
 ## 4-WISH WORKFLOW STRUCTURE
 
-### WISH 1: Evaluation Framework & Scoring System
-**Purpose**: Create the infrastructure for evaluation
+### WISH 1: Evaluation Framework & Scoring Sheet
+**Purpose**: Create the evaluation infrastructure
 **Outputs**:
-- Evaluation framework documentation
-- Scoring sheet template (CSV/JSON format)
-- Category definitions and weights
-- Consensus workflow documentation
-- Human evaluation guidelines
+- Evaluation framework with scoring rubrics
+- CSV scoring sheet template
+- Review guidelines for each reviewer
+- Automated calculation formulas
 
 ### WISH 2: Task 1 - Foundation Setup Evaluation
 **Purpose**: Evaluate all 6 foundation PRs
@@ -195,41 +235,40 @@ Agent/LLM, Task, Cat1_LLM1, Cat1_LLM2, Cat1_Consensus, Cat2_LLM1, ..., Total_LLM
 - PRs #6, #7, #8/9, #10, #11, #12
 - @genie/wishes/restructure-upstream-library-wish.md requirements
 **Process**:
-1. zen consensus with gemini-2.5-pro and grok-4
-2. Individual scoring per category
-3. Consensus building rounds
-4. Winner selection
-5. Absorption opportunity identification
+1. Each reviewer independently evaluates all PRs
+2. Scores entered into sheet (no discussion)
+3. Automatic weighted total calculation
+4. Winner selection based on highest score
+5. Document valuable features from non-winners
 **Outputs**:
-- Scored evaluation sheet for Task 1
-- Winner declaration with rationale
+- Completed scoring sheet for Task 1
+- Winner declaration
 - Feature absorption recommendations
 
 ### WISH 3: Task 2 - Dual Frontend Evaluation
-**Purpose**: Evaluate Task 2 implementations
-**Process**: Same as Wish 2 but for dual frontend task
+**Purpose**: Evaluate dual frontend implementations
+**Process**: Same independent review process as Task 1
 **Outputs**:
-- Scored evaluation sheet for Task 2
+- Completed scoring sheet for Task 2
 - Winner declaration
 - Absorption opportunities
 
-### WISH 4: Task 3 Evaluation + Final Report + Lab Article
-**Purpose**: Complete evaluation and generate comprehensive insights
+### WISH 4: Task 3 + Final Analysis + Lab Article
+**Purpose**: Complete evaluation and generate insights
 **Components**:
 1. Task 3 evaluation (build validation)
 2. Cross-task pattern analysis
-3. Final codex exec review
+3. Final comprehensive review
 4. Lab article generation
 **Outputs**:
-- Complete scoring sheet (all tasks)
+- Complete scoring sheets (all tasks)
 - Final rankings and insights
-- Lab article sections:
+- Lab article with:
   - Methodology
   - Quantitative results
-  - Qualitative analysis
-  - Best practices synthesis
+  - Performance patterns by agent
   - Recommendations by task type
-  - Efficiency vs quality analysis
+  - Efficiency vs quality tradeoffs
 
 ## LAB ARTICLE STRUCTURE
 
@@ -252,8 +291,11 @@ Agent/LLM, Task, Cat1_LLM1, Cat1_LLM2, Cat1_Consensus, Cat2_LLM1, ..., Total_LLM
 - [10:46] Reviewed restructure-upstream-library-wish.md
 - [10:47] Identified need for multi-phase evaluation
 - [10:48] Drafted initial evaluation framework
-- [10:49] Designed consensus workflow
+- [10:49] ~~Designed consensus workflow~~ Removed per feedback
 - [10:50] Created preliminary scoring schema
 - [11:00] Enhanced with 4-wish structure
 - [11:01] Added lab article outline
 - [11:02] Status: READY_FOR_WISH
+- [11:15] UPDATED: Removed consensus approach, implemented independent review system
+- [11:16] Added detailed scoring rubrics for each category
+- [11:17] Simplified to direct scoring by 3 reviewers + human override

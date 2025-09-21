@@ -1,7 +1,110 @@
 # WISH: Migrate Automagik Forge Fork to Upstream-as-Library Architecture
 
+<task_breakdown>
+1. [Discovery] Baseline and structure
+   - Catalogue forge-only changes across backend, frontend, build, and docs.
+   - Compare `origin/main` with `upstream/main` to verify the 143-file delta; capture hot spots for each task.
+   - Decide final workspace layout and document developer bootstrap commands before touching upstream code.
+
+2. [Implementation] Feature extraction and composition
+   - Introduce `upstream/` submodule, `forge-extensions/*`, `forge-app/`, and `frontend-forge/` without breaking builds.
+   - Extract Omni, branch templates, config v7, Genie, and supporting migrations/services into the extension layer.
+   - Wire new APIs and dual-frontend routing while keeping upstream untouched.
+
+3. [Verification] Validation and cutover readiness
+   - Run cargo, pnpm, SQL migration checks, and HTTP smoke tests each phase; store transcripts in prep docs.
+   - Execute submodule update drills and upstream diff audits prior to release.
+   - Execute regression harness against forge snapshot data; document rollback steps, open risks, and downstream follow-ups for Tasks 2–3.
+</task_breakdown>
+
+[SUCCESS CRITERIA]
+✅ Upstream `vibe-kanban` lives under `upstream/` as a clean submodule; no direct edits.
+✅ `forge-app` and all `forge-extensions/*` crates compile, lint, and test alongside upstream members.
+✅ Auxiliary tables and migrations preserve data with idempotent guards and reversible steps.
+✅ Forge UI and upstream UI run concurrently (`/` vs `/legacy`) via `forge-app`.
+✅ Verification commands from Tasks 1–3 are executed (or sandbox-limited) and logged in prep docs.
+✅ Regression harness proves feature parity against snapshot data from `~/.automagik-forge/` before and after migration.
+
+[NEVER DO]
+❌ Modify code inside `upstream/` after submodule creation (contribute upstream instead).
+❌ Drop forge functionality, data, or tests without documented replacement and rollback plan.
+❌ Ship non-idempotent SQL migrations or destructive updates without backups.
+❌ Diverge from shared workspace dependency management (no duplicate crate versions).
+❌ Skip upstream diff checks before cutover; always reconcile with `git fetch upstream && git diff upstream/main`.
+❌ Skip regression harness or baseline maintenance before declaring readiness.
+
 ## 🎯 Objective
 Migrate the existing automagik-forge fork (143 modified files, 11k+ changes) to a new architecture using upstream vibe-kanban as an untouched library, while preserving ALL current forge features and reducing merge conflicts from 13-23 hours to near-zero.
+
+## 📌 Baseline Snapshot – Captured 2025-09-21
+
+**Git / Workspace**
+- Active branch `restructure/upstream-as-library-migration` at HEAD `781fc66c117f11a7e68ef97eab1fb22e1fd3a7ad`.
+- Working tree contains tracked edits to `genie/prep/wish-prep-pr-battle-royale.md` and this wish, plus untracked prep artifacts (`docs/regression/`, `docs/upstream-diff-*.{txt,log,patch}`, `prompt-task{1,2,3}.md`, `scripts/run-*.sh`).
+- Upstream diff audit artefacts already match `docs/upstream-diff-latest.txt`.
+
+**Tooling Versions**
+- `rustc 1.89.0 (29483883e 2025-08-04)` / `cargo 1.89.0 (c24e10642 2025-06-23)`.
+- `node v22.16.0`, `pnpm 10.12.4` (workspace rules disallow lockfile mutation; install runs read-only).
+
+**Backend & Frontend Health**
+- `cargo test --workspace` ✅ (db/unit suites: 2 db tests, 59 executor tests, 28 git worktree tests, 27 git workflow tests, full pass in ~42s).
+- `pnpm run check` ✅ (frontend `tsc --noEmit` + `cargo check`).
+- `pnpm run build:npx` ✅ producing linux-x64 bundles; acknowledged Vite chunk-size warning (baseline condition, no regressions) and successful Sentry sourcemap upload.
+- No top-level `pnpm run build` script exists today (expected failure; stick with `build:npx` during parity checks).
+
+**Package Artifacts**
+- `npx-cli/dist/linux-x64/automagik-forge.zip` → SHA256 `8699edcd26c6f81e1c4171fddcc29cd0cb132275565d076667535ee62c0b74fb`.
+- `npx-cli/dist/linux-x64/automagik-forge-mcp.zip` → SHA256 `7218d1299ebaee920ad9deabd844ec8acd1ef982c1d6349eda479fc78acc042f`.
+- Full command transcripts stored under `docs/regression/logs/` with summary + hashes in `docs/regression/baseline/` (see `README.md` and `checksums.txt`).
+
+**Runtime Data Fixtures**
+- Local workspace fixtures live in `dev_assets/{config.json,db.sqlite}`; committed seeds live in `dev_assets_seed/forge-snapshot/from_repo/`.
+- Personal snapshot (`~/.automagik-forge/`) must be copied locally via `./scripts/collect-forge-snapshot.sh`; the resulting `from_home/` directory is git-ignored to keep secrets and large binaries out of history.
+- `~/.automagik-forge/db.sqlite` size 92.6 MB, SHA256 `53400c4e69db75a9629c1f7cbc69cc8df6ce6fb60cebd8434f0e85ea4aac8185` (access/mod 2025-09-21 13:03:19 BRT) — record for parity but not stored in the repo.
+
+**Baseline Sign-off**
+- All gating commands above are green as of 2025-09-21T16:45Z; treat these hashes, versions, and command transcripts as the gold reference for migration parity and regression comparisons.
+
+### Verification Commands Per Task
+- **Task 1**: `cargo check --workspace`; `cargo check -p forge-app`; `pnpm install` (or document sandbox restrictions); `git submodule status upstream`.
+- **Task 2**: `cargo fmt`; `cargo clippy --workspace --all-targets`; `cargo test -p forge-extensions-omni`; `sqlx migrate run --dry-run`; `curl http://localhost:8887/api/forge/omni/instances`.
+- **Task 3**: `pnpm run lint`; `pnpm run build`; `cargo test --workspace` (or targeted crates including Genie); `cargo run -p forge-app` followed by `curl` smoke checks for `/health`, `/legacy`, `/api/forge/genie/wishes`.
+- **Ongoing**: `git fetch upstream && git diff upstream/main...origin/main --stat`; `cd upstream && git pull --ff-only` to validate submodule cleanliness.
+- **Regression**: Run `./scripts/run-forge-regression.sh` (added in this wish) to exercise CLI, API, and key UI flows against snapshot data.
+
+**Tooling prerequisites:** `jq`, `pnpm`, and `curl` must be available for regression scripts.
+Set `FORGE_SAMPLE_TASK_ID` if the snapshot requires a specific task identifier for branch template checks.
+
+## Migration Tasks & Guarantees
+
+### Task 1 – Scaffold
+- Create submodule structure, empty crates, and updated manifests/scripts per prompt.
+- Run `./scripts/run-upstream-audit.sh` and capture summary in docs.
+- Archive current forge data (`~/.automagik-forge/`) into a new `dev_assets_seed/forge-snapshot/` directory (copy from existing `dev_assets/` plus home snapshot) for use in later regression harness.
+- Data preservation note: Production data can be reset—capture snapshot for parity checks only; no requirement to migrate historic data in-place.
+- Confirm repository still builds (`cargo check --workspace`, `pnpm install`).
+
+### Task 2 – Backend Extraction & Data Lifting
+- Extract Omni, branch template, config v7, and Genie logic into extension crates.
+- Create auxiliary tables & migrations with idempotent guards for branch templates, Omni settings, Genie metadata, and config snapshots.
+- Copy existing forge data from snapshot into auxiliary tables using dedicated migrations/scripts; acceptable to re-import from `~/.automagik-forge/forge.sqlite` fixture if live DB reset is fine.
+- Replace downstream hooks in upstream crates with composition layer adapters.
+- Implement regression harness back-end checks:
+  - Seed DB with fixture (import script provided).
+  - Call Omni webhook simulation, branch template CRUD, config read/write, Genie command metadata.
+  - Compare baseline JSON payloads to stored golden files under `docs/regression/baseline/`.
+- Commit `docs/regression/baseline` artifacts capturing expected JSON responses for parity assertions.
+- Update docs with migration runbook & rollback (restore from snapshot, rerun upstream build).
+
+### Task 3 – Frontend, CLI, and End-to-End Validation
+- Relocate forge UI components into `frontend-forge/` and ensure API clients target `/api/forge/*` endpoints.
+- Serve upstream UI under `/legacy` and confirm static asset parity (logos, service worker, theme).
+- Finish Genie extraction, exposing `/api/forge/genie/*` endpoints and bridging CLI commands.
+- Run full CLI pipeline: `pnpm run build:npx`, `pnpm pack --filter npx-cli`, install using `npm install -g dist.tgz`, and smoke test (`npx automagik-forge --version`, project init, Omni trigger).
+- Execute regression harness front-end suite (Playwright/curl) comparing DOM snapshots and key API responses to baselines.
+- Update `docs/regression/baseline` if intentional changes are introduced; otherwise ensure `./scripts/run-forge-regression.sh` diff passes cleanly.
+- Document release process updates (CI jobs, Docker build, npm publish) confirming they point at new binaries.
 
 ## 📊 Current Fork State Analysis
 
@@ -22,6 +125,20 @@ Migrate the existing automagik-forge fork (143 modified files, 11k+ changes) to 
 - Maintain npm package publishing capability
 - Keep MCP server functionality intact
 - Ensure zero data loss during migration
+
+#### Upstream Diff Drill
+Run the following before each phase lands to quantify the gap against upstream. (If the environment blocks network egress—as in our sandbox—note the limitation in prep docs and rerun locally.)
+
+```bash
+git fetch upstream
+git checkout origin/main
+git diff upstream/main...origin/main --stat
+git diff upstream/main...origin/main --name-status | tee docs/upstream-diff-latest.txt
+```
+
+Capture top offenders (e.g., omni services, branch template models, Genie automation) and reference them in task notes so extraction progress is measurable.
+
+**Helper:** run `./scripts/run-upstream-audit.sh` to execute the full command set and write outputs to `docs/upstream-diff-latest.txt`, `docs/upstream-diff-full.patch`, and the fetch log.
 
 ## 🏗️ Architecture Design
 
@@ -47,7 +164,7 @@ automagik-forge/
 │       ├── main.rs           # Application entry
 │       └── router.rs         # Dual frontend routing
 │
-├── frontend/                  # NEW FRONTEND
+├── frontend-forge/            # NEW FRONTEND
 │   ├── src/                  # Your new UI vision
 │   └── package.json
 │
@@ -64,7 +181,7 @@ automagik-forge/
 -- Upstream tables remain untouched
 -- All extensions in separate tables with foreign keys
 
-CREATE TABLE forge_task_extensions (
+CREATE TABLE IF NOT EXISTS forge_task_extensions (
     task_id INTEGER PRIMARY KEY REFERENCES tasks(id) ON DELETE CASCADE,
     branch_template TEXT,
     omni_settings JSONB,
@@ -72,13 +189,13 @@ CREATE TABLE forge_task_extensions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE forge_project_settings (
+CREATE TABLE IF NOT EXISTS forge_project_settings (
     project_id INTEGER PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
     custom_executors JSONB,
     forge_config JSONB
 );
 
-CREATE TABLE forge_omni_notifications (
+CREATE TABLE IF NOT EXISTS forge_omni_notifications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     task_id INTEGER REFERENCES tasks(id),
     notification_type TEXT,
@@ -87,7 +204,7 @@ CREATE TABLE forge_omni_notifications (
 );
 
 -- Views for convenient access
-CREATE VIEW enhanced_tasks AS
+CREATE VIEW IF NOT EXISTS enhanced_tasks AS
 SELECT
     t.*,
     fx.branch_template,
@@ -106,9 +223,14 @@ use upstream::services::TaskService as UpstreamTaskService;
 pub struct ForgeTaskService {
     upstream: UpstreamTaskService,
     db: SqlitePool,
+    omni: Option<OmniService>,
 }
 
 impl ForgeTaskService {
+    pub fn new(upstream: UpstreamTaskService, db: SqlitePool, omni: Option<OmniService>) -> Self {
+        Self { upstream, db, omni }
+    }
+
     // Use upstream unchanged
     pub async fn list_tasks(&self, project_id: i64) -> Result<Vec<Task>> {
         self.upstream.list_tasks(project_id).await
@@ -122,15 +244,17 @@ impl ForgeTaskService {
         // Add forge extensions
         if let Some(template) = data.branch_template {
             sqlx::query!(
-                "INSERT INTO forge_task_extensions (task_id, branch_template) VALUES (?, ?)",
+                "INSERT OR REPLACE INTO forge_task_extensions (task_id, branch_template) VALUES (?, ?)",
                 task.id,
                 template
-            ).execute(&self.db).await?;
+            )
+            .execute(&self.db)
+            .await?;
         }
 
         // Trigger forge features
-        if data.notify_omni {
-            self.omni_service.notify_task_created(&task).await?;
+        if let Some(omni) = &self.omni {
+            omni.notify_task_created(&task).await?;
         }
 
         Ok(task)
@@ -211,7 +335,7 @@ members = [
 (cd upstream/frontend && pnpm build)
 
 # Build new frontend
-(cd frontend && pnpm build)
+(cd frontend-forge && pnpm build)
 
 # Build Rust with both frontends embedded
 cargo build --release --bin forge-app
@@ -233,7 +357,7 @@ cd upstream && git checkout main && cd ..
 
 # Create new structure
 mkdir -p forge-{extensions,overrides,app}/src
-mkdir -p frontend-new/src
+mkdir -p frontend-forge/src
 ```
 
 ### Phase 2: Extract Current Modifications
@@ -285,6 +409,41 @@ impl BranchTemplateExt for Task {
     }
 }
 EOF
+```
+
+> **Recommendation:** replace the implicit `DB_POOL` singleton with a constructor-injected store so tests and services can provide scoped connections. For example:
+
+```rust
+pub struct BranchTemplateStore {
+    pool: SqlitePool,
+}
+
+impl BranchTemplateStore {
+    pub fn new(pool: SqlitePool) -> Self {
+        Self { pool }
+    }
+
+    pub async fn fetch(&self, task_id: i64) -> Result<Option<String>> {
+        let template = sqlx::query_scalar!(
+            "SELECT branch_template FROM forge_task_extensions WHERE task_id = ?",
+            task_id
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+        Ok(template)
+    }
+
+    pub async fn upsert(&self, task_id: i64, template: &str) -> Result<()> {
+        sqlx::query!(
+            "INSERT OR REPLACE INTO forge_task_extensions (task_id, branch_template) VALUES (?, ?)",
+            task_id,
+            template
+        )
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+}
 ```
 
 #### 2.3 Extract Config v7
@@ -339,6 +498,8 @@ impl ForgeApp {
 }
 ```
 
+> **Composition note:** in production wire-up, pass database pools and upstream services into `ForgeApp::new` rather than constructing globals inside the method. The scaffolding example keeps the snippet short; Task 2 should replace it with dependency-injected builders tied to configuration.
+
 #### 3.2 Service Composition Pattern
 ```rust
 // forge-app/src/services/task_service.rs
@@ -347,6 +508,7 @@ use upstream::services::TaskService as UpstreamTaskService;
 pub struct ForgeTaskService {
     upstream: UpstreamTaskService,
     extensions_db: SqlitePool, // For auxiliary tables
+    omni: Option<OmniService>,
 }
 
 impl ForgeTaskService {
@@ -366,9 +528,12 @@ impl ForgeTaskService {
         // Store extensions in auxiliary table
         if let Some(template) = branch_template {
             sqlx::query!(
-                "INSERT INTO forge_task_extensions (task_id, branch_template) VALUES (?, ?)",
-                task.id, template
-            ).execute(&self.extensions_db).await?;
+                "INSERT OR REPLACE INTO forge_task_extensions (task_id, branch_template) VALUES (?, ?)",
+                task.id,
+                template
+            )
+            .execute(&self.extensions_db)
+            .await?;
         }
 
         // Trigger forge features
@@ -386,7 +551,7 @@ impl ForgeTaskService {
 #### 4.1 Create Auxiliary Schema
 ```sql
 -- forge-app/migrations/001_auxiliary_tables.sql
-CREATE TABLE forge_task_extensions (
+CREATE TABLE IF NOT EXISTS forge_task_extensions (
     task_id INTEGER PRIMARY KEY REFERENCES tasks(id) ON DELETE CASCADE,
     branch_template TEXT,
     omni_settings JSONB,
@@ -394,14 +559,14 @@ CREATE TABLE forge_task_extensions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE forge_project_settings (
+CREATE TABLE IF NOT EXISTS forge_project_settings (
     project_id INTEGER PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
     custom_executors JSONB,
     forge_config JSONB
 );
 
 -- Compatibility views
-CREATE VIEW enhanced_tasks AS
+CREATE VIEW IF NOT EXISTS enhanced_tasks AS
 SELECT
     t.*,
     fx.branch_template,
@@ -414,10 +579,28 @@ LEFT JOIN forge_task_extensions fx ON t.id = fx.task_id;
 ```sql
 -- forge-app/migrations/002_migrate_data.sql
 -- Migrate branch_template from tasks to auxiliary
-INSERT INTO forge_task_extensions (task_id, branch_template)
+INSERT OR IGNORE INTO forge_task_extensions (task_id, branch_template)
 SELECT id, branch_template
 FROM tasks
 WHERE branch_template IS NOT NULL;
+
+UPDATE tasks
+SET branch_template = NULL
+WHERE branch_template IS NOT NULL;
+
+-- Optional: migrate Omni + Genie JSON blobs if present in upstream tables
+INSERT OR REPLACE INTO forge_task_extensions (task_id, omni_settings, genie_metadata)
+SELECT id,
+       omni_settings,
+       genie_metadata
+FROM tasks
+WHERE omni_settings IS NOT NULL OR genie_metadata IS NOT NULL;
+
+-- Optional: migrate project-level config metadata (if stored upstream)
+INSERT OR REPLACE INTO forge_project_settings (project_id, forge_config)
+SELECT id, config_override
+FROM projects
+WHERE config_override IS NOT NULL;
 ```
 
 ### Phase 5: Frontend Dual Routing
@@ -428,7 +611,7 @@ WHERE branch_template IS NOT NULL;
 use rust_embed::RustEmbed;
 
 #[derive(RustEmbed)]
-#[folder = "../frontend-new/dist"]
+#[folder = "../frontend-forge/dist"]
 struct ForgeFrontend;
 
 #[derive(RustEmbed)]
@@ -473,7 +656,7 @@ members = [
 (cd upstream/frontend && pnpm build)
 
 # Build new frontend
-(cd frontend-new && pnpm build)
+(cd frontend-forge && pnpm build)
 
 # Build Rust with both frontends
 cargo build --release --bin forge-app
@@ -493,6 +676,9 @@ cargo build --release --bin forge-app
 - [ ] NPM package installs and runs
 - [ ] Both frontends accessible (/legacy and /)
 - [ ] All API endpoints return expected data
+- [ ] Regression harness passes (backend + frontend suites)
+- [ ] CLI smoke tests (`npx automagik-forge --help`, project init) succeed
+- [ ] Snapshot diff against baseline under docs/regression/ reports no changes
 ```
 
 #### 7.2 Upstream Update Test
@@ -512,6 +698,7 @@ cargo build --release
 - Zero modifications to upstream code
 - npm package publishes successfully
 - All forge features working via composition
+- Regression harness passes with zero diffs (backend, frontend, CLI)
 
 ## 🎯 Maintenance Benefits
 - **Merge time**: 13-23 hours → ~0 hours
@@ -533,7 +720,7 @@ cargo build --release
 - [ ] Add upstream as git submodule
 - [ ] Create forge-extensions directory structure
 - [ ] Set up forge-app composition layer
-- [ ] Create frontend-new alongside current frontend
+- [ ] Create frontend-forge alongside current frontend
 - [ ] Update workspace Cargo.toml
 
 ### Feature Extraction
@@ -552,7 +739,7 @@ cargo build --release
 - [ ] Create rollback scripts
 
 ### Frontend Migration
-- [ ] Extract custom components to frontend-new
+- [ ] Extract custom components to frontend-forge
 - [ ] Migrate branding assets
 - [ ] Set up dual frontend routing
 - [ ] Test feature parity between old and new UI

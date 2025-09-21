@@ -1,0 +1,5 @@
+954d6eef190952228c6fcb31118446fa472bda0e96b05e53008b4b0ad8f46350  dev_assets_seed/forge-snapshot/from_repo/config.json
+41bb9695a58e0763d2ca6d92c0882b5bd76f8b99001e80288b1099c7be8a14e4  dev_assets_seed/forge-snapshot/from_repo/db.sqlite
+8699edcd26c6f81e1c4171fddcc29cd0cb132275565d076667535ee62c0b74fb  npx-cli/dist/linux-x64/automagik-forge.zip
+7218d1299ebaee920ad9deabd844ec8acd1ef982c1d6349eda479fc78acc042f  npx-cli/dist/linux-x64/automagik-forge-mcp.zip
+# Local snapshot hashes are generated on-demand; run scripts/collect-forge-snapshot.sh then sha256sum your copy if needed.

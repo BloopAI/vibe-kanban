@@ -86,6 +86,8 @@ vibe-kanban-*.tgz
 .dev-ports.json
 
 dev_assets
+dev_assets_seed/forge-snapshot/from_home/
+dev_assets_seed/forge-snapshot/from_home/**
 /frontend/.env.sentry-build-plugin
 .ssh
 
