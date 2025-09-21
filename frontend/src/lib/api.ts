@@ -42,6 +42,7 @@ import {
   FollowUpDraftResponse,
   UpdateFollowUpDraftRequest,
   GitOperationError,
+  ApprovalResponse,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -801,10 +802,7 @@ export const imagesApi = {
 export const approvalsApi = {
   respond: async (
     approvalId: string,
-    payload: {
-      execution_process_id: string;
-      status: ApprovalStatus;
-    },
+    payload: ApprovalResponse,
     signal?: AbortSignal
   ): Promise<ApprovalStatus> => {
     const res = await makeRequest(`/api/approvals/${approvalId}/respond`, {
