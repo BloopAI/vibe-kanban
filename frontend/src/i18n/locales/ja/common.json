@@ -2,6 +2,7 @@
   "buttons": {
     "save": "保存",
     "cancel": "キャンセル",
+    "send": "送信",
     "delete": "削除",
     "edit": "編集",
     "create": "作成",

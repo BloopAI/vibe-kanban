@@ -1,19 +1,15 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { applyPatch } from 'rfc6902';
 import type { Operation } from 'rfc6902';
+import useWebSocket, { ReadyState } from 'react-use-websocket';
 
 type WsJsonPatchMsg = { JsonPatch: Operation[] };
 type WsFinishedMsg = { finished: boolean };
 type WsMsg = WsJsonPatchMsg | WsFinishedMsg;
 
 interface UseJsonPatchStreamOptions<T> {
-  /**
-   * Called once when the stream starts to inject initial data
-   */
   injectInitialEntry?: (data: T) => void;
-  /**
-   * Filter/deduplicate patches before applying them
-   */
   deduplicatePatches?: (patches: Operation[]) => Operation[];
 }
 
@@ -23,155 +19,113 @@ interface UseJsonPatchStreamResult<T> {
   error: string | null;
 }
 
-/**
- * Generic hook for consuming WebSocket streams that send JSON messages with patches
- */
+// Track one-time initialization side-effects per URL
+const injectedOnce = new Set<string>();
+
+function toWsUrl(endpoint?: string): string | undefined {
+  if (!endpoint) return undefined;
+  try {
+    const url = new URL(endpoint, window.location.origin);
+    url.protocol = url.protocol.replace('http', 'ws');
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
 export const useJsonPatchWsStream = <T>(
   endpoint: string | undefined,
   enabled: boolean,
   initialData: () => T,
   options: UseJsonPatchStreamOptions<T> = {}
 ): UseJsonPatchStreamResult<T> => {
-  const [data, setData] = useState<T | undefined>(undefined);
-  const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const dataRef = useRef<T | undefined>(undefined);
-  const retryTimerRef = useRef<number | null>(null);
-  const retryAttemptsRef = useRef<number>(0);
-  const [retryNonce, setRetryNonce] = useState(0);
+  const wsUrl = useMemo(() => toWsUrl(endpoint), [endpoint]);
+  const queryKey = useMemo(() => ['ws-json-patch', wsUrl], [wsUrl]);
+  const qc = useQueryClient();
 
-  function scheduleReconnect() {
-    if (retryTimerRef.current) return; // already scheduled
-    // Exponential backoff with cap: 1s, 2s, 4s, 8s (max), then stay at 8s
-    const attempt = retryAttemptsRef.current;
-    const delay = Math.min(8000, 1000 * Math.pow(2, attempt));
-    retryTimerRef.current = window.setTimeout(() => {
-      retryTimerRef.current = null;
-      setRetryNonce((n) => n + 1);
-    }, delay);
-  }
+  // Use React Query as the shared state store
+  const { data } = useQuery<T | undefined>({
+    queryKey,
+    enabled: !!wsUrl && enabled,
+    // Keep the snapshot indefinitely while mounted; GC immediately when unused
+    staleTime: Infinity,
+    gcTime: 0,
+    initialData: undefined,
+  });
 
+  // Ensure initial snapshot exists once when the stream becomes enabled
   useEffect(() => {
-    if (!enabled || !endpoint) {
-      // Close connection and reset state
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      if (retryTimerRef.current) {
-        window.clearTimeout(retryTimerRef.current);
-        retryTimerRef.current = null;
-      }
-      retryAttemptsRef.current = 0;
-      setData(undefined);
-      setIsConnected(false);
-      setError(null);
-      dataRef.current = undefined;
-      return;
+    if (!wsUrl || !enabled) return;
+    const existing = qc.getQueryData<T | undefined>(queryKey);
+    if (existing === undefined) {
+      const init = initialData();
+      qc.setQueryData<T>(queryKey, init);
     }
+  }, [wsUrl, enabled, qc, queryKey, initialData]);
 
-    // Initialize data
-    if (!dataRef.current) {
-      dataRef.current = initialData();
-
-      // Inject initial entry if provided
-      if (options.injectInitialEntry) {
-        options.injectInitialEntry(dataRef.current);
-      }
-
-      setData({ ...dataRef.current });
+  // One-time injection per stream URL
+  useEffect(() => {
+    if (!wsUrl || !enabled || !options.injectInitialEntry) return;
+    if (injectedOnce.has(wsUrl)) return;
+    const snapshot = (qc.getQueryData<T>(queryKey) ?? initialData()) as T;
+    try {
+      options.injectInitialEntry(snapshot);
+    } catch (e) {
+      console.error('injectInitialEntry failed', e);
+    } finally {
+      injectedOnce.add(wsUrl);
     }
+  }, [wsUrl, enabled, qc, queryKey, initialData, options.injectInitialEntry]);
 
-    // Create WebSocket if it doesn't exist
-    if (!wsRef.current) {
-      // Convert HTTP endpoint to WebSocket endpoint
-      const wsEndpoint = endpoint.replace(/^http/, 'ws');
-      const ws = new WebSocket(wsEndpoint);
-
-      ws.onopen = () => {
+  const { readyState, getWebSocket } = useWebSocket(
+    wsUrl ?? 'ws://invalid',
+    {
+      share: true,
+      shouldReconnect: () => true,
+      reconnectInterval: (attempt) =>
+        Math.min(8000, 1000 * Math.pow(2, attempt)),
+      retryOnError: true,
+      onOpen: () => {
         setError(null);
-        setIsConnected(true);
-        // Reset backoff on successful connection
-        retryAttemptsRef.current = 0;
-        if (retryTimerRef.current) {
-          window.clearTimeout(retryTimerRef.current);
-          retryTimerRef.current = null;
-        }
-      };
-
-      ws.onmessage = (event) => {
+      },
+      onMessage: (event) => {
         try {
           const msg: WsMsg = JSON.parse(event.data);
-
-          // Handle JsonPatch messages (same as SSE json_patch event)
           if ('JsonPatch' in msg) {
             const patches: Operation[] = msg.JsonPatch;
             const filtered = options.deduplicatePatches
               ? options.deduplicatePatches(patches)
               : patches;
-
-            if (!filtered.length || !dataRef.current) return;
-
-            // Deep clone the current state before mutating it
-            dataRef.current = structuredClone(dataRef.current);
-
-            // Apply patch (mutates the clone in place)
-            applyPatch(dataRef.current as any, filtered);
-
-            // React re-render: dataRef.current is already a new object
-            setData(dataRef.current);
+            if (!filtered.length) return;
+            // Functional update to avoid stale closures; shared across subscribers
+            qc.setQueryData<T | undefined>(queryKey, (prev) => {
+              const base = (prev ?? initialData()) as T;
+              const next = structuredClone(base);
+              applyPatch(next as any, filtered);
+              return next;
+            });
+          } else if ('finished' in msg) {
+            try {
+              getWebSocket()?.close();
+            } catch {
+              /* ignore */
+            }
           }
-
-          // Handle finished messages ({finished: true})
-          if ('finished' in msg) {
-            ws.close();
-            wsRef.current = null;
-            setIsConnected(false);
-            // Treat finished as terminal and schedule reconnect; servers may rotate
-            retryAttemptsRef.current += 1;
-            scheduleReconnect();
-          }
-        } catch (err) {
-          console.error('Failed to process WebSocket message:', err);
+        } catch (e) {
+          console.error('Failed to process WebSocket message:', e);
           setError('Failed to process stream update');
         }
-      };
-
-      ws.onerror = () => {
+      },
+      onError: () => {
         setError('Connection failed');
-      };
+      },
+    },
+    !!wsUrl && enabled
+  );
 
-      ws.onclose = () => {
-        setIsConnected(false);
-        wsRef.current = null;
-        retryAttemptsRef.current += 1;
-        scheduleReconnect();
-      };
-
-      wsRef.current = ws;
-    }
-
-    return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      if (retryTimerRef.current) {
-        window.clearTimeout(retryTimerRef.current);
-        retryTimerRef.current = null;
-      }
-      dataRef.current = undefined;
-      setData(undefined);
-    };
-  }, [
-    endpoint,
-    enabled,
-    initialData,
-    options.injectInitialEntry,
-    options.deduplicatePatches,
-    retryNonce,
-  ]);
-
-  return { data, isConnected, error };
+  const isConnected = enabled && !!wsUrl && readyState === ReadyState.OPEN;
+  // Match old semantics: if not enabled/url, surface undefined data
+  const resultData = enabled && !!wsUrl ? (data as T | undefined) : undefined;
+  return { data: resultData, isConnected, error };
 };
