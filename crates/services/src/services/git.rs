@@ -177,11 +177,19 @@ impl GitService {
     pub fn ensure_main_branch_exists(&self, repo_path: &Path) -> Result<(), GitServiceError> {
         let repo = self.open_repo(repo_path)?;
 
-        // Only create initial commit if repository is empty
-        if repo.is_empty()? {
-            self.create_initial_commit(&repo)?;
+        match repo.branches(None) {
+            Ok(branches) => {
+                if branches.count() == 0 {
+                    // No branches exist - create initial commit on main branch
+                    self.create_initial_commit(&repo)?;
+                }
+            }
+            Err(e) => {
+                return Err(GitServiceError::InvalidRepository(format!(
+                    "Failed to list branches: {e}"
+                )));
+            }
         }
-
         Ok(())
     }
 
