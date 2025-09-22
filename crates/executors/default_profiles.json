@@ -80,7 +80,7 @@
           "model": "auto"
         }
       },
-      "CLAUDE_4_SONNET": {
+      "SONNET_4": {
         "CURSOR": {
           "force": true,
           "model": "sonnet-4"
