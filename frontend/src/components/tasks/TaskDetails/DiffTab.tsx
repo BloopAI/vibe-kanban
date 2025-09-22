@@ -35,14 +35,14 @@ function DiffTab({ selectedAttempt }: DiffTabProps) {
     }
   }, [diffs, loading]);
 
-  // If no diffs arrive within 7 seconds, stop showing the spinner
+  // If no diffs arrive within 3 seconds, stop showing the spinner
   useEffect(() => {
     if (!loading) return;
     const timer = setTimeout(() => {
       if (diffs.length === 0) {
         setLoading(false);
       }
-    }, 7000);
+    }, 3000);
     return () => clearTimeout(timer);
   }, [loading, diffs.length]);
 
