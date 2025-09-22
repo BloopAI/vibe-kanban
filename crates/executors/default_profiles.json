@@ -76,7 +76,32 @@
     "CURSOR": {
       "DEFAULT": {
         "CURSOR": {
-          "force": true
+          "force": true,
+          "model": "auto"
+        }
+      },
+      "CLAUDE_4_SONNET": {
+        "CURSOR": {
+          "force": true,
+          "model": "sonnet-4"
+        }
+      },
+      "CLAUDE_4_1_OPUS": {
+        "CURSOR": {
+          "force": true,
+          "model": "opus-4.1"
+        }
+      },
+      "GPT_5": {
+        "CURSOR": {
+          "force": true,
+          "model": "gpt-5"
+        }
+      },
+      "GROK": {
+        "CURSOR": {
+          "force": true,
+          "model": "grok"
         }
       }
     }
