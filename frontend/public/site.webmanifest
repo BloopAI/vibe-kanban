@@ -6,11 +6,6 @@
       "src": "/favicon-v-light.svg",
       "sizes": "any",
       "type": "image/svg+xml"
-    },
-    {
-      "src": "/favicon-v-dark.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
     }
   ],
   "theme_color": "#ffffff",
