@@ -242,11 +242,9 @@ fn main() {
     let types_path = shared_path.join("types.ts");
 
     if check_mode {
-        let types_up_to_date;
-
         // Check TypeScript types
         let current = fs::read_to_string(&types_path).unwrap_or_default();
-        types_up_to_date = if current == generated {
+        let types_up_to_date = if current == generated {
             println!("✅ shared/types.ts is up to date.");
             true
         } else {
