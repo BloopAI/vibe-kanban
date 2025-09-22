@@ -12,12 +12,14 @@
       "default": null
     },
     "force": {
+      "description": "Force allow commands unless explicitly denied",
       "type": [
         "boolean",
         "null"
       ]
     },
     "model": {
+      "description": "auto, sonnet-4, gpt-5, opus-4.1, grok",
       "type": [
         "string",
         "null"
