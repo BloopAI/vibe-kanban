@@ -152,6 +152,65 @@ fn write_schema<T: JsonSchema>(
     Ok(())
 }
 
+fn generate_schema_content<T: JsonSchema>() -> Result<String, Box<dyn std::error::Error>> {
+    // Draft-07, inline everything (no $defs)
+    let mut settings = SchemaSettings::draft07();
+    settings.inline_subschemas = true;
+
+    let generator: SchemaGenerator = settings.into_generator();
+    let schema: Schema = generator.into_root_schema_for::<T>();
+
+    // Convert to JSON value to manipulate it
+    let mut schema_value: serde_json::Value = serde_json::to_value(&schema)?;
+
+    // Remove the title from root schema to prevent RJSF from creating an outer field container
+    if let Some(obj) = schema_value.as_object_mut() {
+        obj.remove("title");
+    }
+
+    let schema_json = serde_json::to_string_pretty(&schema_value)?;
+    Ok(schema_json)
+}
+
+fn check_schemas() -> Result<(), Box<dyn std::error::Error>> {
+    let schemas_dir = Path::new("shared/schemas");
+    let mut all_up_to_date = true;
+    let mut outdated_files = Vec::new();
+
+    // Check each schema individually to avoid closure type issues
+    macro_rules! check_schema {
+        ($name:literal, $type:ty) => {
+            let schema_file = schemas_dir.join(format!("{}.json", $name));
+            let expected_content = generate_schema_content::<$type>()?;
+            let current_content = fs::read_to_string(&schema_file).unwrap_or_default();
+
+            if current_content != expected_content {
+                all_up_to_date = false;
+                outdated_files.push(format!("shared/schemas/{}.json", $name));
+            }
+        };
+    }
+
+    check_schema!("amp", executors::executors::amp::Amp);
+    check_schema!("claude_code", executors::executors::claude::ClaudeCode);
+    check_schema!("gemini", executors::executors::gemini::Gemini);
+    check_schema!("codex", executors::executors::codex::Codex);
+    check_schema!("cursor", executors::executors::cursor::Cursor);
+    check_schema!("opencode", executors::executors::opencode::Opencode);
+    check_schema!("qwen_code", executors::executors::qwen::QwenCode);
+
+    if all_up_to_date {
+        println!("✅ All JSON schemas are up to date.");
+        Ok(())
+    } else {
+        eprintln!(
+            "❌ The following schema files are not up to date: {}",
+            outdated_files.join(", ")
+        );
+        Err("Schema files are outdated".into())
+    }
+}
+
 fn generate_schemas() -> Result<(), Box<dyn std::error::Error>> {
     // Create schemas directory
     let schemas_dir = Path::new("shared/schemas");
@@ -183,15 +242,26 @@ fn main() {
     let types_path = shared_path.join("types.ts");
 
     if check_mode {
-        // Read the current file
+        let types_up_to_date;
+
+        // Check TypeScript types
         let current = fs::read_to_string(&types_path).unwrap_or_default();
-        if current == generated {
+        types_up_to_date = if current == generated {
             println!("✅ shared/types.ts is up to date.");
+            true
+        } else {
+            eprintln!("❌ shared/types.ts is not up to date.");
+            false
+        };
+
+        // Check JSON schemas
+        let schemas_up_to_date = check_schemas().is_ok();
+
+        // Exit with appropriate code
+        if types_up_to_date && schemas_up_to_date {
             std::process::exit(0);
         } else {
-            eprintln!(
-                "❌ shared/types.ts is not up to date. Please run 'npm run generate-types' and commit the changes."
-            );
+            eprintln!("Please run 'npm run generate-types' and commit the changes.");
             std::process::exit(1);
         }
     } else {
