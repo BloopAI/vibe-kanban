@@ -86,7 +86,7 @@
           "model": "sonnet-4"
         }
       },
-      "CLAUDE_4_1_OPUS": {
+      "OPUS_4_1": {
         "CURSOR": {
           "force": true,
           "model": "opus-4.1"
