@@ -287,7 +287,9 @@ async fn settings_json(plan: bool) -> Result<String, std::io::Error> {
 }
 
 fn create_watchkill_script(command: &str) -> String {
-    let claude_plan_stop_indicator = "Approval request timed out";
+    // Hack: we concatenate so that Claude doesn't trigger the watchkill when reading this file
+    // during development, since it contains the stop phrase
+    let claude_plan_stop_indicator = concat!("Approval ", "request timed out");
     let cmd = shlex::try_quote(command).unwrap().to_string();
 
     format!(
