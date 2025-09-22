@@ -18,6 +18,6 @@ export function getActualTheme(
       : 'light';
   }
 
-  // All other themes (DARK, PURPLE, GREEN, BLUE, ORANGE, RED) have dark backgrounds
+  // ThemeMode.DARK
   return 'dark';
 }

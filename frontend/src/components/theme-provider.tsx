@@ -33,15 +33,7 @@ export function ThemeProvider({
   useEffect(() => {
     const root = window.document.documentElement;
 
-    root.classList.remove(
-      'light',
-      'dark',
-      'purple',
-      'green',
-      'blue',
-      'orange',
-      'red'
-    );
+    root.classList.remove('light', 'dark');
 
     if (theme === ThemeMode.SYSTEM) {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
