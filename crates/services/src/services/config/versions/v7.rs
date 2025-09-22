@@ -59,7 +59,10 @@ impl Config {
             | v6::ThemeMode::Blue
             | v6::ThemeMode::Orange
             | v6::ThemeMode::Red => {
-                tracing::info!("Migrating color theme {:?} to System theme", old_config.theme);
+                tracing::info!(
+                    "Migrating color theme {:?} to System theme",
+                    old_config.theme
+                );
                 ThemeMode::System
             }
         };
