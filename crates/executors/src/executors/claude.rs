@@ -3,7 +3,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::{path::Path, process::Stdio, sync::Arc};
 
 use async_trait::async_trait;
-use command_group::{AsyncCommandGroup, AsyncGroupChild};
+use command_group::AsyncCommandGroup;
 use futures::StreamExt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -21,7 +21,7 @@ use workspace_utils::{
 
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
-    executors::{AppendPrompt, ExecutorError, StandardCodingAgentExecutor},
+    executors::{AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem, ToolStatus,
         stderr_processor::normalize_stderr_logs,
@@ -121,11 +121,7 @@ impl ClaudeCode {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for ClaudeCode {
-    async fn spawn(
-        &self,
-        current_dir: &Path,
-        prompt: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let command_builder = self.build_command_builder().await;
         let mut base_command = command_builder.build_initial();
@@ -158,7 +154,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             stdin.shutdown().await?;
         }
 
-        Ok(child)
+        Ok(child.into())
     }
 
     async fn spawn_follow_up(
@@ -166,7 +162,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    ) -> Result<SpawnedChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let command_builder = self.build_command_builder().await;
         // Build follow-up command with --resume {session_id}
@@ -201,7 +197,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             stdin.shutdown().await?;
         }
 
-        Ok(child)
+        Ok(child.into())
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {

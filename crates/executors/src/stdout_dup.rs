@@ -159,6 +159,25 @@ pub fn tee_stdout_with_appender(
     ))
 }
 
+/// Create a fresh stdout pipe for the child process and return an async writer
+/// that writes directly to the child's new stdout.
+///
+/// This helper does not read or duplicate any existing stdout; it simply
+/// replaces the child's stdout with a new pipe reader and returns the
+/// corresponding async writer for the caller to write into.
+pub fn create_stdout_pipe_writer<'b>(
+    child: &mut AsyncGroupChild,
+) -> Result<impl AsyncWrite + 'b, ExecutorError> {
+    // Create replacement pipe and set as new child stdout
+    let (pipe_reader, pipe_writer) = os_pipe::pipe().map_err(|e| {
+        ExecutorError::Io(std::io::Error::other(format!("Failed to create pipe: {e}")))
+    })?;
+    child.inner().stdout = Some(wrap_fd_as_child_stdout(pipe_reader)?);
+
+    // Return async writer to the caller
+    wrap_fd_as_tokio_writer(pipe_writer)
+}
+
 // =========================================
 // OS file descriptor helper functions
 // =========================================

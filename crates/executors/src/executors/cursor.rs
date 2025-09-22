@@ -2,7 +2,7 @@ use core::str;
 use std::{path::Path, process::Stdio, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-use command_group::{AsyncCommandGroup, AsyncGroupChild};
+use command_group::AsyncCommandGroup;
 use futures::StreamExt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -20,7 +20,7 @@ use workspace_utils::{
 
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
-    executors::{AppendPrompt, ExecutorError, StandardCodingAgentExecutor},
+    executors::{AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem, ToolStatus,
         plain_text_processor::PlainTextLogProcessor,
@@ -61,11 +61,7 @@ impl Cursor {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Cursor {
-    async fn spawn(
-        &self,
-        current_dir: &Path,
-        prompt: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let agent_cmd = self.build_command_builder().build_initial();
 
@@ -88,7 +84,7 @@ impl StandardCodingAgentExecutor for Cursor {
             stdin.shutdown().await?;
         }
 
-        Ok(child)
+        Ok(child.into())
     }
 
     async fn spawn_follow_up(
@@ -96,7 +92,7 @@ impl StandardCodingAgentExecutor for Cursor {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    ) -> Result<SpawnedChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let agent_cmd = self
             .build_command_builder()
@@ -121,7 +117,7 @@ impl StandardCodingAgentExecutor for Cursor {
             stdin.shutdown().await?;
         }
 
-        Ok(child)
+        Ok(child.into())
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &Path) {

@@ -1,7 +1,7 @@
 use std::{path::Path, process::Stdio, sync::Arc};
 
 use async_trait::async_trait;
-use command_group::{AsyncCommandGroup, AsyncGroupChild};
+use command_group::AsyncCommandGroup;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
@@ -11,7 +11,7 @@ use workspace_utils::{msg_store::MsgStore, shell::get_shell_command};
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{
-        AppendPrompt, ExecutorError, StandardCodingAgentExecutor,
+        AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
         claude::{ClaudeLogProcessor, HistoryStrategy},
     },
     logs::{stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider},
@@ -44,11 +44,7 @@ impl Amp {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Amp {
-    async fn spawn(
-        &self,
-        current_dir: &Path,
-        prompt: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let amp_command = self.build_command_builder().build_initial();
 
@@ -72,7 +68,7 @@ impl StandardCodingAgentExecutor for Amp {
             stdin.shutdown().await?;
         }
 
-        Ok(child)
+        Ok(child.into())
     }
 
     async fn spawn_follow_up(
@@ -80,7 +76,7 @@ impl StandardCodingAgentExecutor for Amp {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    ) -> Result<SpawnedChild, ExecutorError> {
         // Use shell command for cross-platform compatibility
         let (shell_cmd, shell_arg) = get_shell_command();
 
@@ -142,7 +138,7 @@ impl StandardCodingAgentExecutor for Amp {
             stdin.shutdown().await?;
         }
 
-        Ok(child)
+        Ok(child.into())
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {

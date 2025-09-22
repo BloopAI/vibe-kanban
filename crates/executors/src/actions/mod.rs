@@ -1,7 +1,6 @@
 use std::path::Path;
 
 use async_trait::async_trait;
-use command_group::AsyncGroupChild;
 use enum_dispatch::enum_dispatch;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -11,7 +10,7 @@ use crate::{
         coding_agent_follow_up::CodingAgentFollowUpRequest,
         coding_agent_initial::CodingAgentInitialRequest, script::ScriptRequest,
     },
-    executors::ExecutorError,
+    executors::{ExecutorError, SpawnedChild},
 };
 pub mod coding_agent_follow_up;
 pub mod coding_agent_initial;
@@ -49,12 +48,12 @@ impl ExecutorAction {
 #[async_trait]
 #[enum_dispatch(ExecutorActionType)]
 pub trait Executable {
-    async fn spawn(&self, current_dir: &Path) -> Result<AsyncGroupChild, ExecutorError>;
+    async fn spawn(&self, current_dir: &Path) -> Result<SpawnedChild, ExecutorError>;
 }
 
 #[async_trait]
 impl Executable for ExecutorAction {
-    async fn spawn(&self, current_dir: &Path) -> Result<AsyncGroupChild, ExecutorError> {
+    async fn spawn(&self, current_dir: &Path) -> Result<SpawnedChild, ExecutorError> {
         self.typ.spawn(current_dir).await
     }
 }

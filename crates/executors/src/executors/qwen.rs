@@ -1,17 +1,17 @@
-use std::{path::Path, process::Stdio, sync::Arc};
+use std::{path::Path, sync::Arc};
 
 use async_trait::async_trait;
-use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
-use workspace_utils::{msg_store::MsgStore, shell::get_shell_command};
+use workspace_utils::msg_store::MsgStore;
 
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
-    executors::{AppendPrompt, ExecutorError, StandardCodingAgentExecutor, gemini::Gemini},
-    logs::{stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider},
+    executors::{
+        AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
+        gemini::AcpAgentHarness,
+    },
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
@@ -31,42 +31,20 @@ impl QwenCode {
         if self.yolo.unwrap_or(false) {
             builder = builder.extend_params(["--yolo"]);
         }
-
+        builder = builder.extend_params(["--experimental-acp"]);
         apply_overrides(builder, &self.cmd)
     }
 }
 
 #[async_trait]
 impl StandardCodingAgentExecutor for QwenCode {
-    async fn spawn(
-        &self,
-        current_dir: &Path,
-        prompt: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
-        let (shell_cmd, shell_arg) = get_shell_command();
+    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         let qwen_command = self.build_command_builder().build_initial();
-
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
-
-        let mut command = Command::new(shell_cmd);
-        command
-            .kill_on_drop(true)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(&qwen_command);
-
-        let mut child = command.group_spawn()?;
-
-        // Feed the prompt in, then close the pipe
-        if let Some(mut stdin) = child.inner().stdin.take() {
-            stdin.write_all(combined_prompt.as_bytes()).await?;
-            stdin.shutdown().await?;
-        }
-
-        Ok(child)
+        let harness = AcpAgentHarness::with_session_namespace("qwen_sessions");
+        harness
+            .spawn_with_command(current_dir, combined_prompt, qwen_command)
+            .await
     }
 
     async fn spawn_follow_up(
@@ -74,64 +52,17 @@ impl StandardCodingAgentExecutor for QwenCode {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
-        let (shell_cmd, shell_arg) = get_shell_command();
-        let qwen_command = self
-            .build_command_builder()
-            .build_follow_up(&["--resume".to_string(), session_id.to_string()]);
-
+    ) -> Result<SpawnedChild, ExecutorError> {
+        let qwen_command = self.build_command_builder().build_follow_up(&[]);
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
-
-        let mut command = Command::new(shell_cmd);
-        command
-            .kill_on_drop(true)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(&qwen_command);
-
-        let mut child = command.group_spawn()?;
-
-        // Feed the followup prompt in, then close the pipe
-        if let Some(mut stdin) = child.inner().stdin.take() {
-            stdin.write_all(combined_prompt.as_bytes()).await?;
-            stdin.shutdown().await?;
-        }
-
-        Ok(child)
+        let harness = AcpAgentHarness::with_session_namespace("qwen_sessions");
+        harness
+            .spawn_follow_up_with_command(current_dir, combined_prompt, session_id, qwen_command)
+            .await
     }
 
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {
-        // QwenCode has similar output format to Gemini CLI
-        // Use Gemini's proven sentence-break formatting instead of simple replace
-        let entry_index_counter = EntryIndexProvider::start_from(&msg_store);
-        normalize_stderr_logs(msg_store.clone(), entry_index_counter.clone());
-
-        // Send session ID to msg_store to enable follow-ups
-        msg_store.push_session_id(
-            current_dir
-                .file_name()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .to_string(),
-        );
-
-        // Use Gemini's log processor for consistent formatting
-        tokio::spawn(async move {
-            use futures::StreamExt;
-            let mut stdout = msg_store.stdout_chunked_stream();
-
-            // Use Gemini's proven sentence-break heuristics
-            let mut processor = Gemini::create_gemini_style_processor(entry_index_counter);
-
-            while let Some(Ok(chunk)) = stdout.next().await {
-                for patch in processor.process(chunk) {
-                    msg_store.push_patch(patch);
-                }
-            }
-        });
+    fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &Path) {
+        crate::executors::acp::normalize_logs(msg_store, worktree_path);
     }
 
     // MCP configuration methods

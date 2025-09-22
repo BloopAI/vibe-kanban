@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     io,
+    os::unix::process::ExitStatusExt,
     path::{Path, PathBuf},
     sync::{
         Arc,
@@ -40,7 +41,7 @@ use executors::{
         },
     },
 };
-use futures::{StreamExt, TryStreamExt, stream::select};
+use futures::{FutureExt, StreamExt, TryStreamExt, stream::select};
 use notify_debouncer_full::DebouncedEvent;
 use serde_json::json;
 use services::services::{
@@ -346,7 +347,11 @@ impl LocalContainerService {
 
     /// Spawn a background task that polls the child process for completion and
     /// cleans up the execution entry when it exits.
-    pub fn spawn_exit_monitor(&self, exec_id: &Uuid) -> JoinHandle<()> {
+    pub fn spawn_exit_monitor(
+        &self,
+        exec_id: &Uuid,
+        exit_signal: Option<tokio::sync::oneshot::Receiver<()>>,
+    ) -> JoinHandle<()> {
         let exec_id = *exec_id;
         let child_store = self.child_store.clone();
         let msg_stores = self.msg_stores.clone();
@@ -355,180 +360,199 @@ impl LocalContainerService {
         let container = self.clone();
         let analytics = self.analytics.clone();
 
+        let mut process_exit_rx = self.spawn_os_exit_watcher(exec_id);
+
         tokio::spawn(async move {
-            loop {
-                let status_opt = {
-                    let child_lock = {
-                        let map = child_store.read().await;
-                        map.get(&exec_id)
-                            .cloned()
-                            .unwrap_or_else(|| panic!("Child handle missing for {exec_id}"))
+            let mut exit_signal_future = exit_signal
+                .map(|rx| rx.map(|_| ()).boxed()) // wait for signal
+                .unwrap_or_else(|| std::future::pending::<()>().boxed()); // no signal, stall forever
+
+            let status_result: std::io::Result<std::process::ExitStatus>;
+
+            // Wait for process to exit, or exit signal from executor
+            tokio::select! {
+                // Exit signal.
+                // Some coding agent processes do not automatically exit after processing the user request; instead the executor
+                // signals when processing has finished to gracefully kill the process.
+                _ = &mut exit_signal_future => {
+                    // Executor signaled completion: kill group and remember to force Completed(0)
+                    if let Some(child_lock) = child_store.read().await.get(&exec_id).cloned() {
+                        let mut child = child_lock.write().await ;
+                        if let Err(err) = command::kill_process_group(&mut child).await {
+                            tracing::error!("Failed to kill process group after exit signal: {} {}", exec_id, err);
+                        }
+                    }
+                    status_result = Ok(std::process::ExitStatus::from_raw(0));
+                }
+                // Process exit
+                exit_status_result = &mut process_exit_rx => {
+                    status_result = exit_status_result.unwrap_or_else(|e| Err(std::io::Error::other(e)));
+                }
+            }
+
+            let (exit_code, status) = match status_result {
+                Ok(exit_status) => {
+                    let code = exit_status.code().unwrap_or(-1) as i64;
+                    let status = if exit_status.success() {
+                        ExecutionProcessStatus::Completed
+                    } else {
+                        ExecutionProcessStatus::Failed
                     };
+                    (Some(code), status)
+                }
+                Err(_) => (None, ExecutionProcessStatus::Failed),
+            };
 
-                    let mut child_handler = child_lock.write().await;
-                    match child_handler.try_wait() {
-                        Ok(Some(status)) => Some(Ok(status)),
-                        Ok(None) => None,
-                        Err(e) => Some(Err(e)),
-                    }
-                };
+            if !ExecutionProcess::was_killed(&db.pool, exec_id).await
+                && let Err(e) =
+                    ExecutionProcess::update_completion(&db.pool, exec_id, status, exit_code).await
+            {
+                tracing::error!("Failed to update execution process completion: {}", e);
+            }
 
-                // Update execution process and cleanup if exit
-                if let Some(status_result) = status_opt {
-                    // Update execution process record with completion info
-                    let (exit_code, status) = match status_result {
-                        Ok(exit_status) => {
-                            let code = exit_status.code().unwrap_or(-1) as i64;
-                            let status = if exit_status.success() {
-                                ExecutionProcessStatus::Completed
-                            } else {
-                                ExecutionProcessStatus::Failed
-                            };
-                            (Some(code), status)
-                        }
-                        Err(_) => (None, ExecutionProcessStatus::Failed),
-                    };
-
-                    if !ExecutionProcess::was_killed(&db.pool, exec_id).await
-                        && let Err(e) = ExecutionProcess::update_completion(
-                            &db.pool,
-                            exec_id,
-                            status.clone(),
-                            exit_code,
-                        )
-                        .await
-                    {
-                        tracing::error!("Failed to update execution process completion: {}", e);
-                    }
-
-                    if let Ok(ctx) = ExecutionProcess::load_context(&db.pool, exec_id).await {
-                        // Update executor session summary if available
-                        if let Err(e) = container.update_executor_session_summary(&exec_id).await {
-                            tracing::warn!("Failed to update executor session summary: {}", e);
-                        }
-
-                        // (moved) capture after-head commit occurs later, after commit/next-action handling
-
-                        if matches!(
-                            ctx.execution_process.status,
-                            ExecutionProcessStatus::Completed
-                        ) && exit_code == Some(0)
-                        {
-                            // Commit changes (if any) and get feedback about whether changes were made
-                            let changes_committed = match container.try_commit_changes(&ctx).await {
-                                Ok(committed) => committed,
-                                Err(e) => {
-                                    tracing::error!(
-                                        "Failed to commit changes after execution: {}",
-                                        e
-                                    );
-                                    // Treat commit failures as if changes were made to be safe
-                                    true
-                                }
-                            };
-
-                            // Determine whether to start the next action based on execution context
-                            let should_start_next = if matches!(
-                                ctx.execution_process.run_reason,
-                                ExecutionProcessRunReason::CodingAgent
-                            ) {
-                                // Skip CleanupScript when CodingAgent produced no changes
-                                changes_committed
-                            } else {
-                                // SetupScript always proceeds to CodingAgent
-                                true
-                            };
-
-                            if should_start_next {
-                                // If the process exited successfully, start the next action
-                                if let Err(e) = container.try_start_next_action(&ctx).await {
-                                    tracing::error!(
-                                        "Failed to start next action after completion: {}",
-                                        e
-                                    );
-                                }
-                            } else {
-                                tracing::info!(
-                                    "Skipping cleanup script for task attempt {} - no changes made by coding agent",
-                                    ctx.task_attempt.id
-                                );
-
-                                // Manually finalize task since we're bypassing normal execution flow
-                                Self::finalize_task(&db, &config, &ctx).await;
-                            }
-                        }
-
-                        if Self::should_finalize(&ctx) {
-                            Self::finalize_task(&db, &config, &ctx).await;
-                            // After finalization, check if a queued follow-up exists and start it
-                            if let Err(e) = container.try_consume_queued_followup(&ctx).await {
-                                tracing::error!(
-                                    "Failed to start queued follow-up for attempt {}: {}",
-                                    ctx.task_attempt.id,
-                                    e
-                                );
-                            }
-                        }
-
-                        // Fire event when CodingAgent execution has finished
-                        if config.read().await.analytics_enabled == Some(true)
-                            && matches!(
-                                &ctx.execution_process.run_reason,
-                                ExecutionProcessRunReason::CodingAgent
-                            )
-                            && let Some(analytics) = &analytics
-                        {
-                            analytics.analytics_service.track_event(&analytics.user_id, "task_attempt_finished", Some(json!({
-                                    "task_id": ctx.task.id.to_string(),
-                                    "project_id": ctx.task.project_id.to_string(),
-                                    "attempt_id": ctx.task_attempt.id.to_string(),
-                                    "execution_success": matches!(ctx.execution_process.status, ExecutionProcessStatus::Completed),
-                                    "exit_code": ctx.execution_process.exit_code,
-                                })));
-                        }
-                    }
-
-                    // Now that commit/next-action/finalization steps for this process are complete,
-                    // capture the HEAD OID as the definitive "after" state (best-effort).
-                    if let Ok(ctx) = ExecutionProcess::load_context(&db.pool, exec_id).await {
-                        let worktree_dir = container.task_attempt_to_current_dir(&ctx.task_attempt);
-                        if let Ok(head) = container.git().get_head_info(&worktree_dir)
-                            && let Err(e) = ExecutionProcess::update_after_head_commit(
-                                &db.pool, exec_id, &head.oid,
-                            )
-                            .await
-                        {
-                            tracing::warn!(
-                                "Failed to update after_head_commit for {}: {}",
-                                exec_id,
-                                e
-                            );
-                        }
-                    }
-
-                    // Cleanup msg store
-                    if let Some(msg_arc) = msg_stores.write().await.remove(&exec_id) {
-                        msg_arc.push_finished();
-                        tokio::time::sleep(Duration::from_millis(50)).await; // Wait for the finish message to propogate
-                        match Arc::try_unwrap(msg_arc) {
-                            Ok(inner) => drop(inner),
-                            Err(arc) => tracing::error!(
-                                "There are still {} strong Arcs to MsgStore for {}",
-                                Arc::strong_count(&arc),
-                                exec_id
-                            ),
-                        }
-                    }
-
-                    // Cleanup child handle
-                    child_store.write().await.remove(&exec_id);
-                    break;
+            if let Ok(ctx) = ExecutionProcess::load_context(&db.pool, exec_id).await {
+                // Update executor session summary if available
+                if let Err(e) = container.update_executor_session_summary(&exec_id).await {
+                    tracing::warn!("Failed to update executor session summary: {}", e);
                 }
 
-                // still running, sleep and try again
+                if matches!(
+                    ctx.execution_process.status,
+                    ExecutionProcessStatus::Completed
+                ) && exit_code == Some(0)
+                {
+                    // Commit changes (if any) and get feedback about whether changes were made
+                    let changes_committed = match container.try_commit_changes(&ctx).await {
+                        Ok(committed) => committed,
+                        Err(e) => {
+                            tracing::error!("Failed to commit changes after execution: {}", e);
+                            // Treat commit failures as if changes were made to be safe
+                            true
+                        }
+                    };
+
+                    let should_start_next = if matches!(
+                        ctx.execution_process.run_reason,
+                        ExecutionProcessRunReason::CodingAgent
+                    ) {
+                        changes_committed
+                    } else {
+                        true
+                    };
+
+                    if should_start_next {
+                        // If the process exited successfully, start the next action
+                        if let Err(e) = container.try_start_next_action(&ctx).await {
+                            tracing::error!("Failed to start next action after completion: {}", e);
+                        }
+                    } else {
+                        tracing::info!(
+                            "Skipping cleanup script for task attempt {} - no changes made by coding agent",
+                            ctx.task_attempt.id
+                        );
+
+                        // Manually finalize task since we're bypassing normal execution flow
+                        Self::finalize_task(&db, &config, &ctx).await;
+                    }
+                }
+
+                if Self::should_finalize(&ctx) {
+                    Self::finalize_task(&db, &config, &ctx).await;
+                    // After finalization, check if a queued follow-up exists and start it
+                    if let Err(e) = container.try_consume_queued_followup(&ctx).await {
+                        tracing::error!(
+                            "Failed to start queued follow-up for attempt {}: {}",
+                            ctx.task_attempt.id,
+                            e
+                        );
+                    }
+                }
+
+                // Fire analytics event when CodingAgent execution has finished
+                if config.read().await.analytics_enabled == Some(true)
+                    && matches!(
+                        &ctx.execution_process.run_reason,
+                        ExecutionProcessRunReason::CodingAgent
+                    )
+                    && let Some(analytics) = &analytics
+                {
+                    analytics.analytics_service.track_event(&analytics.user_id, "task_attempt_finished", Some(json!({
+                        "task_id": ctx.task.id.to_string(),
+                        "project_id": ctx.task.project_id.to_string(),
+                        "attempt_id": ctx.task_attempt.id.to_string(),
+                        "execution_success": matches!(ctx.execution_process.status, ExecutionProcessStatus::Completed),
+                        "exit_code": ctx.execution_process.exit_code,
+                    })));
+                }
+            }
+
+            // Now that commit/next-action/finalization steps for this process are complete,
+            // capture the HEAD OID as the definitive "after" state (best-effort).
+            if let Ok(ctx) = ExecutionProcess::load_context(&db.pool, exec_id).await {
+                let worktree_dir = container.task_attempt_to_current_dir(&ctx.task_attempt);
+                if let Ok(head) = container.git().get_head_info(&worktree_dir)
+                    && let Err(e) =
+                        ExecutionProcess::update_after_head_commit(&db.pool, exec_id, &head.oid)
+                            .await
+                {
+                    tracing::warn!("Failed to update after_head_commit for {}: {}", exec_id, e);
+                }
+            }
+
+            // Cleanup msg store
+            if let Some(msg_arc) = msg_stores.write().await.remove(&exec_id) {
+                msg_arc.push_finished();
+                tokio::time::sleep(Duration::from_millis(50)).await; // Wait for the finish message to propogate
+                match Arc::try_unwrap(msg_arc) {
+                    Ok(inner) => drop(inner),
+                    Err(arc) => tracing::error!(
+                        "There are still {} strong Arcs to MsgStore for {}",
+                        Arc::strong_count(&arc),
+                        exec_id
+                    ),
+                }
+            }
+
+            // Cleanup child handle
+            child_store.write().await.remove(&exec_id);
+        })
+    }
+
+    pub fn spawn_os_exit_watcher(
+        &self,
+        exec_id: Uuid,
+    ) -> tokio::sync::oneshot::Receiver<std::io::Result<std::process::ExitStatus>> {
+        let (tx, rx) = tokio::sync::oneshot::channel::<std::io::Result<std::process::ExitStatus>>();
+        let child_store = self.child_store.clone();
+        tokio::spawn(async move {
+            loop {
+                let child_lock = {
+                    let map = child_store.read().await;
+                    map.get(&exec_id).cloned()
+                };
+                if let Some(child_lock) = child_lock {
+                    let mut child_handler = child_lock.write().await;
+                    match child_handler.try_wait() {
+                        Ok(Some(status)) => {
+                            let _ = tx.send(Ok(status));
+                            break;
+                        }
+                        Ok(None) => {}
+                        Err(e) => {
+                            let _ = tx.send(Err(e));
+                            break;
+                        }
+                    }
+                } else {
+                    let _ = tx.send(Err(io::Error::other(format!(
+                        "Child handle missing for {exec_id}"
+                    ))));
+                    break;
+                }
                 tokio::time::sleep(Duration::from_millis(250)).await;
             }
-        })
+        });
+        rx
     }
 
     pub fn dir_name_from_task_attempt(attempt_id: &Uuid, task_title: &str) -> String {
@@ -1043,15 +1067,16 @@ impl ContainerService for LocalContainerService {
         let current_dir = PathBuf::from(container_ref);
 
         // Create the child and stream, add to execution tracker
-        let mut child = executor_action.spawn(&current_dir).await?;
+        let mut spawned = executor_action.spawn(&current_dir).await?;
 
-        self.track_child_msgs_in_store(execution_process.id, &mut child)
+        self.track_child_msgs_in_store(execution_process.id, &mut spawned.child)
             .await;
 
-        self.add_child_to_store(execution_process.id, child).await;
+        self.add_child_to_store(execution_process.id, spawned.child)
+            .await;
 
-        // Spawn exit monitor
-        let _hn = self.spawn_exit_monitor(&execution_process.id);
+        // Spawn unified exit monitor: watches OS exit and optional executor signal
+        let _hn = self.spawn_exit_monitor(&execution_process.id, spawned.exit_signal);
 
         Ok(())
     }

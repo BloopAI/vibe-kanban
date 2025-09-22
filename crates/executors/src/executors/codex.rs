@@ -7,7 +7,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use command_group::{AsyncCommandGroup, AsyncGroupChild};
+use command_group::AsyncCommandGroup;
 use futures::StreamExt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -24,7 +24,8 @@ use workspace_utils::{
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{
-        AppendPrompt, ExecutorError, StandardCodingAgentExecutor, codex::session::SessionHandler,
+        AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
+        codex::session::SessionHandler,
     },
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryType, ToolStatus,
@@ -126,11 +127,7 @@ impl Codex {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Codex {
-    async fn spawn(
-        &self,
-        current_dir: &Path,
-        prompt: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let codex_command = self.build_command_builder().build_initial();
 
@@ -156,7 +153,7 @@ impl StandardCodingAgentExecutor for Codex {
             stdin.shutdown().await?;
         }
 
-        Ok(child)
+        Ok(child.into())
     }
 
     async fn spawn_follow_up(
@@ -164,7 +161,7 @@ impl StandardCodingAgentExecutor for Codex {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    ) -> Result<SpawnedChild, ExecutorError> {
         // Fork rollout: copy and assign a new session id so each execution has a unique session
         let (_rollout_file_path, new_session_id) = SessionHandler::fork_rollout_file(session_id)
             .map_err(|e| ExecutorError::SpawnError(std::io::Error::other(e)))?;
@@ -196,7 +193,7 @@ impl StandardCodingAgentExecutor for Codex {
             stdin.shutdown().await?;
         }
 
-        Ok(child)
+        Ok(child.into())
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {

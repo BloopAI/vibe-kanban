@@ -1,13 +1,16 @@
 use std::path::Path;
 
 use async_trait::async_trait;
-use command_group::{AsyncCommandGroup, AsyncGroupChild};
+use command_group::AsyncCommandGroup;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 use ts_rs::TS;
 use workspace_utils::shell::get_shell_command;
 
-use crate::{actions::Executable, executors::ExecutorError};
+use crate::{
+    actions::Executable,
+    executors::{ExecutorError, SpawnedChild},
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub enum ScriptRequestLanguage {
@@ -30,7 +33,7 @@ pub struct ScriptRequest {
 
 #[async_trait]
 impl Executable for ScriptRequest {
-    async fn spawn(&self, current_dir: &Path) -> Result<AsyncGroupChild, ExecutorError> {
+    async fn spawn(&self, current_dir: &Path) -> Result<SpawnedChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let mut command = Command::new(shell_cmd);
         command
@@ -43,6 +46,6 @@ impl Executable for ScriptRequest {
 
         let child = command.group_spawn()?;
 
-        Ok(child)
+        Ok(child.into())
     }
 }

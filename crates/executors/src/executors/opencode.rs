@@ -7,7 +7,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use command_group::{AsyncCommandGroup, AsyncGroupChild};
+use command_group::AsyncCommandGroup;
 use fork_stream::StreamExt as _;
 use futures::{StreamExt, future::ready, stream::BoxStream};
 use lazy_static::lazy_static;
@@ -21,7 +21,7 @@ use workspace_utils::{msg_store::MsgStore, path::make_path_relative, shell::get_
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{
-        AppendPrompt, ExecutorError, StandardCodingAgentExecutor,
+        AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
         opencode::share_bridge::Bridge as ShareBridge,
     },
     logs::{
@@ -128,11 +128,7 @@ impl Opencode {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Opencode {
-    async fn spawn(
-        &self,
-        current_dir: &Path,
-        prompt: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         // Start a dedicated local share bridge bound to this opencode process
         let bridge = ShareBridge::start().await.map_err(ExecutorError::Io)?;
         let (shell_cmd, shell_arg) = get_shell_command();
@@ -189,7 +185,7 @@ impl StandardCodingAgentExecutor for Opencode {
             tracing::debug!("Opencode process stdout closed");
             bridge_for_shutdown.shutdown().await;
         });
-        Ok(child)
+        Ok(child.into())
     }
 
     async fn spawn_follow_up(
@@ -197,7 +193,7 @@ impl StandardCodingAgentExecutor for Opencode {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError> {
+    ) -> Result<SpawnedChild, ExecutorError> {
         // Start a dedicated local share bridge bound to this opencode process
         let bridge = ShareBridge::start().await.map_err(ExecutorError::Io)?;
         let (shell_cmd, shell_arg) = get_shell_command();
@@ -253,7 +249,7 @@ impl StandardCodingAgentExecutor for Opencode {
             while let Some(_chunk) = dup_stream.next().await {}
             bridge_for_shutdown.shutdown().await;
         });
-        Ok(child)
+        Ok(child.into())
     }
 
     /// Normalize logs for OpenCode executor

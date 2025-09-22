@@ -20,6 +20,7 @@ use crate::{
     mcp_config::McpConfig,
 };
 
+pub mod acp;
 pub mod amp;
 pub mod claude;
 pub mod codex;
@@ -125,7 +126,9 @@ impl CodingAgent {
             Self::ClaudeCode(_) => vec![BaseAgentCapability::SessionFork],
             Self::Amp(_) => vec![BaseAgentCapability::SessionFork],
             Self::Codex(_) => vec![BaseAgentCapability::SessionFork],
-            Self::Gemini(_) | Self::Opencode(_) | Self::Cursor(_) | Self::QwenCode(_) => vec![],
+            Self::Gemini(_) => vec![BaseAgentCapability::SessionFork],
+            Self::QwenCode(_) => vec![BaseAgentCapability::SessionFork],
+            Self::Opencode(_) | Self::Cursor(_) => vec![],
         }
     }
 }
@@ -133,17 +136,13 @@ impl CodingAgent {
 #[async_trait]
 #[enum_dispatch(CodingAgent)]
 pub trait StandardCodingAgentExecutor {
-    async fn spawn(
-        &self,
-        current_dir: &Path,
-        prompt: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError>;
+    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError>;
     async fn spawn_follow_up(
         &self,
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-    ) -> Result<AsyncGroupChild, ExecutorError>;
+    ) -> Result<SpawnedChild, ExecutorError>;
     fn normalize_logs(&self, _raw_logs_event_store: Arc<MsgStore>, _worktree_path: &Path);
 
     // MCP configuration methods
@@ -153,6 +152,26 @@ pub trait StandardCodingAgentExecutor {
         self.default_mcp_config_path()
             .map(|path| path.exists())
             .unwrap_or(false)
+    }
+}
+
+/// Optional exit notification from an executor.
+/// When this receiver resolves, the container should gracefully stop the process
+/// and mark it as successful (exit code 0).
+pub type ExecutorExitSignal = tokio::sync::oneshot::Receiver<()>;
+
+#[derive(Debug)]
+pub struct SpawnedChild {
+    pub child: AsyncGroupChild,
+    pub exit_signal: Option<ExecutorExitSignal>,
+}
+
+impl From<AsyncGroupChild> for SpawnedChild {
+    fn from(child: AsyncGroupChild) -> Self {
+        Self {
+            child,
+            exit_signal: None,
+        }
     }
 }
 
