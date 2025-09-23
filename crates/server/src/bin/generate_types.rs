@@ -149,7 +149,7 @@ fn generate_json_schema<T: JsonSchema>() -> Result<String, serde_json::Error> {
 fn generate_schemas() -> Result<HashMap<&'static str, String>, serde_json::Error> {
     // // Generate schemas for all executor types
     println!("Generating JSON schemas…");
-    let schemas: HashMap<&str, String> = vec![
+    let schemas: HashMap<&str, String> = HashMap::from([
         (
             "amp",
             generate_json_schema::<executors::executors::amp::Amp>()?,
@@ -178,9 +178,7 @@ fn generate_schemas() -> Result<HashMap<&'static str, String>, serde_json::Error
             "qwen_code",
             generate_json_schema::<executors::executors::qwen::QwenCode>()?,
         ),
-    ]
-    .into_iter()
-    .collect();
+    ]);
     println!(
         "✅ JSON schemas generated. {} schemas created.",
         schemas.len()
@@ -224,7 +222,13 @@ fn main() {
     println!("Generating TypeScript types…");
 
     let generated_types = generate_types_content();
-    let schema_content = generate_schemas().unwrap();
+    let schema_content = match generate_schemas() {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("❌ Failed to generate JSON schemas: {}", e);
+            std::process::exit(1);
+        }
+    };
 
     let types_path = shared_path.join("types.ts");
     let schemas_path = shared_path.join("schemas");
