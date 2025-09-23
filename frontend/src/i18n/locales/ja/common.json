@@ -18,9 +18,6 @@
     "success": "成功"
   },
   "language": {
-    "en": "English",
-    "ja": "日本語",
-    "es": "Español",
     "browserDefault": "ブラウザ設定"
   },
   "conversation": {

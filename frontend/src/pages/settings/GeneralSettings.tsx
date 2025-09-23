@@ -34,6 +34,7 @@ import {
   ThemeMode,
   UiLanguage,
 } from 'shared/types';
+import { getAllLanguageInfo } from '@/i18n/languages';
 
 import { toPrettyCase } from '@/utils/string';
 import { useTheme } from '@/components/theme-provider';
@@ -43,6 +44,11 @@ import NiceModal from '@ebay/nice-modal-react';
 
 export function GeneralSettings() {
   const { t } = useTranslation(['settings', 'common']);
+  
+  // Get language options with proper display names
+  const languageOptions = getAllLanguageInfo(
+    t('language.browserDefault', { ns: 'common', defaultValue: 'Browser Default' })
+  );
   const {
     config,
     updateConfig,
@@ -207,21 +213,11 @@ export function GeneralSettings() {
                 />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="BROWSER">
-                  {t('language.browserDefault', {
-                    ns: 'common',
-                    defaultValue: 'Browser Default',
-                  })}
-                </SelectItem>
-                <SelectItem value="EN">
-                  {t('language.en', { ns: 'common', defaultValue: 'English' })}
-                </SelectItem>
-                <SelectItem value="JA">
-                  {t('language.ja', { ns: 'common', defaultValue: '日本語' })}
-                </SelectItem>
-                <SelectItem value="ES">
-                  {t('language.es', { ns: 'common', defaultValue: 'Español' })}
-                </SelectItem>
+                {languageOptions.map((option) => (
+                  <SelectItem key={option.uiValue} value={option.uiValue}>
+                    {option.displayName}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">

@@ -1,6 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
+import { SUPPORTED_I18N_CODES, uiLanguageToI18nCode } from './languages';
 
 // Import translation files
 import enCommon from './locales/en/common.json';
@@ -39,6 +40,8 @@ i18n
     fallbackLng: 'en',
     defaultNS: 'common',
     debug: import.meta.env.DEV,
+    supportedLngs: SUPPORTED_I18N_CODES,
+    load: 'languageOnly', // Load 'en' instead of 'en-US' etc.
 
     interpolation: {
       escapeValue: false, // React already escapes
@@ -70,9 +73,14 @@ export const updateLanguageFromConfig = (configLanguage: string) => {
     const detectedLang = Array.isArray(detected) ? detected[0] : detected;
     i18n.changeLanguage(detectedLang || 'en');
   } else {
-    // Use explicit language selection
-    const langCode = configLanguage.toLowerCase();
-    i18n.changeLanguage(langCode);
+    // Use explicit language selection with proper mapping
+    const langCode = uiLanguageToI18nCode(configLanguage);
+    if (langCode) {
+      i18n.changeLanguage(langCode);
+    } else {
+      console.warn(`Unknown UI language: ${configLanguage}, falling back to 'en'`);
+      i18n.changeLanguage('en');
+    }
   }
 };
 
