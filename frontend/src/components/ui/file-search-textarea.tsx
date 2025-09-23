@@ -202,6 +202,46 @@ export function FileSearchTextarea({
 
   const dropdownPosition = getDropdownPosition();
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Handle dropdown navigation first
+    if (showDropdown && searchResults.length > 0) {
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setSelectedIndex((prev) =>
+            prev < searchResults.length - 1 ? prev + 1 : 0
+          );
+          return;
+        case 'ArrowUp':
+          e.preventDefault();
+          setSelectedIndex((prev) =>
+            prev > 0 ? prev - 1 : searchResults.length - 1
+          );
+          return;
+        case 'Enter':
+          if (selectedIndex >= 0) {
+            e.preventDefault();
+            selectFile(searchResults[selectedIndex]);
+            return;
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          setShowDropdown(false);
+          setSearchQuery('');
+          setAtSymbolPosition(-1);
+          return;
+      }
+    } else {
+      switch (e.key) {
+        case 'Escape':
+          e.preventDefault();
+          textareaRef.current?.blur();
+          break;
+      }
+    }
+  };
+
   return (
     <div
       className={`relative ${className?.includes('flex-1') ? 'flex-1' : ''}`}
@@ -215,6 +255,7 @@ export function FileSearchTextarea({
         disabled={disabled}
         className={className}
         maxRows={maxRows}
+        onKeyDown={handleKeyDown}
         onCommandEnter={onCommandEnter}
         onCommandShiftEnter={onCommandShiftEnter}
       />
