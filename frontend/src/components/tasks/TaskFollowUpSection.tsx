@@ -309,6 +309,8 @@ export function TaskFollowUpSection({
                 }}
                 disabled={!isEditable}
                 showLoadingOverlay={isUnqueuing || !isDraftLoaded}
+                onCommandEnter={onSendFollowUp}
+                onCommandShiftEnter={onSendFollowUp}
               />
               <FollowUpStatusRow
                 status={{
