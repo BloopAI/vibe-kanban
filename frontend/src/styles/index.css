@@ -8,6 +8,7 @@
 @layer base {
   /* Light defaults */
   :root {
+    color-scheme: light;
     --_background: 48 33% 97%;
     --_foreground: 222.2 84% 4.9%;
     --_primary: var(--_muted);
@@ -44,6 +45,7 @@
 
   /* Dark defaults (used if no theme class but user prefers dark) */
   .dark {
+    color-scheme: dark;
     --_background: 60 2% 18%;
     --_foreground: 48 7% 95%;
     --_primary: var(--_muted);
