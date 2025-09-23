@@ -1,23 +1,28 @@
-import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useCallback, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-const STORAGE_KEY = 'lastNonSettingsPath';
+const globalVisited: string[] = [];
 
 export function usePreviousPath() {
+  const navigate = useNavigate();
   const location = useLocation();
 
+  // Track pathnames as user navigates
   useEffect(() => {
-    if (!location.pathname.startsWith('/settings')) {
-      sessionStorage.setItem(STORAGE_KEY, location.pathname);
+    if (globalVisited[globalVisited.length - 1] !== location.pathname) {
+      globalVisited.push(location.pathname);
+      // Keep only last 50 entries to prevent memory bloat
+      if (globalVisited.length > 50) {
+        globalVisited.splice(0, globalVisited.length - 50);
+      }
     }
-  }, [location.pathname]);
+  }, [location]);
 
-  const getPreviousPath = (): string => {
-    const stored = sessionStorage.getItem(STORAGE_KEY);
-    return stored && stored !== '/settings' && !stored.startsWith('/settings/')
-      ? stored
-      : '/projects';
-  };
-
-  return getPreviousPath;
+  return useCallback(() => {
+    // Find last non-settings route in history
+    const lastNonSettingsPath = [...globalVisited]
+      .reverse()
+      .find((p) => !p.startsWith('/settings'));
+    navigate(lastNonSettingsPath || '/');
+  }, [navigate]);
 }

@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Settings, Cpu, Server, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -22,13 +22,7 @@ const settingsNavigation = [
 
 export function SettingsLayout() {
   const { t } = useTranslation('settings');
-  const navigate = useNavigate();
-  const getPreviousPath = usePreviousPath();
-
-  const handleGoBack = () => {
-    // Navgiate back to the last non-settings path
-    navigate(getPreviousPath());
-  };
+  const goToPreviousPath = usePreviousPath();
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -36,7 +30,7 @@ export function SettingsLayout() {
         {/* Sidebar Navigation */}
         <aside className="w-full lg:w-64 lg:shrink-0 lg:sticky lg:top-8 lg:h-fit lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
           <div className="space-y-1">
-            <Button variant="ghost" onClick={handleGoBack} className="mb-4">
+            <Button variant="ghost" onClick={goToPreviousPath} className="mb-4">
               <ArrowLeft className="mr-2 h-4 w-4" />
               {t('settings.layout.nav.backToApp')}
             </Button>
