@@ -81,8 +81,8 @@ const AutoExpandingTextarea = React.forwardRef<
         )}
         ref={textareaRef}
         onInput={handleInput}
-        onKeyDown={handleKeyDown}
         {...props}
+        onKeyDown={handleKeyDown}
       />
     );
   }
