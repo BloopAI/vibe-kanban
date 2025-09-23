@@ -1,7 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
 import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
+import { Scope, useKeyExit } from '@/keyboard';
+import { useHotkeysContext } from 'react-hotkeys-hook';
 
 interface CommentWidgetLineProps {
   draft: ReviewDraft;
@@ -21,10 +23,32 @@ export function CommentWidgetLine({
   const { setDraft, addComment } = useReview();
   const [value, setValue] = useState(draft.text);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { enableScope, disableScope } = useHotkeysContext();
 
   useEffect(() => {
     textareaRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    enableScope(Scope.EDIT_COMMENT);
+    return () => {
+      disableScope(Scope.EDIT_COMMENT);
+    };
+  }, [enableScope, disableScope]);
+
+  const handleCancel = useCallback(() => {
+    setDraft(widgetKey, null);
+    onCancel();
+  }, [setDraft, widgetKey, onCancel]);
+
+  const exitOptions = useMemo(
+    () => ({
+      scope: Scope.EDIT_COMMENT,
+    }),
+    []
+  );
+
+  useKeyExit(handleCancel, exitOptions);
 
   const handleSave = () => {
     if (value.trim()) {
@@ -38,11 +62,6 @@ export function CommentWidgetLine({
     }
     setDraft(widgetKey, null);
     onSave();
-  };
-
-  const handleCancel = () => {
-    setDraft(widgetKey, null);
-    onCancel();
   };
 
   return (
