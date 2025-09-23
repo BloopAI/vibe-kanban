@@ -38,7 +38,7 @@ export function SettingsLayout() {
           <div className="space-y-1">
             <Button variant="ghost" onClick={handleGoBack} className="mb-4">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to app
+              {t('settings.layout.nav.backToApp')}
             </Button>
             <h2 className="px-3 py-2 text-lg font-semibold">
               {t('settings.layout.nav.title')}

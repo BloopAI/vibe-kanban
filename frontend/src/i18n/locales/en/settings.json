@@ -8,7 +8,8 @@
         "agents": "Agents",
         "agentsDesc": "Coding agent configurations",
         "mcp": "MCP Servers",
-        "mcpDesc": "Model Context Protocol servers"
+        "mcpDesc": "Model Context Protocol servers",
+        "backToApp": "Back to app"
       }
     },
     "general": {
