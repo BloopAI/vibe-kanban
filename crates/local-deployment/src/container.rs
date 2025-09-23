@@ -533,7 +533,7 @@ impl LocalContainerService {
 
     pub fn dir_name_from_task_attempt(attempt_id: &Uuid, task_title: &str) -> String {
         let task_title_id = git_branch_id(task_title);
-        format!("vk-{}-{}", short_uuid(attempt_id), task_title_id)
+        format!("{}-{}", short_uuid(attempt_id), task_title_id)
     }
 
     pub fn git_branch_from_task_attempt(attempt_id: &Uuid, task_title: &str) -> String {
