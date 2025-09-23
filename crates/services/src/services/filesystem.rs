@@ -215,10 +215,15 @@ impl FilesystemService {
         for p in path.iter().skip(1) {
             walker_builder.add(p);
         }
+        let mut seen_dirs = HashSet::new();
         let mut git_repos: Vec<DirectoryEntry> = walker_builder
             .build()
             .filter_map(|entry| {
                 let entry = entry.ok()?;
+                if seen_dirs.contains(entry.path()) {
+                    return None;
+                }
+                seen_dirs.insert(entry.path().to_owned());
                 let name = entry.file_name().to_str()?;
                 if !entry.path().join(".git").exists() {
                     return None;
