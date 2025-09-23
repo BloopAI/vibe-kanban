@@ -190,6 +190,8 @@ export function ProjectTasks() {
       if (currentIndex < tasksInStatus.length - 1) {
         handleViewTaskDetails(tasksInStatus[currentIndex + 1]);
       }
+    } else {
+      handleViewTaskDetails(getTasksByStatus()[taskStatuses[0]][0]);
     }
   }, [selectedTask, tasks]);
 
@@ -202,6 +204,8 @@ export function ProjectTasks() {
       if (currentIndex > 0) {
         handleViewTaskDetails(tasksInStatus[currentIndex - 1]);
       }
+    } else {
+      handleViewTaskDetails(getTasksByStatus()[taskStatuses[0]][0]);
     }
   }, [selectedTask, tasks]);
 
@@ -221,6 +225,8 @@ export function ProjectTasks() {
           getTasksByStatus()[taskStatuses[currentIndex + 1]][0]
         );
       }
+    } else {
+      handleViewTaskDetails(getTasksByStatus()[taskStatuses[0]][0]);
     }
   }, [selectedTask, tasks]);
 
@@ -240,6 +246,8 @@ export function ProjectTasks() {
           getTasksByStatus()[taskStatuses[currentIndex - 1]][0]
         );
       }
+    } else {
+      handleViewTaskDetails(getTasksByStatus()[taskStatuses[0]][0]);
     }
   }, [selectedTask, tasks]);
 
