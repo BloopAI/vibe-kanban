@@ -34,7 +34,7 @@ import {
   ThemeMode,
   UiLanguage,
 } from 'shared/types';
-import { getAllLanguageInfo } from '@/i18n/languages';
+import { getLanguageOptions } from '@/i18n/languages';
 
 import { toPrettyCase } from '@/utils/string';
 import { useTheme } from '@/components/theme-provider';
@@ -46,7 +46,7 @@ export function GeneralSettings() {
   const { t } = useTranslation(['settings', 'common']);
 
   // Get language options with proper display names
-  const languageOptions = getAllLanguageInfo(
+  const languageOptions = getLanguageOptions(
     t('language.browserDefault', {
       ns: 'common',
       defaultValue: 'Browser Default',
@@ -217,8 +217,8 @@ export function GeneralSettings() {
               </SelectTrigger>
               <SelectContent>
                 {languageOptions.map((option) => (
-                  <SelectItem key={option.uiValue} value={option.uiValue}>
-                    {option.displayName}
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
