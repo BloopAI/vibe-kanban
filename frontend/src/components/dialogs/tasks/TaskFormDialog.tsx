@@ -465,6 +465,10 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                   className="mt-1.5"
                   disabled={isSubmitting || isSubmittingAndStart}
                   autoFocus
+                  onCommandEnter={
+                    isEditMode ? handleSubmit : handleCreateAndStart
+                  }
+                  onCommandShiftEnter={handleSubmit}
                 />
               </div>
 

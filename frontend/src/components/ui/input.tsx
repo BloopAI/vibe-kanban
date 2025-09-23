@@ -2,13 +2,33 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {}
+  extends React.InputHTMLAttributes<HTMLInputElement> {
+  onCommandEnter?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  onCommandShiftEnter?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+}
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, onKeyDown, ...props }, ref) => {
+  (
+    {
+      className,
+      type,
+      onKeyDown,
+      onCommandEnter,
+      onCommandShiftEnter,
+      ...props
+    },
+    ref
+  ) => {
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Escape') {
         e.currentTarget.blur();
+      }
+      if (e.key === 'Enter') {
+        if (e.metaKey && e.shiftKey) {
+          onCommandShiftEnter?.(e);
+        } else {
+          onCommandEnter?.(e);
+        }
       }
       onKeyDown?.(e);
     };
