@@ -3,13 +3,13 @@
   "short_name": "VK",
   "icons": [
     {
-      "src": "/favicon-v-light.svg",
+      "src": "/favicon-vk-light.svg",
       "sizes": "any",
       "purpose": "any",
       "type": "image/svg+xml"
     },
     {
-      "src": "/favicon-v-light-maskable.svg",
+      "src": "/favicon-vk-light-maskable.svg",
       "sizes": "any",
       "purpose": "maskable",
       "type": "image/svg+xml"
