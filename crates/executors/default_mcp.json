@@ -25,7 +25,7 @@
       "name": "Vibe Kanban",
       "description": "Create, update and delete Vibe Kanban tasks",
       "url": "https://www.vibekanban.com/docs/integrations/vibe-kanban-mcp-server",
-      "icon": "viba-kanban-favicon.png"
+      "icon": "favicon-vk-light.svg"
     },
     "context7": {
       "name": "Context7",
