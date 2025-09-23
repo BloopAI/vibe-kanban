@@ -3,7 +3,6 @@ export enum Scope {
   DIALOG = 'dialog',
   KANBAN = 'kanban',
   PROJECTS = 'projects',
-  TASK_PANEL = 'task-panel',
   EDIT_COMMENT = 'edit-comment',
 }
 
@@ -18,6 +17,7 @@ export enum Action {
   NAV_RIGHT = 'nav_right',
   OPEN_DETAILS = 'open_details',
   SHOW_HELP = 'show_help',
+  TOGGLE_FULLSCREEN = 'toggle_fullscreen',
 }
 
 export interface KeyBinding {
@@ -43,13 +43,6 @@ export const keyBindings: KeyBinding[] = [
     scopes: [Scope.KANBAN],
     description: 'Close panel or navigate to projects',
     group: 'Navigation',
-  },
-  {
-    action: Action.EXIT,
-    keys: 'esc',
-    scopes: [Scope.TASK_PANEL],
-    description: 'Close task details panel',
-    group: 'Task Details',
   },
   {
     action: Action.EXIT,
@@ -135,6 +128,15 @@ export const keyBindings: KeyBinding[] = [
     scopes: [Scope.GLOBAL],
     description: 'Show keyboard shortcuts help',
     group: 'Global',
+  },
+
+  // Task panel actions
+  {
+    action: Action.TOGGLE_FULLSCREEN,
+    keys: 'enter',
+    scopes: [Scope.KANBAN],
+    description: 'Toggle fullscreen view',
+    group: 'Task Details',
   },
 ];
 

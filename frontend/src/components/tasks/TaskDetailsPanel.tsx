@@ -3,7 +3,6 @@ import TaskDetailsHeader from './TaskDetailsHeader';
 import { TaskFollowUpSection } from './TaskFollowUpSection';
 import { TaskTitleDescription } from './TaskDetails/TaskTitleDescription';
 import type { TaskAttempt } from 'shared/types';
-import { useKeyExit, Scope } from '@/keyboard';
 import {
   getBackdropClasses,
   getTaskPanelClasses,
@@ -85,23 +84,12 @@ export function TaskDetailsPanel({
     setActiveTab('logs');
   };
 
-  // Semantic keyboard shortcut for closing panel
-  useKeyExit(() => onClose(), {
-    scope: Scope.TASK_PANEL,
-    when: () => !!task && !isFullScreen,
-  });
-
   // Reset to logs tab when task changes
   useEffect(() => {
     if (task?.id) {
       setActiveTab('logs');
     }
   }, [task?.id]);
-
-  // Get selected attempt info for props
-  // (now received as props instead of hook)
-
-  // Handle ESC key locally to prevent global navigation
 
   return (
     <>

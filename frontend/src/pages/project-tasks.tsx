@@ -21,6 +21,7 @@ import {
   useKeyNavRight,
   useKeyOpenDetails,
   Scope,
+  useKeyToggleFullscreen,
 } from '@/keyboard';
 
 import {
@@ -35,6 +36,7 @@ import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 import { useProjectTasks } from '@/hooks/useProjectTasks';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import NiceModal from '@ebay/nice-modal-react';
+import { useHotkeysContext } from 'react-hotkeys-hook';
 
 type Task = TaskWithAttemptStatus;
 
@@ -46,6 +48,15 @@ export function ProjectTasks() {
     attemptId?: string;
   }>();
   const navigate = useNavigate();
+  const { enableScope, disableScope } = useHotkeysContext();
+
+  useEffect(() => {
+    enableScope(Scope.KANBAN);
+
+    return () => {
+      disableScope(Scope.KANBAN);
+    };
+  }, [enableScope, disableScope]);
 
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +85,7 @@ export function ProjectTasks() {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   // Fullscreen state using custom hook
-  const { isFullscreen, navigateToTask, navigateToAttempt } =
+  const { isFullscreen, navigateToTask, navigateToAttempt, toggleFullscreen } =
     useTaskViewManager();
 
   // Attempts fetching (only when task is selected)
@@ -156,13 +167,22 @@ export function ProjectTasks() {
   useKeyExit(
     () => {
       if (isPanelOpen) {
-        handleClosePanel();
+        if (isFullscreen) {
+          toggleFullscreen(false);
+        } else {
+          handleClosePanel();
+        }
       } else {
         navigate('/projects');
       }
     },
     { scope: Scope.KANBAN }
   );
+
+  // Toggle fullscreen with Cmd+Enter
+  useKeyToggleFullscreen(() => toggleFullscreen(!isFullscreen), {
+    scope: Scope.KANBAN,
+  });
 
   // Navigation shortcuts using semantic hooks
   const taskStatuses = [
@@ -209,6 +229,7 @@ export function ProjectTasks() {
     },
     {
       scope: Scope.KANBAN,
+      when: !isFullscreen,
       preventDefault: true,
     }
   );
@@ -219,6 +240,7 @@ export function ProjectTasks() {
     },
     {
       scope: Scope.KANBAN,
+      when: !isFullscreen,
       preventDefault: true,
     }
   );
@@ -229,6 +251,7 @@ export function ProjectTasks() {
     },
     {
       scope: Scope.KANBAN,
+      when: !isFullscreen,
       preventDefault: true, // Prevent page scroll
     }
   );
@@ -239,6 +262,7 @@ export function ProjectTasks() {
     },
     {
       scope: Scope.KANBAN,
+      when: !isFullscreen,
       preventDefault: true, // Prevent page scroll
     }
   );
