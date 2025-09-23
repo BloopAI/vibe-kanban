@@ -6,6 +6,7 @@ import { Navbar } from '@/components/layout/navbar';
 import { Projects } from '@/pages/projects';
 import { ProjectTasks } from '@/pages/project-tasks';
 import { useTaskViewManager } from '@/hooks/useTaskViewManager';
+import { usePreviousPath } from '@/hooks/usePreviousPath';
 
 import {
   AgentSettings,
@@ -36,6 +37,9 @@ const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 function AppContent() {
   const { config, updateAndSaveConfig, loading } = useUserSystem();
   const { isFullscreen } = useTaskViewManager();
+
+  // Track previous path for back navigation
+  usePreviousPath();
 
   const showNavbar = !isFullscreen;
 
