@@ -10,6 +10,7 @@ export interface SemanticKeyOptions {
   when?: boolean | (() => boolean); // Alias for enabled
   enableOnFormTags?: boolean;
   enableOnContentEditable?: boolean;
+  preventDefault?: boolean;
 }
 
 type Handler = (e?: KeyboardEvent) => void;
@@ -28,6 +29,7 @@ export function createSemanticHook<A extends Action>(action: A) {
       when,
       enableOnFormTags,
       enableOnContentEditable,
+      preventDefault,
     } = options;
 
     // Use 'when' as alias for 'enabled' if provided
@@ -41,6 +43,8 @@ export function createSemanticHook<A extends Action>(action: A) {
       keyboardShortcutOptions.enableOnFormTags = enableOnFormTags;
     if (enableOnContentEditable !== undefined)
       keyboardShortcutOptions.enableOnContentEditable = enableOnContentEditable;
+    if (preventDefault !== undefined)
+      keyboardShortcutOptions.preventDefault = preventDefault;
 
     useKeyboardShortcut(
       {

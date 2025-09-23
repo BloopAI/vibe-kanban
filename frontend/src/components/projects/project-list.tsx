@@ -45,14 +45,7 @@ export function ProjectList() {
   };
 
   // Semantic keyboard shortcut for creating new project
-  useKeyCreate(
-    (e) => {
-      e?.preventDefault();
-      e?.stopPropagation();
-      handleCreateProject();
-    },
-    { scope: Scope.PROJECTS }
-  );
+  useKeyCreate(handleCreateProject, { scope: Scope.PROJECTS });
 
   const handleEditProject = async (project: Project) => {
     try {

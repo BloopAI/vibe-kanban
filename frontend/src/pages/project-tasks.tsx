@@ -141,16 +141,13 @@ export function ProjectTasks() {
   }, [handleCreateTask]);
 
   // Semantic keyboard shortcuts for kanban page
-  useKeyCreate(
-    (e) => {
-      e?.preventDefault();
-      e?.stopPropagation();
-      handleCreateNewTask();
-    },
-    { scope: Scope.KANBAN }
-  );
+  // Prevent default is needed to stop the input having the value 'c'
+  useKeyCreate(handleCreateNewTask, { scope: Scope.KANBAN, preventDefault: true });
 
-  useKeyFocusSearch(() => focusInput(), { scope: Scope.KANBAN });
+  useKeyFocusSearch(() => focusInput(), {
+    scope: Scope.KANBAN,
+    preventDefault: true, // Prevent Firefox quick find
+  });
 
   useKeyExit(
     () => {
@@ -204,7 +201,11 @@ export function ProjectTasks() {
         });
       }
     },
-    { scope: Scope.KANBAN, when: () => !isPanelOpen }
+    {
+      scope: Scope.KANBAN,
+      when: () => !isPanelOpen,
+      preventDefault: true, // Prevent page scroll
+    }
   );
 
   useKeyNavDown(
@@ -228,7 +229,11 @@ export function ProjectTasks() {
         });
       }
     },
-    { scope: Scope.KANBAN, when: () => !isPanelOpen }
+    {
+      scope: Scope.KANBAN,
+      when: () => !isPanelOpen,
+      preventDefault: true, // Prevent page scroll
+    }
   );
 
   useKeyNavLeft(
@@ -248,7 +253,11 @@ export function ProjectTasks() {
         });
       }
     },
-    { scope: Scope.KANBAN, when: () => !isPanelOpen && !!keyboardCursor }
+    {
+      scope: Scope.KANBAN,
+      when: () => !isPanelOpen && !!keyboardCursor,
+      preventDefault: true, // Prevent page scroll
+    }
   );
 
   useKeyNavRight(
@@ -268,7 +277,11 @@ export function ProjectTasks() {
         });
       }
     },
-    { scope: Scope.KANBAN, when: () => !isPanelOpen && !!keyboardCursor }
+    {
+      scope: Scope.KANBAN,
+      when: () => !isPanelOpen && !!keyboardCursor,
+      preventDefault: true, // Prevent page scroll
+    }
   );
 
   useKeyOpenDetails(

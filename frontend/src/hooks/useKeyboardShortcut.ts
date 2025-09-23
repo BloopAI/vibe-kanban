@@ -8,6 +8,7 @@ import {
 export interface KeyboardShortcutOptions {
   enableOnFormTags?: boolean;
   enableOnContentEditable?: boolean;
+  preventDefault?: boolean;
 }
 
 /**
@@ -45,7 +46,11 @@ export function useKeyboardShortcut(
   const unregisterRef = useRef<(() => void) | null>(null);
 
   const { keys, callback, when = true } = config;
-  const { enableOnFormTags = false, enableOnContentEditable = false } = options;
+  const {
+    enableOnFormTags = false,
+    enableOnContentEditable = false,
+    preventDefault = false,
+  } = options;
 
   // Register with central registry
   useEffect(() => {
@@ -82,6 +87,7 @@ export function useKeyboardShortcut(
       enabled: typeof when === 'function' ? when() : when,
       enableOnFormTags,
       enableOnContentEditable,
+      preventDefault,
       scopes: config.scope ? [config.scope] : ['*'], // Use react-hotkeys-hook's official scopes
     },
     [callback, typeof when === 'function' ? when : when]
