@@ -39,7 +39,7 @@ pub struct TaskAttempt {
     pub id: Uuid,
     pub task_id: Uuid,                 // Foreign key to Task
     pub container_ref: Option<String>, // Path to a worktree (local), or cloud container id
-    pub branch: Option<String>,        // Git branch name for this task attempt
+    pub branch: String,                // Git branch name for this task attempt
     pub base_branch: String,           // Base branch this attempt is based on
     pub executor: String, // Name of the base coding agent to use ("AMP", "CLAUDE_CODE",
     // "GEMINI", etc.)
@@ -83,6 +83,7 @@ pub struct TaskAttemptContext {
 pub struct CreateTaskAttempt {
     pub executor: BaseCodingAgent,
     pub base_branch: String,
+    pub branch: String,
 }
 
 impl TaskAttempt {
@@ -197,23 +198,6 @@ impl TaskAttempt {
         sqlx::query!(
             "UPDATE task_attempts SET container_ref = $1, updated_at = $2 WHERE id = $3",
             container_ref,
-            now,
-            attempt_id
-        )
-        .execute(pool)
-        .await?;
-        Ok(())
-    }
-
-    pub async fn update_branch(
-        pool: &SqlitePool,
-        attempt_id: Uuid,
-        branch: &str,
-    ) -> Result<(), sqlx::Error> {
-        let now = Utc::now();
-        sqlx::query!(
-            "UPDATE task_attempts SET branch = $1, updated_at = $2 WHERE id = $3",
-            branch,
             now,
             attempt_id
         )
@@ -381,9 +365,9 @@ impl TaskAttempt {
     pub async fn create(
         pool: &SqlitePool,
         data: &CreateTaskAttempt,
+        id: Uuid,
         task_id: Uuid,
     ) -> Result<Self, TaskAttemptError> {
-        let attempt_id = Uuid::new_v4();
         // let prefixed_id = format!("vibe-kanban-{}", attempt_id);
         // Insert the record into the database
         Ok(sqlx::query_as!(
@@ -391,10 +375,10 @@ impl TaskAttempt {
             r#"INSERT INTO task_attempts (id, task_id, container_ref, branch, base_branch, executor, worktree_deleted, setup_completed_at)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, base_branch, executor as "executor!",  worktree_deleted as "worktree_deleted!: bool", setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
-            attempt_id,
+            id,
             task_id,
             Option::<String>::None, // Container isn't known yet
-            Option::<String>::None, // branch name isn't known yet
+            data.branch,
             data.base_branch,
             data.executor,
             false, // worktree_deleted is false during creation
