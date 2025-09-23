@@ -107,12 +107,11 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
       try {
         let finalGitRepoPath = gitRepoPath;
         if (repoMode === 'new') {
-          // Use home directory (~) if parentPath is empty
-          const effectiveParentPath = parentPath.trim() || '~';
-          finalGitRepoPath = `${effectiveParentPath}/${folderName}`.replace(
-            /\/+/g,
-            '/'
-          );
+          const effectiveParentPath = parentPath.trim();
+          const cleanFolderName = folderName.trim();
+          finalGitRepoPath = effectiveParentPath
+            ? `${effectiveParentPath}/${cleanFolderName}`.replace(/\/+/g, '/')
+            : cleanFolderName;
         }
         // Auto-populate name from git repo path if not provided
         const finalName =
