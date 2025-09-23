@@ -19,6 +19,8 @@ interface FileSearchTextareaProps {
   projectId?: string;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   maxRows?: number;
+  onCommandEnter?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onCommandShiftEnter?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
 }
 
 export function FileSearchTextarea({
@@ -29,7 +31,8 @@ export function FileSearchTextarea({
   disabled = false,
   className,
   projectId,
-
+  onCommandEnter,
+  onCommandShiftEnter,
   maxRows = 10,
 }: FileSearchTextareaProps) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -212,6 +215,8 @@ export function FileSearchTextarea({
         disabled={disabled}
         className={className}
         maxRows={maxRows}
+        onCommandEnter={onCommandEnter}
+        onCommandShiftEnter={onCommandShiftEnter}
       />
 
       {showDropdown &&
