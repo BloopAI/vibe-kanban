@@ -25,7 +25,9 @@ const FALLBACK_ENDONYMS = {
  * Convert UiLanguage enum value to i18next language code
  */
 export function uiLanguageToI18nCode(uiLang: string): string | undefined {
-  return uiLang === 'BROWSER' ? undefined : UI_TO_I18N[uiLang as keyof typeof UI_TO_I18N];
+  return uiLang === 'BROWSER'
+    ? undefined
+    : UI_TO_I18N[uiLang as keyof typeof UI_TO_I18N];
 }
 
 /**
@@ -33,9 +35,15 @@ export function uiLanguageToI18nCode(uiLang: string): string | undefined {
  */
 function getEndonym(langCode: string): string {
   try {
-    return new Intl.DisplayNames([langCode], { type: 'language' }).of(langCode) || FALLBACK_ENDONYMS[langCode as keyof typeof FALLBACK_ENDONYMS] || langCode;
+    return (
+      new Intl.DisplayNames([langCode], { type: 'language' }).of(langCode) ||
+      FALLBACK_ENDONYMS[langCode as keyof typeof FALLBACK_ENDONYMS] ||
+      langCode
+    );
   } catch {
-    return FALLBACK_ENDONYMS[langCode as keyof typeof FALLBACK_ENDONYMS] || langCode;
+    return (
+      FALLBACK_ENDONYMS[langCode as keyof typeof FALLBACK_ENDONYMS] || langCode
+    );
   }
 }
 
@@ -45,6 +53,9 @@ function getEndonym(langCode: string): string {
 export function getLanguageOptions(browserDefaultLabel: string) {
   return SUPPORTED_UI_LANGUAGES.map((ui) => ({
     value: ui,
-    label: ui === 'BROWSER' ? browserDefaultLabel : getEndonym(UI_TO_I18N[ui as keyof typeof UI_TO_I18N]),
+    label:
+      ui === 'BROWSER'
+        ? browserDefaultLabel
+        : getEndonym(UI_TO_I18N[ui as keyof typeof UI_TO_I18N]),
   }));
 }
