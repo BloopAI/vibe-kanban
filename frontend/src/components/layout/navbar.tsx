@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useRef, useEffect } from 'react';
+import { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -47,11 +47,13 @@ export function Navbar() {
   const { projectId, project } = useProject();
   const { query, setQuery, active, clear, registerInputRef } = useSearch();
   const handleOpenInEditor = useOpenProjectInEditor(project || null);
-  const searchBarRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    registerInputRef(searchBarRef.current);
-  }, [registerInputRef]);
+  const setSearchBarRef = useCallback(
+    (node: HTMLInputElement | null) => {
+      registerInputRef(node);
+    },
+    [registerInputRef]
+  );
 
   const handleCreateTask = () => {
     if (projectId) {
@@ -83,7 +85,7 @@ export function Navbar() {
           </div>
 
           <SearchBar
-            ref={searchBarRef}
+            ref={setSearchBarRef}
             className="hidden sm:flex"
             value={query}
             onChange={setQuery}

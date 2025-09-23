@@ -79,7 +79,7 @@ export const keyBindings: KeyBinding[] = [
   // Navigation actions
   {
     action: Action.FOCUS_SEARCH,
-    keys: '/',
+    keys: 'slash',
     scopes: [Scope.KANBAN],
     description: 'Focus search',
     group: 'Navigation',
@@ -123,7 +123,7 @@ export const keyBindings: KeyBinding[] = [
   // Global actions
   {
     action: Action.SHOW_HELP,
-    keys: '?',
+    keys: 'shift+slash',
     scopes: [Scope.GLOBAL],
     description: 'Show keyboard shortcuts help',
     group: 'Global',

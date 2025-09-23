@@ -46,9 +46,9 @@ function TaskKanbanBoard({
     taskId?: string;
   }>();
 
-  const [focusedTaskId, setFocusedTaskId] = useState<string | null>(
-    taskId || null
-  );
+  // const [focusedTaskId, setFocusedTaskId] = useState<string | null>(
+  //   taskId || null
+  // );
 
   // Memoize filtered tasks
   const filteredTasks = useMemo(() => {
@@ -80,27 +80,27 @@ function TaskKanbanBoard({
     return groups;
   }, [filteredTasks]);
 
-  // Sync focus state with taskId param
-  useEffect(() => {
-    if (taskId) {
-      const found = filteredTasks.find((t) => t.id === taskId);
-      if (found) {
-        setFocusedTaskId(taskId);
-      }
-    }
-  }, [taskId, filteredTasks]);
+  // // Sync focus state with taskId param
+  // useEffect(() => {
+  //   if (taskId) {
+  //     const found = filteredTasks.find((t) => t.id === taskId);
+  //     if (found) {
+  //       setFocusedTaskId(taskId);
+  //     }
+  //   }
+  // }, [taskId, filteredTasks]);
 
-  // If no taskId in params, keep last focused, or focus first available
-  useEffect(() => {
-    if (!taskId && !focusedTaskId) {
-      for (const status of allTaskStatuses) {
-        if (groupedTasks[status] && groupedTasks[status].length > 0) {
-          setFocusedTaskId(groupedTasks[status][0].id);
-          break;
-        }
-      }
-    }
-  }, [taskId, focusedTaskId, groupedTasks]);
+  // // If no taskId in params, keep last focused, or focus first available
+  // useEffect(() => {
+  //   if (!taskId && !focusedTaskId) {
+  //     for (const status of allTaskStatuses) {
+  //       if (groupedTasks[status] && groupedTasks[status].length > 0) {
+  //         setFocusedTaskId(groupedTasks[status][0].id);
+  //         break;
+  //       }
+  //     }
+  //   }
+  // }, [taskId, focusedTaskId, groupedTasks]);
 
   return (
     <KanbanProvider onDragEnd={onDragEnd}>
@@ -121,8 +121,10 @@ function TaskKanbanBoard({
                 onDelete={onDeleteTask}
                 onDuplicate={onDuplicateTask}
                 onViewDetails={onViewTaskDetails}
-                isFocused={focusedTaskId === task.id}
-                tabIndex={focusedTaskId === task.id ? 0 : -1}
+                // isFocused={focusedTaskId === task.id}
+                // tabIndex={focusedTaskId === task.id ? 0 : -1}
+                isFocused={false}
+                tabIndex={index}
               />
             ))}
           </KanbanCards>

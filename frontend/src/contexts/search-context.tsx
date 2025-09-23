@@ -4,6 +4,7 @@ import {
   useState,
   useEffect,
   useRef,
+  useCallback,
   ReactNode,
 } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
@@ -52,9 +53,9 @@ export function SearchProvider({ children }: SearchProviderProps) {
     }
   };
 
-  const registerInputRef = (ref: HTMLInputElement | null) => {
+  const registerInputRef = useCallback((ref: HTMLInputElement | null) => {
     inputRef.current = ref;
-  };
+  }, []);
 
   const value: SearchState = {
     query,

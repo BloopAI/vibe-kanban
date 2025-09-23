@@ -144,7 +144,9 @@ export function ProjectTasks() {
   // Prevent default is needed to stop the input having the value 'c'
   useKeyCreate(handleCreateNewTask, { scope: Scope.KANBAN, preventDefault: true });
 
-  useKeyFocusSearch(() => focusInput(), {
+  useKeyFocusSearch(() => {
+    focusInput()
+  }, {
     scope: Scope.KANBAN,
     preventDefault: true, // Prevent Firefox quick find
   });
