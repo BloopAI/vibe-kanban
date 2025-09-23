@@ -1434,6 +1434,21 @@ impl GitService {
         }
     }
 
+    pub fn check_branch_exists(
+        &self,
+        repo_path: &Path,
+        branch_name: &str,
+    ) -> Result<bool, GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        match repo.find_branch(branch_name, BranchType::Local) {
+            Ok(_) => Ok(true),
+            Err(_) => match repo.find_branch(branch_name, BranchType::Remote) {
+                Ok(_) => Ok(true),
+                Err(_) => Ok(false),
+            },
+        }
+    }
+
     /// Return true if a rebase is currently in progress in this worktree.
     pub fn is_rebase_in_progress(&self, worktree_path: &Path) -> Result<bool, GitServiceError> {
         let git = GitCli::new();
