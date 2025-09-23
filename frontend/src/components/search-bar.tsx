@@ -14,16 +14,7 @@ interface SearchBarProps {
 }
 
 export const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(
-  (
-    {
-      className,
-      value = '',
-      onChange,
-      disabled = false,
-      project,
-    },
-    ref
-  ) => {
+  ({ className, value = '', onChange, disabled = false, project }, ref) => {
     if (disabled) {
       return null;
     }
