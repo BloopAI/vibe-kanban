@@ -72,22 +72,20 @@ pub struct HeadInfo {
 }
 
 #[derive(Debug, Clone)]
-pub struct Commit {
-    id: git2::Oid,
-}
+pub struct Commit(git2::Oid);
 
 impl Commit {
     pub fn new(id: git2::Oid) -> Self {
-        Self { id }
+        Self(id)
     }
     pub fn as_oid(&self) -> git2::Oid {
-        self.id
+        self.0
     }
 }
 
 impl std::fmt::Display for Commit {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.id)
+        write!(f, "{}", self.0)
     }
 }
 
