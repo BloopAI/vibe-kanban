@@ -8,7 +8,6 @@ export interface SemanticKeyOptions {
   scope?: Scope;
   enabled?: boolean | (() => boolean);
   when?: boolean | (() => boolean); // Alias for enabled
-  enableOnFormTags?: boolean;
   enableOnContentEditable?: boolean;
   preventDefault?: boolean;
 }
@@ -27,7 +26,6 @@ export function createSemanticHook<A extends Action>(action: A) {
       scope,
       enabled = true,
       when,
-      enableOnFormTags,
       enableOnContentEditable,
       preventDefault,
     } = options;
@@ -39,8 +37,6 @@ export function createSemanticHook<A extends Action>(action: A) {
     const binding = getBindingFor(action, scope);
 
     const keyboardShortcutOptions: KeyboardShortcutOptions = {};
-    if (enableOnFormTags !== undefined)
-      keyboardShortcutOptions.enableOnFormTags = enableOnFormTags;
     if (enableOnContentEditable !== undefined)
       keyboardShortcutOptions.enableOnContentEditable = enableOnContentEditable;
     if (preventDefault !== undefined)
@@ -49,7 +45,7 @@ export function createSemanticHook<A extends Action>(action: A) {
     useKeyboardShortcut(
       {
         keys: keys.length === 1 ? keys[0] : keys,
-        callback: keys.length === 0 ? () => {} : handler,
+        callback: keys.length === 0 ? () => { } : handler,
         description: binding?.description || `${action} action`,
         group: binding?.group || 'Actions',
         scope: scope || Scope.GLOBAL,

@@ -53,7 +53,6 @@ const Dialog = React.forwardRef<
     {
       scope: Scope.DIALOG,
       when: () => !!open,
-      enableOnFormTags: true,
     }
   );
 
@@ -98,7 +97,6 @@ const Dialog = React.forwardRef<
     {
       scope: Scope.DIALOG,
       when: () => !!open,
-      enableOnFormTags: true,
     }
   );
 

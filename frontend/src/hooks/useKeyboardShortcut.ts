@@ -6,7 +6,6 @@ import {
 } from '@/contexts/keyboard-shortcuts-context';
 
 export interface KeyboardShortcutOptions {
-  enableOnFormTags?: boolean;
   enableOnContentEditable?: boolean;
   preventDefault?: boolean;
 }
@@ -36,7 +35,7 @@ export interface KeyboardShortcutOptions {
  *   callback: handleEsc,
  *   description: 'Close dialog',
  *   group: 'Dialog'
- * }, { enableOnFormTags: true });
+ * });
  */
 export function useKeyboardShortcut(
   config: ShortcutConfig,
@@ -47,7 +46,6 @@ export function useKeyboardShortcut(
 
   const { keys, callback, when = true } = config;
   const {
-    enableOnFormTags = false,
     enableOnContentEditable = false,
     preventDefault = false,
   } = options;
@@ -85,7 +83,6 @@ export function useKeyboardShortcut(
     },
     {
       enabled: typeof when === 'function' ? when() : when,
-      enableOnFormTags,
       enableOnContentEditable,
       preventDefault,
       scopes: config.scope ? [config.scope] : ['*'], // Use react-hotkeys-hook's official scopes
