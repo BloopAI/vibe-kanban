@@ -45,7 +45,7 @@ export function createSemanticHook<A extends Action>(action: A) {
     useKeyboardShortcut(
       {
         keys: keys.length === 1 ? keys[0] : keys,
-        callback: keys.length === 0 ? () => { } : handler,
+        callback: keys.length === 0 ? () => {} : handler,
         description: binding?.description || `${action} action`,
         group: binding?.group || 'Actions',
         scope: scope || Scope.GLOBAL,

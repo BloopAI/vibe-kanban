@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo } from 'react';
 import {
   type DragEndEvent,
   KanbanBoard,
@@ -15,8 +15,7 @@ import { statusBoardColors, statusLabels } from '@/utils/status-labels';
 type Task = TaskWithAttemptStatus;
 
 interface TaskKanbanBoardProps {
-  tasks: Task[];
-  searchQuery?: string;
+  groupedTasks: Record<TaskStatus, Task[]>;
   onDragEnd: (event: DragEndEvent) => void;
   onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
@@ -25,17 +24,8 @@ interface TaskKanbanBoardProps {
   selectedTask?: Task;
 }
 
-const allTaskStatuses: TaskStatus[] = [
-  'todo',
-  'inprogress',
-  'inreview',
-  'done',
-  'cancelled',
-];
-
 function TaskKanbanBoard({
-  tasks,
-  searchQuery = '',
+  groupedTasks,
   onDragEnd,
   onEditTask,
   onDeleteTask,
@@ -43,36 +33,6 @@ function TaskKanbanBoard({
   onViewTaskDetails,
   selectedTask,
 }: TaskKanbanBoardProps) {
-  // Memoize filtered tasks
-  const filteredTasks = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return tasks;
-    }
-    const query = searchQuery.toLowerCase();
-    return tasks.filter(
-      (task) =>
-        task.title.toLowerCase().includes(query) ||
-        (task.description && task.description.toLowerCase().includes(query))
-    );
-  }, [tasks, searchQuery]);
-
-  // Memoize grouped tasks
-  const groupedTasks = useMemo(() => {
-    const groups: Record<TaskStatus, Task[]> = {} as Record<TaskStatus, Task[]>;
-    allTaskStatuses.forEach((status) => {
-      groups[status] = [];
-    });
-    filteredTasks.forEach((task) => {
-      const normalizedStatus = task.status.toLowerCase() as TaskStatus;
-      if (groups[normalizedStatus]) {
-        groups[normalizedStatus].push(task);
-      } else {
-        groups['todo'].push(task);
-      }
-    });
-    return groups;
-  }, [filteredTasks]);
-
   return (
     <KanbanProvider onDragEnd={onDragEnd}>
       {Object.entries(groupedTasks).map(([status, statusTasks]) => (

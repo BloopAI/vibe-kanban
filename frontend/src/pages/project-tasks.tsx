@@ -171,85 +171,35 @@ export function ProjectTasks() {
     'cancelled',
   ] as const;
 
-  const getTasksByStatus = useCallback(() => {
-    return taskStatuses.reduce(
-      (acc, status) => {
-        acc[status] = tasks.filter((task) => task.status === status);
-        return acc;
-      },
-      {} as Record<string, Task[]>
+  // Memoize filtered tasks based on search query
+  const filteredTasks = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return tasks;
+    }
+    const query = searchQuery.toLowerCase();
+    return tasks.filter(
+      (task) =>
+        task.title.toLowerCase().includes(query) ||
+        (task.description && task.description.toLowerCase().includes(query))
     );
-  }, [tasks]);
+  }, [tasks, searchQuery]);
 
-  const selectNextTask = useCallback(() => {
-    if (selectedTask) {
-      const tasksInStatus = getTasksByStatus()[selectedTask.status];
-      const currentIndex = tasksInStatus.findIndex(
-        (task) => task.id === selectedTask.id
-      );
-      if (currentIndex < tasksInStatus.length - 1) {
-        handleViewTaskDetails(tasksInStatus[currentIndex + 1]);
+  // Memoize grouped filtered tasks
+  const groupedFilteredTasks = useMemo(() => {
+    const groups: Record<string, Task[]> = {};
+    taskStatuses.forEach((status) => {
+      groups[status] = [];
+    });
+    filteredTasks.forEach((task) => {
+      const normalizedStatus = task.status.toLowerCase();
+      if (groups[normalizedStatus]) {
+        groups[normalizedStatus].push(task);
+      } else {
+        groups['todo'].push(task);
       }
-    } else {
-      handleViewTaskDetails(getTasksByStatus()[taskStatuses[0]][0]);
-    }
-  }, [selectedTask, tasks]);
-
-  const selectPreviousTask = useCallback(() => {
-    if (selectedTask) {
-      const tasksInStatus = getTasksByStatus()[selectedTask.status];
-      const currentIndex = tasksInStatus.findIndex(
-        (task) => task.id === selectedTask.id
-      );
-      if (currentIndex > 0) {
-        handleViewTaskDetails(tasksInStatus[currentIndex - 1]);
-      }
-    } else {
-      handleViewTaskDetails(getTasksByStatus()[taskStatuses[0]][0]);
-    }
-  }, [selectedTask, tasks]);
-
-  const selectNextColumn = useCallback(() => {
-    if (selectedTask) {
-      let currentIndex = taskStatuses.findIndex(
-        (status) => status === selectedTask.status
-      );
-      if (currentIndex < taskStatuses.length - 1) {
-        // Iterate through columns until non-empty
-        while (
-          getTasksByStatus()[taskStatuses[currentIndex + 1]].length === 0
-        ) {
-          currentIndex++;
-        }
-        handleViewTaskDetails(
-          getTasksByStatus()[taskStatuses[currentIndex + 1]][0]
-        );
-      }
-    } else {
-      handleViewTaskDetails(getTasksByStatus()[taskStatuses[0]][0]);
-    }
-  }, [selectedTask, tasks]);
-
-  const selectPreviousColumn = useCallback(() => {
-    if (selectedTask) {
-      let currentIndex = taskStatuses.findIndex(
-        (status) => status === selectedTask.status
-      );
-      if (currentIndex > 0) {
-        // Iterate through columns until non-empty
-        while (
-          getTasksByStatus()[taskStatuses[currentIndex - 1]].length === 0
-        ) {
-          currentIndex--;
-        }
-        handleViewTaskDetails(
-          getTasksByStatus()[taskStatuses[currentIndex - 1]][0]
-        );
-      }
-    } else {
-      handleViewTaskDetails(getTasksByStatus()[taskStatuses[0]][0]);
-    }
-  }, [selectedTask, tasks]);
+    });
+    return groups;
+  }, [filteredTasks]);
 
   useKeyNavUp(
     () => {
@@ -358,6 +308,99 @@ export function ProjectTasks() {
     [projectId, navigateToTask, navigateToAttempt]
   );
 
+  // Navigation functions that use filtered/grouped tasks
+  const selectNextTask = useCallback(() => {
+    if (selectedTask) {
+      const tasksInStatus = groupedFilteredTasks[selectedTask.status] || [];
+      const currentIndex = tasksInStatus.findIndex(
+        (task) => task.id === selectedTask.id
+      );
+      if (currentIndex >= 0 && currentIndex < tasksInStatus.length - 1) {
+        handleViewTaskDetails(tasksInStatus[currentIndex + 1]);
+      }
+    } else {
+      // Find first non-empty column
+      for (const status of taskStatuses) {
+        const tasks = groupedFilteredTasks[status];
+        if (tasks && tasks.length > 0) {
+          handleViewTaskDetails(tasks[0]);
+          break;
+        }
+      }
+    }
+  }, [selectedTask, groupedFilteredTasks, handleViewTaskDetails]);
+
+  const selectPreviousTask = useCallback(() => {
+    if (selectedTask) {
+      const tasksInStatus = groupedFilteredTasks[selectedTask.status] || [];
+      const currentIndex = tasksInStatus.findIndex(
+        (task) => task.id === selectedTask.id
+      );
+      if (currentIndex > 0) {
+        handleViewTaskDetails(tasksInStatus[currentIndex - 1]);
+      }
+    } else {
+      // Find first non-empty column
+      for (const status of taskStatuses) {
+        const tasks = groupedFilteredTasks[status];
+        if (tasks && tasks.length > 0) {
+          handleViewTaskDetails(tasks[0]);
+          break;
+        }
+      }
+    }
+  }, [selectedTask, groupedFilteredTasks, handleViewTaskDetails]);
+
+  const selectNextColumn = useCallback(() => {
+    if (selectedTask) {
+      const currentIndex = taskStatuses.findIndex(
+        (status) => status === selectedTask.status
+      );
+      // Find next non-empty column
+      for (let i = currentIndex + 1; i < taskStatuses.length; i++) {
+        const tasks = groupedFilteredTasks[taskStatuses[i]];
+        if (tasks && tasks.length > 0) {
+          handleViewTaskDetails(tasks[0]);
+          return;
+        }
+      }
+    } else {
+      // Find first non-empty column
+      for (const status of taskStatuses) {
+        const tasks = groupedFilteredTasks[status];
+        if (tasks && tasks.length > 0) {
+          handleViewTaskDetails(tasks[0]);
+          break;
+        }
+      }
+    }
+  }, [selectedTask, groupedFilteredTasks, handleViewTaskDetails]);
+
+  const selectPreviousColumn = useCallback(() => {
+    if (selectedTask) {
+      const currentIndex = taskStatuses.findIndex(
+        (status) => status === selectedTask.status
+      );
+      // Find previous non-empty column
+      for (let i = currentIndex - 1; i >= 0; i--) {
+        const tasks = groupedFilteredTasks[taskStatuses[i]];
+        if (tasks && tasks.length > 0) {
+          handleViewTaskDetails(tasks[0]);
+          return;
+        }
+      }
+    } else {
+      // Find first non-empty column
+      for (const status of taskStatuses) {
+        const tasks = groupedFilteredTasks[status];
+        if (tasks && tasks.length > 0) {
+          handleViewTaskDetails(tasks[0]);
+          break;
+        }
+      }
+    }
+  }, [selectedTask, groupedFilteredTasks, handleViewTaskDetails]);
+
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       const { active, over } = event;
@@ -443,11 +486,20 @@ export function ProjectTasks() {
                 </CardContent>
               </Card>
             </div>
+          ) : filteredTasks.length === 0 ? (
+            <div className="max-w-7xl mx-auto mt-8">
+              <Card>
+                <CardContent className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    No tasks match your search.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
           ) : (
             <div className="w-full h-full overflow-x-auto">
               <TaskKanbanBoard
-                tasks={tasks}
-                searchQuery={searchQuery}
+                groupedTasks={groupedFilteredTasks}
                 onDragEnd={handleDragEnd}
                 onEditTask={handleEditTaskCallback}
                 onDeleteTask={handleDeleteTask}

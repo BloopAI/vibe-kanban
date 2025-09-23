@@ -45,10 +45,7 @@ export function useKeyboardShortcut(
   const unregisterRef = useRef<(() => void) | null>(null);
 
   const { keys, callback, when = true } = config;
-  const {
-    enableOnContentEditable = false,
-    preventDefault = false,
-  } = options;
+  const { enableOnContentEditable = false, preventDefault = false } = options;
 
   // Register with central registry
   useEffect(() => {
