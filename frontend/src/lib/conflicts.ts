@@ -14,7 +14,7 @@ export function displayConflictOpLabel(op?: ConflictOp | null): string {
   }
 }
 
-export function formatConflictHeader(
+function formatConflictHeader(
   op: ConflictOp | null | undefined,
   sourceBranch: string,
   baseBranch?: string

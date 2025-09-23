@@ -16,4 +16,3 @@ export const useDiffViewStore = create<State>((set) => ({
 }));
 
 export const useDiffViewMode = () => useDiffViewStore((s) => s.mode);
-export const useToggleDiffViewMode = () => useDiffViewStore((s) => s.toggle);

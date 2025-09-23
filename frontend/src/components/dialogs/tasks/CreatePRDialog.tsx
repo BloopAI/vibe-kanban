@@ -198,4 +198,3 @@ const CreatePrDialog = NiceModal.create(() => {
 });
 
 export { CreatePrDialog as CreatePRDialog };
-export default CreatePrDialog;

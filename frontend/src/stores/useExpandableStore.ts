@@ -7,7 +7,7 @@ type State = {
   clear: () => void;
 };
 
-export const useExpandableStore = create<State>((set) => ({
+const useExpandableStore = create<State>((set) => ({
   expanded: {},
   setKey: (key, value) =>
     set((s) =>

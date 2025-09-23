@@ -12,7 +12,7 @@ function getStatusIcon(status?: string) {
   return <Circle aria-hidden className="h-4 w-4 text-muted-foreground" />;
 }
 
-export function TodoPanel() {
+function TodoPanel() {
   const { entries } = useEntries();
   const { todos } = usePinnedTodos(entries);
 

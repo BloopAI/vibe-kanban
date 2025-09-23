@@ -9,7 +9,6 @@ import {
 } from 'shared/types.ts';
 import type { ProcessStartPayload } from '@/types/logs';
 import FileChangeRenderer from './FileChangeRenderer';
-import { renderJson } from './ToolDetails';
 import { useExpandable } from '@/stores/useExpandableStore';
 import {
   AlertCircle,
@@ -41,6 +40,11 @@ type Props = {
 };
 
 type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
+type JsonValue = any;
+
+const renderJson = (v: JsonValue) => (
+  <pre className="whitespace-pre-wrap">{JSON.stringify(v, null, 2)}</pre>
+);
 
 const getEntryIcon = (entryType: NormalizedEntryType) => {
   const iconSize = 'h-3 w-3';

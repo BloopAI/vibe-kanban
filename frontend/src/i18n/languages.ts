@@ -12,7 +12,7 @@ export const UI_TO_I18N = {
   ES: 'es',
 } as const;
 
-export const SUPPORTED_UI_LANGUAGES = ['BROWSER', 'EN', 'JA', 'ES'] as const;
+const SUPPORTED_UI_LANGUAGES = ['BROWSER', 'EN', 'JA', 'ES'] as const;
 export const SUPPORTED_I18N_CODES = Object.values(UI_TO_I18N);
 
 const FALLBACK_ENDONYMS = {

@@ -26,7 +26,7 @@ const defaultUiState: TaskUiState = {
   fileToDelete: null,
 };
 
-export const useTaskDetailsUiStore = create<TaskDetailsUiStore>((set, get) => ({
+const useTaskDetailsUiStore = create<TaskDetailsUiStore>((set, get) => ({
   ui: {},
 
   getUiState: (taskId: string) => {
@@ -59,17 +59,6 @@ export const useTaskDetailsUiStore = create<TaskDetailsUiStore>((set, get) => ({
   },
 }));
 
-// Convenience hooks for specific UI state
-export const useTaskLoading = (taskId: string) => {
-  const { getUiState, setUiState } = useTaskDetailsUiStore();
-  const { loading } = getUiState(taskId);
-
-  return {
-    loading,
-    setLoading: (value: boolean) => setUiState(taskId, { loading: value }),
-  };
-};
-
 export const useTaskStopping = (taskId: string) => {
   const { getUiState, setUiState } = useTaskDetailsUiStore();
   const { isStopping } = getUiState(taskId);
@@ -78,19 +67,5 @@ export const useTaskStopping = (taskId: string) => {
     isStopping,
     setIsStopping: (value: boolean) =>
       setUiState(taskId, { isStopping: value }),
-  };
-};
-
-export const useTaskDeletingFiles = (taskId: string) => {
-  const { getUiState, setUiState } = useTaskDetailsUiStore();
-  const { deletingFiles, fileToDelete } = getUiState(taskId);
-
-  return {
-    deletingFiles,
-    fileToDelete,
-    setFileToDelete: (value: string | null) =>
-      setUiState(taskId, { fileToDelete: value }),
-    setDeletingFiles: (value: Set<string>) =>
-      setUiState(taskId, { deletingFiles: value }),
   };
 };

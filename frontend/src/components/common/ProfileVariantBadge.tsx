@@ -26,5 +26,3 @@ export function ProfileVariantBadge({
     </span>
   );
 }
-
-export default ProfileVariantBadge;

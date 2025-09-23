@@ -52,7 +52,7 @@ export type {
   UpdateFollowUpDraftRequest,
 } from 'shared/types';
 
-export class ApiError<E = unknown> extends Error {
+class ApiError<E = unknown> extends Error {
   public status?: number;
   public error_data?: E;
 
@@ -69,7 +69,7 @@ export class ApiError<E = unknown> extends Error {
   }
 }
 
-export const makeRequest = async (url: string, options: RequestInit = {}) => {
+const makeRequest = async (url: string, options: RequestInit = {}) => {
   const headers = {
     'Content-Type': 'application/json',
     ...(options.headers || {}),
@@ -641,17 +641,6 @@ export const githubApi = {
     const response = await makeRequest(`/api/github/repositories?page=${page}`);
     return handleApiResponse<RepositoryInfo[]>(response);
   },
-  // createProjectFromRepository: async (
-  //   data: CreateProjectFromGitHub
-  // ): Promise<Project> => {
-  //   const response = await makeRequest('/api/projects/from-github', {
-  //     method: 'POST',
-  //     body: JSON.stringify(data, (_key, value) =>
-  //       typeof value === 'bigint' ? Number(value) : value
-  //     ),
-  //   });
-  //   return handleApiResponse<Project>(response);
-  // },
 };
 
 // Task Templates APIs
