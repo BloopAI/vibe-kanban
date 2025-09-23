@@ -10,33 +10,6 @@ export interface KeyboardShortcutOptions {
   preventDefault?: boolean;
 }
 
-/**
- * Hook for registering keyboard shortcuts with central registry
- *
- * For multiple shortcuts, call this hook multiple times or use a wrapper component.
- * This keeps the hook simple and follows React's rules of hooks.
- *
- * @param config Single shortcut config
- * @param options Optional settings for react-hotkeys-hook
- *
- * @example
- * // Standard shortcut (disabled in form fields)
- * useKeyboardShortcut({
- *   keys: 'c',
- *   callback: createTask,
- *   description: 'Create new task',
- *   group: 'Kanban'
- * });
- *
- * @example
- * // Dialog shortcut (works even in form fields)
- * useKeyboardShortcut({
- *   keys: 'esc',
- *   callback: handleEsc,
- *   description: 'Close dialog',
- *   group: 'Dialog'
- * });
- */
 export function useKeyboardShortcut(
   config: ShortcutConfig,
   options: KeyboardShortcutOptions = {}
@@ -44,46 +17,56 @@ export function useKeyboardShortcut(
   const { register } = useKeyboardShortcutsRegistry();
   const unregisterRef = useRef<(() => void) | null>(null);
 
-  const { keys, callback, when = true } = config;
+  const { keys, callback, when = true, description, group, scope } = config;
   const { enableOnContentEditable = false, preventDefault = false } = options;
 
-  // Register with central registry
+  // Keep latest callback/when without forcing re-register
+  const callbackRef = useRef(callback);
   useEffect(() => {
-    const unregister = register(config);
+    callbackRef.current = callback;
+  }, [callback]);
+
+  const whenRef = useRef(when);
+  useEffect(() => {
+    whenRef.current = when;
+  }, [when]);
+
+  // Register once per identity fields (no direct 'config' usage here)
+  useEffect(() => {
+    const unregister = register({
+      keys,
+      description,
+      group,
+      scope,
+      // delegate to latest refs
+      callback: (e: KeyboardEvent) => callbackRef.current?.(e as KeyboardEvent),
+      when: () => {
+        const w = whenRef.current;
+        return typeof w === 'function' ? !!w() : !!w;
+      },
+    });
     unregisterRef.current = unregister;
 
     return () => {
-      if (unregisterRef.current) {
-        unregisterRef.current();
-        unregisterRef.current = null;
-      }
+      unregisterRef.current?.();
+      unregisterRef.current = null;
     };
-  }, [
-    register,
-    JSON.stringify({
-      keys: config.keys,
-      description: config.description,
-      group: config.group,
-      scope: config.scope,
-    }),
-  ]);
+  }, [register, keys, description, group, scope]);
 
   // Bind the actual keyboard handling
   useHotkeys(
     keys,
     (event) => {
-      // Check dynamic enabling condition
-      const enabled = typeof when === 'function' ? when() : when;
-      if (enabled) {
-        callback(event);
-      }
+      const w = whenRef.current;
+      const enabled = typeof w === 'function' ? !!w() : !!w;
+      if (enabled) callbackRef.current?.(event as KeyboardEvent);
     },
     {
-      enabled: typeof when === 'function' ? when() : when,
+      enabled: true, // we gate inside handler via whenRef
       enableOnContentEditable,
       preventDefault,
-      scopes: config.scope ? [config.scope] : ['*'], // Use react-hotkeys-hook's official scopes
+      scopes: scope ? [scope] : ['*'],
     },
-    [callback, typeof when === 'function' ? when : when]
+    [keys, scope] // handler uses refs; only rebinding when identity changes
   );
 }
