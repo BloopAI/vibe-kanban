@@ -96,7 +96,6 @@ pub enum DiffTarget<'p> {
     /// Work-in-progress branch checked out in this worktree
     Worktree {
         worktree_path: &'p Path,
-        branch_name: &'p str,
         base_commit: &'p Commit,
     },
     /// Fully committed branch vs base branch
@@ -267,7 +266,6 @@ impl GitService {
         match target {
             DiffTarget::Worktree {
                 worktree_path,
-                branch_name: _,
                 base_commit,
             } => {
                 // Use Git CLI to compute diff vs base to avoid sparse false deletions

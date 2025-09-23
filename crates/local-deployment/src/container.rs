@@ -644,7 +644,6 @@ impl LocalContainerService {
     async fn create_live_diff_stream(
         &self,
         worktree_path: &Path,
-        task_branch: &str,
         base_commit: &Commit,
     ) -> Result<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>, ContainerError>
     {
@@ -653,7 +652,6 @@ impl LocalContainerService {
         let initial_diffs = git_service.get_diffs(
             DiffTarget::Worktree {
                 worktree_path,
-                branch_name: task_branch,
                 base_commit,
             },
             None,
@@ -693,7 +691,6 @@ impl LocalContainerService {
 
         // Create live update stream
         let worktree_path = worktree_path.to_path_buf();
-        let task_branch = task_branch.to_string();
         let base_commit = base_commit.clone();
 
         let live_stream = {
@@ -721,7 +718,6 @@ impl LocalContainerService {
                                 for event in Self::process_file_changes(
                                     &git_service,
                                     &worktree_path,
-                                    &task_branch,
                                     &base_commit,
                                     &changed_paths,
                                     &cumulative,
@@ -776,7 +772,6 @@ impl LocalContainerService {
     fn process_file_changes(
         git_service: &GitService,
         worktree_path: &Path,
-        task_branch: &str,
         base_commit: &Commit,
         changed_paths: &[String],
         cumulative_bytes: &Arc<AtomicUsize>,
@@ -787,7 +782,6 @@ impl LocalContainerService {
         let current_diffs = git_service.get_diffs(
             DiffTarget::Worktree {
                 worktree_path,
-                branch_name: task_branch,
                 base_commit,
             },
             Some(&path_filter),
@@ -1178,7 +1172,7 @@ impl ContainerService for LocalContainerService {
         )?;
 
         // Handle ongoing attempts (live streaming diff)
-        self.create_live_diff_stream(&worktree_path, &task_branch, &base_commit)
+        self.create_live_diff_stream(&worktree_path, &base_commit)
             .await
     }
 
