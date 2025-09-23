@@ -459,6 +459,7 @@ export function ProjectTasks() {
                 onDeleteTask={handleDeleteTask}
                 onDuplicateTask={handleDuplicateTaskCallback}
                 onViewTaskDetails={handleViewTaskDetails}
+                selectedTask={selectedTask || undefined}
               />
             </div>
           )}

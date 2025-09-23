@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/shadcn-io/kanban';
 import { TaskCard } from './TaskCard';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
-import { useParams } from 'react-router-dom';
+// import { useParams } from 'react-router-dom';
 
 import { statusBoardColors, statusLabels } from '@/utils/status-labels';
 
@@ -22,6 +22,7 @@ interface TaskKanbanBoardProps {
   onDeleteTask: (taskId: string) => void;
   onDuplicateTask?: (task: Task) => void;
   onViewTaskDetails: (task: Task) => void;
+  selectedTask?: Task;
 }
 
 const allTaskStatuses: TaskStatus[] = [
@@ -40,16 +41,8 @@ function TaskKanbanBoard({
   onDeleteTask,
   onDuplicateTask,
   onViewTaskDetails,
+  selectedTask,
 }: TaskKanbanBoardProps) {
-  const { taskId } = useParams<{
-    projectId: string;
-    taskId?: string;
-  }>();
-
-  // const [focusedTaskId, setFocusedTaskId] = useState<string | null>(
-  //   taskId || null
-  // );
-
   // Memoize filtered tasks
   const filteredTasks = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -80,28 +73,6 @@ function TaskKanbanBoard({
     return groups;
   }, [filteredTasks]);
 
-  // // Sync focus state with taskId param
-  // useEffect(() => {
-  //   if (taskId) {
-  //     const found = filteredTasks.find((t) => t.id === taskId);
-  //     if (found) {
-  //       setFocusedTaskId(taskId);
-  //     }
-  //   }
-  // }, [taskId, filteredTasks]);
-
-  // // If no taskId in params, keep last focused, or focus first available
-  // useEffect(() => {
-  //   if (!taskId && !focusedTaskId) {
-  //     for (const status of allTaskStatuses) {
-  //       if (groupedTasks[status] && groupedTasks[status].length > 0) {
-  //         setFocusedTaskId(groupedTasks[status][0].id);
-  //         break;
-  //       }
-  //     }
-  //   }
-  // }, [taskId, focusedTaskId, groupedTasks]);
-
   return (
     <KanbanProvider onDragEnd={onDragEnd}>
       {Object.entries(groupedTasks).map(([status, statusTasks]) => (
@@ -121,10 +92,7 @@ function TaskKanbanBoard({
                 onDelete={onDeleteTask}
                 onDuplicate={onDuplicateTask}
                 onViewDetails={onViewTaskDetails}
-                // isFocused={focusedTaskId === task.id}
-                // tabIndex={focusedTaskId === task.id ? 0 : -1}
-                isFocused={false}
-                tabIndex={index}
+                isOpen={selectedTask?.id === task.id}
               />
             ))}
           </KanbanCards>

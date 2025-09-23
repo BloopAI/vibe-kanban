@@ -28,8 +28,7 @@ interface TaskCardProps {
   onDelete: (taskId: string) => void;
   onDuplicate?: (task: Task) => void;
   onViewDetails: (task: Task) => void;
-  isFocused: boolean;
-  tabIndex?: number;
+  isOpen?: boolean;
 }
 
 export function TaskCard({
@@ -40,17 +39,8 @@ export function TaskCard({
   onDelete,
   onDuplicate,
   onViewDetails,
-  isFocused,
-  tabIndex = -1,
+  isOpen,
 }: TaskCardProps) {
-  const localRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (isFocused && localRef.current) {
-      localRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-      localRef.current.focus();
-    }
-  }, [isFocused]);
-
   const handleClick = useCallback(() => {
     onViewDetails(task);
   }, [task, onViewDetails]);
@@ -63,8 +53,7 @@ export function TaskCard({
       index={index}
       parent={status}
       onClick={handleClick}
-      tabIndex={tabIndex}
-      forwardedRef={localRef}
+      isOpen={isOpen}
     >
       <div className="flex flex-1 gap-2 items-center min-w-0">
         <h4 className="flex-1 min-w-0 line-clamp-2 font-light text-sm">
