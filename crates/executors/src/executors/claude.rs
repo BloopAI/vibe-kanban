@@ -39,9 +39,9 @@ const CONFIRM_HOOK_SCRIPT: &str = include_str!("./hooks/confirm.py");
 
 fn base_command(claude_code_router: bool) -> &'static str {
     if claude_code_router {
-        "npx -y @musistudio/claude-code-router code"
+        "npx -y @musistudio/claude-code-router@1.0.49 code"
     } else {
-        "npx -y @anthropic-ai/claude-code@latest"
+        "npx -y @anthropic-ai/claude-code@1.0.120"
     }
 }
 

@@ -36,7 +36,7 @@ pub enum GeminiModel {
 
 impl GeminiModel {
     fn base_command(&self) -> &'static str {
-        "npx -y @google/gemini-cli@latest"
+        "npx -y @google/gemini-cli@0.5.5"
     }
 
     fn build_command_builder(&self) -> CommandBuilder {
