@@ -25,6 +25,8 @@ use base64::{Engine, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use thiserror::Error;
 use utils::shell::resolve_executable_path;
 
+use crate::services::git::Commit;
+
 #[derive(Debug, Error)]
 pub enum GitCliError {
     #[error("git executable not found or not runnable")]
@@ -141,7 +143,7 @@ impl GitCli {
     pub fn diff_status(
         &self,
         worktree_path: &Path,
-        base_branch: &str,
+        base_commit: &Commit,
         opts: StatusDiffOptions,
     ) -> Result<Vec<StatusDiffEntry>, GitCliError> {
         // Create a temp index file
@@ -167,7 +169,7 @@ impl GitCli {
             "--cached".into(),
             "-M".into(),
             "--name-status".into(),
-            OsString::from(base_branch),
+            OsString::from(base_commit.to_string()),
         ];
         if let Some(paths) = &opts.path_filter {
             let non_empty_paths: Vec<&str> = paths

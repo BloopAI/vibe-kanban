@@ -975,13 +975,14 @@ fn sparse_checkout_respected_in_worktree_diffs_and_commit() {
 
     // modify included file
     write_file(&wt, "included/a.txt", "A-mod\n");
+    let bc = s.get_base_commit(&repo_path, "feature", "main").unwrap();
     // get worktree diffs vs main, ensure excluded/b.txt is NOT reported deleted
     let diffs = s
         .get_diffs(
             DiffTarget::Worktree {
                 worktree_path: Path::new(&wt),
                 branch_name: "feature",
-                base_branch: "main",
+                base_commit: &bc,
             },
             None,
         )
