@@ -452,7 +452,7 @@ export function GeneralSettings() {
           <div className="flex items-center gap-4 my-6">
             <div className="flex-1 border-t border-border"></div>
             <span className="text-sm text-muted-foreground font-medium">
-              {t('settings:general.github.or')}
+              {t('settings.general.github.or')}
             </span>
             <div className="flex-1 border-t border-border"></div>
           </div>
