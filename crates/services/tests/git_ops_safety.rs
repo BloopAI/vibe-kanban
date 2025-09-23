@@ -1044,9 +1044,7 @@ fn worktree_diff_ignores_commits_where_base_branch_is_ahead() {
     let _ = s.commit(&repo_path, "main ahead").unwrap();
 
     write_file(&wt, "feature.txt", "feature change\n");
-    let base_commit = s
-        .get_base_commit(&repo_path, "feature", "main")
-        .unwrap();
+    let base_commit = s.get_base_commit(&repo_path, "feature", "main").unwrap();
 
     let diffs = s
         .get_diffs(
@@ -1063,12 +1061,10 @@ fn worktree_diff_ignores_commits_where_base_branch_is_ahead() {
             .iter()
             .any(|d| d.new_path.as_deref() == Some("feature.txt"))
     );
-    assert!(
-        diffs.iter().all(|d| {
-            d.new_path.as_deref() != Some("base_only.txt")
-                && d.old_path.as_deref() != Some("base_only.txt")
-        })
-    );
+    assert!(diffs.iter().all(|d| {
+        d.new_path.as_deref() != Some("base_only.txt")
+            && d.old_path.as_deref() != Some("base_only.txt")
+    }));
 }
 
 // Helper: initialize a repo with main, configure user via service
