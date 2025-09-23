@@ -18,13 +18,13 @@ const Dialog = React.forwardRef<
   // Manage dialog scope when open/closed
   React.useEffect(() => {
     if (open) {
-      enableScope('dialog');
-      disableScope('kanban');
-      disableScope('projects');
+      enableScope(Scope.DIALOG);
+      disableScope(Scope.KANBAN);
+      disableScope(Scope.PROJECTS);
     } else {
-      disableScope('dialog');
-      enableScope('kanban'); // Re-enable based on current page
-      enableScope('projects');
+      disableScope(Scope.DIALOG);
+      enableScope(Scope.KANBAN);
+      enableScope(Scope.PROJECTS);
     }
   }, [open, enableScope, disableScope]);
 
