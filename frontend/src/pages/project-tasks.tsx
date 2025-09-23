@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Plus } from 'lucide-react';
@@ -38,6 +39,7 @@ import NiceModal from '@ebay/nice-modal-react';
 type Task = TaskWithAttemptStatus;
 
 export function ProjectTasks() {
+  const { t } = useTranslation(['tasks', 'common']);
   const { projectId, taskId, attemptId } = useParams<{
     projectId: string;
     taskId?: string;
@@ -437,7 +439,7 @@ export function ProjectTasks() {
   // Remove legacy direct-navigation handler; live sync above covers this
 
   if (isLoading) {
-    return <Loader message="Loading tasks..." size={32} className="py-8" />;
+    return <Loader message={t('loading')} size={32} className="py-8" />;
   }
 
   if (error) {
@@ -446,7 +448,7 @@ export function ProjectTasks() {
         <Alert>
           <AlertTitle className="flex items-center gap-2">
             <AlertTriangle size="16" />
-            Error
+            {t('common:states.error')}
           </AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -462,7 +464,7 @@ export function ProjectTasks() {
         <Alert className="w-full z-30 xl:sticky xl:top-0">
           <AlertTitle className="flex items-center gap-2">
             <AlertTriangle size="16" />
-            Reconnecting
+            {t('common:states.reconnecting')}
           </AlertTitle>
           <AlertDescription>{streamError}</AlertDescription>
         </Alert>
@@ -476,12 +478,10 @@ export function ProjectTasks() {
             <div className="max-w-7xl mx-auto mt-8">
               <Card>
                 <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground">
-                    No tasks found for this project.
-                  </p>
+                  <p className="text-muted-foreground">{t('empty.noTasks')}</p>
                   <Button className="mt-4" onClick={handleCreateNewTask}>
                     <Plus className="h-4 w-4 mr-2" />
-                    Create First Task
+                    {t('empty.createFirst')}
                   </Button>
                 </CardContent>
               </Card>
@@ -491,7 +491,7 @@ export function ProjectTasks() {
               <Card>
                 <CardContent className="text-center py-8">
                   <p className="text-muted-foreground">
-                    No tasks match your search.
+                    {t('empty.noSearchResults')}
                   </p>
                 </CardContent>
               </Card>
