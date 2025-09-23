@@ -61,8 +61,7 @@ pub async fn create_project(
     tracing::debug!("Creating project '{}'", name);
 
     // Validate and setup git repository
-    // Expand tilde in git repo path if present
-    let path = expand_tilde(&git_repo_path);
+    let path = std::path::absolute(expand_tilde(&git_repo_path))?;
     // Check if git repo path is already used by another project
     match Project::find_by_git_repo_path(&deployment.db().pool, path.to_string_lossy().as_ref())
         .await
