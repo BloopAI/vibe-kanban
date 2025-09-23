@@ -23,15 +23,15 @@ export const SUPPORTED_I18N_CODES = Object.values(UI_TO_I18N);
 // All available UI language options (including BROWSER)
 export const ALL_UI_LANGUAGES: Array<'BROWSER' | SupportedUiLanguage> = [
   'BROWSER',
-  'EN', 
+  'EN',
   'JA',
-  'ES'
+  'ES',
 ];
 
 // Fallback endonyms for browsers that don't support Intl.DisplayNames
 const FALLBACK_ENDONYMS: Record<string, string> = {
   en: 'English',
-  ja: '日本語', 
+  ja: '日本語',
   es: 'Español',
 };
 
@@ -54,7 +54,9 @@ export function uiLanguageToI18nCode(uiLang: string): string | null {
  */
 export function getLanguageEndonym(langCode: string): string {
   try {
-    const displayNames = new Intl.DisplayNames([langCode], { type: 'language' });
+    const displayNames = new Intl.DisplayNames([langCode], {
+      type: 'language',
+    });
     return displayNames.of(langCode) || FALLBACK_ENDONYMS[langCode] || langCode;
   } catch {
     // Fallback for older browsers or unsupported language codes
@@ -69,18 +71,18 @@ export function getLanguageEndonym(langCode: string): string {
  * @returns Display name for the language option
  */
 export function getUiLanguageDisplayName(
-  uiLang: string, 
+  uiLang: string,
   browserDefaultLabel: string = 'Browser Default'
 ): string {
   if (uiLang === 'BROWSER') {
     return browserDefaultLabel;
   }
-  
+
   const i18nCode = uiLanguageToI18nCode(uiLang);
   if (!i18nCode) {
     return uiLang; // Fallback to enum value
   }
-  
+
   return getLanguageEndonym(i18nCode);
 }
 
@@ -99,12 +101,16 @@ export interface LanguageInfo {
  * @param browserDefaultLabel - Label for browser default option
  * @returns Array of language information objects
  */
-export function getAllLanguageInfo(browserDefaultLabel: string = 'Browser Default'): LanguageInfo[] {
-  return ALL_UI_LANGUAGES.map(uiLang => {
+export function getAllLanguageInfo(
+  browserDefaultLabel: string = 'Browser Default'
+): LanguageInfo[] {
+  return ALL_UI_LANGUAGES.map((uiLang) => {
     const i18nCode = uiLanguageToI18nCode(uiLang);
     const displayName = getUiLanguageDisplayName(uiLang, browserDefaultLabel);
-    const nativeName = i18nCode ? getLanguageEndonym(i18nCode) : browserDefaultLabel;
-    
+    const nativeName = i18nCode
+      ? getLanguageEndonym(i18nCode)
+      : browserDefaultLabel;
+
     return {
       uiValue: uiLang,
       i18nCode,

@@ -78,7 +78,9 @@ export const updateLanguageFromConfig = (configLanguage: string) => {
     if (langCode) {
       i18n.changeLanguage(langCode);
     } else {
-      console.warn(`Unknown UI language: ${configLanguage}, falling back to 'en'`);
+      console.warn(
+        `Unknown UI language: ${configLanguage}, falling back to 'en'`
+      );
       i18n.changeLanguage('en');
     }
   }

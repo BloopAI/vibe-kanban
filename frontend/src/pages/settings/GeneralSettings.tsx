@@ -44,10 +44,13 @@ import NiceModal from '@ebay/nice-modal-react';
 
 export function GeneralSettings() {
   const { t } = useTranslation(['settings', 'common']);
-  
+
   // Get language options with proper display names
   const languageOptions = getAllLanguageInfo(
-    t('language.browserDefault', { ns: 'common', defaultValue: 'Browser Default' })
+    t('language.browserDefault', {
+      ns: 'common',
+      defaultValue: 'Browser Default',
+    })
   );
   const {
     config,
