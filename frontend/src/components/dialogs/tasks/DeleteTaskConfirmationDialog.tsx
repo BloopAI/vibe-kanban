@@ -60,14 +60,10 @@ const DeleteTaskConfirmationDialog =
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-4">
-            <div className="bg-red-50 border border-red-200 rounded-md p-3">
-              <p className="text-sm text-red-800">
-                <strong>Warning:</strong> This action will permanently delete
-                the task and cannot be undone.
-              </p>
-            </div>
-          </div>
+          <Alert variant="destructive" className="mb-4">
+            <strong>Warning:</strong> This action will permanently delete the
+            task and cannot be undone.
+          </Alert>
 
           {error && (
             <Alert variant="destructive" className="mb-4">

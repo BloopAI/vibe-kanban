@@ -46,17 +46,17 @@
   /* Dark defaults (used if no theme class but user prefers dark) */
   .dark {
     color-scheme: dark;
-    --_background: 60 2% 18%;
-    --_foreground: 48 7% 95%;
+    --_background: 48 4% 16%;
+    --_foreground: 48 7% 85%;
     --_primary: var(--_muted);
     --_primary-foreground: var(--_muted-foreground);
     --_secondary: var(--_muted);
-    --_secondary-foreground: 48 7% 73%;
-    --_muted: 60 2% 20%;
+    --_secondary-foreground: 48 2% 65%;
+    --_muted: 60 2% 18%;
     --_muted-foreground: var(--_foreground);
     --_accent: var(--_background);
     --_accent-foreground: 210 40% 98%;
-    --_destructive: 0 62.8% 50.6%;
+    --_destructive: 0 45% 55%;
     --_destructive-foreground: var(--_background-foreground);
     --_border: 60 2% 25%;
     --_input: var(--_border);
@@ -179,6 +179,10 @@
 
   *:focus {
     @apply ring-inset;
+  }
+
+  .logo {
+    @apply fill-foreground;
   }
 }
 
