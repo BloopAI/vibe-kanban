@@ -31,7 +31,11 @@ function getIdeName(editorType: EditorType | undefined | null): string {
   }
 }
 
-export function OpenInIdeButton({ onClick, disabled = false, className }: OpenInIdeButtonProps) {
+export function OpenInIdeButton({
+  onClick,
+  disabled = false,
+  className,
+}: OpenInIdeButtonProps) {
   const { config } = useUserSystem();
   const editorType = config?.editor?.editor_type ?? null;
 
