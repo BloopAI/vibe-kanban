@@ -1,22 +1,21 @@
 [workspace]
 resolver = "2"
 members = [
-    # Original crates
-    "crates/server",
-    "crates/db",
-    "crates/executors",
-    "crates/services",
-    "crates/utils",
-    "crates/local-deployment",
-    "crates/deployment",
+    # Upstream crates (read-only via submodule)
+    "upstream/crates/server",
+    "upstream/crates/db",
+    "upstream/crates/executors",
+    "upstream/crates/services",
+    "upstream/crates/utils",
+    "upstream/crates/local-deployment",
+    "upstream/crates/deployment",
     # Forge extensions
     "forge-extensions/*",
     # Main forge application
     "forge-app"
 ]
 
-# NOTE: upstream/crates/* excluded due to naming conflicts with our fork
-# Task 2 will implement proper upstream service integration via dependencies
+# NOTE: upstream sources remain untouched; forge crates extend them via forge-extensions/
 
 [workspace.dependencies]
 tokio = { version = "1.0", features = ["full"] }

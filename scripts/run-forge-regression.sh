@@ -83,7 +83,6 @@ declare -A ENDPOINTS=(
   [health]="/health"
   [omni_instances]="/api/forge/omni/instances"
   [branch_templates]="/api/forge/branch-templates/${BRANCH_TEMPLATE_TASK_ID}"
-  [genie_wishes]="/api/forge/genie/wishes"
 )
 
 echo "Collecting API samples..."

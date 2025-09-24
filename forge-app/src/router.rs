@@ -35,8 +35,6 @@ pub fn create_router(services: ForgeServices) -> Router {
             "/api/forge/branch-templates/:task_id",
             get(get_branch_template).put(set_branch_template),
         )
-        .route("/api/forge/genie/wishes", get(list_genie_wishes))
-        .route("/api/forge/genie/commands", get(list_genie_commands))
         // Dual frontend routing
         .nest("/legacy", legacy_frontend_router())
         .fallback(forge_frontend_handler)
@@ -167,44 +165,6 @@ async fn set_branch_template(
         Err(e) => {
             tracing::error!("Failed to set branch template: {}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
-}
-
-async fn list_genie_wishes(
-    State(services): State<ForgeServices>,
-) -> Result<Json<Value>, StatusCode> {
-    match services.genie.list_wishes().await {
-        Ok(wishes) => Ok(Json(json!({
-            "wishes": wishes,
-            "total": wishes.len()
-        }))),
-        Err(e) => {
-            tracing::error!("Failed to list Genie wishes: {}", e);
-            Ok(Json(json!({
-                "wishes": [],
-                "total": 0,
-                "error": "Failed to load wishes"
-            })))
-        }
-    }
-}
-
-async fn list_genie_commands(
-    State(services): State<ForgeServices>,
-) -> Result<Json<Value>, StatusCode> {
-    match services.genie.list_commands().await {
-        Ok(commands) => Ok(Json(json!({
-            "commands": commands,
-            "total": commands.len()
-        }))),
-        Err(e) => {
-            tracing::error!("Failed to list Genie commands: {}", e);
-            Ok(Json(json!({
-                "commands": [],
-                "total": 0,
-                "error": "Failed to load commands"
-            })))
         }
     }
 }

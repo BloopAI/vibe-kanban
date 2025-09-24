@@ -1,8 +1,23 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-// Re-export the config types from services to maintain compatibility
-pub use services::services::config::{OmniConfig, RecipientType};
+/// Local Omni recipient type options.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+pub enum RecipientType {
+    PhoneNumber,
+    UserId,
+}
+
+/// Forge-scoped Omni configuration payload.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+pub struct OmniConfig {
+    pub enabled: bool,
+    pub host: Option<String>,
+    pub api_key: Option<String>,
+    pub instance: Option<String>,
+    pub recipient: Option<String>,
+    pub recipient_type: Option<RecipientType>,
+}
 
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct OmniInstance {
