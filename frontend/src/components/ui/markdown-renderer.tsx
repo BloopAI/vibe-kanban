@@ -10,9 +10,10 @@ import { Button } from '@/components/ui/button.tsx';
 import { Check, Clipboard } from 'lucide-react';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 
-const HIGHLIGHT_LINK = "rounded-sm bg-muted/50 px-1 py-0.5 underline-offset-2 transition-colors";
-const HIGHLIGHT_LINK_HOVER = "hover:bg-muted";
-const HIGHLIGHT_CODE = "rounded-sm bg-muted/50 px-1 py-0.5 font-mono text-sm";
+const HIGHLIGHT_LINK =
+  'rounded-sm bg-muted/50 px-1 py-0.5 underline-offset-2 transition-colors';
+const HIGHLIGHT_LINK_HOVER = 'hover:bg-muted';
+const HIGHLIGHT_CODE = 'rounded-sm bg-muted/50 px-1 py-0.5 font-mono text-sm';
 
 function sanitizeHref(href?: string): string | undefined {
   if (typeof href !== 'string') return undefined;
@@ -25,7 +26,8 @@ function sanitizeHref(href?: string): string | undefined {
     trimmed.startsWith('./') ||
     trimmed.startsWith('../') ||
     trimmed.startsWith('/')
-  ) return trimmed;
+  )
+    return trimmed;
   // Allow http(s)
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   // Block everything else by default
@@ -37,7 +39,15 @@ function isExternalHref(href?: string): boolean {
   return /^https?:\/\//i.test(href);
 }
 
-function LinkOverride({ href, children, title }: { href?: string; children: React.ReactNode; title?: string }) {
+function LinkOverride({
+  href,
+  children,
+  title,
+}: {
+  href?: string;
+  children: React.ReactNode;
+  title?: string;
+}) {
   const rawHref = typeof href === 'string' ? href : '';
   const safeHref = sanitizeHref(rawHref);
 
@@ -77,13 +87,21 @@ function LinkOverride({ href, children, title }: { href?: string; children: Reac
 
 function InlineCodeOverride({ children, className, ...props }: any) {
   // Only highlight inline code, not fenced code blocks
-  const hasLanguage = typeof className === 'string' && /\blanguage-/.test(className);
+  const hasLanguage =
+    typeof className === 'string' && /\blanguage-/.test(className);
   if (hasLanguage) {
     // Likely a fenced block's <code>; leave className as-is for syntax highlighting
-    return <code {...props} className={className}>{children}</code>;
+    return (
+      <code {...props} className={className}>
+        {children}
+      </code>
+    );
   }
   return (
-    <code {...props} className={`${HIGHLIGHT_CODE}${className ? ` ${className}` : ''}`}>
+    <code
+      {...props}
+      className={`${HIGHLIGHT_CODE}${className ? ` ${className}` : ''}`}
+    >
       {children}
     </code>
   );
