@@ -753,8 +753,8 @@ impl ClaudeLogProcessor {
                 );
                 Some(NormalizedEntry {
                     timestamp: None,
-                    entry_type: NormalizedEntryType::SystemMessage,
-                    content: "⚠️ ANTHROPIC_API_KEY env variable detected, your Anthropic subscription is not being used".to_string(),
+                    entry_type: NormalizedEntryType::ErrorMessage,
+                    content: "Claude Code + ANTHROPIC_API_KEY detected. This configuration uses the shared Anthropic key instead of your own subscription.".to_string(),
                     metadata: None,
                 })
             }
@@ -1960,11 +1960,11 @@ mod tests {
         assert_eq!(entries.len(), 1);
         assert!(matches!(
             entries[0].entry_type,
-            NormalizedEntryType::SystemMessage
+            NormalizedEntryType::ErrorMessage
         ));
         assert_eq!(
             entries[0].content,
-            "⚠️ ANTHROPIC_API_KEY env variable detected, your Anthropic subscription is not being used"
+            "Claude Code + ANTHROPIC_API_KEY detected. This configuration uses the shared Anthropic key instead of your own subscription."
         );
 
         // Test with managed API key source - should not generate warning
