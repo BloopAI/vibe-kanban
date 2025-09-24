@@ -11,6 +11,7 @@ type Props = {
   disabled: boolean;
   // Loading overlay
   showLoadingOverlay: boolean;
+  textareaClassName?: string;
 };
 
 export function FollowUpEditorCard({
@@ -20,6 +21,7 @@ export function FollowUpEditorCard({
   onKeyDown,
   disabled,
   showLoadingOverlay,
+  textareaClassName,
 }: Props) {
   const { projectId } = useProject();
   return (
@@ -29,7 +31,7 @@ export function FollowUpEditorCard({
         value={value}
         onChange={onChange}
         onKeyDown={onKeyDown}
-        className={cn('flex-1 min-h-[40px] resize-none')}
+        className={cn('flex-1 min-h-[40px] resize-none', textareaClassName)}
         disabled={disabled}
         projectId={projectId}
         rows={1}

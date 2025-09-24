@@ -1,11 +1,13 @@
 import MarkdownRenderer from '@/components/ui/markdown-renderer';
 import { Button } from '@/components/ui/button';
-import { Pencil, Send, X } from 'lucide-react';
-import { useState } from 'react';
-import { Textarea } from '@/components/ui/textarea';
+import { Pencil } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useProcessRetry } from '@/hooks/useProcessRetry';
 import { TaskAttempt, type BaseAgentCapability } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
+import { useDraftStream } from '@/hooks/follow-up/useDraftStream';
+import { RetryEditorInline } from './RetryEditorInline';
+import { useRetryUi } from '@/contexts/RetryUiContext';
 
 const UserMessage = ({
   content,
@@ -17,9 +19,11 @@ const UserMessage = ({
   taskAttempt?: TaskAttempt;
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState(content);
   const retryHook = useProcessRetry(taskAttempt);
   const { capabilities } = useUserSystem();
+  const attemptId = taskAttempt?.id;
+  const { retryDraft } = useDraftStream(attemptId);
+  const { activeRetryProcessId, isProcessGreyed } = useRetryUi();
 
   const canFork = !!(
     taskAttempt?.executor &&
@@ -28,21 +32,53 @@ const UserMessage = ({
     )
   );
 
-  const handleEdit = () => {
-    if (!executionProcessId) return;
-    retryHook?.retryProcess(executionProcessId, editContent).then(() => {
+  // Enter retry mode: create retry draft; actual editor will render inline
+  const startRetry = async () => {
+    if (!executionProcessId || !taskAttempt) return;
+    setIsEditing(true);
+    retryHook?.startRetry(executionProcessId, content).catch(() => {
+      // rollback if server call fails
       setIsEditing(false);
     });
   };
 
+  // Exit editing state once draft disappears (sent/cancelled)
+  useEffect(() => {
+    if (!retryDraft?.retry_process_id) setIsEditing(false);
+  }, [retryDraft?.retry_process_id]);
+
+  // On reload or when server provides a retry_draft for this process, show editor
+  useEffect(() => {
+    if (
+      executionProcessId &&
+      retryDraft?.retry_process_id &&
+      retryDraft.retry_process_id === executionProcessId
+    ) {
+      setIsEditing(true);
+    }
+  }, [executionProcessId, retryDraft?.retry_process_id]);
+
+  const showRetryEditor =
+    !!executionProcessId &&
+    isEditing &&
+    activeRetryProcessId === executionProcessId;
+  const greyed =
+    !!executionProcessId &&
+    isProcessGreyed(executionProcessId) &&
+    !showRetryEditor;
+
   return (
-    <div className="py-2">
+    <div className={`py-2 ${greyed ? 'opacity-50 pointer-events-none' : ''}`}>
       <div className="bg-background px-4 py-2 text-sm border-y border-dashed flex gap-2">
         <div className="flex-1">
-          {isEditing ? (
-            <Textarea
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
+          {showRetryEditor ? (
+            <RetryEditorInline
+              attempt={taskAttempt as TaskAttempt}
+              executionProcessId={executionProcessId as string}
+              initialVariant={null}
+              onCancelled={() => {
+                setIsEditing(false);
+              }}
             />
           ) : (
             <MarkdownRenderer
@@ -51,24 +87,27 @@ const UserMessage = ({
             />
           )}
         </div>
-        {executionProcessId && canFork && (
+        {executionProcessId && canFork && !showRetryEditor && (
           <div className="flex flex-col">
-            <Button
-              onClick={() => setIsEditing(!isEditing)}
-              variant="ghost"
-              className="p-2"
-            >
-              {isEditing ? (
-                <X className="w-3 h-3" />
-              ) : (
-                <Pencil className="w-3 h-3" />
-              )}
-            </Button>
-            {isEditing && (
-              <Button onClick={handleEdit} variant="ghost" className="p-2">
-                <Send className="w-3 h-3" />
-              </Button>
-            )}
+            {(() => {
+              const state = executionProcessId
+                ? retryHook?.getRetryDisabledState(executionProcessId)
+                : { disabled: true, reason: 'Missing process id' };
+              const disabled = !!state?.disabled;
+              const reason = state?.reason ?? undefined;
+              return (
+                <Button
+                  onClick={startRetry}
+                  variant="ghost"
+                  className="p-2"
+                  disabled={disabled}
+                  title={disabled && reason ? reason : undefined}
+                  aria-disabled={disabled}
+                >
+                  <Pencil className="w-3 h-3" />
+                </Button>
+              );
+            })()}
           </div>
         )}
       </div>

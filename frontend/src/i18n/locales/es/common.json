@@ -2,6 +2,7 @@
   "buttons": {
     "save": "Guardar",
     "cancel": "Cancelar",
+    "send": "Enviar",
     "delete": "Eliminar",
     "edit": "Editar",
     "create": "Crear",
