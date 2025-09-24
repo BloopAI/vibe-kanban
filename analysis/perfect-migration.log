@@ -1,2 +1,3 @@
 [2025-09-24] Phase B kickoff: ensured branch_template column via forge migrations, bootstrapped global config service with DeploymentImpl pool, exposed /api/forge/config, and added forge-specific TS generator.
 [2025-09-24] Phase B (config hydration) committed at 88/100: global settings served via /api/forge/config, forge migrations aligned, TS exports generated.
+[2025-09-24] Phase B: Added project-level settings API, branch name generator endpoint backed by forge tables, and shared TS bindings for Forge consumers.

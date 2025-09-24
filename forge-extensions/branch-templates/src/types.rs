@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use uuid::Uuid;
 
 /// Simplified Task representation for branch template generation
@@ -18,4 +19,10 @@ impl Task {
             branch_template,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct BranchNameResponse {
+    pub attempt_id: Uuid,
+    pub branch_name: String,
 }

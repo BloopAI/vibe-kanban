@@ -7,14 +7,16 @@ use axum::{
     extract::{Path, State},
     http::{header, HeaderValue, StatusCode},
     response::{Html, IntoResponse, Response},
-    routing::get,
+    routing::{get, post},
     Json, Router,
 };
 use rust_embed::RustEmbed;
+use serde::Deserialize;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::services::ForgeServices;
+use forge_branch_templates::BranchNameResponse;
 use forge_config::ForgeProjectSettings;
 
 #[derive(RustEmbed)]
@@ -35,10 +37,18 @@ pub fn create_router(services: ForgeServices) -> Router {
             "/api/forge/config",
             get(get_forge_config).put(update_forge_config),
         )
+        .route(
+            "/api/forge/projects/:project_id/settings",
+            get(get_project_settings).put(update_project_settings),
+        )
         .route("/api/forge/omni/instances", get(list_omni_instances))
         .route(
             "/api/forge/branch-templates/:task_id",
             get(get_branch_template).put(set_branch_template),
+        )
+        .route(
+            "/api/forge/branch-templates/:task_id/generate",
+            post(generate_branch_name),
         )
         // Dual frontend routing
         .nest("/legacy", legacy_frontend_router())
@@ -145,6 +155,38 @@ async fn update_forge_config(
     Ok(Json(settings))
 }
 
+async fn get_project_settings(
+    Path(project_id): Path<Uuid>,
+    State(services): State<ForgeServices>,
+) -> Result<Json<ForgeProjectSettings>, StatusCode> {
+    services
+        .config
+        .get_forge_settings(project_id)
+        .await
+        .map(Json)
+        .map_err(|e| {
+            tracing::error!("Failed to load project settings {}: {}", project_id, e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })
+}
+
+async fn update_project_settings(
+    Path(project_id): Path<Uuid>,
+    State(services): State<ForgeServices>,
+    Json(settings): Json<ForgeProjectSettings>,
+) -> Result<Json<ForgeProjectSettings>, StatusCode> {
+    services
+        .config
+        .set_forge_settings(project_id, &settings)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to persist project settings {}: {}", project_id, e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    Ok(Json(settings))
+}
+
 async fn list_omni_instances(
     State(services): State<ForgeServices>,
 ) -> Result<Json<Value>, StatusCode> {
@@ -201,4 +243,31 @@ async fn set_branch_template(
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
+}
+
+#[derive(Deserialize)]
+struct BranchNameRequest {
+    attempt_id: Option<Uuid>,
+}
+
+async fn generate_branch_name(
+    Path(task_id): Path<Uuid>,
+    State(services): State<ForgeServices>,
+    Json(payload): Json<BranchNameRequest>,
+) -> Result<Json<BranchNameResponse>, StatusCode> {
+    let attempt_id = payload.attempt_id.unwrap_or_else(Uuid::new_v4);
+
+    let branch_name = services
+        .branch_templates
+        .generate_branch_name(task_id, attempt_id)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to generate branch name: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    Ok(Json(BranchNameResponse {
+        attempt_id,
+        branch_name,
+    }))
 }
