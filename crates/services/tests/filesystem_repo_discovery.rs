@@ -1,7 +1,4 @@
-use std::{
-    fs,
-    path::Path,
-};
+use std::{fs, path::Path};
 
 use services::services::filesystem::FilesystemService;
 use tempfile::TempDir;
@@ -21,7 +18,6 @@ fn create_git_repo(base: &Path, path: &str) {
     let git_dir = base.join(path).join(".git");
     fs::create_dir_all(&git_dir).unwrap();
 }
-
 
 #[tokio::test]
 async fn test_list_git_repos_discovers_repos() {
@@ -48,8 +44,8 @@ async fn test_list_git_repos_discovers_repos() {
     let repos = filesystem_service
         .list_git_repos(
             Some(base_path.to_string_lossy().to_string()),
-            5000,  // 5 second timeout
-            10000, // 10 second hard timeout
+            5000,    // 5 second timeout
+            10000,   // 10 second hard timeout
             Some(3), // max depth 3
         )
         .await
