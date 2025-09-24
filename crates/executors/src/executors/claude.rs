@@ -754,7 +754,7 @@ impl ClaudeLogProcessor {
                 Some(NormalizedEntry {
                     timestamp: None,
                     entry_type: NormalizedEntryType::ErrorMessage,
-                    content: "Claude Code + ANTHROPIC_API_KEY detected. This configuration uses the shared Anthropic key instead of your own subscription.".to_string(),
+                    content: "Claude Code + ANTHROPIC_API_KEY detected. Usage will be billed via Anthropic pay-as-you-go instead of your Claude subscription.".to_string(),
                     metadata: None,
                 })
             }
@@ -1964,7 +1964,7 @@ mod tests {
         ));
         assert_eq!(
             entries[0].content,
-            "Claude Code + ANTHROPIC_API_KEY detected. This configuration uses the shared Anthropic key instead of your own subscription."
+            "Claude Code + ANTHROPIC_API_KEY detected. Usage will be billed via Anthropic pay-as-you-go instead of your Claude subscription."
         );
 
         // Test with managed API key source - should not generate warning
