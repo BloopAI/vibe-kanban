@@ -1,9 +1,6 @@
-pub mod client;
-pub mod types;
-
+use crate::client::OmniClient;
+pub use crate::types::*;
 use anyhow::Result;
-use client::OmniClient;
-pub use types::*;
 
 pub struct OmniService {
     config: OmniConfig,
@@ -69,5 +66,9 @@ impl OmniService {
 
         self.client.send_text(instance, request).await?;
         Ok(())
+    }
+
+    pub async fn list_instances(&self) -> Result<Vec<OmniInstance>> {
+        self.client.list_instances().await
     }
 }

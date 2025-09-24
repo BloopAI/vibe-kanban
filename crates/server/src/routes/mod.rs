@@ -15,7 +15,6 @@ pub mod execution_processes;
 pub mod frontend;
 pub mod health;
 pub mod images;
-pub mod omni;
 pub mod projects;
 pub mod task_attempts;
 pub mod task_templates;
@@ -36,7 +35,6 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(filesystem::router())
         .merge(events::router(&deployment))
         .nest("/images", images::routes())
-        .nest("/omni", omni::router())
         .with_state(deployment);
 
     Router::new()

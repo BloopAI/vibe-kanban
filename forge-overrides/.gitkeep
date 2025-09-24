@@ -1,0 +1,7 @@
+# Forge Overrides Directory
+#
+# This directory is reserved for any upstream crate overrides if absolutely necessary.
+# Should remain empty initially - only use for conflicts that cannot be resolved
+# through the composition pattern in forge-extensions/.
+#
+# When adding overrides here, update the root Cargo.toml [patch.crates-io] section.

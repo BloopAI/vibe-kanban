@@ -126,61 +126,15 @@ impl LocalContainerService {
         if let Err(e) = Task::update_status(&db.pool, ctx.task.id, TaskStatus::InReview).await {
             tracing::error!("Failed to update task status to InReview: {e}");
         }
-        // Clone configs and drop the lock before awaiting
-        let (notify_cfg, omni_cfg) = {
+        // Clone notification config and drop the lock before awaiting
+        let notify_cfg = {
             let config_guard = config.read().await;
-            (
-                config_guard.notifications.clone(),
-                config_guard.omni.clone(),
-            )
+            config_guard.notifications.clone()
         };
         NotificationService::notify_execution_halted(notify_cfg, ctx).await;
 
-        // Send Omni notification independently to preserve decoupling
-        if omni_cfg.enabled {
-            let omni_service = services::services::omni::OmniService::new(omni_cfg.clone());
-
-            // Build a detailed status message similar to push notification
-            let status_message = match ctx.execution_process.status {
-                ExecutionProcessStatus::Completed => format!(
-                    "✅ '{}' completed successfully\nBranch: {:?}\nExecutor: {}",
-                    ctx.task.title, ctx.task_attempt.branch, ctx.task_attempt.executor
-                ),
-                ExecutionProcessStatus::Failed => format!(
-                    "❌ '{}' execution failed\nBranch: {:?}\nExecutor: {}",
-                    ctx.task.title, ctx.task_attempt.branch, ctx.task_attempt.executor
-                ),
-                ExecutionProcessStatus::Killed => format!(
-                    "🛑 '{}' execution cancelled by user\nBranch: {:?}\nExecutor: {}",
-                    ctx.task.title, ctx.task_attempt.branch, ctx.task_attempt.executor
-                ),
-                _ => {
-                    // No-op if still running; should not happen here
-                    return;
-                }
-            };
-
-            // Derive a public base URL for deep links in notifications.
-            // Priority: PUBLIC_BASE_URL env -> HOST + BACKEND_PORT/PORT -> default 127.0.0.1:8887
-            let base_url = std::env::var("PUBLIC_BASE_URL").ok().unwrap_or_else(|| {
-                let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-                let port = std::env::var("BACKEND_PORT")
-                    .or_else(|_| std::env::var("PORT"))
-                    .unwrap_or_else(|_| "8887".to_string());
-                format!("http://{}:{}", host, port)
-            });
-            let task_url = format!(
-                "{}/projects/{}/tasks/{}",
-                base_url, ctx.task.project_id, ctx.task.id
-            );
-
-            if let Err(e) = omni_service
-                .send_task_notification(&ctx.task.title, &status_message, Some(&task_url))
-                .await
-            {
-                tracing::error!("Failed to send Omni notification: {}", e);
-            }
-        }
+        // Note: Omni notifications are now handled by forge-app composition layer
+        // Upstream crates should not have forge-specific functionality
     }
 
     /// Defensively check for externally deleted worktrees and mark them as deleted in the database

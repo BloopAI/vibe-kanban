@@ -5,8 +5,22 @@ use ts_rs::TS;
 pub use v6::{EditorConfig, EditorType, GitHubConfig, NotificationConfig, SoundFile, ThemeMode};
 
 use crate::services::config::versions::v6;
-// Import OmniConfig directly from the omni module - single source of truth
-pub use crate::services::omni::types::{OmniConfig, RecipientType};
+// Omni config types - moved here since omni service extracted to forge-extensions
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+pub struct OmniConfig {
+    pub enabled: bool,
+    pub host: Option<String>,
+    pub api_key: Option<String>,
+    pub instance: Option<String>,
+    pub recipient: Option<String>,
+    pub recipient_type: Option<RecipientType>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+pub enum RecipientType {
+    PhoneNumber,
+    UserId,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct Config {

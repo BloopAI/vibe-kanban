@@ -1,0 +1,13 @@
+{
+  "name": "frontend-forge",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'Frontend Forge dev server - implementation pending in Task 3'",
+    "build": "echo 'Frontend Forge build - implementation pending in Task 3'",
+    "preview": "echo 'Frontend Forge preview - implementation pending in Task 3'"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

@@ -1,0 +1,3 @@
+[submodule "upstream"]
+	path = upstream
+	url = https://github.com/BloopAI/vibe-kanban.git

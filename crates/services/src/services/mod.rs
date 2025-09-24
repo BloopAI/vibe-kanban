@@ -12,7 +12,6 @@ pub mod git_cli;
 pub mod github_service;
 pub mod image;
 pub mod notification;
-pub mod omni;
 pub mod pr_monitor;
 pub mod sentry;
 pub mod worktree_manager;

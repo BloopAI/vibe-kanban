@@ -1,22 +1,8 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-// Match the wish specification exactly - simple flat structure
-#[derive(Clone, Debug, Default, Serialize, Deserialize, TS)]
-pub struct OmniConfig {
-    pub enabled: bool,
-    pub host: Option<String>,
-    pub api_key: Option<String>,
-    pub instance: Option<String>,
-    pub recipient: Option<String>, // phone_number or user_id
-    pub recipient_type: Option<RecipientType>, // phone or user_id
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, TS)]
-pub enum RecipientType {
-    PhoneNumber,
-    UserId,
-}
+// Re-export the config types from services to maintain compatibility
+pub use services::services::config::{OmniConfig, RecipientType};
 
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct OmniInstance {

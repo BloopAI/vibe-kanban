@@ -1,0 +1,36 @@
+[package]
+name = "forge-app"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "forge-app"
+path = "src/main.rs"
+
+[dependencies]
+# Framework dependencies
+axum = { workspace = true }
+tokio = { workspace = true }
+tower-http = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+rust-embed = { version = "8.0", features = ["debug-embed"] }
+mime_guess = "2.0"
+
+# Database dependencies
+sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "sqlite", "migrate", "uuid", "chrono"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Upstream crate dependencies (for composition)
+db = { path = "../crates/db" }
+services = { path = "../crates/services" }
+
+# Forge extensions
+forge-omni = { path = "../forge-extensions/omni" }
+forge-branch-templates = { path = "../forge-extensions/branch-templates" }
+forge-config = { path = "../forge-extensions/config" }
+forge-genie = { path = "../forge-extensions/genie" }

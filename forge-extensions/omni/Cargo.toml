@@ -1,0 +1,13 @@
+[package]
+name = "forge-omni"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+reqwest = { version = "0.11", features = ["json"] }
+ts-rs = { workspace = true }
+services = { path = "../../crates/services" }
