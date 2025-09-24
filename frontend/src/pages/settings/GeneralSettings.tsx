@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Card,
@@ -42,6 +42,30 @@ import { useUserSystem } from '@/components/config-provider';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 import NiceModal from '@ebay/nice-modal-react';
 
+// Utility functions for draft state management
+function deepClone<T>(obj: T): T {
+  if (typeof structuredClone === 'function') {
+    return structuredClone(obj);
+  }
+  return JSON.parse(JSON.stringify(obj));
+}
+
+function deepMerge<T>(target: T, patch: Partial<T>): T {
+  const out: any = Array.isArray(target) ? [...(target as any)] : { ...(target as any) };
+  for (const [k, v] of Object.entries(patch)) {
+    if (v && typeof v === 'object' && !Array.isArray(v) && v.constructor === Object) {
+      out[k] = deepMerge((out[k] ?? {}) as any, v as any);
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
+function isEqual(a: any, b: any): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 export function GeneralSettings() {
   const { t } = useTranslation(['settings', 'common']);
 
@@ -54,16 +78,60 @@ export function GeneralSettings() {
   );
   const {
     config,
-    updateConfig,
-    saveConfig,
     loading,
-    updateAndSaveConfig,
+    updateAndSaveConfig, // Use this on Save
     profiles,
   } = useUserSystem();
+  
+  // Draft state management
+  const [draft, setDraft] = useState(() => (config ? deepClone(config) : null));
+  const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const { setTheme } = useTheme();
+
+  // When config loads or changes externally, update draft only if not dirty
+  useEffect(() => {
+    if (!config) return;
+    if (!dirty) {
+      setDraft(deepClone(config));
+    }
+  }, [config, dirty]);
+
+  // Check for unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    if (!draft || !config) return false;
+    return !isEqual(draft, config);
+  }, [draft, config]);
+
+  // Generic draft update helper
+  const updateDraft = useCallback(
+    (patch: Partial<typeof config>) => {
+      setDraft((prev) => {
+        if (!prev) return prev;
+        const next = deepMerge(prev, patch);
+        // Mark dirty if changed
+        if (!isEqual(next, config)) {
+          setDirty(true);
+        }
+        return next;
+      });
+    },
+    [config]
+  );
+
+  // Optional: warn on tab close/navigation with unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasUnsavedChanges]);
 
   const playSound = async (soundFile: SoundFile) => {
     const audio = new Audio(`/api/sounds/${soundFile}`);
@@ -75,28 +143,30 @@ export function GeneralSettings() {
   };
 
   const handleSave = async () => {
-    if (!config) return;
+    if (!draft) return;
 
     setSaving(true);
     setError(null);
     setSuccess(false);
 
     try {
-      const success = await saveConfig();
-
-      if (success) {
-        setSuccess(true);
-        setTheme(config.theme);
-        setTimeout(() => setSuccess(false), 3000);
-      } else {
-        setError('Failed to save configuration');
-      }
+      await updateAndSaveConfig(draft); // Atomically apply + persist
+      setTheme(draft.theme);
+      setDirty(false);
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       setError('Failed to save configuration');
       console.error('Error saving config:', err);
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleDiscard = () => {
+    if (!config) return;
+    setDraft(deepClone(config));
+    setDirty(false);
   };
 
   const resetDisclaimer = async () => {
@@ -173,9 +243,9 @@ export function GeneralSettings() {
               {t('settings.general.appearance.theme.label')}
             </Label>
             <Select
-              value={config.theme}
+              value={draft?.theme}
               onValueChange={(value: ThemeMode) =>
-                updateConfig({ theme: value })
+                updateDraft({ theme: value })
               }
             >
               <SelectTrigger id="theme">
@@ -203,9 +273,9 @@ export function GeneralSettings() {
               {t('settings.general.appearance.language.label')}
             </Label>
             <Select
-              value={config.language}
+              value={draft?.language}
               onValueChange={(value: UiLanguage) =>
-                updateConfig({ language: value })
+                updateDraft({ language: value })
               }
             >
               <SelectTrigger id="language">
@@ -244,21 +314,21 @@ export function GeneralSettings() {
             </Label>
             <div className="grid grid-cols-2 gap-2">
               <Select
-                value={config.executor_profile?.executor ?? ''}
+                value={draft?.executor_profile?.executor ?? ''}
                 onValueChange={(value: string) => {
                   const variants = profiles?.[value];
                   const keepCurrentVariant =
                     variants &&
-                    config.executor_profile?.variant &&
-                    variants[config.executor_profile.variant];
+                    draft?.executor_profile?.variant &&
+                    variants[draft.executor_profile.variant];
 
                   const newProfile: ExecutorProfileId = {
                     executor: value as BaseCodingAgent,
                     variant: keepCurrentVariant
-                      ? config.executor_profile!.variant
+                      ? draft!.executor_profile!.variant
                       : null,
                   };
-                  updateConfig({
+                  updateDraft({
                     executor_profile: newProfile,
                   });
                 }}
@@ -285,7 +355,7 @@ export function GeneralSettings() {
 
               {/* Show variant selector if selected profile has variants */}
               {(() => {
-                const currentProfileVariant = config.executor_profile;
+                const currentProfileVariant = draft?.executor_profile;
                 const selectedProfile =
                   profiles?.[currentProfileVariant?.executor || ''];
                 const hasVariants =
@@ -315,7 +385,7 @@ export function GeneralSettings() {
                                   executor: currentProfileVariant!.executor,
                                   variant: variantLabel,
                                 };
-                                updateConfig({
+                                updateDraft({
                                   executor_profile: newProfile,
                                 });
                               }}
@@ -369,10 +439,10 @@ export function GeneralSettings() {
               {t('settings.general.editor.type.label')}
             </Label>
             <Select
-              value={config.editor.editor_type}
+              value={draft?.editor.editor_type}
               onValueChange={(value: EditorType) =>
-                updateConfig({
-                  editor: { ...config.editor, editor_type: value },
+                updateDraft({
+                  editor: { ...draft!.editor, editor_type: value },
                 })
               }
             >
@@ -467,11 +537,11 @@ export function GeneralSettings() {
               id="github-token"
               type="password"
               placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-              value={config.github.pat || ''}
+              value={draft?.github.pat || ''}
               onChange={(e) =>
-                updateConfig({
+                updateDraft({
                   github: {
-                    ...config.github,
+                    ...draft!.github,
                     pat: e.target.value || null,
                   },
                 })
@@ -503,11 +573,11 @@ export function GeneralSettings() {
           <div className="flex items-center space-x-2">
             <Checkbox
               id="sound-enabled"
-              checked={config.notifications.sound_enabled}
+              checked={draft?.notifications.sound_enabled}
               onCheckedChange={(checked: boolean) =>
-                updateConfig({
+                updateDraft({
                   notifications: {
-                    ...config.notifications,
+                    ...draft!.notifications,
                     sound_enabled: checked,
                   },
                 })
@@ -522,18 +592,18 @@ export function GeneralSettings() {
               </p>
             </div>
           </div>
-          {config.notifications.sound_enabled && (
+          {draft?.notifications.sound_enabled && (
             <div className="ml-6 space-y-2">
               <Label htmlFor="sound-file">
                 {t('settings.general.notifications.sound.fileLabel')}
               </Label>
               <div className="flex gap-2">
                 <Select
-                  value={config.notifications.sound_file}
+                  value={draft.notifications.sound_file}
                   onValueChange={(value: SoundFile) =>
-                    updateConfig({
+                    updateDraft({
                       notifications: {
-                        ...config.notifications,
+                        ...draft.notifications,
                         sound_file: value,
                       },
                     })
@@ -557,7 +627,7 @@ export function GeneralSettings() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => playSound(config.notifications.sound_file)}
+                  onClick={() => playSound(draft.notifications.sound_file)}
                   className="px-3"
                 >
                   <Volume2 className="h-4 w-4" />
@@ -571,11 +641,11 @@ export function GeneralSettings() {
           <div className="flex items-center space-x-2">
             <Checkbox
               id="push-notifications"
-              checked={config.notifications.push_enabled}
+              checked={draft?.notifications.push_enabled}
               onCheckedChange={(checked: boolean) =>
-                updateConfig({
+                updateDraft({
                   notifications: {
-                    ...config.notifications,
+                    ...draft!.notifications,
                     push_enabled: checked,
                   },
                 })
@@ -604,9 +674,9 @@ export function GeneralSettings() {
           <div className="flex items-center space-x-2">
             <Checkbox
               id="analytics-enabled"
-              checked={config.analytics_enabled ?? false}
+              checked={draft?.analytics_enabled ?? false}
               onCheckedChange={(checked: boolean) =>
-                updateConfig({ analytics_enabled: checked })
+                updateDraft({ analytics_enabled: checked })
               }
             />
             <div className="space-y-0.5">
@@ -672,11 +742,27 @@ export function GeneralSettings() {
 
       {/* Sticky Save Button */}
       <div className="sticky bottom-0 z-10 bg-background/80 backdrop-blur-sm border-t py-4">
-        <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {t('settings.general.save.button')}
-          </Button>
+        <div className="flex items-center justify-between">
+          {hasUnsavedChanges ? (
+            <span className="text-sm text-muted-foreground">
+              • You have unsaved changes
+            </span>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleDiscard} 
+              disabled={!hasUnsavedChanges || saving}
+            >
+              Discard
+            </Button>
+            <Button onClick={handleSave} disabled={!hasUnsavedChanges || saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t('settings.general.save.button')}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
