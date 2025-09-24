@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { cloneDeep, merge, isEqual } from 'lodash';
 import {
   Card,
   CardContent,
@@ -42,37 +43,6 @@ import { useUserSystem } from '@/components/config-provider';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 import NiceModal from '@ebay/nice-modal-react';
 
-// Utility functions for draft state management
-function deepClone<T>(obj: T): T {
-  if (typeof structuredClone === 'function') {
-    return structuredClone(obj);
-  }
-  return JSON.parse(JSON.stringify(obj));
-}
-
-function deepMerge<T>(target: T, patch: Partial<T>): T {
-  const out: any = Array.isArray(target)
-    ? [...(target as any)]
-    : { ...(target as any) };
-  for (const [k, v] of Object.entries(patch)) {
-    if (
-      v &&
-      typeof v === 'object' &&
-      !Array.isArray(v) &&
-      v.constructor === Object
-    ) {
-      out[k] = deepMerge((out[k] ?? {}) as any, v as any);
-    } else {
-      out[k] = v;
-    }
-  }
-  return out;
-}
-
-function isEqual(a: any, b: any): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-
 export function GeneralSettings() {
   const { t } = useTranslation(['settings', 'common']);
 
@@ -91,7 +61,7 @@ export function GeneralSettings() {
   } = useUserSystem();
 
   // Draft state management
-  const [draft, setDraft] = useState(() => (config ? deepClone(config) : null));
+  const [draft, setDraft] = useState(() => (config ? cloneDeep(config) : null));
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,7 +72,7 @@ export function GeneralSettings() {
   useEffect(() => {
     if (!config) return;
     if (!dirty) {
-      setDraft(deepClone(config));
+      setDraft(cloneDeep(config));
     }
   }, [config, dirty]);
 
@@ -115,9 +85,9 @@ export function GeneralSettings() {
   // Generic draft update helper
   const updateDraft = useCallback(
     (patch: Partial<typeof config>) => {
-      setDraft((prev) => {
+      setDraft((prev: typeof config) => {
         if (!prev) return prev;
-        const next = deepMerge(prev, patch);
+        const next = merge({}, prev, patch);
         // Mark dirty if changed
         if (!isEqual(next, config)) {
           setDirty(true);
@@ -172,7 +142,7 @@ export function GeneralSettings() {
 
   const handleDiscard = () => {
     if (!config) return;
-    setDraft(deepClone(config));
+    setDraft(cloneDeep(config));
     setDirty(false);
   };
 

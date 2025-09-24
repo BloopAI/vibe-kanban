@@ -35,6 +35,7 @@
     "pnpm": ">=8"
   },
   "dependencies": {
-    "@ebay/nice-modal-react": "^1.2.13"
+    "@ebay/nice-modal-react": "^1.2.13",
+    "lodash": "^4.17.21"
   }
 }
