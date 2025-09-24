@@ -91,6 +91,13 @@ pub struct CreateGitHubPrRequest {
     pub base_branch: Option<String>,
 }
 
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct AttachExistingPrRequest {
+    pub pr_number: i64,
+    pub pr_url: String,
+    pub target_branch_name: String,
+}
+
 #[derive(Debug, Serialize)]
 pub struct FollowUpResponse {
     pub message: String,
@@ -1707,6 +1714,37 @@ pub async fn get_task_attempt_children(
     }
 }
 
+pub async fn attach_existing_pr(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+    Json(request): Json<AttachExistingPrRequest>,
+) -> Result<ResponseJson<ApiResponse<PrMerge>>, ApiError> {
+    // Check if a PR is already attached to this task attempt
+    let existing_merges = Merge::find_by_task_attempt_id(deployment.pool(), task_attempt.id).await?;
+
+    // Check if PR is already attached
+    for merge in existing_merges {
+        if let Merge::Pr(pr_merge) = merge {
+            if pr_merge.pr_info.number == request.pr_number {
+                return Err(ApiError::BadRequest(
+                    "This PR is already attached to the task attempt".to_string(),
+                ));
+            }
+        }
+    }
+
+    // Create the PR merge record
+    let pr_merge = Merge::create_pr(
+        deployment.pool(),
+        task_attempt.id,
+        &request.target_branch_name,
+        request.pr_number,
+        &request.pr_url,
+    ).await?;
+
+    Ok(ResponseJson(ApiResponse::success(pr_merge)))
+}
+
 pub async fn stop_task_attempt_execution(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
@@ -1736,6 +1774,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/rebase", post(rebase_task_attempt))
         .route("/conflicts/abort", post(abort_conflicts_task_attempt))
         .route("/pr", post(create_github_pr))
+        .route("/attach-pr", post(attach_existing_pr))
         .route("/open-editor", post(open_task_attempt_in_editor))
         .route("/delete-file", post(delete_task_attempt_file))
         .route("/children", get(get_task_attempt_children))

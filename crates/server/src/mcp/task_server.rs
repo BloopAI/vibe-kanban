@@ -1,8 +1,10 @@
 use std::{future::Future, path::PathBuf};
 
 use db::models::{
+    merge::Merge,
     project::Project,
     task::{CreateTask, Task, TaskStatus},
+    task_attempt::TaskAttempt,
 };
 use rmcp::{
     ErrorData, ServerHandler,
@@ -189,6 +191,27 @@ pub struct GetTaskResponse {
     pub success: bool,
     pub task: Option<TaskSummary>,
     pub project_name: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct AttachPrToTaskRequest {
+    #[schemars(description = "The ID of the project containing the task")]
+    pub project_id: String,
+    #[schemars(description = "The ID of the task to attach the PR to")]
+    pub task_id: String,
+    #[schemars(description = "The pull request number")]
+    pub pr_number: i64,
+    #[schemars(description = "The pull request URL")]
+    pub pr_url: String,
+    #[schemars(description = "The target branch name (e.g., 'main' or 'master')")]
+    pub target_branch_name: String,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct AttachPrToTaskResponse {
+    pub success: bool,
+    pub message: String,
+    pub task_attempt_id: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -800,6 +823,166 @@ impl TaskServer {
             }
         }
     }
+
+    #[tool(
+        description = "Attach an existing pull request to a task. Use this when a PR was created outside vibe-kanban but should be linked to a task. The PR will be attached to the most recent task attempt. `project_id`, `task_id`, `pr_number`, `pr_url`, and `target_branch_name` are required!"
+    )]
+    async fn attach_pr_to_task(
+        &self,
+        Parameters(AttachPrToTaskRequest {
+            project_id,
+            task_id,
+            pr_number,
+            pr_url,
+            target_branch_name,
+        }): Parameters<AttachPrToTaskRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        // Validate project_id
+        let project_uuid = match Uuid::parse_str(&project_id) {
+            Ok(uuid) => uuid,
+            Err(_) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Invalid project ID format"
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        };
+
+        // Validate task_id
+        let task_uuid = match Uuid::parse_str(&task_id) {
+            Ok(uuid) => uuid,
+            Err(_) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Invalid task ID format"
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        };
+
+        // Verify task exists and belongs to project
+        let task = match Task::find_by_id_and_project_id(&self.pool, task_uuid, project_uuid).await {
+            Ok(Some(task)) => task,
+            Ok(None) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Task not found in the specified project"
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to retrieve task",
+                    "details": e.to_string()
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        };
+
+        // Get the most recent task attempt for this task
+        let task_attempts = match TaskAttempt::fetch_all(&self.pool, Some(task_uuid)).await {
+            Ok(attempts) => attempts,
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to retrieve task attempts",
+                    "details": e.to_string()
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        };
+
+        // Check if there are any task attempts
+        let task_attempt = match task_attempts.first() {
+            Some(attempt) => attempt,
+            None => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "No task attempts found for this task. A task attempt must exist before attaching a PR."
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        };
+
+        // Check if a PR is already attached to this task attempt
+        let existing_merges = match Merge::find_by_task_attempt_id(&self.pool, task_attempt.id).await {
+            Ok(merges) => merges,
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to check existing merges",
+                    "details": e.to_string()
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        };
+
+        // Check if PR is already attached
+        for merge in existing_merges {
+            if let Merge::Pr(pr_merge) = merge {
+                if pr_merge.pr_info.number == pr_number {
+                    let error_response = serde_json::json!({
+                        "success": false,
+                        "error": "This PR is already attached to the task attempt"
+                    });
+                    return Ok(CallToolResult::error(vec![Content::text(
+                        serde_json::to_string_pretty(&error_response).unwrap(),
+                    )]));
+                }
+            }
+        }
+
+        // Create the PR merge record
+        match Merge::create_pr(
+            &self.pool,
+            task_attempt.id,
+            &target_branch_name,
+            pr_number,
+            &pr_url,
+        ).await {
+            Ok(pr_merge) => {
+                let response = AttachPrToTaskResponse {
+                    success: true,
+                    message: format!(
+                        "Successfully attached PR #{} to task '{}' (attempt: {})",
+                        pr_number,
+                        task.title,
+                        task_attempt.id
+                    ),
+                    task_attempt_id: Some(task_attempt.id.to_string()),
+                };
+                Ok(CallToolResult::success(vec![Content::text(
+                    serde_json::to_string_pretty(&response).unwrap(),
+                )]))
+            }
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to attach PR to task",
+                    "details": e.to_string()
+                });
+                Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]))
+            }
+        }
+    }
 }
 
 #[tool_handler]
@@ -814,7 +997,7 @@ impl ServerHandler for TaskServer {
                 name: "vibe-kanban".to_string(),
                 version: "1.0.0".to_string(),
             },
-            instructions: Some("A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. This should be provided to you. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'get_task', 'update_task', 'delete_task'. Make sure to pass `project_id` or `task_id` where required. You can use list tools to get the available ids.".to_string()),
+            instructions: Some("A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. This should be provided to you. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'get_task', 'update_task', 'delete_task', 'attach_pr_to_task'. Make sure to pass `project_id` or `task_id` where required. You can use list tools to get the available ids. Use 'attach_pr_to_task' to link an existing PR that was created outside of vibe-kanban to a task.".to_string()),
         }
     }
 }
