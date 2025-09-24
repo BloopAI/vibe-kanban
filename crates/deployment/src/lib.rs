@@ -282,19 +282,34 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
                     // Create project (ignore individual failures)
                     let project_id = Uuid::new_v4();
-                    if let Err(e) = Project::create(&self.db().pool, &create_data, project_id).await
-                    {
-                        tracing::warn!(
-                            "Failed to auto-create project '{}': {}",
-                            create_data.name,
-                            e
-                        );
-                    } else {
-                        tracing::info!(
-                            "Auto-created project '{}' from {}",
-                            create_data.name,
-                            create_data.git_repo_path
-                        );
+                    match Project::create(&self.db().pool, &create_data, project_id).await {
+                        Ok(project) => {
+                            tracing::info!(
+                                "Auto-created project '{}' from {}",
+                                create_data.name,
+                                create_data.git_repo_path
+                            );
+
+                            // Track project creation event
+                            self.track_if_analytics_allowed(
+                                "project_created",
+                                serde_json::json!({
+                                    "project_id": project.id.to_string(),
+                                    "use_existing_repo": create_data.use_existing_repo,
+                                    "has_setup_script": create_data.setup_script.is_some(),
+                                    "has_dev_script": create_data.dev_script.is_some(),
+                                    "source": "auto_setup",
+                                }),
+                            )
+                            .await;
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                "Failed to auto-create project '{}': {}",
+                                create_data.name,
+                                e
+                            );
+                        }
                     }
                 }
             }
