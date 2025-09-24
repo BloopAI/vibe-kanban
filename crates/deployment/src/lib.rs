@@ -247,9 +247,9 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     /// Trigger background auto-setup of default projects for new users
     async fn trigger_auto_project_setup(&self) {
         // soft timeout to give the filesystem search a chance to complete
-        let soft_timeout_ms = 800;
+        let soft_timeout_ms = 2_000;
         // hard timeout to ensure the background task doesn't run indefinitely
-        let hard_timeout_ms = 1_000;
+        let hard_timeout_ms = 2_300;
         let project_count = Project::count(&self.db().pool).await.unwrap_or(0);
 
         // Only proceed if no projects exist
@@ -257,7 +257,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
             // Discover local git repositories
             if let Ok(repos) = self
                 .filesystem()
-                .list_common_git_repos(soft_timeout_ms, hard_timeout_ms, Some(3))
+                .list_common_git_repos(soft_timeout_ms, hard_timeout_ms, Some(4))
                 .await
             {
                 // Take first 3 repositories and create projects

@@ -172,7 +172,11 @@ async fn handle_config_events(deployment: &DeploymentImpl, old: &Config, new: &C
     track_config_events(deployment, old, new).await;
 
     if !old.disclaimer_acknowledged && new.disclaimer_acknowledged {
-        deployment.trigger_auto_project_setup().await;
+        // Spawn auto project setup as background task to avoid blocking config response
+        let deployment_clone = deployment.clone();
+        tokio::spawn(async move {
+            deployment_clone.trigger_auto_project_setup().await;
+        });
     }
 }
 
