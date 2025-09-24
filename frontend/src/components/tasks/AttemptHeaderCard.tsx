@@ -17,6 +17,7 @@ import { useBranchStatus } from '@/hooks';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useMemo, useState } from 'react';
 import NiceModal from '@ebay/nice-modal-react';
+import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 
 interface AttemptHeaderCardProps {
   attemptNumber: number;
@@ -163,6 +164,11 @@ export function AttemptHeaderCard({
           </p>
         )}
       </div>
+      <OpenInIdeButton
+        onClick={() => openInEditor()}
+        disabled={!selectedAttempt}
+        className="mr-1"
+      />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" className="h-10 w-10 p-0 mr-3">
