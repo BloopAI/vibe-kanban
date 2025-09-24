@@ -51,9 +51,16 @@ function deepClone<T>(obj: T): T {
 }
 
 function deepMerge<T>(target: T, patch: Partial<T>): T {
-  const out: any = Array.isArray(target) ? [...(target as any)] : { ...(target as any) };
+  const out: any = Array.isArray(target)
+    ? [...(target as any)]
+    : { ...(target as any) };
   for (const [k, v] of Object.entries(patch)) {
-    if (v && typeof v === 'object' && !Array.isArray(v) && v.constructor === Object) {
+    if (
+      v &&
+      typeof v === 'object' &&
+      !Array.isArray(v) &&
+      v.constructor === Object
+    ) {
       out[k] = deepMerge((out[k] ?? {}) as any, v as any);
     } else {
       out[k] = v;
@@ -82,7 +89,7 @@ export function GeneralSettings() {
     updateAndSaveConfig, // Use this on Save
     profiles,
   } = useUserSystem();
-  
+
   // Draft state management
   const [draft, setDraft] = useState(() => (config ? deepClone(config) : null));
   const [dirty, setDirty] = useState(false);
@@ -751,14 +758,17 @@ export function GeneralSettings() {
             <span />
           )}
           <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={handleDiscard} 
+            <Button
+              variant="outline"
+              onClick={handleDiscard}
               disabled={!hasUnsavedChanges || saving}
             >
               Discard
             </Button>
-            <Button onClick={handleSave} disabled={!hasUnsavedChanges || saving}>
+            <Button
+              onClick={handleSave}
+              disabled={!hasUnsavedChanges || saving}
+            >
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('settings.general.save.button')}
             </Button>
