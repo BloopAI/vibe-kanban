@@ -3,6 +3,7 @@ use sqlx::SqlitePool;
 use uuid::Uuid;
 
 use crate::types::{ForgeProjectSettings, ProjectConfig};
+use forge_omni::OmniConfig;
 
 pub struct ForgeConfigService {
     pool: SqlitePool,
@@ -107,6 +108,30 @@ impl ForgeConfigService {
     pub async fn set_global_settings(&self, settings: &ForgeProjectSettings) -> Result<()> {
         self.set_forge_settings(Self::GLOBAL_PROJECT_ID, settings)
             .await
+    }
+
+    pub async fn effective_omni_config(&self, project_id: Option<Uuid>) -> Result<OmniConfig> {
+        let global_settings = self.get_global_settings().await?;
+        let mut config = global_settings.omni_config.clone().unwrap_or_default();
+        config.enabled = global_settings.omni_enabled;
+
+        if let Some(project_id) = project_id {
+            if let Some(project_config) = self.get_project_config(project_id).await? {
+                if let Some(value) = project_config.forge_config.clone() {
+                    if let Ok(project_settings) =
+                        serde_json::from_value::<ForgeProjectSettings>(value)
+                    {
+                        let mut project_omni = project_settings
+                            .omni_config
+                            .unwrap_or_else(|| config.clone());
+                        project_omni.enabled = project_settings.omni_enabled;
+                        config = project_omni;
+                    }
+                }
+            }
+        }
+
+        Ok(config)
     }
 }
 

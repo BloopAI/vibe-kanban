@@ -9,6 +9,8 @@ use serde_json::json;
 use server::DeploymentImpl;
 use sqlx::SqlitePool;
 use std::sync::Arc;
+use tokio::sync::RwLock;
+use uuid::Uuid;
 
 // Import forge extension services
 use forge_branch_templates::BranchTemplateService;
@@ -18,8 +20,9 @@ use forge_omni::{OmniConfig, OmniService};
 /// Main forge services container
 #[derive(Clone)]
 pub struct ForgeServices {
+    #[allow(dead_code)]
     pub deployment: Arc<DeploymentImpl>,
-    pub omni: Arc<OmniService>,
+    pub omni: Arc<RwLock<OmniService>>,
     pub branch_templates: Arc<BranchTemplateService>,
     pub config: Arc<ForgeConfigService>,
     pub pool: SqlitePool,
@@ -59,22 +62,16 @@ impl ForgeServices {
         sqlx::migrate!("./migrations").run(&pool).await?;
 
         // Initialize forge extension services
-        let config_service = ForgeConfigService::new(pool.clone());
-        let global_settings = config_service.get_global_settings().await?;
-        let config = Arc::new(config_service);
+        let config = Arc::new(ForgeConfigService::new(pool.clone()));
+        let global_settings = config.get_global_settings().await?;
+        let omni_config = config.effective_omni_config(None).await?;
+        let omni = Arc::new(RwLock::new(OmniService::new(omni_config)));
 
         tracing::info!(
             forge_branch_templates_enabled = global_settings.branch_templates_enabled,
             forge_omni_enabled = global_settings.omni_enabled,
             "Loaded forge extension settings from auxiliary schema"
         );
-
-        let mut omni_config = global_settings
-            .omni_config
-            .clone()
-            .unwrap_or_else(OmniConfig::default);
-        omni_config.enabled = global_settings.omni_enabled;
-        let omni = Arc::new(OmniService::new(omni_config));
         let branch_templates = Arc::new(BranchTemplateService::new(pool.clone()));
 
         Ok(Self {
@@ -86,8 +83,21 @@ impl ForgeServices {
         })
     }
 
+    #[allow(dead_code)]
     /// Get database connection pool for direct access
     pub fn pool(&self) -> &SqlitePool {
         &self.pool
+    }
+
+    pub async fn apply_global_omni_config(&self) -> Result<()> {
+        let omni_config = self.config.effective_omni_config(None).await?;
+        let mut omni = self.omni.write().await;
+        omni.apply_config(omni_config);
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub async fn effective_omni_config(&self, project_id: Option<Uuid>) -> Result<OmniConfig> {
+        self.config.effective_omni_config(project_id).await
     }
 }

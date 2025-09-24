@@ -9,11 +9,24 @@ pub struct OmniService {
 
 impl OmniService {
     pub fn new(config: OmniConfig) -> Self {
-        let client = OmniClient::new(
+        let mut service = Self {
+            config: OmniConfig::default(),
+            client: OmniClient::new(String::new(), None),
+        };
+        service.apply_config(config);
+        service
+    }
+
+    pub fn apply_config(&mut self, config: OmniConfig) {
+        self.client = OmniClient::new(
             config.host.clone().unwrap_or_default(),
             config.api_key.clone(),
         );
-        Self { config, client }
+        self.config = config;
+    }
+
+    pub fn config(&self) -> &OmniConfig {
+        &self.config
     }
 
     pub async fn send_task_notification(

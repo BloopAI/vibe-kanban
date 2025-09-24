@@ -152,6 +152,11 @@ async fn update_forge_config(
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
+    services.apply_global_omni_config().await.map_err(|e| {
+        tracing::error!("Failed to refresh Omni config: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
     Ok(Json(settings))
 }
 
@@ -190,7 +195,8 @@ async fn update_project_settings(
 async fn list_omni_instances(
     State(services): State<ForgeServices>,
 ) -> Result<Json<Value>, StatusCode> {
-    match services.omni.list_instances().await {
+    let omni = services.omni.read().await;
+    match omni.list_instances().await {
         Ok(instances) => Ok(Json(json!({ "instances": instances }))),
         Err(e) => {
             tracing::error!("Failed to list Omni instances: {}", e);
