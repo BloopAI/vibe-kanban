@@ -323,6 +323,118 @@ impl GitHubService {
         }
     }
 
+    /// List pull requests for a branch
+    pub async fn list_prs_for_branch(
+        &self,
+        repo_info: &GitHubRepoInfo,
+        branch_name: &str,
+    ) -> Result<Vec<PullRequestInfo>, GitHubServiceError> {
+        (|| async { self.list_prs_for_branch_internal(repo_info, branch_name).await })
+            .retry(
+                &ExponentialBuilder::default()
+                    .with_min_delay(Duration::from_secs(1))
+                    .with_max_delay(Duration::from_secs(30))
+                    .with_max_times(3)
+                    .with_jitter(),
+            )
+            .when(|e| e.should_retry())
+            .notify(|err: &GitHubServiceError, dur: Duration| {
+                tracing::warn!(
+                    "GitHub API call failed, retrying after {:.2}s: {}",
+                    dur.as_secs_f64(),
+                    err
+                );
+            })
+            .await
+    }
+
+    async fn list_prs_for_branch_internal(
+        &self,
+        repo_info: &GitHubRepoInfo,
+        branch_name: &str,
+    ) -> Result<Vec<PullRequestInfo>, GitHubServiceError> {
+        let prs = self
+            .client
+            .pulls(&repo_info.owner, &repo_info.repo_name)
+            .list()
+            .state(octocrab::params::State::Open)
+            .head(format!("{}:{}", repo_info.owner, branch_name))
+            .per_page(100)
+            .send()
+            .await
+            .map_err(|err| match GitHubServiceError::from(err) {
+                GitHubServiceError::Client(source) => GitHubServiceError::PullRequest(format!(
+                    "Failed to list PRs for branch '{}': {}",
+                    branch_name, source
+                )),
+                other => other,
+            })?;
+
+        let pr_infos = prs
+            .items
+            .into_iter()
+            .map(Self::map_pull_request)
+            .collect();
+
+        Ok(pr_infos)
+    }
+
+    /// List all pull requests for a branch (including closed/merged)
+    pub async fn list_all_prs_for_branch(
+        &self,
+        repo_info: &GitHubRepoInfo,
+        branch_name: &str,
+    ) -> Result<Vec<PullRequestInfo>, GitHubServiceError> {
+        (|| async { self.list_all_prs_for_branch_internal(repo_info, branch_name).await })
+            .retry(
+                &ExponentialBuilder::default()
+                    .with_min_delay(Duration::from_secs(1))
+                    .with_max_delay(Duration::from_secs(30))
+                    .with_max_times(3)
+                    .with_jitter(),
+            )
+            .when(|e| e.should_retry())
+            .notify(|err: &GitHubServiceError, dur: Duration| {
+                tracing::warn!(
+                    "GitHub API call failed, retrying after {:.2}s: {}",
+                    dur.as_secs_f64(),
+                    err
+                );
+            })
+            .await
+    }
+
+    async fn list_all_prs_for_branch_internal(
+        &self,
+        repo_info: &GitHubRepoInfo,
+        branch_name: &str,
+    ) -> Result<Vec<PullRequestInfo>, GitHubServiceError> {
+        let prs = self
+            .client
+            .pulls(&repo_info.owner, &repo_info.repo_name)
+            .list()
+            .state(octocrab::params::State::All)
+            .head(format!("{}:{}", repo_info.owner, branch_name))
+            .per_page(100)
+            .send()
+            .await
+            .map_err(|err| match GitHubServiceError::from(err) {
+                GitHubServiceError::Client(source) => GitHubServiceError::PullRequest(format!(
+                    "Failed to list all PRs for branch '{}': {}",
+                    branch_name, source
+                )),
+                other => other,
+            })?;
+
+        let pr_infos = prs
+            .items
+            .into_iter()
+            .map(Self::map_pull_request)
+            .collect();
+
+        Ok(pr_infos)
+    }
+
     /// List repositories for the authenticated user with pagination
     #[cfg(feature = "cloud")]
     pub async fn list_repositories(
