@@ -14,3 +14,9 @@ ALTER TABLE task_attempts DROP COLUMN branch;
 
 -- 4) Keep the original column name
 ALTER TABLE task_attempts RENAME COLUMN branch_new TO branch;
+
+-- Add target branch column mirroring the existing base branch values
+ALTER TABLE task_attempts ADD COLUMN target_branch TEXT NOT NULL DEFAULT 'main';
+
+-- Ensure every row starts with the target matching the base branch
+UPDATE task_attempts SET target_branch = base_branch;

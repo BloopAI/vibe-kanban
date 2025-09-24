@@ -78,6 +78,10 @@ export type FollowUpDraftResponse = { task_attempt_id: string, prompt: string, q
 
 export type UpdateFollowUpDraftRequest = { prompt: string | null, variant: string | null | null, image_ids: Array<string> | null, version: bigint | null, };
 
+export type ChangeTargetBranchRequest = { new_target_branch: string, };
+
+export type ChangeTargetBranchResponse = { new_target_branch: string, status: [number, number], };
+
 export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, base_branch: string, };
 
 export type CreateGitHubPrRequest = { title: string, body: string | null, base_branch: string | null, };
@@ -234,7 +238,7 @@ conflicted_files: Array<string>, };
 
 export type ConflictOp = "rebase" | "merge" | "cherry_pick" | "revert";
 
-export type TaskAttempt = { id: string, task_id: string, container_ref: string | null, branch: string | null, base_branch: string, executor: string, worktree_deleted: boolean, setup_completed_at: string | null, created_at: string, updated_at: string, };
+export type TaskAttempt = { id: string, task_id: string, container_ref: string | null, branch: string, base_branch: string, executor: string, worktree_deleted: boolean, setup_completed_at: string | null, created_at: string, updated_at: string, };
 
 export type ExecutionProcess = { id: string, task_attempt_id: string, run_reason: ExecutionProcessRunReason, executor_action: ExecutorAction, 
 /**

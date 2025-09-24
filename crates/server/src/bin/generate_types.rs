@@ -45,6 +45,8 @@ fn generate_types_content() -> String {
         server::routes::task_attempts::CreateFollowUpAttempt::decl(),
         server::routes::task_attempts::FollowUpDraftResponse::decl(),
         server::routes::task_attempts::UpdateFollowUpDraftRequest::decl(),
+        server::routes::task_attempts::ChangeTargetBranchRequest::decl(),
+        server::routes::task_attempts::ChangeTargetBranchResponse::decl(),
         server::routes::tasks::CreateAndStartTaskRequest::decl(),
         server::routes::task_attempts::CreateGitHubPrRequest::decl(),
         server::routes::images::ImageResponse::decl(),

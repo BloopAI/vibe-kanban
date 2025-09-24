@@ -401,19 +401,37 @@ impl GitCli {
         out
     }
 
-    /// Perform `git rebase --onto <new_base> <old_base>` on the current branch in `worktree_path`.
+    /// Return the merge base commit sha of two refs in the given worktree.
+    /// If `git merge-base --fork-point` fails, falls back to regular `merge-base`.
+    fn merge_base(&self, worktree_path: &Path, a: &str, b: &str) -> Result<String, GitCliError> {
+        let out = self
+            .git(worktree_path, ["merge-base", "--fork-point", a, b])
+            .unwrap_or(self.git(worktree_path, ["merge-base", a, b])?);
+        Ok(out.trim().to_string())
+    }
+
+    /// Perform `git rebase --onto <new_base> <old_base>` on <task_branch> in `worktree_path`.
     pub fn rebase_onto(
         &self,
         worktree_path: &Path,
         new_base: &str,
         old_base: &str,
+        task_branch: &str,
     ) -> Result<(), GitCliError> {
         // If a rebase is in progress, refuse to proceed. The caller can
         // choose to abort or continue; we avoid destructive actions here.
         if self.is_rebase_in_progress(worktree_path).unwrap_or(false) {
             return Err(GitCliError::RebaseInProgress);
         }
-        self.git(worktree_path, ["rebase", "--onto", new_base, old_base])?;
+        // compute the merge base of task_branch from old_base
+        let merge_base = self
+            .merge_base(worktree_path, old_base, task_branch)
+            .unwrap_or(old_base.to_string());
+
+        self.git(
+            worktree_path,
+            ["rebase", "--onto", new_base, &merge_base, task_branch],
+        )?;
         Ok(())
     }
 

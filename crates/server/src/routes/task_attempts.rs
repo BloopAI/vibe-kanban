@@ -1528,16 +1528,23 @@ pub async fn get_task_attempt_branch_status(
 
 #[derive(serde::Deserialize, Debug, TS)]
 pub struct ChangeTargetBranchRequest {
-    pub new_base_branch: String,
+    pub new_target_branch: String,
 }
+
+#[derive(serde::Serialize, Debug, TS)]
+pub struct ChangeTargetBranchResponse {
+    pub new_target_branch: String,
+    pub status: (usize, usize),
+}
+
 #[axum::debug_handler]
 pub async fn change_target_branch(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<ChangeTargetBranchRequest>,
-) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<ChangeTargetBranchResponse>>, ApiError> {
     // Extract new base branch from request body if provided
-    let new_base_branch = payload.new_base_branch;
+    let new_target_branch = payload.new_target_branch;
     let task = task_attempt
         .parent_task(&deployment.db().pool)
         .await?
@@ -1547,13 +1554,13 @@ pub async fn change_target_branch(
         .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
     match deployment
         .git()
-        .check_branch_exists(&project.git_repo_path, &new_base_branch)?
+        .check_branch_exists(&project.git_repo_path, &new_target_branch)?
     {
         true => {
-            TaskAttempt::update_base_branch(
+            TaskAttempt::update_target_branch(
                 &deployment.db().pool,
                 task_attempt.id,
-                &new_base_branch,
+                &new_target_branch,
             )
             .await?;
         }
@@ -1561,7 +1568,7 @@ pub async fn change_target_branch(
             return Ok(ResponseJson(ApiResponse::error(
                 format!(
                     "Branch '{}' does not exist in the repository",
-                    new_base_branch
+                    new_target_branch
                 )
                 .as_str(),
             )));
@@ -1570,21 +1577,23 @@ pub async fn change_target_branch(
     let status = deployment.git().get_branch_status(
         &project.git_repo_path,
         &task_attempt.branch,
-        &new_base_branch,
-    );
+        &new_target_branch,
+    )?;
 
-    Ok(ResponseJson(ApiResponse::success(())))
+    Ok(ResponseJson(ApiResponse::success(
+        ChangeTargetBranchResponse {
+            new_target_branch,
+            status,
+        },
+    )))
 }
 
 #[axum::debug_handler]
 pub async fn rebase_task_attempt(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
-    request_body: Option<Json<RebaseTaskAttemptRequest>>,
 ) -> Result<ResponseJson<ApiResponse<(), GitOperationError>>, ApiError> {
     // Extract new base branch from request body if provided
-    let new_base_branch = request_body.and_then(|body| body.new_base_branch.clone());
-
     let github_config = deployment.config().read().await.github.clone();
 
     let pool = &deployment.db().pool;
@@ -1595,10 +1604,6 @@ pub async fn rebase_task_attempt(
         .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
     let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
 
-    // Use the stored base branch if no new base branch is provided
-    let effective_base_branch =
-        new_base_branch.or_else(|| Some(ctx.task_attempt.base_branch.clone()));
-
     let container_ref = deployment
         .container()
         .ensure_container_exists(&task_attempt)
@@ -1608,8 +1613,9 @@ pub async fn rebase_task_attempt(
     let result = deployment.git().rebase_branch(
         &ctx.project.git_repo_path,
         worktree_path,
-        effective_base_branch.clone().as_deref(),
-        &ctx.task_attempt.base_branch.clone(),
+        &task_attempt.target_branch.clone(),
+        &task_attempt.base_branch.clone(),
+        &task_attempt.branch.clone(),
         github_config.token(),
     );
     if let Err(e) = result {
@@ -1633,14 +1639,6 @@ pub async fn rebase_task_attempt(
             other => Err(ApiError::GitService(other)),
         };
     }
-
-    if let Some(new_base_branch) = &effective_base_branch
-        && new_base_branch != &ctx.task_attempt.base_branch
-    {
-        TaskAttempt::update_base_branch(&deployment.db().pool, task_attempt.id, new_base_branch)
-            .await?;
-    }
-
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
