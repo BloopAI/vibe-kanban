@@ -9,6 +9,8 @@ pub struct ForgeConfigService {
 }
 
 impl ForgeConfigService {
+    pub const GLOBAL_PROJECT_ID: Uuid = Uuid::nil();
+
     pub fn new(pool: SqlitePool) -> Self {
         Self { pool }
     }
@@ -97,6 +99,15 @@ impl ForgeConfigService {
 
         self.set_project_config(&config).await
     }
+
+    pub async fn get_global_settings(&self) -> Result<ForgeProjectSettings> {
+        self.get_forge_settings(Self::GLOBAL_PROJECT_ID).await
+    }
+
+    pub async fn set_global_settings(&self, settings: &ForgeProjectSettings) -> Result<()> {
+        self.set_forge_settings(Self::GLOBAL_PROJECT_ID, settings)
+            .await
+    }
 }
 
 // Helper struct for database queries
@@ -105,4 +116,69 @@ struct ProjectConfigRow {
     project_id: Uuid,
     custom_executors: Option<String>,
     forge_config: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use forge_omni::{OmniConfig, RecipientType};
+
+    async fn setup_pool() -> SqlitePool {
+        let pool = SqlitePool::connect("sqlite::memory:")
+            .await
+            .expect("failed to create in-memory sqlite pool");
+
+        sqlx::query(
+            r#"CREATE TABLE forge_project_settings (
+                    project_id TEXT PRIMARY KEY,
+                    custom_executors TEXT,
+                    forge_config TEXT
+                )"#,
+        )
+        .execute(&pool)
+        .await
+        .expect("failed to create forge_project_settings table for tests");
+
+        pool
+    }
+
+    #[tokio::test]
+    async fn round_trips_global_settings() {
+        let pool = setup_pool().await;
+        let service = ForgeConfigService::new(pool);
+
+        // defaults
+        let mut settings = service
+            .get_global_settings()
+            .await
+            .expect("default settings should load");
+        assert!(!settings.omni_enabled);
+        assert!(settings.omni_config.is_none());
+
+        settings.omni_enabled = true;
+        settings.omni_config = Some(OmniConfig {
+            enabled: true,
+            host: Some("https://omni.test".into()),
+            api_key: Some("secret".into()),
+            instance: Some("forge".into()),
+            recipient: Some("+14155552671".into()),
+            recipient_type: Some(RecipientType::PhoneNumber),
+        });
+
+        service
+            .set_global_settings(&settings)
+            .await
+            .expect("should persist global settings");
+
+        let fetched = service
+            .get_global_settings()
+            .await
+            .expect("should load stored global settings");
+
+        assert!(fetched.omni_enabled);
+        assert_eq!(
+            fetched.omni_config.unwrap().instance.as_deref(),
+            Some("forge")
+        );
+    }
 }

@@ -19,6 +19,19 @@ pub struct OmniConfig {
     pub recipient_type: Option<RecipientType>,
 }
 
+impl Default for OmniConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            host: None,
+            api_key: None,
+            instance: None,
+            recipient: None,
+            recipient_type: None,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct OmniInstance {
     pub instance_name: String,
@@ -90,7 +103,7 @@ pub(crate) struct RawEvolutionStatus {
     pub error: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, TS)]
 pub struct SendTextRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub phone_number: Option<String>,
@@ -99,7 +112,7 @@ pub struct SendTextRequest {
     pub text: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, TS)]
 pub struct SendTextResponse {
     pub success: bool,
     pub message_id: Option<String>,

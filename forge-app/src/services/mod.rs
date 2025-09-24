@@ -59,18 +59,23 @@ impl ForgeServices {
         sqlx::migrate!("./migrations").run(&pool).await?;
 
         // Initialize forge extension services
-        let omni_config = OmniConfig {
-            enabled: false, // TODO: Load from forge config (Phase B)
-            host: None,
-            api_key: None,
-            instance: None,
-            recipient: None,
-            recipient_type: None,
-        };
+        let config_service = ForgeConfigService::new(pool.clone());
+        let global_settings = config_service.get_global_settings().await?;
+        let config = Arc::new(config_service);
 
+        tracing::info!(
+            forge_branch_templates_enabled = global_settings.branch_templates_enabled,
+            forge_omni_enabled = global_settings.omni_enabled,
+            "Loaded forge extension settings from auxiliary schema"
+        );
+
+        let mut omni_config = global_settings
+            .omni_config
+            .clone()
+            .unwrap_or_else(OmniConfig::default);
+        omni_config.enabled = global_settings.omni_enabled;
         let omni = Arc::new(OmniService::new(omni_config));
         let branch_templates = Arc::new(BranchTemplateService::new(pool.clone()));
-        let config = Arc::new(ForgeConfigService::new(pool.clone()));
 
         Ok(Self {
             deployment,

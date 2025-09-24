@@ -1,6 +1,6 @@
 # WISH: Upstream-as-Library Completion (100/100 Target)
 
-**Status:** IN_PROGRESS (Base score: 85/100)
+**Status:** IN_PROGRESS (Score: 88/100)
 
 ## 🎯 Objective
 Elevate the newly merged PR-21 foundation to a production-ready upstream-as-library architecture that scores a perfect 100/100 by finishing extraction, wiring, validation, and documentation without modifying `upstream/` sources.

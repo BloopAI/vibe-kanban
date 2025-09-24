@@ -15,6 +15,7 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::services::ForgeServices;
+use forge_config::ForgeProjectSettings;
 
 #[derive(RustEmbed)]
 #[folder = "../frontend/dist"]
@@ -30,6 +31,10 @@ pub fn create_router(services: ForgeServices) -> Router {
     Router::new()
         .route("/health", get(health_check))
         // Forge API routes
+        .route(
+            "/api/forge/config",
+            get(get_forge_config).put(update_forge_config),
+        )
         .route("/api/forge/omni/instances", get(list_omni_instances))
         .route(
             "/api/forge/branch-templates/:task_id",
@@ -82,8 +87,7 @@ async fn serve_legacy_assets(Path(path): Path<String>) -> Response {
 async fn serve_static_file<T: RustEmbed>(path: &str) -> Response {
     match T::get(path) {
         Some(content) => {
-            let mime = mime_guess::from_path(path)
-                .first_or_octet_stream();
+            let mime = mime_guess::from_path(path).first_or_octet_stream();
 
             let mut response = Response::new(content.data.into());
             response.headers_mut().insert(
@@ -109,6 +113,36 @@ async fn health_check() -> Json<Value> {
         "service": "forge-app",
         "message": "Forge application ready - backend extensions extracted successfully"
     }))
+}
+
+async fn get_forge_config(
+    State(services): State<ForgeServices>,
+) -> Result<Json<ForgeProjectSettings>, StatusCode> {
+    services
+        .config
+        .get_global_settings()
+        .await
+        .map(Json)
+        .map_err(|e| {
+            tracing::error!("Failed to load forge config: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })
+}
+
+async fn update_forge_config(
+    State(services): State<ForgeServices>,
+    Json(settings): Json<ForgeProjectSettings>,
+) -> Result<Json<ForgeProjectSettings>, StatusCode> {
+    services
+        .config
+        .set_global_settings(&settings)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to persist forge config: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    Ok(Json(settings))
 }
 
 async fn list_omni_instances(

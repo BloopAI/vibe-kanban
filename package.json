@@ -19,8 +19,8 @@
     "backend:dev": "BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) pnpm run backend:dev:watch",
     "backend:check": "cargo check",
     "backend:dev:watch": "DISABLE_WORKTREE_ORPHAN_CLEANUP=1 RUST_LOG=debug cargo watch -w crates -x 'run --bin server'",
-    "generate-types": "cargo run --bin generate_types",
-    "generate-types:check": "cargo run --bin generate_types -- --check",
+    "generate-types": "cargo run --bin generate_types && cargo run -p forge-app --bin generate_forge_types",
+    "generate-types:check": "cargo run --bin generate_types -- --check && cargo run -p forge-app --bin generate_forge_types -- --check",
     "prepare-db": "node scripts/prepare-db.js",
     "build:npx": "bash ./local-build.sh",
     "prepack": "pnpm run build:npx"

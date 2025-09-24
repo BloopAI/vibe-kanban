@@ -81,6 +81,7 @@ done
 
 declare -A ENDPOINTS=(
   [health]="/health"
+  [forge_config]="/api/forge/config"
   [omni_instances]="/api/forge/omni/instances"
   [branch_templates]="/api/forge/branch-templates/${BRANCH_TEMPLATE_TASK_ID}"
 )
