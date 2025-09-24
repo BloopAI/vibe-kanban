@@ -18,7 +18,9 @@
       "save": {
         "button": "Guardar Configuración",
         "success": "✓ ¡Configuración guardada!",
-        "error": "Error al guardar la configuración"
+        "error": "Error al guardar la configuración",
+        "unsavedChanges": "• Tienes cambios sin guardar",
+        "discard": "Descartar"
       },
       "appearance": {
         "title": "Apariencia",

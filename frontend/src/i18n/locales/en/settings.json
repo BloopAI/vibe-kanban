@@ -18,7 +18,9 @@
       "save": {
         "button": "Save Settings",
         "success": "✓ Settings saved successfully!",
-        "error": "Failed to save configuration"
+        "error": "Failed to save configuration",
+        "unsavedChanges": "• You have unsaved changes",
+        "discard": "Discard"
       },
       "appearance": {
         "title": "Appearance",

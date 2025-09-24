@@ -133,7 +133,7 @@ export function GeneralSettings() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
-      setError('Failed to save configuration');
+      setError(t('settings.general.save.error'));
       console.error('Error saving config:', err);
     } finally {
       setSaving(false);
@@ -722,7 +722,7 @@ export function GeneralSettings() {
         <div className="flex items-center justify-between">
           {hasUnsavedChanges ? (
             <span className="text-sm text-muted-foreground">
-              • You have unsaved changes
+              {t('settings.general.save.unsavedChanges')}
             </span>
           ) : (
             <span />
@@ -733,7 +733,7 @@ export function GeneralSettings() {
               onClick={handleDiscard}
               disabled={!hasUnsavedChanges || saving}
             >
-              Discard
+              {t('settings.general.save.discard')}
             </Button>
             <Button
               onClick={handleSave}

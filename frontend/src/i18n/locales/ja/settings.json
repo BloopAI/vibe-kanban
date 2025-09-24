@@ -18,7 +18,9 @@
       "save": {
         "button": "設定を保存",
         "success": "✓ 設定が正常に保存されました！",
-        "error": "設定の保存に失敗しました"
+        "error": "設定の保存に失敗しました",
+        "unsavedChanges": "• 未保存の変更があります",
+        "discard": "破棄"
       },
       "appearance": {
         "title": "外観",
