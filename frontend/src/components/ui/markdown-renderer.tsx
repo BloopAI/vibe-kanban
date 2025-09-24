@@ -28,15 +28,15 @@ function sanitizeHref(href?: string): string | undefined {
     trimmed.startsWith('/')
   )
     return trimmed;
-  // Allow http(s)
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  // Allow only https
+  if (/^https:\/\//i.test(trimmed)) return trimmed;
   // Block everything else by default
   return undefined;
 }
 
 function isExternalHref(href?: string): boolean {
   if (!href) return false;
-  return /^https?:\/\//i.test(href);
+  return /^https:\/\//i.test(href);
 }
 
 function LinkOverride({
