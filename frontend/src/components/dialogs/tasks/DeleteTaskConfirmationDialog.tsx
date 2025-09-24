@@ -30,7 +30,7 @@ const DeleteTaskConfirmationDialog =
 
       try {
         await tasksApi.delete(task.id);
-        modal.resolve(true);
+        modal.resolve();
         modal.hide();
       } catch (err: unknown) {
         const errorMessage =
@@ -42,7 +42,7 @@ const DeleteTaskConfirmationDialog =
     };
 
     const handleCancelDelete = () => {
-      modal.resolve(false);
+      modal.reject();
       modal.hide();
     };
 
