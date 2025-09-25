@@ -21,17 +21,12 @@ export function IdeIcon({ editorType, className = 'h-4 w-4' }: IdeIconProps) {
   const resolvedTheme = getResolvedTheme(theme);
 
   if (editorType === EditorType.VS_CODE) {
-    const vscodeIcon = resolvedTheme === 'dark' 
-      ? '/ide/vscode-dark.svg'
-      : '/ide/vscode-light.svg';
+    const vscodeIcon =
+      resolvedTheme === 'dark'
+        ? '/ide/vscode-dark.svg'
+        : '/ide/vscode-light.svg';
 
-    return (
-      <img
-        src={vscodeIcon}
-        alt="VS Code"
-        className={className}
-      />
-    );
+    return <img src={vscodeIcon} alt="VS Code" className={className} />;
   }
 
   if (editorType === EditorType.CURSOR) {
