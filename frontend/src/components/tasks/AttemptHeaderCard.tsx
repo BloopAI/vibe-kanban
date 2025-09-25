@@ -113,7 +113,7 @@ export function AttemptHeaderCard({
   const handleRebaseClick = async () => {
     setRebasing(true);
     try {
-      await rebaseMutation.mutateAsync();
+      await rebaseMutation.mutateAsync({});
     } catch (error) {
       // Error handling is done by the mutation
     } finally {
