@@ -35,15 +35,15 @@ export function useDevserverPreview(
   const updateFromLogLine = (line: string) => {
     const match = devserverRegex.exec(line);
     if (!match) return;
-    
+
     const port = Number(match[1]);
     const scheme = /https/i.test(line) ? 'https' : 'http';
     const url = `${scheme}://localhost:${port}`;
-    
+
     setState((prev) => {
       // If we already have a ready state with a URL, keep the first one
       if (prev.status === 'ready' && prev.url) return prev;
-      
+
       return {
         status: 'ready',
         url,
