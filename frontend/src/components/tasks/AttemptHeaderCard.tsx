@@ -158,8 +158,8 @@ export function AttemptHeaderCard({
             >
               Diffs
             </Button>{' '}
-            &middot; <span className="text-success">+{added}</span>{' '}
-            <span className="text-destructive">-{deleted}</span>
+            &middot; <span className="text-console-success">+{added}</span>{' '}
+            <span className="text-console-error">-{deleted}</span>
           </p>
         )}
       </div>
