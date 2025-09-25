@@ -48,7 +48,7 @@ export function OpenInIdeButton({
     <Button
       variant="ghost"
       size="sm"
-      className={`h-10 w-10 p-0 hover:bg-accent hover:text-accent-foreground ${className ?? ''}`}
+      className={`h-10 w-10 p-0 hover:opacity-70 transition-opacity ${className ?? ''}`}
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
