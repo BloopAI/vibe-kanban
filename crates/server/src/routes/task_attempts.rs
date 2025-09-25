@@ -1595,10 +1595,12 @@ pub async fn rebase_task_attempt(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<RebaseTaskAttemptRequest>,
 ) -> Result<ResponseJson<ApiResponse<(), GitOperationError>>, ApiError> {
-    // TODO put this into the args, make rebase a dialog with two dropdowns (old base, new base)
-    let old_base_branch = task_attempt.target_branch.clone();
-    // Extract new base branch from request body if provided
-    let new_base_branch = payload.new_base_branch.unwrap_or(old_base_branch.clone());
+    let old_base_branch = payload
+        .old_base_branch
+        .unwrap_or(task_attempt.target_branch.clone());
+    let new_base_branch = payload
+        .new_base_branch
+        .unwrap_or(task_attempt.target_branch.clone());
     let github_config = deployment.config().read().await.github.clone();
 
     let pool = &deployment.db().pool;
@@ -1608,6 +1610,28 @@ pub async fn rebase_task_attempt(
         .await?
         .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
     let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
+    match deployment
+        .git()
+        .check_branch_exists(&ctx.project.git_repo_path, &new_base_branch)?
+    {
+        true => {
+            TaskAttempt::update_target_branch(
+                &deployment.db().pool,
+                task_attempt.id,
+                &new_base_branch,
+            )
+            .await?;
+        }
+        false => {
+            return Ok(ResponseJson(ApiResponse::error(
+                format!(
+                    "Branch '{}' does not exist in the repository",
+                    new_base_branch
+                )
+                .as_str(),
+            )));
+        }
+    }
 
     let container_ref = deployment
         .container()
