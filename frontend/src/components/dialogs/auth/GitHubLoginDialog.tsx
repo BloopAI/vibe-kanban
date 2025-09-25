@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert } from '@/components/ui/alert';
 import { useUserSystem } from '@/components/config-provider';
 import { Check, Clipboard, Github } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
@@ -238,7 +238,7 @@ const GitHubLoginDialog = NiceModal.create(() => {
 
             {error && (
               <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
+                {error}
               </Alert>
             )}
 
@@ -295,7 +295,7 @@ const GitHubLoginDialog = NiceModal.create(() => {
 
             {error && (
               <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
+                {error}
               </Alert>
             )}
 
