@@ -23,7 +23,7 @@ export function useDevserverPreview(
     status: 'idle',
     scheme: 'http',
   });
-  
+
   const processedLogs = useRef(new Set<string>());
   const activeControllers = useRef(new Map<string, AbortController>());
 
@@ -35,11 +35,11 @@ export function useDevserverPreview(
   const updateFromLogLine = (line: string) => {
     const match = devserverRegex.exec(line);
     if (!match) return;
-    
+
     const port = Number(match[1]);
     const scheme = /https/i.test(line) ? 'https' : 'http';
     const url = `${scheme}://localhost:${port}`;
-    
+
     setState((prev) => {
       if (prev.url === url && prev.status === 'ready') return prev;
       return {
@@ -61,7 +61,7 @@ export function useDevserverPreview(
 
     try {
       const url = `/api/execution-processes/${processId}/raw-logs/ws`;
-      
+
       streamJsonPatchEntries<PatchType>(url, {
         onEntries: (entries) => {
           entries.forEach((entry) => {
@@ -83,7 +83,10 @@ export function useDevserverPreview(
         },
       });
     } catch (error) {
-      console.warn(`Failed to start log stream for process ${processId}:`, error);
+      console.warn(
+        `Failed to start log stream for process ${processId}:`,
+        error
+      );
       activeControllers.current.delete(processId);
     }
   };
@@ -137,7 +140,7 @@ export function useDevserverPreview(
         scheme: 'http',
       });
       processedLogs.current.clear();
-      
+
       // Cleanup any existing controllers
       activeControllers.current.forEach((controller) => {
         controller.abort();

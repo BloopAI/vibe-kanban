@@ -28,8 +28,11 @@ function TabNavigation({
     { id: 'processes' as TabType, label: 'Processes', icon: Cog },
   ];
 
-  const tabs = showPreview 
-    ? [...baseTabs, { id: 'preview' as TabType, label: 'Preview', icon: Monitor }]
+  const tabs = showPreview
+    ? [
+        ...baseTabs,
+        { id: 'preview' as TabType, label: 'Preview', icon: Monitor },
+      ]
     : baseTabs;
 
   const getTabClassName = (tabId: TabType) => {
