@@ -44,7 +44,7 @@ pub struct GitService {}
 
 // Max inline diff size for UI (in bytes). Files larger than this will have
 // their contents omitted from the diff stream to avoid UI crashes.
-const MAX_INLINE_DIFF_BYTES: usize = 50 * 1024; // ~50KB
+const MAX_INLINE_DIFF_BYTES: usize = 150 * 1024; // ~150KB
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]

@@ -78,7 +78,7 @@ pub struct LocalContainerService {
 
 impl LocalContainerService {
     // Max cumulative content bytes allowed per diff stream
-    const MAX_CUMULATIVE_DIFF_BYTES: usize = 50 * 1024; // 50KB
+    const MAX_CUMULATIVE_DIFF_BYTES: usize = 150 * 1024; // 150KB
 
     // Apply stream-level omit policy based on cumulative bytes.
     // If adding this diff's contents exceeds the cap, strip contents and set stats.
