@@ -168,11 +168,7 @@ const CreatePrDialog = NiceModal.create(() => {
                 }
               />
             </div>
-            {error && (
-              <Alert variant="destructive">
-                {error}
-              </Alert>
-            )}
+            {error && <Alert variant="destructive">{error}</Alert>}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={handleCancelCreatePR}>
