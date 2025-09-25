@@ -236,11 +236,7 @@ const GitHubLoginDialog = NiceModal.create(() => {
               </span>
             </div>
 
-            {error && (
-              <Alert variant="destructive">
-                {error}
-              </Alert>
-            )}
+            {error && <Alert variant="destructive">{error}</Alert>}
 
             <DialogFooter>
               <Button
@@ -293,11 +289,7 @@ const GitHubLoginDialog = NiceModal.create(() => {
               </CardContent>
             </Card>
 
-            {error && (
-              <Alert variant="destructive">
-                {error}
-              </Alert>
-            )}
+            {error && <Alert variant="destructive">{error}</Alert>}
 
             <DialogFooter className="gap-3 flex-col sm:flex-row">
               <Button

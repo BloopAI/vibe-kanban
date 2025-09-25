@@ -155,11 +155,7 @@ export const TaskTemplateEditDialog =
                   disabled={saving}
                 />
               </div>
-              {error && (
-                <Alert variant="destructive">
-                  {error}
-                </Alert>
-              )}
+              {error && <Alert variant="destructive">{error}</Alert>}
             </div>
             <DialogFooter>
               <Button
