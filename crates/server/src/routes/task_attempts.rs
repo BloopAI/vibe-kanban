@@ -1838,13 +1838,16 @@ pub async fn attach_existing_pr(
     let pool = &deployment.db().pool;
 
     // Check if PR already attached
-    if let Some(existing_merge) = Merge::find_by_task_attempt_id(pool, task_attempt.id).await? {
-        return Ok(ResponseJson(ApiResponse::success(AttachPrResponse {
-            pr_attached: true,
-            pr_url: Some(existing_merge.pr_info.url.clone()),
-            pr_number: Some(existing_merge.pr_info.number),
-            pr_status: Some(existing_merge.pr_info.status.clone()),
-        })));
+    if let Some(existing_merge) = Merge::find_latest_by_task_attempt_id(pool, task_attempt.id).await? {
+        // Only return if it's a PR merge (not a direct merge)
+        if let Merge::Pr(pr_merge) = existing_merge {
+            return Ok(ResponseJson(ApiResponse::success(AttachPrResponse {
+                pr_attached: true,
+                pr_url: Some(pr_merge.pr_info.url.clone()),
+                pr_number: Some(pr_merge.pr_info.number),
+                pr_status: Some(pr_merge.pr_info.status.clone()),
+            })));
+        }
     }
 
     // Get branch name
@@ -1878,9 +1881,9 @@ pub async fn attach_existing_pr(
         .git()
         .get_github_repo_info(&project.git_repo_path)?;
 
-    // List PRs for branch (including closed/merged)
+    // List all PRs for branch (open, closed, and merged)
     let prs = github_service
-        .list_prs_for_branch(&repo_info, branch_name)
+        .list_all_prs_for_branch(&repo_info, branch_name)
         .await?;
 
     // Take the first PR (prefer open, but also accept merged/closed)
@@ -1908,44 +1911,12 @@ pub async fn attach_existing_pr(
             pr_status: Some(pr_info.status),
         })))
     } else {
-        // No PR found, but let's also check for closed/merged PRs
-        // by searching all PRs (not just open ones)
-        let all_prs = github_service
-            .list_all_prs_for_branch(&repo_info, branch_name)
-            .await
-            .unwrap_or_default();
-
-        if let Some(pr_info) = all_prs.into_iter().next() {
-            // Save PR info to database
-            Merge::create_pr(
-                pool,
-                task_attempt.id,
-                &task_attempt.base_branch,
-                pr_info.number,
-                &pr_info.url,
-                pr_info.status.clone(),
-            )
-            .await?;
-
-            // If PR is merged, mark task as done
-            if matches!(pr_info.status, MergeStatus::Merged) {
-                Task::update_status(pool, task.id, TaskStatus::Done).await?;
-            }
-
-            Ok(ResponseJson(ApiResponse::success(AttachPrResponse {
-                pr_attached: true,
-                pr_url: Some(pr_info.url),
-                pr_number: Some(pr_info.number),
-                pr_status: Some(pr_info.status),
-            })))
-        } else {
-            Ok(ResponseJson(ApiResponse::success(AttachPrResponse {
-                pr_attached: false,
-                pr_url: None,
-                pr_number: None,
-                pr_status: None,
-            })))
-        }
+        Ok(ResponseJson(ApiResponse::success(AttachPrResponse {
+            pr_attached: false,
+            pr_url: None,
+            pr_number: None,
+            pr_status: None,
+        })))
     }
 }
 
