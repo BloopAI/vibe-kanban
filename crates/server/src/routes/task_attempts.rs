@@ -84,7 +84,7 @@ pub struct ReplaceProcessResult {
 pub struct CreateGitHubPrRequest {
     pub title: String,
     pub body: Option<String>,
-    pub base_branch: Option<String>,
+    pub target_branch: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -1129,14 +1129,14 @@ pub async fn merge_task_attempt(
         &ctx.project.git_repo_path,
         worktree_path,
         &ctx.task_attempt.branch,
-        &ctx.task_attempt.base_branch,
+        &ctx.task_attempt.target_branch,
         &commit_message,
     )?;
 
     Merge::create_direct(
         pool,
         task_attempt.id,
-        &ctx.task_attempt.base_branch,
+        &ctx.task_attempt.target_branch,
         &merge_commit_id,
     )
     .await?;
@@ -1194,12 +1194,12 @@ pub async fn create_github_pr(
     };
     // Create GitHub service instance
     let github_service = GitHubService::new(&github_token)?;
-    // Get the task attempt to access the stored base branch
-    let base_branch = request.base_branch.unwrap_or_else(|| {
-        // Use the stored base branch from the task attempt as the default
-        // Fall back to config default or "main" only if stored base branch is somehow invalid
-        if !task_attempt.base_branch.trim().is_empty() {
-            task_attempt.base_branch.clone()
+    // Get the task attempt to access the stored target branch
+    let target_branch = request.target_branch.unwrap_or_else(|| {
+        // Use the stored target branch from the task attempt as the default
+        // Fall back to config default or "main" only if stored target branch is somehow invalid
+        if !task_attempt.target_branch.trim().is_empty() {
+            task_attempt.target_branch.clone()
         } else {
             github_config
                 .default_pr_base
@@ -1241,31 +1241,31 @@ pub async fn create_github_pr(
         }
     }
 
-    let norm_base_branch_name = if matches!(
+    let norm_target_branch_name = if matches!(
         deployment
             .git()
-            .find_branch_type(&project.git_repo_path, &base_branch)?,
+            .find_branch_type(&project.git_repo_path, &target_branch)?,
         BranchType::Remote
     ) {
         // Remote branches are formatted as {remote}/{branch} locally.
         // For PR APIs, we must provide just the branch name.
         let remote = deployment
             .git()
-            .get_remote_name_from_branch_name(&workspace_path, &base_branch)?;
+            .get_remote_name_from_branch_name(&workspace_path, &target_branch)?;
         let remote_prefix = format!("{}/", remote);
-        base_branch
+        target_branch
             .strip_prefix(&remote_prefix)
-            .unwrap_or(&base_branch)
+            .unwrap_or(&target_branch)
             .to_string()
     } else {
-        base_branch
+        target_branch
     };
     // Create the PR using GitHub service
     let pr_request = CreatePrRequest {
         title: request.title.clone(),
         body: request.body.clone(),
         head_branch: task_attempt.branch.clone(),
-        base_branch: norm_base_branch_name.clone(),
+        base_branch: norm_target_branch_name.clone(),
     };
     // Use GitService to get the remote URL, then create GitHubRepoInfo
     let repo_info = deployment
@@ -1278,7 +1278,7 @@ pub async fn create_github_pr(
             if let Err(e) = Merge::create_pr(
                 pool,
                 task_attempt.id,
-                &norm_base_branch_name,
+                &norm_target_branch_name,
                 pr_info.number,
                 &pr_info.url,
             )
@@ -1387,7 +1387,7 @@ pub struct BranchStatus {
     pub head_oid: Option<String>,
     pub uncommitted_count: Option<usize>,
     pub untracked_count: Option<usize>,
-    pub base_branch_name: String,
+    pub target_branch_name: String,
     pub remote_commits_behind: Option<usize>,
     pub remote_commits_ahead: Option<usize>,
     pub merges: Vec<Merge>,
@@ -1455,15 +1455,15 @@ pub async fn get_task_attempt_branch_status(
         }
     };
 
-    let base_branch_type = deployment
+    let target_branch_type = deployment
         .git()
-        .find_branch_type(&ctx.project.git_repo_path, &task_attempt.base_branch)?;
+        .find_branch_type(&ctx.project.git_repo_path, &task_attempt.target_branch)?;
 
-    let (commits_ahead, commits_behind) = if matches!(base_branch_type, BranchType::Local) {
+    let (commits_ahead, commits_behind) = if matches!(target_branch_type, BranchType::Local) {
         let (a, b) = deployment.git().get_branch_status(
             &ctx.project.git_repo_path,
             &task_attempt.branch,
-            &task_attempt.base_branch,
+            &task_attempt.target_branch,
         )?;
         (Some(a), Some(b))
     } else {
@@ -1481,7 +1481,7 @@ pub async fn get_task_attempt_branch_status(
         remote_commits_ahead: None,
         remote_commits_behind: None,
         merges,
-        base_branch_name: task_attempt.base_branch.clone(),
+        target_branch_name: task_attempt.target_branch.clone(),
         is_rebase_in_progress,
         conflict_op,
         conflicted_files,
@@ -1499,17 +1499,17 @@ pub async fn get_task_attempt_branch_status(
         )
     });
 
-    // check remote status if the attempt has an open PR or the base_branch is a remote branch
-    if has_open_pr || base_branch_type == BranchType::Remote {
+    // check remote status if the attempt has an open PR or the target_branch is a remote branch
+    if has_open_pr || target_branch_type == BranchType::Remote {
         let github_config = deployment.config().read().await.github.clone();
         let token = github_config
             .token()
             .ok_or(ApiError::GitHubService(GitHubServiceError::TokenInvalid))?;
 
-        // For an attempt with a remote base branch, we compare against that
+        // For an attempt with a remote target branch, we compare against that
         // After opening a PR, the attempt has a remote branch itself, so we use that
-        let remote_base_branch = if base_branch_type == BranchType::Remote && !has_open_pr {
-            Some(task_attempt.base_branch)
+        let remote_target_branch = if target_branch_type == BranchType::Remote && !has_open_pr {
+            Some(task_attempt.target_branch)
         } else {
             None
         };
@@ -1517,7 +1517,7 @@ pub async fn get_task_attempt_branch_status(
             deployment.git().get_remote_branch_status(
                 &ctx.project.git_repo_path,
                 &task_attempt.branch,
-                remote_base_branch.as_deref(),
+                remote_target_branch.as_deref(),
                 token,
             )?;
         branch_status.remote_commits_ahead = Some(remote_commits_ahead);

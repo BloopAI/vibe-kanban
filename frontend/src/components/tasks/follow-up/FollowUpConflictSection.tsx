@@ -45,7 +45,7 @@ export function FollowUpConflictSection({
     <>
       <ConflictBanner
         attemptBranch={attemptBranch}
-        baseBranch={branchStatus.base_branch_name}
+        baseBranch={branchStatus.target_branch_name}
         conflictedFiles={branchStatus.conflicted_files || []}
         op={op}
         onResolve={onResolve}

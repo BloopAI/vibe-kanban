@@ -68,7 +68,7 @@ export const ChangeTargetBranchDialog =
                   branches={branches}
                   selectedBranch={selectedBranch}
                   onBranchSelect={setSelectedBranch}
-                  placeholder="Select a base branch"
+                  placeholder="Select a target branch"
                   excludeCurrentBranch={false}
                 />
               </div>
