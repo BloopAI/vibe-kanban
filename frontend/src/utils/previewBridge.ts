@@ -1,5 +1,3 @@
-// click-to-component-listener.ts
-
 export interface ComponentSource {
   fileName: string;
   lineNumber: number;
