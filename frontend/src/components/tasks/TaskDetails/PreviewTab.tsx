@@ -1,5 +1,11 @@
 import { useState } from 'react';
-import { ExternalLink, RefreshCw, Copy, Loader2, MonitorSpeaker } from 'lucide-react';
+import {
+  ExternalLink,
+  RefreshCw,
+  Copy,
+  Loader2,
+  MonitorSpeaker,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DevserverPreviewState } from '@/hooks/useDevserverPreview';
 
@@ -13,7 +19,7 @@ export default function PreviewTab({ previewState }: PreviewTabProps) {
 
   const handleRefresh = () => {
     setIframeError(false);
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey((prev) => prev + 1);
   };
 
   const handleCopyUrl = async () => {
@@ -38,12 +44,19 @@ export default function PreviewTab({ previewState }: PreviewTabProps) {
               Waiting for dev server...
             </h3>
             <p className="text-sm text-muted-foreground">
-              Looking for development server URL in the logs. This typically appears when running commands like:
+              Looking for development server URL in the logs. This typically
+              appears when running commands like:
             </p>
             <ul className="text-xs text-muted-foreground mt-2 list-disc list-inside space-y-1">
-              <li><code>npm run dev</code> or <code>yarn dev</code></li>
-              <li><code>vite</code> or <code>next dev</code></li>
-              <li><code>webpack-dev-server</code></li>
+              <li>
+                <code>npm run dev</code> or <code>yarn dev</code>
+              </li>
+              <li>
+                <code>vite</code> or <code>next dev</code>
+              </li>
+              <li>
+                <code>webpack-dev-server</code>
+              </li>
             </ul>
           </div>
         </div>
@@ -63,10 +76,12 @@ export default function PreviewTab({ previewState }: PreviewTabProps) {
               No dev server detected
             </h3>
             <p className="text-sm text-muted-foreground">
-              No development server URL found in the logs yet. Start a dev server to see the preview here.
+              No development server URL found in the logs yet. Start a dev
+              server to see the preview here.
             </p>
             <p className="text-xs text-muted-foreground mt-2">
-              Looking for URLs matching: <code>localhost:PORT</code>, <code>127.0.0.1:PORT</code>, or <code>0.0.0.0:PORT</code>
+              Looking for URLs matching: <code>localhost:PORT</code>,{' '}
+              <code>127.0.0.1:PORT</code>, or <code>0.0.0.0:PORT</code>
             </p>
           </div>
         </div>
@@ -91,9 +106,9 @@ export default function PreviewTab({ previewState }: PreviewTabProps) {
             Copy URL
           </Button>
           <Button size="sm" variant="outline" asChild>
-            <a 
-              href={previewState.url} 
-              target="_blank" 
+            <a
+              href={previewState.url}
+              target="_blank"
               rel="noopener noreferrer"
               className="flex items-center"
             >
@@ -126,9 +141,9 @@ export default function PreviewTab({ previewState }: PreviewTabProps) {
                 Retry
               </Button>
               <Button variant="outline" asChild>
-                <a 
-                  href={previewState.url} 
-                  target="_blank" 
+                <a
+                  href={previewState.url}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center"
                 >
@@ -159,9 +174,9 @@ export default function PreviewTab({ previewState }: PreviewTabProps) {
           Copy URL
         </Button>
         <Button size="sm" variant="outline" asChild>
-          <a 
-            href={previewState.url} 
-            target="_blank" 
+          <a
+            href={previewState.url}
+            target="_blank"
             rel="noopener noreferrer"
             className="flex items-center"
           >
