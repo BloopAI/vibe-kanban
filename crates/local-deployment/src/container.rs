@@ -1143,7 +1143,7 @@ impl ContainerService for LocalContainerService {
         let is_ahead = if let Ok((ahead, _)) = self.git().get_branch_status(
             &project_repo_path,
             &task_attempt.branch,
-            &task_attempt.base_branch,
+            &task_attempt.target_branch,
         ) {
             ahead > 0
         } else {
@@ -1163,7 +1163,7 @@ impl ContainerService for LocalContainerService {
         let base_commit = self.git().get_base_commit(
             &project_repo_path,
             &task_attempt.branch,
-            &task_attempt.base_branch,
+            &task_attempt.target_branch,
         )?;
 
         self.create_live_diff_stream(&worktree_path, &base_commit)

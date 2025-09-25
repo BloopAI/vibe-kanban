@@ -84,7 +84,7 @@ export type ChangeTargetBranchResponse = { new_target_branch: string, status: [n
 
 export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, base_branch: string, };
 
-export type CreateGitHubPrRequest = { title: string, body: string | null, base_branch: string | null, };
+export type CreateGitHubPrRequest = { title: string, body: string | null, target_branch: string | null, };
 
 export type ImageResponse = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
 
@@ -222,7 +222,7 @@ perform_git_reset: boolean | null, };
 
 export type CommitInfo = { sha: string, subject: string, };
 
-export type BranchStatus = { commits_behind: number | null, commits_ahead: number | null, has_uncommitted_changes: boolean | null, head_oid: string | null, uncommitted_count: number | null, untracked_count: number | null, base_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, merges: Array<Merge>, 
+export type BranchStatus = { commits_behind: number | null, commits_ahead: number | null, has_uncommitted_changes: boolean | null, head_oid: string | null, uncommitted_count: number | null, untracked_count: number | null, target_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, merges: Array<Merge>, 
 /**
  * True if a `git rebase` is currently in progress in this worktree
  */

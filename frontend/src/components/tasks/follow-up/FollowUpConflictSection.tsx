@@ -25,14 +25,14 @@ export function FollowUpConflictSection({
   const handleInsertInstructions = useCallback(() => {
     const template = buildResolveConflictsInstructions(
       attemptBranch,
-      branchStatus?.base_branch_name,
+      branchStatus?.target_branch_name,
       branchStatus?.conflicted_files || [],
       op
     );
     appendInstructions(template);
   }, [
     attemptBranch,
-    branchStatus?.base_branch_name,
+    branchStatus?.target_branch_name,
     branchStatus?.conflicted_files,
     op,
     appendInstructions,
@@ -44,7 +44,7 @@ export function FollowUpConflictSection({
   return (
     <ConflictBanner
       attemptBranch={attemptBranch}
-      baseBranch={branchStatus?.base_branch_name}
+      baseBranch={branchStatus?.target_branch_name}
       conflictedFiles={branchStatus?.conflicted_files || []}
       isEditable={isEditable}
       op={op}

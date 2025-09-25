@@ -137,6 +137,7 @@ function CurrentAttempt({
     selectedAttempt?.id,
     projectId
   );
+  const isChangingTargetBranch = changeTargetBranchMutation.isPending;
   const rebaseMutation = useRebase(selectedAttempt?.id, projectId);
   const mergeMutation = useMerge(selectedAttempt?.id);
   const pushMutation = usePush(selectedAttempt?.id);
@@ -215,7 +216,6 @@ function CurrentAttempt({
       .catch((err: ApiError) => {
         setError(err.message || 'Failed to change target branch');
       });
-    setRebasing(false);
   };
 
   const handleRebaseClick = async () => {
@@ -240,7 +240,7 @@ function CurrentAttempt({
         branchName: string;
       }>('change-target-branch-dialog', {
         branches,
-        isChangingTargetBranch: rebasing,
+        isChangingTargetBranch: isChangingTargetBranch,
       });
 
       if (result.action === 'confirmed' && result.branchName) {
@@ -330,25 +330,25 @@ function CurrentAttempt({
     };
   }, [branchStatus?.merges]);
 
-  const truncatedBaseBranch = useMemo(() => {
-    const baseName = branchStatus?.base_branch_name;
-    if (!baseName) return null;
-    if (baseName.length < 13) return baseName;
-    return `${baseName.slice(0, 10)}...`;
-  }, [branchStatus?.base_branch_name]);
+  const truncatedTargetBranch = useMemo(() => {
+    const targetName = branchStatus?.target_branch_name;
+    if (!targetName) return null;
+    if (targetName.length < 13) return targetName;
+    return `${targetName.slice(0, 10)}...`;
+  }, [branchStatus?.target_branch_name]);
 
   const mergeButtonLabel = useMemo(() => {
     if (mergeSuccess) return 'Merged!';
     if (merging) return 'Merging...';
-    if (truncatedBaseBranch) return `Merge into ${truncatedBaseBranch}`;
+    if (truncatedTargetBranch) return `Merge into ${truncatedTargetBranch}`;
     return 'Merge';
-  }, [mergeSuccess, merging, truncatedBaseBranch]);
+  }, [mergeSuccess, merging, truncatedTargetBranch]);
 
   const rebaseButtonLabel = useMemo(() => {
     if (rebasing) return 'Rebasing...';
-    if (truncatedBaseBranch) return `Rebase onto ${truncatedBaseBranch}`;
+    if (truncatedTargetBranch) return `Rebase onto ${truncatedTargetBranch}`;
     return 'Rebase';
-  }, [rebasing, truncatedBaseBranch]);
+  }, [rebasing, truncatedTargetBranch]);
 
   const handleCopyWorktreePath = useCallback(async () => {
     try {
@@ -500,7 +500,7 @@ function CurrentAttempt({
           <div className="flex items-center gap-1.5">
             <GitBranchIcon className="h-3 w-3 text-muted-foreground" />
             <span className="text-sm font-medium truncate">
-              {branchStatus?.base_branch_name || selectedBranchDisplayName}
+              {branchStatus?.target_branch_name || selectedBranchDisplayName}
             </span>
           </div>
         </div>
