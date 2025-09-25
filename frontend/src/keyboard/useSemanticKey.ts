@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   useKeyboardShortcut,
   type KeyboardShortcutOptions,
@@ -33,8 +34,13 @@ export function createSemanticHook<A extends Action>(action: A) {
     // Use 'when' as alias for 'enabled' if provided
     const isEnabled = when !== undefined ? when : enabled;
 
-    const keys = getKeysFor(action, scope);
-    const binding = getBindingFor(action, scope);
+    // Memoize to get stable array references and prevent unnecessary re-registrations
+    const keys = useMemo(() => getKeysFor(action, scope), [action, scope]);
+
+    const binding = useMemo(
+      () => getBindingFor(action, scope),
+      [action, scope]
+    );
 
     const keyboardShortcutOptions: KeyboardShortcutOptions = {};
     if (enableOnContentEditable !== undefined)
