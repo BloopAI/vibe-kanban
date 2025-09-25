@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -154,7 +155,11 @@ export const TaskTemplateEditDialog =
                   disabled={saving}
                 />
               </div>
-              {error && <div className="text-sm text-destructive">{error}</div>}
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
             </div>
             <DialogFooter>
               <Button
