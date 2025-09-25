@@ -21,9 +21,13 @@ export function IdeIcon({ editorType, className = 'h-4 w-4' }: IdeIconProps) {
   const resolvedTheme = getResolvedTheme(theme);
 
   if (editorType === EditorType.VS_CODE) {
+    const vscodeIcon = resolvedTheme === 'dark' 
+      ? '/ide/vscode-dark.svg'
+      : '/ide/vscode-light.svg';
+
     return (
       <img
-        src="/.vibe-images/ac5eb1a9-b988-499e-b94c-f11454175ec0.svg"
+        src={vscodeIcon}
         alt="VS Code"
         className={className}
       />
@@ -33,8 +37,8 @@ export function IdeIcon({ editorType, className = 'h-4 w-4' }: IdeIconProps) {
   if (editorType === EditorType.CURSOR) {
     const cursorIcon =
       resolvedTheme === 'dark'
-        ? '/.vibe-images/ecec13ec-2d7f-4d4f-8dd6-b10cdf77601d.svg' // dark
-        : '/.vibe-images/81fee604-4430-4604-ad7b-3828faabd157.svg'; // light
+        ? '/ide/cursor-dark.svg' // dark
+        : '/ide/cursor-light.svg'; // light
 
     return <img src={cursorIcon} alt="Cursor" className={className} />;
   }
