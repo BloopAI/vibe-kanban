@@ -885,17 +885,20 @@ impl ClaudeLogProcessor {
                 // Determine if this is an error
                 let mut is_err = is_error.unwrap_or(false);
                 if let Some(st) = subtype.as_deref()
-                    && (st.eq_ignore_ascii_case("error") || st.contains("error")) {
-                        is_err = true;
-                    }
+                    && (st.eq_ignore_ascii_case("error") || st.contains("error"))
+                {
+                    is_err = true;
+                }
                 if !is_err && error.as_ref().is_some_and(|e| !e.is_empty()) {
                     is_err = true;
                 }
                 // Check if result field contains error information
-                if !is_err && let Some(res) = result.as_ref()
-                    && (res.get("error").is_some() || res.get("message").is_some()) {
-                        is_err = true;
-                    }
+                if !is_err
+                    && let Some(res) = result.as_ref()
+                    && (res.get("error").is_some() || res.get("message").is_some())
+                {
+                    is_err = true;
+                }
 
                 // Skip non-error results to avoid noise
                 if !is_err {
@@ -905,7 +908,8 @@ impl ClaudeLogProcessor {
                 vec![NormalizedEntry {
                     timestamp: None,
                     entry_type: NormalizedEntryType::ErrorMessage,
-                    content: serde_json::to_string(claude_json).unwrap_or_else(|_| "AMP error".to_string()),
+                    content: serde_json::to_string(claude_json)
+                        .unwrap_or_else(|_| "AMP error".to_string()),
                     metadata: Some(
                         serde_json::to_value(claude_json).unwrap_or(serde_json::Value::Null),
                     ),
