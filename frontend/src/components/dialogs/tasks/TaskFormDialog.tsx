@@ -219,7 +219,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
         attemptsApi
           .get(parentTaskAttemptId)
           .then((attempt) => {
-            const parentBranch = attempt.branch || attempt.base_branch;
+            const parentBranch = attempt.branch || attempt.target_branch;
             if (parentBranch && branches.some((b) => b.name === parentBranch)) {
               setSelectedBranch(parentBranch);
             }

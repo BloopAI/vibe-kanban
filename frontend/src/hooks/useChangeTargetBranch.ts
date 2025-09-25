@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ApiError, attemptsApi } from '@/lib/api';
+import { attemptsApi } from '@/lib/api';
 import type {
   ChangeTargetBranchRequest,
   ChangeTargetBranchResponse,
@@ -9,14 +9,14 @@ export function useChangeTargetBranch(
   attemptId: string | undefined,
   projectId: string | undefined,
   onSuccess?: (data: ChangeTargetBranchResponse) => void,
-  onError?: (err: ApiError) => void
+  onError?: (err: unknown) => void
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation<ChangeTargetBranchResponse, ApiError, string>({
+  return useMutation<ChangeTargetBranchResponse, unknown, string>({
     mutationFn: async (newTargetBranch) => {
       if (!attemptId) {
-        throw new ApiError('Attempt id is not set');
+        throw new Error('Attempt id is not set');
       }
 
       const payload: ChangeTargetBranchRequest = {
