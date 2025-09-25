@@ -1,11 +1,11 @@
 #![cfg(feature = "cloud")]
 
 use axum::{
+    Json, Router,
     extract::{Query, State},
     http::StatusCode,
     response::Json as ResponseJson,
     routing::{get, post},
-    Json, Router,
 };
 use serde::Deserialize;
 use ts_rs::TS;
@@ -14,13 +14,13 @@ use uuid::Uuid;
 use crate::{
     app_state::AppState,
     models::{
-        project::{CreateProject, Project},
         ApiResponse,
+        project::{CreateProject, Project},
     },
     services::{
+        GitHubServiceError,
         git_service::GitService,
         github_service::{GitHubService, RepositoryInfo},
-        GitHubServiceError,
     },
 };
 
@@ -175,7 +175,7 @@ pub async fn create_project_from_github(
             // Track project creation event
             app_state
                 .track_analytics_event(
-                    "project_created_from_github",
+                    "project_created",
                     Some(serde_json::json!({
                         "project_id": project.id.to_string(),
                         "repository_id": payload.repository_id,
