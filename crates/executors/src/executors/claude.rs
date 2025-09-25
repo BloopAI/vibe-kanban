@@ -871,10 +871,10 @@ impl ClaudeLogProcessor {
             ClaudeJson::Result {
                 subtype,
                 is_error,
-                duration_ms,
+                duration_ms: _,
                 result,
                 error,
-                num_turns,
+                num_turns: _,
                 ..
             } => {
                 // Only handle Result messages for AmpResume strategy
@@ -902,50 +902,10 @@ impl ClaudeLogProcessor {
                     return vec![];
                 }
 
-                // Extract error message with fallbacks
-                let primary_message = if let Some(e) = error.as_ref().filter(|e| !e.is_empty()) {
-                    e.clone()
-                } else if let Some(res) = result.as_ref() {
-                    if let Some(s) = res.as_str() {
-                        s.to_string()
-                    } else if let Some(msg) = res
-                        .get("error")
-                        .and_then(|v| v.as_str())
-                        .or_else(|| res.get("message").and_then(|v| v.as_str()))
-                    {
-                        msg.to_string()
-                    } else {
-                        // Fallback to compact JSON representation
-                        res.to_string()
-                    }
-                } else {
-                    "Unknown AMP error".to_string()
-                };
-
-                // Build descriptive prefix
-                let mut prefix = String::from("AMP error");
-                if let Some(st) = subtype.as_deref() {
-                    prefix.push_str(&format!(" ({st})"));
-                }
-
-                // Add timing information if available
-                if num_turns.is_some() || duration_ms.is_some() {
-                    let turns = num_turns.map(|n| format!("{n} turns"));
-                    let secs = duration_ms.map(|ms| format!("{:.1}s", (ms as f32) / 1000.0));
-                    let joined = [turns, secs]
-                        .into_iter()
-                        .flatten()
-                        .collect::<Vec<_>>()
-                        .join(" / ");
-                    if !joined.is_empty() {
-                        prefix.push_str(&format!(" after {joined}"));
-                    }
-                }
-
                 vec![NormalizedEntry {
                     timestamp: None,
                     entry_type: NormalizedEntryType::ErrorMessage,
-                    content: format!("{prefix}: {primary_message}"),
+                    content: serde_json::to_string(claude_json).unwrap_or_else(|_| "AMP error".to_string()),
                     metadata: Some(
                         serde_json::to_value(claude_json).unwrap_or(serde_json::Value::Null),
                     ),
@@ -1680,14 +1640,10 @@ mod tests {
             entries[0].entry_type,
             NormalizedEntryType::ErrorMessage
         ));
-        assert!(
-            entries[0]
-                .content
-                .contains("AMP error (error_during_execution)")
-        );
+        assert!(entries[0].content.contains("error_during_execution"));
         assert!(entries[0].content.contains("terminated"));
-        assert!(entries[0].content.contains("456.1s"));
-        assert!(entries[0].content.contains("24 turns"));
+        assert!(entries[0].content.contains("456090"));
+        assert!(entries[0].content.contains("24"));
         assert!(entries[0].metadata.is_some());
     }
 
@@ -1704,9 +1660,8 @@ mod tests {
             entries[0].entry_type,
             NormalizedEntryType::ErrorMessage
         ));
-        assert!(entries[0].content.contains("AMP error (error)"));
-        assert!(entries[0].content.contains("Unknown AMP error"));
-        assert!(entries[0].content.contains("2.0s"));
+        assert!(entries[0].content.contains("error"));
+        assert!(entries[0].content.contains("2000"));
     }
 
     #[test]
@@ -1722,10 +1677,10 @@ mod tests {
             entries[0].entry_type,
             NormalizedEntryType::ErrorMessage
         ));
-        assert!(entries[0].content.contains("AMP error (timeout)"));
+        assert!(entries[0].content.contains("timeout"));
         assert!(entries[0].content.contains("rate limit exceeded"));
-        assert!(entries[0].content.contains("5.0s"));
-        assert!(entries[0].content.contains("3 turns"));
+        assert!(entries[0].content.contains("5000"));
+        assert!(entries[0].content.contains("3"));
     }
 
     #[test]
