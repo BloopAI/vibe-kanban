@@ -173,66 +173,70 @@ export function AttemptHeaderCard({
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-10 w-10 p-0 shrink-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-10 w-10 p-0 shrink-0"
+            >
               <MoreHorizontal className="h-4 w-4" />
               <span className="sr-only">Open menu</span>
             </Button>
           </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            onClick={() => openInEditor()}
-            disabled={!selectedAttempt}
-          >
-            Open in IDE
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() =>
-              runningDevServer ? stopDevServer() : startDevServer()
-            }
-            disabled={!selectedAttempt}
-            className={runningDevServer ? 'text-destructive' : ''}
-          >
-            {runningDevServer ? 'Stop dev server' : 'Start dev server'}
-          </DropdownMenuItem>
-          {selectedAttempt &&
-            branchStatus &&
-            !mergeInfo.hasMergedPR &&
-            (branchStatus.commits_behind ?? 0) > 0 && (
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => openInEditor()}
+              disabled={!selectedAttempt}
+            >
+              Open in IDE
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() =>
+                runningDevServer ? stopDevServer() : startDevServer()
+              }
+              disabled={!selectedAttempt}
+              className={runningDevServer ? 'text-destructive' : ''}
+            >
+              {runningDevServer ? 'Stop dev server' : 'Start dev server'}
+            </DropdownMenuItem>
+            {selectedAttempt &&
+              branchStatus &&
+              !mergeInfo.hasMergedPR &&
+              (branchStatus.commits_behind ?? 0) > 0 && (
+                <DropdownMenuItem
+                  onClick={handleRebaseClick}
+                  disabled={rebasing || isAttemptRunning || hasConflicts}
+                >
+                  {rebasing ? 'Rebasing...' : 'Rebase'}
+                </DropdownMenuItem>
+              )}
+            <DropdownMenuItem
+              onClick={handleCreatePR}
+              disabled={!selectedAttempt}
+            >
+              Create PR
+            </DropdownMenuItem>
+            {selectedAttempt && branchStatus && !mergeInfo.hasMergedPR && (
               <DropdownMenuItem
-                onClick={handleRebaseClick}
-                disabled={rebasing || isAttemptRunning || hasConflicts}
+                onClick={handleMergeClick}
+                disabled={
+                  mergeInfo.hasOpenPR ||
+                  merging ||
+                  hasConflicts ||
+                  Boolean((branchStatus.commits_behind ?? 0) > 0) ||
+                  isAttemptRunning ||
+                  (branchStatus.commits_ahead ?? 0) === 0
+                }
               >
-                {rebasing ? 'Rebasing...' : 'Rebase'}
+                {merging ? 'Merging...' : 'Merge'}
               </DropdownMenuItem>
             )}
-          <DropdownMenuItem
-            onClick={handleCreatePR}
-            disabled={!selectedAttempt}
-          >
-            Create PR
-          </DropdownMenuItem>
-          {selectedAttempt && branchStatus && !mergeInfo.hasMergedPR && (
-            <DropdownMenuItem
-              onClick={handleMergeClick}
-              disabled={
-                mergeInfo.hasOpenPR ||
-                merging ||
-                hasConflicts ||
-                Boolean((branchStatus.commits_behind ?? 0) > 0) ||
-                isAttemptRunning ||
-                (branchStatus.commits_ahead ?? 0) === 0
-              }
-            >
-              {merging ? 'Merging...' : 'Merge'}
-            </DropdownMenuItem>
-          )}
-          {/* <DropdownMenuItem
+            {/* <DropdownMenuItem
             onClick={onCreateNewAttempt}
             disabled={!onCreateNewAttempt}
           >
             Create new attempt
           </DropdownMenuItem> */}
-        </DropdownMenuContent>
+          </DropdownMenuContent>
         </DropdownMenu>
       </div>
     </Card>
