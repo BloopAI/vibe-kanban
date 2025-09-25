@@ -63,6 +63,7 @@ export type KanbanCardProps = Pick<Feature, 'id' | 'name'> & {
   tabIndex?: number;
   forwardedRef?: Ref<HTMLDivElement>;
   onKeyDown?: (e: KeyboardEvent) => void;
+  isOpen?: boolean;
 };
 
 export const KanbanCard = ({
@@ -76,6 +77,7 @@ export const KanbanCard = ({
   tabIndex,
   forwardedRef,
   onKeyDown,
+  isOpen,
 }: KanbanCardProps) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -97,8 +99,9 @@ export const KanbanCard = ({
   return (
     <Card
       className={cn(
-        'p-3 focus:ring-2 ring-secondary-foreground outline-none border-b flex-col space-y-2',
+        'p-3 outline-none border-b flex-col space-y-2',
         isDragging && 'cursor-grabbing',
+        isOpen && 'ring-2 ring-secondary-foreground ring-inset',
         className
       )}
       {...listeners}

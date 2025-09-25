@@ -975,13 +975,13 @@ fn sparse_checkout_respected_in_worktree_diffs_and_commit() {
 
     // modify included file
     write_file(&wt, "included/a.txt", "A-mod\n");
+    let base_commit = s.get_base_commit(&repo_path, "feature", "main").unwrap();
     // get worktree diffs vs main, ensure excluded/b.txt is NOT reported deleted
     let diffs = s
         .get_diffs(
             DiffTarget::Worktree {
                 worktree_path: Path::new(&wt),
-                branch_name: "feature",
-                base_branch: "main",
+                base_commit: &base_commit,
             },
             None,
         )
@@ -1021,6 +1021,50 @@ fn sparse_checkout_respected_in_worktree_diffs_and_commit() {
             .all(|d| d.new_path.as_deref() != Some("excluded/b.txt")
                 && d.old_path.as_deref() != Some("excluded/b.txt"))
     );
+}
+
+#[test]
+fn worktree_diff_ignores_commits_where_base_branch_is_ahead() {
+    let td = TempDir::new().unwrap();
+    let repo_path = td.path().join("repo_base_ahead");
+    let s = GitService::new();
+    s.initialize_repo_with_main_branch(&repo_path).unwrap();
+    s.configure_user(&repo_path, "Test User", "test@example.com")
+        .unwrap();
+    s.checkout_branch(&repo_path, "main").unwrap();
+
+    write_file(&repo_path, "shared.txt", "base\n");
+    let _ = s.commit(&repo_path, "add shared").unwrap();
+
+    s.create_branch(&repo_path, "feature").unwrap();
+    let wt = td.path().join("wt_base_ahead");
+    s.add_worktree(&repo_path, &wt, "feature", false).unwrap();
+
+    write_file(&repo_path, "base_only.txt", "main ahead\n");
+    let _ = s.commit(&repo_path, "main ahead").unwrap();
+
+    write_file(&wt, "feature.txt", "feature change\n");
+    let base_commit = s.get_base_commit(&repo_path, "feature", "main").unwrap();
+
+    let diffs = s
+        .get_diffs(
+            DiffTarget::Worktree {
+                worktree_path: Path::new(&wt),
+                base_commit: &base_commit,
+            },
+            None,
+        )
+        .unwrap();
+
+    assert!(
+        diffs
+            .iter()
+            .any(|d| d.new_path.as_deref() == Some("feature.txt"))
+    );
+    assert!(diffs.iter().all(|d| {
+        d.new_path.as_deref() != Some("base_only.txt")
+            && d.old_path.as_deref() != Some("base_only.txt")
+    }));
 }
 
 // Helper: initialize a repo with main, configure user via service

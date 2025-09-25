@@ -10,6 +10,7 @@ import { Label } from '@radix-ui/react-label';
 import { Textarea } from '@/components/ui/textarea.tsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Alert } from '@/components/ui/alert';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import { useCallback, useEffect, useState } from 'react';
 import { attemptsApi } from '@/lib/api.ts';
@@ -70,6 +71,7 @@ const CreatePrDialog = NiceModal.create(() => {
   const handleConfirmCreatePR = useCallback(async () => {
     if (!data?.projectId || !data?.attempt.id) return;
 
+    setError(null);
     setCreatingPR(true);
 
     const result = await attemptsApi.createPR(data.attempt.id, {
@@ -166,11 +168,7 @@ const CreatePrDialog = NiceModal.create(() => {
                 }
               />
             </div>
-            {error && (
-              <div className="text-sm text-destructive bg-red-50 p-2 rounded">
-                {error}
-              </div>
-            )}
+            {error && <Alert variant="destructive">{error}</Alert>}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={handleCancelCreatePR}>

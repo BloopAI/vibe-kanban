@@ -7,28 +7,34 @@ import { SUPPORTED_I18N_CODES, uiLanguageToI18nCode } from './languages';
 import enCommon from './locales/en/common.json';
 import enSettings from './locales/en/settings.json';
 import enProjects from './locales/en/projects.json';
+import enTasks from './locales/en/tasks.json';
 import jaCommon from './locales/ja/common.json';
 import jaSettings from './locales/ja/settings.json';
 import jaProjects from './locales/ja/projects.json';
+import jaTasks from './locales/ja/tasks.json';
 import esCommon from './locales/es/common.json';
 import esSettings from './locales/es/settings.json';
 import esProjects from './locales/es/projects.json';
+import esTasks from './locales/es/tasks.json';
 
 const resources = {
   en: {
     common: enCommon,
     settings: enSettings,
     projects: enProjects,
+    tasks: enTasks,
   },
   ja: {
     common: jaCommon,
     settings: jaSettings,
     projects: jaProjects,
+    tasks: jaTasks,
   },
   es: {
     common: esCommon,
     settings: esSettings,
     projects: esProjects,
+    tasks: esTasks,
   },
 };
 

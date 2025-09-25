@@ -15,7 +15,8 @@
     "loading": "Cargando...",
     "saving": "Guardando...",
     "error": "Error",
-    "success": "Éxito"
+    "success": "Éxito",
+    "reconnecting": "Reconectando"
   },
   "language": {
     "browserDefault": "Predeterminado del navegador"

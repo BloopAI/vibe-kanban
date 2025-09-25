@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Alert } from '@/components/ui/alert';
 import { useUserSystem } from '@/components/config-provider';
 import { Check, Clipboard, Github } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
@@ -235,11 +236,7 @@ const GitHubLoginDialog = NiceModal.create(() => {
               </span>
             </div>
 
-            {error && (
-              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                <div className="text-destructive text-sm">{error}</div>
-              </div>
-            )}
+            {error && <Alert variant="destructive">{error}</Alert>}
 
             <DialogFooter>
               <Button
@@ -292,11 +289,7 @@ const GitHubLoginDialog = NiceModal.create(() => {
               </CardContent>
             </Card>
 
-            {error && (
-              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                <div className="text-destructive text-sm">{error}</div>
-              </div>
-            )}
+            {error && <Alert variant="destructive">{error}</Alert>}
 
             <DialogFooter className="gap-3 flex-col sm:flex-row">
               <Button

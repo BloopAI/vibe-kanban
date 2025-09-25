@@ -23,6 +23,13 @@ Before installing Vibe Kanban, ensure you have:
 All supported coding agents can be used via npx without separate installation. You can find authentication instructions for each coding agent on their respective [websites](./supported-coding-agents).
 </Info>
 
+## Safety Notice
+
+<Warning>
+Vibe Kanban runs AI agents with --dangerously-skip-permissions/--yolo flags by default so they can work autonomously without constant approval prompts. Each task runs in an isolated git worktree, preventing agents from interfering with each other.
+Agents can still perform system-level actions, so review their work and keep backups.
+</Warning>
+
 ## Installation & Setup
 
 <Steps>

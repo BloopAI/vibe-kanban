@@ -7,19 +7,22 @@ type Props = {
   placeholder: string;
   value: string;
   onChange: (v: string) => void;
-  onKeyDown: (e: React.KeyboardEvent<Element>) => void;
+  onKeyDown?: (e: React.KeyboardEvent<Element>) => void;
   disabled: boolean;
   // Loading overlay
   showLoadingOverlay: boolean;
+  onCommandEnter?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onCommandShiftEnter?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
 };
 
 export function FollowUpEditorCard({
   placeholder,
   value,
   onChange,
-  onKeyDown,
   disabled,
   showLoadingOverlay,
+  onCommandEnter,
+  onCommandShiftEnter,
 }: Props) {
   const { projectId } = useProject();
   return (
@@ -28,12 +31,13 @@ export function FollowUpEditorCard({
         placeholder={placeholder}
         value={value}
         onChange={onChange}
-        onKeyDown={onKeyDown}
         className={cn('flex-1 min-h-[40px] resize-none')}
         disabled={disabled}
         projectId={projectId}
         rows={1}
         maxRows={6}
+        onCommandEnter={onCommandEnter}
+        onCommandShiftEnter={onCommandShiftEnter}
       />
       {showLoadingOverlay && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/60">

@@ -33,7 +33,7 @@ export function useTaskViewManager() {
           : currentPath;
       }
 
-      navigate(targetPath, { replace: true });
+      navigate(targetPath);
     },
     [location.pathname, navigate]
   );

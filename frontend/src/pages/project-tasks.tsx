@@ -1,15 +1,28 @@
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { projectsApi, tasksApi, attemptsApi } from '@/lib/api';
 import { openTaskForm } from '@/lib/openTaskForm';
-import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
+
 import { useSearch } from '@/contexts/search-context';
 import { useQuery } from '@tanstack/react-query';
 import { useTaskViewManager } from '@/hooks/useTaskViewManager';
+import {
+  useKeyCreate,
+  useKeyExit,
+  useKeyFocusSearch,
+  useKeyNavUp,
+  useKeyNavDown,
+  useKeyNavLeft,
+  useKeyNavRight,
+  useKeyOpenDetails,
+  Scope,
+  useKeyToggleFullscreen,
+} from '@/keyboard';
 
 import {
   getKanbanSectionClasses,
@@ -23,16 +36,27 @@ import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 import { useProjectTasks } from '@/hooks/useProjectTasks';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import NiceModal from '@ebay/nice-modal-react';
+import { useHotkeysContext } from 'react-hotkeys-hook';
 
 type Task = TaskWithAttemptStatus;
 
 export function ProjectTasks() {
+  const { t } = useTranslation(['tasks', 'common']);
   const { projectId, taskId, attemptId } = useParams<{
     projectId: string;
     taskId?: string;
     attemptId?: string;
   }>();
   const navigate = useNavigate();
+  const { enableScope, disableScope } = useHotkeysContext();
+
+  useEffect(() => {
+    enableScope(Scope.KANBAN);
+
+    return () => {
+      disableScope(Scope.KANBAN);
+    };
+  }, [enableScope, disableScope]);
 
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -54,14 +78,14 @@ export function ProjectTasks() {
       openTaskForm({ projectId: project.id, initialTask: task });
     }
   };
-  const { query: searchQuery } = useSearch();
+  const { query: searchQuery, focusInput } = useSearch();
 
   // Panel state
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   // Fullscreen state using custom hook
-  const { isFullscreen, navigateToTask, navigateToAttempt } =
+  const { isFullscreen, navigateToTask, navigateToAttempt, toggleFullscreen } =
     useTaskViewManager();
 
   // Attempts fetching (only when task is selected)
@@ -122,6 +146,128 @@ export function ProjectTasks() {
   const handleCreateNewTask = useCallback(() => {
     handleCreateTask();
   }, [handleCreateTask]);
+
+  // Semantic keyboard shortcuts for kanban page
+  // Prevent default is needed to stop the input having the value 'c'
+  useKeyCreate(handleCreateNewTask, {
+    scope: Scope.KANBAN,
+    preventDefault: true,
+  });
+
+  useKeyFocusSearch(
+    () => {
+      focusInput();
+    },
+    {
+      scope: Scope.KANBAN,
+      preventDefault: true, // Prevent Firefox quick find
+    }
+  );
+
+  useKeyExit(
+    () => {
+      if (isPanelOpen) {
+        if (isFullscreen) {
+          toggleFullscreen(false);
+        } else {
+          handleClosePanel();
+        }
+      } else {
+        navigate('/projects');
+      }
+    },
+    { scope: Scope.KANBAN }
+  );
+
+  // Toggle fullscreen with Cmd+Enter
+  useKeyToggleFullscreen(() => toggleFullscreen(!isFullscreen), {
+    scope: Scope.KANBAN,
+  });
+
+  // Navigation shortcuts using semantic hooks
+  const taskStatuses = [
+    'todo',
+    'inprogress',
+    'inreview',
+    'done',
+    'cancelled',
+  ] as const;
+
+  // Memoize filtered tasks based on search query
+  const filteredTasks = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return tasks;
+    }
+    const query = searchQuery.toLowerCase();
+    return tasks.filter(
+      (task) =>
+        task.title.toLowerCase().includes(query) ||
+        (task.description && task.description.toLowerCase().includes(query))
+    );
+  }, [tasks, searchQuery]);
+
+  // Memoize grouped filtered tasks
+  const groupedFilteredTasks = useMemo(() => {
+    const groups: Record<string, Task[]> = {};
+    taskStatuses.forEach((status) => {
+      groups[status] = [];
+    });
+    filteredTasks.forEach((task) => {
+      const normalizedStatus = task.status.toLowerCase();
+      if (groups[normalizedStatus]) {
+        groups[normalizedStatus].push(task);
+      } else {
+        groups['todo'].push(task);
+      }
+    });
+    return groups;
+  }, [filteredTasks]);
+
+  useKeyNavUp(
+    () => {
+      selectPreviousTask();
+    },
+    {
+      scope: Scope.KANBAN,
+      when: !isFullscreen,
+      preventDefault: true,
+    }
+  );
+
+  useKeyNavDown(
+    () => {
+      selectNextTask();
+    },
+    {
+      scope: Scope.KANBAN,
+      when: !isFullscreen,
+      preventDefault: true,
+    }
+  );
+
+  useKeyNavLeft(
+    () => {
+      selectPreviousColumn();
+    },
+    {
+      scope: Scope.KANBAN,
+      when: !isFullscreen,
+      preventDefault: true, // Prevent page scroll
+    }
+  );
+
+  useKeyNavRight(
+    () => {
+      selectNextColumn();
+    },
+    {
+      scope: Scope.KANBAN,
+      when: !isFullscreen,
+      preventDefault: true, // Prevent page scroll
+    }
+  );
+
+  useKeyOpenDetails(() => {}, { scope: Scope.KANBAN });
 
   // Full screen
 
@@ -188,6 +334,99 @@ export function ProjectTasks() {
     [projectId, navigateToTask, navigateToAttempt]
   );
 
+  // Navigation functions that use filtered/grouped tasks
+  const selectNextTask = useCallback(() => {
+    if (selectedTask) {
+      const tasksInStatus = groupedFilteredTasks[selectedTask.status] || [];
+      const currentIndex = tasksInStatus.findIndex(
+        (task) => task.id === selectedTask.id
+      );
+      if (currentIndex >= 0 && currentIndex < tasksInStatus.length - 1) {
+        handleViewTaskDetails(tasksInStatus[currentIndex + 1]);
+      }
+    } else {
+      // Find first non-empty column
+      for (const status of taskStatuses) {
+        const tasks = groupedFilteredTasks[status];
+        if (tasks && tasks.length > 0) {
+          handleViewTaskDetails(tasks[0]);
+          break;
+        }
+      }
+    }
+  }, [selectedTask, groupedFilteredTasks, handleViewTaskDetails]);
+
+  const selectPreviousTask = useCallback(() => {
+    if (selectedTask) {
+      const tasksInStatus = groupedFilteredTasks[selectedTask.status] || [];
+      const currentIndex = tasksInStatus.findIndex(
+        (task) => task.id === selectedTask.id
+      );
+      if (currentIndex > 0) {
+        handleViewTaskDetails(tasksInStatus[currentIndex - 1]);
+      }
+    } else {
+      // Find first non-empty column
+      for (const status of taskStatuses) {
+        const tasks = groupedFilteredTasks[status];
+        if (tasks && tasks.length > 0) {
+          handleViewTaskDetails(tasks[0]);
+          break;
+        }
+      }
+    }
+  }, [selectedTask, groupedFilteredTasks, handleViewTaskDetails]);
+
+  const selectNextColumn = useCallback(() => {
+    if (selectedTask) {
+      const currentIndex = taskStatuses.findIndex(
+        (status) => status === selectedTask.status
+      );
+      // Find next non-empty column
+      for (let i = currentIndex + 1; i < taskStatuses.length; i++) {
+        const tasks = groupedFilteredTasks[taskStatuses[i]];
+        if (tasks && tasks.length > 0) {
+          handleViewTaskDetails(tasks[0]);
+          return;
+        }
+      }
+    } else {
+      // Find first non-empty column
+      for (const status of taskStatuses) {
+        const tasks = groupedFilteredTasks[status];
+        if (tasks && tasks.length > 0) {
+          handleViewTaskDetails(tasks[0]);
+          break;
+        }
+      }
+    }
+  }, [selectedTask, groupedFilteredTasks, handleViewTaskDetails]);
+
+  const selectPreviousColumn = useCallback(() => {
+    if (selectedTask) {
+      const currentIndex = taskStatuses.findIndex(
+        (status) => status === selectedTask.status
+      );
+      // Find previous non-empty column
+      for (let i = currentIndex - 1; i >= 0; i--) {
+        const tasks = groupedFilteredTasks[taskStatuses[i]];
+        if (tasks && tasks.length > 0) {
+          handleViewTaskDetails(tasks[0]);
+          return;
+        }
+      }
+    } else {
+      // Find first non-empty column
+      for (const status of taskStatuses) {
+        const tasks = groupedFilteredTasks[status];
+        if (tasks && tasks.length > 0) {
+          handleViewTaskDetails(tasks[0]);
+          break;
+        }
+      }
+    }
+  }, [selectedTask, groupedFilteredTasks, handleViewTaskDetails]);
+
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       const { active, over } = event;
@@ -214,15 +453,6 @@ export function ProjectTasks() {
     [tasksById]
   );
 
-  // Setup keyboard shortcuts
-  useKeyboardShortcuts({
-    navigate,
-    currentPath: window.location.pathname,
-    hasOpenDialog: false,
-    closeDialog: () => {},
-    onC: handleCreateNewTask,
-  });
-
   // Initialize project when projectId changes
   useEffect(() => {
     if (projectId) {
@@ -233,7 +463,7 @@ export function ProjectTasks() {
   // Remove legacy direct-navigation handler; live sync above covers this
 
   if (isLoading) {
-    return <Loader message="Loading tasks..." size={32} className="py-8" />;
+    return <Loader message={t('loading')} size={32} className="py-8" />;
   }
 
   if (error) {
@@ -242,7 +472,7 @@ export function ProjectTasks() {
         <Alert>
           <AlertTitle className="flex items-center gap-2">
             <AlertTriangle size="16" />
-            Error
+            {t('common:states.error')}
           </AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -258,7 +488,7 @@ export function ProjectTasks() {
         <Alert className="w-full z-30 xl:sticky xl:top-0">
           <AlertTitle className="flex items-center gap-2">
             <AlertTriangle size="16" />
-            Reconnecting
+            {t('common:states.reconnecting')}
           </AlertTitle>
           <AlertDescription>{streamError}</AlertDescription>
         </Alert>
@@ -272,27 +502,34 @@ export function ProjectTasks() {
             <div className="max-w-7xl mx-auto mt-8">
               <Card>
                 <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground">
-                    No tasks found for this project.
-                  </p>
+                  <p className="text-muted-foreground">{t('empty.noTasks')}</p>
                   <Button className="mt-4" onClick={handleCreateNewTask}>
                     <Plus className="h-4 w-4 mr-2" />
-                    Create First Task
+                    {t('empty.createFirst')}
                   </Button>
+                </CardContent>
+              </Card>
+            </div>
+          ) : filteredTasks.length === 0 ? (
+            <div className="max-w-7xl mx-auto mt-8">
+              <Card>
+                <CardContent className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    {t('empty.noSearchResults')}
+                  </p>
                 </CardContent>
               </Card>
             </div>
           ) : (
             <div className="w-full h-full overflow-x-auto">
               <TaskKanbanBoard
-                tasks={tasks}
-                searchQuery={searchQuery}
+                groupedTasks={groupedFilteredTasks}
                 onDragEnd={handleDragEnd}
                 onEditTask={handleEditTaskCallback}
                 onDeleteTask={handleDeleteTask}
                 onDuplicateTask={handleDuplicateTaskCallback}
                 onViewTaskDetails={handleViewTaskDetails}
-                isPanelOpen={isPanelOpen}
+                selectedTask={selectedTask || undefined}
               />
             </div>
           )}

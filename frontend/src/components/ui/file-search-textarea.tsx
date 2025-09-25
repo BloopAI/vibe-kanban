@@ -1,4 +1,4 @@
-import { KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { projectsApi } from '@/lib/api';
@@ -19,6 +19,8 @@ interface FileSearchTextareaProps {
   projectId?: string;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   maxRows?: number;
+  onCommandEnter?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onCommandShiftEnter?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
 }
 
 export function FileSearchTextarea({
@@ -29,7 +31,8 @@ export function FileSearchTextarea({
   disabled = false,
   className,
   projectId,
-  onKeyDown,
+  onCommandEnter,
+  onCommandShiftEnter,
   maxRows = 10,
 }: FileSearchTextareaProps) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -105,41 +108,6 @@ export function FileSearchTextarea({
   };
 
   // Handle keyboard navigation
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Handle dropdown navigation first
-    if (showDropdown && searchResults.length > 0) {
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault();
-          setSelectedIndex((prev) =>
-            prev < searchResults.length - 1 ? prev + 1 : 0
-          );
-          return;
-        case 'ArrowUp':
-          e.preventDefault();
-          setSelectedIndex((prev) =>
-            prev > 0 ? prev - 1 : searchResults.length - 1
-          );
-          return;
-        case 'Enter':
-          if (selectedIndex >= 0) {
-            e.preventDefault();
-            selectFile(searchResults[selectedIndex]);
-            return;
-          }
-          break;
-        case 'Escape':
-          e.preventDefault();
-          setShowDropdown(false);
-          setSearchQuery('');
-          setAtSymbolPosition(-1);
-          return;
-      }
-    }
-
-    // Call the passed onKeyDown handler
-    onKeyDown?.(e);
-  };
 
   // Select a file and insert it into the text
   const selectFile = (file: FileSearchResult) => {
@@ -234,6 +202,46 @@ export function FileSearchTextarea({
 
   const dropdownPosition = getDropdownPosition();
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Handle dropdown navigation first
+    if (showDropdown && searchResults.length > 0) {
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setSelectedIndex((prev) =>
+            prev < searchResults.length - 1 ? prev + 1 : 0
+          );
+          return;
+        case 'ArrowUp':
+          e.preventDefault();
+          setSelectedIndex((prev) =>
+            prev > 0 ? prev - 1 : searchResults.length - 1
+          );
+          return;
+        case 'Enter':
+          if (selectedIndex >= 0) {
+            e.preventDefault();
+            selectFile(searchResults[selectedIndex]);
+            return;
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          setShowDropdown(false);
+          setSearchQuery('');
+          setAtSymbolPosition(-1);
+          return;
+      }
+    } else {
+      switch (e.key) {
+        case 'Escape':
+          e.preventDefault();
+          textareaRef.current?.blur();
+          break;
+      }
+    }
+  };
+
   return (
     <div
       className={`relative ${className?.includes('flex-1') ? 'flex-1' : ''}`}
@@ -242,12 +250,14 @@ export function FileSearchTextarea({
         ref={textareaRef}
         value={value}
         onChange={handleChange}
-        onKeyDown={handleKeyDown}
         placeholder={placeholder}
         rows={rows}
         disabled={disabled}
         className={className}
         maxRows={maxRows}
+        onKeyDown={handleKeyDown}
+        onCommandEnter={onCommandEnter}
+        onCommandShiftEnter={onCommandShiftEnter}
       />
 
       {showDropdown &&

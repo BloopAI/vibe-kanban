@@ -2,7 +2,8 @@ import * as React from 'react';
 import { X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import { useDialogKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
+import { useHotkeysContext } from 'react-hotkeys-hook';
+import { useKeyExit, useKeySubmit, Scope } from '@/keyboard';
 
 const Dialog = React.forwardRef<
   HTMLDivElement,
@@ -12,12 +13,92 @@ const Dialog = React.forwardRef<
     uncloseable?: boolean;
   }
 >(({ className, open, onOpenChange, children, uncloseable, ...props }, ref) => {
-  // Add keyboard shortcut support for closing dialog with Esc
-  useDialogKeyboardShortcuts(() => {
-    if (open && onOpenChange && !uncloseable) {
-      onOpenChange(false);
+  const { enableScope, disableScope } = useHotkeysContext();
+
+  // Manage dialog scope when open/closed
+  React.useEffect(() => {
+    if (open) {
+      enableScope(Scope.DIALOG);
+      disableScope(Scope.KANBAN);
+      disableScope(Scope.PROJECTS);
+    } else {
+      disableScope(Scope.DIALOG);
+      enableScope(Scope.KANBAN);
+      enableScope(Scope.PROJECTS);
     }
-  });
+  }, [open, enableScope, disableScope]);
+
+  // Dialog keyboard shortcuts using semantic hooks
+  useKeyExit(
+    (e) => {
+      if (uncloseable) return;
+
+      // Two-step Esc behavior:
+      // 1. If input/textarea is focused, blur it first
+      const activeElement = document.activeElement as HTMLElement;
+      if (
+        activeElement &&
+        (activeElement.tagName === 'INPUT' ||
+          activeElement.tagName === 'TEXTAREA' ||
+          activeElement.isContentEditable)
+      ) {
+        activeElement.blur();
+        e?.preventDefault();
+        return;
+      }
+
+      // 2. Otherwise close the dialog
+      onOpenChange?.(false);
+    },
+    {
+      scope: Scope.DIALOG,
+      when: () => !!open,
+    }
+  );
+
+  useKeySubmit(
+    (e) => {
+      // Don't interfere if user is typing in textarea (allow new lines)
+      const activeElement = document.activeElement as HTMLElement;
+      if (activeElement?.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      // Look for submit button or primary action button within this dialog
+      if (ref && typeof ref === 'object' && ref.current) {
+        // First try to find a submit button
+        const submitButton = ref.current.querySelector(
+          'button[type="submit"]'
+        ) as HTMLButtonElement;
+        if (submitButton && !submitButton.disabled) {
+          e?.preventDefault();
+          submitButton.click();
+          return;
+        }
+
+        // If no submit button, look for primary action button
+        const buttons = Array.from(
+          ref.current.querySelectorAll('button')
+        ) as HTMLButtonElement[];
+        const primaryButton = buttons.find(
+          (btn) =>
+            !btn.disabled &&
+            !btn.textContent?.toLowerCase().includes('cancel') &&
+            !btn.textContent?.toLowerCase().includes('close') &&
+            btn.type !== 'button'
+        );
+
+        if (primaryButton) {
+          e?.preventDefault();
+          primaryButton.click();
+        }
+      }
+    },
+    {
+      scope: Scope.DIALOG,
+      when: () => !!open,
+    }
+  );
 
   if (!open) return null;
 

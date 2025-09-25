@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Alert } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -57,25 +58,6 @@ export const TaskTemplateEditDialog =
         }
         setError(null);
       }, [template]);
-
-      // Handle keyboard shortcuts
-      useEffect(() => {
-        const handleKeyDown = (event: KeyboardEvent) => {
-          // Command/Ctrl + Enter to save template
-          if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-            if (modal.visible && !saving) {
-              event.preventDefault();
-              handleSave();
-            }
-          }
-        };
-
-        if (modal.visible) {
-          document.addEventListener('keydown', handleKeyDown, true);
-          return () =>
-            document.removeEventListener('keydown', handleKeyDown, true);
-        }
-      }, [modal.visible, saving]);
 
       const handleSave = async () => {
         if (!formData.template_name.trim() || !formData.title.trim()) {
@@ -173,7 +155,7 @@ export const TaskTemplateEditDialog =
                   disabled={saving}
                 />
               </div>
-              {error && <div className="text-sm text-destructive">{error}</div>}
+              {error && <Alert variant="destructive">{error}</Alert>}
             </div>
             <DialogFooter>
               <Button

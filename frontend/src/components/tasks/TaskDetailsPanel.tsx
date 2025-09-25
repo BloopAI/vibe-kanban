@@ -33,7 +33,6 @@ interface TaskDetailsPanelProps {
   onEditTask?: (task: TaskWithAttemptStatus) => void;
   onDeleteTask?: (taskId: string) => void;
   onNavigateToTask?: (taskId: string) => void;
-  isDialogOpen?: boolean;
   hideBackdrop?: boolean;
   className?: string;
   hideHeader?: boolean;
@@ -55,7 +54,6 @@ export function TaskDetailsPanel({
   onEditTask,
   onDeleteTask,
   onNavigateToTask,
-  isDialogOpen = false,
   hideBackdrop = false,
   className,
   isFullScreen,
@@ -92,25 +90,6 @@ export function TaskDetailsPanel({
       setActiveTab('logs');
     }
   }, [task?.id]);
-
-  // Get selected attempt info for props
-  // (now received as props instead of hook)
-
-  // Handle ESC key locally to prevent global navigation
-  useEffect(() => {
-    if (isDialogOpen) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        event.stopPropagation();
-        onClose();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown, true);
-    return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [onClose, isDialogOpen]);
 
   return (
     <>

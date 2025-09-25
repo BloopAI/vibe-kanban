@@ -44,7 +44,7 @@ pub struct GitService {}
 
 // Max inline diff size for UI (in bytes). Files larger than this will have
 // their contents omitted from the diff stream to avoid UI crashes.
-const MAX_INLINE_DIFF_BYTES: usize = 50 * 1024; // ~50KB
+const MAX_INLINE_DIFF_BYTES: usize = 150 * 1024; // ~150KB
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -71,13 +71,30 @@ pub struct HeadInfo {
     pub oid: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct Commit(git2::Oid);
+
+impl Commit {
+    pub fn new(id: git2::Oid) -> Self {
+        Self(id)
+    }
+    pub fn as_oid(&self) -> git2::Oid {
+        self.0
+    }
+}
+
+impl std::fmt::Display for Commit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 /// Target for diff generation
 pub enum DiffTarget<'p> {
     /// Work-in-progress branch checked out in this worktree
     Worktree {
         worktree_path: &'p Path,
-        branch_name: &'p str,
-        base_branch: &'p str,
+        base_commit: &'p Commit,
     },
     /// Fully committed branch vs base branch
     Branch {
@@ -247,20 +264,25 @@ impl GitService {
         match target {
             DiffTarget::Worktree {
                 worktree_path,
-                branch_name: _,
-                base_branch,
+                base_commit,
             } => {
                 // Use Git CLI to compute diff vs base to avoid sparse false deletions
                 let repo = Repository::open(worktree_path)?;
-                let base_git_branch = GitService::find_branch(&repo, base_branch)?;
-                let base_tree = base_git_branch.get().peel_to_commit()?.tree()?;
+                let base_tree = repo
+                    .find_commit(base_commit.as_oid())?
+                    .tree()
+                    .map_err(|e| {
+                        GitServiceError::InvalidRepository(format!(
+                            "Failed to find base commit tree: {e}"
+                        ))
+                    })?;
 
                 let git = GitCli::new();
                 let cli_opts = StatusDiffOptions {
                     path_filter: path_filter.map(|fs| fs.iter().map(|s| s.to_string()).collect()),
                 };
                 let entries = git
-                    .diff_status(worktree_path, base_branch, cli_opts)
+                    .diff_status(worktree_path, base_commit, cli_opts)
                     .map_err(|e| {
                         GitServiceError::InvalidRepository(format!("git diff failed: {e}"))
                     })?;
@@ -841,6 +863,25 @@ impl GitService {
             &branch.into_reference(),
             &base_branch.into_reference(),
         )
+    }
+
+    pub fn get_base_commit(
+        &self,
+        repo_path: &Path,
+        branch_name: &str,
+        base_branch_name: &str,
+    ) -> Result<Commit, GitServiceError> {
+        let repo = Repository::open(repo_path)?;
+        let branch = Self::find_branch(&repo, branch_name)?;
+        let base_branch = Self::find_branch(&repo, base_branch_name)?;
+        // Find the common ancestor (merge base)
+        let oid = repo
+            .merge_base(
+                branch.get().peel_to_commit()?.id(),
+                base_branch.get().peel_to_commit()?.id(),
+            )
+            .map_err(GitServiceError::from)?;
+        Ok(Commit::new(oid))
     }
 
     pub fn get_remote_branch_status(

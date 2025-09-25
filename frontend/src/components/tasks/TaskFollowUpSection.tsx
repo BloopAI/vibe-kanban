@@ -307,26 +307,10 @@ export function TaskFollowUpSection({
                   setFollowUpMessage(value);
                   if (followUpError) setFollowUpError(null);
                 }}
-                onKeyDown={async (e) => {
-                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                    e.preventDefault();
-                    if (canSendFollowUp && !isSendingFollowUp) {
-                      if (isAttemptRunning) {
-                        setIsQueuing(true);
-                        const ok = await onQueue();
-                        setIsQueuing(false);
-                        if (ok) setQueuedOptimistic(true);
-                      } else {
-                        onSendFollowUp();
-                      }
-                    }
-                  } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    setFollowUpMessage('');
-                  }
-                }}
                 disabled={!isEditable}
                 showLoadingOverlay={isUnqueuing || !isDraftLoaded}
+                onCommandEnter={onSendFollowUp}
+                onCommandShiftEnter={onSendFollowUp}
               />
               <FollowUpStatusRow
                 status={{

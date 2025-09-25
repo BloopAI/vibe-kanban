@@ -49,7 +49,7 @@ import type { GitOperationError } from 'shared/types';
 import { displayConflictOpLabel } from '@/lib/conflicts';
 import { usePush } from '@/hooks/usePush';
 import { useUserSystem } from '@/components/config-provider.tsx';
-import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
+
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
 import { openTaskForm } from '@/lib/openTaskForm';
@@ -158,32 +158,6 @@ function CurrentAttempt({
   };
 
   // Use the stopExecution function from the hook
-
-  useKeyboardShortcuts({
-    stopExecution: async () => {
-      try {
-        const result = await showModal<'confirmed' | 'canceled'>(
-          'stop-execution-confirm',
-          {
-            title: 'Stop Current Attempt?',
-            message:
-              'Are you sure you want to stop the current execution? This action cannot be undone.',
-            isExecuting: isStopping,
-          }
-        );
-
-        if (result === 'confirmed') {
-          stopExecution();
-        }
-      } catch (error) {
-        // User cancelled - do nothing
-      }
-    },
-    newAttempt: !isAttemptRunning ? handleEnterCreateAttemptMode : () => {},
-    hasOpenDialog: false,
-    closeDialog: () => {},
-    onEnter: () => {},
-  });
 
   const handleAttemptChange = useCallback(
     (attempt: TaskAttempt) => {

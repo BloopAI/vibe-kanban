@@ -12,8 +12,8 @@ pub fn git_branch_id(input: &str) -> String {
     // 3. trim extra hyphens
     let trimmed = slug.trim_matches('-');
 
-    // 4. take up to 10 chars, then trim trailing hyphens again
-    let cut: String = trimmed.chars().take(10).collect();
+    // 4. take up to 16 chars, then trim trailing hyphens again
+    let cut: String = trimmed.chars().take(16).collect();
     cut.trim_end_matches('-').to_string()
 }
 

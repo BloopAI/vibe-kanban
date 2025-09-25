@@ -9,7 +9,7 @@ import { useAttemptCreation } from '@/hooks/useAttemptCreation';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import BranchSelector from '@/components/tasks/BranchSelector.tsx';
 import { ExecutorProfileSelector } from '@/components/settings';
-import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts.ts';
+
 import { showModal } from '@/lib/modals';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -93,22 +93,6 @@ function CreateAttempt({
     },
     [task.status, actuallyCreateAttempt, setIsInCreateAttemptMode]
   );
-
-  // Keyboard shortcuts
-  useKeyboardShortcuts({
-    onEnter: () => {
-      if (!selectedProfile) {
-        return;
-      }
-      onCreateNewAttempt(
-        selectedProfile,
-        createAttemptBranch || undefined,
-        true
-      );
-    },
-    hasOpenDialog: false,
-    closeDialog: () => {},
-  });
 
   const handleExitCreateAttemptMode = () => {
     setIsInCreateAttemptMode(false);

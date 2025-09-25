@@ -1,0 +1,8 @@
+{
+  "loading": "Cargando tareas...",
+  "empty": {
+    "noTasks": "No se encontraron tareas para este proyecto.",
+    "createFirst": "Crear Primera Tarea",
+    "noSearchResults": "Ninguna tarea coincide con tu búsqueda."
+  }
+}

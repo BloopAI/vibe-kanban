@@ -6,6 +6,7 @@ import { Navbar } from '@/components/layout/navbar';
 import { Projects } from '@/pages/projects';
 import { ProjectTasks } from '@/pages/project-tasks';
 import { useTaskViewManager } from '@/hooks/useTaskViewManager';
+import { usePreviousPath } from '@/hooks/usePreviousPath';
 
 import {
   AgentSettings,
@@ -19,6 +20,9 @@ import {
 } from '@/components/config-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SearchProvider } from '@/contexts/search-context';
+import { KeyboardShortcutsProvider } from '@/contexts/keyboard-shortcuts-context';
+import { ShortcutsHelp } from '@/components/shortcuts-help';
+import { HotkeysProvider } from 'react-hotkeys-hook';
 
 import { ProjectProvider } from '@/contexts/project-context';
 import { ThemeMode } from 'shared/types';
@@ -36,6 +40,9 @@ const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 function AppContent() {
   const { config, updateAndSaveConfig, loading } = useUserSystem();
   const { isFullscreen } = useTaskViewManager();
+
+  // Track previous path for back navigation
+  usePreviousPath();
 
   const showNavbar = !isFullscreen;
 
@@ -185,6 +192,7 @@ function AppContent() {
                 </SentryRoutes>
               </div>
             </div>
+            <ShortcutsHelp />
           </SearchProvider>
         </AppWithStyleOverride>
       </ThemeProvider>
@@ -197,9 +205,13 @@ function App() {
     <BrowserRouter>
       <UserSystemProvider>
         <ProjectProvider>
-          <NiceModal.Provider>
-            <AppContent />
-          </NiceModal.Provider>
+          <HotkeysProvider initiallyActiveScopes={['*', 'global', 'kanban']}>
+            <KeyboardShortcutsProvider>
+              <NiceModal.Provider>
+                <AppContent />
+              </NiceModal.Provider>
+            </KeyboardShortcutsProvider>
+          </HotkeysProvider>
         </ProjectProvider>
       </UserSystemProvider>
     </BrowserRouter>

@@ -349,7 +349,7 @@ export function ProjectFormFields({
                   type="text"
                   value={parentPath}
                   onChange={(e) => setParentPath(e.target.value)}
-                  placeholder="Home"
+                  placeholder="Current Directory"
                   className="flex-1 placeholder:text-secondary-foreground placeholder:opacity-100"
                 />
                 <Button
@@ -371,8 +371,8 @@ export function ProjectFormFields({
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Leave empty to use your home directory, or specify a custom
-                path.
+                Leave empty to use your current working directory, or specify a
+                custom path.
               </p>
             </div>
           </div>

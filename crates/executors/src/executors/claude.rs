@@ -1,4 +1,6 @@
-use std::{os::unix::fs::PermissionsExt, path::Path, process::Stdio, sync::Arc};
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+use std::{path::Path, process::Stdio, sync::Arc};
 
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
@@ -751,8 +753,8 @@ impl ClaudeLogProcessor {
                 );
                 Some(NormalizedEntry {
                     timestamp: None,
-                    entry_type: NormalizedEntryType::SystemMessage,
-                    content: "⚠️ ANTHROPIC_API_KEY env variable detected, your Anthropic subscription is not being used".to_string(),
+                    entry_type: NormalizedEntryType::ErrorMessage,
+                    content: "Claude Code + ANTHROPIC_API_KEY detected. Usage will be billed via Anthropic pay-as-you-go instead of your Claude subscription.".to_string(),
                     metadata: None,
                 })
             }
@@ -1958,11 +1960,11 @@ mod tests {
         assert_eq!(entries.len(), 1);
         assert!(matches!(
             entries[0].entry_type,
-            NormalizedEntryType::SystemMessage
+            NormalizedEntryType::ErrorMessage
         ));
         assert_eq!(
             entries[0].content,
-            "⚠️ ANTHROPIC_API_KEY env variable detected, your Anthropic subscription is not being used"
+            "Claude Code + ANTHROPIC_API_KEY detected. Usage will be billed via Anthropic pay-as-you-go instead of your Claude subscription."
         );
 
         // Test with managed API key source - should not generate warning

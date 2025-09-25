@@ -10,6 +10,103 @@ import { Button } from '@/components/ui/button.tsx';
 import { Check, Clipboard } from 'lucide-react';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 
+const HIGHLIGHT_LINK =
+  'rounded-sm bg-muted/50 px-1 py-0.5 underline-offset-2 transition-colors';
+const HIGHLIGHT_LINK_HOVER = 'hover:bg-muted';
+const HIGHLIGHT_CODE = 'rounded-sm bg-muted/50 px-1 py-0.5 font-mono text-sm';
+
+function sanitizeHref(href?: string): string | undefined {
+  if (typeof href !== 'string') return undefined;
+  const trimmed = href.trim();
+  // Block dangerous protocols
+  if (/^(javascript|vbscript|data):/i.test(trimmed)) return undefined;
+  // Allow anchors and common relative forms
+  if (
+    trimmed.startsWith('#') ||
+    trimmed.startsWith('./') ||
+    trimmed.startsWith('../') ||
+    trimmed.startsWith('/')
+  )
+    return trimmed;
+  // Allow only https
+  if (/^https:\/\//i.test(trimmed)) return trimmed;
+  // Block everything else by default
+  return undefined;
+}
+
+function isExternalHref(href?: string): boolean {
+  if (!href) return false;
+  return /^https:\/\//i.test(href);
+}
+
+function LinkOverride({
+  href,
+  children,
+  title,
+}: {
+  href?: string;
+  children: React.ReactNode;
+  title?: string;
+}) {
+  const rawHref = typeof href === 'string' ? href : '';
+  const safeHref = sanitizeHref(rawHref);
+
+  const external = isExternalHref(safeHref);
+  const internalOrDisabled = !external;
+
+  if (!safeHref || internalOrDisabled) {
+    // Disabled internal link (relative paths and anchors)
+    return (
+      <span
+        role="link"
+        aria-disabled="true"
+        title={title || rawHref || undefined}
+        className={`${HIGHLIGHT_LINK} cursor-not-allowed select-text`}
+      >
+        {children}
+      </span>
+    );
+  }
+
+  // External link
+  return (
+    <a
+      href={safeHref}
+      title={title}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`${HIGHLIGHT_LINK} ${HIGHLIGHT_LINK_HOVER} underline`}
+      onClick={(e) => {
+        e.stopPropagation();
+      }}
+    >
+      {children}
+    </a>
+  );
+}
+
+function InlineCodeOverride({ children, className, ...props }: any) {
+  // Only highlight inline code, not fenced code blocks
+  const hasLanguage =
+    typeof className === 'string' && /\blanguage-/.test(className);
+  if (hasLanguage) {
+    // Likely a fenced block's <code>; leave className as-is for syntax highlighting
+    return (
+      <code {...props} className={className}>
+        {children}
+      </code>
+    );
+  }
+  return (
+    <code
+      {...props}
+      className={`${HIGHLIGHT_CODE}${className ? ` ${className}` : ''}`}
+    >
+      {children}
+    </code>
+  );
+}
+
 interface MarkdownRendererProps {
   content: string;
   className?: string;
@@ -23,16 +120,8 @@ function MarkdownRenderer({
 }: MarkdownRendererProps) {
   const overrides = useMemo(
     () => ({
-      code: {
-        component: ({ children, ...props }: any) => (
-          <code
-            {...props}
-            className="bg-background px-1 py-0.5 text-sm font-mono"
-          >
-            {children}
-          </code>
-        ),
-      },
+      a: { component: LinkOverride },
+      code: { component: InlineCodeOverride },
       strong: {
         component: ({ children, ...props }: any) => (
           <span {...props} className="">

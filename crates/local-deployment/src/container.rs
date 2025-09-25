@@ -48,7 +48,7 @@ use services::services::{
     config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
     filesystem_watcher,
-    git::{DiffTarget, GitService},
+    git::{Commit, DiffTarget, GitService},
     image::ImageService,
     notification::NotificationService,
     worktree_manager::WorktreeManager,
@@ -78,7 +78,7 @@ pub struct LocalContainerService {
 
 impl LocalContainerService {
     // Max cumulative content bytes allowed per diff stream
-    const MAX_CUMULATIVE_DIFF_BYTES: usize = 50 * 1024; // 50KB
+    const MAX_CUMULATIVE_DIFF_BYTES: usize = 150 * 1024; // 150KB
 
     // Apply stream-level omit policy based on cumulative bytes.
     // If adding this diff's contents exceeds the cap, strip contents and set stats.
@@ -533,7 +533,7 @@ impl LocalContainerService {
 
     pub fn dir_name_from_task_attempt(attempt_id: &Uuid, task_title: &str) -> String {
         let task_title_id = git_branch_id(task_title);
-        format!("vk-{}-{}", short_uuid(attempt_id), task_title_id)
+        format!("{}-{}", short_uuid(attempt_id), task_title_id)
     }
 
     pub fn git_branch_from_task_attempt(attempt_id: &Uuid, task_title: &str) -> String {
@@ -644,8 +644,7 @@ impl LocalContainerService {
     async fn create_live_diff_stream(
         &self,
         worktree_path: &Path,
-        task_branch: &str,
-        base_branch: &str,
+        base_commit: &Commit,
     ) -> Result<futures::stream::BoxStream<'static, Result<Event, std::io::Error>>, ContainerError>
     {
         // Get initial snapshot
@@ -653,8 +652,7 @@ impl LocalContainerService {
         let initial_diffs = git_service.get_diffs(
             DiffTarget::Worktree {
                 worktree_path,
-                branch_name: task_branch,
-                base_branch,
+                base_commit,
             },
             None,
         )?;
@@ -693,8 +691,7 @@ impl LocalContainerService {
 
         // Create live update stream
         let worktree_path = worktree_path.to_path_buf();
-        let task_branch = task_branch.to_string();
-        let base_branch = base_branch.to_string();
+        let base_commit = base_commit.clone();
 
         let live_stream = {
             let git_service = git_service.clone();
@@ -721,8 +718,7 @@ impl LocalContainerService {
                                 for event in Self::process_file_changes(
                                     &git_service,
                                     &worktree_path,
-                                    &task_branch,
-                                    &base_branch,
+                                    &base_commit,
                                     &changed_paths,
                                     &cumulative,
                                     &full_sent,
@@ -776,8 +772,7 @@ impl LocalContainerService {
     fn process_file_changes(
         git_service: &GitService,
         worktree_path: &Path,
-        task_branch: &str,
-        base_branch: &str,
+        base_commit: &Commit,
         changed_paths: &[String],
         cumulative_bytes: &Arc<AtomicUsize>,
         full_sent_paths: &Arc<std::sync::RwLock<HashSet<String>>>,
@@ -787,8 +782,7 @@ impl LocalContainerService {
         let current_diffs = git_service.get_diffs(
             DiffTarget::Worktree {
                 worktree_path,
-                branch_name: task_branch,
-                base_branch,
+                base_commit,
             },
             Some(&path_filter),
         )?;
@@ -1171,8 +1165,14 @@ impl ContainerService for LocalContainerService {
         let container_ref = self.ensure_container_exists(task_attempt).await?;
         let worktree_path = PathBuf::from(container_ref);
 
+        let base_commit = self.git().get_base_commit(
+            &project_repo_path,
+            &task_branch,
+            &task_attempt.base_branch,
+        )?;
+
         // Handle ongoing attempts (live streaming diff)
-        self.create_live_diff_stream(&worktree_path, &task_branch, &task_attempt.base_branch)
+        self.create_live_diff_stream(&worktree_path, &base_commit)
             .await
     }
 

@@ -389,12 +389,12 @@ fn worktree_diff_respects_path_filter() {
     write_file(&repo_path, "other/skip2.txt", "skip\n");
 
     let s = GitService::new();
+    let base_commit = s.get_base_commit(&repo_path, "feature", "main").unwrap();
     let diffs = s
         .get_diffs(
             DiffTarget::Worktree {
                 worktree_path: Path::new(&repo_path),
-                branch_name: "feature",
-                base_branch: "main",
+                base_commit: &base_commit,
             },
             Some(&["src"]),
         )
@@ -460,13 +460,13 @@ fn worktree_diff_permission_only_change() {
     perms.set_mode(perms.mode() | 0o111);
     std::fs::set_permissions(repo_path.join("p.sh"), perms).unwrap();
 
+    let base_commit = s.get_base_commit(&repo_path, "feature", "main").unwrap();
     // Compute worktree diff vs main on feature
     let diffs = s
         .get_diffs(
             DiffTarget::Worktree {
                 worktree_path: Path::new(&repo_path),
-                branch_name: "feature",
-                base_branch: "main",
+                base_commit: &base_commit,
             },
             None,
         )

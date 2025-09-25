@@ -1,7 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
 import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
+import { Scope, useKeyExit } from '@/keyboard';
+import { useHotkeysContext } from 'react-hotkeys-hook';
 
 interface CommentWidgetLineProps {
   draft: ReviewDraft;
@@ -21,10 +23,32 @@ export function CommentWidgetLine({
   const { setDraft, addComment } = useReview();
   const [value, setValue] = useState(draft.text);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { enableScope, disableScope } = useHotkeysContext();
 
   useEffect(() => {
     textareaRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    enableScope(Scope.EDIT_COMMENT);
+    return () => {
+      disableScope(Scope.EDIT_COMMENT);
+    };
+  }, [enableScope, disableScope]);
+
+  const handleCancel = useCallback(() => {
+    setDraft(widgetKey, null);
+    onCancel();
+  }, [setDraft, widgetKey, onCancel]);
+
+  const exitOptions = useMemo(
+    () => ({
+      scope: Scope.EDIT_COMMENT,
+    }),
+    []
+  );
+
+  useKeyExit(handleCancel, exitOptions);
 
   const handleSave = () => {
     if (value.trim()) {
@@ -40,30 +64,17 @@ export function CommentWidgetLine({
     onSave();
   };
 
-  const handleCancel = () => {
-    setDraft(widgetKey, null);
-    onCancel();
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      handleCancel();
-    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-      handleSave();
-    }
-  };
-
   return (
     <div className="p-4 border-y">
       <FileSearchTextarea
         value={value}
         onChange={setValue}
-        onKeyDown={handleKeyDown}
         placeholder="Add a comment... (type @ to search files)"
         rows={3}
         maxRows={10}
         className="w-full bg-primary text-primary-foreground text-sm font-mono resize-none min-h-[60px] focus:outline-none focus:ring-1 focus:ring-primary"
         projectId={projectId}
+        onCommandEnter={handleSave}
       />
       <div className="mt-2 flex gap-2">
         <Button size="xs" onClick={handleSave} disabled={!value.trim()}>

@@ -164,7 +164,7 @@ export const useConversationHistory = ({
     );
     // Only throw error if there are multiple agent processes running
     if (runningProcesses.length > 1) {
-      throw new Error('More than one running execution process found');
+      console.error('More than one running execution process found');
     }
     return runningProcesses[0] || null;
   };
