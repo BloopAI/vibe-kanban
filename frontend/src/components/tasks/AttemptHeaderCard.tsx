@@ -134,23 +134,23 @@ export function AttemptHeaderCard({
 
   return (
     <Card className="border-b border-dashed bg-background flex items-center text-sm">
-      <div className="flex-1 flex gap-6 p-3 flex-wrap md:flex-nowrap">
-        <p>
+      <div className="flex-1 min-w-0 flex items-center gap-3 p-3 flex-nowrap">
+        <p className="shrink-0 whitespace-nowrap">
           <span className="text-secondary-foreground">Attempt &middot; </span>
           {attemptNumber}/{totalAttempts}
         </p>
-        <p>
+        <p className="shrink-0 whitespace-nowrap">
           <span className="text-secondary-foreground">Agent &middot; </span>
           {selectedAttempt?.executor}
         </p>
         {selectedAttempt?.branch && (
-          <p className="max-w-30 truncate">
+          <p className="flex-1 min-w-0 truncate">
             <span className="text-secondary-foreground">Branch &middot; </span>
             {selectedAttempt.branch}
           </p>
         )}
         {fileCount > 0 && (
-          <p className="text-secondary-foreground">
+          <p className="shrink-0 text-secondary-foreground whitespace-nowrap">
             <Button
               variant="ghost"
               size="sm"
@@ -164,18 +164,20 @@ export function AttemptHeaderCard({
           </p>
         )}
       </div>
-      <OpenInIdeButton
-        onClick={() => openInEditor()}
-        disabled={!selectedAttempt}
-        className="mr-1"
-      />
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-10 w-10 p-0 mr-3">
-            <MoreHorizontal className="h-4 w-4" />
-            <span className="sr-only">Open menu</span>
-          </Button>
-        </DropdownMenuTrigger>
+
+      <div className="flex items-center gap-1 px-3 flex-none">
+        <OpenInIdeButton
+          onClick={() => openInEditor()}
+          disabled={!selectedAttempt}
+          className="h-10 w-10 p-0 shrink-0"
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-10 w-10 p-0 shrink-0">
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="sr-only">Open menu</span>
+            </Button>
+          </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem
             onClick={() => openInEditor()}
@@ -231,7 +233,8 @@ export function AttemptHeaderCard({
             Create new attempt
           </DropdownMenuItem> */}
         </DropdownMenuContent>
-      </DropdownMenu>
+        </DropdownMenu>
+      </div>
     </Card>
   );
 }
