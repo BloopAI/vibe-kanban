@@ -50,6 +50,7 @@ import type { GitOperationError } from 'shared/types';
 import { displayConflictOpLabel } from '@/lib/conflicts';
 import { usePush } from '@/hooks/usePush';
 import { useUserSystem } from '@/components/config-provider.tsx';
+import { useTranslation } from 'react-i18next';
 
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
@@ -106,6 +107,7 @@ function CurrentAttempt({
   branches,
   setSelectedAttempt,
 }: Props) {
+  const { t } = useTranslation('tasks');
   const { config } = useUserSystem();
   const { isAttemptRunning, stopExecution, isStopping } = useAttemptExecution(
     selectedAttempt?.id,
@@ -380,10 +382,11 @@ function CurrentAttempt({
   }, [mergeSuccess, merging, truncatedTargetBranch]);
 
   const rebaseButtonLabel = useMemo(() => {
-    if (rebasing) return 'Rebasing...';
-    if (truncatedTargetBranch) return `Rebase onto ${truncatedTargetBranch}`;
-    return 'Rebase';
-  }, [rebasing, truncatedTargetBranch]);
+    if (rebasing) return t('rebase.common.inProgress');
+    if (truncatedTargetBranch)
+      return t('rebase.common.withTarget', { branch: truncatedTargetBranch });
+    return t('rebase.common.action');
+  }, [rebasing, truncatedTargetBranch, t]);
 
   const handleCopyWorktreePath = useCallback(async () => {
     try {
@@ -420,7 +423,7 @@ function CurrentAttempt({
       return {
         dotColor: 'bg-orange-500',
         textColor: 'text-orange-700',
-        text: `Rebase in progress${countsLabel}`,
+        text: t('rebase.status.inProgress', { counts: countsLabel }),
         isClickable: false,
       } as const;
     }
@@ -459,10 +462,16 @@ function CurrentAttempt({
     }
 
     if ((branchStatus?.commits_behind ?? 0) > 0) {
+      const dirtyMarker = branchStatus?.has_uncommitted_changes
+        ? t('rebase.status.dirtyMarker')
+        : '';
       return {
         dotColor: 'bg-orange-500',
         textColor: 'text-orange-700',
-        text: `Rebase needed${branchStatus?.has_uncommitted_changes ? ' (dirty)' : ''}${countsLabel}`,
+        text: t('rebase.status.needed', {
+          dirty: dirtyMarker,
+          counts: countsLabel,
+        }),
         isClickable: false,
       };
     }
@@ -485,7 +494,7 @@ function CurrentAttempt({
       text: `Up to date${branchStatus?.has_uncommitted_changes ? ' (dirty)' : ''}${countsLabel}`,
       isClickable: false,
     };
-  }, [mergeInfo, branchStatus, formatAheadBehind]);
+  }, [mergeInfo, branchStatus, formatAheadBehind, t]);
 
   return (
     <div className="space-y-2 @container">

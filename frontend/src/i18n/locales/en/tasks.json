@@ -7,5 +7,25 @@
   },
   "actions": {
     "addTask": "Add task"
+  },
+  "rebase": {
+    "common": {
+      "action": "Rebase",
+      "inProgress": "Rebasing...",
+      "withTarget": "Rebase onto {{branch}}"
+    },
+    "dialog": {
+      "title": "Rebase Task Attempt",
+      "description": "Choose a new base branch to rebase this task attempt onto.",
+      "upstreamLabel": "Upstream Branch",
+      "upstreamPlaceholder": "Select an upstream branch",
+      "targetLabel": "Target Branch",
+      "targetPlaceholder": "Select a target branch"
+    },
+    "status": {
+      "inProgress": "Rebase in progress{{counts}}",
+      "needed": "Rebase needed{{dirty}}{{counts}}",
+      "dirtyMarker": " (dirty)"
+    }
   }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -33,6 +34,7 @@ export const RebaseDialog = NiceModal.create<RebaseDialogProps>(
     initialUpstreamBranch,
   }) => {
     const modal = useModal();
+    const { t } = useTranslation(['tasks', 'common']);
     const [selectedBranch, setSelectedBranch] = useState<string>(
       initialTargetBranch ?? ''
     );
@@ -78,34 +80,34 @@ export const RebaseDialog = NiceModal.create<RebaseDialogProps>(
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Rebase Task Attempt</DialogTitle>
+            <DialogTitle>{t('rebase.dialog.title')}</DialogTitle>
             <DialogDescription>
-              Choose a new base branch to rebase this task attempt onto.
+              {t('rebase.dialog.description')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="upstream-branch" className="text-sm font-medium">
-                Upstream Branch
+                {t('rebase.dialog.upstreamLabel')}
               </label>
               <BranchSelector
                 branches={branches}
                 selectedBranch={selectedUpstream}
                 onBranchSelect={setSelectedUpstream}
-                placeholder="Select an upstream branch"
+                placeholder={t('rebase.dialog.upstreamPlaceholder')}
                 excludeCurrentBranch={false}
               />
             </div>
             <div className="space-y-2">
               <label htmlFor="target-branch" className="text-sm font-medium">
-                Target Branch
+                {t('rebase.dialog.targetLabel')}
               </label>
               <BranchSelector
                 branches={branches}
                 selectedBranch={selectedBranch}
                 onBranchSelect={setSelectedBranch}
-                placeholder="Select a target branch"
+                placeholder={t('rebase.dialog.targetPlaceholder')}
                 excludeCurrentBranch={false}
               />
             </div>
@@ -117,13 +119,15 @@ export const RebaseDialog = NiceModal.create<RebaseDialogProps>(
               onClick={handleCancel}
               disabled={isRebasing}
             >
-              Cancel
+              {t('common:buttons.cancel')}
             </Button>
             <Button
               onClick={handleConfirm}
               disabled={isRebasing || !selectedBranch}
             >
-              {isRebasing ? 'Rebasing...' : 'Rebase'}
+              {isRebasing
+                ? t('rebase.common.inProgress')
+                : t('rebase.common.action')}
             </Button>
           </DialogFooter>
         </DialogContent>

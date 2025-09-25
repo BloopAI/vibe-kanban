@@ -7,5 +7,25 @@
   },
   "actions": {
     "addTask": "タスクを追加"
+  },
+  "rebase": {
+    "common": {
+      "action": "リベース",
+      "inProgress": "リベース中...",
+      "withTarget": "{{branch}} にリベース"
+    },
+    "dialog": {
+      "title": "タスク試行をリベース",
+      "description": "このタスク試行をリベースする新しいベースブランチを選択してください。",
+      "upstreamLabel": "アップストリームブランチ",
+      "upstreamPlaceholder": "アップストリームブランチを選択",
+      "targetLabel": "ターゲットブランチ",
+      "targetPlaceholder": "ターゲットブランチを選択"
+    },
+    "status": {
+      "inProgress": "リベース進行中{{counts}}",
+      "needed": "リベースが必要です{{dirty}}{{counts}}",
+      "dirtyMarker": " （未コミットあり）"
+    }
   }
 }
