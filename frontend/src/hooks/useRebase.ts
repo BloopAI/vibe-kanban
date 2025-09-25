@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi, Result } from '@/lib/api';
 import type { GitOperationError } from 'shared/types';
-import type { RebaseTaskAttemptRequest } from 'shared/types';
 
 export function useRebase(
   attemptId: string | undefined,
@@ -11,44 +10,38 @@ export function useRebase(
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation<void, Result<void, GitOperationError>, string | undefined>(
-    {
-      mutationFn: (newBaseBranch?: string) => {
-        if (!attemptId) return Promise.resolve();
-
-        const data: RebaseTaskAttemptRequest = {
-          new_base_branch: newBaseBranch || null,
-        };
-        return attemptsApi.rebase(attemptId, data).then((res) => {
-          if (!res.success) {
-            // Propagate typed failure Result for caller to handle (no manual ApiError construction)
-            return Promise.reject(res);
-          }
-        });
-      },
-      onSuccess: () => {
-        // Refresh branch status immediately
-        queryClient.invalidateQueries({
-          queryKey: ['branchStatus', attemptId],
-        });
-
-        // Refresh branch list used by PR dialog
-        if (projectId) {
-          queryClient.invalidateQueries({
-            queryKey: ['projectBranches', projectId],
-          });
+  return useMutation<void, Result<void, GitOperationError>>({
+    mutationFn: () => {
+      if (!attemptId) return Promise.resolve();
+      return attemptsApi.rebase(attemptId).then((res) => {
+        if (!res.success) {
+          // Propagate typed failure Result for caller to handle (no manual ApiError construction)
+          return Promise.reject(res);
         }
+      });
+    },
+    onSuccess: () => {
+      // Refresh branch status immediately
+      queryClient.invalidateQueries({
+        queryKey: ['branchStatus', attemptId],
+      });
 
-        onSuccess?.();
-      },
-      onError: (err: Result<void, GitOperationError>) => {
-        console.error('Failed to rebase:', err);
-        // Even on failure (likely conflicts), re-fetch branch status immediately to show rebase-in-progress
+      // Refresh branch list used by PR dialog
+      if (projectId) {
         queryClient.invalidateQueries({
-          queryKey: ['branchStatus', attemptId],
+          queryKey: ['projectBranches', projectId],
         });
-        onError?.(err);
-      },
-    }
-  );
+      }
+
+      onSuccess?.();
+    },
+    onError: (err: Result<void, GitOperationError>) => {
+      console.error('Failed to rebase:', err);
+      // Even on failure (likely conflicts), re-fetch branch status immediately to show rebase-in-progress
+      queryClient.invalidateQueries({
+        queryKey: ['branchStatus', attemptId],
+      });
+      onError?.(err);
+    },
+  });
 }
