@@ -219,21 +219,6 @@ function CurrentAttempt({
       });
   };
 
-  const handleRebaseClick = async () => {
-    setRebasing(true);
-    await rebaseMutation
-      .mutateAsync()
-      .then(() => setError(null))
-      .catch((err: Err<GitOperationError>) => {
-        const data = err?.error;
-        const isConflict =
-          data?.type === 'merge_conflicts' ||
-          data?.type === 'rebase_in_progress';
-        if (!isConflict) setError(err.message || 'Failed to rebase branch');
-      });
-    setRebasing(false);
-  };
-
   const handleChangeTargetBranchDialogOpen = async () => {
     try {
       const result = await showModal<{
@@ -246,6 +231,55 @@ function CurrentAttempt({
 
       if (result.action === 'confirmed' && result.branchName) {
         await handleChangeTargetBranchClick(result.branchName);
+      }
+    } catch (error) {
+      // User cancelled - do nothing
+    }
+  };
+
+  const handleRebaseWithNewBranchAndUpstream = async (
+    newBaseBranch: string,
+    selectedUpstream: string
+  ) => {
+    setRebasing(true);
+    await rebaseMutation
+      .mutateAsync({
+        newBaseBranch: newBaseBranch,
+        oldBaseBranch: selectedUpstream,
+      })
+      .then(() => setError(null))
+      .catch((err: Err<GitOperationError>) => {
+        const data = err?.error;
+        const isConflict =
+          data?.type === 'merge_conflicts' ||
+          data?.type === 'rebase_in_progress';
+        if (!isConflict) setError(err.message || 'Failed to rebase branch');
+      });
+    setRebasing(false);
+  };
+
+  const handleRebaseDialogOpen = async () => {
+    try {
+      const defaultTargetBranch = selectedAttempt?.target_branch ?? '';
+      const result = await showModal<{
+        action: 'confirmed' | 'canceled';
+        branchName?: string;
+        upstreamBranch?: string;
+      }>('rebase-dialog', {
+        branches,
+        isRebasing: rebasing,
+        initialTargetBranch: defaultTargetBranch,
+        initialUpstreamBranch: defaultTargetBranch,
+      });
+      if (
+        result.action === 'confirmed' &&
+        result.branchName &&
+        result.upstreamBranch
+      ) {
+        await handleRebaseWithNewBranchAndUpstream(
+          result.branchName,
+          result.upstreamBranch
+        );
       }
     } catch (error) {
       // User cancelled - do nothing
@@ -630,7 +664,7 @@ function CurrentAttempt({
           {selectedAttempt && branchStatus && !mergeInfo.hasMergedPR && (
             <>
               <Button
-                onClick={handleRebaseClick}
+                onClick={handleRebaseDialogOpen}
                 disabled={
                   rebasing ||
                   isAttemptRunning ||

@@ -46,6 +46,7 @@ use crate::{DeploymentImpl, error::ApiError, middleware::load_task_attempt_middl
 
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct RebaseTaskAttemptRequest {
+    pub old_base_branch: Option<String>,
     pub new_base_branch: Option<String>,
 }
 
@@ -1592,8 +1593,12 @@ pub async fn change_target_branch(
 pub async fn rebase_task_attempt(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<RebaseTaskAttemptRequest>,
 ) -> Result<ResponseJson<ApiResponse<(), GitOperationError>>, ApiError> {
+    // TODO put this into the args, make rebase a dialog with two dropdowns (old base, new base)
+    let old_base_branch = task_attempt.target_branch.clone();
     // Extract new base branch from request body if provided
+    let new_base_branch = payload.new_base_branch.unwrap_or(old_base_branch.clone());
     let github_config = deployment.config().read().await.github.clone();
 
     let pool = &deployment.db().pool;
@@ -1609,13 +1614,11 @@ pub async fn rebase_task_attempt(
         .ensure_container_exists(&task_attempt)
         .await?;
     let worktree_path = std::path::Path::new(&container_ref);
-    // TODO put this into the args, make rebase a dialog
-    let old_base_branch = task_attempt.target_branch.clone();
 
     let result = deployment.git().rebase_branch(
         &ctx.project.git_repo_path,
         worktree_path,
-        &task_attempt.target_branch.clone(),
+        &new_base_branch,
         &old_base_branch,
         &task_attempt.branch.clone(),
         github_config.token(),

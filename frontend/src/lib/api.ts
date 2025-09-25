@@ -42,6 +42,7 @@ import {
   UpdateFollowUpDraftRequest,
   GitOperationError,
   ApprovalResponse,
+  RebaseTaskAttemptRequest,
   ChangeTargetBranchRequest,
   ChangeTargetBranchResponse,
 } from 'shared/types';
@@ -481,12 +482,14 @@ export const attemptsApi = {
   },
 
   rebase: async (
-    attemptId: string
+    attemptId: string,
+    data: RebaseTaskAttemptRequest
   ): Promise<Result<void, GitOperationError>> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/rebase`,
       {
         method: 'POST',
+        body: JSON.stringify(data),
       }
     );
     return handleApiResponseAsResult<void, GitOperationError>(response);
