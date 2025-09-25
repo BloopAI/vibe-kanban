@@ -13,7 +13,9 @@ import type { TabType } from '@/types/tabs';
 import DiffTab from '@/components/tasks/TaskDetails/DiffTab.tsx';
 import LogsTab from '@/components/tasks/TaskDetails/LogsTab.tsx';
 import ProcessesTab from '@/components/tasks/TaskDetails/ProcessesTab.tsx';
+import PreviewTab from '@/components/tasks/TaskDetails/PreviewTab.tsx';
 import TabNavigation from '@/components/tasks/TaskDetails/TabNavigation.tsx';
+import { useDevserverPreview } from '@/hooks/useDevserverPreview';
 import TaskDetailsToolbar from './TaskDetailsToolbar.tsx';
 import TodoPanel from '@/components/tasks/TodoPanel';
 import { TabNavContext } from '@/contexts/TabNavigationContext';
@@ -75,6 +77,11 @@ export function TaskDetailsPanel({
 
   // Handler for jumping to diff tab in full screen
   const { toggleFullscreen } = useTaskViewManager();
+
+  // Preview state for devserver detection
+  const previewState = useDevserverPreview(selectedAttempt?.id, {
+    projectHasDevScript,
+  });
 
   const jumpToDiffFullScreen = () => {
     toggleFullscreen(true);
@@ -172,6 +179,8 @@ export function TaskDetailsPanel({
                                   activeTab={activeTab}
                                   setActiveTab={setActiveTab}
                                   selectedAttempt={selectedAttempt}
+                                  showPreview={previewState.status !== 'idle'}
+                                  previewStatus={previewState.status}
                                 />
 
                                 <div className="flex-1 flex flex-col min-h-0">
@@ -183,6 +192,8 @@ export function TaskDetailsPanel({
                                     <ProcessesTab
                                       attemptId={selectedAttempt?.id}
                                     />
+                                  ) : activeTab === 'preview' ? (
+                                    <PreviewTab previewState={previewState} />
                                   ) : (
                                     <LogsTab
                                       selectedAttempt={selectedAttempt}

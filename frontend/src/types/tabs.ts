@@ -1,1 +1,1 @@
-export type TabType = 'logs' | 'diffs' | 'processes';
+export type TabType = 'logs' | 'diffs' | 'processes' | 'preview';
