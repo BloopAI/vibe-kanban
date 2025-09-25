@@ -124,10 +124,10 @@ function TaskDetailsToolbar({
 
     // 2. Latest attempt's base branch (existing behavior for resume/rerun)
     if (
-      latestAttempt?.base_branch &&
-      branches.some((b: GitBranch) => b.name === latestAttempt.base_branch)
+      latestAttempt?.target_branch &&
+      branches.some((b: GitBranch) => b.name === latestAttempt.target_branch)
     ) {
-      return latestAttempt.base_branch;
+      return latestAttempt.target_branch;
     }
 
     // 3. Parent task attempt's base branch (NEW - for inherited tasks)

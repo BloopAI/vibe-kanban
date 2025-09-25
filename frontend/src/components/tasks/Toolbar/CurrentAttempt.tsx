@@ -45,7 +45,7 @@ import { useChangeTargetBranch } from '@/hooks/useChangeTargetBranch';
 import { useRebase } from '@/hooks/useRebase';
 import { useMerge } from '@/hooks/useMerge';
 import NiceModal from '@ebay/nice-modal-react';
-import { ApiError, Err } from '@/lib/api';
+import { Err } from '@/lib/api';
 import type { GitOperationError } from 'shared/types';
 import { displayConflictOpLabel } from '@/lib/conflicts';
 import { usePush } from '@/hooks/usePush';
@@ -158,7 +158,8 @@ function CurrentAttempt({
   const handleCreateSubtaskClick = () => {
     openTaskForm({
       projectId,
-      initialBaseBranch: selectedAttempt.branch || selectedAttempt.base_branch,
+      initialBaseBranch:
+        selectedAttempt.branch || selectedAttempt.target_branch,
       parentTaskAttemptId: selectedAttempt.id,
     });
   };
@@ -213,8 +214,8 @@ function CurrentAttempt({
     await changeTargetBranchMutation
       .mutateAsync(newBranch)
       .then(() => setError(null))
-      .catch((err: ApiError) => {
-        setError(err.message || 'Failed to change target branch');
+      .catch((error) => {
+        setError(error.message || 'Failed to change target branch');
       });
   };
 
