@@ -739,7 +739,7 @@ impl ClaudeLogProcessor {
             ClaudeJson::User { session_id, .. } => session_id.clone(),
             ClaudeJson::ToolUse { session_id, .. } => session_id.clone(),
             ClaudeJson::ToolResult { session_id, .. } => session_id.clone(),
-            ClaudeJson::Result { .. } => None,
+            ClaudeJson::Result { session_id, .. } => session_id.clone(),
             ClaudeJson::Unknown { .. } => None,
         }
     }
@@ -868,9 +868,91 @@ impl ClaudeLogProcessor {
                 // TODO: Add proper ToolResult support to NormalizedEntry when the type system supports it
                 vec![]
             }
-            ClaudeJson::Result { .. } => {
-                // Skip result messages
-                vec![]
+            ClaudeJson::Result {
+                subtype,
+                is_error,
+                duration_ms,
+                result,
+                error,
+                num_turns,
+                ..
+            } => {
+                // Only handle Result messages for AmpResume strategy
+                if !matches!(self.strategy, HistoryStrategy::AmpResume) {
+                    return vec![];
+                }
+
+                // Determine if this is an error
+                let mut is_err = is_error.unwrap_or(false);
+                if let Some(st) = subtype.as_deref() {
+                    if st.eq_ignore_ascii_case("error") || st.contains("error") {
+                        is_err = true;
+                    }
+                }
+                if !is_err && error.as_ref().map_or(false, |e| !e.is_empty()) {
+                    is_err = true;
+                }
+                // Check if result field contains error information
+                if !is_err && let Some(res) = result.as_ref() {
+                    if res.get("error").is_some() || res.get("message").is_some() {
+                        is_err = true;
+                    }
+                }
+
+                // Skip non-error results to avoid noise
+                if !is_err {
+                    return vec![];
+                }
+
+                // Extract error message with fallbacks
+                let primary_message = if let Some(e) = error.as_ref().filter(|e| !e.is_empty()) {
+                    e.clone()
+                } else if let Some(res) = result.as_ref() {
+                    if let Some(s) = res.as_str() {
+                        s.to_string()
+                    } else if let Some(msg) = res
+                        .get("error")
+                        .and_then(|v| v.as_str())
+                        .or_else(|| res.get("message").and_then(|v| v.as_str()))
+                    {
+                        msg.to_string()
+                    } else {
+                        // Fallback to compact JSON representation
+                        res.to_string()
+                    }
+                } else {
+                    "Unknown AMP error".to_string()
+                };
+
+                // Build descriptive prefix
+                let mut prefix = String::from("AMP error");
+                if let Some(st) = subtype.as_deref() {
+                    prefix.push_str(&format!(" ({})", st));
+                }
+
+                // Add timing information if available
+                if num_turns.is_some() || duration_ms.is_some() {
+                    let turns = num_turns.map(|n| format!("{} turns", n));
+                    let secs = duration_ms.map(|ms| format!("{:.1}s", (ms as f32) / 1000.0));
+                    let joined = [turns, secs]
+                        .into_iter()
+                        .flatten()
+                        .collect::<Vec<_>>()
+                        .join(" / ");
+                    if !joined.is_empty() {
+                        prefix.push_str(&format!(" after {}", joined));
+                    }
+                }
+
+                vec![NormalizedEntry {
+                    timestamp: None,
+                    entry_type: NormalizedEntryType::ErrorMessage,
+                    content: format!("{}: {}", prefix, primary_message),
+                    metadata: Some(
+                        serde_json::to_value(claude_json)
+                            .unwrap_or(serde_json::Value::Null),
+                    ),
+                }]
             }
             ClaudeJson::Unknown { data } => {
                 vec![NormalizedEntry {
@@ -1265,10 +1347,20 @@ pub enum ClaudeJson {
     },
     #[serde(rename = "result")]
     Result {
+        #[serde(default)]
         subtype: Option<String>,
+        #[serde(default, alias = "isError")]
         is_error: Option<bool>,
+        #[serde(default, alias = "durationMs")]
         duration_ms: Option<u64>,
+        #[serde(default)]
         result: Option<serde_json::Value>,
+        #[serde(default)]
+        error: Option<String>,
+        #[serde(default, alias = "numTurns")]
+        num_turns: Option<u32>,
+        #[serde(default, alias = "sessionId")]
+        session_id: Option<String>,
     },
     // Catch-all for unknown message types
     #[serde(untagged)]
@@ -1576,6 +1668,86 @@ mod tests {
 
         let entries = ClaudeLogProcessor::new().normalize_entries(&parsed, "");
         assert_eq!(entries.len(), 0); // Should be ignored like in old implementation
+    }
+
+    #[test]
+    fn test_amp_result_error_is_surfaced() {
+        let error_json = r#"{"type":"result","subtype":"error_during_execution","duration_ms":456090,"is_error":true,"num_turns":24,"error":"terminated","session_id":"T-efa72d99-3436-467b-a2d2-872546ad6f3c"}"#;
+        let parsed: ClaudeJson = serde_json::from_str(error_json).unwrap();
+        
+        let mut processor = ClaudeLogProcessor::new_with_strategy(HistoryStrategy::AmpResume);
+        let entries = processor.normalize_entries(&parsed, "");
+        
+        assert_eq!(entries.len(), 1);
+        assert!(matches!(entries[0].entry_type, NormalizedEntryType::ErrorMessage));
+        assert!(entries[0].content.contains("AMP error (error_during_execution)"));
+        assert!(entries[0].content.contains("terminated"));
+        assert!(entries[0].content.contains("456.1s"));
+        assert!(entries[0].content.contains("24 turns"));
+        assert!(entries[0].metadata.is_some());
+    }
+
+    #[test] 
+    fn test_amp_result_error_with_subtype_only() {
+        let error_json = r#"{"type":"result","subtype":"error","duration_ms":2000}"#;
+        let parsed: ClaudeJson = serde_json::from_str(error_json).unwrap();
+        
+        let mut processor = ClaudeLogProcessor::new_with_strategy(HistoryStrategy::AmpResume);
+        let entries = processor.normalize_entries(&parsed, "");
+        
+        assert_eq!(entries.len(), 1);
+        assert!(matches!(entries[0].entry_type, NormalizedEntryType::ErrorMessage));
+        assert!(entries[0].content.contains("AMP error (error)"));
+        assert!(entries[0].content.contains("Unknown AMP error"));
+        assert!(entries[0].content.contains("2.0s"));
+    }
+
+    #[test]
+    fn test_amp_result_error_from_result_field() {
+        let error_json = r#"{"type":"result","subtype":"timeout","result":{"error":"rate limit exceeded"},"duration_ms":5000,"num_turns":3}"#;
+        let parsed: ClaudeJson = serde_json::from_str(error_json).unwrap();
+        
+        let mut processor = ClaudeLogProcessor::new_with_strategy(HistoryStrategy::AmpResume);
+        let entries = processor.normalize_entries(&parsed, "");
+        
+        assert_eq!(entries.len(), 1);
+        assert!(matches!(entries[0].entry_type, NormalizedEntryType::ErrorMessage));
+        assert!(entries[0].content.contains("AMP error (timeout)"));
+        assert!(entries[0].content.contains("rate limit exceeded"));
+        assert!(entries[0].content.contains("5.0s"));
+        assert!(entries[0].content.contains("3 turns"));
+    }
+
+    #[test]
+    fn test_amp_result_success_still_ignored() {
+        let success_json = r#"{"type":"result","subtype":"success","is_error":false,"duration_ms":1000,"result":"All good"}"#;
+        let parsed: ClaudeJson = serde_json::from_str(success_json).unwrap();
+        
+        let mut processor = ClaudeLogProcessor::new_with_strategy(HistoryStrategy::AmpResume);
+        let entries = processor.normalize_entries(&parsed, "");
+        
+        assert_eq!(entries.len(), 0); // Success results should still be ignored
+    }
+
+    #[test]
+    fn test_amp_result_session_id_extraction() {
+        let result_json = r#"{"type":"result","subtype":"error_during_execution","is_error":true,"session_id":"T-test-session-123"}"#;
+        let parsed: ClaudeJson = serde_json::from_str(result_json).unwrap();
+        
+        assert_eq!(
+            ClaudeLogProcessor::extract_session_id(&parsed),
+            Some("T-test-session-123".to_string())
+        );
+    }
+
+    #[test]
+    fn test_claude_result_still_ignored_for_default_strategy() {
+        let error_json = r#"{"type":"result","subtype":"error_during_execution","is_error":true,"error":"some error"}"#;
+        let parsed: ClaudeJson = serde_json::from_str(error_json).unwrap();
+        
+        // Default strategy should still ignore all Result messages
+        let entries = ClaudeLogProcessor::new().normalize_entries(&parsed, "");
+        assert_eq!(entries.len(), 0);
     }
 
     #[test]
