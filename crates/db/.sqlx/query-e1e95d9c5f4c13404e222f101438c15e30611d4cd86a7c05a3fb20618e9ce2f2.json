@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!: Uuid\",\n                              task_id AS \"task_id!: Uuid\",\n                              container_ref,\n                              branch,\n                              base_branch,\n                              target_branch,\n                              executor AS \"executor!\",\n                              worktree_deleted AS \"worktree_deleted!: bool\",\n                              setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                              created_at AS \"created_at!: DateTime<Utc>\",\n                              updated_at AS \"updated_at!: DateTime<Utc>\"\n                       FROM task_attempts\n                       ORDER BY created_at DESC",
+  "query": "SELECT  id                AS \"id!: Uuid\",\n                       task_id           AS \"task_id!: Uuid\",\n                       container_ref,\n                       branch,\n                       target_branch,\n                       executor AS \"executor!\",\n                       worktree_deleted  AS \"worktree_deleted!: bool\",\n                       setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                       created_at        AS \"created_at!: DateTime<Utc>\",\n                       updated_at        AS \"updated_at!: DateTime<Utc>\"\n               FROM    task_attempts\n               WHERE   rowid = $1",
   "describe": {
     "columns": [
       {
@@ -24,49 +24,43 @@
         "type_info": "Text"
       },
       {
-        "name": "base_branch",
+        "name": "target_branch",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "target_branch",
+        "name": "executor!",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "executor!",
-        "ordinal": 6,
-        "type_info": "Text"
-      },
-      {
         "name": "worktree_deleted!: bool",
-        "ordinal": 7,
+        "ordinal": 6,
         "type_info": "Bool"
       },
       {
         "name": "setup_completed_at: DateTime<Utc>",
-        "ordinal": 8,
+        "ordinal": 7,
         "type_info": "Datetime"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 9,
+        "ordinal": 8,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 10,
+        "ordinal": 9,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       true,
       false,
       true,
-      false,
       false,
       false,
       true,
@@ -76,5 +70,5 @@
       false
     ]
   },
-  "hash": "e29d69be26ee791480545a52d470810df93c7a52b922dba4f9ebd3ba9da45f73"
+  "hash": "e1e95d9c5f4c13404e222f101438c15e30611d4cd86a7c05a3fb20618e9ce2f2"
 }
