@@ -7,5 +7,25 @@
   },
   "actions": {
     "addTask": "Agregar tarea"
+  },
+  "rebase": {
+    "common": {
+      "action": "Rebase",
+      "inProgress": "Rebaseando...",
+      "withTarget": "Rebase sobre {{branch}}"
+    },
+    "dialog": {
+      "title": "Rebase del intento de tarea",
+      "description": "Elige una nueva rama base para hacer rebase de este intento de tarea.",
+      "upstreamLabel": "Rama upstream",
+      "upstreamPlaceholder": "Selecciona una rama upstream",
+      "targetLabel": "Rama de destino",
+      "targetPlaceholder": "Selecciona una rama de destino"
+    },
+    "status": {
+      "inProgress": "Rebase en progreso{{counts}}",
+      "needed": "Rebase necesario{{dirty}}{{counts}}",
+      "dirtyMarker": " (sucio)"
+    }
   }
 }
