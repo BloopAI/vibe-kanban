@@ -40,7 +40,6 @@ pub struct TaskAttempt {
     pub task_id: Uuid,                 // Foreign key to Task
     pub container_ref: Option<String>, // Path to a worktree (local), or cloud container id
     pub branch: String,                // Git branch name for this task attempt
-    pub base_branch: String,           // Base branch this attempt is based on
     pub target_branch: String,         // Target branch for this attempt
     pub executor: String, // Name of the base coding agent to use ("AMP", "CLAUDE_CODE",
     // "GEMINI", etc.)
@@ -104,7 +103,6 @@ impl TaskAttempt {
                               task_id AS "task_id!: Uuid",
                               container_ref,
                               branch,
-                              base_branch,
                               target_branch,
                               executor AS "executor!",
                               worktree_deleted AS "worktree_deleted!: bool",
@@ -125,7 +123,6 @@ impl TaskAttempt {
                               task_id AS "task_id!: Uuid",
                               container_ref,
                               branch,
-                              base_branch,
                               target_branch,
                               executor AS "executor!",
                               worktree_deleted AS "worktree_deleted!: bool",
@@ -157,7 +154,6 @@ impl TaskAttempt {
                        ta.task_id           AS "task_id!: Uuid",
                        ta.container_ref,
                        ta.branch,
-                       ta.base_branch,
                        ta.target_branch,
                        ta.executor AS "executor!",
                        ta.worktree_deleted  AS "worktree_deleted!: bool",
@@ -231,7 +227,6 @@ impl TaskAttempt {
                        task_id           AS "task_id!: Uuid",
                        container_ref,
                        branch,
-                       base_branch,
                        target_branch,
                        executor AS "executor!",
                        worktree_deleted  AS "worktree_deleted!: bool",
@@ -253,7 +248,6 @@ impl TaskAttempt {
                        task_id           AS "task_id!: Uuid",
                        container_ref,
                        branch,
-                       base_branch,
                        target_branch,
                        executor AS "executor!",
                        worktree_deleted  AS "worktree_deleted!: bool",
@@ -378,14 +372,13 @@ impl TaskAttempt {
         // Insert the record into the database
         Ok(sqlx::query_as!(
             TaskAttempt,
-            r#"INSERT INTO task_attempts (id, task_id, container_ref, branch, base_branch, target_branch, executor, worktree_deleted, setup_completed_at)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, base_branch, target_branch, executor as "executor!",  worktree_deleted as "worktree_deleted!: bool", setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO task_attempts (id, task_id, container_ref, branch, target_branch, executor, worktree_deleted, setup_completed_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, target_branch, executor as "executor!",  worktree_deleted as "worktree_deleted!: bool", setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             task_id,
             Option::<String>::None, // Container isn't known yet
             data.branch,
-            data.base_branch,
             data.base_branch, // Target branch is same as base branch during creation
             data.executor,
             false, // worktree_deleted is false during creation
@@ -395,21 +388,6 @@ impl TaskAttempt {
         .await?)
     }
 
-    pub async fn update_base_branch(
-        pool: &SqlitePool,
-        attempt_id: Uuid,
-        new_base_branch: &str,
-    ) -> Result<(), TaskAttemptError> {
-        sqlx::query!(
-            "UPDATE task_attempts SET base_branch = $1, updated_at = datetime('now') WHERE id = $2",
-            new_base_branch,
-            attempt_id,
-        )
-        .execute(pool)
-        .await?;
-
-        Ok(())
-    }
     pub async fn update_target_branch(
         pool: &SqlitePool,
         attempt_id: Uuid,

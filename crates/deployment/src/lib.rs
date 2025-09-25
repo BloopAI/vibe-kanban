@@ -215,14 +215,14 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                     std::path::Path::new(row.git_repo_path.as_deref().unwrap_or_default());
                 match self
                     .git()
-                    .get_branch_oid(repo_path, row.base_branch.as_str())
+                    .get_branch_oid(repo_path, row.target_branch.as_str())
                 {
                     Ok(oid) => before = Some(oid),
                     Err(e) => {
                         tracing::warn!(
                             "Backfill: Failed to resolve base branch OID for attempt {} (branch {}): {}",
                             row.task_attempt_id,
-                            row.base_branch,
+                            row.target_branch,
                             e
                         );
                     }

@@ -884,7 +884,7 @@ impl ContainerService for LocalContainerService {
             &project.git_repo_path,
             &task_attempt.branch,
             &worktree_path,
-            &task_attempt.base_branch,
+            &task_attempt.target_branch,
             true, // create new branch
         )
         .await?;

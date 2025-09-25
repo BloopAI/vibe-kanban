@@ -1609,12 +1609,14 @@ pub async fn rebase_task_attempt(
         .ensure_container_exists(&task_attempt)
         .await?;
     let worktree_path = std::path::Path::new(&container_ref);
+    // TODO put this into the args, make rebase a dialog
+    let old_base_branch = task_attempt.target_branch.clone();
 
     let result = deployment.git().rebase_branch(
         &ctx.project.git_repo_path,
         worktree_path,
         &task_attempt.target_branch.clone(),
-        &task_attempt.base_branch.clone(),
+        &old_base_branch,
         &task_attempt.branch.clone(),
         github_config.token(),
     );
