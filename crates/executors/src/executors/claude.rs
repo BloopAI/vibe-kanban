@@ -869,11 +869,11 @@ impl ClaudeLogProcessor {
                 vec![]
             }
             ClaudeJson::Result {
-                subtype,
+                subtype: _,
                 is_error,
                 duration_ms: _,
-                result,
-                error,
+                result: _,
+                error: _,
                 num_turns: _,
                 ..
             } => {
@@ -883,22 +883,7 @@ impl ClaudeLogProcessor {
                 }
 
                 // Determine if this is an error
-                let mut is_err = is_error.unwrap_or(false);
-                if let Some(st) = subtype.as_deref()
-                    && (st.eq_ignore_ascii_case("error") || st.contains("error"))
-                {
-                    is_err = true;
-                }
-                if !is_err && error.as_ref().is_some_and(|e| !e.is_empty()) {
-                    is_err = true;
-                }
-                // Check if result field contains error information
-                if !is_err
-                    && let Some(res) = result.as_ref()
-                    && (res.get("error").is_some() || res.get("message").is_some())
-                {
-                    is_err = true;
-                }
+                let is_err = is_error.unwrap_or(false);
 
                 // Skip non-error results to avoid noise
                 if !is_err {
