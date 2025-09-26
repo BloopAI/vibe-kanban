@@ -14,7 +14,7 @@ import { Check, X } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 
 import { useHotkeysContext } from 'react-hotkeys-hook';
-import { useKeyDenyApproval, Scope } from '@/keyboard';
+import { useKeyApproveRequest, useKeyDenyApproval, Scope } from '@/keyboard';
 
 const DEFAULT_DENIAL_REASON = 'User denied this tool use request.';
 
@@ -293,12 +293,18 @@ const PendingApprovalEntry = ({
 
   const triggerDeny = useCallback(
     (event?: KeyboardEvent) => {
-      if (disabled || hasResponded) return;
+      if (!isEnteringReason || disabled || hasResponded) return;
       event?.preventDefault();
       handleSubmitDeny();
     },
-    [disabled, hasResponded, handleSubmitDeny]
+    [isEnteringReason, disabled, hasResponded, handleSubmitDeny]
   );
+
+  useKeyApproveRequest(handleApprove, {
+    scope: Scope.APPROVALS,
+    when: () => !isEnteringReason && !disabled,
+    preventDefault: true,
+  });
 
   useKeyDenyApproval(triggerDeny, {
     scope: Scope.APPROVALS,

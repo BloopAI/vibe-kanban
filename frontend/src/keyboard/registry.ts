@@ -20,6 +20,7 @@ export enum Action {
   SHOW_HELP = 'show_help',
   TOGGLE_FULLSCREEN = 'toggle_fullscreen',
   DELETE_TASK = 'delete_task',
+  APPROVE_REQUEST = 'approve_request',
   DENY_APPROVAL = 'deny_approval',
 }
 
@@ -152,6 +153,13 @@ export const keyBindings: KeyBinding[] = [
   },
 
   // Approval actions
+  {
+    action: Action.APPROVE_REQUEST,
+    keys: 'enter',
+    scopes: [Scope.APPROVALS],
+    description: 'Approve pending approval request',
+    group: 'Approvals',
+  },
   {
     action: Action.DENY_APPROVAL,
     keys: ['meta+enter', 'ctrl+enter'],
