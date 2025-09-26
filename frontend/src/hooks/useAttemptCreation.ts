@@ -4,6 +4,7 @@ import { attemptsApi } from '@/lib/api';
 import { useTaskViewManager } from '@/hooks/useTaskViewManager';
 import type { TaskAttempt } from 'shared/types';
 import type { ExecutorProfileId } from 'shared/types';
+import { queryKey as pbQk } from './useProjectBranches';
 
 export function useAttemptCreation(taskId: string) {
   const queryClient = useQueryClient();
@@ -34,6 +35,10 @@ export function useAttemptCreation(taskId: string) {
       if (projectId) {
         navigateToAttempt(projectId, taskId, newAttempt.id);
       }
+      // Refresh project branches as a new attempt creates a new branch
+      queryClient.invalidateQueries({
+        queryKey: pbQk(projectId),
+      });
     },
   });
 

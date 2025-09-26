@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { projectsApi, attemptsApi } from '@/lib/api';
-import type {
-  GitBranch,
-  TaskAttempt,
-  TaskWithAttemptStatus,
-} from 'shared/types';
+import { attemptsApi } from '@/lib/api';
+import { useProjectBranches } from '@/hooks/useProjectBranches';
+import type { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import type { ExecutorProfileId } from 'shared/types';
 
 import { useAttemptExecution } from '@/hooks';
@@ -91,11 +88,15 @@ function TaskDetailsToolbar({
   const [ui, dispatch] = useReducer(uiReducer, initialUi);
 
   // Data state
-  const [branches, setBranches] = useState<GitBranch[]>([]);
+  const { branches, pickBranch } = useProjectBranches(projectId, {
+    enabled: true,
+  });
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
   const [selectedProfile, setSelectedProfile] =
     useState<ExecutorProfileId | null>(null);
-  const [parentBaseBranch, setParentBaseBranch] = useState<string | null>(null);
+  const [parentBaseBranch, setParentBaseBranch] = useState<
+    string | null | undefined
+  >(undefined);
   // const { attemptId: urlAttemptId } = useParams<{ attemptId?: string }>();
   const { system, profiles } = useUserSystem();
 
@@ -113,42 +114,33 @@ function TaskDetailsToolbar({
   const isInCreateAttemptMode =
     forceCreateAttempt ??
     (ui.userForcedCreateMode || taskAttempts.length === 0);
-
-  // Derive createAttemptBranch for backward compatibility
-  const createAttemptBranch = useMemo(() => {
-    // Priority order:
-    // 1. User explicitly selected a branch
-    if (selectedBranch) {
-      return selectedBranch;
+  useEffect(() => {
+    if (!isInCreateAttemptMode) {
+      setSelectedBranch(null);
     }
-
-    // 2. Latest attempt's base branch (existing behavior for resume/rerun)
-    if (
-      latestAttempt?.base_branch &&
-      branches.some((b: GitBranch) => b.name === latestAttempt.base_branch)
-    ) {
-      return latestAttempt.base_branch;
-    }
-
-    // 3. Parent task attempt's base branch (NEW - for inherited tasks)
-    if (parentBaseBranch) {
-      return parentBaseBranch;
-    }
-
-    // 4. Fall back to current branch
-    const currentBranch = branches.find((b) => b.is_current);
-    return currentBranch?.name || null;
-  }, [latestAttempt, branches, selectedBranch, parentBaseBranch]);
-
-  const fetchProjectBranches = useCallback(async () => {
-    const result = await projectsApi.getBranches(projectId);
-
-    setBranches(result);
-  }, [projectId]);
+  }, [isInCreateAttemptMode]);
 
   useEffect(() => {
-    fetchProjectBranches();
-  }, [fetchProjectBranches]);
+    if (
+      !isInCreateAttemptMode ||
+      parentBaseBranch === undefined ||
+      selectedBranch !== null
+    ) {
+      return;
+    }
+
+    const next = pickBranch(latestAttempt?.base_branch, parentBaseBranch);
+
+    if (next) {
+      setSelectedBranch(next);
+    }
+  }, [
+    isInCreateAttemptMode,
+    selectedBranch,
+    pickBranch,
+    latestAttempt?.base_branch,
+    parentBaseBranch,
+  ]);
 
   // Set default executor from config
   useEffect(() => {
@@ -159,40 +151,34 @@ function TaskDetailsToolbar({
 
   // Fetch parent task attempt's base branch
   useEffect(() => {
-    if (task.parent_task_attempt) {
-      attemptsApi
-        .get(task.parent_task_attempt)
-        .then((attempt) => setParentBaseBranch(attempt.branch))
-        .catch(() => setParentBaseBranch(null));
-    } else {
+    if (!task.parent_task_attempt) {
       setParentBaseBranch(null);
+      return;
     }
+
+    let cancelled = false;
+    setParentBaseBranch(undefined);
+
+    attemptsApi
+      .get(task.parent_task_attempt)
+      .then((attempt) => {
+        if (cancelled) return;
+        setParentBaseBranch(attempt.branch || attempt.base_branch || null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setParentBaseBranch(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [task.parent_task_attempt]);
-
-  // Simplified - hooks handle data fetching and navigation
-  // const fetchTaskAttempts = useCallback(() => {
-  //   // The useSelectedAttempt hook handles all this logic now
-  // }, []);
-
-  // Remove fetchTaskAttempts - hooks handle this now
 
   // Handle entering create attempt mode
   const handleEnterCreateAttemptMode = useCallback(() => {
     dispatch({ type: 'ENTER_CREATE_MODE' });
   }, []);
-
-  // Stub handlers for backward compatibility with CreateAttempt
-  const setCreateAttemptBranch = useCallback(
-    (branch: string | null | ((prev: string | null) => string | null)) => {
-      if (typeof branch === 'function') {
-        setSelectedBranch((prev) => branch(prev));
-      } else {
-        setSelectedBranch(branch);
-      }
-      // This is now derived state, so no-op
-    },
-    []
-  );
 
   const setIsInCreateAttemptMode = useCallback(
     (value: boolean | ((prev: boolean) => boolean)) => {
@@ -230,12 +216,11 @@ function TaskDetailsToolbar({
         {isInCreateAttemptMode ? (
           <CreateAttempt
             task={task}
-            createAttemptBranch={createAttemptBranch}
             selectedBranch={selectedBranch}
             selectedProfile={selectedProfile}
             taskAttempts={taskAttempts}
             branches={branches}
-            setCreateAttemptBranch={setCreateAttemptBranch}
+            setSelectedBranch={setSelectedBranch}
             setIsInCreateAttemptMode={setIsInCreateAttemptMode}
             setSelectedProfile={setSelectedProfile}
             availableProfiles={profiles}

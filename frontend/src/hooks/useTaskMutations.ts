@@ -8,6 +8,7 @@ import type {
   TaskWithAttemptStatus,
   UpdateTask,
 } from 'shared/types';
+import { queryKey as pbQk } from './useProjectBranches';
 
 export function useTaskMutations(projectId?: string) {
   const queryClient = useQueryClient();
@@ -17,6 +18,12 @@ export function useTaskMutations(projectId?: string) {
     queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
     if (taskId) {
       queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+    }
+    if (projectId) {
+      // Refresh project branches as a new attempt creates a new branch
+      queryClient.invalidateQueries({
+        queryKey: pbQk(projectId),
+      });
     }
   };
 

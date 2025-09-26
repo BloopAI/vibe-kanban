@@ -14,14 +14,13 @@ import { Alert } from '@/components/ui/alert';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import { useCallback, useEffect, useState } from 'react';
 import { attemptsApi } from '@/lib/api.ts';
+import { useProjectBranches } from '@/hooks/useProjectBranches';
 
 import {
-  GitBranch,
   GitHubServiceError,
   TaskAttempt,
   TaskWithAttemptStatus,
 } from 'shared/types';
-import { projectsApi } from '@/lib/api.ts';
 import { Loader2 } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 const CreatePrDialog = NiceModal.create(() => {
@@ -34,39 +33,25 @@ const CreatePrDialog = NiceModal.create(() => {
   const [prBaseBranch, setPrBaseBranch] = useState('');
   const [creatingPR, setCreatingPR] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [branches, setBranches] = useState<GitBranch[]>([]);
-  const [branchesLoading, setBranchesLoading] = useState(false);
+  const projectId = data?.projectId;
+  const {
+    branches,
+    loading: branchesLoading,
+    pickBranch,
+  } = useProjectBranches(projectId, {
+    enabled: modal.visible && Boolean(projectId),
+  });
 
   useEffect(() => {
-    if (modal.visible && data) {
-      setPrTitle(`${data.task.title} (vibe-kanban)`);
-      setPrBody(data.task.description || '');
-
-      // Always fetch branches for dropdown population
-      if (data.projectId) {
-        setBranchesLoading(true);
-        projectsApi
-          .getBranches(data.projectId)
-          .then((projectBranches) => {
-            setBranches(projectBranches);
-
-            // Set smart default: task base branch OR current branch
-            if (data.attempt.base_branch) {
-              setPrBaseBranch(data.attempt.base_branch);
-            } else {
-              const currentBranch = projectBranches.find((b) => b.is_current);
-              if (currentBranch) {
-                setPrBaseBranch(currentBranch.name);
-              }
-            }
-          })
-          .catch(console.error)
-          .finally(() => setBranchesLoading(false));
-      }
-
-      setError(null); // Reset error when opening
+    if (!modal.visible || !data) {
+      return;
     }
-  }, [modal.visible, data]);
+
+    setPrTitle(`${data.task.title} (vibe-kanban)`);
+    setPrBody(data.task.description || '');
+    setError(null);
+    setPrBaseBranch(pickBranch(data.attempt.base_branch) || '');
+  }, [modal.visible, data, pickBranch]);
 
   const handleConfirmCreatePR = useCallback(async () => {
     if (!data?.projectId || !data?.attempt.id) return;

@@ -18,11 +18,10 @@ type Props = {
   task: Task;
   branches: GitBranch[];
   taskAttempts: TaskAttempt[];
-  createAttemptBranch: string | null;
   selectedProfile: ExecutorProfileId | null;
   selectedBranch: string | null;
   setIsInCreateAttemptMode: Dispatch<SetStateAction<boolean>>;
-  setCreateAttemptBranch: Dispatch<SetStateAction<string | null>>;
+  setSelectedBranch: Dispatch<SetStateAction<string | null>>;
   setSelectedProfile: Dispatch<SetStateAction<ExecutorProfileId | null>>;
   availableProfiles: Record<string, ExecutorConfig> | null;
   selectedAttempt: TaskAttempt | null;
@@ -32,11 +31,10 @@ function CreateAttempt({
   task,
   branches,
   taskAttempts,
-  createAttemptBranch,
   selectedProfile,
   selectedBranch,
   setIsInCreateAttemptMode,
-  setCreateAttemptBranch,
+  setSelectedBranch,
   setSelectedProfile,
   availableProfiles,
   selectedAttempt,
@@ -102,7 +100,7 @@ function CreateAttempt({
     if (!selectedProfile) {
       return;
     }
-    onCreateNewAttempt(selectedProfile, createAttemptBranch || undefined);
+    onCreateNewAttempt(selectedProfile, selectedBranch || undefined);
   };
 
   return (
@@ -150,8 +148,8 @@ function CreateAttempt({
             </Label>
             <BranchSelector
               branches={branches}
-              selectedBranch={createAttemptBranch}
-              onBranchSelect={setCreateAttemptBranch}
+              selectedBranch={selectedBranch}
+              onBranchSelect={(branch) => setSelectedBranch(branch)}
               placeholder="Select branch"
             />
           </div>
@@ -162,14 +160,14 @@ function CreateAttempt({
               onClick={handleCreateAttempt}
               disabled={
                 !selectedProfile ||
-                !createAttemptBranch ||
+                !selectedBranch ||
                 isAttemptRunning ||
                 isCreating
               }
               size="sm"
               className="w-full text-xs gap-2 justify-center bg-black text-white hover:bg-black/90"
               title={
-                !createAttemptBranch
+                !selectedBranch
                   ? 'Base branch is required'
                   : !selectedProfile
                     ? 'Coding agent is required'
