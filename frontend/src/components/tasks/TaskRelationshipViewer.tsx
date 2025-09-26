@@ -8,7 +8,6 @@ import type {
   TaskWithAttemptStatus,
 } from 'shared/types';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface TaskRelationshipViewerProps {
   selectedAttempt: TaskAttempt | null;
@@ -148,25 +147,16 @@ export function TaskRelationshipViewer({
                 </div>
 
                 {childrenExpanded && (
-                  <div
-                    className={cn(
-                      'grid gap-4',
-                      // Responsive grid: 1 col on mobile, 2 on tablet, 3 on desktop
-                      'grid-cols-1 md:grid-cols-2 xl:grid-cols-3',
-                      // Adjust based on number of children
-                      childTasks.length === 1 &&
-                        'md:grid-cols-1 xl:grid-cols-1 max-w-md mx-auto',
-                      childTasks.length === 2 && 'md:grid-cols-2 xl:grid-cols-2'
-                    )}
-                  >
+                  <div className="flex gap-4 overflow-x-auto pb-2">
                     {childTasks.map((childTask) => (
-                      <TaskRelationshipCard
-                        key={childTask.id}
-                        task={childTask}
-                        isCurrentTask={false}
-                        onClick={() => onNavigateToTask?.(childTask.id)}
-                        className="shadow-sm hover:shadow-md transition-shadow"
-                      />
+                      <div key={childTask.id} className="flex-none w-80">
+                        <TaskRelationshipCard
+                          task={childTask}
+                          isCurrentTask={false}
+                          onClick={() => onNavigateToTask?.(childTask.id)}
+                          className="shadow-sm hover:shadow-md transition-shadow"
+                        />
+                      </div>
                     ))}
                   </div>
                 )}
