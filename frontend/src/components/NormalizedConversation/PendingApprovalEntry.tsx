@@ -151,8 +151,20 @@ const PendingApprovalEntry = ({
         {children}
         <div className="border-t bg-background px-2 py-1.5 text-xs sm:text-sm">
           <TooltipProvider>
-            <div className="flex items-center justify-between gap-1.5">
-              <div className="flex items-center gap-1.5 pl-4">
+            <div className="flex items-center justify-between gap-1.5 pl-4">
+              {!isEnteringReason && !hasResponded && timeLeft > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center pr-8">
+                      <CircularProgress percent={percent} />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{formatSeconds(timeLeft)} remaining</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              <div className="flex items-center gap-1.5 pr-4">
                 {!isEnteringReason && (
                   <>
                     <Tooltip>
@@ -200,18 +212,6 @@ const PendingApprovalEntry = ({
                   </>
                 )}
               </div>
-              {!isEnteringReason && !hasResponded && timeLeft > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center pr-8">
-                      <CircularProgress percent={percent} />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{formatSeconds(timeLeft)} remaining</p>
-                  </TooltipContent>
-                </Tooltip>
-              )}
             </div>
             {error && <div className="mt-1 text-xs text-red-600">{error}</div>}
             {isEnteringReason && !hasResponded && (
@@ -227,7 +227,20 @@ const PendingApprovalEntry = ({
                   className="text-sm"
                 />
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                  {!hasResponded && timeLeft > 0 && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center pr-2">
+                          <CircularProgress percent={percent} />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{formatSeconds(timeLeft)} remaining</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+
+                  <div className="flex items-center gap-2 text-sm">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -241,21 +254,9 @@ const PendingApprovalEntry = ({
                       onClick={handleSubmitDeny}
                       disabled={isResponding}
                     >
-                      Submit denial
+                      Deny
                     </Button>
                   </div>
-                  {!hasResponded && timeLeft > 0 && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex items-center pr-2">
-                          <CircularProgress percent={percent} />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{formatSeconds(timeLeft)} remaining</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
                 </div>
               </div>
             )}
