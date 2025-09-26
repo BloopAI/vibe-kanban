@@ -1,7 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
     io,
-    os::unix::process::ExitStatusExt,
     path::{Path, PathBuf},
     sync::{
         Arc,
@@ -381,7 +380,7 @@ impl LocalContainerService {
                             tracing::error!("Failed to kill process group after exit signal: {} {}", exec_id, err);
                         }
                     }
-                    status_result = Ok(std::process::ExitStatus::from_raw(0));
+                    status_result = Ok(success_exit_status());
                 }
                 // Process exit
                 exit_status_result = &mut process_exit_rx => {
@@ -606,7 +605,6 @@ impl LocalContainerService {
 
         Ok(worktree_dir)
     }
-
     /// Get the project repository path for a task attempt
     async fn get_project_repo_path(
         &self,
@@ -876,6 +874,19 @@ impl LocalContainerService {
         }
 
         Ok(msgs)
+    }
+}
+
+fn success_exit_status() -> std::process::ExitStatus {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+        ExitStatusExt::from_raw(0)
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::ExitStatusExt;
+        ExitStatusExt::from_raw(0)
     }
 }
 
