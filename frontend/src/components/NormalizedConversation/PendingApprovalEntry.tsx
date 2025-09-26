@@ -226,7 +226,11 @@ const PendingApprovalEntry = ({
   const { enableScope, disableScope } = useHotkeysContext();
   useEffect(() => {
     enableScope(Scope.APPROVALS);
-    return () => disableScope(Scope.APPROVALS);
+    disableScope(Scope.KANBAN);
+    return () => {
+      disableScope(Scope.APPROVALS);
+      enableScope(Scope.KANBAN);
+    };
   }, [enableScope, disableScope]);
 
   const { timeLeft, percent } = useApprovalCountdown(
