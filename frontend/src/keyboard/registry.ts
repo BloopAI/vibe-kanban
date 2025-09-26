@@ -4,6 +4,7 @@ export enum Scope {
   KANBAN = 'kanban',
   PROJECTS = 'projects',
   EDIT_COMMENT = 'edit-comment',
+  SETTINGS = 'settings',
 }
 
 export enum Action {
@@ -51,6 +52,13 @@ export const keyBindings: KeyBinding[] = [
     scopes: [Scope.EDIT_COMMENT],
     description: 'Cancel comment',
     group: 'Comments',
+  },
+  {
+    action: Action.EXIT,
+    keys: 'esc',
+    scopes: [Scope.SETTINGS],
+    description: 'Go back to previous page',
+    group: 'Navigation',
   },
 
   // Creation actions
