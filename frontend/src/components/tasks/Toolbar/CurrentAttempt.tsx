@@ -1,4 +1,5 @@
 import {
+  ChevronDown,
   ExternalLink,
   GitBranch as GitBranchIcon,
   GitFork,
@@ -640,9 +641,15 @@ function CurrentAttempt({
         </div>
       </div>
 
-      <div>
-        <div className="grid grid-cols-2 gap-3 @md:flex @md:flex-wrap @md:items-center">
-          <div className="flex gap-2 @md:flex-none">
+      <div className="space-y-4">
+        <div className="space-y-3 rounded-md border border-dashed p-3">
+          <div className="flex items-center gap-2">
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Attempt Actions
+            </h4>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+          <div className="flex flex-wrap gap-2">
             <Button
               variant={runningDevServer ? 'destructive' : 'outline'}
               size="xs"
@@ -652,7 +659,7 @@ function CurrentAttempt({
               disabled={
                 isStartingDevServer || !projectHasDevScript || hasConflicts
               }
-              className="gap-1 flex-1"
+              className="gap-1 min-w-[120px]"
             >
               {runningDevServer ? (
                 <>
@@ -662,7 +669,7 @@ function CurrentAttempt({
               ) : (
                 <>
                   <Play className="h-3 w-3" />
-                  Dev
+                  Start Dev
                 </>
               )}
             </Button>
@@ -676,9 +683,10 @@ function CurrentAttempt({
                       variant="outline"
                       size="xs"
                       onClick={handleViewDevServerLogs}
-                      className="gap-1"
+                      className="gap-1 min-w-[120px]"
                     >
                       <ScrollText className="h-3 w-3" />
+                      View Logs
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -687,92 +695,14 @@ function CurrentAttempt({
                 </Tooltip>
               </TooltipProvider>
             )}
-          </div>
-          {/* Git Operations */}
-          {selectedAttempt && branchStatus && !mergeInfo.hasMergedPR && (
-            <>
-              <Button
-                onClick={handleRebaseDialogOpen}
-                disabled={
-                  rebasing ||
-                  isAttemptRunning ||
-                  hasConflicts ||
-                  (branchStatus.commits_behind ?? 0) === 0
-                }
-                variant="outline"
-                size="xs"
-                className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1"
-              >
-                <RefreshCw
-                  className={`h-3 w-3 ${rebasing ? 'animate-spin' : ''}`}
-                />
-                {rebaseButtonLabel}
-              </Button>
-              <>
-                <Button
-                  onClick={handlePRButtonClick}
-                  disabled={
-                    creatingPR ||
-                    pushing ||
-                    Boolean((branchStatus.commits_behind ?? 0) > 0) ||
-                    isAttemptRunning ||
-                    hasConflicts ||
-                    (mergeInfo.hasOpenPR &&
-                      branchStatus.remote_commits_ahead === 0) ||
-                    ((branchStatus.commits_ahead ?? 0) === 0 &&
-                      (branchStatus.remote_commits_ahead ?? 0) === 0 &&
-                      !pushSuccess &&
-                      !mergeSuccess)
-                  }
-                  variant="outline"
-                  size="xs"
-                  className="border-blue-300  dark:border-blue-700 text-blue-700 dark:text-blue-500 hover:bg-blue-50 dark:hover:bg-transparent dark:hover:text-blue-400 dark:hover:border-blue-400 gap-1 min-w-[120px]"
-                >
-                  <GitPullRequest className="h-3 w-3" />
-                  {mergeInfo.hasOpenPR
-                    ? pushSuccess
-                      ? 'Pushed!'
-                      : pushing
-                        ? 'Pushing...'
-                        : branchStatus.remote_commits_ahead === 0
-                          ? 'Push to PR'
-                          : branchStatus.remote_commits_ahead === 1
-                            ? 'Push 1 commit'
-                            : `Push ${branchStatus.remote_commits_ahead || 0} commits`
-                    : creatingPR
-                      ? 'Creating...'
-                      : 'Create PR'}
-                </Button>
-                <Button
-                  onClick={handleMergeClick}
-                  disabled={
-                    mergeInfo.hasOpenPR ||
-                    merging ||
-                    hasConflicts ||
-                    Boolean((branchStatus.commits_behind ?? 0) > 0) ||
-                    isAttemptRunning ||
-                    ((branchStatus.commits_ahead ?? 0) === 0 &&
-                      !pushSuccess &&
-                      !mergeSuccess)
-                  }
-                  size="xs"
-                  className="bg-green-600 hover:bg-green-700 dark:bg-green-900 dark:hover:bg-green-700 gap-1 min-w-[120px]"
-                >
-                  <GitBranchIcon className="h-3 w-3" />
-                  {mergeButtonLabel}
-                </Button>
-              </>
-            </>
-          )}
 
-          <div className="flex gap-2 @md:flex-none">
             {isStopping || isAttemptRunning ? (
               <Button
                 variant="destructive"
                 size="xs"
                 onClick={stopExecution}
                 disabled={isStopping}
-                className="gap-1 flex-1"
+                className="gap-1 min-w-[120px]"
               >
                 <StopCircle className="h-4 w-4" />
                 {isStopping ? 'Stopping...' : 'Stop Attempt'}
@@ -782,20 +712,29 @@ function CurrentAttempt({
                 variant="outline"
                 size="xs"
                 onClick={handleEnterCreateAttemptMode}
-                className="gap-1 flex-1"
+                className="gap-1 min-w-[120px]"
               >
                 <Plus className="h-4 w-4" />
                 New Attempt
               </Button>
             )}
+
             {taskAttempts.length > 1 && (
               <DropdownMenu>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="xs" className="gap-1">
-                          <History className="h-3 w-4" />
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          className="gap-1 min-w-[120px] justify-between"
+                        >
+                          <span className="flex items-center gap-1">
+                            <History className="h-3 w-4" />
+                            History
+                          </span>
+                          <ChevronDown className="h-3 w-3" />
                         </Button>
                       </DropdownMenuTrigger>
                     </TooltipTrigger>
@@ -827,17 +766,99 @@ function CurrentAttempt({
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
+
+            <Button
+              onClick={handleCreateSubtaskClick}
+              variant="outline"
+              size="xs"
+              className="gap-1 min-w-[120px]"
+            >
+              <GitFork className="h-3 w-3" />
+              Create Subtask
+            </Button>
           </div>
-          <Button
-            onClick={handleCreateSubtaskClick}
-            variant="outline"
-            size="xs"
-            className="gap-1 min-w-[120px]"
-          >
-            <GitFork className="h-3 w-3" />
-            Create Subtask
-          </Button>
         </div>
+        {selectedAttempt && branchStatus && !mergeInfo.hasMergedPR && (
+          <div className="space-y-3 rounded-md border border-dashed p-3">
+            <div className="flex items-center gap-2">
+              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Git Operations
+              </h4>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+            <div className="grid gap-2 @md:grid-cols-3">
+              <Button
+                onClick={handleRebaseDialogOpen}
+                disabled={
+                  rebasing ||
+                  isAttemptRunning ||
+                  hasConflicts ||
+                  (branchStatus.commits_behind ?? 0) === 0
+                }
+                variant="outline"
+                size="xs"
+                className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1 w-full"
+              >
+                <RefreshCw
+                  className={`h-3 w-3 ${rebasing ? 'animate-spin' : ''}`}
+                />
+                {rebaseButtonLabel}
+              </Button>
+              <Button
+                onClick={handlePRButtonClick}
+                disabled={
+                  creatingPR ||
+                  pushing ||
+                  Boolean((branchStatus.commits_behind ?? 0) > 0) ||
+                  isAttemptRunning ||
+                  hasConflicts ||
+                  (mergeInfo.hasOpenPR &&
+                    branchStatus.remote_commits_ahead === 0) ||
+                  ((branchStatus.commits_ahead ?? 0) === 0 &&
+                    (branchStatus.remote_commits_ahead ?? 0) === 0 &&
+                    !pushSuccess &&
+                    !mergeSuccess)
+                }
+                variant="outline"
+                size="xs"
+                className="border-blue-300  dark:border-blue-700 text-blue-700 dark:text-blue-500 hover:bg-blue-50 dark:hover:bg-transparent dark:hover:text-blue-400 dark:hover:border-blue-400 gap-1 w-full"
+              >
+                <GitPullRequest className="h-3 w-3" />
+                {mergeInfo.hasOpenPR
+                  ? pushSuccess
+                    ? 'Pushed!'
+                    : pushing
+                      ? 'Pushing...'
+                      : branchStatus.remote_commits_ahead === 0
+                        ? 'Push to PR'
+                        : branchStatus.remote_commits_ahead === 1
+                          ? 'Push 1 commit'
+                          : `Push ${branchStatus.remote_commits_ahead || 0} commits`
+                  : creatingPR
+                    ? 'Creating...'
+                    : 'Create PR'}
+              </Button>
+              <Button
+                onClick={handleMergeClick}
+                disabled={
+                  mergeInfo.hasOpenPR ||
+                  merging ||
+                  hasConflicts ||
+                  Boolean((branchStatus.commits_behind ?? 0) > 0) ||
+                  isAttemptRunning ||
+                  ((branchStatus.commits_ahead ?? 0) === 0 &&
+                    !pushSuccess &&
+                    !mergeSuccess)
+                }
+                size="xs"
+                className="bg-green-600 hover:bg-green-700 dark:bg-green-900 dark:hover:bg-green-700 gap-1 w-full"
+              >
+                <GitBranchIcon className="h-3 w-3" />
+                {mergeButtonLabel}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
