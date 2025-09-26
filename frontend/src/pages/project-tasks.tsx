@@ -60,6 +60,7 @@ export function ProjectTasks() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState<string | null>(null);
+
   // Helper functions to open task forms
   const handleCreateTask = () => {
     if (project?.id) {
@@ -530,6 +531,7 @@ export function ProjectTasks() {
                 onDuplicateTask={handleDuplicateTaskCallback}
                 onViewTaskDetails={handleViewTaskDetails}
                 selectedTask={selectedTask || undefined}
+                onCreateTask={handleCreateNewTask}
               />
             </div>
           )}

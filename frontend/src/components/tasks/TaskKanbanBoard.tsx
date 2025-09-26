@@ -22,6 +22,7 @@ interface TaskKanbanBoardProps {
   onDuplicateTask?: (task: Task) => void;
   onViewTaskDetails: (task: Task) => void;
   selectedTask?: Task;
+  onCreateTask?: () => void;
 }
 
 function TaskKanbanBoard({
@@ -32,6 +33,7 @@ function TaskKanbanBoard({
   onDuplicateTask,
   onViewTaskDetails,
   selectedTask,
+  onCreateTask,
 }: TaskKanbanBoardProps) {
   return (
     <KanbanProvider onDragEnd={onDragEnd}>
@@ -40,6 +42,7 @@ function TaskKanbanBoard({
           <KanbanHeader
             name={statusLabels[status as TaskStatus]}
             color={statusBoardColors[status as TaskStatus]}
+            onAddTask={onCreateTask}
           />
           <KanbanCards>
             {statusTasks.map((task, index) => (

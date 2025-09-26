@@ -147,6 +147,7 @@ export type KanbanHeaderProps =
       name: Status['name'];
       color: Status['color'];
       className?: string;
+      onAddTask?: () => void;
     };
 
 export const KanbanHeader = (props: KanbanHeaderProps) =>
@@ -174,7 +175,7 @@ export const KanbanHeader = (props: KanbanHeaderProps) =>
             <button
               type="button"
               className="ml-auto inline-flex items-center justify-center rounded-sm p-1 text-muted-foreground transition hover:text-foreground"
-              onClick={() => console.log('Add Task clicked')}
+              onClick={props.onAddTask}
               aria-label="Add task"
             >
               <Plus className="h-4 w-4" />
