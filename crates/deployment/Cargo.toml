@@ -1,6 +1,6 @@
 [package]
 name = "deployment"
-version = "0.0.96"
+version = "0.0.97"
 edition = "2024"
 
 [dependencies]
