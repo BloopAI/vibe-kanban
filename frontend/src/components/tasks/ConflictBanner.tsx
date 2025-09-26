@@ -7,11 +7,12 @@ export type Props = Readonly<{
   attemptBranch: string | null;
   baseBranch?: string;
   conflictedFiles: readonly string[];
-  isEditable: boolean;
   onOpenEditor: () => void;
-  onInsertInstructions: () => void;
   onAbort: () => void;
   op?: ConflictOp | null;
+  onResolve?: () => void;
+  enableResolve: boolean;
+  enableAbort: boolean;
 }>;
 
 const MAX_VISIBLE_FILES = 8;
@@ -40,11 +41,12 @@ export function ConflictBanner({
   attemptBranch,
   baseBranch,
   conflictedFiles,
-  isEditable,
   onOpenEditor,
-  onInsertInstructions,
   onAbort,
   op,
+  onResolve,
+  enableResolve,
+  enableAbort,
 }: Props) {
   const { full: opTitle, lower: opTitleLower } = getOperationTitle(op);
   const {
@@ -90,6 +92,16 @@ export function ConflictBanner({
       </div>
 
       <div className="flex flex-wrap gap-2">
+        {onResolve && (
+          <Button
+            size="sm"
+            onClick={onResolve}
+            disabled={!enableResolve}
+            className="bg-yellow-600 text-white hover:bg-yellow-700"
+          >
+            Resolve conflicts
+          </Button>
+        )}
         <Button
           size="sm"
           variant="outline"
@@ -102,19 +114,10 @@ export function ConflictBanner({
         <Button
           size="sm"
           variant="outline"
-          className="border-yellow-300 text-yellow-800 hover:bg-yellow-100"
-          onClick={onInsertInstructions}
-          disabled={!isEditable}
-          aria-disabled={!isEditable}
-        >
-          Insert Resolve-Conflicts Instructions
-        </Button>
-
-        <Button
-          size="sm"
-          variant="outline"
           className="border-red-300 text-red-700 hover:bg-red-50"
           onClick={onAbort}
+          disabled={!enableAbort}
+          aria-disabled={!enableAbort}
         >
           Abort {opTitle}
         </Button>
