@@ -35,12 +35,14 @@ interface TaskFollowUpSectionProps {
   task: TaskWithAttemptStatus;
   selectedAttemptId?: string;
   jumpToLogsTab: () => void;
+  onAppendTextReady?: (appendText: (text: string) => void) => void;
 }
 
 export function TaskFollowUpSection({
   task,
   selectedAttemptId,
   jumpToLogsTab,
+  onAppendTextReady,
 }: TaskFollowUpSectionProps) {
   const { isAttemptRunning, stopExecution, isStopping, processes } =
     useAttemptExecution(selectedAttemptId, task.id);
@@ -192,6 +194,11 @@ export function TaskFollowUpSection({
       return prev + sep + text;
     });
   };
+
+  // Expose appendToFollowUpMessage to parent
+  useEffect(() => {
+    onAppendTextReady?.(appendToFollowUpMessage);
+  }, [onAppendTextReady]);
 
   // When a process completes (e.g., agent resolved conflicts), refresh branch status promptly
   const prevRunningRef = useRef<boolean>(isAttemptRunning);
