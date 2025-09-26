@@ -1,232 +1,359 @@
 import {
-  createContext,
-  useContext,
-  useState,
-  ReactNode,
-  useEffect,
+    createContext,
+    useContext,
+    useState,
+    ReactNode,
+    useEffect,
 } from 'react';
 import type { OpenInEditorPayload } from '@/utils/previewBridge';
+import type { TaskAttempt } from 'shared/types';
 
 export interface ClickedEntry {
-  id: string;
-  payload: OpenInEditorPayload;
-  timestamp: number;
-  dedupeKey: string;
+    id: string;
+    payload: OpenInEditorPayload;
+    timestamp: number;
+    dedupeKey: string;
 }
 
 interface ClickedElementsContextType {
-  elements: ClickedEntry[];
-  addElement: (payload: OpenInEditorPayload) => void;
-  removeElement: (id: string) => void;
-  clearElements: () => void;
-  generateMarkdown: () => string;
+    elements: ClickedEntry[];
+    addElement: (payload: OpenInEditorPayload) => void;
+    removeElement: (id: string) => void;
+    clearElements: () => void;
+    generateMarkdown: () => string;
 }
 
 const ClickedElementsContext = createContext<ClickedElementsContextType | null>(
-  null
+    null
 );
 
 export function useClickedElements() {
-  const context = useContext(ClickedElementsContext);
-  if (!context) {
-    throw new Error(
-      'useClickedElements must be used within a ClickedElementsProvider'
-    );
-  }
-  return context;
+    const context = useContext(ClickedElementsContext);
+    if (!context) {
+        throw new Error(
+            'useClickedElements must be used within a ClickedElementsProvider'
+        );
+    }
+    return context;
 }
 
 interface ClickedElementsProviderProps {
-  children: ReactNode;
-  attemptId?: string;
+    children: ReactNode;
+    attempt?: TaskAttempt | null;
 }
 
 const MAX_ELEMENTS = 20;
 
 // Helpers
 
-function normalizePath(path?: string): string {
-  if (!path) return '';
-  // Normalize schemes and webpack prefixes that can vary
-  return path
-    .replace(/^file:\/\//, '')
-    .replace(/^webpack:\/\/\//, '')
-    .replace(/^webpack:\/\//, '')
-    .trim();
+function stripPrefixes(p?: string): string {
+    if (!p) return '';
+    return p
+        .replace(/^file:\/\//, '')
+        .replace(/^webpack:\/\/\//, '')
+        .replace(/^webpack:\/\//, '')
+        .trim();
 }
+
+// macOS alias handling; no-ops on other OSes
+function normalizeMacPrivateAliases(p: string): string {
+    if (!p) return p;
+    // Very light normalization mimicking path.rs logic
+    if (p === '/private/var') return '/var';
+    if (p.startsWith('/private/var/')) return '/var/' + p.slice('/private/var/'.length);
+    if (p === '/private/tmp') return '/tmp';
+    if (p.startsWith('/private/tmp/')) return '/tmp/' + p.slice('/private/tmp/'.length);
+    return p;
+}
+
+// Return { path, line?, col? } where `path` has no trailing :line(:col).
+// Works even when Windows drive letters contain a colon.
+function parsePathWithLineCol(raw?: string): { path: string; line?: number; col?: number } {
+    const s = stripPrefixes(raw);
+    if (!s) return { path: '' };
+    const normalized = normalizeMacPrivateAliases(s);
+
+    // Try to split trailing :line(:col). Last and second-to-last tokens must be numbers.
+    const parts = normalized.split(':');
+    if (parts.length <= 2) return { path: normalized };
+
+    const last = parts[parts.length - 1];
+    const maybeCol = Number(last);
+    if (!Number.isFinite(maybeCol)) return { path: normalized };
+
+    const prev = parts[parts.length - 2];
+    const maybeLine = Number(prev);
+    if (!Number.isFinite(maybeLine)) return { path: normalized };
+
+    // Windows drive (e.g., "C") is at index 0; this still works because we only strip the end
+    const basePath = parts.slice(0, parts.length - 2).join(':');
+    return { path: basePath, line: maybeLine, col: maybeCol };
+}
+
+function relativizePath(p: string, workspaceRoot?: string): string {
+    if (!p) return '';
+    const normalized = normalizeMacPrivateAliases(stripPrefixes(p));
+
+    if (!workspaceRoot) return normalized;
+
+    // Simple prefix strip; robust handling is on backend (path.rs).
+    // This keeps the UI stable even when run inside macOS /private/var containers.
+    const wr = normalizeMacPrivateAliases(workspaceRoot.replace(/\/+$/, ''));
+    if (
+        normalized.startsWith(wr.endsWith('/') ? wr : wr + '/')
+        || normalized === wr
+    ) {
+        const rel = normalized.slice(wr.length);
+        return rel.startsWith('/') ? rel.slice(1) : (rel || '.');
+    }
+    return normalized;
+}
+
+function formatLoc(path: string, line?: number, col?: number) {
+    if (!path) return '';
+    if (line == null) return path;
+    return `${path}:${line}${col != null ? `:${col}` : ''}`;
+}
+
+function formatDomBits(ce?: OpenInEditorPayload['clickedElement']) {
+    const bits: string[] = [];
+    if (ce?.tag) bits.push(ce.tag.toLowerCase());
+    if (ce?.id) bits.push(`#${ce.id}`);
+    const classes = normalizeClassName(ce?.className);
+    if (classes) bits.push(`.${classes}`);
+    if (ce?.role) bits.push(`@${ce.role}`);
+    return bits.join('') || '(unknown)';
+}
+
+
 
 function normalizeClassName(className?: string): string {
-  if (!className) return '';
-  return className.split(/\s+/).filter(Boolean).sort().join('.');
+    if (!className) return '';
+    return className.split(/\s+/).filter(Boolean).sort().join('.');
 }
 
-function makeDedupeKey(payload: OpenInEditorPayload): string {
-  const s = payload.selected;
-  const ce = payload.clickedElement;
-  const domBits: string[] = [];
-  if (ce?.tag) domBits.push(ce.tag.toLowerCase());
-  if (ce?.id) domBits.push(`#${ce.id}`);
-  const normalizedClasses = normalizeClassName(ce?.className);
-  if (normalizedClasses) domBits.push(`.${normalizedClasses}`);
-  if (ce?.role) domBits.push(`@${ce.role}`);
+function makeDedupeKey(payload: OpenInEditorPayload, workspaceRoot?: string): string {
+    const s = payload.selected;
+    const ce = payload.clickedElement;
 
-  const domKey = domBits.join('');
-  const locKey = [
-    normalizePath(s.pathToSource),
-    s.source?.lineNumber ?? '',
-    s.source?.columnNumber ?? '',
-  ].join(':');
+    const { path } = parsePathWithLineCol(s.pathToSource);
+    const rel = relativizePath(path, workspaceRoot);
 
-  // Do not include coords to avoid jitter breaking dedupe
-  return `${s.name}|${locKey}|${domKey}`;
+    const domBits: string[] = [];
+    if (ce?.tag) domBits.push(ce.tag.toLowerCase());
+    if (ce?.id) domBits.push(`#${ce.id}`);
+    const normalizedClasses = normalizeClassName(ce?.className);
+    if (normalizedClasses) domBits.push(`.${normalizedClasses}`);
+    if (ce?.role) domBits.push(`@${ce.role}`);
+
+    const locKey = [rel, s.source?.lineNumber ?? '', s.source?.columnNumber ?? ''].join(':');
+    return `${s.name}|${locKey}|${domBits.join('')}`;
 }
 
 // Remove heavy or unsafe props while retaining debuggability
 function pruneValue(
-  value: unknown,
-  depth: number,
-  maxString = 200,
-  maxArray = 20
+    value: unknown,
+    depth: number,
+    maxString = 200,
+    maxArray = 20
 ): unknown {
-  if (depth <= 0) return '[MaxDepth]';
+    if (depth <= 0) return '[MaxDepth]';
 
-  if (value == null) return value;
-  const t = typeof value;
-  if (t === 'string')
-    return (value as string).length > maxString
-      ? (value as string).slice(0, maxString) + '…'
-      : value;
-  if (t === 'number' || t === 'boolean') return value;
-  if (t === 'function') return '[Function]';
-  if (t === 'bigint') return value.toString() + 'n';
-  if (t === 'symbol') return value.toString();
+    if (value == null) return value;
+    const t = typeof value;
+    if (t === 'string')
+        return (value as string).length > maxString
+            ? (value as string).slice(0, maxString) + '…'
+            : value;
+    if (t === 'number' || t === 'boolean') return value;
+    if (t === 'function') return '[Function]';
+    if (t === 'bigint') return value.toString() + 'n';
+    if (t === 'symbol') return value.toString();
 
-  if (Array.isArray(value)) {
-    const lim = (value as unknown[])
-      .slice(0, maxArray)
-      .map((v) => pruneValue(v, depth - 1, maxString, maxArray));
-    if ((value as unknown[]).length > maxArray)
-      lim.push(`[+${(value as unknown[]).length - maxArray} more]`);
-    return lim;
-  }
-
-  if (t === 'object') {
-    const obj = value as Record<string, unknown>;
-    const out: Record<string, unknown> = {};
-    let count = 0;
-    for (const k of Object.keys(obj)) {
-      // Cap keys to keep small
-      if (count++ > 50) {
-        out['[TruncatedKeys]'] = true;
-        break;
-      }
-      out[k] = pruneValue(obj[k], depth - 1, maxString, maxArray);
+    if (Array.isArray(value)) {
+        const lim = (value as unknown[])
+            .slice(0, maxArray)
+            .map((v) => pruneValue(v, depth - 1, maxString, maxArray));
+        if ((value as unknown[]).length > maxArray)
+            lim.push(`[+${(value as unknown[]).length - maxArray} more]`);
+        return lim;
     }
-    return out;
-  }
 
-  return '[Unknown]';
+    if (t === 'object') {
+        const obj = value as Record<string, unknown>;
+        const out: Record<string, unknown> = {};
+        let count = 0;
+        for (const k of Object.keys(obj)) {
+            // Cap keys to keep small
+            if (count++ > 50) {
+                out['[TruncatedKeys]'] = true;
+                break;
+            }
+            out[k] = pruneValue(obj[k], depth - 1, maxString, maxArray);
+        }
+        return out;
+    }
+
+    return '[Unknown]';
 }
 
 function stripHeavyProps(payload: OpenInEditorPayload): OpenInEditorPayload {
-  // Avoid mutating caller objects
-  const shallowSelected = {
-    ...payload.selected,
-    props: pruneValue(payload.selected.props, 2) as Record<string, unknown>,
-  };
+    // Avoid mutating caller objects
+    const shallowSelected = {
+        ...payload.selected,
+        props: pruneValue(payload.selected.props, 2) as Record<string, unknown>,
+    };
 
-  const shallowComponents = payload.components.map((c) => ({
-    ...c,
-    props: pruneValue(c.props, 2) as Record<string, unknown>,
-  }));
+    const shallowComponents = payload.components.map((c) => ({
+        ...c,
+        props: pruneValue(c.props, 2) as Record<string, unknown>,
+    }));
 
-  // dataset and coords are typically small; keep as-is.
-  return {
-    ...payload,
-    selected: shallowSelected,
-    components: shallowComponents,
-  };
+    // dataset and coords are typically small; keep as-is.
+    return {
+        ...payload,
+        selected: shallowSelected,
+        components: shallowComponents,
+    };
 }
 
-function formatClickedMarkdown(entry: ClickedEntry): string {
-  const { payload } = entry;
-  const s = payload.selected;
-  const loc = `${normalizePath(s.pathToSource)}:${s.source?.lineNumber ?? 0}${s.source?.columnNumber != null ? ':' + s.source.columnNumber : ''}`;
-  const ce = payload.clickedElement;
-  const domBits: string[] = [];
-  if (ce?.tag) domBits.push(ce.tag.toLowerCase());
-  if (ce?.id) domBits.push(`#${ce.id}`);
-  const classes = normalizeClassName(ce?.className);
-  if (classes) domBits.push(`.${classes}`);
-  if (ce?.role) domBits.push(`@${ce.role}`);
-  const dom = domBits.join('') || '(unknown)';
+function formatComponentHierarchy(payload: OpenInEditorPayload, workspaceRoot?: string): string {
+    const comps = payload.components ?? [];
+    const s = payload.selected;
+    
+    // Build all unique components (including selected)
+    const allComponents = [...comps];
+    
+    // Add selected if not already in components list
+    const selectedKey = `${s.name}|${s.pathToSource}|${s.source?.lineNumber}|${s.source?.columnNumber}`;
+    const hasSelected = comps.some(c => 
+        `${c.name}|${c.pathToSource}|${c.source?.lineNumber}|${c.source?.columnNumber}` === selectedKey
+    );
+    
+    if (!hasSelected) {
+        allComponents.push(s);
+    }
 
-  return [
-    `From preview click:`,
-    `- DOM: ${dom}`,
-    `- Component: ${s.name} (${loc})`,
-  ].join('\n');
+    // Remove duplicates by creating unique keys
+    const seen = new Set<string>();
+    const unique = allComponents.filter(c => {
+        const parsed = parsePathWithLineCol(c.pathToSource);
+        const rel = relativizePath(parsed.path, workspaceRoot);
+        const loc = formatLoc(rel, c.source?.lineNumber ?? parsed.line, c.source?.columnNumber ?? parsed.col);
+        const key = `${c.name}|${loc}`;
+        
+        if (seen.has(key)) {
+            return false;
+        }
+        seen.add(key);
+        return true;
+    });
+
+    // Format with clear hierarchy indication
+    if (unique.length <= 1) {
+        return ''; // No hierarchy to show
+    }
+
+    const items: string[] = [];
+    for (let i = 0; i < unique.length; i++) {
+        const c = unique[i];
+        const parsed = parsePathWithLineCol(c.pathToSource);
+        const rel = relativizePath(parsed.path, workspaceRoot);
+        const loc = formatLoc(rel, c.source?.lineNumber ?? parsed.line, c.source?.columnNumber ?? parsed.col);
+        
+        // Add indentation and arrows to show containment
+        const indent = '  '.repeat(i);
+        const arrow = i > 0 ? '└─ ' : '';
+        const isSelected = c === s ? ' ← clicked' : '';
+        
+        items.push(`${indent}${arrow}${c.name} (\`${loc || 'no source'}\`)${isSelected}`);
+    }
+
+    return ['- Component hierarchy:', ...items].join('\n');
+}
+
+function formatClickedMarkdown(entry: ClickedEntry, workspaceRoot?: string): string {
+    const { payload } = entry;
+    const s = payload.selected;
+
+    // DOM
+    const dom = formatDomBits(payload.clickedElement);
+
+    // Selected component loc (parsed to avoid :8:9 duplication)
+    const parsed = parsePathWithLineCol(s.pathToSource);
+    const rel = relativizePath(parsed.path, workspaceRoot);
+    const loc = formatLoc(rel, s.source?.lineNumber ?? parsed.line, s.source?.columnNumber ?? parsed.col);
+
+    const hierarchy = formatComponentHierarchy(payload, workspaceRoot);
+
+    return [
+        `From preview click:`,
+        `- DOM: ${dom}`,
+        `- Selected: ${s.name} (${loc ? `\`${loc}\`` : 'no source'})`,
+        hierarchy,
+    ].join('\n');
 }
 
 export function ClickedElementsProvider({
-  children,
-  attemptId,
+    children,
+    attempt,
 }: ClickedElementsProviderProps) {
-  const [elements, setElements] = useState<ClickedEntry[]>([]);
+    const [elements, setElements] = useState<ClickedEntry[]>([]);
+    const workspaceRoot = attempt?.container_ref;
 
-  // Clear elements when attempt changes
-  useEffect(() => {
-    setElements([]);
-  }, [attemptId]);
+    // Clear elements when attempt changes
+    useEffect(() => {
+        setElements([]);
+    }, [attempt?.id]);
 
-  const addElement = (payload: OpenInEditorPayload) => {
-    const sanitized = stripHeavyProps(payload);
-    const dedupeKey = makeDedupeKey(sanitized);
+    const addElement = (payload: OpenInEditorPayload) => {
+        const sanitized = stripHeavyProps(payload);
+        const dedupeKey = makeDedupeKey(sanitized, workspaceRoot || undefined);
 
-    setElements((prev) => {
-      const last = prev[prev.length - 1];
-      if (last && last.dedupeKey === dedupeKey) {
-        return prev; // Skip consecutive duplicate
-      }
-      const newEntry: ClickedEntry = {
-        id: crypto.randomUUID(),
-        payload: sanitized,
-        timestamp: Date.now(),
-        dedupeKey,
-      };
-      const updated = [...prev, newEntry];
-      return updated.length > MAX_ELEMENTS
-        ? updated.slice(-MAX_ELEMENTS)
-        : updated;
-    });
-  };
+        setElements((prev) => {
+            const last = prev[prev.length - 1];
+            if (last && last.dedupeKey === dedupeKey) {
+                return prev; // Skip consecutive duplicate
+            }
+            const newEntry: ClickedEntry = {
+                id: crypto.randomUUID(),
+                payload: sanitized,
+                timestamp: Date.now(),
+                dedupeKey,
+            };
+            const updated = [...prev, newEntry];
+            return updated.length > MAX_ELEMENTS
+                ? updated.slice(-MAX_ELEMENTS)
+                : updated;
+        });
+    };
 
-  const removeElement = (id: string) => {
-    setElements((prev) => prev.filter((e) => e.id !== id));
-  };
+    const removeElement = (id: string) => {
+        setElements((prev) => prev.filter((e) => e.id !== id));
+    };
 
-  const clearElements = () => {
-    setElements([]);
-  };
+    const clearElements = () => {
+        setElements([]);
+    };
 
-  const generateMarkdown = () => {
-    if (elements.length === 0) return '';
-    const header = `## Clicked Elements (${elements.length})\n\n`;
-    const body = elements.map((e) => formatClickedMarkdown(e)).join('\n\n');
-    return header + body;
-  };
+    const generateMarkdown = () => {
+        if (elements.length === 0) return '';
+        const header = `## Clicked Elements (${elements.length})\n\n`;
+        const body = elements.map((e) => formatClickedMarkdown(e, workspaceRoot || undefined)).join('\n\n');
+        return header + body;
+    };
 
-  return (
-    <ClickedElementsContext.Provider
-      value={{
-        elements,
-        addElement,
-        removeElement,
-        clearElements,
-        generateMarkdown,
-      }}
-    >
-      {children}
-    </ClickedElementsContext.Provider>
-  );
+    return (
+        <ClickedElementsContext.Provider
+            value={{
+                elements,
+                addElement,
+                removeElement,
+                clearElements,
+                generateMarkdown,
+            }}
+        >
+            {children}
+        </ClickedElementsContext.Provider>
+    );
 }
