@@ -6,10 +6,12 @@ type Args = {
   attemptId?: string;
   message: string;
   reviewMarkdown: string;
+  clickedMarkdown?: string;
   selectedVariant: string | null;
   images: ImageResponse[];
   newlyUploadedImageIds: string[];
   clearComments: () => void;
+  clearClickedElements?: () => void;
   jumpToLogsTab: () => void;
   onAfterSendCleanup: () => void;
   setMessage: (v: string) => void;
@@ -19,10 +21,12 @@ export function useFollowUpSend({
   attemptId,
   message,
   reviewMarkdown,
+  clickedMarkdown,
   selectedVariant,
   images,
   newlyUploadedImageIds,
   clearComments,
+  clearClickedElements,
   jumpToLogsTab,
   onAfterSendCleanup,
   setMessage,
@@ -33,7 +37,11 @@ export function useFollowUpSend({
   const onSendFollowUp = useCallback(async () => {
     if (!attemptId) return;
     const extraMessage = message.trim();
-    const finalPrompt = [reviewMarkdown, extraMessage]
+    const finalPrompt = [
+      clickedMarkdown?.trim(),
+      reviewMarkdown?.trim(),
+      extraMessage,
+    ]
       .filter(Boolean)
       .join('\n\n');
     if (!finalPrompt) return;
@@ -53,6 +61,7 @@ export function useFollowUpSend({
       });
       setMessage('');
       clearComments();
+      clearClickedElements?.();
       onAfterSendCleanup();
       jumpToLogsTab();
     } catch (error: unknown) {
@@ -67,10 +76,12 @@ export function useFollowUpSend({
     attemptId,
     message,
     reviewMarkdown,
+    clickedMarkdown,
     newlyUploadedImageIds,
     images,
     selectedVariant,
     clearComments,
+    clearClickedElements,
     jumpToLogsTab,
     onAfterSendCleanup,
     setMessage,

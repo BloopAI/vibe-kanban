@@ -18,11 +18,13 @@ import { useUserSystem } from '@/components/config-provider';
 import { cn } from '@/lib/utils';
 //
 import { useReview } from '@/contexts/ReviewProvider';
+import { useClickedElements } from '@/contexts/ClickedElementsProvider';
 //
 import { VariantSelector } from '@/components/tasks/VariantSelector';
 import { FollowUpStatusRow } from '@/components/tasks/FollowUpStatusRow';
 import { useAttemptBranch } from '@/hooks/useAttemptBranch';
 import { FollowUpConflictSection } from '@/components/tasks/follow-up/FollowUpConflictSection';
+import { ClickedElementsBanner } from '@/components/tasks/ClickedElementsBanner';
 import { FollowUpEditorCard } from '@/components/tasks/follow-up/FollowUpEditorCard';
 import { useDraftStream } from '@/hooks/follow-up/useDraftStream';
 import { useDraftEdits } from '@/hooks/follow-up/useDraftEdits';
@@ -50,10 +52,20 @@ export function TaskFollowUpSection({
     useAttemptBranch(selectedAttemptId);
   const { profiles } = useUserSystem();
   const { comments, generateReviewMarkdown, clearComments } = useReview();
+  const {
+    elements: clickedElements,
+    generateMarkdown: generateClickedMarkdown,
+    clearElements: clearClickedElements,
+  } = useClickedElements();
 
   const reviewMarkdown = useMemo(
     () => generateReviewMarkdown(),
     [generateReviewMarkdown, comments]
+  );
+
+  const clickedMarkdown = useMemo(
+    () => generateClickedMarkdown(),
+    [generateClickedMarkdown, clickedElements]
   );
 
   // Draft stream and synchronization
@@ -136,10 +148,12 @@ export function TaskFollowUpSection({
       attemptId: selectedAttemptId,
       message: followUpMessage,
       reviewMarkdown,
+      clickedMarkdown,
       selectedVariant,
       images,
       newlyUploadedImageIds,
       clearComments,
+      clearClickedElements,
       jumpToLogsTab,
       onAfterSendCleanup: clearImagesAndUploads,
       setMessage: setFollowUpMessage,
@@ -176,9 +190,9 @@ export function TaskFollowUpSection({
       return false;
     }
 
-    // Allow sending if either review comments exist OR follow-up message is present
-    return Boolean(reviewMarkdown || followUpMessage.trim());
-  }, [canTypeFollowUp, reviewMarkdown, followUpMessage]);
+    // Allow sending if review comments, clicked elements, or follow-up message exist
+    return Boolean(reviewMarkdown || clickedMarkdown || followUpMessage.trim());
+  }, [canTypeFollowUp, reviewMarkdown, clickedMarkdown, followUpMessage]);
   // currentProfile is provided by useDefaultVariant
 
   const isDraftLocked =
@@ -292,6 +306,9 @@ export function TaskFollowUpSection({
               appendInstructions={appendToFollowUpMessage}
               refetchBranchStatus={refetchBranchStatus}
             />
+
+            {/* Clicked elements notice and actions */}
+            <ClickedElementsBanner />
 
             <div className="flex flex-col gap-2">
               <FollowUpEditorCard
