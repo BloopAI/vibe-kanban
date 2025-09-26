@@ -5,6 +5,7 @@ import type { ImageResponse } from 'shared/types';
 type Args = {
   attemptId?: string;
   message: string;
+  conflictMarkdown: string | null;
   reviewMarkdown: string;
   selectedVariant: string | null;
   images: ImageResponse[];
@@ -18,6 +19,7 @@ type Args = {
 export function useFollowUpSend({
   attemptId,
   message,
+  conflictMarkdown,
   reviewMarkdown,
   selectedVariant,
   images,
@@ -33,7 +35,7 @@ export function useFollowUpSend({
   const onSendFollowUp = useCallback(async () => {
     if (!attemptId) return;
     const extraMessage = message.trim();
-    const finalPrompt = [reviewMarkdown, extraMessage]
+    const finalPrompt = [conflictMarkdown, reviewMarkdown, extraMessage]
       .filter(Boolean)
       .join('\n\n');
     if (!finalPrompt) return;
@@ -66,6 +68,7 @@ export function useFollowUpSend({
   }, [
     attemptId,
     message,
+    conflictMarkdown,
     reviewMarkdown,
     newlyUploadedImageIds,
     images,

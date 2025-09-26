@@ -121,7 +121,7 @@ function CurrentAttempt({
     () => displayConflictOpLabel(branchStatus?.conflict_op),
     [branchStatus?.conflict_op]
   );
-  const handleOpenInEditor = useOpenInEditor(selectedAttempt);
+  const handleOpenInEditor = useOpenInEditor(selectedAttempt?.id);
   const { jumpToProcess } = useProcessSelection();
 
   // Attempt action hooks

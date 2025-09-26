@@ -1,72 +1,85 @@
-import { useCallback } from 'react';
-import { attemptsApi } from '@/lib/api';
+import { useEffect, useRef, useState } from 'react';
 import { ConflictBanner } from '@/components/tasks/ConflictBanner';
-import { buildResolveConflictsInstructions } from '@/lib/conflicts';
+import { useOpenInEditor } from '@/hooks/useOpenInEditor';
+import { useAttemptConflicts } from '@/hooks/useAttemptConflicts';
 import type { BranchStatus } from 'shared/types';
 
 type Props = {
   selectedAttemptId?: string;
   attemptBranch: string | null;
-  branchStatus?: BranchStatus;
+  branchStatus: BranchStatus;
   isEditable: boolean;
-  appendInstructions: (text: string) => void;
-  refetchBranchStatus: () => void;
+  onResolve?: () => void;
+  enableResolve: boolean;
+  enableAbort: boolean;
+  conflictResolutionInstructions: string | null;
 };
 
 export function FollowUpConflictSection({
   selectedAttemptId,
   attemptBranch,
   branchStatus,
-  isEditable,
-  appendInstructions,
-  refetchBranchStatus,
+  onResolve,
+  enableResolve,
+  enableAbort,
+  conflictResolutionInstructions,
 }: Props) {
-  const op = branchStatus?.conflict_op ?? null;
-  const handleInsertInstructions = useCallback(() => {
-    const template = buildResolveConflictsInstructions(
-      attemptBranch,
-      branchStatus?.base_branch_name,
-      branchStatus?.conflicted_files || [],
-      op
-    );
-    appendInstructions(template);
-  }, [
-    attemptBranch,
-    branchStatus?.base_branch_name,
-    branchStatus?.conflicted_files,
-    op,
-    appendInstructions,
-  ]);
+  const op = branchStatus.conflict_op ?? null;
+  const openInEditor = useOpenInEditor(selectedAttemptId);
+  const { abortConflicts } = useAttemptConflicts(selectedAttemptId);
 
-  const hasConflicts = (branchStatus?.conflicted_files?.length ?? 0) > 0;
-  if (!hasConflicts) return null;
+  // write using setAborting and read through abortingRef in async handlers
+  const [aborting, setAborting] = useState(false);
+  const abortingRef = useRef(false);
+  useEffect(() => {
+    abortingRef.current = aborting;
+  }, [aborting]);
+
+  if (
+    !branchStatus.is_rebase_in_progress &&
+    !branchStatus.conflicted_files?.length
+  )
+    return null;
 
   return (
-    <ConflictBanner
-      attemptBranch={attemptBranch}
-      baseBranch={branchStatus?.base_branch_name}
-      conflictedFiles={branchStatus?.conflicted_files || []}
-      isEditable={isEditable}
-      op={op}
-      onOpenEditor={async () => {
-        if (!selectedAttemptId) return;
-        try {
-          const first = branchStatus?.conflicted_files?.[0];
-          await attemptsApi.openEditor(selectedAttemptId, undefined, first);
-        } catch (e) {
-          console.error('Failed to open editor', e);
-        }
-      }}
-      onInsertInstructions={handleInsertInstructions}
-      onAbort={async () => {
-        if (!selectedAttemptId) return;
-        try {
-          await attemptsApi.abortConflicts(selectedAttemptId);
-          refetchBranchStatus();
-        } catch (e) {
-          console.error('Failed to abort conflicts', e);
-        }
-      }}
-    />
+    <>
+      <ConflictBanner
+        attemptBranch={attemptBranch}
+        baseBranch={branchStatus.base_branch_name}
+        conflictedFiles={branchStatus.conflicted_files || []}
+        op={op}
+        onResolve={onResolve}
+        enableResolve={enableResolve && !aborting}
+        onOpenEditor={() => {
+          if (!selectedAttemptId) return;
+          const first = branchStatus.conflicted_files?.[0];
+          openInEditor(first ? { filePath: first } : undefined);
+        }}
+        onAbort={async () => {
+          if (!selectedAttemptId) return;
+          if (!enableAbort || abortingRef.current) return;
+          try {
+            setAborting(true);
+            await abortConflicts();
+          } catch (e) {
+            console.error('Failed to abort conflicts', e);
+          } finally {
+            setAborting(false);
+          }
+        }}
+        enableAbort={enableAbort && !aborting}
+      />
+      {/* Conflict instructions preview (non-editable) */}
+      {conflictResolutionInstructions && enableResolve && (
+        <div className="text-sm mb-4">
+          <div className="text-xs font-medium text-warning-foreground dark:text-warning mb-1">
+            Conflict resolution instructions
+          </div>
+          <div className="whitespace-pre-wrap">
+            {conflictResolutionInstructions}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

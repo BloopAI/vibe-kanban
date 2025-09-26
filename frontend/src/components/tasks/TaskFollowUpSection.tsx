@@ -30,6 +30,7 @@ import { useDraftAutosave } from '@/hooks/follow-up/useDraftAutosave';
 import { useDraftQueue } from '@/hooks/follow-up/useDraftQueue';
 import { useFollowUpSend } from '@/hooks/follow-up/useFollowUpSend';
 import { useDefaultVariant } from '@/hooks/follow-up/useDefaultVariant';
+import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 
 interface TaskFollowUpSectionProps {
   task: TaskWithAttemptStatus;
@@ -55,6 +56,23 @@ export function TaskFollowUpSection({
     () => generateReviewMarkdown(),
     [generateReviewMarkdown, comments]
   );
+
+  // Non-editable conflict resolution instructions (derived, like review comments)
+  const conflictResolutionInstructions = useMemo(() => {
+    const hasConflicts = (branchStatus?.conflicted_files?.length ?? 0) > 0;
+    if (!hasConflicts) return null;
+    return buildResolveConflictsInstructions(
+      attemptBranch,
+      branchStatus?.base_branch_name,
+      branchStatus?.conflicted_files || [],
+      branchStatus?.conflict_op ?? null
+    );
+  }, [
+    attemptBranch,
+    branchStatus?.base_branch_name,
+    branchStatus?.conflicted_files,
+    branchStatus?.conflict_op,
+  ]);
 
   // Draft stream and synchronization
   const {
@@ -135,6 +153,7 @@ export function TaskFollowUpSection({
     useFollowUpSend({
       attemptId: selectedAttemptId,
       message: followUpMessage,
+      conflictMarkdown: conflictResolutionInstructions,
       reviewMarkdown,
       selectedVariant,
       images,
@@ -176,22 +195,21 @@ export function TaskFollowUpSection({
       return false;
     }
 
-    // Allow sending if either review comments exist OR follow-up message is present
-    return Boolean(reviewMarkdown || followUpMessage.trim());
-  }, [canTypeFollowUp, reviewMarkdown, followUpMessage]);
+    // Allow sending if conflict instructions or review comments exist, or message is present
+    return Boolean(
+      conflictResolutionInstructions || reviewMarkdown || followUpMessage.trim()
+    );
+  }, [
+    canTypeFollowUp,
+    conflictResolutionInstructions,
+    reviewMarkdown,
+    followUpMessage,
+  ]);
   // currentProfile is provided by useDefaultVariant
 
   const isDraftLocked =
     displayQueued || isQueuing || isUnqueuing || !!draft?.sending;
   const isEditable = isDraftLoaded && !isDraftLocked;
-
-  const appendToFollowUpMessage = (text: string) => {
-    setFollowUpMessage((prev) => {
-      const sep =
-        prev.trim().length === 0 ? '' : prev.endsWith('\n') ? '\n' : '\n\n';
-      return prev + sep + text;
-    });
-  };
 
   // When a process completes (e.g., agent resolved conflicts), refresh branch status promptly
   const prevRunningRef = useRef<boolean>(isAttemptRunning);
@@ -284,21 +302,27 @@ export function TaskFollowUpSection({
             )}
 
             {/* Conflict notice and actions (optional UI) */}
-            <FollowUpConflictSection
-              selectedAttemptId={selectedAttemptId}
-              attemptBranch={attemptBranch}
-              branchStatus={branchStatus}
-              isEditable={isEditable}
-              appendInstructions={appendToFollowUpMessage}
-              refetchBranchStatus={refetchBranchStatus}
-            />
+            {branchStatus && (
+              <FollowUpConflictSection
+                selectedAttemptId={selectedAttemptId}
+                attemptBranch={attemptBranch}
+                branchStatus={branchStatus}
+                isEditable={isEditable}
+                onResolve={onSendFollowUp}
+                enableResolve={
+                  canSendFollowUp && !isAttemptRunning && isEditable
+                }
+                enableAbort={canSendFollowUp && !isAttemptRunning}
+                conflictResolutionInstructions={conflictResolutionInstructions}
+              />
+            )}
 
             <div className="flex flex-col gap-2">
               <FollowUpEditorCard
                 placeholder={
                   isQueued
                     ? 'Type your follow-up… It will auto-send when ready.'
-                    : reviewMarkdown
+                    : reviewMarkdown || conflictResolutionInstructions
                       ? '(Optional) Add additional instructions... Type @ to search files.'
                       : 'Continue working on this task attempt... Type @ to search files.'
                 }
@@ -389,7 +413,9 @@ export function TaskFollowUpSection({
                       ) : (
                         <>
                           <Send className="h-4 w-4 mr-2" />
-                          Send
+                          {conflictResolutionInstructions
+                            ? 'Resolve conflicts'
+                            : 'Send'}
                         </>
                       )}
                     </Button>

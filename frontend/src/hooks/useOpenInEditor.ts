@@ -1,24 +1,38 @@
 import { useCallback } from 'react';
 import { attemptsApi } from '@/lib/api';
 import NiceModal from '@ebay/nice-modal-react';
-import type { EditorType, TaskAttempt } from 'shared/types';
+import type { EditorType } from 'shared/types';
+
+type OpenEditorOptions = {
+  editorType?: EditorType;
+  filePath?: string;
+};
 
 export function useOpenInEditor(
-  attempt: TaskAttempt | null,
+  attemptId?: string,
   onShowEditorDialog?: () => void
 ) {
   return useCallback(
-    async (editorType?: EditorType) => {
-      if (!attempt) return;
+    async (options?: OpenEditorOptions): Promise<void> => {
+      if (!attemptId) return;
+
+      const { editorType, filePath } = options ?? {};
 
       try {
-        const result = await attemptsApi.openEditor(attempt.id, editorType);
+        const result = await attemptsApi.openEditor(
+          attemptId,
+          editorType,
+          filePath
+        );
 
         if (result === undefined && !editorType) {
           if (onShowEditorDialog) {
             onShowEditorDialog();
           } else {
-            NiceModal.show('editor-selection', { selectedAttempt: attempt });
+            NiceModal.show('editor-selection', {
+              selectedAttemptId: attemptId,
+              filePath,
+            });
           }
         }
       } catch (err) {
@@ -27,11 +41,14 @@ export function useOpenInEditor(
           if (onShowEditorDialog) {
             onShowEditorDialog();
           } else {
-            NiceModal.show('editor-selection', { selectedAttempt: attempt });
+            NiceModal.show('editor-selection', {
+              selectedAttemptId: attemptId,
+              filePath,
+            });
           }
         }
       }
     },
-    [attempt, onShowEditorDialog]
+    [attemptId, onShowEditorDialog]
   );
 }

@@ -7,11 +7,12 @@ export type Props = Readonly<{
   attemptBranch: string | null;
   baseBranch?: string;
   conflictedFiles: readonly string[];
-  isEditable: boolean;
   onOpenEditor: () => void;
-  onInsertInstructions: () => void;
   onAbort: () => void;
   op?: ConflictOp | null;
+  onResolve?: () => void;
+  enableResolve: boolean;
+  enableAbort: boolean;
 }>;
 
 const MAX_VISIBLE_FILES = 8;
@@ -40,11 +41,12 @@ export function ConflictBanner({
   attemptBranch,
   baseBranch,
   conflictedFiles,
-  isEditable,
   onOpenEditor,
-  onInsertInstructions,
   onAbort,
   op,
+  onResolve,
+  enableResolve,
+  enableAbort,
 }: Props) {
   const { full: opTitle, lower: opTitleLower } = getOperationTitle(op);
   const {
@@ -59,12 +61,15 @@ export function ConflictBanner({
 
   return (
     <div
-      className="flex flex-col gap-2 rounded-md border border-yellow-300 bg-yellow-50 p-3 text-yellow-900"
+      className="flex flex-col gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-warning-foreground dark:text-warning"
       role="status"
       aria-live="polite"
     >
       <div className="flex items-start gap-2">
-        <AlertCircle className="mt-0.5 h-4 w-4 text-yellow-700" aria-hidden />
+        <AlertCircle
+          className="mt-0.5 h-4 w-4 text-warning dark:text-warning/90"
+          aria-hidden
+        />
         <div className="text-sm leading-relaxed">
           <span>{heading}</span>{' '}
           <span>
@@ -72,7 +77,7 @@ export function ConflictBanner({
             until you resolve the conflicts or abort the {opTitleLower}.
           </span>
           {visibleFiles.length > 0 && (
-            <div className="mt-1 text-xs text-yellow-800">
+            <div className="mt-1 text-xs text-warning-foreground/90 dark:text-warning/80">
               <div className="font-medium">
                 Conflicted files ({visibleFiles.length}
                 {hasMore ? ` of ${total}` : ''}):
@@ -90,10 +95,20 @@ export function ConflictBanner({
       </div>
 
       <div className="flex flex-wrap gap-2">
+        {onResolve && (
+          <Button
+            size="sm"
+            onClick={onResolve}
+            disabled={!enableResolve}
+            className="bg-warning text-warning-foreground hover:bg-warning/90"
+          >
+            Resolve conflicts
+          </Button>
+        )}
         <Button
           size="sm"
           variant="outline"
-          className="border-yellow-300 text-yellow-800 hover:bg-yellow-100"
+          className="border-warning/40 text-warning-foreground hover:bg-warning/10 dark:text-warning/90"
           onClick={onOpenEditor}
         >
           Open in Editor
@@ -102,19 +117,10 @@ export function ConflictBanner({
         <Button
           size="sm"
           variant="outline"
-          className="border-yellow-300 text-yellow-800 hover:bg-yellow-100"
-          onClick={onInsertInstructions}
-          disabled={!isEditable}
-          aria-disabled={!isEditable}
-        >
-          Insert Resolve-Conflicts Instructions
-        </Button>
-
-        <Button
-          size="sm"
-          variant="outline"
-          className="border-red-300 text-red-700 hover:bg-red-50"
+          className="border-destructive/40 text-destructive hover:bg-destructive/10"
           onClick={onAbort}
+          disabled={!enableAbort}
+          aria-disabled={!enableAbort}
         >
           Abort {opTitle}
         </Button>
