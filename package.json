@@ -38,8 +38,8 @@
     "pnpm": ">=8"
   },
   "dependencies": {
+    "lodash": "^4.17.21",
     "@dnd-kit/utilities": "^3.2.2",
-    "@ebay/nice-modal-react": "^1.2.13",
-    "lodash": "^4.17.21"
+    "@ebay/nice-modal-react": "^1.2.13"
   }
 }
