@@ -4,5 +4,8 @@
     "noTasks": "このプロジェクトにタスクが見つかりません。",
     "createFirst": "最初のタスクを作成",
     "noSearchResults": "検索条件に一致するタスクがありません。"
+  },
+  "actions": {
+    "addTask": "タスクを追加"
   }
 }

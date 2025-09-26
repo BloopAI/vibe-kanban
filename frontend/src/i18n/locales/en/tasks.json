@@ -4,5 +4,8 @@
     "noTasks": "No tasks found for this project.",
     "createFirst": "Create First Task",
     "noSearchResults": "No tasks match your search."
+  },
+  "actions": {
+    "addTask": "Add task"
   }
 }

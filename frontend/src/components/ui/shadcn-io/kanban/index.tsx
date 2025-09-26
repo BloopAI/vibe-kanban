@@ -19,6 +19,7 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { type ReactNode, type Ref, type KeyboardEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { Plus } from 'lucide-react';
 import type { ClientRect } from '@dnd-kit/core';
@@ -150,10 +151,14 @@ export type KanbanHeaderProps =
       onAddTask?: () => void;
     };
 
-export const KanbanHeader = (props: KanbanHeaderProps) =>
-  'children' in props ? (
-    props.children
-  ) : (
+export const KanbanHeader = (props: KanbanHeaderProps) => {
+  const { t } = useTranslation('tasks');
+
+  if ('children' in props) {
+    return props.children;
+  }
+
+  return (
     <Card
       className={cn(
         'sticky top-0 z-20 flex shrink-0 items-center gap-2 p-3 border-b border-dashed',
@@ -176,16 +181,17 @@ export const KanbanHeader = (props: KanbanHeaderProps) =>
               type="button"
               className="ml-auto inline-flex items-center justify-center rounded-sm p-1 text-muted-foreground transition hover:text-foreground"
               onClick={props.onAddTask}
-              aria-label="Add task"
+              aria-label={t('actions.addTask')}
             >
               <Plus className="h-4 w-4" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="top">Add Task</TooltipContent>
+          <TooltipContent side="top">{t('actions.addTask')}</TooltipContent>
         </Tooltip>
       </TooltipProvider>
     </Card>
   );
+};
 
 function restrictToBoundingRectWithRightPadding(
   transform: Transform,
