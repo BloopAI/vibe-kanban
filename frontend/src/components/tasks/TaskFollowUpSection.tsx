@@ -18,11 +18,13 @@ import { useUserSystem } from '@/components/config-provider';
 import { cn } from '@/lib/utils';
 //
 import { useReview } from '@/contexts/ReviewProvider';
+import { useClickedElements } from '@/contexts/ClickedElementsProvider';
 //
 import { VariantSelector } from '@/components/tasks/VariantSelector';
 import { FollowUpStatusRow } from '@/components/tasks/FollowUpStatusRow';
 import { useAttemptBranch } from '@/hooks/useAttemptBranch';
 import { FollowUpConflictSection } from '@/components/tasks/follow-up/FollowUpConflictSection';
+import { ClickedElementsBanner } from '@/components/tasks/ClickedElementsBanner';
 import { FollowUpEditorCard } from '@/components/tasks/follow-up/FollowUpEditorCard';
 import { useDraftStream } from '@/hooks/follow-up/useDraftStream';
 import { useRetryUi } from '@/contexts/RetryUiContext';
@@ -55,10 +57,20 @@ export function TaskFollowUpSection({
     useAttemptBranch(selectedAttemptId);
   const { profiles } = useUserSystem();
   const { comments, generateReviewMarkdown, clearComments } = useReview();
+  const {
+    elements: clickedElements,
+    generateMarkdown: generateClickedMarkdown,
+    clearElements: clearClickedElements,
+  } = useClickedElements();
 
   const reviewMarkdown = useMemo(
     () => generateReviewMarkdown(),
     [generateReviewMarkdown, comments]
+  );
+
+  const clickedMarkdown = useMemo(
+    () => generateClickedMarkdown(),
+    [generateClickedMarkdown, clickedElements]
   );
 
   // Non-editable conflict resolution instructions (derived, like review comments)
@@ -150,10 +162,12 @@ export function TaskFollowUpSection({
       message: followUpMessage,
       conflictMarkdown: conflictResolutionInstructions,
       reviewMarkdown,
+      clickedMarkdown,
       selectedVariant,
       images,
       newlyUploadedImageIds,
       clearComments,
+      clearClickedElements,
       jumpToLogsTab,
       onAfterSendCleanup: clearImagesAndUploads,
       setMessage: setFollowUpMessage,
@@ -192,14 +206,18 @@ export function TaskFollowUpSection({
       return false;
     }
 
-    // Allow sending if conflict instructions or review comments exist, or message is present
+    // Allow sending if conflict instructions, review comments, clicked elements, or message is present
     return Boolean(
-      conflictResolutionInstructions || reviewMarkdown || followUpMessage.trim()
+      conflictResolutionInstructions ||
+        reviewMarkdown ||
+        clickedMarkdown ||
+        followUpMessage.trim()
     );
   }, [
     canTypeFollowUp,
     conflictResolutionInstructions,
     reviewMarkdown,
+    clickedMarkdown,
     followUpMessage,
   ]);
   // currentProfile is provided by useDefaultVariant
@@ -328,6 +346,9 @@ export function TaskFollowUpSection({
                 conflictResolutionInstructions={conflictResolutionInstructions}
               />
             )}
+
+            {/* Clicked elements notice and actions */}
+            <ClickedElementsBanner />
 
             <div className="flex flex-col gap-2">
               <FollowUpEditorCard

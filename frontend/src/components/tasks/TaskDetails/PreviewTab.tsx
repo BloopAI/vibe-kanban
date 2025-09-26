@@ -15,7 +15,7 @@ import {
 
 interface PreviewTabProps {
   previewState: DevserverPreviewState;
-  onElementClicked?: (details: string) => void;
+  onElementClicked?: (payload: OpenInEditorPayload) => void;
 }
 
 export default function PreviewTab({
@@ -41,28 +41,6 @@ export default function PreviewTab({
     setIframeError(true);
   };
 
-  const formatElementDetails = (payload: OpenInEditorPayload): string => {
-    const { clickedElement, selected } = payload;
-    const parts = ['From preview click:'];
-
-    if (clickedElement) {
-      const selector = [];
-      if (clickedElement.tag) selector.push(clickedElement.tag.toLowerCase());
-      if (clickedElement.id) selector.push('#' + clickedElement.id);
-      if (clickedElement.className)
-        selector.push('.' + clickedElement.className.replace(/\s+/g, '.'));
-      if (selector.length) parts.push(`- DOM: ${selector.join('')}`);
-    }
-
-    if (selected) {
-      parts.push(
-        `- Component: ${selected.name} (${selected.pathToSource}:${selected.source.lineNumber})`
-      );
-    }
-
-    return parts.join('\n');
-  };
-
   // Set up message listener when iframe is ready
   useEffect(() => {
     if (
@@ -75,8 +53,7 @@ export default function PreviewTab({
 
     const listener = new ClickToComponentListener({
       onOpenInEditor: (payload) => {
-        const details = formatElementDetails(payload);
-        onElementClicked(details);
+        onElementClicked(payload);
       },
     });
 
