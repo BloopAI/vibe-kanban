@@ -210,7 +210,11 @@ pub async fn update_task(
 ) -> Result<ResponseJson<ApiResponse<Task>>, ApiError> {
     // Use existing values if not provided in update
     let title = payload.title.unwrap_or(existing_task.title);
-    let description = payload.description.or(existing_task.description);
+    let description = match payload.description {
+        Some(s) if s.trim().is_empty() => None, // Empty string = clear description
+        Some(s) => Some(s),                     // Non-empty string = update description  
+        None => existing_task.description,      // Field omitted = keep existing
+    };
     let status = payload.status.unwrap_or(existing_task.status);
     let parent_task_attempt = payload
         .parent_task_attempt
