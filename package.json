@@ -10,12 +10,15 @@
     "npx-cli/dist/**"
   ],
   "scripts": {
+    "lint": "npm run frontend:lint && npm run backend:lint",
     "format": "cargo fmt --all && cd frontend && npm run format",
     "check": "npm run frontend:check && npm run backend:check",
     "dev": "export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && concurrently \"npm run backend:dev:watch\" \"npm run frontend:dev\"",
     "test:npm": "./test-npm-package.sh",
+    "frontend:lint": "cd frontend && npm run lint",
     "frontend:dev": "cd frontend && npm run dev -- --port ${FRONTEND_PORT:-3000} --host",
     "frontend:check": "cd frontend && npm run check",
+    "backend:lint": "cargo clippy --workspace --all-targets --all-features -- -D warnings",
     "backend:dev": "BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) npm run backend:dev:watch",
     "backend:check": "cargo check",
     "backend:dev:watch": "DISABLE_WORKTREE_ORPHAN_CLEANUP=1 RUST_LOG=debug cargo watch -w crates -x 'run --bin server'",

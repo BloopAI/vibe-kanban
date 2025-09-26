@@ -1777,6 +1777,8 @@ impl GitService {
         target_path: &Path,
         token: Option<&str>,
     ) -> Result<Repository, GitServiceError> {
+        use git2::{Cred, FetchOptions, RemoteCallbacks};
+
         if let Some(parent) = target_path.parent() {
             std::fs::create_dir_all(parent)?;
         }
@@ -1791,11 +1793,12 @@ impl GitService {
             // Fallback to SSH agent and key file authentication
             callbacks.credentials(|_url, username_from_url, _| {
                 // Try SSH agent first
-                if let Some(username) = username_from_url {
-                    if let Ok(cred) = Cred::ssh_key_from_agent(username) {
-                        return Ok(cred);
-                    }
+                if let Some(username) = username_from_url
+                    && let Ok(cred) = Cred::ssh_key_from_agent(username)
+                {
+                    return Ok(cred);
                 }
+
                 // Fallback to key file (~/.ssh/id_rsa)
                 let home = dirs::home_dir()
                     .ok_or_else(|| git2::Error::from_str("Could not find home directory"))?;
