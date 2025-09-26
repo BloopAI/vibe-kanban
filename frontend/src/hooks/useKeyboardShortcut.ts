@@ -7,6 +7,16 @@ import {
 
 export interface KeyboardShortcutOptions {
   enableOnContentEditable?: boolean;
+  enableOnFormTags?:
+    | boolean
+    | readonly (
+        | 'input'
+        | 'textarea'
+        | 'select'
+        | 'INPUT'
+        | 'TEXTAREA'
+        | 'SELECT'
+      )[];
   preventDefault?: boolean;
 }
 
@@ -18,7 +28,11 @@ export function useKeyboardShortcut(
   const unregisterRef = useRef<(() => void) | null>(null);
 
   const { keys, callback, when = true, description, group, scope } = config;
-  const { enableOnContentEditable = false, preventDefault = false } = options;
+  const {
+    enableOnContentEditable = false,
+    enableOnFormTags,
+    preventDefault = false,
+  } = options;
 
   // Keep latest callback/when without forcing re-register
   const callbackRef = useRef(callback);
@@ -64,9 +78,10 @@ export function useKeyboardShortcut(
     {
       enabled: true, // we gate inside handler via whenRef
       enableOnContentEditable,
+      enableOnFormTags,
       preventDefault,
       scopes: scope ? [scope] : ['*'],
     },
-    [keys, scope] // handler uses refs; only rebinding when identity changes
+    [keys, scope, enableOnContentEditable, enableOnFormTags, preventDefault] // handler uses refs; only rebinding when identity changes
   );
 }

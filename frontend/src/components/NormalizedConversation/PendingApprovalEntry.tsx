@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { ApprovalStatus, ToolStatus } from 'shared/types';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,9 @@ import { CircularProgress } from '@/components/ui/circular-progress';
 import { approvalsApi } from '@/lib/api';
 import { Check, X } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+
+import { useHotkeysContext } from 'react-hotkeys-hook';
+import { useKeyDenyApproval, Scope } from '@/keyboard';
 
 const DEFAULT_DENIAL_REASON = 'User denied this tool use request.';
 
@@ -45,6 +48,13 @@ const PendingApprovalEntry = ({
   const abortRef = useRef<AbortController | null>(null);
   const denyReasonRef = useRef<HTMLTextAreaElement | null>(null);
 
+  const { enableScope, disableScope } = useHotkeysContext();
+
+  useEffect(() => {
+    enableScope(Scope.APPROVALS);
+    return () => disableScope(Scope.APPROVALS);
+  }, [enableScope, disableScope]);
+
   const percent = useMemo(() => {
     const total = Math.max(
       1,
@@ -77,42 +87,45 @@ const PendingApprovalEntry = ({
 
   const disabled = isResponding || hasResponded || timeLeft <= 0;
 
-  const respond = async (approved: boolean, reason?: string) => {
-    if (disabled) return;
-    if (!executionProcessId) {
-      setError('Missing executionProcessId');
-      return;
-    }
+  const respond = useCallback(
+    async (approved: boolean, reason?: string) => {
+      if (disabled) return;
+      if (!executionProcessId) {
+        setError('Missing executionProcessId');
+        return;
+      }
 
-    setIsResponding(true);
-    setError(null);
-    const controller = new AbortController();
-    abortRef.current = controller;
+      setIsResponding(true);
+      setError(null);
+      const controller = new AbortController();
+      abortRef.current = controller;
 
-    const status: ApprovalStatus = approved
-      ? { status: 'approved' }
-      : { status: 'denied', reason };
+      const status: ApprovalStatus = approved
+        ? { status: 'approved' }
+        : { status: 'denied', reason };
 
-    try {
-      await approvalsApi.respond(
-        pendingStatus.approval_id,
-        {
-          execution_process_id: executionProcessId,
-          status,
-        },
-        controller.signal
-      );
+      try {
+        await approvalsApi.respond(
+          pendingStatus.approval_id,
+          {
+            execution_process_id: executionProcessId,
+            status,
+          },
+          controller.signal
+        );
 
-      setHasResponded(true);
-      setIsEnteringReason(false);
-      setDenyReason('');
-    } catch (e: any) {
-      console.error('Approval respond failed:', e);
-      setError(e?.message || 'Failed to send response');
-    } finally {
-      setIsResponding(false);
-    }
-  };
+        setHasResponded(true);
+        setIsEnteringReason(false);
+        setDenyReason('');
+      } catch (e: any) {
+        console.error('Approval respond failed:', e);
+        setError(e?.message || 'Failed to send response');
+      } finally {
+        setIsResponding(false);
+      }
+    },
+    [disabled, executionProcessId, pendingStatus.approval_id]
+  );
 
   const handleApprove = () => respond(true);
   const handleStartDeny = () => {
@@ -127,10 +140,26 @@ const PendingApprovalEntry = ({
     setDenyReason('');
   };
 
-  const handleSubmitDeny = () => {
+  const handleSubmitDeny = useCallback(() => {
     const trimmed = denyReason.trim();
     respond(false, trimmed || DEFAULT_DENIAL_REASON);
-  };
+  }, [denyReason, respond]);
+
+  const triggerDeny = useCallback(
+    (event?: KeyboardEvent) => {
+      if (disabled || hasResponded) return;
+      event?.preventDefault();
+      handleSubmitDeny();
+    },
+    [disabled, hasResponded, handleSubmitDeny]
+  );
+
+  useKeyDenyApproval(triggerDeny, {
+    scope: Scope.APPROVALS,
+    when: () => !hasResponded && !disabled,
+    enableOnFormTags: ['textarea', 'TEXTAREA'],
+    preventDefault: true,
+  });
 
   useEffect(() => {
     if (!hasResponded) return;

@@ -10,6 +10,16 @@ export interface SemanticKeyOptions {
   enabled?: boolean | (() => boolean);
   when?: boolean | (() => boolean); // Alias for enabled
   enableOnContentEditable?: boolean;
+  enableOnFormTags?:
+    | boolean
+    | readonly (
+        | 'input'
+        | 'textarea'
+        | 'select'
+        | 'INPUT'
+        | 'TEXTAREA'
+        | 'SELECT'
+      )[];
   preventDefault?: boolean;
 }
 
@@ -28,6 +38,7 @@ export function createSemanticHook<A extends Action>(action: A) {
       enabled = true,
       when,
       enableOnContentEditable,
+      enableOnFormTags,
       preventDefault,
     } = options;
 
@@ -45,6 +56,8 @@ export function createSemanticHook<A extends Action>(action: A) {
     const keyboardShortcutOptions: KeyboardShortcutOptions = {};
     if (enableOnContentEditable !== undefined)
       keyboardShortcutOptions.enableOnContentEditable = enableOnContentEditable;
+    if (enableOnFormTags !== undefined)
+      keyboardShortcutOptions.enableOnFormTags = enableOnFormTags;
     if (preventDefault !== undefined)
       keyboardShortcutOptions.preventDefault = preventDefault;
 
