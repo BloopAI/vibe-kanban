@@ -40,7 +40,6 @@
   "dependencies": {
     "@dnd-kit/utilities": "^3.2.2",
     "@ebay/nice-modal-react": "^1.2.13",
-    "lodash": "^4.17.21",
-    "vibe-kanban-web-companion": "^0.0.3"
+    "lodash": "^4.17.21"
   }
 }
