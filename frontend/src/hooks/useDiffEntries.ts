@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useDiffStream } from './useDiffStream';
+import type { UseDiffStreamOptions } from './useDiffStream';
 import type { Diff, PatchType } from 'shared/types';
 
 interface UseDiffEntriesResult {
@@ -10,9 +11,14 @@ interface UseDiffEntriesResult {
 
 export const useDiffEntries = (
   attemptId: string | null,
-  enabled: boolean
+  enabled: boolean,
+  options?: UseDiffStreamOptions
 ): UseDiffEntriesResult => {
-  const { data, isConnected, error } = useDiffStream(attemptId, enabled);
+  const { data, isConnected, error } = useDiffStream(
+    attemptId,
+    enabled,
+    options
+  );
 
   const diffs = useMemo(() => {
     if (!data) return [];
