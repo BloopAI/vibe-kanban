@@ -3,6 +3,7 @@ import {
   useKeyboardShortcut,
   type KeyboardShortcutOptions,
 } from '@/hooks/useKeyboardShortcut';
+import type { EnableOnFormTags } from './types';
 import { Action, Scope, getKeysFor, getBindingFor } from './registry';
 
 export interface SemanticKeyOptions {
@@ -10,16 +11,7 @@ export interface SemanticKeyOptions {
   enabled?: boolean | (() => boolean);
   when?: boolean | (() => boolean); // Alias for enabled
   enableOnContentEditable?: boolean;
-  enableOnFormTags?:
-    | boolean
-    | readonly (
-        | 'input'
-        | 'textarea'
-        | 'select'
-        | 'INPUT'
-        | 'TEXTAREA'
-        | 'SELECT'
-      )[];
+  enableOnFormTags?: EnableOnFormTags;
   preventDefault?: boolean;
 }
 

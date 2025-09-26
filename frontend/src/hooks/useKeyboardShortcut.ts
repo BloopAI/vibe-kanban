@@ -4,19 +4,11 @@ import {
   useKeyboardShortcutsRegistry,
   type ShortcutConfig,
 } from '@/contexts/keyboard-shortcuts-context';
+import type { EnableOnFormTags } from '@/keyboard/types';
 
 export interface KeyboardShortcutOptions {
   enableOnContentEditable?: boolean;
-  enableOnFormTags?:
-    | boolean
-    | readonly (
-        | 'input'
-        | 'textarea'
-        | 'select'
-        | 'INPUT'
-        | 'TEXTAREA'
-        | 'SELECT'
-      )[];
+  enableOnFormTags?: EnableOnFormTags;
   preventDefault?: boolean;
 }
 
