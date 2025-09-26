@@ -399,8 +399,30 @@ function CurrentAttempt({
   }, [selectedAttempt.container_ref]);
 
   const formatAheadBehind = useCallback(
-    (ahead?: number | null, behind?: number | null) =>
-      ` ${(ahead ?? 0) >= 0 ? '+' : ''}${ahead ?? 0}/${(behind ?? 0) >= 0 ? '-' : ''}${behind ?? 0}`,
+    (ahead?: number | null, behind?: number | null) => {
+      const normalizedAhead = ahead ?? 0;
+      const normalizedBehind = behind ?? 0;
+
+      if (normalizedAhead === 0 && normalizedBehind === 0) {
+        return '';
+      }
+
+      const parts: string[] = [];
+
+      if (normalizedAhead !== 0) {
+        parts.push(`${normalizedAhead > 0 ? '+' : ''}${normalizedAhead}`);
+      }
+
+      if (normalizedBehind !== 0) {
+        parts.push(`${normalizedBehind > 0 ? '-' : ''}${normalizedBehind}`);
+      }
+
+      if (parts.length === 0) {
+        return '';
+      }
+
+      return ` ${parts.join('/')}`;
+    },
     []
   );
 
@@ -480,10 +502,7 @@ function CurrentAttempt({
       return {
         dotColor: 'bg-yellow-500',
         textColor: 'text-yellow-700',
-        text:
-          branchStatus?.commits_ahead === 1
-            ? `1 commit ahead${branchStatus?.has_uncommitted_changes ? ' (dirty)' : ''}${countsLabel}`
-            : `${branchStatus?.commits_ahead} commits ahead${branchStatus?.has_uncommitted_changes ? ' (dirty)' : ''}${countsLabel}`,
+        text: `Branch ahead${branchStatus?.has_uncommitted_changes ? ' (dirty)' : ''}${countsLabel}`,
         isClickable: false,
       };
     }
