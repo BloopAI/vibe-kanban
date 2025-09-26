@@ -92,3 +92,19 @@ export const useKeyToggleFullscreen = createSemanticHook(
  * useKeyDeleteTask(() => handleDeleteTask(selectedTask), { scope: Scope.KANBAN });
  */
 export const useKeyDeleteTask = createSemanticHook(Action.DELETE_TASK);
+
+/**
+ * Approve pending approval action - typically Enter key
+ *
+ * @example
+ * useKeyApproveRequest(() => approvePendingRequest(), { scope: Scope.APPROVALS });
+ */
+export const useKeyApproveRequest = createSemanticHook(Action.APPROVE_REQUEST);
+
+/**
+ * Deny pending approval action - typically Cmd/Ctrl+Enter
+ *
+ * @example
+ * useKeyDenyApproval(() => denyPendingRequest(), { scope: Scope.GLOBAL });
+ */
+export const useKeyDenyApproval = createSemanticHook(Action.DENY_APPROVAL);

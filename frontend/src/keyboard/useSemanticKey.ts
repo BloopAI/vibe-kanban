@@ -3,6 +3,7 @@ import {
   useKeyboardShortcut,
   type KeyboardShortcutOptions,
 } from '@/hooks/useKeyboardShortcut';
+import type { EnableOnFormTags } from './types';
 import { Action, Scope, getKeysFor, getBindingFor } from './registry';
 
 export interface SemanticKeyOptions {
@@ -10,6 +11,7 @@ export interface SemanticKeyOptions {
   enabled?: boolean | (() => boolean);
   when?: boolean | (() => boolean); // Alias for enabled
   enableOnContentEditable?: boolean;
+  enableOnFormTags?: EnableOnFormTags;
   preventDefault?: boolean;
 }
 
@@ -28,6 +30,7 @@ export function createSemanticHook<A extends Action>(action: A) {
       enabled = true,
       when,
       enableOnContentEditable,
+      enableOnFormTags,
       preventDefault,
     } = options;
 
@@ -45,6 +48,8 @@ export function createSemanticHook<A extends Action>(action: A) {
     const keyboardShortcutOptions: KeyboardShortcutOptions = {};
     if (enableOnContentEditable !== undefined)
       keyboardShortcutOptions.enableOnContentEditable = enableOnContentEditable;
+    if (enableOnFormTags !== undefined)
+      keyboardShortcutOptions.enableOnFormTags = enableOnFormTags;
     if (preventDefault !== undefined)
       keyboardShortcutOptions.preventDefault = preventDefault;
 

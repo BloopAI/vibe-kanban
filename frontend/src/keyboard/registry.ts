@@ -4,6 +4,7 @@ export enum Scope {
   KANBAN = 'kanban',
   PROJECTS = 'projects',
   EDIT_COMMENT = 'edit-comment',
+  APPROVALS = 'approvals',
 }
 
 export enum Action {
@@ -19,6 +20,8 @@ export enum Action {
   SHOW_HELP = 'show_help',
   TOGGLE_FULLSCREEN = 'toggle_fullscreen',
   DELETE_TASK = 'delete_task',
+  APPROVE_REQUEST = 'approve_request',
+  DENY_APPROVAL = 'deny_approval',
 }
 
 export interface KeyBinding {
@@ -147,6 +150,22 @@ export const keyBindings: KeyBinding[] = [
     scopes: [Scope.KANBAN],
     description: 'Delete selected task',
     group: 'Task Details',
+  },
+
+  // Approval actions
+  {
+    action: Action.APPROVE_REQUEST,
+    keys: 'enter',
+    scopes: [Scope.APPROVALS],
+    description: 'Approve pending approval request',
+    group: 'Approvals',
+  },
+  {
+    action: Action.DENY_APPROVAL,
+    keys: ['meta+enter', 'ctrl+enter'],
+    scopes: [Scope.APPROVALS],
+    description: 'Deny pending approval request',
+    group: 'Approvals',
   },
 ];
 
