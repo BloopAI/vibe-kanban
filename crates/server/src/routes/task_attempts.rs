@@ -99,6 +99,12 @@ pub struct TaskAttemptQuery {
     pub task_id: Option<Uuid>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct DiffStreamQuery {
+    #[serde(default)]
+    pub stats_only: bool,
+}
+
 pub async fn get_task_attempts(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TaskAttemptQuery>,
@@ -961,11 +967,15 @@ pub async fn replace_process(
 #[axum::debug_handler]
 pub async fn stream_task_attempt_diff_ws(
     ws: WebSocketUpgrade,
+    Query(params): Query<DiffStreamQuery>,
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
 ) -> impl IntoResponse {
+    let stats_only = params.stats_only;
     ws.on_upgrade(move |socket| async move {
-        if let Err(e) = handle_task_attempt_diff_ws(socket, deployment, task_attempt).await {
+        if let Err(e) =
+            handle_task_attempt_diff_ws(socket, deployment, task_attempt, stats_only).await
+        {
             tracing::warn!("diff WS closed: {}", e);
         }
     })
@@ -975,13 +985,14 @@ async fn handle_task_attempt_diff_ws(
     socket: WebSocket,
     deployment: DeploymentImpl,
     task_attempt: TaskAttempt,
+    stats_only: bool,
 ) -> anyhow::Result<()> {
     use futures_util::{SinkExt, StreamExt, TryStreamExt};
     use utils::log_msg::LogMsg;
 
     let mut stream = deployment
         .container()
-        .stream_diff(&task_attempt)
+        .stream_diff(&task_attempt, stats_only)
         .await?
         .map_ok(|msg: LogMsg| msg.to_ws_message_unchecked());
 

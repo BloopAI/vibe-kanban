@@ -197,6 +197,7 @@ pub trait ContainerService {
     async fn stream_diff(
         &self,
         task_attempt: &TaskAttempt,
+        stats_only: bool,
     ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, ContainerError>;
 
     /// Fetch the MsgStore for a given execution ID, panicking if missing.

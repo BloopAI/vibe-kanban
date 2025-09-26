@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use serde::{Deserialize, Serialize};
 use similar::{ChangeTag, TextDiff};
 use ts_rs::TS;
@@ -87,6 +89,37 @@ pub fn create_unified_diff(file_path: &str, old: &str, new: &str) -> String {
     out.push_str(format!("--- a/{file_path}\n+++ b/{file_path}\n").as_str());
     out.push_str(&create_unified_diff_hunk(old, new));
     out
+}
+
+/// Compute addition/deletion counts between two text snapshots.
+pub fn compute_line_change_counts(old: &str, new: &str) -> (usize, usize) {
+    let old = ensure_newline(old);
+    let new = ensure_newline(new);
+
+    let diff = TextDiff::from_lines(&old, &new);
+
+    let mut additions = 0usize;
+    let mut deletions = 0usize;
+    for change in diff.iter_all_changes() {
+        match change.tag() {
+            ChangeTag::Insert => additions += 1,
+            ChangeTag::Delete => deletions += 1,
+            ChangeTag::Equal => {}
+        }
+    }
+
+    (additions, deletions)
+}
+
+// ensure a line ends with a newline character
+fn ensure_newline(line: &str) -> Cow<'_, str> {
+    if line.ends_with('\n') {
+        Cow::Borrowed(line)
+    } else {
+        let mut owned = line.to_owned();
+        owned.push('\n');
+        Cow::Owned(owned)
+    }
 }
 
 /// Extracts unified diff hunks from a string containing a full unified diff.

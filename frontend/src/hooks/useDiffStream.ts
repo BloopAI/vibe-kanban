@@ -6,6 +6,10 @@ interface DiffState {
   entries: Record<string, PatchType>;
 }
 
+export interface UseDiffStreamOptions {
+  statsOnly?: boolean;
+}
+
 interface UseDiffStreamResult {
   data: DiffState | undefined;
   isConnected: boolean;
@@ -14,11 +18,20 @@ interface UseDiffStreamResult {
 
 export const useDiffStream = (
   attemptId: string | null,
-  enabled: boolean
+  enabled: boolean,
+  options?: UseDiffStreamOptions
 ): UseDiffStreamResult => {
-  const endpoint = attemptId
-    ? `/api/task-attempts/${attemptId}/diff/ws`
-    : undefined;
+  const endpoint = (() => {
+    if (!attemptId) return undefined;
+    const query = `/api/task-attempts/${attemptId}/diff/ws`;
+    if (typeof options?.statsOnly === 'boolean') {
+      const params = new URLSearchParams();
+      params.set('stats_only', String(options.statsOnly));
+      return `${query}?${params.toString()}`;
+    } else {
+      return query;
+    }
+  })();
 
   const initialData = useCallback(
     (): DiffState => ({
