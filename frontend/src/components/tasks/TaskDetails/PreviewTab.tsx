@@ -25,6 +25,7 @@ export default function PreviewTab({
   const [iframeError, setIframeError] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const listenerRef = useRef<ClickToComponentListener | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const handleRefresh = () => {
     setIframeError(false);
@@ -100,23 +101,25 @@ export default function PreviewTab({
 
   if (previewState.status !== 'ready' || !previewState.url) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center space-y-4 max-w-md mx-auto p-6">
-          <div className="flex items-center justify-center">
-            <MonitorSpeaker className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <div>
-            <h3 className="text-lg font-medium text-foreground mb-2">
-              No dev server detected
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              No development server URL found in the logs yet. Start a dev
-              server to see the preview here.
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">
-              Looking for URLs matching: <code>localhost:PORT</code>,{' '}
-              <code>127.0.0.1:PORT</code>, or <code>0.0.0.0:PORT</code>
-            </p>
+      <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-4 max-w-md mx-auto p-6">
+            <div className="flex items-center justify-center">
+              <MonitorSpeaker className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <div>
+              <h3 className="text-lg font-medium text-foreground mb-2">
+                No dev server detected
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                No development server URL found in the logs yet. Start a dev
+                server to see the preview here.
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Looking for URLs matching: <code>localhost:PORT</code>,{' '}
+                <code>127.0.0.1:PORT</code>, or <code>0.0.0.0:PORT</code>
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -222,6 +225,7 @@ export default function PreviewTab({
 
       {/* Preview iframe */}
       <iframe
+        ref={iframeRef}
         key={`${previewState.url}-${refreshKey}`}
         src={previewState.url}
         title="Dev server preview"

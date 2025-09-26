@@ -21,6 +21,7 @@ import {
 import { ThemeProvider } from '@/components/theme-provider';
 import { SearchProvider } from '@/contexts/search-context';
 import { KeyboardShortcutsProvider } from '@/contexts/keyboard-shortcuts-context';
+
 import { ShortcutsHelp } from '@/components/shortcuts-help';
 import { HotkeysProvider } from 'react-hotkeys-hook';
 
@@ -34,6 +35,7 @@ import { WebviewContextMenu } from '@/vscode/ContextMenu';
 import { DevBanner } from '@/components/DevBanner';
 import NiceModal from '@ebay/nice-modal-react';
 import { OnboardingResult } from './components/dialogs/global/OnboardingDialog';
+import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
@@ -204,15 +206,17 @@ function App() {
   return (
     <BrowserRouter>
       <UserSystemProvider>
-        <ProjectProvider>
-          <HotkeysProvider initiallyActiveScopes={['*', 'global', 'kanban']}>
-            <KeyboardShortcutsProvider>
-              <NiceModal.Provider>
-                <AppContent />
-              </NiceModal.Provider>
-            </KeyboardShortcutsProvider>
-          </HotkeysProvider>
-        </ProjectProvider>
+        <ClickedElementsProvider>
+          <ProjectProvider>
+            <HotkeysProvider initiallyActiveScopes={['*', 'global', 'kanban']}>
+              <KeyboardShortcutsProvider>
+                <NiceModal.Provider>
+                  <AppContent />
+                </NiceModal.Provider>
+              </KeyboardShortcutsProvider>
+            </HotkeysProvider>
+          </ProjectProvider>
+        </ClickedElementsProvider>
       </UserSystemProvider>
     </BrowserRouter>
   );

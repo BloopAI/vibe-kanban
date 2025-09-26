@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
 import { streamJsonPatchEntries } from '@/utils/streamJsonPatchEntries';
 import { PatchType } from 'shared/types';
@@ -12,11 +12,15 @@ export interface DevserverPreviewState {
 
 interface UseDevserverPreviewOptions {
   projectHasDevScript?: boolean;
+  projectId: string; // Required for context-based URL persistence
 }
 
 export function useDevserverPreview(
   attemptId?: string | null | undefined,
-  options: UseDevserverPreviewOptions = {}
+  options: UseDevserverPreviewOptions = {
+    projectId: '',
+    projectHasDevScript: false,
+  }
 ): DevserverPreviewState {
   const { executionProcesses, error: processesError } = useExecutionProcesses(
     attemptId || '',
@@ -28,10 +32,19 @@ export function useDevserverPreview(
     scheme: 'http',
   });
 
+  // Ref to track state for stable callbacks
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
   const streamRef = useRef<(() => void) | null>(null);
   const streamTokenRef = useRef(0);
-  const processedLinesRef = useRef(new Set<string>());
-  const processedLinesQueueRef = useRef<string[]>([]);
+  const lastProcessedIndexRef = useRef(0);
+  const streamDebounceTimeoutRef = useRef<number | null>(null);
+  const pendingEntriesRef = useRef<Array<{ type: string; content: string }>>(
+    []
+  );
 
   // URL detection patterns (in order of priority)
   const urlPatterns = useMemo(
@@ -41,145 +54,179 @@ export function useDevserverPreview(
       // Host:port patterns
       /(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[[0-9a-f:]+\]|(?:\d{1,3}\.){3}\d{1,3}):(\d{2,5})/i,
       // Port mentions
-      /port[^0-9]{0,5}(\d{2,5})/i,
+      // /port[^0-9]{0,5}(\d{2,5})/i,
     ],
     []
   );
 
-  const extractUrlFromLine = (line: string) => {
-    // Try full URL pattern first
-    const fullUrlMatch = urlPatterns[0].exec(line);
-    if (fullUrlMatch) {
-      try {
-        const url = new URL(fullUrlMatch[1]);
-        // Normalize 0.0.0.0 and :: to localhost for preview
-        if (
-          url.hostname === '0.0.0.0' ||
-          url.hostname === '::' ||
-          url.hostname === '[::]'
-        ) {
-          url.hostname = 'localhost';
+  const extractUrlFromLine = useCallback(
+    (line: string) => {
+      // Try full URL pattern first
+      const fullUrlMatch = urlPatterns[0].exec(line);
+      if (fullUrlMatch) {
+        try {
+          const url = new URL(fullUrlMatch[1]);
+          // Normalize 0.0.0.0 and :: to localhost for preview
+          if (
+            url.hostname === '0.0.0.0' ||
+            url.hostname === '::' ||
+            url.hostname === '[::]'
+          ) {
+            url.hostname = 'localhost';
+          }
+          return {
+            url: url.toString(),
+            port: parseInt(url.port) || (url.protocol === 'https:' ? 443 : 80),
+            scheme:
+              url.protocol === 'https:'
+                ? ('https' as const)
+                : ('http' as const),
+          };
+        } catch {
+          // Invalid URL, continue to other patterns
         }
+      }
+
+      // Try host:port pattern
+      const hostPortMatch = urlPatterns[1].exec(line);
+      if (hostPortMatch) {
+        const port = parseInt(hostPortMatch[1]);
+        const scheme = /https/i.test(line) ? 'https' : 'http';
         return {
-          url: url.toString(),
-          port: parseInt(url.port) || (url.protocol === 'https:' ? 443 : 80),
-          scheme:
-            url.protocol === 'https:' ? ('https' as const) : ('http' as const),
+          url: `${scheme}://localhost:${port}`,
+          port,
+          scheme: scheme as 'http' | 'https',
         };
-      } catch {
-        // Invalid URL, continue to other patterns
       }
-    }
 
-    // Try host:port pattern
-    const hostPortMatch = urlPatterns[1].exec(line);
-    if (hostPortMatch) {
-      const port = parseInt(hostPortMatch[1]);
-      const scheme = /https/i.test(line) ? 'https' : 'http';
-      return {
-        url: `${scheme}://localhost:${port}`,
-        port,
-        scheme: scheme as 'http' | 'https',
-      };
-    }
+      // // Try port mention pattern
+      // const portMatch = urlPatterns[2].exec(line);
+      // if (portMatch) {
+      //   const port = parseInt(portMatch[1]);
+      //   const scheme = /https/i.test(line) ? 'https' : 'http';
+      //   return {
+      //     url: `${scheme}://localhost:${port}`,
+      //     port,
+      //     scheme: scheme as 'http' | 'https',
+      //   };
+      // }
 
-    // Try port mention pattern
-    const portMatch = urlPatterns[2].exec(line);
-    if (portMatch) {
-      const port = parseInt(portMatch[1]);
-      const scheme = /https/i.test(line) ? 'https' : 'http';
-      return {
-        url: `${scheme}://localhost:${port}`,
-        port,
-        scheme: scheme as 'http' | 'https',
-      };
-    }
+      return null;
+    },
+    [urlPatterns]
+  );
 
-    return null;
-  };
+  const processPendingEntries = useCallback(
+    (currentToken: number) => {
+      // Ignore if this is from a stale stream
+      if (currentToken !== streamTokenRef.current) return;
 
-  const addToProcessedLines = (line: string) => {
-    if (!processedLinesRef.current.has(line)) {
-      processedLinesRef.current.add(line);
-      processedLinesQueueRef.current.push(line);
+      // Use ref instead of state deps to avoid dependency churn
+      const currentState = stateRef.current;
+      if (currentState.status === 'ready' && currentState.url) return;
 
-      // Keep bounded (max 1000 lines per process)
-      if (processedLinesQueueRef.current.length > 1000) {
-        const oldLine = processedLinesQueueRef.current.shift()!;
-        processedLinesRef.current.delete(oldLine);
-      }
-    }
-  };
+      // Process all pending entries
+      for (const entry of pendingEntriesRef.current) {
+        const urlInfo = extractUrlFromLine(entry.content);
+        if (urlInfo) {
+          setState((prev) => {
+            // Only update if we don't already have a URL for this stream
+            if (prev.status === 'ready' && prev.url) return prev;
 
-  const processLogLine = (line: string, currentToken: number) => {
-    // Ignore if this is from a stale stream
-    if (currentToken !== streamTokenRef.current) return;
-
-    addToProcessedLines(line);
-
-    const urlInfo = extractUrlFromLine(line);
-    if (!urlInfo) return;
-
-    setState((prev) => {
-      // Only update if we don't already have a URL for this stream
-      if (prev.status === 'ready' && prev.url) return prev;
-
-      return {
-        status: 'ready',
-        url: urlInfo.url,
-        port: urlInfo.port,
-        scheme: urlInfo.scheme,
-      };
-    });
-  };
-
-  const startLogStream = async (processId: string) => {
-    // Close any existing stream
-    if (streamRef.current) {
-      streamRef.current();
-      streamRef.current = null;
-    }
-
-    // Increment token to invalidate previous streams
-    const currentToken = ++streamTokenRef.current;
-
-    try {
-      const url = `/api/execution-processes/${processId}/raw-logs/ws`;
-
-      streamJsonPatchEntries<PatchType>(url, {
-        onEntries: (entries) => {
-          entries.forEach((entry) => {
-            if (entry.type === 'STDOUT' || entry.type === 'STDERR') {
-              processLogLine(entry.content, currentToken);
-            }
+            return {
+              status: 'ready',
+              url: urlInfo.url,
+              port: urlInfo.port,
+              scheme: urlInfo.scheme,
+            };
           });
-        },
-        onFinished: () => {
-          if (currentToken === streamTokenRef.current) {
-            streamRef.current = null;
-          }
-        },
-        onError: (error) => {
-          console.warn(`Error streaming logs for process ${processId}:`, error);
-          if (currentToken === streamTokenRef.current) {
-            streamRef.current = null;
-          }
-        },
-      });
 
-      // Store a cleanup function (note: streamJsonPatchEntries doesn't return one,
-      // so we'll rely on the token system for now)
-      streamRef.current = () => {
-        // The stream doesn't provide a direct way to close,
-        // but the token system will ignore future callbacks
-      };
-    } catch (error) {
-      console.warn(
-        `Failed to start log stream for process ${processId}:`,
-        error
-      );
-    }
-  };
+          break; // Stop after finding first URL
+        }
+      }
+
+      // Clear processed entries
+      pendingEntriesRef.current = [];
+    },
+    [extractUrlFromLine]
+  );
+
+  const debouncedProcessEntries = useCallback(
+    (currentToken: number) => {
+      if (streamDebounceTimeoutRef.current) {
+        clearTimeout(streamDebounceTimeoutRef.current);
+      }
+
+      streamDebounceTimeoutRef.current = window.setTimeout(() => {
+        processPendingEntries(currentToken);
+      }, 200); // Process when stream is quiet for 200ms
+    },
+    [processPendingEntries]
+  );
+
+  const startLogStream = useCallback(
+    async (processId: string) => {
+      // Close any existing stream
+      if (streamRef.current) {
+        streamRef.current();
+        streamRef.current = null;
+      }
+
+      // Increment token to invalidate previous streams
+      const currentToken = ++streamTokenRef.current;
+
+      try {
+        const url = `/api/execution-processes/${processId}/raw-logs/ws`;
+
+        streamJsonPatchEntries<PatchType>(url, {
+          onEntries: (entries) => {
+            // Only process new entries since last time
+            const startIndex = lastProcessedIndexRef.current;
+            const newEntries = entries.slice(startIndex);
+
+            // Add new entries to pending buffer
+            newEntries.forEach((entry) => {
+              if (entry.type === 'STDOUT' || entry.type === 'STDERR') {
+                pendingEntriesRef.current.push(entry);
+              }
+            });
+
+            lastProcessedIndexRef.current = entries.length;
+
+            // Debounce processing - only process when stream is quiet
+            debouncedProcessEntries(currentToken);
+          },
+          onFinished: () => {
+            if (currentToken === streamTokenRef.current) {
+              streamRef.current = null;
+            }
+          },
+          onError: (error) => {
+            console.warn(
+              `Error streaming logs for process ${processId}:`,
+              error
+            );
+            if (currentToken === streamTokenRef.current) {
+              streamRef.current = null;
+            }
+          },
+        });
+
+        // Store a cleanup function (note: streamJsonPatchEntries doesn't return one,
+        // so we'll rely on the token system for now)
+        streamRef.current = () => {
+          // The stream doesn't provide a direct way to close,
+          // but the token system will ignore future callbacks
+        };
+      } catch (error) {
+        console.warn(
+          `Failed to start log stream for process ${processId}:`,
+          error
+        );
+      }
+    },
+    [debouncedProcessEntries]
+  );
 
   // Find the latest devserver process
   const selectedProcess = useMemo(() => {
@@ -230,7 +277,8 @@ export function useDevserverPreview(
 
   // Start streaming logs when selected process changes
   useEffect(() => {
-    if (!selectedProcess) {
+    const processId = selectedProcess?.id;
+    if (!processId) {
       if (streamRef.current) {
         streamRef.current();
         streamRef.current = null;
@@ -238,30 +286,52 @@ export function useDevserverPreview(
       return;
     }
 
-    // Clear processed lines for new process
-    processedLinesRef.current.clear();
-    processedLinesQueueRef.current.length = 0;
+    // Only set if something actually changes to prevent churn
+    setState((prev) => {
+      if (
+        prev.status === 'searching' &&
+        prev.url === undefined &&
+        prev.port === undefined
+      )
+        return prev;
+      return { ...prev, status: 'searching', url: undefined, port: undefined };
+    });
 
-    // Reset URL state for new process
-    setState((prev) => ({
-      ...prev,
-      status: 'searching',
-      url: undefined,
-      port: undefined,
-    }));
+    // Reset processed index for new stream
+    lastProcessedIndexRef.current = 0;
 
-    startLogStream(selectedProcess.id);
-  }, [selectedProcess?.id]);
+    // Clear any pending debounced processing
+    if (streamDebounceTimeoutRef.current) {
+      clearTimeout(streamDebounceTimeoutRef.current);
+      streamDebounceTimeoutRef.current = null;
+    }
+
+    // Clear pending entries
+    pendingEntriesRef.current = [];
+
+    startLogStream(processId);
+  }, [selectedProcess?.id, startLogStream]);
 
   // Reset state when attempt changes
   useEffect(() => {
     setState({
       status: 'idle',
       scheme: 'http',
+      // Clear url/port so we can re-detect
+      url: undefined,
+      port: undefined,
     });
 
-    processedLinesRef.current.clear();
-    processedLinesQueueRef.current.length = 0;
+    lastProcessedIndexRef.current = 0;
+
+    // Clear any pending debounced processing
+    if (streamDebounceTimeoutRef.current) {
+      clearTimeout(streamDebounceTimeoutRef.current);
+      streamDebounceTimeoutRef.current = null;
+    }
+
+    // Clear pending entries
+    pendingEntriesRef.current = [];
 
     if (streamRef.current) {
       streamRef.current();
