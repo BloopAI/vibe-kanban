@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { Plus } from 'lucide-react';
 import type { ClientRect } from '@dnd-kit/core';
 import type { Transform } from '@dnd-kit/utilities';
+import { Button } from '../../button';
 export type { DragEndEvent } from '@dnd-kit/core';
 
 export type Status = {
@@ -161,7 +162,7 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
   return (
     <Card
       className={cn(
-        'sticky top-0 z-20 flex shrink-0 items-center gap-2 p-3 border-b border-dashed',
+        'sticky top-0 z-20 flex shrink-0 items-center gap-2 p-3 border-b border-dashed flex gap-2',
         'bg-background',
         props.className
       )}
@@ -169,22 +170,25 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
         backgroundImage: `linear-gradient(hsl(var(${props.color}) / 0.03), hsl(var(${props.color}) / 0.03))`,
       }}
     >
-      <div
-        className="h-2 w-2 rounded-full"
-        style={{ backgroundColor: `hsl(var(${props.color}))` }}
-      />
-      <p className="m-0 text-sm">{props.name}</p>
+      <span className="flex-1 flex items-center gap-2">
+        <div
+          className="h-2 w-2 rounded-full"
+          style={{ backgroundColor: `hsl(var(${props.color}))` }}
+        />
+
+        <p className="m-0 text-sm">{props.name}</p>
+      </span>
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="ml-auto inline-flex items-center justify-center rounded-sm p-1 text-muted-foreground transition hover:text-foreground"
+            <Button
+              variant="ghost"
+              className="m-0 p-0 h-0 text-foreground/50 hover:text-foreground"
               onClick={props.onAddTask}
               aria-label={t('actions.addTask')}
             >
               <Plus className="h-4 w-4" />
-            </button>
+            </Button>
           </TooltipTrigger>
           <TooltipContent side="top">{t('actions.addTask')}</TooltipContent>
         </Tooltip>
