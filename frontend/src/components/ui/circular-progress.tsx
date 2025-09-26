@@ -47,7 +47,7 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
       </svg>
       <span
         style={{
-          fontSize: `${size * 0.38}px`,
+          fontSize: `${size * 0.33}px`,
           lineHeight: 1,
         }}
         className="font-medium"
