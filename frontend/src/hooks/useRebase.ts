@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi, Result } from '@/lib/api';
-import type { GitOperationError } from 'shared/types';
 import type { RebaseTaskAttemptRequest } from 'shared/types';
+import type { GitOperationError } from 'shared/types';
 
 export function useRebase(
   attemptId: string | undefined,
@@ -11,14 +11,22 @@ export function useRebase(
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation<void, Result<void, GitOperationError>, string | undefined>(
+  type RebaseMutationArgs = {
+    newBaseBranch?: string;
+    oldBaseBranch?: string;
+  };
+
+  return useMutation<void, Result<void, GitOperationError>, RebaseMutationArgs>(
     {
-      mutationFn: (newBaseBranch?: string) => {
+      mutationFn: (args) => {
         if (!attemptId) return Promise.resolve();
+        const { newBaseBranch, oldBaseBranch } = args ?? {};
 
         const data: RebaseTaskAttemptRequest = {
-          new_base_branch: newBaseBranch || null,
+          old_base_branch: oldBaseBranch ?? null,
+          new_base_branch: newBaseBranch ?? null,
         };
+
         return attemptsApi.rebase(attemptId, data).then((res) => {
           if (!res.success) {
             // Propagate typed failure Result for caller to handle (no manual ApiError construction)

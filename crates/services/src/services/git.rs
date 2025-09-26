@@ -1311,8 +1311,9 @@ impl GitService {
         &self,
         repo_path: &Path,
         worktree_path: &Path,
-        new_base_branch: Option<&str>,
+        new_base_branch: &str,
         old_base_branch: &str,
+        task_branch: &str,
         github_token: Option<String>,
     ) -> Result<String, GitServiceError> {
         let worktree_repo = Repository::open(worktree_path)?;
@@ -1331,32 +1332,19 @@ impl GitService {
         }
 
         // Get the target base branch reference
-        let new_base_branch_name = match new_base_branch {
-            Some(branch) => branch.to_string(),
-            None => main_repo
-                .head()
-                .ok()
-                .and_then(|head| head.shorthand().map(|s| s.to_string()))
-                .unwrap_or_else(|| "main".to_string()),
-        };
-        let nbr = Self::find_branch(&main_repo, &new_base_branch_name)?.into_reference();
+        let nbr = Self::find_branch(&main_repo, new_base_branch)?.into_reference();
         // If the target base is remote, update it first so CLI sees latest
         if nbr.is_remote() {
             let github_token = github_token.ok_or(GitServiceError::TokenUnavailable)?;
             let remote = self.get_remote_from_branch_ref(&main_repo, &nbr)?;
             // First, fetch the latest changes from remote
-            self.fetch_branch_from_remote(
-                &main_repo,
-                &github_token,
-                &remote,
-                &new_base_branch_name,
-            )?;
+            self.fetch_branch_from_remote(&main_repo, &github_token, &remote, new_base_branch)?;
         }
 
         // Ensure identity for any commits produced by rebase
         self.ensure_cli_commit_identity(worktree_path)?;
         // Use git CLI rebase to carry out the operation safely
-        match git.rebase_onto(worktree_path, &new_base_branch_name, old_base_branch) {
+        match git.rebase_onto(worktree_path, new_base_branch, old_base_branch, task_branch) {
             Ok(()) => {}
             Err(GitCliError::RebaseInProgress) => {
                 return Err(GitServiceError::RebaseInProgress);
@@ -1394,7 +1382,7 @@ impl GitService {
                         }
                     };
                     let msg = format!(
-                        "Rebase encountered merge conflicts while rebasing '{attempt_branch}' onto '{new_base_branch_name}'.{files_part} Resolve conflicts and then continue or abort."
+                        "Rebase encountered merge conflicts while rebasing '{attempt_branch}' onto '{new_base_branch}'.{files_part} Resolve conflicts and then continue or abort."
                     );
                     return Err(GitServiceError::MergeConflicts(msg));
                 }
@@ -1431,6 +1419,21 @@ impl GitService {
                     Err(_) => Err(GitServiceError::BranchNotFound(branch_name.to_string())),
                 }
             }
+        }
+    }
+
+    pub fn check_branch_exists(
+        &self,
+        repo_path: &Path,
+        branch_name: &str,
+    ) -> Result<bool, GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        match repo.find_branch(branch_name, BranchType::Local) {
+            Ok(_) => Ok(true),
+            Err(_) => match repo.find_branch(branch_name, BranchType::Remote) {
+                Ok(_) => Ok(true),
+                Err(_) => Ok(false),
+            },
         }
     }
 

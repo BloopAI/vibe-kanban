@@ -417,8 +417,9 @@ fn rebase_preserves_untracked_files() {
     let res = service.rebase_branch(
         &repo_path,
         &worktree_path,
-        Some("new-base"),
+        "new-base",
         "old-base",
+        "feature",
         None,
     );
     assert!(res.is_ok(), "rebase should succeed: {res:?}");
@@ -439,8 +440,9 @@ fn rebase_aborts_on_uncommitted_tracked_changes() {
     let res = service.rebase_branch(
         &repo_path,
         &worktree_path,
-        Some("new-base"),
+        "new-base",
         "old-base",
+        "feature",
         None,
     );
     assert!(res.is_err(), "rebase should fail on dirty worktree");
@@ -460,8 +462,9 @@ fn rebase_aborts_if_untracked_would_be_overwritten_by_base() {
     let res = service.rebase_branch(
         &repo_path,
         &worktree_path,
-        Some("new-base"),
+        "new-base",
         "old-base",
+        "feature",
         None,
     );
     assert!(
@@ -691,8 +694,9 @@ fn rebase_refuses_to_abort_existing_rebase() {
         .rebase_branch(
             &repo_path,
             &worktree_path,
-            Some("new-base"),
+            "new-base",
             "old-base",
+            "feature",
             None,
         )
         .expect_err("first rebase should error and leave in-progress state");
@@ -702,8 +706,9 @@ fn rebase_refuses_to_abort_existing_rebase() {
     let res = service.rebase_branch(
         &repo_path,
         &worktree_path,
-        Some("new-base"),
+        "new-base",
         "old-base",
+        "feature",
         None,
     );
     assert!(res.is_err(), "should error because rebase is in progress");
@@ -722,8 +727,9 @@ fn rebase_fast_forwards_when_no_unique_commits() {
         .rebase_branch(
             &repo_path,
             &worktree_path,
-            Some("new-base"),
+            "new-base",
             "old-base",
+            "feature",
             None,
         )
         .expect("rebase should succeed");
@@ -753,8 +759,9 @@ fn rebase_applies_multiple_commits_onto_ahead_base() {
         .rebase_branch(
             &repo_path,
             &worktree_path,
-            Some("new-base"),
+            "new-base",
             "old-base",
+            "feature",
             None,
         )
         .expect("rebase should succeed");
@@ -898,12 +905,12 @@ fn rebase_preserves_rename_changes() {
         .rebase_branch(
             &repo_path,
             &worktree_path,
-            Some("new-base"),
+            "new-base",
             "old-base",
+            "feature",
             None,
         )
         .expect("rebase should succeed");
-
     // after rebase, renamed file present; original absent
     assert!(worktree_path.join("feat_renamed.txt").exists());
     assert!(!worktree_path.join("feat.txt").exists());

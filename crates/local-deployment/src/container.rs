@@ -558,11 +558,6 @@ impl LocalContainerService {
         format!("{}-{}", short_uuid(attempt_id), task_title_id)
     }
 
-    pub fn git_branch_from_task_attempt(attempt_id: &Uuid, task_title: &str) -> String {
-        let task_title_id = git_branch_id(task_title);
-        format!("vk/{}-{}", short_uuid(attempt_id), task_title_id)
-    }
-
     async fn track_child_msgs_in_store(&self, id: Uuid, child: &mut AsyncGroupChild) {
         let store = Arc::new(MsgStore::new());
 
@@ -918,9 +913,6 @@ impl ContainerService for LocalContainerService {
             LocalContainerService::dir_name_from_task_attempt(&task_attempt.id, &task.title);
         let worktree_path = WorktreeManager::get_worktree_base_dir().join(&worktree_dir_name);
 
-        let git_branch_name =
-            LocalContainerService::git_branch_from_task_attempt(&task_attempt.id, &task.title);
-
         let project = task
             .parent_project(&self.db.pool)
             .await?
@@ -928,9 +920,9 @@ impl ContainerService for LocalContainerService {
 
         WorktreeManager::create_worktree(
             &project.git_repo_path,
-            &git_branch_name,
+            &task_attempt.branch,
             &worktree_path,
-            &task_attempt.base_branch,
+            &task_attempt.target_branch,
             true, // create new branch
         )
         .await?;
@@ -962,8 +954,6 @@ impl ContainerService for LocalContainerService {
             &worktree_path.to_string_lossy(),
         )
         .await?;
-
-        TaskAttempt::update_branch(&self.db.pool, task_attempt.id, &git_branch_name).await?;
 
         Ok(worktree_path.to_string_lossy().to_string())
     }
@@ -1017,14 +1007,9 @@ impl ContainerService for LocalContainerService {
         })?;
         let worktree_path = PathBuf::from(container_ref);
 
-        let branch_name = task_attempt
-            .branch
-            .as_ref()
-            .ok_or_else(|| ContainerError::Other(anyhow!("Branch not found for task attempt")))?;
-
         WorktreeManager::ensure_worktree_exists(
             &project.git_repo_path,
-            branch_name,
+            &task_attempt.branch,
             &worktree_path,
         )
         .await?;
@@ -1154,18 +1139,11 @@ impl ContainerService for LocalContainerService {
         let project_repo_path = self.get_project_repo_path(task_attempt).await?;
         let latest_merge =
             Merge::find_latest_by_task_attempt_id(&self.db.pool, task_attempt.id).await?;
-        let task_branch = task_attempt
-            .branch
-            .clone()
-            .ok_or(ContainerError::Other(anyhow!(
-                "Task attempt {} does not have a branch",
-                task_attempt.id
-            )))?;
 
         let is_ahead = if let Ok((ahead, _)) = self.git().get_branch_status(
             &project_repo_path,
-            &task_branch,
-            &task_attempt.base_branch,
+            &task_attempt.branch,
+            &task_attempt.target_branch,
         ) {
             ahead > 0
         } else {
@@ -1184,8 +1162,8 @@ impl ContainerService for LocalContainerService {
         let worktree_path = PathBuf::from(container_ref);
         let base_commit = self.git().get_base_commit(
             &project_repo_path,
-            &task_branch,
-            &task_attempt.base_branch,
+            &task_attempt.branch,
+            &task_attempt.target_branch,
         )?;
 
         self.create_live_diff_stream(&worktree_path, &base_commit)

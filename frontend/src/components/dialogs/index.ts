@@ -43,10 +43,10 @@ export {
   type TaskTemplateEditResult,
 } from './tasks/TaskTemplateEditDialog';
 export {
-  RebaseDialog,
-  type RebaseDialogProps,
-  type RebaseDialogResult,
-} from './tasks/RebaseDialog';
+  ChangeTargetBranchDialog,
+  type ChangeTargetBranchDialogProps as RebaseDialogProps,
+  type ChangeTargetBranchDialogResult as RebaseDialogResult,
+} from './tasks/ChangeTargetBranchDialog';
 export {
   RestoreLogsDialog,
   type RestoreLogsDialogProps,

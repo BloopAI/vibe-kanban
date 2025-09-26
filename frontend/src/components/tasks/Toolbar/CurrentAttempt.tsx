@@ -41,6 +41,7 @@ import type {
 import { useBranchStatus, useOpenInEditor } from '@/hooks';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useDevServer } from '@/hooks/useDevServer';
+import { useChangeTargetBranch } from '@/hooks/useChangeTargetBranch';
 import { useRebase } from '@/hooks/useRebase';
 import { useMerge } from '@/hooks/useMerge';
 import NiceModal from '@ebay/nice-modal-react';
@@ -49,6 +50,7 @@ import type { GitOperationError } from 'shared/types';
 import { displayConflictOpLabel } from '@/lib/conflicts';
 import { usePush } from '@/hooks/usePush';
 import { useUserSystem } from '@/components/config-provider.tsx';
+import { useTranslation } from 'react-i18next';
 
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
@@ -105,6 +107,7 @@ function CurrentAttempt({
   branches,
   setSelectedAttempt,
 }: Props) {
+  const { t } = useTranslation('tasks');
   const { config } = useUserSystem();
   const { isAttemptRunning, stopExecution, isStopping } = useAttemptExecution(
     selectedAttempt?.id,
@@ -132,6 +135,11 @@ function CurrentAttempt({
     runningDevServer,
     latestDevServerProcess,
   } = useDevServer(selectedAttempt?.id);
+  const changeTargetBranchMutation = useChangeTargetBranch(
+    selectedAttempt?.id,
+    projectId
+  );
+  const isChangingTargetBranch = changeTargetBranchMutation.isPending;
   const rebaseMutation = useRebase(selectedAttempt?.id, projectId);
   const mergeMutation = useMerge(selectedAttempt?.id);
   const pushMutation = usePush(selectedAttempt?.id);
@@ -152,7 +160,8 @@ function CurrentAttempt({
   const handleCreateSubtaskClick = () => {
     openTaskForm({
       projectId,
-      initialBaseBranch: selectedAttempt.branch || selectedAttempt.base_branch,
+      initialBaseBranch:
+        selectedAttempt.branch || selectedAttempt.target_branch,
       parentTaskAttemptId: selectedAttempt.id,
     });
   };
@@ -203,25 +212,43 @@ function CurrentAttempt({
     }
   };
 
-  const handleRebaseClick = async () => {
-    setRebasing(true);
-    await rebaseMutation
-      .mutateAsync(undefined)
+  const handleChangeTargetBranchClick = async (newBranch: string) => {
+    await changeTargetBranchMutation
+      .mutateAsync(newBranch)
       .then(() => setError(null))
-      .catch((err: Err<GitOperationError>) => {
-        const data = err?.error;
-        const isConflict =
-          data?.type === 'merge_conflicts' ||
-          data?.type === 'rebase_in_progress';
-        if (!isConflict) setError(err.message || 'Failed to rebase branch');
+      .catch((error) => {
+        setError(error.message || 'Failed to change target branch');
       });
-    setRebasing(false);
   };
 
-  const handleRebaseWithNewBranch = async (newBaseBranch: string) => {
+  const handleChangeTargetBranchDialogOpen = async () => {
+    try {
+      const result = await showModal<{
+        action: 'confirmed' | 'canceled';
+        branchName: string;
+      }>('change-target-branch-dialog', {
+        branches,
+        isChangingTargetBranch: isChangingTargetBranch,
+      });
+
+      if (result.action === 'confirmed' && result.branchName) {
+        await handleChangeTargetBranchClick(result.branchName);
+      }
+    } catch (error) {
+      // User cancelled - do nothing
+    }
+  };
+
+  const handleRebaseWithNewBranchAndUpstream = async (
+    newBaseBranch: string,
+    selectedUpstream: string
+  ) => {
     setRebasing(true);
     await rebaseMutation
-      .mutateAsync(newBaseBranch)
+      .mutateAsync({
+        newBaseBranch: newBaseBranch,
+        oldBaseBranch: selectedUpstream,
+      })
       .then(() => setError(null))
       .catch((err: Err<GitOperationError>) => {
         const data = err?.error;
@@ -235,16 +262,26 @@ function CurrentAttempt({
 
   const handleRebaseDialogOpen = async () => {
     try {
+      const defaultTargetBranch = selectedAttempt?.target_branch ?? '';
       const result = await showModal<{
         action: 'confirmed' | 'canceled';
         branchName?: string;
+        upstreamBranch?: string;
       }>('rebase-dialog', {
         branches,
         isRebasing: rebasing,
+        initialTargetBranch: defaultTargetBranch,
+        initialUpstreamBranch: defaultTargetBranch,
       });
-
-      if (result.action === 'confirmed' && result.branchName) {
-        await handleRebaseWithNewBranch(result.branchName);
+      if (
+        result.action === 'confirmed' &&
+        result.branchName &&
+        result.upstreamBranch
+      ) {
+        await handleRebaseWithNewBranchAndUpstream(
+          result.branchName,
+          result.upstreamBranch
+        );
       }
     } catch (error) {
       // User cancelled - do nothing
@@ -330,6 +367,27 @@ function CurrentAttempt({
     };
   }, [branchStatus?.merges]);
 
+  const truncatedTargetBranch = useMemo(() => {
+    const targetName = branchStatus?.target_branch_name;
+    if (!targetName) return null;
+    if (targetName.length < 13) return targetName;
+    return `${targetName.slice(0, 10)}...`;
+  }, [branchStatus?.target_branch_name]);
+
+  const mergeButtonLabel = useMemo(() => {
+    if (mergeSuccess) return 'Merged!';
+    if (merging) return 'Merging...';
+    if (truncatedTargetBranch) return `Merge into ${truncatedTargetBranch}`;
+    return 'Merge';
+  }, [mergeSuccess, merging, truncatedTargetBranch]);
+
+  const rebaseButtonLabel = useMemo(() => {
+    if (rebasing) return t('rebase.common.inProgress');
+    if (truncatedTargetBranch)
+      return t('rebase.common.withTarget', { branch: truncatedTargetBranch });
+    return t('rebase.common.action');
+  }, [rebasing, truncatedTargetBranch, t]);
+
   const handleCopyWorktreePath = useCallback(async () => {
     try {
       await writeClipboardViaBridge(selectedAttempt.container_ref || '');
@@ -340,13 +398,46 @@ function CurrentAttempt({
     }
   }, [selectedAttempt.container_ref]);
 
+  const formatAheadBehind = useCallback(
+    (ahead?: number | null, behind?: number | null) => {
+      const normalizedAhead = ahead ?? 0;
+      const normalizedBehind = behind ?? 0;
+
+      if (normalizedAhead === 0 && normalizedBehind === 0) {
+        return '';
+      }
+
+      const parts: string[] = [];
+
+      if (normalizedAhead !== 0) {
+        parts.push(`${normalizedAhead > 0 ? '+' : ''}${normalizedAhead}`);
+      }
+
+      if (normalizedBehind !== 0) {
+        parts.push(`${normalizedBehind > 0 ? '-' : ''}${normalizedBehind}`);
+      }
+
+      if (parts.length === 0) {
+        return '';
+      }
+
+      return ` ${parts.join('/')}`;
+    },
+    []
+  );
+
   // Get status information for display
   const getStatusInfo = useCallback(() => {
+    const countsLabel = formatAheadBehind(
+      branchStatus?.commits_ahead,
+      branchStatus?.commits_behind
+    );
+
     if (hasConflicts) {
       return {
         dotColor: 'bg-orange-500',
         textColor: 'text-orange-700',
-        text: `${conflictOpLabel} conflicts`,
+        text: `${conflictOpLabel} conflicts${countsLabel}`,
         isClickable: false,
       } as const;
     }
@@ -354,7 +445,7 @@ function CurrentAttempt({
       return {
         dotColor: 'bg-orange-500',
         textColor: 'text-orange-700',
-        text: 'Rebase in progress',
+        text: t('rebase.status.inProgress', { counts: countsLabel }),
         isClickable: false,
       } as const;
     }
@@ -363,7 +454,7 @@ function CurrentAttempt({
       return {
         dotColor: 'bg-green-500',
         textColor: 'text-green-700',
-        text: `PR #${prMerge.pr_info.number} merged`,
+        text: `PR #${prMerge.pr_info.number} merged${countsLabel}`,
         isClickable: true,
         onClick: () => window.open(prMerge.pr_info.url, '_blank'),
       };
@@ -376,7 +467,7 @@ function CurrentAttempt({
       return {
         dotColor: 'bg-green-500',
         textColor: 'text-green-700',
-        text: `Merged`,
+        text: `Merged${countsLabel}`,
         isClickable: false,
       };
     }
@@ -386,17 +477,23 @@ function CurrentAttempt({
       return {
         dotColor: 'bg-blue-500',
         textColor: 'text-blue-700 dark:text-blue-400',
-        text: `PR #${prMerge.pr_info.number}`,
+        text: `PR #${prMerge.pr_info.number}${countsLabel}`,
         isClickable: true,
         onClick: () => window.open(prMerge.pr_info.url, '_blank'),
       };
     }
 
     if ((branchStatus?.commits_behind ?? 0) > 0) {
+      const dirtyMarker = branchStatus?.has_uncommitted_changes
+        ? t('rebase.status.dirtyMarker')
+        : '';
       return {
         dotColor: 'bg-orange-500',
         textColor: 'text-orange-700',
-        text: `Rebase needed${branchStatus?.has_uncommitted_changes ? ' (dirty)' : ''}`,
+        text: t('rebase.status.needed', {
+          dirty: dirtyMarker,
+          counts: countsLabel,
+        }),
         isClickable: false,
       };
     }
@@ -405,10 +502,7 @@ function CurrentAttempt({
       return {
         dotColor: 'bg-yellow-500',
         textColor: 'text-yellow-700',
-        text:
-          branchStatus?.commits_ahead === 1
-            ? `1 commit ahead${branchStatus?.has_uncommitted_changes ? ' (dirty)' : ''}`
-            : `${branchStatus?.commits_ahead} commits ahead${branchStatus?.has_uncommitted_changes ? ' (dirty)' : ''}`,
+        text: `Branch ahead${branchStatus?.has_uncommitted_changes ? ' (dirty)' : ''}${countsLabel}`,
         isClickable: false,
       };
     }
@@ -416,10 +510,10 @@ function CurrentAttempt({
     return {
       dotColor: 'bg-gray-500',
       textColor: 'text-gray-700',
-      text: `Up to date${branchStatus?.has_uncommitted_changes ? ' (dirty)' : ''}`,
+      text: `Up to date${branchStatus?.has_uncommitted_changes ? ' (dirty)' : ''}${countsLabel}`,
       isClickable: false,
     };
-  }, [mergeInfo, branchStatus]);
+  }, [mergeInfo, branchStatus, formatAheadBehind, t]);
 
   return (
     <div className="space-y-2 @container">
@@ -446,14 +540,14 @@ function CurrentAttempt({
 
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-            <span className="truncate">Base Branch</span>
+            <span className="truncate">Target Branch</span>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="xs"
-                    onClick={handleRebaseDialogOpen}
+                    onClick={handleChangeTargetBranchDialogOpen}
                     disabled={rebasing || isAttemptRunning || hasConflicts}
                     className="h-4 w-4 p-0 hover:bg-muted"
                   >
@@ -461,7 +555,7 @@ function CurrentAttempt({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Change base branch</p>
+                  <p>Change target branch</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -469,7 +563,7 @@ function CurrentAttempt({
           <div className="flex items-center gap-1.5">
             <GitBranchIcon className="h-3 w-3 text-muted-foreground" />
             <span className="text-sm font-medium truncate">
-              {branchStatus?.base_branch_name || selectedBranchDisplayName}
+              {branchStatus?.target_branch_name || selectedBranchDisplayName}
             </span>
           </div>
         </div>
@@ -597,20 +691,23 @@ function CurrentAttempt({
           {/* Git Operations */}
           {selectedAttempt && branchStatus && !mergeInfo.hasMergedPR && (
             <>
-              {(branchStatus.commits_behind ?? 0) > 0 && (
-                <Button
-                  onClick={handleRebaseClick}
-                  disabled={rebasing || isAttemptRunning || hasConflicts}
-                  variant="outline"
-                  size="xs"
-                  className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1"
-                >
-                  <RefreshCw
-                    className={`h-3 w-3 ${rebasing ? 'animate-spin' : ''}`}
-                  />
-                  {rebasing ? 'Rebasing...' : `Rebase`}
-                </Button>
-              )}
+              <Button
+                onClick={handleRebaseDialogOpen}
+                disabled={
+                  rebasing ||
+                  isAttemptRunning ||
+                  hasConflicts ||
+                  (branchStatus.commits_behind ?? 0) === 0
+                }
+                variant="outline"
+                size="xs"
+                className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1"
+              >
+                <RefreshCw
+                  className={`h-3 w-3 ${rebasing ? 'animate-spin' : ''}`}
+                />
+                {rebaseButtonLabel}
+              </Button>
               <>
                 <Button
                   onClick={handlePRButtonClick}
@@ -662,7 +759,7 @@ function CurrentAttempt({
                   className="bg-green-600 hover:bg-green-700 dark:bg-green-900 dark:hover:bg-green-700 gap-1 min-w-[120px]"
                 >
                   <GitBranchIcon className="h-3 w-3" />
-                  {mergeSuccess ? 'Merged!' : merging ? 'Merging...' : 'Merge'}
+                  {mergeButtonLabel}
                 </Button>
               </>
             </>

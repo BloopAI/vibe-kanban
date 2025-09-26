@@ -24,7 +24,7 @@ import {
   DeleteTaskConfirmationDialog,
   FolderPickerDialog,
   TaskTemplateEditDialog,
-  RebaseDialog,
+  ChangeTargetBranchDialog,
   CreateConfigurationDialog,
   DeleteConfigurationDialog,
   ProjectFormDialog,
@@ -46,6 +46,7 @@ NiceModal.register('task-form', TaskFormDialog);
 NiceModal.register('editor-selection', EditorSelectionDialog);
 NiceModal.register('folder-picker', FolderPickerDialog);
 NiceModal.register('task-template-edit', TaskTemplateEditDialog);
+NiceModal.register('change-target-branch-dialog', ChangeTargetBranchDialog);
 NiceModal.register('rebase-dialog', RebaseDialog);
 NiceModal.register('create-configuration', CreateConfigurationDialog);
 NiceModal.register('delete-configuration', DeleteConfigurationDialog);
@@ -61,6 +62,7 @@ import {
   createRoutesFromChildren,
   matchRoutes,
 } from 'react-router-dom';
+import { RebaseDialog } from './components/dialogs/tasks/RebaseDialog.tsx';
 
 Sentry.init({
   dsn: 'https://1065a1d276a581316999a07d5dffee26@o4509603705192449.ingest.de.sentry.io/4509605576441937',

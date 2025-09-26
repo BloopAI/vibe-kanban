@@ -18,6 +18,7 @@ import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useMemo, useState } from 'react';
 import NiceModal from '@ebay/nice-modal-react';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
+import { useTranslation } from 'react-i18next';
 
 interface AttemptHeaderCardProps {
   attemptNumber: number;
@@ -37,6 +38,7 @@ export function AttemptHeaderCard({
   projectId,
   onJumpToDiffFullScreen,
 }: AttemptHeaderCardProps) {
+  const { t } = useTranslation('tasks');
   const {
     start: startDevServer,
     stop: stopDevServer,
@@ -113,7 +115,7 @@ export function AttemptHeaderCard({
   const handleRebaseClick = async () => {
     setRebasing(true);
     try {
-      await rebaseMutation.mutateAsync(undefined);
+      await rebaseMutation.mutateAsync({});
     } catch (error) {
       // Error handling is done by the mutation
     } finally {
@@ -206,7 +208,9 @@ export function AttemptHeaderCard({
                   onClick={handleRebaseClick}
                   disabled={rebasing || isAttemptRunning || hasConflicts}
                 >
-                  {rebasing ? 'Rebasing...' : 'Rebase'}
+                  {rebasing
+                    ? t('rebase.common.inProgress')
+                    : t('rebase.common.action')}
                 </DropdownMenuItem>
               )}
             <DropdownMenuItem

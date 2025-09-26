@@ -100,7 +100,7 @@ pub struct MissingBeforeContext {
     pub id: Uuid,
     pub task_attempt_id: Uuid,
     pub prev_after_head_commit: Option<String>,
-    pub base_branch: String,
+    pub target_branch: String,
     pub git_repo_path: Option<String>,
 }
 
@@ -130,7 +130,7 @@ impl ExecutionProcess {
                 ep.task_attempt_id            as "task_attempt_id!: Uuid",
                 ep.after_head_commit          as after_head_commit,
                 prev.after_head_commit        as prev_after_head_commit,
-                ta.base_branch                as base_branch,
+                ta.target_branch              as target_branch,
                 p.git_repo_path               as git_repo_path
             FROM execution_processes ep
             JOIN task_attempts ta ON ta.id = ep.task_attempt_id
@@ -155,7 +155,7 @@ impl ExecutionProcess {
                 id: r.id,
                 task_attempt_id: r.task_attempt_id,
                 prev_after_head_commit: r.prev_after_head_commit,
-                base_branch: r.base_branch,
+                target_branch: r.target_branch,
                 git_repo_path: Some(r.git_repo_path),
             })
             .collect();
