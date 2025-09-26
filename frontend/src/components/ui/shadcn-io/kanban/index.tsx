@@ -1,6 +1,12 @@
 'use client';
 
 import { Card } from '@/components/ui/card';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { DragEndEvent, Modifier } from '@dnd-kit/core';
 import {
@@ -14,6 +20,7 @@ import {
 } from '@dnd-kit/core';
 import { type ReactNode, type Ref, type KeyboardEvent } from 'react';
 
+import { Plus } from 'lucide-react';
 import type { ClientRect } from '@dnd-kit/core';
 import type { Transform } from '@dnd-kit/utilities';
 export type { DragEndEvent } from '@dnd-kit/core';
@@ -161,6 +168,21 @@ export const KanbanHeader = (props: KanbanHeaderProps) =>
         style={{ backgroundColor: `hsl(var(${props.color}))` }}
       />
       <p className="m-0 text-sm">{props.name}</p>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="ml-auto inline-flex items-center justify-center rounded-sm p-1 text-muted-foreground transition hover:text-foreground"
+              onClick={() => console.log('Add Task clicked')}
+              aria-label="Add task"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Add Task</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </Card>
   );
 
