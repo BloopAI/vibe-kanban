@@ -100,17 +100,13 @@ export function TaskDetailsPanel({
   // Tab and collapsible state
   const [activeTab, setActiveTab] = useState<TabType>('logs');
 
-  // State to hold the append function from follow up section
-  const [_appendToFollowUp, setAppendToFollowUp] = useState<
-    ((text: string) => void) | null
-  >(null);
-
   // Handler for jumping to diff tab in full screen
   const { toggleFullscreen } = useTaskViewManager();
 
   // Preview state for devserver detection
   const previewState = useDevserverPreview(selectedAttempt?.id, {
     projectHasDevScript,
+    projectId,
   });
 
   const jumpToDiffFullScreen = () => {
@@ -237,7 +233,6 @@ export function TaskDetailsPanel({
                                   task={task}
                                   selectedAttemptId={selectedAttempt?.id}
                                   jumpToLogsTab={jumpToLogsTab}
-                                  onAppendTextReady={setAppendToFollowUp}
                                 />
                               </>
                             )}
@@ -282,7 +277,6 @@ export function TaskDetailsPanel({
                                 task={task}
                                 selectedAttemptId={selectedAttempt?.id}
                                 jumpToLogsTab={jumpToLogsTab}
-                                onAppendTextReady={setAppendToFollowUp}
                               />
                             </>
                           )}
