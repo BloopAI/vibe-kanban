@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -54,6 +55,8 @@ export const RebaseDialog = NiceModal.create<RebaseDialogProps>(
       }
     }, [initialUpstreamBranch]);
 
+    const [showAdvanced, setShowAdvanced] = useState(false);
+
     const handleConfirm = () => {
       if (selectedBranch) {
         modal.resolve({
@@ -88,18 +91,6 @@ export const RebaseDialog = NiceModal.create<RebaseDialogProps>(
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <label htmlFor="upstream-branch" className="text-sm font-medium">
-                {t('rebase.dialog.upstreamLabel')}
-              </label>
-              <BranchSelector
-                branches={branches}
-                selectedBranch={selectedUpstream}
-                onBranchSelect={setSelectedUpstream}
-                placeholder={t('rebase.dialog.upstreamPlaceholder')}
-                excludeCurrentBranch={false}
-              />
-            </div>
-            <div className="space-y-2">
               <label htmlFor="target-branch" className="text-sm font-medium">
                 {t('rebase.dialog.targetLabel')}
               </label>
@@ -110,6 +101,35 @@ export const RebaseDialog = NiceModal.create<RebaseDialogProps>(
                 placeholder={t('rebase.dialog.targetPlaceholder')}
                 excludeCurrentBranch={false}
               />
+            </div>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setShowAdvanced((prev) => !prev)}
+                className="flex w-full items-center gap-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <ChevronRight
+                  className={`h-3 w-3 transition-transform ${showAdvanced ? 'rotate-90' : ''}`}
+                />
+                <span>Advanced</span>
+              </button>
+              {showAdvanced && (
+                <div className="space-y-2">
+                  <label
+                    htmlFor="upstream-branch"
+                    className="text-sm font-medium"
+                  >
+                    {t('rebase.dialog.upstreamLabel')}
+                  </label>
+                  <BranchSelector
+                    branches={branches}
+                    selectedBranch={selectedUpstream}
+                    onBranchSelect={setSelectedUpstream}
+                    placeholder={t('rebase.dialog.upstreamPlaceholder')}
+                    excludeCurrentBranch={false}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
