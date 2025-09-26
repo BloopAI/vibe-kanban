@@ -26,9 +26,9 @@ function TabNavigation({
 
   const tabs = showPreview
     ? [
-      ...baseTabs,
-      { id: 'preview' as TabType, label: 'Preview', icon: Monitor },
-    ]
+        ...baseTabs,
+        { id: 'preview' as TabType, label: 'Preview', icon: Monitor },
+      ]
     : baseTabs;
 
   const getTabClassName = (tabId: TabType) => {

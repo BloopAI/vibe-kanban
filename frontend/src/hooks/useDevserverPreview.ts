@@ -34,14 +34,17 @@ export function useDevserverPreview(
   const processedLinesQueueRef = useRef<string[]>([]);
 
   // URL detection patterns (in order of priority)
-  const urlPatterns = useMemo(() => [
-    // Full URLs with protocol
-    /(https?:\/\/(?:\[[0-9a-f:]+\]|[a-z0-9.-]+|\d{1,3}(?:\.\d{1,3}){3})(?::\d{2,5})?(?:\/\S*)?)/i,
-    // Host:port patterns
-    /(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[[0-9a-f:]+\]|(?:\d{1,3}\.){3}\d{1,3}):(\d{2,5})/i,
-    // Port mentions
-    /port[^0-9]{0,5}(\d{2,5})/i,
-  ], []);
+  const urlPatterns = useMemo(
+    () => [
+      // Full URLs with protocol
+      /(https?:\/\/(?:\[[0-9a-f:]+\]|[a-z0-9.-]+|\d{1,3}(?:\.\d{1,3}){3})(?::\d{2,5})?(?:\/\S*)?)/i,
+      // Host:port patterns
+      /(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[[0-9a-f:]+\]|(?:\d{1,3}\.){3}\d{1,3}):(\d{2,5})/i,
+      // Port mentions
+      /port[^0-9]{0,5}(\d{2,5})/i,
+    ],
+    []
+  );
 
   const extractUrlFromLine = (line: string) => {
     // Try full URL pattern first
@@ -50,13 +53,18 @@ export function useDevserverPreview(
       try {
         const url = new URL(fullUrlMatch[1]);
         // Normalize 0.0.0.0 and :: to localhost for preview
-        if (url.hostname === '0.0.0.0' || url.hostname === '::' || url.hostname === '[::]') {
+        if (
+          url.hostname === '0.0.0.0' ||
+          url.hostname === '::' ||
+          url.hostname === '[::]'
+        ) {
           url.hostname = 'localhost';
         }
         return {
           url: url.toString(),
           port: parseInt(url.port) || (url.protocol === 'https:' ? 443 : 80),
-          scheme: url.protocol === 'https:' ? 'https' as const : 'http' as const,
+          scheme:
+            url.protocol === 'https:' ? ('https' as const) : ('http' as const),
         };
       } catch {
         // Invalid URL, continue to other patterns
@@ -94,7 +102,7 @@ export function useDevserverPreview(
     if (!processedLinesRef.current.has(line)) {
       processedLinesRef.current.add(line);
       processedLinesQueueRef.current.push(line);
-      
+
       // Keep bounded (max 1000 lines per process)
       if (processedLinesQueueRef.current.length > 1000) {
         const oldLine = processedLinesQueueRef.current.shift()!;
@@ -108,14 +116,14 @@ export function useDevserverPreview(
     if (currentToken !== streamTokenRef.current) return;
 
     addToProcessedLines(line);
-    
+
     const urlInfo = extractUrlFromLine(line);
     if (!urlInfo) return;
 
     setState((prev) => {
       // Only update if we don't already have a URL for this stream
       if (prev.status === 'ready' && prev.url) return prev;
-      
+
       return {
         status: 'ready',
         url: urlInfo.url,
@@ -137,7 +145,7 @@ export function useDevserverPreview(
 
     try {
       const url = `/api/execution-processes/${processId}/raw-logs/ws`;
-      
+
       streamJsonPatchEntries<PatchType>(url, {
         onEntries: (entries) => {
           entries.forEach((entry) => {
@@ -162,12 +170,14 @@ export function useDevserverPreview(
       // Store a cleanup function (note: streamJsonPatchEntries doesn't return one,
       // so we'll rely on the token system for now)
       streamRef.current = () => {
-        // The stream doesn't provide a direct way to close, 
+        // The stream doesn't provide a direct way to close,
         // but the token system will ignore future callbacks
       };
-
     } catch (error) {
-      console.warn(`Failed to start log stream for process ${processId}:`, error);
+      console.warn(
+        `Failed to start log stream for process ${processId}:`,
+        error
+      );
     }
   };
 
@@ -183,14 +193,14 @@ export function useDevserverPreview(
     const runningProcesses = devserverProcesses.filter(
       (process) => process.status === 'running'
     );
-    
-    const candidateProcesses = runningProcesses.length > 0 
-      ? runningProcesses 
-      : devserverProcesses;
+
+    const candidateProcesses =
+      runningProcesses.length > 0 ? runningProcesses : devserverProcesses;
 
     return candidateProcesses.sort(
-      (a, b) => new Date(b.created_at as unknown as string).getTime() - 
-                new Date(a.created_at as unknown as string).getTime()
+      (a, b) =>
+        new Date(b.created_at as unknown as string).getTime() -
+        new Date(a.created_at as unknown as string).getTime()
     )[0];
   }, [executionProcesses]);
 
@@ -249,15 +259,15 @@ export function useDevserverPreview(
       status: 'idle',
       scheme: 'http',
     });
-    
+
     processedLinesRef.current.clear();
     processedLinesQueueRef.current.length = 0;
-    
+
     if (streamRef.current) {
       streamRef.current();
       streamRef.current = null;
     }
-    
+
     streamTokenRef.current++;
   }, [attemptId]);
 
