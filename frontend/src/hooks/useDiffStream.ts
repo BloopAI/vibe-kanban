@@ -1,38 +1,60 @@
-import { useCallback } from 'react';
-import type { PatchType } from 'shared/types';
+import { useCallback, useMemo } from 'react';
+import type { Diff, PatchType } from 'shared/types';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
 
-interface DiffState {
-  entries: Record<string, PatchType>;
+interface DiffEntries {
+  [filePath: string]: PatchType;
+}
+
+type DiffStreamEvent = {
+  entries: DiffEntries;
+};
+
+export interface UseDiffStreamOptions {
+  statsOnly?: boolean;
 }
 
 interface UseDiffStreamResult {
-  data: DiffState | undefined;
-  isConnected: boolean;
+  diffs: Diff[];
   error: string | null;
 }
 
 export const useDiffStream = (
   attemptId: string | null,
-  enabled: boolean
+  enabled: boolean,
+  options?: UseDiffStreamOptions
 ): UseDiffStreamResult => {
-  const endpoint = attemptId
-    ? `/api/task-attempts/${attemptId}/diff/ws`
-    : undefined;
+  const endpoint = (() => {
+    if (!attemptId) return undefined;
+    const query = `/api/task-attempts/${attemptId}/diff/ws`;
+    if (typeof options?.statsOnly === 'boolean') {
+      const params = new URLSearchParams();
+      params.set('stats_only', String(options.statsOnly));
+      return `${query}?${params.toString()}`;
+    } else {
+      return query;
+    }
+  })();
 
   const initialData = useCallback(
-    (): DiffState => ({
+    (): DiffStreamEvent => ({
       entries: {},
     }),
     []
   );
 
-  const { data, isConnected, error } = useJsonPatchWsStream(
+  const { data, error } = useJsonPatchWsStream<DiffStreamEvent>(
     endpoint,
     enabled && !!attemptId,
     initialData
     // No need for injectInitialEntry or deduplicatePatches for diffs
   );
 
-  return { data, isConnected, error };
+  const diffs = useMemo(() => {
+    return Object.values(data?.entries ?? {})
+      .filter((entry) => entry?.type === 'DIFF')
+      .map((entry) => entry.content);
+  }, [data?.entries]);
+
+  return { diffs, error };
 };

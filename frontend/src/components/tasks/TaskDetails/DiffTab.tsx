@@ -1,4 +1,4 @@
-import { useDiffEntries } from '@/hooks/useDiffEntries';
+import { useDiffStream } from '@/hooks/useDiffStream';
 import { useMemo, useCallback, useState, useEffect } from 'react';
 import { Loader } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ function DiffTab({ selectedAttempt }: DiffTabProps) {
   const [loading, setLoading] = useState(true);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [hasInitialized, setHasInitialized] = useState(false);
-  const { diffs, error } = useDiffEntries(selectedAttempt?.id ?? null, true);
+  const { diffs, error } = useDiffStream(selectedAttempt?.id ?? null, true);
   const { fileCount, added, deleted } = useDiffSummary(
     selectedAttempt?.id ?? null
   );
