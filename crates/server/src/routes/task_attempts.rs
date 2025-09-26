@@ -36,8 +36,9 @@ use futures_util::TryStreamExt;
 use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
+    commit_message_service::CommitMessageService,
     container::ContainerService,
-    git::ConflictOp,
+    git::{ConflictOp, DiffTarget, GitService},
     github_service::{CreatePrRequest, GitHubService, GitHubServiceError},
     image::ImageService,
 };
@@ -1058,26 +1059,58 @@ pub async fn merge_task_attempt(
         .await?;
     let worktree_path = std::path::Path::new(&container_ref);
 
-    let task_uuid_str = task.id.to_string();
-    let first_uuid_section = task_uuid_str.split('-').next().unwrap_or(&task_uuid_str);
-
-    // Create commit message with task title and description
-    let mut commit_message = format!("{} (vibe-kanban {})", ctx.task.title, first_uuid_section);
-
-    // Add description on next line if it exists
-    if let Some(description) = &ctx.task.description
-        && !description.trim().is_empty()
-    {
-        commit_message.push_str("\n\n");
-        commit_message.push_str(description);
-    }
-
     // Get branch name from task attempt
     let branch_name = ctx.task_attempt.branch.as_ref().ok_or_else(|| {
         ApiError::TaskAttempt(TaskAttemptError::ValidationError(
             "No branch found for task attempt".to_string(),
         ))
     })?;
+
+    // Generate an enhanced commit message using LLM if available
+    let commit_message_service = CommitMessageService::new();
+    let commit_message = if commit_message_service.is_available() {
+        // Get the diffs to understand what changes are being committed
+        let git_service = GitService::new();
+        let base_commit = git_service.get_base_commit(
+            worktree_path,
+            branch_name,
+            &ctx.task_attempt.base_branch,
+        )?;
+
+        let diff_target = DiffTarget::Worktree {
+            worktree_path,
+            base_commit: &base_commit,
+        };
+
+        let diffs = git_service.get_diffs(diff_target, None)?;
+
+        // Try to generate an LLM-based commit message
+        match commit_message_service.generate_commit_message(
+            &diffs,
+            &ctx.task.title,
+            ctx.task.description.as_deref(),
+        ).await {
+            Ok(llm_message) => {
+                tracing::info!("Generated commit message using LLM: {}", llm_message);
+                llm_message
+            }
+            Err(err) => {
+                tracing::warn!("Failed to generate commit message using LLM: {}, falling back to default", err);
+                commit_message_service.generate_fallback_message(
+                    &ctx.task.title,
+                    ctx.task.description.as_deref(),
+                    &task.id.to_string(),
+                )
+            }
+        }
+    } else {
+        // Fall back to the original simple format
+        commit_message_service.generate_fallback_message(
+            &ctx.task.title,
+            ctx.task.description.as_deref(),
+            &task.id.to_string(),
+        )
+    };
 
     let merge_commit_id = deployment.git().merge_changes(
         &ctx.project.git_repo_path,
