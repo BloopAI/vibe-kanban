@@ -315,7 +315,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
               taskId: task.id,
               data: {
                 title,
-                description: description || null,
+                description: description,
                 status,
                 parent_task_attempt: parentTaskAttemptId || null,
                 image_ids: imageIds || null,
@@ -332,7 +332,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
             {
               project_id: projectId,
               title,
-              description: description || null,
+              description: description,
               parent_task_attempt: parentTaskAttemptId || null,
               image_ids: imageIds || null,
             },
@@ -384,11 +384,11 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
           createAndStart.mutate(
             {
               task: {
-                project_id: projectId,
-                title,
-                description: description || null,
-                parent_task_attempt: parentTaskAttemptId || null,
-                image_ids: imageIds || null,
+              project_id: projectId,
+              title,
+              description: description,
+              parent_task_attempt: parentTaskAttemptId || null,
+              image_ids: imageIds || null,
               },
               executor_profile_id: finalExecutorProfile,
               base_branch: selectedBranch,
