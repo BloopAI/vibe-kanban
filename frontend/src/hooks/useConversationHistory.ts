@@ -62,7 +62,9 @@ export const useConversationHistory = ({
   const lastRunningProcessId = useRef<string | null>(null);
   const onEntriesUpdatedRef = useRef<OnEntriesUpdated | null>(null);
 
-  const mergeIntoDisplayed = (mutator: (state: ExecutionProcessStateStore) => void) => {
+  const mergeIntoDisplayed = (
+    mutator: (state: ExecutionProcessStateStore) => void
+  ) => {
     const state = displayedExecutionProcesses.current;
     mutator(state);
   };
@@ -399,7 +401,9 @@ export const useConversationHistory = ({
         };
       });
 
-      if (flattenEntries(displayedExecutionProcesses.current).length > batchSize) {
+      if (
+        flattenEntries(displayedExecutionProcesses.current).length > batchSize
+      ) {
         anyUpdated = true;
         break;
       }
@@ -447,7 +451,7 @@ export const useConversationHistory = ({
       // Then load the remaining in batches
       while (
         !cancelled &&
-        await loadRemainingEntriesInBatches(REMAINING_BATCH_SIZE)
+        (await loadRemainingEntriesInBatches(REMAINING_BATCH_SIZE))
       ) {
         if (cancelled) return;
       }
