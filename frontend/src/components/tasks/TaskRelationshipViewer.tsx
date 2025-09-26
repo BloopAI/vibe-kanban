@@ -147,16 +147,15 @@ export function TaskRelationshipViewer({
                 </div>
 
                 {childrenExpanded && (
-                  <div className="flex gap-4 overflow-x-auto pb-2">
+                  <div className="flex flex-col gap-4">
                     {childTasks.map((childTask) => (
-                      <div key={childTask.id} className="flex-none w-80">
-                        <TaskRelationshipCard
-                          task={childTask}
-                          isCurrentTask={false}
-                          onClick={() => onNavigateToTask?.(childTask.id)}
-                          className="shadow-sm hover:shadow-md transition-shadow"
-                        />
-                      </div>
+                      <TaskRelationshipCard
+                        key={childTask.id}
+                        task={childTask}
+                        isCurrentTask={false}
+                        onClick={() => onNavigateToTask?.(childTask.id)}
+                        className="shadow-sm hover:shadow-md transition-shadow"
+                      />
                     ))}
                   </div>
                 )}
