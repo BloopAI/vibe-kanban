@@ -1,5 +1,4 @@
 import { GitCompare, MessageSquare, Cog, Monitor, Loader2 } from 'lucide-react';
-import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import type { TabType } from '@/types/tabs';
 import type { TaskAttempt } from 'shared/types';
 
@@ -16,12 +15,9 @@ function TabNavigation({
   activeTab,
   setActiveTab,
   rightContent,
-  selectedAttempt,
   showPreview = false,
   previewStatus = 'idle',
 }: Props) {
-  const { attemptData } = useAttemptExecution(selectedAttempt?.id);
-
   const baseTabs = [
     { id: 'logs' as TabType, label: 'Logs', icon: MessageSquare },
     { id: 'diffs' as TabType, label: 'Diffs', icon: GitCompare },
@@ -30,9 +26,9 @@ function TabNavigation({
 
   const tabs = showPreview
     ? [
-        ...baseTabs,
-        { id: 'preview' as TabType, label: 'Preview', icon: Monitor },
-      ]
+      ...baseTabs,
+      { id: 'preview' as TabType, label: 'Preview', icon: Monitor },
+    ]
     : baseTabs;
 
   const getTabClassName = (tabId: TabType) => {
@@ -59,13 +55,6 @@ function TabNavigation({
               <Icon className="h-4 w-4 mr-2" />
             )}
             {label}
-            {id === 'processes' &&
-              attemptData.processes &&
-              attemptData.processes.length > 0 && (
-                <span className="ml-2 px-1.5 py-0.5 text-xs bg-primary/10 text-primary rounded-full">
-                  {attemptData.processes.length}
-                </span>
-              )}
           </button>
         ))}
         <div className="ml-auto flex items-center">{rightContent}</div>

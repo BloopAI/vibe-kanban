@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   ExternalLink,
   RefreshCw,
@@ -8,14 +8,23 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DevserverPreviewState } from '@/hooks/useDevserverPreview';
+import {
+  ClickToComponentListener,
+  OpenInEditorPayload,
+} from '@/utils/previewBridge';
 
 interface PreviewTabProps {
   previewState: DevserverPreviewState;
+  onElementClicked?: (details: string) => void;
 }
 
-export default function PreviewTab({ previewState }: PreviewTabProps) {
+export default function PreviewTab({
+  previewState,
+  onElementClicked,
+}: PreviewTabProps) {
   const [iframeError, setIframeError] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const listenerRef = useRef<ClickToComponentListener | null>(null);
 
   const handleRefresh = () => {
     setIframeError(false);
@@ -31,6 +40,54 @@ export default function PreviewTab({ previewState }: PreviewTabProps) {
   const handleIframeError = () => {
     setIframeError(true);
   };
+
+  const formatElementDetails = (payload: OpenInEditorPayload): string => {
+    const { clickedElement, selected } = payload;
+    const parts = ['From preview click:'];
+
+    if (clickedElement) {
+      const selector = [];
+      if (clickedElement.tag) selector.push(clickedElement.tag.toLowerCase());
+      if (clickedElement.id) selector.push('#' + clickedElement.id);
+      if (clickedElement.className)
+        selector.push('.' + clickedElement.className.replace(/\s+/g, '.'));
+      if (selector.length) parts.push(`- DOM: ${selector.join('')}`);
+    }
+
+    if (selected) {
+      parts.push(
+        `- Component: ${selected.name} (${selected.pathToSource}:${selected.source.lineNumber})`
+      );
+    }
+
+    return parts.join('\n');
+  };
+
+  // Set up message listener when iframe is ready
+  useEffect(() => {
+    if (
+      previewState.status !== 'ready' ||
+      !previewState.url ||
+      !onElementClicked
+    ) {
+      return;
+    }
+
+    const listener = new ClickToComponentListener({
+      onOpenInEditor: (payload) => {
+        const details = formatElementDetails(payload);
+        onElementClicked(details);
+      },
+    });
+
+    listener.start();
+    listenerRef.current = listener;
+
+    return () => {
+      listener.stop();
+      listenerRef.current = null;
+    };
+  }, [previewState.status, previewState.url, onElementClicked]);
 
   if (previewState.status === 'searching') {
     return (

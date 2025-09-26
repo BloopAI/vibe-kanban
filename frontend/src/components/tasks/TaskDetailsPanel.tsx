@@ -75,8 +75,20 @@ export function TaskDetailsPanel({
   // Tab and collapsible state
   const [activeTab, setActiveTab] = useState<TabType>('logs');
 
+  // State to hold the append function from follow up section
+  const [appendToFollowUp, setAppendToFollowUp] = useState<
+    ((text: string) => void) | null
+  >(null);
+
   // Handler for jumping to diff tab in full screen
   const { toggleFullscreen } = useTaskViewManager();
+
+  // Handler for when elements are clicked in the preview
+  const handlePreviewElementClick = (details: string) => {
+    if (appendToFollowUp) {
+      appendToFollowUp(details);
+    }
+  };
 
   // Preview state for devserver detection
   const previewState = useDevserverPreview(selectedAttempt?.id, {
@@ -193,7 +205,10 @@ export function TaskDetailsPanel({
                                       attemptId={selectedAttempt?.id}
                                     />
                                   ) : activeTab === 'preview' ? (
-                                    <PreviewTab previewState={previewState} />
+                                    <PreviewTab
+                                      previewState={previewState}
+                                      onElementClicked={handlePreviewElementClick}
+                                    />
                                   ) : (
                                     <LogsTab
                                       selectedAttempt={selectedAttempt}
@@ -205,6 +220,7 @@ export function TaskDetailsPanel({
                                   task={task}
                                   selectedAttemptId={selectedAttempt?.id}
                                   jumpToLogsTab={jumpToLogsTab}
+                                  onAppendTextReady={setAppendToFollowUp}
                                 />
                               </>
                             </RetryUiProvider>
@@ -249,6 +265,7 @@ export function TaskDetailsPanel({
                                   task={task}
                                   selectedAttemptId={selectedAttempt?.id}
                                   jumpToLogsTab={jumpToLogsTab}
+                                  onAppendTextReady={setAppendToFollowUp}
                                 />
                               </RetryUiProvider>
                             )}
