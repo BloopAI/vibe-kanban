@@ -80,6 +80,61 @@ pub(crate) struct RawOmniInstance {
     pub is_active: Option<bool>,
     #[serde(default)]
     pub evolution_status: Option<RawEvolutionStatus>,
+    // Additional fields from your Omni server - all optional with defaults
+    #[serde(default)]
+    pub id: Option<u32>,
+    #[serde(default)]
+    pub evolution_url: Option<String>,
+    #[serde(default)]
+    pub evolution_key: Option<String>,
+    #[serde(default)]
+    pub whatsapp_instance: Option<String>,
+    #[serde(default)]
+    pub session_id_prefix: Option<String>,
+    #[serde(default)]
+    pub webhook_base64: Option<bool>,
+    #[serde(default)]
+    pub has_discord_bot_token: Option<bool>,
+    #[serde(default)]
+    pub discord_client_id: Option<String>,
+    #[serde(default)]
+    pub discord_guild_id: Option<String>,
+    #[serde(default)]
+    pub discord_default_channel_id: Option<String>,
+    #[serde(default)]
+    pub discord_voice_enabled: Option<bool>,
+    #[serde(default)]
+    pub discord_slash_commands_enabled: Option<bool>,
+    #[serde(default)]
+    pub agent_api_url: Option<String>,
+    #[serde(default)]
+    pub agent_api_key: Option<String>,
+    #[serde(default)]
+    pub default_agent: Option<String>,
+    #[serde(default)]
+    pub agent_timeout: Option<u32>,
+    #[serde(default)]
+    pub is_default: Option<bool>,
+    #[serde(default)]
+    pub automagik_instance_id: Option<String>,
+    #[serde(default)]
+    pub automagik_instance_name: Option<String>,
+    #[serde(default)]
+    pub profile_pic_url: Option<String>,
+    #[serde(default)]
+    pub owner_jid: Option<String>,
+    #[serde(default)]
+    pub created_at: Option<String>,
+    #[serde(default)]
+    pub updated_at: Option<String>,
+    #[serde(default)]
+    pub agent_instance_type: Option<String>,
+    #[serde(default)]
+    pub agent_id: Option<String>,
+    #[serde(default)]
+    pub agent_type: Option<String>,
+    #[serde(default)]
+    pub agent_stream_mode: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]

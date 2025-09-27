@@ -80,9 +80,53 @@ async function verifyPorts(ports) {
 }
 
 /**
+ * Load environment variables from .env file
+ */
+function loadEnvPorts() {
+  try {
+    const envPath = path.join(__dirname, "..", ".env");
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, "utf8");
+      const envLines = envContent.split("\n");
+
+      let frontendPort = null;
+      let backendPort = null;
+
+      for (const line of envLines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("FRONTEND_PORT=")) {
+          frontendPort = parseInt(trimmed.split("=")[1]);
+        }
+        if (trimmed.startsWith("BACKEND_PORT=")) {
+          backendPort = parseInt(trimmed.split("=")[1]);
+        }
+      }
+
+      if (frontendPort && backendPort) {
+        return { frontend: frontendPort, backend: backendPort };
+      }
+    }
+  } catch (error) {
+    console.warn("Failed to load .env ports:", error.message);
+  }
+  return null;
+}
+
+/**
  * Allocate ports for development
  */
 async function allocatePorts() {
+  // First check for .env file configuration
+  const envPorts = loadEnvPorts();
+  if (envPorts) {
+    if (process.argv[2] === "get") {
+      console.log("Using ports from .env file:");
+      console.log(`Frontend: ${envPorts.frontend}`);
+      console.log(`Backend: ${envPorts.backend}`);
+    }
+    return envPorts;
+  }
+
   // Try to load existing ports first
   const existingPorts = loadPorts();
 

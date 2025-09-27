@@ -20,7 +20,10 @@ interface UseProjectTasksResult {
  * Live updates arrive at /tasks/<id> via add/replace/remove operations.
  */
 export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
-  const endpoint = `/api/tasks/stream/ws?project_id=${encodeURIComponent(projectId)}`;
+  // For WebSocket connections, we need to construct the full backend URL
+  // since Vite proxy doesn't handle WebSocket upgrades automatically
+  const backendPort = import.meta.env.VITE_BACKEND_PORT || '9996';
+  const endpoint = `http://localhost:${backendPort}/api/tasks/stream/ws?project_id=${encodeURIComponent(projectId)}`;
 
   const initialData = useCallback((): TasksState => ({ tasks: {} }), []);
 
