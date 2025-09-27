@@ -124,6 +124,7 @@ impl Merge {
         target_branch_name: &str,
         pr_number: i64,
         pr_url: &str,
+        pr_status: MergeStatus,
     ) -> Result<PrMerge, sqlx::Error> {
         let id = Uuid::new_v4();
         let now = Utc::now();
@@ -132,8 +133,8 @@ impl Merge {
             MergeRow,
             r#"INSERT INTO merges (
                 id, task_attempt_id, merge_type, pr_number, pr_url, pr_status, created_at, target_branch_name
-            ) VALUES ($1, $2, 'pr', $3, $4, 'open', $5, $6)
-            RETURNING 
+            ) VALUES ($1, $2, 'pr', $3, $4, $5, $6, $7)
+            RETURNING
                 id as "id!: Uuid",
                 task_attempt_id as "task_attempt_id!: Uuid",
                 merge_type as "merge_type!: MergeType",
@@ -150,6 +151,7 @@ impl Merge {
             task_attempt_id,
             pr_number,
             pr_url,
+            pr_status,
             now,
             target_branch_name
         )
