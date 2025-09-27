@@ -17,9 +17,13 @@ impl OmniClient {
     }
 
     pub async fn list_instances(&self) -> Result<Vec<OmniInstance>> {
-        let mut request = self
-            .client
-            .get(format!("{}/api/v1/instances/", self.base_url));
+        let url = if self.base_url.ends_with("/api/v1") || self.base_url.contains("/api/v1/") {
+            format!("{}/instances", self.base_url.trim_end_matches('/'))
+        } else {
+            format!("{}/api/v1/instances", self.base_url.trim_end_matches('/'))
+        };
+
+        let mut request = self.client.get(url);
 
         if let Some(key) = &self.api_key {
             request = request.header("X-API-Key", key);
@@ -37,13 +41,13 @@ impl OmniClient {
         instance: &str,
         req: SendTextRequest,
     ) -> Result<SendTextResponse> {
-        let mut request = self
-            .client
-            .post(format!(
-                "{}/api/v1/instance/{}/send-text",
-                self.base_url, instance
-            ))
-            .json(&req);
+        let url = if self.base_url.ends_with("/api/v1") || self.base_url.contains("/api/v1/") {
+            format!("{}/instance/{}/send-text", self.base_url.trim_end_matches('/'), instance)
+        } else {
+            format!("{}/api/v1/instance/{}/send-text", self.base_url.trim_end_matches('/'), instance)
+        };
+
+        let mut request = self.client.post(url).json(&req);
 
         if let Some(key) = &self.api_key {
             request = request.header("X-API-Key", key);
