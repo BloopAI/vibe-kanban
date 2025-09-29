@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Play, Edit3, SquareTerminal, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,6 +34,7 @@ export function NoServerContent({
   queryClient,
   setDevScriptAdded,
 }: NoServerContentProps) {
+  const { t } = useTranslation('tasks');
   const [devScriptInput, setDevScriptInput] = useState('');
   const [isSavingDevScript, setIsSavingDevScript] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -41,13 +43,13 @@ export function NoServerContent({
   const handleSaveDevScript = async (startAfterSave?: boolean) => {
     setSaveError(null);
     if (!project) {
-      setSaveError('Project not loaded');
+      setSaveError(t('preview.devScript.errors.notLoaded'));
       return;
     }
 
     const script = devScriptInput.trim();
     if (!script) {
-      setSaveError('Dev script cannot be empty');
+      setSaveError(t('preview.devScript.errors.empty'));
       return;
     }
 
@@ -98,12 +100,12 @@ export function NoServerContent({
         </div>
         <div>
           <h3 className="text-lg font-medium text-foreground mb-2">
-            No dev server running
+            {t('preview.noServer.title')}
           </h3>
           <p className="text-sm text-muted-foreground">
             {effectiveHasDevScript
-              ? 'Please start a dev server to see the preview'
-              : 'To use the live preview and click-to-edit, please add a dev server script to this project.'}
+              ? t('preview.noServer.startPrompt')
+              : t('preview.noServer.setupPrompt')}
           </p>
           {effectiveHasDevScript && !isEditingExistingScript && (
             <div className="mt-4 flex items-center justify-center gap-2">
@@ -121,7 +123,7 @@ export function NoServerContent({
                 className="gap-1"
               >
                 <Play className="h-4 w-4" />
-                Start Dev Server
+                {t('preview.noServer.startButton')}
               </Button>
 
               {!runningDevServer && (
@@ -132,7 +134,7 @@ export function NoServerContent({
                   className="gap-1"
                 >
                   <Edit3 className="h-3 w-3" />
-                  Edit Dev Script
+                  {t('preview.noServer.editButton')}
                 </Button>
               )}
             </div>
@@ -145,7 +147,7 @@ export function NoServerContent({
                   htmlFor="devScript"
                   className="block text-sm font-medium text-foreground text-center"
                 >
-                  Dev server start command
+                  {t('preview.devScript.label')}
                 </label>
                 <Textarea
                   id="devScript"
@@ -172,7 +174,7 @@ export function NoServerContent({
                         className="gap-1"
                       >
                         <Save className="h-3 w-3" />
-                        Save Changes
+                        {t('preview.devScript.saveChanges')}
                       </Button>
                       <Button
                         size="sm"
@@ -182,7 +184,7 @@ export function NoServerContent({
                         className="gap-1"
                       >
                         <X className="h-3 w-3" />
-                        Cancel
+                        {t('preview.devScript.cancel')}
                       </Button>
                     </>
                   ) : (
@@ -194,7 +196,7 @@ export function NoServerContent({
                         className="gap-1"
                       >
                         <Play className="h-4 w-4" />
-                        Save & Start
+                        {t('preview.devScript.saveAndStart')}
                       </Button>
                       <Button
                         size="sm"
@@ -204,7 +206,7 @@ export function NoServerContent({
                         className="gap-1"
                       >
                         <Save className="h-3 w-3" />
-                        Save Only
+                        {t('preview.devScript.saveOnly')}
                       </Button>
                     </>
                   )}

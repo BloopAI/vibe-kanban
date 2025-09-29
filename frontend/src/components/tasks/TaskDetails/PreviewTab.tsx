@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDevserverPreview } from '@/hooks/useDevserverPreview';
@@ -39,6 +40,7 @@ export default function PreviewTab({
   const listenerRef = useRef<ClickToComponentListener | null>(null);
 
   // Hooks
+  const { t } = useTranslation('tasks');
   const queryClient = useQueryClient();
   const { project } = useProject();
   const { system } = useUserSystem();
@@ -145,9 +147,7 @@ export default function PreviewTab({
   };
 
   const copyPrompt = () => {
-    navigator.clipboard.writeText(
-      'Please install https://github.com/BloopAI/vibe-kanban-web-companion'
-    );
+    navigator.clipboard.writeText(t('preview.troubleAlert.tipCommand'));
   };
 
   return (
@@ -184,39 +184,31 @@ export default function PreviewTab({
 
         {mode === 'ready' && loadingTimeFinished && !isReady && (
           <Alert variant="destructive" className="space-y-2">
-            <p className="font-bold">
-              We're having trouble previewing your application:
-            </p>
+            <p className="font-bold">{t('preview.troubleAlert.title')}</p>
             <ol className="list-decimal list-inside space-y-2">
+              <li>{t('preview.troubleAlert.item1')}</li>
               <li>
-                Did the dev server start successfully? There may be a bug you
-                need to resolve, or perhaps dependencies need to be installed.
+                {t('preview.troubleAlert.item2')}{' '}
+                <code>http://localhost:3000</code>
+                {t('preview.troubleAlert.item2Suffix')}
               </li>
               <li>
-                Did your dev server print the URL and port to the terminal in
-                the format <code>http://localhost:3000</code>? (this is how we
-                know it's running)
-              </li>
-              <li>
-                Have you installed the Web Companion (required for
-                click-to-edit)? If not, please{' '}
+                {t('preview.troubleAlert.item3')}{' '}
                 <a
                   href="https://github.com/BloopAI/vibe-kanban-web-companion"
                   target="_blank"
                   className="underline font-bold"
                 >
-                  follow the installation instructions here
+                  {t('preview.troubleAlert.item3Link')}
                 </a>
                 .
               </li>
             </ol>
             <p className="border-2 p-2">
               <p>
-                Tip: you can ask your coding agent to install the Web Companion
-                for you with the prompt:{' '}
+                {t('preview.troubleAlert.tipPrompt')}{' '}
                 <code className="font-bold">
-                  Please install
-                  https://github.com/BloopAI/vibe-kanban-web-companion
+                  {t('preview.troubleAlert.tipCommand')}
                 </code>{' '}
                 <Button
                   variant="ghost"
@@ -227,7 +219,7 @@ export default function PreviewTab({
                 </Button>
               </p>
             </p>
-            <p>Please resolve any issues and restart the dev server.</p>
+            <p>{t('preview.troubleAlert.resolve')}</p>
           </Alert>
         )}
         <DevServerLogsView

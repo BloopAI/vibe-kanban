@@ -87,5 +87,44 @@
       "mergeChanges": "Failed to merge changes",
       "rebaseBranch": "Failed to rebase branch"
     }
+  },
+  "preview": {
+    "troubleAlert": {
+      "title": "We're having trouble previewing your application:",
+      "item1": "Did the dev server start successfully? There may be a bug you need to resolve, or perhaps dependencies need to be installed.",
+      "item2": "Did your dev server print the URL and port to the terminal in the format",
+      "item2Suffix": "? (this is how we know it's running)",
+      "item3": "Have you installed the Web Companion (required for click-to-edit)? If not, please",
+      "item3Link": "follow the installation instructions here",
+      "tipPrompt": "Tip: you can ask your coding agent to install the Web Companion for you with the prompt:",
+      "tipCommand": "Please install https://github.com/BloopAI/vibe-kanban-web-companion",
+      "resolve": "Please resolve any issues and restart the dev server."
+    },
+    "noServer": {
+      "title": "No dev server running",
+      "startPrompt": "Please start a dev server to see the preview",
+      "setupPrompt": "To use the live preview and click-to-edit, please add a dev server script to this project.",
+      "startButton": "Start Dev Server",
+      "editButton": "Edit Dev Script"
+    },
+    "devScript": {
+      "label": "Dev server start command",
+      "saveAndStart": "Save & Start",
+      "saveOnly": "Save Only",
+      "saveChanges": "Save Changes",
+      "cancel": "Cancel",
+      "errors": {
+        "notLoaded": "Project not loaded",
+        "empty": "Dev script cannot be empty"
+      }
+    },
+    "logs": {
+      "title": "Dev Server Logs",
+      "hide": "Hide",
+      "show": "Show"
+    },
+    "iframe": {
+      "title": "Dev server preview"
+    }
   }
 }
