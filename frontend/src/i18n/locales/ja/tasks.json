@@ -20,12 +20,68 @@
       "upstreamLabel": "アップストリームブランチ",
       "upstreamPlaceholder": "アップストリームブランチを選択",
       "targetLabel": "ターゲットブランチ",
-      "targetPlaceholder": "ターゲットブランチを選択"
+      "targetPlaceholder": "ターゲットブランチを選択",
+      "advanced": "詳細設定"
     },
     "status": {
       "inProgress": "リベース進行中{{counts}}",
       "needed": "リベースが必要です{{dirty}}{{counts}}",
       "dirtyMarker": " （未コミットあり）"
+    }
+  },
+  "branches": {
+    "changeTarget": {
+      "dialog": {
+        "title": "ターゲットブランチを変更",
+        "description": "タスク試行の新しいターゲットブランチを選択してください。",
+        "placeholder": "ターゲットブランチを選択",
+        "action": "ブランチを変更",
+        "inProgress": "変更中..."
+      }
+    }
+  },
+  "attempt": {
+    "labels": {
+      "attempt": "試行",
+      "agent": "エージェント",
+      "branch": "ブランチ",
+      "diffs": "差分"
+    },
+    "actions": {
+      "openInIde": "IDEで開く",
+      "openMenu": "メニューを開く",
+      "startDevServer": "開発サーバーを開始",
+      "stopDevServer": "開発サーバーを停止"
+    }
+  },
+  "git": {
+    "labels": {
+      "taskBranch": "タスクブランチ"
+    },
+    "branch": {
+      "current": "現在"
+    },
+    "status": {
+      "conflicts": "競合",
+      "upToDate": "最新"
+    },
+    "states": {
+      "merged": "マージ完了！",
+      "merging": "マージ中...",
+      "merge": "マージ",
+      "rebasing": "リベース中...",
+      "rebase": "リベース",
+      "pushed": "プッシュ完了！",
+      "pushing": "プッシュ中...",
+      "push": "プッシュ",
+      "creating": "作成中...",
+      "createPr": "PRを作成"
+    },
+    "errors": {
+      "changeTargetBranch": "ターゲットブランチの変更に失敗しました",
+      "pushChanges": "変更のプッシュに失敗しました",
+      "mergeChanges": "変更のマージに失敗しました",
+      "rebaseBranch": "ブランチのリベースに失敗しました"
     }
   }
 }

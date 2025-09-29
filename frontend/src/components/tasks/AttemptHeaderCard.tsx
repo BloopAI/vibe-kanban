@@ -138,16 +138,22 @@ export function AttemptHeaderCard({
     <Card className="border-b border-dashed bg-background flex items-center text-sm">
       <div className="flex-1 min-w-0 flex items-center gap-3 p-3 flex-nowrap">
         <p className="shrink-0 whitespace-nowrap">
-          <span className="text-secondary-foreground">Attempt &middot; </span>
+          <span className="text-secondary-foreground">
+            {t('attempt.labels.attempt')} &middot;{' '}
+          </span>
           {attemptNumber}/{totalAttempts}
         </p>
         <p className="shrink-0 whitespace-nowrap">
-          <span className="text-secondary-foreground">Agent &middot; </span>
+          <span className="text-secondary-foreground">
+            {t('attempt.labels.agent')} &middot;{' '}
+          </span>
           {selectedAttempt?.executor}
         </p>
         {selectedAttempt?.branch && (
           <p className="flex-1 min-w-0 truncate">
-            <span className="text-secondary-foreground">Branch &middot; </span>
+            <span className="text-secondary-foreground">
+              {t('attempt.labels.branch')} &middot;{' '}
+            </span>
             {selectedAttempt.branch}
           </p>
         )}
@@ -159,7 +165,7 @@ export function AttemptHeaderCard({
               className="h-4 p-0"
               onClick={onJumpToDiffFullScreen}
             >
-              Diffs
+              {t('attempt.labels.diffs')}
             </Button>{' '}
             &middot; <span className="text-console-success">+{added}</span>{' '}
             <span className="text-console-error">-{deleted}</span>
@@ -181,7 +187,7 @@ export function AttemptHeaderCard({
               className="h-10 w-10 p-0 shrink-0"
             >
               <MoreHorizontal className="h-4 w-4" />
-              <span className="sr-only">Open menu</span>
+              <span className="sr-only">{t('attempt.actions.openMenu')}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -189,7 +195,7 @@ export function AttemptHeaderCard({
               onClick={() => openInEditor()}
               disabled={!selectedAttempt}
             >
-              Open in IDE
+              {t('attempt.actions.openInIde')}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() =>
@@ -198,7 +204,9 @@ export function AttemptHeaderCard({
               disabled={!selectedAttempt}
               className={runningDevServer ? 'text-destructive' : ''}
             >
-              {runningDevServer ? 'Stop dev server' : 'Start dev server'}
+              {runningDevServer
+                ? t('attempt.actions.stopDevServer')
+                : t('attempt.actions.startDevServer')}
             </DropdownMenuItem>
             {selectedAttempt &&
               branchStatus &&
@@ -217,7 +225,7 @@ export function AttemptHeaderCard({
               onClick={handleCreatePR}
               disabled={!selectedAttempt}
             >
-              Create PR
+              {t('git.states.createPr')}
             </DropdownMenuItem>
             {selectedAttempt && branchStatus && !mergeInfo.hasMergedPR && (
               <DropdownMenuItem
@@ -231,7 +239,7 @@ export function AttemptHeaderCard({
                   (branchStatus.commits_ahead ?? 0) === 0
                 }
               >
-                {merging ? 'Merging...' : 'Merge'}
+                {merging ? t('git.states.merging') : t('git.states.merge')}
               </DropdownMenuItem>
             )}
             {/* <DropdownMenuItem

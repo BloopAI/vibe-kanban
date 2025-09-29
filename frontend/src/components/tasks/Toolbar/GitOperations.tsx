@@ -29,6 +29,7 @@ import NiceModal from '@ebay/nice-modal-react';
 import { Err } from '@/lib/api';
 import type { GitOperationError } from 'shared/types';
 import { showModal } from '@/lib/modals';
+import { useTranslation } from 'react-i18next';
 
 interface GitOperationsProps {
   selectedAttempt: TaskAttempt;
@@ -53,6 +54,8 @@ function GitOperations({
   setError,
   selectedBranch,
 }: GitOperationsProps) {
+  const { t } = useTranslation('tasks');
+
   // Git operation hooks
   const rebaseMutation = useRebase(selectedAttempt?.id, projectId);
   const mergeMutation = useMerge(selectedAttempt?.id);
@@ -71,7 +74,7 @@ function GitOperations({
 
   // Get display name for selected branch
   const selectedBranchDisplayName = useMemo(() => {
-    if (!selectedBranch) return 'current';
+    if (!selectedBranch) return t('git.branch.current');
 
     // For remote branches, show just the branch name without the remote prefix
     if (selectedBranch.includes('/')) {
@@ -94,7 +97,7 @@ function GitOperations({
       .mutateAsync(newBranch)
       .then(() => setError(null))
       .catch((error) => {
-        setError(error.message || 'Failed to change target branch');
+        setError(error.message || t('git.errors.changeTargetBranch'));
       });
   };
 
@@ -153,15 +156,15 @@ function GitOperations({
   }, [branchStatus?.merges]);
 
   const mergeButtonLabel = useMemo(() => {
-    if (mergeSuccess) return 'Merged!';
-    if (merging) return 'Merging...';
-    return 'Merge';
-  }, [mergeSuccess, merging]);
+    if (mergeSuccess) return t('git.states.merged');
+    if (merging) return t('git.states.merging');
+    return t('git.states.merge');
+  }, [mergeSuccess, merging, t]);
 
   const rebaseButtonLabel = useMemo(() => {
-    if (rebasing) return 'Rebasing...';
-    return 'Rebase';
-  }, [rebasing]);
+    if (rebasing) return t('git.states.rebasing');
+    return t('git.states.rebase');
+  }, [rebasing, t]);
 
   const handleMergeClick = async () => {
     if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
@@ -178,7 +181,7 @@ function GitOperations({
       setPushSuccess(true);
       setTimeout(() => setPushSuccess(false), 2000);
     } catch (error: any) {
-      setError(error.message || 'Failed to push changes');
+      setError(error.message || t('git.errors.pushChanges'));
     } finally {
       setPushing(false);
     }
@@ -193,7 +196,7 @@ function GitOperations({
       setTimeout(() => setMergeSuccess(false), 2000);
     } catch (error) {
       // @ts-expect-error it is type ApiError
-      setError(error.message || 'Failed to merge changes');
+      setError(error.message || t('git.errors.mergeChanges'));
     } finally {
       setMerging(false);
     }
@@ -215,7 +218,7 @@ function GitOperations({
         const isConflict =
           data?.type === 'merge_conflicts' ||
           data?.type === 'rebase_in_progress';
-        if (!isConflict) setError(err.message || 'Failed to rebase branch');
+        if (!isConflict) setError(err.message || t('git.errors.rebaseBranch'));
       });
     setRebasing(false);
   };
@@ -280,14 +283,16 @@ function GitOperations({
           <div className="grid grid-cols-[1fr_auto_1fr] gap-4">
             {/* Task Branch Label - Left Column */}
             <div className="flex justify-start">
-              <span className="text-xs text-muted-foreground">Task Branch</span>
+              <span className="text-xs text-muted-foreground">
+                {t('git.labels.taskBranch')}
+              </span>
             </div>
             {/* Center Column - Empty */}
             <div></div>
             {/* Target Branch Label - Right Column */}
             <div className="flex justify-end">
               <span className="text-xs text-muted-foreground">
-                Target Branch
+                {t('rebase.dialog.targetLabel')}
               </span>
             </div>
           </div>
@@ -326,7 +331,7 @@ function GitOperations({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Change target branch</p>
+                    <p>{t('branches.changeTarget.dialog.title')}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -346,7 +351,9 @@ function GitOperations({
                     <div></div>
                     <div className="flex items-center justify-center gap-1 text-orange-600">
                       <AlertTriangle className="h-3 w-3" />
-                      <span className="text-xs font-medium">Conflicts</span>
+                      <span className="text-xs font-medium">
+                        {t('git.status.conflicts')}
+                      </span>
                     </div>
                     <div></div>
                   </>
@@ -359,7 +366,9 @@ function GitOperations({
                     <div></div>
                     <div className="flex items-center justify-center gap-1 text-orange-600">
                       <RefreshCw className="h-3 w-3 animate-spin" />
-                      <span className="text-xs font-medium">Rebasing</span>
+                      <span className="text-xs font-medium">
+                        {t('git.states.rebasing')}
+                      </span>
                     </div>
                     <div></div>
                   </>
@@ -373,7 +382,9 @@ function GitOperations({
                     <div></div>
                     <div className="flex items-center justify-center gap-1 text-green-600">
                       <CheckCircle className="h-3 w-3" />
-                      <span className="text-xs font-medium">Merged</span>
+                      <span className="text-xs font-medium">
+                        {t('git.states.merged')}
+                      </span>
                     </div>
                     <div></div>
                   </>
@@ -441,7 +452,7 @@ function GitOperations({
                   <div></div>
                   <div className="flex justify-center">
                     <span className="text-xs text-muted-foreground">
-                      Up to date
+                      {t('git.status.upToDate')}
                     </span>
                   </div>
                   <div></div>
@@ -493,13 +504,13 @@ function GitOperations({
             <GitPullRequest className="h-3 w-3" />
             {mergeInfo.hasOpenPR
               ? pushSuccess
-                ? 'Pushed!'
+                ? t('git.states.pushed')
                 : pushing
-                  ? 'Pushing...'
-                  : 'Push'
+                  ? t('git.states.pushing')
+                  : t('git.states.push')
               : creatingPR
-                ? 'Creating...'
-                : 'Create PR'}
+                ? t('git.states.creating')
+                : t('git.states.createPr')}
           </Button>
           <Button
             onClick={handleRebaseDialogOpen}

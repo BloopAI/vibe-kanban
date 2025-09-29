@@ -111,7 +111,7 @@ export const RebaseDialog = NiceModal.create<RebaseDialogProps>(
                 <ChevronRight
                   className={`h-3 w-3 transition-transform ${showAdvanced ? 'rotate-90' : ''}`}
                 />
-                <span>Advanced</span>
+                <span>{t('rebase.dialog.advanced')}</span>
               </button>
               {showAdvanced && (
                 <div className="space-y-2">

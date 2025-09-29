@@ -20,12 +20,68 @@
       "upstreamLabel": "Rama upstream",
       "upstreamPlaceholder": "Selecciona una rama upstream",
       "targetLabel": "Rama de destino",
-      "targetPlaceholder": "Selecciona una rama de destino"
+      "targetPlaceholder": "Selecciona una rama de destino",
+      "advanced": "Avanzado"
     },
     "status": {
       "inProgress": "Rebase en progreso{{counts}}",
       "needed": "Rebase necesario{{dirty}}{{counts}}",
       "dirtyMarker": " (sucio)"
+    }
+  },
+  "branches": {
+    "changeTarget": {
+      "dialog": {
+        "title": "Cambiar rama de destino",
+        "description": "Elige una nueva rama de destino para el intento de tarea.",
+        "placeholder": "Selecciona una rama de destino",
+        "action": "Cambiar rama",
+        "inProgress": "Cambiando..."
+      }
+    }
+  },
+  "attempt": {
+    "labels": {
+      "attempt": "Intento",
+      "agent": "Agente",
+      "branch": "Rama",
+      "diffs": "Diferencias"
+    },
+    "actions": {
+      "openInIde": "Abrir en IDE",
+      "openMenu": "Abrir menú",
+      "startDevServer": "Iniciar servidor de desarrollo",
+      "stopDevServer": "Detener servidor de desarrollo"
+    }
+  },
+  "git": {
+    "labels": {
+      "taskBranch": "Rama de tarea"
+    },
+    "branch": {
+      "current": "actual"
+    },
+    "status": {
+      "conflicts": "Conflictos",
+      "upToDate": "Al día"
+    },
+    "states": {
+      "merged": "¡Fusionado!",
+      "merging": "Fusionando...",
+      "merge": "Fusionar",
+      "rebasing": "Rebaseando...",
+      "rebase": "Rebase",
+      "pushed": "¡Enviado!",
+      "pushing": "Enviando...",
+      "push": "Enviar",
+      "creating": "Creando...",
+      "createPr": "Crear PR"
+    },
+    "errors": {
+      "changeTargetBranch": "Error al cambiar rama de destino",
+      "pushChanges": "Error al enviar cambios",
+      "mergeChanges": "Error al fusionar cambios",
+      "rebaseBranch": "Error al hacer rebase de la rama"
     }
   }
 }

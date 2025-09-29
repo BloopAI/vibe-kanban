@@ -20,12 +20,68 @@
       "upstreamLabel": "Upstream Branch",
       "upstreamPlaceholder": "Select an upstream branch",
       "targetLabel": "Target Branch",
-      "targetPlaceholder": "Select a target branch"
+      "targetPlaceholder": "Select a target branch",
+      "advanced": "Advanced"
     },
     "status": {
       "inProgress": "Rebase in progress{{counts}}",
       "needed": "Rebase needed{{dirty}}{{counts}}",
       "dirtyMarker": " (dirty)"
+    }
+  },
+  "branches": {
+    "changeTarget": {
+      "dialog": {
+        "title": "Change target branch",
+        "description": "Choose a new target branch for the task attempt.",
+        "placeholder": "Select a target branch",
+        "action": "Change Branch",
+        "inProgress": "Changing..."
+      }
+    }
+  },
+  "attempt": {
+    "labels": {
+      "attempt": "Attempt",
+      "agent": "Agent",
+      "branch": "Branch",
+      "diffs": "Diffs"
+    },
+    "actions": {
+      "openInIde": "Open in IDE",
+      "openMenu": "Open menu",
+      "startDevServer": "Start dev server",
+      "stopDevServer": "Stop dev server"
+    }
+  },
+  "git": {
+    "labels": {
+      "taskBranch": "Task Branch"
+    },
+    "branch": {
+      "current": "current"
+    },
+    "status": {
+      "conflicts": "Conflicts",
+      "upToDate": "Up to date"
+    },
+    "states": {
+      "merged": "Merged!",
+      "merging": "Merging...",
+      "merge": "Merge",
+      "rebasing": "Rebasing...",
+      "rebase": "Rebase",
+      "pushed": "Pushed!",
+      "pushing": "Pushing...",
+      "push": "Push",
+      "creating": "Creating...",
+      "createPr": "Create PR"
+    },
+    "errors": {
+      "changeTargetBranch": "Failed to change target branch",
+      "pushChanges": "Failed to push changes",
+      "mergeChanges": "Failed to merge changes",
+      "rebaseBranch": "Failed to rebase branch"
     }
   }
 }
