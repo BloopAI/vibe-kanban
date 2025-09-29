@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { projectsApi, attemptsApi } from '@/lib/api';
@@ -17,51 +17,6 @@ import CurrentAttempt from '@/components/tasks/Toolbar/CurrentAttempt.tsx';
 import GitOperations from '@/components/tasks/Toolbar/GitOperations.tsx';
 import { useUserSystem } from '@/components/config-provider';
 import { Card } from '../ui/card';
-
-// UI State Management
-type UiAction =
-  | { type: 'OPEN_CREATE_PR' }
-  | { type: 'CLOSE_CREATE_PR' }
-  | { type: 'CREATE_PR_START' }
-  | { type: 'CREATE_PR_DONE' }
-  | { type: 'ENTER_CREATE_MODE' }
-  | { type: 'LEAVE_CREATE_MODE' }
-  | { type: 'SET_ERROR'; payload: string | null };
-
-interface UiState {
-  showCreatePRDialog: boolean;
-  creatingPR: boolean;
-  userForcedCreateMode: boolean;
-  error: string | null;
-}
-
-const initialUi: UiState = {
-  showCreatePRDialog: false,
-  creatingPR: false,
-  userForcedCreateMode: false,
-  error: null,
-};
-
-function uiReducer(state: UiState, action: UiAction): UiState {
-  switch (action.type) {
-    case 'OPEN_CREATE_PR':
-      return { ...state, showCreatePRDialog: true };
-    case 'CLOSE_CREATE_PR':
-      return { ...state, showCreatePRDialog: false };
-    case 'CREATE_PR_START':
-      return { ...state, creatingPR: true };
-    case 'CREATE_PR_DONE':
-      return { ...state, creatingPR: false };
-    case 'ENTER_CREATE_MODE':
-      return { ...state, userForcedCreateMode: true };
-    case 'LEAVE_CREATE_MODE':
-      return { ...state, userForcedCreateMode: false };
-    case 'SET_ERROR':
-      return { ...state, error: action.payload };
-    default:
-      return state;
-  }
-}
 
 function TaskDetailsToolbar({
   task,
@@ -89,8 +44,9 @@ function TaskDetailsToolbar({
   const { isAttemptRunning } = useAttemptExecution(selectedAttempt?.id);
   const { data: branchStatus } = useBranchStatus(selectedAttempt?.id);
 
-  // UI state using reducer
-  const [ui, dispatch] = useReducer(uiReducer, initialUi);
+  // UI state
+  const [userForcedCreateMode, setUserForcedCreateMode] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Data state
   const [branches, setBranches] = useState<GitBranch[]>([]);
@@ -113,8 +69,7 @@ function TaskDetailsToolbar({
 
   // Derived state
   const isInCreateAttemptMode =
-    forceCreateAttempt ??
-    (ui.userForcedCreateMode || taskAttempts.length === 0);
+    forceCreateAttempt ?? (userForcedCreateMode || taskAttempts.length === 0);
 
   // Derive createAttemptBranch for backward compatibility
   const createAttemptBranch = useMemo(() => {
@@ -180,52 +135,30 @@ function TaskDetailsToolbar({
 
   // Handle entering create attempt mode
   const handleEnterCreateAttemptMode = useCallback(() => {
-    dispatch({ type: 'ENTER_CREATE_MODE' });
+    setUserForcedCreateMode(true);
   }, []);
-
-  // Stub handlers for backward compatibility with CreateAttempt
-  const setCreateAttemptBranch = useCallback(
-    (branch: string | null | ((prev: string | null) => string | null)) => {
-      if (typeof branch === 'function') {
-        setSelectedBranch((prev) => branch(prev));
-      } else {
-        setSelectedBranch(branch);
-      }
-      // This is now derived state, so no-op
-    },
-    []
-  );
 
   const setIsInCreateAttemptMode = useCallback(
     (value: boolean | ((prev: boolean) => boolean)) => {
       const boolValue =
         typeof value === 'function' ? value(isInCreateAttemptMode) : value;
       if (boolValue) {
-        dispatch({ type: 'ENTER_CREATE_MODE' });
+        setUserForcedCreateMode(true);
       } else {
         if (onLeaveForceCreateAttempt) onLeaveForceCreateAttempt();
-        dispatch({ type: 'LEAVE_CREATE_MODE' });
+        setUserForcedCreateMode(false);
       }
     },
     [isInCreateAttemptMode, onLeaveForceCreateAttempt]
-  );
-
-  // Wrapper functions for UI state dispatch
-  const setError = useCallback(
-    (value: string | null | ((prev: string | null) => string | null)) => {
-      const errorValue = typeof value === 'function' ? value(ui.error) : value;
-      dispatch({ type: 'SET_ERROR', payload: errorValue });
-    },
-    [ui.error]
   );
 
   return (
     <>
       <div>
         {/* Error Display */}
-        {ui.error && (
+        {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200">
-            <div className="text-destructive text-sm">{ui.error}</div>
+            <div className="text-destructive text-sm">{error}</div>
           </div>
         )}
 
@@ -237,7 +170,7 @@ function TaskDetailsToolbar({
             selectedProfile={selectedProfile}
             taskAttempts={taskAttempts}
             branches={branches}
-            setCreateAttemptBranch={setCreateAttemptBranch}
+            setCreateAttemptBranch={setSelectedBranch}
             setIsInCreateAttemptMode={setIsInCreateAttemptMode}
             setSelectedProfile={setSelectedProfile}
             availableProfiles={profiles}
@@ -299,7 +232,6 @@ function TaskDetailsToolbar({
             branchStatus={branchStatus}
             branches={branches}
             isAttemptRunning={isAttemptRunning}
-            creatingPR={ui.creatingPR}
             setError={setError}
             selectedBranch={selectedBranch}
           />

@@ -15,8 +15,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip.tsx';
-import { Dispatch, SetStateAction, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type {
+  BranchStatus,
   GitBranch,
   TaskAttempt,
   TaskWithAttemptStatus,
@@ -35,11 +36,10 @@ interface GitOperationsProps {
   selectedAttempt: TaskAttempt;
   task: TaskWithAttemptStatus;
   projectId: string;
-  branchStatus: any; // BranchStatus type from shared/types
+  branchStatus: BranchStatus | null;
   branches: GitBranch[];
   isAttemptRunning: boolean;
-  creatingPR: boolean;
-  setError: Dispatch<SetStateAction<string | null>>;
+  setError: (error: string | null) => void;
   selectedBranch: string | null;
 }
 
@@ -50,18 +50,17 @@ function GitOperations({
   branchStatus,
   branches,
   isAttemptRunning,
-  creatingPR,
   setError,
   selectedBranch,
 }: GitOperationsProps) {
   const { t } = useTranslation('tasks');
 
   // Git operation hooks
-  const rebaseMutation = useRebase(selectedAttempt?.id, projectId);
-  const mergeMutation = useMerge(selectedAttempt?.id);
-  const pushMutation = usePush(selectedAttempt?.id);
+  const rebaseMutation = useRebase(selectedAttempt.id, projectId);
+  const mergeMutation = useMerge(selectedAttempt.id);
+  const pushMutation = usePush(selectedAttempt.id);
   const changeTargetBranchMutation = useChangeTargetBranch(
-    selectedAttempt?.id,
+    selectedAttempt.id,
     projectId
   );
   const isChangingTargetBranch = changeTargetBranchMutation.isPending;
@@ -155,8 +154,6 @@ function GitOperations({
   }, [rebasing, t]);
 
   const handleMergeClick = async () => {
-    if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
-
     // Directly perform merge without checking branch status
     await performMerge();
   };
@@ -213,7 +210,7 @@ function GitOperations({
 
   const handleRebaseDialogOpen = async () => {
     try {
-      const defaultTargetBranch = selectedAttempt?.target_branch ?? '';
+      const defaultTargetBranch = selectedAttempt.target_branch;
       const result = await showModal<{
         action: 'confirmed' | 'canceled';
         branchName?: string;
@@ -240,8 +237,6 @@ function GitOperations({
   };
 
   const handlePRButtonClick = async () => {
-    if (!projectId || !selectedAttempt?.id || !selectedAttempt?.task_id) return;
-
     // If PR already exists, push to it
     if (mergeInfo.hasOpenPR) {
       await handlePushClick();
@@ -255,7 +250,7 @@ function GitOperations({
     });
   };
 
-  if (!selectedAttempt || !branchStatus || mergeInfo.hasMergedPR) {
+  if (!branchStatus || mergeInfo.hasMergedPR) {
     return null;
   }
 
@@ -399,7 +394,7 @@ function GitOperations({
                     >
                       <GitPullRequest className="h-3 w-3" />
                       <span className="text-xs font-medium">
-                        PR #{prMerge.pr_info.number}
+                        PR #{Number(prMerge.pr_info.number)}
                       </span>
                     </button>
                   );
@@ -463,7 +458,6 @@ function GitOperations({
           <Button
             onClick={handlePRButtonClick}
             disabled={
-              creatingPR ||
               pushing ||
               Boolean((branchStatus.commits_behind ?? 0) > 0) ||
               isAttemptRunning ||
@@ -486,9 +480,7 @@ function GitOperations({
                 : pushing
                   ? t('git.states.pushing')
                   : t('git.states.push')
-              : creatingPR
-                ? t('git.states.creating')
-                : t('git.states.createPr')}
+              : t('git.states.createPr')}
           </Button>
           <Button
             onClick={handleRebaseDialogOpen}

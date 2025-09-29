@@ -22,7 +22,7 @@ type Props = {
   selectedProfile: ExecutorProfileId | null;
   selectedBranch: string | null;
   setIsInCreateAttemptMode: Dispatch<SetStateAction<boolean>>;
-  setCreateAttemptBranch: Dispatch<SetStateAction<string | null>>;
+  setCreateAttemptBranch: (branch: string | null) => void;
   setSelectedProfile: Dispatch<SetStateAction<ExecutorProfileId | null>>;
   availableProfiles: Record<string, ExecutorConfig> | null;
   selectedAttempt: TaskAttempt | null;

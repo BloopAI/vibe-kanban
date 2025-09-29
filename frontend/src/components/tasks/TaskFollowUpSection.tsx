@@ -63,13 +63,13 @@ export function TaskFollowUpSection({
     if (!hasConflicts) return null;
     return buildResolveConflictsInstructions(
       attemptBranch,
-      branchStatus?.base_branch_name,
+      branchStatus?.target_branch_name,
       branchStatus?.conflicted_files || [],
       branchStatus?.conflict_op ?? null
     );
   }, [
     attemptBranch,
-    branchStatus?.base_branch_name,
+    branchStatus?.target_branch_name,
     branchStatus?.conflicted_files,
     branchStatus?.conflict_op,
   ]);
