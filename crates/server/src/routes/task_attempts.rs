@@ -1282,7 +1282,6 @@ pub async fn create_github_pr(
                 &norm_target_branch_name,
                 pr_info.number,
                 &pr_info.url,
-                MergeStatus::Open,
             )
             .await
             {
@@ -1863,9 +1862,7 @@ pub async fn attach_existing_pr(
     // Get GitHub token
     let github_config = deployment.config().read().await.github.clone();
     let Some(github_token) = github_config.token() else {
-        return Ok(ResponseJson(ApiResponse::error_with_data(
-            GitHubServiceError::TokenInvalid,
-        )));
+        return Err(ApiError::GitHubService(GitHubServiceError::TokenInvalid));
     };
 
     // Get project and repo info
@@ -1873,7 +1870,7 @@ pub async fn attach_existing_pr(
         return Err(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound));
     };
     let Some(project) = Project::find_by_id(pool, task.project_id).await? else {
-        return Err(ApiError::Project(ProjectError::NotFound));
+        return Err(ApiError::Project(ProjectError::ProjectNotFound));
     };
 
     let github_service = GitHubService::new(&github_token)?;
@@ -1889,15 +1886,25 @@ pub async fn attach_existing_pr(
     // Take the first PR (prefer open, but also accept merged/closed)
     if let Some(pr_info) = prs.into_iter().next() {
         // Save PR info to database
-        Merge::create_pr(
+        let merge = Merge::create_pr(
             pool,
             task_attempt.id,
             &task_attempt.base_branch,
             pr_info.number,
             &pr_info.url,
-            pr_info.status.clone(),
         )
         .await?;
+
+        // Update status if not open
+        if !matches!(pr_info.status, MergeStatus::Open) {
+            Merge::update_status(
+                pool,
+                merge.id,
+                pr_info.status.clone(),
+                pr_info.merge_commit_sha.clone(),
+            )
+            .await?;
+        }
 
         // If PR is merged, mark task as done
         if matches!(pr_info.status, MergeStatus::Merged) {
