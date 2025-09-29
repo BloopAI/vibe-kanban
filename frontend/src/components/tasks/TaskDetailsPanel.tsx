@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import TaskDetailsHeader from './TaskDetailsHeader';
 import { TaskFollowUpSection } from './TaskFollowUpSection';
 import { TaskTitleDescription } from './TaskDetails/TaskTitleDescription';
+<<<<<<< HEAD
 import { useClickedElements } from '@/contexts/ClickedElementsProvider';
 import type { OpenInEditorPayload } from '@/utils/previewBridge';
+=======
+import type { TaskAttempt } from 'shared/types';
+>>>>>>> 186a4b61 (cleanup)
 import {
   getBackdropClasses,
   getTaskPanelClasses,
@@ -16,7 +20,6 @@ import LogsTab from '@/components/tasks/TaskDetails/LogsTab.tsx';
 import ProcessesTab from '@/components/tasks/TaskDetails/ProcessesTab.tsx';
 import PreviewTab from '@/components/tasks/TaskDetails/PreviewTab.tsx';
 import TabNavigation from '@/components/tasks/TaskDetails/TabNavigation.tsx';
-import { useDevserverPreview } from '@/hooks/useDevserverPreview';
 import TaskDetailsToolbar from './TaskDetailsToolbar.tsx';
 import TodoPanel from '@/components/tasks/TodoPanel';
 import { TabNavContext } from '@/contexts/TabNavigationContext';
@@ -31,32 +34,32 @@ import { TaskRelationshipViewer } from './TaskRelationshipViewer';
 import { useTaskViewManager } from '@/hooks/useTaskViewManager.ts';
 import type { TaskAttempt } from 'shared/types';
 
-// Internal component that provides the stable clicked element callback
-function PreviewTabWithCallback({
-  previewState,
-}: {
-  previewState: ReturnType<typeof useDevserverPreview>;
-}) {
-  const { addElement } = useClickedElements();
+// // Internal component that provides the stable clicked element callback
+// function PreviewTabWithCallback({
+//   previewState,
+// }: {
+//   previewState: ReturnType<typeof useDevserverPreview>;
+// }) {
+//   const { addElement } = useClickedElements();
 
-  const handlePreviewElementClick = useCallback(
-    (payload: OpenInEditorPayload) => {
-      addElement(payload);
-    },
-    [addElement]
-  );
+//   const handlePreviewElementClick = useCallback(
+//     (payload: OpenInEditorPayload) => {
+//       addElement(payload);
+//     },
+//     [addElement]
+//   );
 
-  return (
-    <PreviewTab
-      previewState={previewState}
-      onElementClicked={handlePreviewElementClick}
-    />
-  );
-}
+//   return (
+//     <PreviewTab
+//       previewState={previewState}
+//       onElementClicked={handlePreviewElementClick}
+//     />
+//   );
+// }
 
 interface TaskDetailsPanelProps {
   task: TaskWithAttemptStatus | null;
-  projectHasDevScript?: boolean;
+  projectHasDevScript: boolean;
   projectId: string;
   onClose: () => void;
   onEditTask?: (task: TaskWithAttemptStatus) => void;
@@ -103,12 +106,6 @@ export function TaskDetailsPanel({
 
   // Handler for jumping to diff tab in full screen
   const { toggleFullscreen } = useTaskViewManager();
-
-  // Preview state for devserver detection
-  const previewState = useDevserverPreview(selectedAttempt?.id, {
-    projectHasDevScript,
-    projectId,
-  });
 
   const jumpToDiffFullScreen = () => {
     toggleFullscreen(true);
@@ -207,8 +204,6 @@ export function TaskDetailsPanel({
                                     activeTab={activeTab}
                                     setActiveTab={setActiveTab}
                                     selectedAttempt={selectedAttempt}
-                                    showPreview={previewState.status !== 'idle'}
-                                    previewStatus={previewState.status}
                                   />
 
                                   <div className="flex-1 flex flex-col min-h-0">
@@ -221,8 +216,10 @@ export function TaskDetailsPanel({
                                         attemptId={selectedAttempt?.id}
                                       />
                                     ) : activeTab === 'preview' ? (
-                                      <PreviewTabWithCallback
-                                        previewState={previewState}
+                                      <PreviewTab
+                                        selectedAttempt={selectedAttempt}
+                                        projectId={projectId}
+                                        projectHasDevScript={projectHasDevScript}
                                       />
                                     ) : (
                                       <LogsTab

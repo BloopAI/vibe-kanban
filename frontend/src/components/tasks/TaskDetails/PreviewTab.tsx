@@ -7,30 +7,42 @@ import {
   MonitorSpeaker,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { DevserverPreviewState } from '@/hooks/useDevserverPreview';
 import {
-  ClickToComponentListener,
-  OpenInEditorPayload,
-} from '@/utils/previewBridge';
+  useDevserverPreview,
+} from '@/hooks/useDevserverPreview';
+import { ClickToComponentListener } from '@/utils/previewBridge';
+import { useClickedElements } from '@/contexts/ClickedElementsProvider';
+import { TaskAttempt } from 'shared/types';
 
 interface PreviewTabProps {
-  previewState: DevserverPreviewState;
-  onElementClicked?: (payload: OpenInEditorPayload) => void;
+  selectedAttempt: TaskAttempt;
+  projectId: string;
+  projectHasDevScript: boolean;
 }
 
 export default function PreviewTab({
-  previewState,
-  onElementClicked,
+  selectedAttempt,
+  projectId,
+  projectHasDevScript,
 }: PreviewTabProps) {
   const [iframeError, setIframeError] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const listenerRef = useRef<ClickToComponentListener | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const previewState = useDevserverPreview(selectedAttempt.id, {
+    projectHasDevScript,
+    projectId,
+  });
 
   const handleRefresh = () => {
     setIframeError(false);
     setRefreshKey((prev) => prev + 1);
   };
+  const handleIframeError = () => {
+    setIframeError(true);
+  };
+
+  const { addElement } = useClickedElements();
 
   const handleCopyUrl = async () => {
     if (previewState.url) {
@@ -38,23 +50,15 @@ export default function PreviewTab({
     }
   };
 
-  const handleIframeError = () => {
-    setIframeError(true);
-  };
-
   // Set up message listener when iframe is ready
   useEffect(() => {
-    if (
-      previewState.status !== 'ready' ||
-      !previewState.url ||
-      !onElementClicked
-    ) {
+    if (previewState.status !== 'ready' || !previewState.url || !addElement) {
       return;
     }
 
     const listener = new ClickToComponentListener({
       onOpenInEditor: (payload) => {
-        onElementClicked(payload);
+        addElement(payload);
       },
     });
 
@@ -65,7 +69,7 @@ export default function PreviewTab({
       listener.stop();
       listenerRef.current = null;
     };
-  }, [previewState.status, previewState.url, onElementClicked]);
+  }, [previewState.status, previewState.url, addElement]);
 
   if (previewState.status === 'searching') {
     return (
