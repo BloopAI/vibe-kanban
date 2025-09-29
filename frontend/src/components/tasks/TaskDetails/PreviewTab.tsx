@@ -13,6 +13,7 @@ import {
 import { ClickToComponentListener } from '@/utils/previewBridge';
 import { useClickedElements } from '@/contexts/ClickedElementsProvider';
 import { TaskAttempt } from 'shared/types';
+import { Alert } from '@/components/ui/alert';
 
 interface PreviewTabProps {
   selectedAttempt: TaskAttempt;
@@ -26,6 +27,8 @@ export default function PreviewTab({
   projectHasDevScript,
 }: PreviewTabProps) {
   const [iframeError, setIframeError] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const [loadingTimeFinished, setLoadingTimeFinished] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const listenerRef = useRef<ClickToComponentListener | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -60,6 +63,10 @@ export default function PreviewTab({
       onOpenInEditor: (payload) => {
         addElement(payload);
       },
+      onReady: () => {
+        console.log("DEBUG2")
+        setIsReady(true);
+      },
     });
 
     listener.start();
@@ -70,6 +77,13 @@ export default function PreviewTab({
       listenerRef.current = null;
     };
   }, [previewState.status, previewState.url, addElement]);
+
+  // If the preview status isn't ready, and it's been five seconds and we haven't received a ready message, set notReadyInTime true
+  useEffect(() => {
+    setTimeout(() => {
+      setLoadingTimeFinished(true);
+    }, 5000);
+  }, []);
 
   if (previewState.status === 'searching') {
     return (
@@ -226,6 +240,16 @@ export default function PreviewTab({
           </a>
         </Button>
       </div>
+      {loadingTimeFinished && !isReady && (
+        <Alert>
+          It looks like we're having trouble loading a preview of your application. <span className="font-bold">Please check the following troubleshooting steps:</span>
+          <ol className="list-decimal list-inside">
+            <li>Have you started the dev server?</li>
+            <li>Did you dev server start successfully?</li>
+            <li>Does your dev server print the URL and port to the terminal? (this is how we know it's running)</li>
+          </ol>
+        </Alert>
+      )}
 
       {/* Preview iframe */}
       <iframe

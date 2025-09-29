@@ -232,20 +232,12 @@ export function useDevserverPreview(
   // Find the latest devserver process
   const selectedProcess = useMemo(() => {
     const devserverProcesses = executionProcesses.filter(
-      (process) => process.run_reason === 'devserver'
+      (process) => process.run_reason === 'devserver' && process.status === 'running'
     );
 
     if (devserverProcesses.length === 0) return null;
 
-    // Prefer running processes, then sort by created_at descending
-    const runningProcesses = devserverProcesses.filter(
-      (process) => process.status === 'running'
-    );
-
-    const candidateProcesses =
-      runningProcesses.length > 0 ? runningProcesses : devserverProcesses;
-
-    return candidateProcesses.sort(
+    return devserverProcesses.sort(
       (a, b) =>
         new Date(b.created_at as unknown as string).getTime() -
         new Date(a.created_at as unknown as string).getTime()
