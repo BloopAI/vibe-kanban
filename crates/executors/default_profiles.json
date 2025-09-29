@@ -41,26 +41,30 @@
     "CODEX": {
       "DEFAULT": {
         "CODEX": {
-          "sandbox": "auto",
+          "sandbox": "danger-full-access",
+          "model_reasoning_summary_format": "experimental",
           "model": "gpt-5-codex"
         }
       },
       "HIGH": {
         "CODEX": {
-          "sandbox": "auto",
+          "sandbox": "danger-full-access",
           "model_reasoning_effort": "high",
+          "model_reasoning_summary_format": "experimental",
           "model": "gpt-5-codex"
         }
       },
       "GPT_5": {
         "CODEX": {
-          "sandbox": "auto",
+          "sandbox": "danger-full-access",
+          "model_reasoning_summary_format": "experimental",
           "model": "gpt-5"
         }
       },
       "GPT_5_HIGH": {
         "CODEX": {
-          "sandbox": "auto",
+          "sandbox": "danger-full-access",
+          "model_reasoning_summary_format": "experimental",
           "model_reasoning_effort": "high",
           "model": "gpt-5"
         }
