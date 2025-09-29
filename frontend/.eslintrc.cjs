@@ -49,8 +49,10 @@ module.exports = {
               'className',
               'style',
               'aria-describedby',
-              'code',
             ],
+            'jsx-components': {
+              exclude: ['code'],
+            },
           },
         ]
       : 'off',
