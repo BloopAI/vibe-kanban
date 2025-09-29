@@ -271,12 +271,25 @@ function GitOperations({
   return (
     <div>
       <Card className="bg-background p-3 border border-dashed text-sm">
-        Git Information & Operations
+        Git
       </Card>
       <div className="p-3 space-y-3">
         {/* Branch Flow with Status Below */}
         <div className="space-y-1 py-2">
-          {/* Top Row: Branches with Arrow */}
+          {/* Labels Row */}
+          <div className="grid grid-cols-[1fr_auto_1fr] gap-4">
+            {/* Task Branch Label - Left Column */}
+            <div className="flex justify-start">
+              <span className="text-xs text-muted-foreground">Task Branch</span>
+            </div>
+            {/* Center Column - Empty */}
+            <div></div>
+            {/* Target Branch Label - Right Column */}
+            <div className="flex justify-end">
+              <span className="text-xs text-muted-foreground">Target Branch</span>
+            </div>
+          </div>
+          {/* Branches Row */}
           <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
             {/* Task Branch - Left Column */}
             <div className="flex items-center justify-start gap-1.5 min-w-0">
