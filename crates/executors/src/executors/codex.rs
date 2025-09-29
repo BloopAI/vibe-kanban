@@ -65,6 +65,15 @@ pub enum ReasoningSummary {
     None,
 }
 
+/// Format for model reasoning summaries
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum ReasoningSummaryFormat {
+    None,
+    Experimental,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct Codex {
     #[serde(default)]
@@ -79,6 +88,8 @@ pub struct Codex {
     pub model_reasoning_effort: Option<ReasoningEffort>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model_reasoning_summary: Option<ReasoningSummary>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_reasoning_summary_format: Option<ReasoningSummaryFormat>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
 }
@@ -112,6 +123,15 @@ impl Codex {
                 "--config",
                 &format!("model_reasoning_effort={}", effort.as_ref()),
             ]);
+        }
+
+        if let Some(format) = &self.model_reasoning_summary_format {
+            if format != &ReasoningSummaryFormat::None {
+                builder = builder.extend_params([
+                    "--config",
+                    &format!("model_reasoning_summary_format={}", format.as_ref()),
+                ]);
+            }
         }
 
         if let Some(summary) = &self.model_reasoning_summary {

@@ -64,6 +64,18 @@
         null
       ]
     },
+    "model_reasoning_summary_format": {
+      "description": "Format for model reasoning summaries",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "none",
+        "experimental",
+        null
+      ]
+    },
     "base_command_override": {
       "title": "Base Command Override",
       "description": "Override the base command with a custom command",
