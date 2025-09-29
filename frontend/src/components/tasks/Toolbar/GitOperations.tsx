@@ -276,7 +276,6 @@ function GitOperations({
               </span>
             </div>
             {/* Center Column - Empty */}
-            <div></div>
             {/* Target Branch Label - Right Column */}
             <div className="flex justify-end">
               <span className="text-xs text-muted-foreground">
@@ -338,14 +337,12 @@ function GitOperations({
               if (hasConflictsCalculated) {
                 return (
                   <>
-                    <div></div>
                     <div className="flex items-center justify-center gap-1 text-orange-600">
                       <AlertTriangle className="h-3 w-3" />
                       <span className="text-xs font-medium">
                         {t('git.status.conflicts')}
                       </span>
                     </div>
-                    <div></div>
                   </>
                 );
               }
@@ -353,14 +350,12 @@ function GitOperations({
               if (branchStatus?.is_rebase_in_progress) {
                 return (
                   <>
-                    <div></div>
                     <div className="flex items-center justify-center gap-1 text-orange-600">
                       <RefreshCw className="h-3 w-3 animate-spin" />
                       <span className="text-xs font-medium">
                         {t('git.states.rebasing')}
                       </span>
                     </div>
-                    <div></div>
                   </>
                 );
               }
@@ -369,14 +364,12 @@ function GitOperations({
               if (mergeInfo.hasMergedPR) {
                 return (
                   <>
-                    <div></div>
                     <div className="flex items-center justify-center gap-1 text-green-600">
                       <CheckCircle className="h-3 w-3" />
                       <span className="text-xs font-medium">
                         {t('git.states.merged')}
                       </span>
                     </div>
-                    <div></div>
                   </>
                 );
               }
@@ -386,7 +379,6 @@ function GitOperations({
                 const prMerge = mergeInfo.openPR;
                 return (
                   <>
-                    <div></div>
                     <div className="flex justify-center">
                       <button
                         onClick={() =>
@@ -400,7 +392,6 @@ function GitOperations({
                         </span>
                       </button>
                     </div>
-                    <div></div>
                   </>
                 );
               }
@@ -422,7 +413,6 @@ function GitOperations({
                       )}
                     </div>
                     {/* Center Column - Empty */}
-                    <div></div>
                     {/* Under target branch - Right Column */}
                     <div className="flex justify-end">
                       {showBehind && (
@@ -439,13 +429,11 @@ function GitOperations({
               // Default: up to date - center under arrow
               return (
                 <>
-                  <div></div>
                   <div className="flex justify-center">
                     <span className="text-xs text-muted-foreground">
                       {t('git.status.upToDate')}
                     </span>
                   </div>
-                  <div></div>
                 </>
               );
             })()}
