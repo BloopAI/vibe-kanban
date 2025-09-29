@@ -268,25 +268,25 @@ function GitOperations({
         {/* Branch Flow with Status Below */}
         <div className="space-y-1 py-2">
           {/* Labels Row */}
-          <div className="grid grid-cols-[1fr_auto_1fr] gap-4">
+          <div className="flex gap-4">
             {/* Task Branch Label - Left Column */}
-            <div className="flex justify-start">
+            <div className="flex flex-1 justify-start">
               <span className="text-xs text-muted-foreground">
                 {t('git.labels.taskBranch')}
               </span>
             </div>
             {/* Center Column - Empty */}
             {/* Target Branch Label - Right Column */}
-            <div className="flex justify-end">
+            <div className="flex flex-1 justify-end">
               <span className="text-xs text-muted-foreground">
                 {t('rebase.dialog.targetLabel')}
               </span>
             </div>
           </div>
           {/* Branches Row */}
-          <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
+          <div className="flex flex-1 gap-4 items-center">
             {/* Task Branch - Left Column */}
-            <div className="flex items-center justify-start gap-1.5 min-w-0">
+            <div className="flex flex-1 items-center justify-start gap-1.5 min-w-0">
               <GitBranchIcon className="h-3 w-3 text-muted-foreground" />
               <span className="text-sm font-medium truncate">
                 {selectedAttempt.branch}
@@ -299,7 +299,7 @@ function GitOperations({
             </div>
 
             {/* Target Branch - Right Column */}
-            <div className="flex items-center justify-end gap-1.5 min-w-0">
+            <div className="flex flex-1 items-center justify-end gap-1.5 min-w-0">
               <GitBranchIcon className="h-3 w-3 text-muted-foreground" />
               <span className="text-sm font-medium truncate">
                 {branchStatus?.target_branch_name ||
@@ -328,115 +328,111 @@ function GitOperations({
           </div>
 
           {/* Bottom Row: Status Information */}
-          <div className="grid grid-cols-[1fr_auto_1fr] gap-4">
-            {(() => {
-              const commitsAhead = branchStatus?.commits_ahead ?? 0;
-              const commitsBehind = branchStatus?.commits_behind ?? 0;
+          <div className="flex gap-4">
+            <div className="flex-1 flex justify-start">
+              {(() => {
+                const commitsAhead = branchStatus?.commits_ahead ?? 0;
+                const showAhead = commitsAhead > 0;
 
-              // Handle special states (PR, conflicts, etc.) - center under arrow
-              if (hasConflictsCalculated) {
-                return (
-                  <>
-                    <div className="flex items-center justify-center gap-1 text-orange-600">
+                if (showAhead) {
+                  return (
+                    <span className="text-xs font-medium text-green-600">
+                      {commitsAhead} commit{commitsAhead === 1 ? '' : 's'} ahead
+                    </span>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+
+            <div className="flex justify-center">
+              {(() => {
+                const commitsAhead = branchStatus?.commits_ahead ?? 0;
+                const commitsBehind = branchStatus?.commits_behind ?? 0;
+                const showAhead = commitsAhead > 0;
+                const showBehind = commitsBehind > 0;
+
+                // Handle special states (PR, conflicts, etc.) - center under arrow
+                if (hasConflictsCalculated) {
+                  return (
+                    <div className="flex items-center gap-1 text-orange-600">
                       <AlertTriangle className="h-3 w-3" />
                       <span className="text-xs font-medium">
                         {t('git.status.conflicts')}
                       </span>
                     </div>
-                  </>
-                );
-              }
+                  );
+                }
 
-              if (branchStatus?.is_rebase_in_progress) {
-                return (
-                  <>
-                    <div className="flex items-center justify-center gap-1 text-orange-600">
+                if (branchStatus?.is_rebase_in_progress) {
+                  return (
+                    <div className="flex items-center gap-1 text-orange-600">
                       <RefreshCw className="h-3 w-3 animate-spin" />
                       <span className="text-xs font-medium">
                         {t('git.states.rebasing')}
                       </span>
                     </div>
-                  </>
-                );
-              }
+                  );
+                }
 
-              // Check for merged PR
-              if (mergeInfo.hasMergedPR) {
-                return (
-                  <>
-                    <div className="flex items-center justify-center gap-1 text-green-600">
+                // Check for merged PR
+                if (mergeInfo.hasMergedPR) {
+                  return (
+                    <div className="flex items-center gap-1 text-green-600">
                       <CheckCircle className="h-3 w-3" />
                       <span className="text-xs font-medium">
                         {t('git.states.merged')}
                       </span>
                     </div>
-                  </>
-                );
-              }
+                  );
+                }
 
-              // Check for open PR - center under arrow
-              if (mergeInfo.hasOpenPR && mergeInfo.openPR?.type === 'pr') {
-                const prMerge = mergeInfo.openPR;
+                // Check for open PR - center under arrow
+                if (mergeInfo.hasOpenPR && mergeInfo.openPR?.type === 'pr') {
+                  const prMerge = mergeInfo.openPR;
+                  return (
+                    <button
+                      onClick={() => window.open(prMerge.pr_info.url, '_blank')}
+                      className="flex items-center gap-1 text-blue-600 hover:text-blue-700 hover:underline"
+                    >
+                      <GitPullRequest className="h-3 w-3" />
+                      <span className="text-xs font-medium">
+                        PR #{prMerge.pr_info.number}
+                      </span>
+                    </button>
+                  );
+                }
+
+                // If showing ahead/behind, don't show anything in center
+                if (showAhead || showBehind) {
+                  return null;
+                }
+
+                // Default: up to date - center under arrow
                 return (
-                  <>
-                    <div className="flex justify-center">
-                      <button
-                        onClick={() =>
-                          window.open(prMerge.pr_info.url, '_blank')
-                        }
-                        className="flex items-center gap-1 text-blue-600 hover:text-blue-700 hover:underline"
-                      >
-                        <GitPullRequest className="h-3 w-3" />
-                        <span className="text-xs font-medium">
-                          PR #{prMerge.pr_info.number}
-                        </span>
-                      </button>
-                    </div>
-                  </>
+                  <span className="text-xs text-muted-foreground">
+                    {t('git.status.upToDate')}
+                  </span>
                 );
-              }
+              })()}
+            </div>
 
-              // Show commit status - under respective branches
-              const showAhead = commitsAhead > 0;
-              const showBehind = commitsBehind > 0;
+            <div className="flex-1 flex justify-end">
+              {(() => {
+                const commitsBehind = branchStatus?.commits_behind ?? 0;
+                const showBehind = commitsBehind > 0;
 
-              if (showAhead || showBehind) {
-                return (
-                  <>
-                    {/* Under task branch - Left Column */}
-                    <div className="flex justify-start">
-                      {showAhead && (
-                        <span className="text-xs font-medium text-green-600">
-                          {commitsAhead} commit{commitsAhead === 1 ? '' : 's'}{' '}
-                          ahead
-                        </span>
-                      )}
-                    </div>
-                    {/* Center Column - Empty */}
-                    {/* Under target branch - Right Column */}
-                    <div className="flex justify-end">
-                      {showBehind && (
-                        <span className="text-xs font-medium text-orange-600">
-                          {commitsBehind} commit{commitsBehind === 1 ? '' : 's'}{' '}
-                          behind
-                        </span>
-                      )}
-                    </div>
-                  </>
-                );
-              }
-
-              // Default: up to date - center under arrow
-              return (
-                <>
-                  <div className="flex justify-center">
-                    <span className="text-xs text-muted-foreground">
-                      {t('git.status.upToDate')}
+                if (showBehind) {
+                  return (
+                    <span className="text-xs font-medium text-orange-600">
+                      {commitsBehind} commit{commitsBehind === 1 ? '' : 's'}{' '}
+                      behind
                     </span>
-                  </div>
-                </>
-              );
-            })()}
+                  );
+                }
+                return null;
+              })()}
+            </div>
           </div>
         </div>
 
