@@ -34,29 +34,6 @@ import { TaskRelationshipViewer } from './TaskRelationshipViewer';
 import { useTaskViewManager } from '@/hooks/useTaskViewManager.ts';
 import type { TaskAttempt } from 'shared/types';
 
-// // Internal component that provides the stable clicked element callback
-// function PreviewTabWithCallback({
-//   previewState,
-// }: {
-//   previewState: ReturnType<typeof useDevserverPreview>;
-// }) {
-//   const { addElement } = useClickedElements();
-
-//   const handlePreviewElementClick = useCallback(
-//     (payload: OpenInEditorPayload) => {
-//       addElement(payload);
-//     },
-//     [addElement]
-//   );
-
-//   return (
-//     <PreviewTab
-//       previewState={previewState}
-//       onElementClicked={handlePreviewElementClick}
-//     />
-//   );
-// }
-
 interface TaskDetailsPanelProps {
   task: TaskWithAttemptStatus | null;
   projectHasDevScript: boolean;
@@ -180,7 +157,7 @@ export function TaskDetailsPanel({
                               attempts={attempts}
                               selectedAttempt={selectedAttempt}
                               setSelectedAttempt={setSelectedAttempt}
-                              // hide actions in sidebar; moved to header in fullscreen
+                            // hide actions in sidebar; moved to header in fullscreen
                             />
 
                             {/* Task Breakdown (TODOs) */}
@@ -252,7 +229,7 @@ export function TaskDetailsPanel({
                               attempts={attempts}
                               selectedAttempt={selectedAttempt}
                               setSelectedAttempt={setSelectedAttempt}
-                              // hide actions in sidebar; moved to header in fullscreen
+                            // hide actions in sidebar; moved to header in fullscreen
                             />
                           ) : (
                             <>
@@ -262,10 +239,6 @@ export function TaskDetailsPanel({
                                 selectedAttempt={selectedAttempt}
                                 task={task}
                                 projectId={projectId}
-                                // onCreateNewAttempt={() => {
-                                //   // TODO: Implement create new attempt
-                                //   console.log('Create new attempt');
-                                // }}
                                 onJumpToDiffFullScreen={jumpToDiffFullScreen}
                               />
 
