@@ -1,0 +1,219 @@
+import { useState } from 'react';
+import { Play, Edit3, SquareTerminal, Save, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ExecutionProcess, Project } from 'shared/types';
+import { ScriptPlaceholders } from '@/utils/script-placeholders';
+import { projectsApi } from '@/lib/api';
+import { QueryClient } from '@tanstack/react-query';
+
+interface NoServerContentProps {
+  effectiveHasDevScript: boolean;
+  placeholders: ScriptPlaceholders;
+  runningDevServer: ExecutionProcess | undefined;
+  isStartingDevServer: boolean;
+  startDevServer: () => void;
+  stopDevServer: () => void;
+  project: Project | undefined;
+  projectId: string;
+  queryClient: QueryClient;
+  setDevScriptAdded: (value: boolean) => void;
+}
+
+export function NoServerContent({
+  effectiveHasDevScript,
+  placeholders,
+  runningDevServer,
+  isStartingDevServer,
+  startDevServer,
+  stopDevServer,
+  project,
+  projectId,
+  queryClient,
+  setDevScriptAdded,
+}: NoServerContentProps) {
+  const [devScriptInput, setDevScriptInput] = useState('');
+  const [isSavingDevScript, setIsSavingDevScript] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isEditingExistingScript, setIsEditingExistingScript] = useState(false);
+
+  const handleSaveDevScript = async (startAfterSave?: boolean) => {
+    setSaveError(null);
+    if (!project) {
+      setSaveError('Project not loaded');
+      return;
+    }
+
+    const script = devScriptInput.trim();
+    if (!script) {
+      setSaveError('Dev script cannot be empty');
+      return;
+    }
+
+    setIsSavingDevScript(true);
+    try {
+      await projectsApi.update(project.id, {
+        name: project.name,
+        git_repo_path: project.git_repo_path,
+        setup_script: project.setup_script ?? null,
+        dev_script: script,
+        cleanup_script: project.cleanup_script ?? null,
+        copy_files: project.copy_files ?? null,
+      });
+
+      setDevScriptAdded(true);
+      setIsEditingExistingScript(false);
+      await queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+
+      if (startAfterSave) {
+        startDevServer();
+      }
+    } catch (err: unknown) {
+      setSaveError((err as Error)?.message || 'Failed to save dev script');
+    } finally {
+      setIsSavingDevScript(false);
+    }
+  };
+
+  const handleEditExistingScript = () => {
+    if (project?.dev_script) {
+      setDevScriptInput(project.dev_script);
+    }
+    setIsEditingExistingScript(true);
+    setSaveError(null);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingExistingScript(false);
+    setDevScriptInput('');
+    setSaveError(null);
+  };
+
+  return (
+    <div className="flex-1 flex items-center justify-center">
+      <div className="text-center space-y-4 max-w-md mx-auto p-6">
+        <div className="flex items-center justify-center">
+          <SquareTerminal className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <div>
+          <h3 className="text-lg font-medium text-foreground mb-2">
+            No dev server running
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            {effectiveHasDevScript
+              ? 'Please start a dev server to see the preview'
+              : 'To use the live preview and click-to-edit, please add a dev server script to this project.'}
+          </p>
+          {effectiveHasDevScript && !isEditingExistingScript && (
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <Button
+                variant={runningDevServer ? 'destructive' : 'default'}
+                size="sm"
+                onClick={() => {
+                  if (runningDevServer) {
+                    stopDevServer();
+                  } else {
+                    startDevServer();
+                  }
+                }}
+                disabled={isStartingDevServer}
+                className="gap-1"
+              >
+                <Play className="h-4 w-4" />
+                Start Dev Server
+              </Button>
+
+              {!runningDevServer && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleEditExistingScript}
+                  className="gap-1"
+                >
+                  <Edit3 className="h-3 w-3" />
+                  Edit Dev Script
+                </Button>
+              )}
+            </div>
+          )}
+
+          {(!effectiveHasDevScript || isEditingExistingScript) && (
+            <div className="mt-6 text-left">
+              <div className="space-y-3">
+                <label
+                  htmlFor="devScript"
+                  className="block text-sm font-medium text-foreground text-center"
+                >
+                  Dev server start command
+                </label>
+                <Textarea
+                  id="devScript"
+                  placeholder={placeholders.dev}
+                  value={devScriptInput}
+                  onChange={(e) => setDevScriptInput(e.target.value)}
+                  className="min-h-[120px] font-mono text-sm"
+                  disabled={isSavingDevScript}
+                />
+
+                {saveError && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{saveError}</AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="flex gap-2 justify-center">
+                  {isEditingExistingScript ? (
+                    <>
+                      <Button
+                        size="sm"
+                        onClick={() => handleSaveDevScript(false)}
+                        disabled={isSavingDevScript}
+                        className="gap-1"
+                      >
+                        <Save className="h-3 w-3" />
+                        Save Changes
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleCancelEdit}
+                        disabled={isSavingDevScript}
+                        className="gap-1"
+                      >
+                        <X className="h-3 w-3" />
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        size="sm"
+                        onClick={() => handleSaveDevScript(true)}
+                        disabled={isSavingDevScript}
+                        className="gap-1"
+                      >
+                        <Play className="h-4 w-4" />
+                        Save & Start
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleSaveDevScript(false)}
+                        disabled={isSavingDevScript}
+                        className="gap-1"
+                      >
+                        <Save className="h-3 w-3" />
+                        Save Only
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

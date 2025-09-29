@@ -100,18 +100,6 @@ export function useDevserverPreview(
         };
       }
 
-      // // Try port mention pattern
-      // const portMatch = urlPatterns[2].exec(line);
-      // if (portMatch) {
-      //   const port = parseInt(portMatch[1]);
-      //   const scheme = /https/i.test(line) ? 'https' : 'http';
-      //   return {
-      //     url: `${scheme}://localhost:${port}`,
-      //     port,
-      //     scheme: scheme as 'http' | 'https',
-      //   };
-      // }
-
       return null;
     },
     [urlPatterns]
