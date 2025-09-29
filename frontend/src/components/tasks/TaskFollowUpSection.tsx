@@ -56,19 +56,18 @@ export function TaskFollowUpSection({
   const { profiles } = useUserSystem();
   const { comments, generateReviewMarkdown, clearComments } = useReview();
   const {
-    elements: clickedElements,
     generateMarkdown: generateClickedMarkdown,
     clearElements: clearClickedElements,
   } = useClickedElements();
 
   const reviewMarkdown = useMemo(
     () => generateReviewMarkdown(),
-    [generateReviewMarkdown, comments]
+    [generateReviewMarkdown]
   );
 
   const clickedMarkdown = useMemo(
     () => generateClickedMarkdown(),
-    [generateClickedMarkdown, clickedElements]
+    [generateClickedMarkdown]
   );
 
   // Non-editable conflict resolution instructions (derived, like review comments)
@@ -223,14 +222,6 @@ export function TaskFollowUpSection({
   const isDraftLocked =
     displayQueued || isQueuing || isUnqueuing || !!draft?.sending;
   const isEditable = isDraftLoaded && !isDraftLocked && !isRetryActive;
-
-  const appendToFollowUpMessage = (text: string) => {
-    setFollowUpMessage((prev) => {
-      const sep =
-        prev.trim().length === 0 ? '' : prev.endsWith('\n') ? '\n' : '\n\n';
-      return prev + sep + text;
-    });
-  };
 
   // When a process completes (e.g., agent resolved conflicts), refresh branch status promptly
   const prevRunningRef = useRef<boolean>(isAttemptRunning);
