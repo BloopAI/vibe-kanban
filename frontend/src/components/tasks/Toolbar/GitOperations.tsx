@@ -316,7 +316,7 @@ function GitOperations({
                       disabled={isAttemptRunning || hasConflictsCalculated}
                       className="h-4 w-4 p-0 hover:bg-muted ml-1"
                     >
-                      <Settings className="h-2.5 w-2.5" />
+                      <Settings className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -336,7 +336,7 @@ function GitOperations({
 
                 if (showAhead) {
                   return (
-                    <span className="text-xs font-medium text-green-600">
+                    <span className="text-xs font-medium text-success">
                       {commitsAhead} commit{commitsAhead === 1 ? '' : 's'} ahead
                     </span>
                   );
@@ -355,7 +355,7 @@ function GitOperations({
                 // Handle special states (PR, conflicts, etc.) - center under arrow
                 if (hasConflictsCalculated) {
                   return (
-                    <div className="flex items-center gap-1 text-orange-600">
+                    <div className="flex items-center gap-1 text-warning">
                       <AlertTriangle className="h-3 w-3" />
                       <span className="text-xs font-medium">
                         {t('git.status.conflicts')}
@@ -366,7 +366,7 @@ function GitOperations({
 
                 if (branchStatus?.is_rebase_in_progress) {
                   return (
-                    <div className="flex items-center gap-1 text-orange-600">
+                    <div className="flex items-center gap-1 text-warning">
                       <RefreshCw className="h-3 w-3 animate-spin" />
                       <span className="text-xs font-medium">
                         {t('git.states.rebasing')}
@@ -378,7 +378,7 @@ function GitOperations({
                 // Check for merged PR
                 if (mergeInfo.hasMergedPR) {
                   return (
-                    <div className="flex items-center gap-1 text-green-600">
+                    <div className="flex items-center gap-1 text-success">
                       <CheckCircle className="h-3 w-3" />
                       <span className="text-xs font-medium">
                         {t('git.states.merged')}
@@ -393,7 +393,7 @@ function GitOperations({
                   return (
                     <button
                       onClick={() => window.open(prMerge.pr_info.url, '_blank')}
-                      className="flex items-center gap-1 text-blue-600 hover:text-blue-700 hover:underline"
+                      className="flex items-center gap-1 text-info hover:text-info hover:underline"
                     >
                       <GitPullRequest className="h-3 w-3" />
                       <span className="text-xs font-medium">
@@ -424,7 +424,7 @@ function GitOperations({
 
                 if (showBehind) {
                   return (
-                    <span className="text-xs font-medium text-orange-600">
+                    <span className="text-xs font-medium text-warning">
                       {commitsBehind} commit{commitsBehind === 1 ? '' : 's'}{' '}
                       behind
                     </span>
@@ -450,8 +450,9 @@ function GitOperations({
                 !pushSuccess &&
                 !mergeSuccess)
             }
+            variant="outline"
             size="xs"
-            className="bg-green-600 hover:bg-green-700 dark:bg-green-900 dark:hover:bg-green-700 gap-1 flex-1"
+            className="border-success text-success hover:bg-success gap-1 flex-1"
           >
             <GitBranchIcon className="h-3 w-3" />
             {mergeButtonLabel}
@@ -473,7 +474,7 @@ function GitOperations({
             }
             variant="outline"
             size="xs"
-            className="border-blue-300  dark:border-blue-700 text-blue-700 dark:text-blue-500 hover:bg-blue-50 dark:hover:bg-transparent dark:hover:text-blue-400 dark:hover:border-blue-400 gap-1 flex-1"
+            className="border-info text-info hover:bg-info gap-1 flex-1"
           >
             <GitPullRequest className="h-3 w-3" />
             {mergeInfo.hasOpenPR
@@ -496,7 +497,7 @@ function GitOperations({
             }
             variant="outline"
             size="xs"
-            className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1 flex-1"
+            className="border-warning text-warning hover:bg-warning gap-1 flex-1"
           >
             <RefreshCw
               className={`h-3 w-3 ${rebasing ? 'animate-spin' : ''}`}
