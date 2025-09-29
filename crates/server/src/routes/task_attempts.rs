@@ -1850,14 +1850,7 @@ pub async fn attach_existing_pr(
     }
 
     // Get branch name
-    let Some(branch_name) = &task_attempt.branch else {
-        return Ok(ResponseJson(ApiResponse::success(AttachPrResponse {
-            pr_attached: false,
-            pr_url: None,
-            pr_number: None,
-            pr_status: None,
-        })));
-    };
+    let branch_name = &task_attempt.branch;
 
     // Get GitHub token
     let github_config = deployment.config().read().await.github.clone();
@@ -1889,7 +1882,7 @@ pub async fn attach_existing_pr(
         let merge = Merge::create_pr(
             pool,
             task_attempt.id,
-            &task_attempt.base_branch,
+            &task_attempt.target_branch,
             pr_info.number,
             &pr_info.url,
         )
