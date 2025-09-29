@@ -1,5 +1,4 @@
 import {
-  ChevronDown,
   ExternalLink,
   GitFork,
   History,
@@ -200,123 +199,125 @@ function CurrentAttempt({
 
       <div className="space-y-3">
         <div className="flex gap-2">
-          <Button
-            variant={runningDevServer ? 'destructive' : 'outline'}
-            size="xs"
-            onClick={() =>
-              runningDevServer ? stopDevServer() : startDevServer()
-            }
-            disabled={
-              isStartingDevServer || !projectHasDevScript || hasConflicts
-            }
-            className="gap-1 flex-1"
-          >
-            {runningDevServer ? (
-              <>
-                <StopCircle className="h-3 w-3" />
-                Stop Dev
-              </>
-            ) : (
-              <>
-                <Play className="h-3 w-3" />
-                Start Dev
-              </>
-            )}
-          </Button>
-
-          {/* View Dev Server Logs Button */}
-          {latestDevServerProcess && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    onClick={handleViewDevServerLogs}
-                    className="gap-1 flex-1"
-                  >
-                    <ScrollText className="h-3 w-3" />
-                    View Logs
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>View dev server logs</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-
-          {isStopping || isAttemptRunning ? (
+          {/* Column 1: Start Dev / View Logs */}
+          <div className="flex gap-1 flex-1">
             <Button
-              variant="destructive"
+              variant={runningDevServer ? 'destructive' : 'outline'}
               size="xs"
-              onClick={stopExecution}
-              disabled={isStopping}
+              onClick={() =>
+                runningDevServer ? stopDevServer() : startDevServer()
+              }
+              disabled={
+                isStartingDevServer || !projectHasDevScript || hasConflicts
+              }
               className="gap-1 flex-1"
             >
-              <StopCircle className="h-4 w-4" />
-              {isStopping ? 'Stopping...' : 'Stop Attempt'}
+              {runningDevServer ? (
+                <>
+                  <StopCircle className="h-3 w-3" />
+                  Stop Dev
+                </>
+              ) : (
+                <>
+                  <Play className="h-3 w-3" />
+                  Start Dev
+                </>
+              )}
             </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="xs"
-              onClick={handleEnterCreateAttemptMode}
-              className="gap-1 flex-1"
-            >
-              <Plus className="h-4 w-4" />
-              New Attempt
-            </Button>
-          )}
 
-          {taskAttempts.length > 1 && (
-            <DropdownMenu>
+            {/* View Dev Server Logs Button */}
+            {latestDevServerProcess && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="xs"
-                        className="gap-1 min-w-[120px] justify-between"
-                      >
-                        <span className="flex items-center gap-1">
-                          <History className="h-3 w-4" />
-                          History
-                        </span>
-                        <ChevronDown className="h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={handleViewDevServerLogs}
+                      className="gap-1 px-2"
+                    >
+                      <ScrollText className="h-3 w-3" />
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>View attempt history</p>
+                    <p>View dev server logs</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <DropdownMenuContent align="start" className="w-64">
-                {taskAttempts.map((attempt) => (
-                  <DropdownMenuItem
-                    key={attempt.id}
-                    onClick={() => handleAttemptChange(attempt)}
-                    className={
-                      selectedAttempt?.id === attempt.id ? 'bg-accent' : ''
-                    }
-                  >
-                    <div className="flex flex-col w-full">
-                      <span className="font-medium text-sm">
-                        {new Date(attempt.created_at).toLocaleDateString()}{' '}
-                        {new Date(attempt.created_at).toLocaleTimeString()}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {attempt.executor || 'Base Agent'}
-                      </span>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+            )}
+          </div>
 
+          {/* Column 2: New Attempt + History (shared flex-1) */}
+          <div className="flex gap-1 flex-1">
+            {isStopping || isAttemptRunning ? (
+              <Button
+                variant="destructive"
+                size="xs"
+                onClick={stopExecution}
+                disabled={isStopping}
+                className="gap-1 flex-1"
+              >
+                <StopCircle className="h-4 w-4" />
+                {isStopping ? 'Stopping...' : 'Stop Attempt'}
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={handleEnterCreateAttemptMode}
+                className={`gap-1 ${taskAttempts.length > 1 ? 'flex-1' : 'flex-1'}`}
+              >
+                <Plus className="h-4 w-4" />
+                New Attempt
+              </Button>
+            )}
+
+            {taskAttempts.length > 1 && !isStopping && !isAttemptRunning && (
+              <DropdownMenu>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          className="gap-1 px-2"
+                        >
+                          <History className="h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>View attempt history</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <DropdownMenuContent align="start" className="w-64">
+                  {taskAttempts.map((attempt) => (
+                    <DropdownMenuItem
+                      key={attempt.id}
+                      onClick={() => handleAttemptChange(attempt)}
+                      className={
+                        selectedAttempt?.id === attempt.id ? 'bg-accent' : ''
+                      }
+                    >
+                      <div className="flex flex-col w-full">
+                        <span className="font-medium text-sm">
+                          {new Date(attempt.created_at).toLocaleDateString()}{' '}
+                          {new Date(attempt.created_at).toLocaleTimeString()}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {attempt.executor || 'Base Agent'}
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+
+          {/* Column 3: Create Subtask */}
           <Button
             onClick={handleCreateSubtaskClick}
             variant="outline"
