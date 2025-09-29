@@ -286,7 +286,9 @@ function GitOperations({
             <div></div>
             {/* Target Branch Label - Right Column */}
             <div className="flex justify-end">
-              <span className="text-xs text-muted-foreground">Target Branch</span>
+              <span className="text-xs text-muted-foreground">
+                Target Branch
+              </span>
             </div>
           </div>
           {/* Branches Row */}
