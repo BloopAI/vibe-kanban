@@ -54,17 +54,6 @@ function BranchSelector({
     return filtered;
   }, [branches, branchSearchTerm]);
 
-  const displayName = useMemo(() => {
-    if (!selectedBranch) return placeholder;
-
-    // For remote branches, show just the branch name without the remote prefix
-    if (selectedBranch.includes('/')) {
-      const parts = selectedBranch.split('/');
-      return parts[parts.length - 1];
-    }
-    return selectedBranch;
-  }, [selectedBranch, placeholder]);
-
   const handleBranchSelect = (branchName: string) => {
     onBranchSelect(branchName);
     setBranchSearchTerm('');
@@ -94,7 +83,7 @@ function BranchSelector({
         >
           <div className="flex items-center gap-1.5 w-full">
             <GitBranchIcon className="h-3 w-3" />
-            <span className="truncate">{displayName}</span>
+            <span className="truncate">{selectedBranch || placeholder}</span>
           </div>
           <ArrowDown className="h-3 w-3" />
         </Button>

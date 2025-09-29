@@ -25,6 +25,7 @@ import {
   FolderPickerDialog,
   TaskTemplateEditDialog,
   ChangeTargetBranchDialog,
+  RebaseDialog,
   CreateConfigurationDialog,
   DeleteConfigurationDialog,
   ProjectFormDialog,
@@ -62,7 +63,6 @@ import {
   createRoutesFromChildren,
   matchRoutes,
 } from 'react-router-dom';
-import { RebaseDialog } from './components/dialogs/tasks/RebaseDialog.tsx';
 
 Sentry.init({
   dsn: 'https://1065a1d276a581316999a07d5dffee26@o4509603705192449.ingest.de.sentry.io/4509605576441937',

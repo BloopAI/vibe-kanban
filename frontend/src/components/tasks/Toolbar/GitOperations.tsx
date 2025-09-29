@@ -72,18 +72,6 @@ function GitOperations({
     [branchStatus?.conflicted_files]
   );
 
-  // Get display name for selected branch
-  const selectedBranchDisplayName = useMemo(() => {
-    if (!selectedBranch) return t('git.branch.current');
-
-    // For remote branches, show just the branch name without the remote prefix
-    if (selectedBranch.includes('/')) {
-      const parts = selectedBranch.split('/');
-      return parts[parts.length - 1];
-    }
-    return selectedBranch;
-  }, [selectedBranch]);
-
   // Local state for git operations
   const [merging, setMerging] = useState(false);
   const [pushing, setPushing] = useState(false);
@@ -315,7 +303,9 @@ function GitOperations({
             <div className="flex items-center justify-end gap-1.5 min-w-0">
               <GitBranchIcon className="h-3 w-3 text-muted-foreground" />
               <span className="text-sm font-medium truncate">
-                {branchStatus?.target_branch_name || selectedBranchDisplayName}
+                {branchStatus?.target_branch_name ||
+                  selectedBranch ||
+                  t('git.branch.current')}
               </span>
               <TooltipProvider>
                 <Tooltip>
