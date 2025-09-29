@@ -49,6 +49,7 @@ module.exports = {
               'className',
               'style',
               'aria-describedby',
+              'code',
             ],
           },
         ]
