@@ -4,6 +4,8 @@ import { Settings, Cpu, Server, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
+import { useKeyExit } from '@/keyboard/hooks';
+import { Scope } from '@/keyboard/registry';
 
 const settingsNavigation = [
   {
@@ -23,6 +25,9 @@ const settingsNavigation = [
 export function SettingsLayout() {
   const { t } = useTranslation('settings');
   const goToPreviousPath = usePreviousPath();
+
+  // Handle ESC key to go back to previous page
+  useKeyExit(goToPreviousPath, { scope: Scope.SETTINGS });
 
   return (
     <div className="container mx-auto px-4 py-8">
