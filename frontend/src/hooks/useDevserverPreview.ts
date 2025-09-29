@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
 import { streamJsonPatchEntries } from '@/utils/streamJsonPatchEntries';
 import { PatchType } from 'shared/types';
+import { stripAnsi } from 'fancy-ansi';
 
 export interface DevserverPreviewState {
   status: 'idle' | 'searching' | 'ready' | 'error';
@@ -62,7 +63,7 @@ export function useDevserverPreview(
   const extractUrlFromLine = useCallback(
     (line: string) => {
       // Try full URL pattern first
-      const fullUrlMatch = urlPatterns[0].exec(line);
+      const fullUrlMatch = urlPatterns[0].exec(stripAnsi(line));
       if (fullUrlMatch) {
         try {
           const url = new URL(fullUrlMatch[1]);
