@@ -9,11 +9,12 @@ import type {
 } from 'shared/types';
 import type { ExecutorProfileId } from 'shared/types';
 
-import { useAttemptExecution } from '@/hooks';
+import { useAttemptExecution, useBranchStatus } from '@/hooks';
 import { useTaskStopping } from '@/stores/useTaskDetailsUiStore';
 
 import CreateAttempt from '@/components/tasks/Toolbar/CreateAttempt.tsx';
 import CurrentAttempt from '@/components/tasks/Toolbar/CurrentAttempt.tsx';
+import GitOperations from '@/components/tasks/Toolbar/GitOperations.tsx';
 import { useUserSystem } from '@/components/config-provider';
 import { Card } from '../ui/card';
 
@@ -86,6 +87,7 @@ function TaskDetailsToolbar({
   // const { setLoading } = useTaskLoading(task.id);
   const { isStopping } = useTaskStopping(task.id);
   const { isAttemptRunning } = useAttemptExecution(selectedAttempt?.id);
+  const { data: branchStatus } = useBranchStatus(selectedAttempt?.id);
 
   // UI state using reducer
   const [ui, dispatch] = useReducer(uiReducer, initialUi);
@@ -256,11 +258,7 @@ function TaskDetailsToolbar({
                     projectHasDevScript={projectHasDevScript ?? false}
                     selectedAttempt={selectedAttempt}
                     taskAttempts={taskAttempts}
-                    selectedBranch={selectedBranch}
-                    setError={setError}
-                    creatingPR={ui.creatingPR}
                     handleEnterCreateAttemptMode={handleEnterCreateAttemptMode}
-                    branches={branches}
                     setSelectedAttempt={setSelectedAttempt}
                   />
                 ) : (
@@ -290,6 +288,21 @@ function TaskDetailsToolbar({
               )}
             </div>
           </div>
+        )}
+
+        {/* Independent Git Operations Section */}
+        {selectedAttempt && branchStatus && (
+          <GitOperations
+            selectedAttempt={selectedAttempt}
+            task={task}
+            projectId={projectId}
+            branchStatus={branchStatus}
+            branches={branches}
+            isAttemptRunning={isAttemptRunning}
+            creatingPR={ui.creatingPR}
+            setError={setError}
+            selectedBranch={selectedBranch}
+          />
         )}
       </div>
     </>
