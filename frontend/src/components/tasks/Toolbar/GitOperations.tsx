@@ -337,7 +337,9 @@ function GitOperations({
                 if (showAhead) {
                   return (
                     <span className="text-xs font-medium text-success">
-                      {commitsAhead} commit{commitsAhead === 1 ? '' : 's'} ahead
+                      {commitsAhead}{' '}
+                      {t('git.status.commits', { count: commitsAhead })}{' '}
+                      {t('git.status.ahead')}
                     </span>
                   );
                 }
@@ -425,8 +427,9 @@ function GitOperations({
                 if (showBehind) {
                   return (
                     <span className="text-xs font-medium text-warning">
-                      {commitsBehind} commit{commitsBehind === 1 ? '' : 's'}{' '}
-                      behind
+                      {commitsBehind}{' '}
+                      {t('git.status.commits', { count: commitsBehind })}{' '}
+                      {t('git.status.behind')}
                     </span>
                   );
                 }

@@ -62,8 +62,12 @@
       "current": "current"
     },
     "status": {
+      "commits_one": "commit",
+      "commits_other": "commits",
       "conflicts": "Conflicts",
-      "upToDate": "Up to date"
+      "upToDate": "Up to date",
+      "ahead": "ahead",
+      "behind": "behind"
     },
     "states": {
       "merged": "Merged!",

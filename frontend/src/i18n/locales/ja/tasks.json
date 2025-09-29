@@ -62,8 +62,12 @@
       "current": "現在"
     },
     "status": {
+      "commits_one": "コミット",
+      "commits_other": "コミット",
       "conflicts": "競合",
-      "upToDate": "最新"
+      "upToDate": "最新",
+      "ahead": "先行",
+      "behind": "遅れ"
     },
     "states": {
       "merged": "マージ完了！",

@@ -62,8 +62,12 @@
       "current": "actual"
     },
     "status": {
+      "commits_one": "commit",
+      "commits_other": "commits",
       "conflicts": "Conflictos",
-      "upToDate": "Al día"
+      "upToDate": "Al día",
+      "ahead": "adelante",
+      "behind": "atrás"
     },
     "states": {
       "merged": "¡Fusionado!",
