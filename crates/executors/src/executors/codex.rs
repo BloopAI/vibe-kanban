@@ -125,13 +125,13 @@ impl Codex {
             ]);
         }
 
-        if let Some(format) = &self.model_reasoning_summary_format {
-            if format != &ReasoningSummaryFormat::None {
-                builder = builder.extend_params([
-                    "--config",
-                    &format!("model_reasoning_summary_format={}", format.as_ref()),
-                ]);
-            }
+        if let Some(format) = &self.model_reasoning_summary_format
+            && format != &ReasoningSummaryFormat::None
+        {
+            builder = builder.extend_params([
+                "--config",
+                &format!("model_reasoning_summary_format={}", format.as_ref()),
+            ]);
         }
 
         if let Some(summary) = &self.model_reasoning_summary {

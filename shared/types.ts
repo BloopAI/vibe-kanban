@@ -164,6 +164,8 @@ export type ReasoningEffort = "low" | "medium" | "high";
 
 export type ReasoningSummary = "auto" | "concise" | "detailed" | "none";
 
+export type ReasoningSummaryFormat = "none" | "experimental";
+
 export type Cursor = { append_prompt: AppendPrompt, force?: boolean | null, model?: string | null, base_command_override?: string | null, additional_params?: Array<string> | null, };
 
 export type Opencode = { append_prompt: AppendPrompt, model?: string | null, agent?: string | null, base_command_override?: string | null, additional_params?: Array<string> | null, };

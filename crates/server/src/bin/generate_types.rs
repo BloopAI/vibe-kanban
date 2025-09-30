@@ -76,6 +76,7 @@ fn generate_types_content() -> String {
         executors::executors::codex::SandboxMode::decl(),
         executors::executors::codex::ReasoningEffort::decl(),
         executors::executors::codex::ReasoningSummary::decl(),
+        executors::executors::codex::ReasoningSummaryFormat::decl(),
         executors::executors::cursor::Cursor::decl(),
         executors::executors::opencode::Opencode::decl(),
         executors::executors::qwen::QwenCode::decl(),
