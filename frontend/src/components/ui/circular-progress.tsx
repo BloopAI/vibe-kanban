@@ -45,15 +45,6 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
           strokeLinecap="round"
         />
       </svg>
-      <span
-        style={{
-          fontSize: `${size * 0.33}px`,
-          lineHeight: 1,
-        }}
-        className="font-medium"
-      >
-        {Math.round(percent)}%
-      </span>
     </div>
   );
 };

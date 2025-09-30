@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { ReactNode } from 'react';
 import type { ApprovalStatus, ToolStatus } from 'shared/types';
 import { Button } from '@/components/ui/button';
@@ -14,6 +21,7 @@ import { Check, X } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 
 import { useHotkeysContext } from 'react-hotkeys-hook';
+import { TabNavContext } from '@/contexts/TabNavigationContext';
 import { useKeyApproveRequest, useKeyDenyApproval, Scope } from '@/keyboard';
 
 const DEFAULT_DENIAL_REASON = 'User denied this tool use request.';
@@ -223,15 +231,17 @@ const PendingApprovalEntry = ({
   const abortRef = useAbortController();
   const denyReasonRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const { enableScope, disableScope } = useHotkeysContext();
+  const { enableScope, disableScope, activeScopes } = useHotkeysContext();
+  const tabNav = useContext(TabNavContext);
+  const isLogsTabActive = tabNav ? tabNav.activeTab === 'logs' : true;
+  const dialogScopeActive = activeScopes.includes(Scope.DIALOG);
+  const shouldControlScopes = isLogsTabActive && !dialogScopeActive;
+  const approvalsScopeEnabledRef = useRef(false);
+  const dialogScopeActiveRef = useRef(dialogScopeActive);
+
   useEffect(() => {
-    enableScope(Scope.APPROVALS);
-    disableScope(Scope.KANBAN);
-    return () => {
-      disableScope(Scope.APPROVALS);
-      enableScope(Scope.KANBAN);
-    };
-  }, [enableScope, disableScope]);
+    dialogScopeActiveRef.current = dialogScopeActive;
+  }, [dialogScopeActive]);
 
   const { timeLeft, percent } = useApprovalCountdown(
     pendingStatus.requested_at,
@@ -240,6 +250,39 @@ const PendingApprovalEntry = ({
   );
 
   const disabled = isResponding || hasResponded || timeLeft <= 0;
+
+  const shouldEnableApprovalsScope = shouldControlScopes && !disabled;
+
+  useEffect(() => {
+    const shouldEnable = shouldEnableApprovalsScope;
+
+    if (shouldEnable && !approvalsScopeEnabledRef.current) {
+      enableScope(Scope.APPROVALS);
+      disableScope(Scope.KANBAN);
+      approvalsScopeEnabledRef.current = true;
+    } else if (!shouldEnable && approvalsScopeEnabledRef.current) {
+      disableScope(Scope.APPROVALS);
+      if (!dialogScopeActive) {
+        enableScope(Scope.KANBAN);
+      }
+      approvalsScopeEnabledRef.current = false;
+    }
+
+    return () => {
+      if (approvalsScopeEnabledRef.current) {
+        disableScope(Scope.APPROVALS);
+        if (!dialogScopeActiveRef.current) {
+          enableScope(Scope.KANBAN);
+        }
+        approvalsScopeEnabledRef.current = false;
+      }
+    };
+  }, [
+    disableScope,
+    enableScope,
+    dialogScopeActive,
+    shouldEnableApprovalsScope,
+  ]);
 
   const respond = useCallback(
     async (approved: boolean, reason?: string) => {
@@ -306,13 +349,13 @@ const PendingApprovalEntry = ({
 
   useKeyApproveRequest(handleApprove, {
     scope: Scope.APPROVALS,
-    when: () => !isEnteringReason && !disabled,
+    when: () => shouldEnableApprovalsScope && !isEnteringReason,
     preventDefault: true,
   });
 
   useKeyDenyApproval(triggerDeny, {
     scope: Scope.APPROVALS,
-    when: () => !hasResponded && !disabled,
+    when: () => shouldEnableApprovalsScope && !hasResponded,
     enableOnFormTags: ['textarea', 'TEXTAREA'],
     preventDefault: true,
   });
