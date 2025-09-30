@@ -97,13 +97,15 @@
       "item3": "Web Companion（クリックして編集機能に必要）をインストールしましたか？インストールしていない場合は、",
       "item3Link": "こちらのインストール手順に従ってください",
       "tipPrompt": "ヒント：次のプロンプトでコーディングエージェントにWeb Companionのインストールを依頼できます：",
-      "tipCommand": "Please install https://github.com/BloopAI/vibe-kanban-web-companion",
+      "tipCommand": "Please install https://github.com/BloopAI/vibe-kanban-web-companion and add the VibeKanbanWebCompanion component",
       "resolve": "問題を解決して開発サーバーを再起動してください。"
     },
     "noServer": {
       "title": "開発サーバーが実行されていません",
       "startPrompt": "プレビューを表示するには開発サーバーを起動してください",
       "setupPrompt": "ライブプレビューとクリックして編集機能を使用するには、このプロジェクトに開発サーバースクリプトを追加してください。",
+      "companionPrompt": "クリック編集機能のために、プロジェクトにブラウザコンパニオンを追加してください。",
+      "companionLink": "インストールガイドを表示",
       "startButton": "開発サーバーを開始",
       "editButton": "開発スクリプトを編集"
     },

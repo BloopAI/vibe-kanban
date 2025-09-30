@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Play, Edit3, SquareTerminal, Save, X } from 'lucide-react';
+import {
+  Play,
+  Edit3,
+  SquareTerminal,
+  Save,
+  X,
+  ExternalLink,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -118,6 +125,7 @@ export function NoServerContent({
               ? t('preview.noServer.startPrompt')
               : t('preview.noServer.setupPrompt')}
           </p>
+
           {projectHasDevScript && !isEditingExistingScript && (
             <div className="mt-4 flex items-center justify-center gap-2">
               <Button
@@ -150,6 +158,22 @@ export function NoServerContent({
               )}
             </div>
           )}
+
+          {/* Companion Installation Prompt - Below buttons */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-muted-foreground mb-2">
+              {t('preview.noServer.companionPrompt')}
+            </p>
+            <a
+              href="https://github.com/BloopAI/vibe-kanban-web-companion"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              <ExternalLink className="h-3 w-3" />
+              {t('preview.noServer.companionLink')}
+            </a>
+          </div>
 
           {(!projectHasDevScript || isEditingExistingScript) && (
             <div className="mt-6 text-left">

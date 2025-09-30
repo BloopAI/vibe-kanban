@@ -5,7 +5,11 @@ import {
   ReactNode,
   useEffect,
 } from 'react';
-import type { OpenInEditorPayload } from '@/utils/previewBridge';
+import type {
+  OpenInEditorPayload,
+  ComponentInfo,
+  SelectedComponent,
+} from '@/utils/previewBridge';
 import type { TaskAttempt } from 'shared/types';
 
 export interface ClickedEntry {
@@ -238,8 +242,8 @@ function buildChainInnerToOuter(
   const comps = payload.components ?? [];
   const s = payload.selected;
 
-  // Start with the selected component as innermost, cast for uniform handling
-  const innerToOuter = [s as any];
+  // Start with the selected component as innermost
+  const innerToOuter: (ComponentInfo | SelectedComponent)[] = [s];
 
   // Add components that aren't duplicates of selected
   const selectedKey = `${s.name}|${s.pathToSource}|${s.source?.lineNumber}|${s.source?.columnNumber}`;

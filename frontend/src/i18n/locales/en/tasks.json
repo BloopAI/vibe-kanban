@@ -97,13 +97,15 @@
       "item3": "Have you installed the Web Companion (required for click-to-edit)? If not, please",
       "item3Link": "follow the installation instructions here",
       "tipPrompt": "Tip: you can ask your coding agent to install the Web Companion for you with the prompt:",
-      "tipCommand": "Please install https://github.com/BloopAI/vibe-kanban-web-companion",
+      "tipCommand": "Please install https://github.com/BloopAI/vibe-kanban-web-companion and add the VibeKanbanWebCompanion component",
       "resolve": "Please resolve any issues and restart the dev server."
     },
     "noServer": {
       "title": "No dev server running",
       "startPrompt": "Please start a dev server to see the preview",
       "setupPrompt": "To use the live preview and click-to-edit, please add a dev server script to this project.",
+      "companionPrompt": "For click-to-edit functionality, add the browser companion to your project.",
+      "companionLink": "View installation guide",
       "startButton": "Start Dev Server",
       "editButton": "Edit Dev Script"
     },

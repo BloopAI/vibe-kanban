@@ -28,6 +28,7 @@ export default function PreviewTab({
   const [iframeError, setIframeError] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [loadingTimeFinished, setLoadingTimeFinished] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showLogs, setShowLogs] = useState(false);
   const listenerRef = useRef<ClickToComponentListener | null>(null);
@@ -77,6 +78,8 @@ export default function PreviewTab({
       },
       onReady: () => {
         setIsReady(true);
+        setShowLogs(false);
+        setShowHelp(false);
       },
     });
 
@@ -102,9 +105,12 @@ export default function PreviewTab({
       loadingTimeFinished &&
       !isReady &&
       latestDevServerProcess &&
+      runningDevServer &&
       !showLogs
     ) {
       setShowLogs(true);
+      setShowHelp(true);
+      setLoadingTimeFinished(false);
     }
   }, [loadingTimeFinished, isReady, latestDevServerProcess, showLogs]);
 
@@ -151,7 +157,7 @@ export default function PreviewTab({
           />
         )}
 
-        {mode === 'ready' && loadingTimeFinished && !isReady && (
+        {showHelp && (
           <Alert variant="destructive" className="space-y-2">
             <p className="font-bold">{t('preview.troubleAlert.title')}</p>
             <ol className="list-decimal list-inside space-y-2">
