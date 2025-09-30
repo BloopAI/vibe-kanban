@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
-import { projectsApi, tasksApi, attemptsApi } from '@/lib/api';
+import { tasksApi, attemptsApi } from '@/lib/api';
 import { openTaskForm } from '@/lib/openTaskForm';
 
 import { useSearch } from '@/contexts/search-context';
+import { useProject } from '@/contexts/project-context';
 import { useQuery } from '@tanstack/react-query';
 import { useTaskViewManager } from '@/hooks/useTaskViewManager';
 import {
@@ -32,7 +33,7 @@ import {
 
 import TaskKanbanBoard from '@/components/tasks/TaskKanbanBoard';
 import { TaskDetailsPanel } from '@/components/tasks/TaskDetailsPanel';
-import type { TaskWithAttemptStatus, Project, TaskAttempt } from 'shared/types';
+import type { TaskWithAttemptStatus, TaskAttempt } from 'shared/types';
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 import { useProjectTasks } from '@/hooks/useProjectTasks';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -43,13 +44,21 @@ type Task = TaskWithAttemptStatus;
 
 export function ProjectTasks() {
   const { t } = useTranslation(['tasks', 'common']);
-  const { projectId, taskId, attemptId } = useParams<{
+  const { taskId, attemptId } = useParams<{
     projectId: string;
     taskId?: string;
     attemptId?: string;
   }>();
   const navigate = useNavigate();
   const { enableScope, disableScope } = useHotkeysContext();
+
+  // Use project context for project data
+  const {
+    project,
+    projectId,
+    isLoading: projectLoading,
+    error: projectError,
+  } = useProject();
 
   useEffect(() => {
     enableScope(Scope.KANBAN);
@@ -59,25 +68,22 @@ export function ProjectTasks() {
     };
   }, [enableScope, disableScope]);
 
-  const [project, setProject] = useState<Project | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
   // Helper functions to open task forms
   const handleCreateTask = () => {
-    if (project?.id) {
-      openTaskForm({ projectId: project.id });
+    if (projectId) {
+      openTaskForm({ projectId });
     }
   };
 
   const handleEditTask = (task: Task) => {
-    if (project?.id) {
-      openTaskForm({ projectId: project.id, task });
+    if (projectId) {
+      openTaskForm({ projectId, task });
     }
   };
 
   const handleDuplicateTask = (task: Task) => {
-    if (project?.id) {
-      openTaskForm({ projectId: project.id, initialTask: task });
+    if (projectId) {
+      openTaskForm({ projectId, initialTask: task });
     }
   };
   const { query: searchQuery, focusInput } = useSearch();
@@ -280,17 +286,6 @@ export function ProjectTasks() {
     }
   );
 
-  // Full screen
-
-  const fetchProject = useCallback(async () => {
-    try {
-      const result = await projectsApi.getById(projectId!);
-      setProject(result);
-    } catch (err) {
-      setError('Failed to load project');
-    }
-  }, [projectId]);
-
   const handleClosePanel = useCallback(() => {
     // setIsPanelOpen(false);
     // setSelectedTask(null);
@@ -458,26 +453,16 @@ export function ProjectTasks() {
         });
         // UI will update via WebSocket stream
       } catch (err) {
-        setError('Failed to update task status');
+        console.error('Failed to update task status:', err);
       }
     },
     [tasksById]
   );
 
-  // Initialize project when projectId changes
-  useEffect(() => {
-    if (projectId) {
-      fetchProject();
-    }
-  }, [projectId, fetchProject]);
+  // Combine loading states for initial load
+  const isInitialTasksLoad = isLoading && tasks.length === 0;
 
-  // Remove legacy direct-navigation handler; live sync above covers this
-
-  if (isLoading) {
-    return <Loader message={t('loading')} size={32} className="py-8" />;
-  }
-
-  if (error) {
+  if (projectError) {
     return (
       <div className="p-4">
         <Alert>
@@ -485,10 +470,16 @@ export function ProjectTasks() {
             <AlertTriangle size="16" />
             {t('common:states.error')}
           </AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>
+            {projectError.message || 'Failed to load project'}
+          </AlertDescription>
         </Alert>
       </div>
     );
+  }
+
+  if (projectLoading && isInitialTasksLoad) {
+    return <Loader message={t('loading')} size={32} className="py-8" />;
   }
 
   return (
@@ -548,7 +539,7 @@ export function ProjectTasks() {
         </div>
 
         {/* Right Column - Task Details Panel */}
-        {isPanelOpen && (
+        {isPanelOpen && !projectLoading && (
           <TaskDetailsPanel
             task={selectedTask}
             projectHasDevScript={!!project?.dev_script}

@@ -12,9 +12,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 import { ProjectFormFields } from '@/components/projects/project-form-fields';
 import { CreateProject, Project, UpdateProject } from 'shared/types';
-import { projectsApi } from '@/lib/api';
 import { generateProjectNameFromPath } from '@/utils/string';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { useProjectMutations } from '@/hooks/useProjectMutations';
 
 export interface ProjectFormDialogProps {
   project?: Project | null;
@@ -35,13 +35,29 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
       project?.cleanup_script ?? ''
     );
     const [copyFiles, setCopyFiles] = useState(project?.copy_files ?? '');
-    const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [repoMode, setRepoMode] = useState<'existing' | 'new'>('existing');
     const [parentPath, setParentPath] = useState('');
     const [folderName, setFolderName] = useState('');
 
     const isEditing = !!project;
+
+    const { createProject, updateProject } = useProjectMutations({
+      onCreateSuccess: () => {
+        modal.resolve('saved' as ProjectFormDialogResult);
+        modal.hide();
+      },
+      onUpdateSuccess: () => {
+        modal.resolve('saved' as ProjectFormDialogResult);
+        modal.hide();
+      },
+      onCreateError: (err) => {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      },
+      onUpdateError: (err) => {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      },
+    });
 
     // Update form fields when project prop changes
     useEffect(() => {
@@ -76,79 +92,60 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
     // Handle direct project creation from repo selection
     const handleDirectCreate = async (path: string, suggestedName: string) => {
       setError('');
-      setLoading(true);
 
-      try {
+      const createData: CreateProject = {
+        name: suggestedName,
+        git_repo_path: path,
+        use_existing_repo: true,
+        setup_script: null,
+        dev_script: null,
+        cleanup_script: null,
+        copy_files: null,
+      };
+
+      createProject.mutate(createData);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setError('');
+
+      let finalGitRepoPath = gitRepoPath;
+      if (repoMode === 'new') {
+        const effectiveParentPath = parentPath.trim();
+        const cleanFolderName = folderName.trim();
+        finalGitRepoPath = effectiveParentPath
+          ? `${effectiveParentPath}/${cleanFolderName}`.replace(/\/+/g, '/')
+          : cleanFolderName;
+      }
+      // Auto-populate name from git repo path if not provided
+      const finalName =
+        name.trim() || generateProjectNameFromPath(finalGitRepoPath);
+
+      if (isEditing && project) {
+        const updateData: UpdateProject = {
+          name: finalName,
+          git_repo_path: finalGitRepoPath,
+          setup_script: setupScript.trim() || null,
+          dev_script: devScript.trim() || null,
+          cleanup_script: cleanupScript.trim() || null,
+          copy_files: copyFiles.trim() || null,
+        };
+
+        updateProject.mutate({ projectId: project.id, data: updateData });
+      } else {
+        // Creating new project
         const createData: CreateProject = {
-          name: suggestedName,
-          git_repo_path: path,
-          use_existing_repo: true,
+          name: finalName,
+          git_repo_path: finalGitRepoPath,
+          use_existing_repo: repoMode === 'existing',
           setup_script: null,
           dev_script: null,
           cleanup_script: null,
           copy_files: null,
         };
 
-        await projectsApi.create(createData);
-        modal.resolve('saved' as ProjectFormDialogResult);
-        modal.hide();
-      } catch (error) {
-        setError(error instanceof Error ? error.message : 'An error occurred');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      setError('');
-      setLoading(true);
-
-      try {
-        let finalGitRepoPath = gitRepoPath;
-        if (repoMode === 'new') {
-          const effectiveParentPath = parentPath.trim();
-          const cleanFolderName = folderName.trim();
-          finalGitRepoPath = effectiveParentPath
-            ? `${effectiveParentPath}/${cleanFolderName}`.replace(/\/+/g, '/')
-            : cleanFolderName;
-        }
-        // Auto-populate name from git repo path if not provided
-        const finalName =
-          name.trim() || generateProjectNameFromPath(finalGitRepoPath);
-
-        if (isEditing) {
-          const updateData: UpdateProject = {
-            name: finalName,
-            git_repo_path: finalGitRepoPath,
-            setup_script: setupScript.trim() || null,
-            dev_script: devScript.trim() || null,
-            cleanup_script: cleanupScript.trim() || null,
-            copy_files: copyFiles.trim() || null,
-          };
-
-          await projectsApi.update(project!.id, updateData);
-        } else {
-          // Creating new project
-          const createData: CreateProject = {
-            name: finalName,
-            git_repo_path: finalGitRepoPath,
-            use_existing_repo: repoMode === 'existing',
-            setup_script: null,
-            dev_script: null,
-            cleanup_script: null,
-            copy_files: null,
-          };
-
-          await projectsApi.create(createData);
-        }
-
-        modal.resolve('saved' as ProjectFormDialogResult);
-        modal.hide();
-      } catch (error) {
-        setError(error instanceof Error ? error.message : 'An error occurred');
-      } finally {
-        setLoading(false);
+        createProject.mutate(createData);
       }
     };
 
@@ -230,9 +227,11 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
                     <DialogFooter>
                       <Button
                         type="submit"
-                        disabled={loading || !gitRepoPath.trim()}
+                        disabled={
+                          updateProject.isPending || !gitRepoPath.trim()
+                        }
                       >
-                        {loading ? 'Saving...' : 'Save Changes'}
+                        {updateProject.isPending ? 'Saving...' : 'Save Changes'}
                       </Button>
                     </DialogFooter>
                   </form>
@@ -273,9 +272,11 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
                   <DialogFooter>
                     <Button
                       type="submit"
-                      disabled={loading || !folderName.trim()}
+                      disabled={createProject.isPending || !folderName.trim()}
                     >
-                      {loading ? 'Creating...' : 'Create Project'}
+                      {createProject.isPending
+                        ? 'Creating...'
+                        : 'Create Project'}
                     </Button>
                   </DialogFooter>
                 )}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy } from 'lucide-react';
+import { Copy, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDevserverPreview } from '@/hooks/useDevserverPreview';
 import { useDevServer } from '@/hooks/useDevServer';
@@ -46,6 +46,7 @@ export default function PreviewTab({
     start: startDevServer,
     stop: stopDevServer,
     isStarting: isStartingDevServer,
+    isStopping: isStoppingDevServer,
     runningDevServer,
     latestDevServerProcess,
   } = useDevServer(selectedAttempt.id);
@@ -92,27 +93,41 @@ export default function PreviewTab({
     };
   }, [previewState.status, previewState.url, addElement]);
 
-  // If the preview status isn't ready, and it's been five seconds and we haven't received a ready message, set notReadyInTime true
-  useEffect(() => {
+  function startTimer() {
+    setLoadingTimeFinished(false);
     setTimeout(() => {
       setLoadingTimeFinished(true);
     }, 5000);
+  }
+
+  useEffect(() => {
+    startTimer();
   }, []);
 
-  // Auto-show logs when having trouble loading preview
+  // Auto-show help alert when having trouble loading preview
   useEffect(() => {
     if (
       loadingTimeFinished &&
       !isReady &&
       latestDevServerProcess &&
-      runningDevServer &&
-      !showLogs
+      runningDevServer
     ) {
-      setShowLogs(true);
       setShowHelp(true);
       setLoadingTimeFinished(false);
     }
-  }, [loadingTimeFinished, isReady, latestDevServerProcess, showLogs]);
+  }, [
+    loadingTimeFinished,
+    isReady,
+    latestDevServerProcess?.id,
+    runningDevServer,
+  ]);
+
+  // Auto-show logs when help is displayed
+  useEffect(() => {
+    if (showHelp && !showLogs) {
+      setShowLogs(true);
+    }
+  }, [showHelp, showLogs]);
 
   // Compute mode and unified logs handling
   const mode = !runningDevServer ? 'noServer' : iframeError ? 'error' : 'ready';
@@ -123,10 +138,20 @@ export default function PreviewTab({
   const handleStartDevServer = () => {
     setLoadingTimeFinished(false);
     startDevServer();
+    startTimer();
+    setShowHelp(false);
   };
 
   const copyPrompt = () => {
     navigator.clipboard.writeText(t('preview.troubleAlert.tipCommand'));
+  };
+
+  const handleStopAndEdit = () => {
+    stopDevServer(undefined, {
+      onSuccess: () => {
+        setShowHelp(false);
+      },
+    });
   };
 
   return (
@@ -195,6 +220,14 @@ export default function PreviewTab({
               </p>
             </p>
             <p>{t('preview.troubleAlert.resolve')}</p>
+            <Button
+              variant="destructive"
+              onClick={handleStopAndEdit}
+              disabled={isStoppingDevServer}
+            >
+              {isStoppingDevServer && <Loader2 className="mr-2 animate-spin" />}
+              Stop Dev Server & Edit Dev Script
+            </Button>
           </Alert>
         )}
         <DevServerLogsView

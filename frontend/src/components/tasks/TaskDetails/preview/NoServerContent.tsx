@@ -16,9 +16,8 @@ import {
   createScriptPlaceholderStrategy,
   ScriptPlaceholderContext,
 } from '@/utils/script-placeholders';
-import { projectsApi } from '@/lib/api';
-import { useQueryClient } from '@tanstack/react-query';
 import { useUserSystem } from '@/components/config-provider';
+import { useProjectMutations } from '@/hooks/useProjectMutations';
 
 interface NoServerContentProps {
   projectHasDevScript: boolean;
@@ -39,23 +38,30 @@ export function NoServerContent({
 }: NoServerContentProps) {
   const { t } = useTranslation('tasks');
   const [devScriptInput, setDevScriptInput] = useState('');
-  const [isSavingDevScript, setIsSavingDevScript] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isEditingExistingScript, setIsEditingExistingScript] = useState(false);
-  const queryClient = useQueryClient();
   const { system } = useUserSystem();
+
+  const { updateProject } = useProjectMutations({
+    onUpdateSuccess: () => {
+      setIsEditingExistingScript(false);
+    },
+    onUpdateError: (err) => {
+      setSaveError((err as Error)?.message || 'Failed to save dev script');
+    },
+  });
 
   // Create strategy-based placeholders
   const placeholders = system.environment
     ? new ScriptPlaceholderContext(
-      createScriptPlaceholderStrategy(system.environment.os_type)
-    ).getPlaceholders()
+        createScriptPlaceholderStrategy(system.environment.os_type)
+      ).getPlaceholders()
     : {
-      setup: '#!/bin/bash\nnpm install\n# Add any setup commands here...',
-      dev: '#!/bin/bash\nnpm run dev\n# Add dev server start command here...',
-      cleanup:
-        '#!/bin/bash\n# Add cleanup commands here...\n# This runs after coding agent execution',
-    };
+        setup: '#!/bin/bash\nnpm install\n# Add any setup commands here...',
+        dev: '#!/bin/bash\nnpm run dev\n# Add dev server start command here...',
+        cleanup:
+          '#!/bin/bash\n# Add cleanup commands here...\n# This runs after coding agent execution',
+      };
 
   const handleSaveDevScript = async (startAfterSave?: boolean) => {
     setSaveError(null);
@@ -70,30 +76,26 @@ export function NoServerContent({
       return;
     }
 
-    setIsSavingDevScript(true);
-    try {
-      await projectsApi.update(project.id, {
-        name: project.name,
-        git_repo_path: project.git_repo_path,
-        setup_script: project.setup_script ?? null,
-        dev_script: script,
-        cleanup_script: project.cleanup_script ?? null,
-        copy_files: project.copy_files ?? null,
-      });
-
-      setIsEditingExistingScript(false);
-      await queryClient.invalidateQueries({
-        queryKey: ['project', project.id],
-      });
-
-      if (startAfterSave) {
-        startDevServer();
+    updateProject.mutate(
+      {
+        projectId: project.id,
+        data: {
+          name: project.name,
+          git_repo_path: project.git_repo_path,
+          setup_script: project.setup_script ?? null,
+          dev_script: script,
+          cleanup_script: project.cleanup_script ?? null,
+          copy_files: project.copy_files ?? null,
+        },
+      },
+      {
+        onSuccess: () => {
+          if (startAfterSave) {
+            startDevServer();
+          }
+        },
       }
-    } catch (err: unknown) {
-      setSaveError((err as Error)?.message || 'Failed to save dev script');
-    } finally {
-      setIsSavingDevScript(false);
-    }
+    );
   };
 
   const handleEditExistingScript = () => {
@@ -166,7 +168,7 @@ export function NoServerContent({
                   value={devScriptInput}
                   onChange={(e) => setDevScriptInput(e.target.value)}
                   className="min-h-[120px] font-mono text-sm"
-                  disabled={isSavingDevScript}
+                  disabled={updateProject.isPending}
                 />
 
                 {saveError && (
@@ -181,7 +183,7 @@ export function NoServerContent({
                       <Button
                         size="sm"
                         onClick={() => handleSaveDevScript(false)}
-                        disabled={isSavingDevScript}
+                        disabled={updateProject.isPending}
                         className="gap-1"
                       >
                         <Save className="h-3 w-3" />
@@ -191,7 +193,7 @@ export function NoServerContent({
                         size="sm"
                         variant="outline"
                         onClick={handleCancelEdit}
-                        disabled={isSavingDevScript}
+                        disabled={updateProject.isPending}
                         className="gap-1"
                       >
                         <X className="h-3 w-3" />
@@ -203,7 +205,7 @@ export function NoServerContent({
                       <Button
                         size="sm"
                         onClick={() => handleSaveDevScript(true)}
-                        disabled={isSavingDevScript}
+                        disabled={updateProject.isPending}
                         className="gap-1"
                       >
                         <Play className="h-4 w-4" />
@@ -213,7 +215,7 @@ export function NoServerContent({
                         size="sm"
                         variant="outline"
                         onClick={() => handleSaveDevScript(false)}
-                        disabled={isSavingDevScript}
+                        disabled={updateProject.isPending}
                         className="gap-1"
                       >
                         <Save className="h-3 w-3" />
@@ -226,7 +228,6 @@ export function NoServerContent({
             </div>
           )}
 
-          {/* Companion Installation Prompt - Below buttons */}
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground mb-2">
               {t('preview.noServer.companionPrompt')}
