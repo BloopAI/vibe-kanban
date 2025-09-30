@@ -287,7 +287,7 @@ export function FileSearchTextarea({
                     key={file.path}
                     className={`px-3 py-2 cursor-pointer text-sm ${
                       index === selectedIndex
-                        ? 'bg-muted text-foreground border-l-2 border-primary'
+                        ? 'bg-muted text-foreground'
                         : 'hover:bg-muted'
                     }`}
                     onClick={() => selectFile(file)}
