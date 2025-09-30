@@ -97,7 +97,7 @@ export function TaskDetailsPanel({
         <TabNavContext.Provider value={{ activeTab, setActiveTab }}>
           <ProcessSelectionProvider>
             <ReviewProvider>
-              <EntriesProvider>
+              <EntriesProvider key={selectedAttempt?.id}>
                 {/* Backdrop - only on smaller screens (overlay mode) */}
                 {!hideBackdrop && (
                   <div
