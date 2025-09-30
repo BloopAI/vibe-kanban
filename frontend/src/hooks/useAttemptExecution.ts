@@ -1,44 +1,25 @@
 import { useMemo, useCallback } from 'react';
-import { useQuery, useQueries, useQueryClient } from '@tanstack/react-query';
+import { useQueries } from '@tanstack/react-query';
 import { attemptsApi, executionProcessesApi } from '@/lib/api';
 import { useTaskStopping } from '@/stores/useTaskDetailsUiStore';
+import { useExecutionProcesses } from './useExecutionProcesses';
 import type { AttemptData } from '@/lib/types';
 import type { ExecutionProcess } from 'shared/types';
 
 export function useAttemptExecution(attemptId?: string, taskId?: string) {
-  const queryClient = useQueryClient();
   const { isStopping, setIsStopping } = useTaskStopping(taskId || '');
 
-  // Main execution processes query with polling
   const {
-    data: executionData,
-    isLoading: processesLoading,
-    isFetching: processesFetching,
-    refetch,
-  } = useQuery({
-    queryKey: ['executionProcesses', attemptId],
-    queryFn: () => executionProcessesApi.getExecutionProcesses(attemptId!),
-    enabled: !!attemptId,
-    refetchInterval: 5000,
-    select: (data) => ({
-      processes: data,
-      isAttemptRunning: data.some(
-        (process: ExecutionProcess) =>
-          (process.run_reason === 'codingagent' ||
-            process.run_reason === 'setupscript' ||
-            process.run_reason === 'cleanupscript') &&
-          process.status === 'running'
-      ),
-    }),
-  });
+    executionProcesses,
+    isAttemptRunning,
+    isLoading: streamLoading,
+  } = useExecutionProcesses(attemptId ?? '');
 
   // Get setup script processes that need detailed info
   const setupProcesses = useMemo(() => {
-    if (!executionData?.processes) return [];
-    return executionData.processes.filter(
-      (p) => p.run_reason === 'setupscript'
-    );
-  }, [executionData?.processes]);
+    if (!executionProcesses.length) return [] as ExecutionProcess[];
+    return executionProcesses.filter((p) => p.run_reason === 'setupscript');
+  }, [executionProcesses]);
 
   // Fetch details for setup processes
   const processDetailQueries = useQueries({
@@ -51,7 +32,7 @@ export function useAttemptExecution(attemptId?: string, taskId?: string) {
 
   // Build attempt data combining processes and details
   const attemptData: AttemptData = useMemo(() => {
-    if (!executionData?.processes) {
+    if (!executionProcesses.length) {
       return { processes: [], runningProcessDetails: {} };
     }
 
@@ -66,56 +47,44 @@ export function useAttemptExecution(attemptId?: string, taskId?: string) {
     });
 
     return {
-      processes: executionData.processes,
+      processes: executionProcesses,
       runningProcessDetails,
     };
-  }, [executionData?.processes, setupProcesses, processDetailQueries]);
+  }, [executionProcesses, setupProcesses, processDetailQueries]);
 
   // Stop execution function
   const stopExecution = useCallback(async () => {
-    if (!attemptId || !executionData?.isAttemptRunning || isStopping) return;
+    if (!attemptId || !isAttemptRunning || isStopping) return;
 
     try {
       setIsStopping(true);
       await attemptsApi.stop(attemptId);
-
-      // Invalidate queries to refresh data
-      await queryClient.invalidateQueries({
-        queryKey: ['executionProcesses', attemptId],
-      });
     } catch (error) {
       console.error('Failed to stop executions:', error);
       throw error;
     } finally {
       setIsStopping(false);
     }
-  }, [
-    attemptId,
-    executionData?.isAttemptRunning,
-    isStopping,
-    setIsStopping,
-    queryClient,
-  ]);
+  }, [attemptId, isAttemptRunning, isStopping, setIsStopping]);
 
   const isLoading =
-    processesLoading || processDetailQueries.some((q) => q.isLoading);
+    streamLoading || processDetailQueries.some((q) => q.isLoading);
   const isFetching =
-    processesFetching || processDetailQueries.some((q) => q.isFetching);
+    streamLoading || processDetailQueries.some((q) => q.isFetching);
 
   return {
     // Data
-    processes: executionData?.processes || [],
+    processes: executionProcesses,
     attemptData,
     runningProcessDetails: attemptData.runningProcessDetails,
 
     // Status
-    isAttemptRunning: executionData?.isAttemptRunning ?? false,
+    isAttemptRunning,
     isLoading,
     isFetching,
 
     // Actions
     stopExecution,
     isStopping,
-    refetch,
   };
 }

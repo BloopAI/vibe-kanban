@@ -9,6 +9,7 @@ type ExecutionProcessState = {
 interface UseExecutionProcessesResult {
   executionProcesses: ExecutionProcess[];
   executionProcessesById: Record<string, ExecutionProcess>;
+  isAttemptRunning: boolean;
   isLoading: boolean;
   isConnected: boolean;
   error: string | null;
@@ -48,11 +49,19 @@ export const useExecutionProcesses = (
       new Date(a.created_at as unknown as string).getTime() -
       new Date(b.created_at as unknown as string).getTime()
   );
-  const isLoading = !data && !error; // until first snapshot
+  const isAttemptRunning = executionProcesses.some(
+    (process) =>
+      (process.run_reason === 'codingagent' ||
+        process.run_reason === 'setupscript' ||
+        process.run_reason === 'cleanupscript') &&
+      process.status === 'running'
+  );
+  const isLoading = !!taskAttemptId && !data && !error; // until first snapshot
 
   return {
     executionProcesses,
     executionProcessesById,
+    isAttemptRunning,
     isLoading,
     isConnected,
     error,
