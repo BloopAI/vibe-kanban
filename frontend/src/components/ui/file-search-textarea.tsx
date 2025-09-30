@@ -297,7 +297,9 @@ export function FileSearchTextarea({
                     <div className="font-medium truncate">{file.name}</div>
                     <div
                       className={`text-xs truncate ${
-                        index === selectedIndex ? 'text-accent-foreground/70' : 'text-muted-foreground'
+                        index === selectedIndex
+                          ? 'text-accent-foreground/70'
+                          : 'text-muted-foreground'
                       }`}
                     >
                       {file.path}
