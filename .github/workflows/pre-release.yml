@@ -30,7 +30,7 @@ env:
 
 jobs:
   bump-version:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     outputs:
       new_tag: ${{ steps.version.outputs.new_tag }}
       new_version: ${{ steps.version.outputs.new_version }}
@@ -114,7 +114,7 @@ jobs:
 
   build-frontend:
     needs: bump-version
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     env:
       VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY: ${{ secrets.PUBLIC_REACT_VIRTUOSO_LICENSE_KEY }}
     steps:
@@ -161,13 +161,19 @@ jobs:
   build-backend:
     needs: [bump-version, build-frontend]
     runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
     strategy:
       # Platform matrix - keep target/name in sync with package-npx-cli job
       matrix:
         include:
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-22.04
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            container: &zigbuild_container ghcr.io/rust-cross/cargo-zigbuild@sha256:af1bc2b869c5d76c1300f7a4685c2f1793d068e6e895c9f5c399b517b31a731e
             name: linux-x64
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            name: linux-arm64
+            container: *zigbuild_container
           - target: x86_64-pc-windows-msvc
             os: windows-latest-l
             name: windows-x64
@@ -180,9 +186,6 @@ jobs:
           - target: aarch64-pc-windows-msvc
             os: windows-latest-l
             name: windows-arm64
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-22.04
-            name: linux-arm64
     steps:
       - uses: actions/checkout@v4
         with:
@@ -194,6 +197,12 @@ jobs:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           targets: ${{ matrix.target }}
           components: rustfmt, clippy
+
+      - name: Install libclang (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y clang libclang-dev
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
@@ -211,23 +220,21 @@ jobs:
           name: frontend-dist
           path: frontend/dist/
 
-      - name: Install system dependencies (Linux)
-        if: matrix.os == 'ubuntu-22.04'
+      - name: Build backend (Linux)
+        if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y pkg-config libssl-dev
+          cargo zigbuild --release --target ${{ matrix.target }} -p server
+          cargo zigbuild --release --target ${{ matrix.target }} --bin mcp_task_server
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
 
-      - name: Install ARM64 cross-compilation dependencies (Linux)
-        if: matrix.os == 'ubuntu-22.04' && matrix.target == 'aarch64-unknown-linux-gnu'
-        run: |
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross
-
-      - name: Build backend for target
+      - name: Build backend (non-Linux)
+        if: runner.os != 'Linux'
         run: |
           cargo build --release --target ${{ matrix.target }} -p server
           cargo build --release --target ${{ matrix.target }} --bin mcp_task_server
         env:
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && 'aarch64-linux-gnu-gcc' || '' }}
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
 
@@ -339,13 +346,13 @@ jobs:
 
   package-npx-cli:
     needs: [bump-version, build-frontend, build-backend]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       # NOTE: This matrix must be kept in sync with build-backend job above
       # GitHub Actions doesn't support YAML anchors, so duplication is unavoidable
       matrix:
         include:
-          - target: x86_64-unknown-linux-gnu
+          - target: x86_64-unknown-linux-musl
             name: linux-x64
             binary: vibe-kanban
             mcp_binary: vibe-kanban-mcp
@@ -365,7 +372,7 @@ jobs:
             name: windows-arm64
             binary: vibe-kanban.exe
             mcp_binary: vibe-kanban-mcp.exe
-          - target: aarch64-unknown-linux-gnu
+          - target: aarch64-unknown-linux-musl
             name: linux-arm64
             binary: vibe-kanban
             mcp_binary: vibe-kanban-mcp
@@ -421,7 +428,7 @@ jobs:
 
   create-prerelease:
     needs: [bump-version, build-frontend, build-backend, package-npx-cli]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
