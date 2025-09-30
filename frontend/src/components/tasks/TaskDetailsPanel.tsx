@@ -2,12 +2,6 @@ import { useEffect, useState } from 'react';
 import TaskDetailsHeader from './TaskDetailsHeader';
 import { TaskFollowUpSection } from './TaskFollowUpSection';
 import { TaskTitleDescription } from './TaskDetails/TaskTitleDescription';
-<<<<<<< HEAD
-import { useClickedElements } from '@/contexts/ClickedElementsProvider';
-import type { OpenInEditorPayload } from '@/utils/previewBridge';
-=======
-import type { TaskAttempt } from 'shared/types';
->>>>>>> 186a4b61 (cleanup)
 import {
   getBackdropClasses,
   getTaskPanelClasses,
@@ -196,7 +190,9 @@ export function TaskDetailsPanel({
                                       <PreviewTab
                                         selectedAttempt={selectedAttempt}
                                         projectId={projectId}
-                                        projectHasDevScript={projectHasDevScript}
+                                        projectHasDevScript={
+                                          projectHasDevScript
+                                        }
                                       />
                                     ) : (
                                       <LogsTab

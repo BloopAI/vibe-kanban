@@ -489,14 +489,14 @@ export function TaskFollowUpSection({
                         }
                       }}
                       disabled={
-                      displayQueued
-                      ? isUnqueuing
-                      : !canSendFollowUp ||
-                      !isDraftLoaded ||
-                      isQueuing ||
-                      isUnqueuing ||
-                              !!draft?.sending ||
-                      isRetryActive
+                        displayQueued
+                          ? isUnqueuing
+                          : !canSendFollowUp ||
+                            !isDraftLoaded ||
+                            isQueuing ||
+                            isUnqueuing ||
+                            !!draft?.sending ||
+                            isRetryActive
                       }
                       size="sm"
                       variant="default"
