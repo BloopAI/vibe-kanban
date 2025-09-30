@@ -36,17 +36,12 @@ export default function PreviewTab({
   const [loadingTimeFinished, setLoadingTimeFinished] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showLogs, setShowLogs] = useState(false);
-  const [devScriptAdded, setDevScriptAdded] = useState(false);
   const listenerRef = useRef<ClickToComponentListener | null>(null);
 
   // Hooks
   const { t } = useTranslation('tasks');
-  const queryClient = useQueryClient();
   const { project } = useProject();
   const { system } = useUserSystem();
-
-  // Compute effective dev script status
-  const effectiveHasDevScript = projectHasDevScript || devScriptAdded;
 
   // Script placeholders
   const placeholders = useMemo(() => {
@@ -64,7 +59,7 @@ export default function PreviewTab({
   }, [system.environment]);
 
   const previewState = useDevserverPreview(selectedAttempt.id, {
-    projectHasDevScript: effectiveHasDevScript,
+    projectHasDevScript,
     projectId,
   });
 
@@ -169,16 +164,13 @@ export default function PreviewTab({
           </>
         ) : (
           <NoServerContent
-            effectiveHasDevScript={effectiveHasDevScript}
+            projectHasDevScript={projectHasDevScript}
             placeholders={placeholders}
             runningDevServer={runningDevServer}
             isStartingDevServer={isStartingDevServer}
             startDevServer={handleStartDevServer}
             stopDevServer={stopDevServer}
             project={project}
-            projectId={projectId}
-            queryClient={queryClient}
-            setDevScriptAdded={setDevScriptAdded}
           />
         )}
 

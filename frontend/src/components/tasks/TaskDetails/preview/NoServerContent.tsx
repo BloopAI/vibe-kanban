@@ -7,32 +7,25 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ExecutionProcess, Project } from 'shared/types';
 import { ScriptPlaceholders } from '@/utils/script-placeholders';
 import { projectsApi } from '@/lib/api';
-import { QueryClient } from '@tanstack/react-query';
 
 interface NoServerContentProps {
-  effectiveHasDevScript: boolean;
+  projectHasDevScript: boolean;
   placeholders: ScriptPlaceholders;
   runningDevServer: ExecutionProcess | undefined;
   isStartingDevServer: boolean;
   startDevServer: () => void;
   stopDevServer: () => void;
   project: Project | undefined;
-  projectId: string;
-  queryClient: QueryClient;
-  setDevScriptAdded: (value: boolean) => void;
 }
 
 export function NoServerContent({
-  effectiveHasDevScript,
+  projectHasDevScript,
   placeholders,
   runningDevServer,
   isStartingDevServer,
   startDevServer,
   stopDevServer,
   project,
-  projectId,
-  queryClient,
-  setDevScriptAdded,
 }: NoServerContentProps) {
   const { t } = useTranslation('tasks');
   const [devScriptInput, setDevScriptInput] = useState('');
@@ -64,9 +57,7 @@ export function NoServerContent({
         copy_files: project.copy_files ?? null,
       });
 
-      setDevScriptAdded(true);
       setIsEditingExistingScript(false);
-      await queryClient.invalidateQueries({ queryKey: ['project', projectId] });
 
       if (startAfterSave) {
         startDevServer();
@@ -103,11 +94,11 @@ export function NoServerContent({
             {t('preview.noServer.title')}
           </h3>
           <p className="text-sm text-muted-foreground">
-            {effectiveHasDevScript
+            {projectHasDevScript
               ? t('preview.noServer.startPrompt')
               : t('preview.noServer.setupPrompt')}
           </p>
-          {effectiveHasDevScript && !isEditingExistingScript && (
+          {projectHasDevScript && !isEditingExistingScript && (
             <div className="mt-4 flex items-center justify-center gap-2">
               <Button
                 variant={runningDevServer ? 'destructive' : 'default'}
@@ -140,7 +131,7 @@ export function NoServerContent({
             </div>
           )}
 
-          {(!effectiveHasDevScript || isEditingExistingScript) && (
+          {(!projectHasDevScript || isEditingExistingScript) && (
             <div className="mt-6 text-left">
               <div className="space-y-3">
                 <label
