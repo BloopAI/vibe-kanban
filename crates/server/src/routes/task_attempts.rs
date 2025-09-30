@@ -1837,20 +1837,16 @@ pub async fn attach_existing_pr(
     let pool = &deployment.db().pool;
 
     // Check if PR already attached
-    if let Some(existing_merge) = Merge::find_latest_by_task_attempt_id(pool, task_attempt.id).await? {
-        // Only return if it's a PR merge (not a direct merge)
-        if let Merge::Pr(pr_merge) = existing_merge {
-            return Ok(ResponseJson(ApiResponse::success(AttachPrResponse {
-                pr_attached: true,
-                pr_url: Some(pr_merge.pr_info.url.clone()),
-                pr_number: Some(pr_merge.pr_info.number),
-                pr_status: Some(pr_merge.pr_info.status.clone()),
-            })));
-        }
+    if let Some(Merge::Pr(pr_merge)) =
+        Merge::find_latest_by_task_attempt_id(pool, task_attempt.id).await?
+    {
+        return Ok(ResponseJson(ApiResponse::success(AttachPrResponse {
+            pr_attached: true,
+            pr_url: Some(pr_merge.pr_info.url.clone()),
+            pr_number: Some(pr_merge.pr_info.number),
+            pr_status: Some(pr_merge.pr_info.status.clone()),
+        })));
     }
-
-    // Get branch name
-    let branch_name = &task_attempt.branch;
 
     // Get GitHub token
     let github_config = deployment.config().read().await.github.clone();
@@ -1873,7 +1869,7 @@ pub async fn attach_existing_pr(
 
     // List all PRs for branch (open, closed, and merged)
     let prs = github_service
-        .list_all_prs_for_branch(&repo_info, branch_name)
+        .list_all_prs_for_branch(&repo_info, &task_attempt.branch)
         .await?;
 
     // Take the first PR (prefer open, but also accept merged/closed)

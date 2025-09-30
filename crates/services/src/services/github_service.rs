@@ -329,23 +329,26 @@ impl GitHubService {
         repo_info: &GitHubRepoInfo,
         branch_name: &str,
     ) -> Result<Vec<PullRequestInfo>, GitHubServiceError> {
-        (|| async { self.list_all_prs_for_branch_internal(repo_info, branch_name).await })
-            .retry(
-                &ExponentialBuilder::default()
-                    .with_min_delay(Duration::from_secs(1))
-                    .with_max_delay(Duration::from_secs(30))
-                    .with_max_times(3)
-                    .with_jitter(),
-            )
-            .when(|e| e.should_retry())
-            .notify(|err: &GitHubServiceError, dur: Duration| {
-                tracing::warn!(
-                    "GitHub API call failed, retrying after {:.2}s: {}",
-                    dur.as_secs_f64(),
-                    err
-                );
-            })
-            .await
+        (|| async {
+            self.list_all_prs_for_branch_internal(repo_info, branch_name)
+                .await
+        })
+        .retry(
+            &ExponentialBuilder::default()
+                .with_min_delay(Duration::from_secs(1))
+                .with_max_delay(Duration::from_secs(30))
+                .with_max_times(3)
+                .with_jitter(),
+        )
+        .when(|e| e.should_retry())
+        .notify(|err: &GitHubServiceError, dur: Duration| {
+            tracing::warn!(
+                "GitHub API call failed, retrying after {:.2}s: {}",
+                dur.as_secs_f64(),
+                err
+            );
+        })
+        .await
     }
 
     async fn list_all_prs_for_branch_internal(
@@ -364,17 +367,12 @@ impl GitHubService {
             .await
             .map_err(|err| match GitHubServiceError::from(err) {
                 GitHubServiceError::Client(source) => GitHubServiceError::PullRequest(format!(
-                    "Failed to list all PRs for branch '{}': {}",
-                    branch_name, source
+                    "Failed to list all PRs for branch '{branch_name}': {source}",
                 )),
                 other => other,
             })?;
 
-        let pr_infos = prs
-            .items
-            .into_iter()
-            .map(Self::map_pull_request)
-            .collect();
+        let pr_infos = prs.items.into_iter().map(Self::map_pull_request).collect();
 
         Ok(pr_infos)
     }
