@@ -110,7 +110,6 @@
       "editButton": "開発スクリプトを編集"
     },
     "devScript": {
-      "label": "開発サーバー起動コマンド",
       "saveAndStart": "保存して開始",
       "saveOnly": "保存のみ",
       "saveChanges": "変更を保存",

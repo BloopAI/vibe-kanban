@@ -48,14 +48,14 @@ export function NoServerContent({
   // Create strategy-based placeholders
   const placeholders = system.environment
     ? new ScriptPlaceholderContext(
-        createScriptPlaceholderStrategy(system.environment.os_type)
-      ).getPlaceholders()
+      createScriptPlaceholderStrategy(system.environment.os_type)
+    ).getPlaceholders()
     : {
-        setup: '#!/bin/bash\nnpm install\n# Add any setup commands here...',
-        dev: '#!/bin/bash\nnpm run dev\n# Add dev server start command here...',
-        cleanup:
-          '#!/bin/bash\n# Add cleanup commands here...\n# This runs after coding agent execution',
-      };
+      setup: '#!/bin/bash\nnpm install\n# Add any setup commands here...',
+      dev: '#!/bin/bash\nnpm run dev\n# Add dev server start command here...',
+      cleanup:
+        '#!/bin/bash\n# Add cleanup commands here...\n# This runs after coding agent execution',
+    };
 
   const handleSaveDevScript = async (startAfterSave?: boolean) => {
     setSaveError(null);
@@ -126,7 +126,7 @@ export function NoServerContent({
               : t('preview.noServer.setupPrompt')}
           </p>
 
-          {projectHasDevScript && !isEditingExistingScript && (
+          {!isEditingExistingScript ? (
             <div className="mt-4 flex items-center justify-center gap-2">
               <Button
                 variant={runningDevServer ? 'destructive' : 'default'}
@@ -138,7 +138,7 @@ export function NoServerContent({
                     startDevServer();
                   }
                 }}
-                disabled={isStartingDevServer}
+                disabled={isStartingDevServer || !projectHasDevScript}
                 className="gap-1"
               >
                 <Play className="h-4 w-4" />
@@ -157,33 +157,9 @@ export function NoServerContent({
                 </Button>
               )}
             </div>
-          )}
-
-          {/* Companion Installation Prompt - Below buttons */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-muted-foreground mb-2">
-              {t('preview.noServer.companionPrompt')}
-            </p>
-            <a
-              href="https://github.com/BloopAI/vibe-kanban-web-companion"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-            >
-              <ExternalLink className="h-3 w-3" />
-              {t('preview.noServer.companionLink')}
-            </a>
-          </div>
-
-          {(!projectHasDevScript || isEditingExistingScript) && (
+          ) : (
             <div className="mt-6 text-left">
               <div className="space-y-3">
-                <label
-                  htmlFor="devScript"
-                  className="block text-sm font-medium text-foreground text-center"
-                >
-                  {t('preview.devScript.label')}
-                </label>
                 <Textarea
                   id="devScript"
                   placeholder={placeholders.dev}
@@ -249,6 +225,22 @@ export function NoServerContent({
               </div>
             </div>
           )}
+
+          {/* Companion Installation Prompt - Below buttons */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-muted-foreground mb-2">
+              {t('preview.noServer.companionPrompt')}
+            </p>
+            <a
+              href="https://github.com/BloopAI/vibe-kanban-web-companion"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              <ExternalLink className="h-3 w-3" />
+              {t('preview.noServer.companionLink')}
+            </a>
+          </div>
         </div>
       </div>
     </div>

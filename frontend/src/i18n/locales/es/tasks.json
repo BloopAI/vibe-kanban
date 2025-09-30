@@ -110,7 +110,6 @@
       "editButton": "Editar Script de Desarrollo"
     },
     "devScript": {
-      "label": "Comando de inicio del servidor de desarrollo",
       "saveAndStart": "Guardar e Iniciar",
       "saveOnly": "Solo Guardar",
       "saveChanges": "Guardar Cambios",

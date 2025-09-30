@@ -110,7 +110,6 @@
       "editButton": "Edit Dev Script"
     },
     "devScript": {
-      "label": "Dev server start command",
       "saveAndStart": "Save & Start",
       "saveOnly": "Save Only",
       "saveChanges": "Save Changes",
