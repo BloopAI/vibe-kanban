@@ -287,7 +287,7 @@ export function FileSearchTextarea({
                     key={file.path}
                     className={`px-3 py-2 cursor-pointer text-sm ${
                       index === selectedIndex
-                        ? 'bg-accent text-accent-foreground'
+                        ? 'bg-primary/10 text-primary border-l-2 border-primary'
                         : 'hover:bg-muted'
                     }`}
                     onClick={() => selectFile(file)}
@@ -297,9 +297,9 @@ export function FileSearchTextarea({
                     <div className="font-medium truncate">{file.name}</div>
                     <div
                       className={`text-xs truncate ${
-                        index === selectedIndex
-                          ? 'text-accent-foreground/70'
-                          : 'text-muted-foreground'
+                      index === selectedIndex
+                      ? 'text-primary/70'
+                      : 'text-muted-foreground'
                       }`}
                     >
                       {file.path}
