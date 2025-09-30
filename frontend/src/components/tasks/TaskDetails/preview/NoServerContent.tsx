@@ -5,12 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ExecutionProcess, Project } from 'shared/types';
-import { ScriptPlaceholders } from '@/utils/script-placeholders';
+import {
+  createScriptPlaceholderStrategy,
+  ScriptPlaceholderContext,
+} from '@/utils/script-placeholders';
 import { projectsApi } from '@/lib/api';
+import { useQueryClient } from '@tanstack/react-query';
+import { useUserSystem } from '@/components/config-provider';
 
 interface NoServerContentProps {
   projectHasDevScript: boolean;
-  placeholders: ScriptPlaceholders;
   runningDevServer: ExecutionProcess | undefined;
   isStartingDevServer: boolean;
   startDevServer: () => void;
@@ -20,7 +24,6 @@ interface NoServerContentProps {
 
 export function NoServerContent({
   projectHasDevScript,
-  placeholders,
   runningDevServer,
   isStartingDevServer,
   startDevServer,
@@ -32,6 +35,20 @@ export function NoServerContent({
   const [isSavingDevScript, setIsSavingDevScript] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isEditingExistingScript, setIsEditingExistingScript] = useState(false);
+  const queryClient = useQueryClient();
+  const { system } = useUserSystem();
+
+  // Create strategy-based placeholders
+  const placeholders = system.environment
+    ? new ScriptPlaceholderContext(
+        createScriptPlaceholderStrategy(system.environment.os_type)
+      ).getPlaceholders()
+    : {
+        setup: '#!/bin/bash\nnpm install\n# Add any setup commands here...',
+        dev: '#!/bin/bash\nnpm run dev\n# Add dev server start command here...',
+        cleanup:
+          '#!/bin/bash\n# Add cleanup commands here...\n# This runs after coding agent execution',
+      };
 
   const handleSaveDevScript = async (startAfterSave?: boolean) => {
     setSaveError(null);
@@ -58,6 +75,9 @@ export function NoServerContent({
       });
 
       setIsEditingExistingScript(false);
+      await queryClient.invalidateQueries({
+        queryKey: ['project', project.id],
+      });
 
       if (startAfterSave) {
         startDevServer();

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,12 +8,6 @@ import { ClickToComponentListener } from '@/utils/previewBridge';
 import { useClickedElements } from '@/contexts/ClickedElementsProvider';
 import { TaskAttempt } from 'shared/types';
 import { Alert } from '@/components/ui/alert';
-import { useUserSystem } from '@/components/config-provider';
-import {
-  createScriptPlaceholderStrategy,
-  ScriptPlaceholderContext,
-} from '@/utils/script-placeholders';
-import { useQueryClient } from '@tanstack/react-query';
 import { useProject } from '@/contexts/project-context';
 import { DevServerLogsView } from './preview/DevServerLogsView';
 import { PreviewToolbar } from './preview/PreviewToolbar';
@@ -41,22 +35,6 @@ export default function PreviewTab({
   // Hooks
   const { t } = useTranslation('tasks');
   const { project } = useProject();
-  const { system } = useUserSystem();
-
-  // Script placeholders
-  const placeholders = useMemo(() => {
-    if (system.environment) {
-      return new ScriptPlaceholderContext(
-        createScriptPlaceholderStrategy(system.environment.os_type)
-      ).getPlaceholders();
-    }
-    return {
-      setup: '#!/bin/bash\nnpm install\n# Add any setup commands here...',
-      dev: '#!/bin/bash\nnpm run dev\n# Add dev server start command here...',
-      cleanup:
-        '#!/bin/bash\n# Add cleanup commands here...\n# This runs after coding agent execution',
-    };
-  }, [system.environment]);
 
   const previewState = useDevserverPreview(selectedAttempt.id, {
     projectHasDevScript,
@@ -165,7 +143,6 @@ export default function PreviewTab({
         ) : (
           <NoServerContent
             projectHasDevScript={projectHasDevScript}
-            placeholders={placeholders}
             runningDevServer={runningDevServer}
             isStartingDevServer={isStartingDevServer}
             startDevServer={handleStartDevServer}
