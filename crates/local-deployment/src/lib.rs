@@ -10,6 +10,7 @@ use services::services::{
     auth::AuthService,
     config::{Config, load_config_from_file, save_config_to_file},
     container::ContainerService,
+    drafts::DraftsService,
     events::EventService,
     file_search_cache::FileSearchCache,
     filesystem::FilesystemService,
@@ -42,6 +43,7 @@ pub struct LocalDeployment {
     events: EventService,
     file_search_cache: Arc<FileSearchCache>,
     approvals: Approvals,
+    drafts: DraftsService,
 }
 
 #[async_trait]
@@ -124,6 +126,7 @@ impl Deployment for LocalDeployment {
         container.spawn_worktree_cleanup().await;
 
         let events = EventService::new(db.clone(), events_msg_store, events_entry_count);
+        let drafts = DraftsService::new(db.clone(), image.clone());
         let file_search_cache = Arc::new(FileSearchCache::new());
 
         Ok(Self {
@@ -141,6 +144,7 @@ impl Deployment for LocalDeployment {
             events,
             file_search_cache,
             approvals,
+            drafts,
         })
     }
 
@@ -201,5 +205,9 @@ impl Deployment for LocalDeployment {
 
     fn approvals(&self) -> &Approvals {
         &self.approvals
+    }
+
+    fn drafts(&self) -> &DraftsService {
+        &self.drafts
     }
 }

@@ -16,11 +16,11 @@ use command_group::AsyncGroupChild;
 use db::{
     DBService,
     models::{
+        draft::{Draft, DraftType},
         execution_process::{
             ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
         },
         executor_session::ExecutorSession,
-        follow_up_draft::FollowUpDraft,
         image::TaskImage,
         merge::Merge,
         project::Project,
@@ -1323,8 +1323,12 @@ impl LocalContainerService {
         }
 
         // Load draft and ensure it's eligible
-        let Some(draft) =
-            FollowUpDraft::find_by_task_attempt_id(&self.db.pool, ctx.task_attempt.id).await?
+        let Some(draft) = Draft::find_by_task_attempt_and_type(
+            &self.db.pool,
+            ctx.task_attempt.id,
+            DraftType::FollowUp,
+        )
+        .await?
         else {
             return Ok(());
         };
@@ -1334,7 +1338,7 @@ impl LocalContainerService {
         }
 
         // Atomically acquire sending lock; if not acquired, someone else is sending.
-        if !FollowUpDraft::try_mark_sending(&self.db.pool, ctx.task_attempt.id)
+        if !Draft::try_mark_sending(&self.db.pool, ctx.task_attempt.id, DraftType::FollowUp)
             .await
             .unwrap_or(false)
         {
@@ -1396,19 +1400,7 @@ impl LocalContainerService {
             .task
             .parent_project(&self.db.pool)
             .await?
-            .and_then(|p| p.cleanup_script)
-            .map(|script| {
-                Box::new(executors::actions::ExecutorAction::new(
-                    executors::actions::ExecutorActionType::ScriptRequest(
-                        executors::actions::script::ScriptRequest {
-                            script,
-                            language: executors::actions::script::ScriptRequestLanguage::Bash,
-                            context: executors::actions::script::ScriptContext::CleanupScript,
-                        },
-                    ),
-                    None,
-                ))
-            });
+            .and_then(|project| self.cleanup_action(project.cleanup_script));
 
         // Handle images: associate, copy to worktree, canonicalize prompt
         let mut prompt = draft.prompt.clone();
@@ -1451,7 +1443,8 @@ impl LocalContainerService {
             .await?;
 
         // Clear the draft to reflect that it has been consumed
-        let _ = FollowUpDraft::clear_after_send(&self.db.pool, ctx.task_attempt.id).await;
+        let _ =
+            Draft::clear_after_send(&self.db.pool, ctx.task_attempt.id, DraftType::FollowUp).await;
 
         Ok(())
     }

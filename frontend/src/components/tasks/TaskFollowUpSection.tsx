@@ -25,12 +25,14 @@ import { useAttemptBranch } from '@/hooks/useAttemptBranch';
 import { FollowUpConflictSection } from '@/components/tasks/follow-up/FollowUpConflictSection';
 import { FollowUpEditorCard } from '@/components/tasks/follow-up/FollowUpEditorCard';
 import { useDraftStream } from '@/hooks/follow-up/useDraftStream';
-import { useDraftEdits } from '@/hooks/follow-up/useDraftEdits';
+import { useRetryUi } from '@/contexts/RetryUiContext';
+import { useDraftEditor } from '@/hooks/follow-up/useDraftEditor';
 import { useDraftAutosave } from '@/hooks/follow-up/useDraftAutosave';
 import { useDraftQueue } from '@/hooks/follow-up/useDraftQueue';
 import { useFollowUpSend } from '@/hooks/follow-up/useFollowUpSend';
 import { useDefaultVariant } from '@/hooks/follow-up/useDefaultVariant';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
+import { appendImageMarkdown } from '@/utils/markdownImages';
 
 interface TaskFollowUpSectionProps {
   task: TaskWithAttemptStatus;
@@ -75,13 +77,7 @@ export function TaskFollowUpSection({
   ]);
 
   // Draft stream and synchronization
-  const {
-    draft,
-    isDraftLoaded,
-    lastServerVersionRef,
-    suppressNextSaveRef,
-    forceNextApplyRef,
-  } = useDraftStream(selectedAttemptId);
+  const { draft, isDraftLoaded } = useDraftStream(selectedAttemptId);
 
   // Editor state
   const {
@@ -92,11 +88,8 @@ export function TaskFollowUpSection({
     newlyUploadedImageIds,
     handleImageUploaded,
     clearImagesAndUploads,
-  } = useDraftEdits({
+  } = useDraftEditor({
     draft,
-    lastServerVersionRef,
-    suppressNextSaveRef,
-    forceNextApplyRef,
     taskId: task.id,
   });
 
@@ -114,8 +107,6 @@ export function TaskFollowUpSection({
     message: followUpMessage,
     selectedVariant,
     images,
-    suppressNextSaveRef,
-    lastServerVersionRef,
   });
 
   // Presentation-only queue state
@@ -130,6 +121,11 @@ export function TaskFollowUpSection({
   const isQueued = !!draft?.queued;
   const displayQueued = queuedOptimistic ?? isQueued;
 
+  // During retry, follow-up box is greyed/disabled (not hidden)
+  // Use RetryUi context so optimistic retry immediately disables this box
+  const { activeRetryProcessId } = useRetryUi();
+  const isRetryActive = !!activeRetryProcessId;
+
   // Autosave draft when editing
   const { isSaving, saveStatus } = useDraftAutosave({
     attemptId: selectedAttemptId,
@@ -143,9 +139,6 @@ export function TaskFollowUpSection({
     isDraftSending: !!draft?.sending,
     isQueuing: isQueuing,
     isUnqueuing: isUnqueuing,
-    suppressNextSaveRef,
-    lastServerVersionRef,
-    forceNextApplyRef,
   });
 
   // Send follow-up action
@@ -182,12 +175,14 @@ export function TaskFollowUpSection({
       }
     }
 
+    if (isRetryActive) return false; // disable typing while retry editor is active
     return true;
   }, [
     selectedAttemptId,
     processes.length,
     isSendingFollowUp,
     branchStatus?.merges,
+    isRetryActive,
   ]);
 
   const canSendFollowUp = useMemo(() => {
@@ -209,7 +204,7 @@ export function TaskFollowUpSection({
 
   const isDraftLocked =
     displayQueued || isQueuing || isUnqueuing || !!draft?.sending;
-  const isEditable = isDraftLoaded && !isDraftLocked;
+  const isEditable = isDraftLoaded && !isDraftLocked && !isRetryActive;
 
   // When a process completes (e.g., agent resolved conflicts), refresh branch status promptly
   const prevRunningRef = useRef<boolean>(isAttemptRunning);
@@ -258,11 +253,16 @@ export function TaskFollowUpSection({
     } else {
       if (isUnqueuing) setIsUnqueuing(false);
     }
-  }, [isQueued]);
+  }, [isQueued, isQueuing, isUnqueuing]);
 
   return (
     selectedAttemptId && (
-      <div className="border-t p-4 focus-within:ring ring-inset">
+      <div
+        className={cn(
+          'border-t p-4 focus-within:ring ring-inset',
+          isRetryActive && 'opacity-50'
+        )}
+      >
         <div className="space-y-2">
           {followUpError && (
             <Alert variant="destructive">
@@ -276,16 +276,13 @@ export function TaskFollowUpSection({
                 <ImageUploadSection
                   images={images}
                   onImagesChange={setImages}
-                  onUpload={imagesApi.upload}
+                  onUpload={(file) => imagesApi.uploadForTask(task.id, file)}
                   onDelete={imagesApi.delete}
                   onImageUploaded={(image) => {
                     handleImageUploaded(image);
-                    const markdownText = `![${image.original_name}](${image.file_path})`;
-                    const next =
-                      followUpMessage.trim() === ''
-                        ? markdownText
-                        : followUpMessage + ' ' + markdownText;
-                    setFollowUpMessage(next);
+                    setFollowUpMessage((prev) =>
+                      appendImageMarkdown(prev, image)
+                    );
                   }}
                   disabled={!isEditable}
                   collapsible={false}
@@ -394,6 +391,7 @@ export function TaskFollowUpSection({
                         onClick={clearComments}
                         size="sm"
                         variant="destructive"
+                        disabled={!isEditable}
                       >
                         Clear Review Comments
                       </Button>
@@ -404,7 +402,8 @@ export function TaskFollowUpSection({
                         !canSendFollowUp ||
                         isDraftLocked ||
                         !isDraftLoaded ||
-                        isSendingFollowUp
+                        isSendingFollowUp ||
+                        isRetryActive
                       }
                       size="sm"
                     >
@@ -476,7 +475,8 @@ export function TaskFollowUpSection({
                             !isDraftLoaded ||
                             isQueuing ||
                             isUnqueuing ||
-                            !!draft?.sending
+                            !!draft?.sending ||
+                            isRetryActive
                       }
                       size="sm"
                       variant="default"

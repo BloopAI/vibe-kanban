@@ -34,11 +34,12 @@ import {
   UpdateTaskTemplate,
   UserSystemInfo,
   GitHubServiceError,
+  UpdateRetryFollowUpDraftRequest,
   McpServerQuery,
   UpdateMcpServersBody,
   GetMcpServerResponse,
   ImageResponse,
-  FollowUpDraftResponse,
+  DraftResponse,
   UpdateFollowUpDraftRequest,
   GitOperationError,
   ApprovalResponse,
@@ -50,8 +51,8 @@ import {
 // Re-export types for convenience
 export type { RepositoryInfo } from 'shared/types';
 export type {
-  FollowUpDraftResponse,
   UpdateFollowUpDraftRequest,
+  UpdateRetryFollowUpDraftRequest,
 } from 'shared/types';
 
 class ApiError<E = unknown> extends Error {
@@ -377,38 +378,51 @@ export const attemptsApi = {
     return handleApiResponse<void>(response);
   },
 
-  getFollowUpDraft: async (
-    attemptId: string
-  ): Promise<FollowUpDraftResponse> => {
+  getDraft: async (
+    attemptId: string,
+    type: 'follow_up' | 'retry'
+  ): Promise<DraftResponse> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/follow-up-draft`
+      `/api/task-attempts/${attemptId}/draft?type=${encodeURIComponent(type)}`
     );
-    return handleApiResponse<FollowUpDraftResponse>(response);
+    return handleApiResponse<DraftResponse>(response);
   },
 
-  saveFollowUpDraft: async (
+  saveDraft: async (
     attemptId: string,
-    data: UpdateFollowUpDraftRequest
-  ): Promise<FollowUpDraftResponse> => {
+    type: 'follow_up' | 'retry',
+    data: UpdateFollowUpDraftRequest | UpdateRetryFollowUpDraftRequest
+  ): Promise<DraftResponse> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/follow-up-draft`,
+      `/api/task-attempts/${attemptId}/draft?type=${encodeURIComponent(type)}`,
       {
-        // Server expects PUT for saving/updating the draft
         method: 'PUT',
         body: JSON.stringify(data),
       }
     );
-    return handleApiResponse<FollowUpDraftResponse>(response);
+    return handleApiResponse<DraftResponse>(response);
   },
 
-  setFollowUpQueue: async (
+  deleteDraft: async (
+    attemptId: string,
+    type: 'follow_up' | 'retry'
+  ): Promise<void> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/draft?type=${encodeURIComponent(type)}`,
+      { method: 'DELETE' }
+    );
+    return handleApiResponse<void>(response);
+  },
+
+  setDraftQueue: async (
     attemptId: string,
     queued: boolean,
     expectedQueued?: boolean,
-    expectedVersion?: number
-  ): Promise<FollowUpDraftResponse> => {
+    expectedVersion?: number,
+    type: 'follow_up' | 'retry' = 'follow_up'
+  ): Promise<DraftResponse> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/follow-up-draft/queue`,
+      `/api/task-attempts/${attemptId}/draft/queue?type=${encodeURIComponent(type)}`,
       {
         method: 'POST',
         body: JSON.stringify({
@@ -418,7 +432,7 @@ export const attemptsApi = {
         }),
       }
     );
-    return handleApiResponse<FollowUpDraftResponse>(response);
+    return handleApiResponse<DraftResponse>(response);
   },
 
   deleteFile: async (
@@ -769,6 +783,28 @@ export const imagesApi = {
     formData.append('image', file);
 
     const response = await fetch('/api/images/upload', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new ApiError(
+        `Failed to upload image: ${errorText}`,
+        response.status,
+        response
+      );
+    }
+
+    return handleApiResponse<ImageResponse>(response);
+  },
+
+  uploadForTask: async (taskId: string, file: File): Promise<ImageResponse> => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const response = await fetch(`/api/images/task/${taskId}/upload`, {
       method: 'POST',
       body: formData,
       credentials: 'include',

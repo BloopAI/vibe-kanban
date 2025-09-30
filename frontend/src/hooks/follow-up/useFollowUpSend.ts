@@ -52,7 +52,10 @@ export function useFollowUpSend({
         prompt: finalPrompt,
         variant: selectedVariant,
         image_ids,
-      });
+        retry_process_id: null,
+        force_when_dirty: null,
+        perform_git_reset: null,
+      } as any);
       setMessage('');
       clearComments();
       onAfterSendCleanup();

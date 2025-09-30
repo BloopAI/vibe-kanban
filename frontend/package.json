@@ -54,6 +54,7 @@
     "react-virtuoso": "^4.14.0",
     "react-window": "^1.8.11",
     "rfc6902": "^5.1.2",
+    "react-use-websocket": "^4.7.0",
     "tailwind-merge": "^2.2.0",
     "tailwindcss-animate": "^1.0.7",
     "vibe-kanban-web-companion": "^0.0.4",

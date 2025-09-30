@@ -1,15 +1,13 @@
 import { useCallback } from 'react';
 import { attemptsApi, type UpdateFollowUpDraftRequest } from '@/lib/api';
-import type { FollowUpDraft, ImageResponse } from 'shared/types';
+import type { Draft, ImageResponse } from 'shared/types';
 
 type Args = {
   attemptId?: string;
-  draft: FollowUpDraft | null;
+  draft: Draft | null;
   message: string;
   selectedVariant: string | null;
   images: ImageResponse[];
-  suppressNextSaveRef: React.MutableRefObject<boolean>;
-  lastServerVersionRef: React.MutableRefObject<number>;
 };
 
 export function useDraftQueue({
@@ -18,8 +16,6 @@ export function useDraftQueue({
   message,
   selectedVariant,
   images,
-  suppressNextSaveRef,
-  lastServerVersionRef,
 }: Args) {
   const onQueue = useCallback(async (): Promise<boolean> => {
     if (!attemptId) return false;
@@ -37,26 +33,13 @@ export function useDraftQueue({
         currentIds.length === serverIds.length &&
         currentIds.every((id, i) => id === serverIds[i]);
       if (!idsEqual) immediatePayload.image_ids = currentIds;
-      suppressNextSaveRef.current = true;
-      await attemptsApi.saveFollowUpDraft(
+      await attemptsApi.saveDraft(
         attemptId,
+        'follow_up',
         immediatePayload as UpdateFollowUpDraftRequest
       );
-      try {
-        const resp = await attemptsApi.setFollowUpQueue(attemptId, true);
-        if (resp?.version !== undefined && resp?.version !== null) {
-          lastServerVersionRef.current = Number(resp.version ?? 0n);
-        }
-        return !!resp?.queued;
-      } catch {
-        /* adopt server on failure */
-        const latest = await attemptsApi.getFollowUpDraft(attemptId);
-        suppressNextSaveRef.current = true;
-        if (latest.version !== undefined && latest.version !== null) {
-          lastServerVersionRef.current = Number(latest.version ?? 0n);
-        }
-        return !!latest?.queued;
-      }
+      const resp = await attemptsApi.setDraftQueue(attemptId, true);
+      return !!resp?.queued;
     } finally {
       // presentation-only state handled by caller
     }
@@ -65,36 +48,22 @@ export function useDraftQueue({
     attemptId,
     draft?.variant,
     draft?.image_ids,
+    draft?.queued,
     images,
     message,
     selectedVariant,
-    suppressNextSaveRef,
-    lastServerVersionRef,
   ]);
 
   const onUnqueue = useCallback(async (): Promise<boolean> => {
     if (!attemptId) return false;
     try {
-      suppressNextSaveRef.current = true;
-      try {
-        const resp = await attemptsApi.setFollowUpQueue(attemptId, false);
-        if (resp?.version !== undefined && resp?.version !== null) {
-          lastServerVersionRef.current = Number(resp.version ?? 0n);
-        }
-        return !!resp && !resp.queued;
-      } catch {
-        const latest = await attemptsApi.getFollowUpDraft(attemptId);
-        suppressNextSaveRef.current = true;
-        if (latest.version !== undefined && latest.version !== null) {
-          lastServerVersionRef.current = Number(latest.version ?? 0n);
-        }
-        return !!latest && !latest.queued;
-      }
+      const resp = await attemptsApi.setDraftQueue(attemptId, false);
+      return !!resp && !resp.queued;
     } finally {
       // presentation-only state handled by caller
     }
     return false;
-  }, [attemptId, suppressNextSaveRef, lastServerVersionRef]);
+  }, [attemptId]);
 
   return { onQueue, onUnqueue } as const;
 }

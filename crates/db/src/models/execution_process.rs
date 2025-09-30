@@ -1,5 +1,8 @@
 use chrono::{DateTime, Utc};
-use executors::actions::ExecutorAction;
+use executors::{
+    actions::{ExecutorAction, ExecutorActionType},
+    profile::ExecutorProfileId,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{FromRow, SqlitePool, Type};
@@ -21,6 +24,8 @@ pub enum ExecutionProcessError {
     UpdateFailed(String),
     #[error("Invalid executor action format")]
     InvalidExecutorAction,
+    #[error("Validation error: {0}")]
+    ValidationError(String),
 }
 
 #[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
@@ -531,5 +536,54 @@ impl ExecutionProcess {
             task_attempt,
             task,
         })
+    }
+
+    /// Require latest session_id for a task attempt; error if none exists
+    pub async fn require_latest_session_id(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+    ) -> Result<String, ExecutionProcessError> {
+        Self::find_latest_session_id_by_task_attempt(pool, attempt_id)
+            .await?
+            .ok_or_else(|| {
+                ExecutionProcessError::ValidationError(
+                    "Couldn't find a prior session_id, please create a new task attempt"
+                        .to_string(),
+                )
+            })
+    }
+
+    /// Fetch the latest CodingAgent executor profile for a task attempt
+    pub async fn latest_executor_profile_for_attempt(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+    ) -> Result<ExecutorProfileId, ExecutionProcessError> {
+        let latest_execution_process = Self::find_latest_by_task_attempt_and_run_reason(
+            pool,
+            attempt_id,
+            &ExecutionProcessRunReason::CodingAgent,
+        )
+        .await?
+        .ok_or_else(|| {
+            ExecutionProcessError::ValidationError(
+                "Couldn't find initial coding agent process, has it run yet?".to_string(),
+            )
+        })?;
+
+        let action = latest_execution_process
+            .executor_action()
+            .map_err(|e| ExecutionProcessError::ValidationError(e.to_string()))?;
+
+        match &action.typ {
+            ExecutorActionType::CodingAgentInitialRequest(request) => {
+                Ok(request.executor_profile_id.clone())
+            }
+            ExecutorActionType::CodingAgentFollowUpRequest(request) => {
+                Ok(request.executor_profile_id.clone())
+            }
+            _ => Err(ExecutionProcessError::ValidationError(
+                "Couldn't find profile from initial request".to_string(),
+            )),
+        }
     }
 }

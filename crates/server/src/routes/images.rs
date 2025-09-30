@@ -7,10 +7,14 @@ use axum::{
     routing::{delete, get, post},
 };
 use chrono::{DateTime, Utc};
-use db::models::image::Image;
+use db::models::{
+    image::{Image, TaskImage},
+    task::Task,
+};
 use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use services::services::image::ImageError;
+use sqlx::Error as SqlxError;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 use ts_rs::TS;
@@ -50,9 +54,19 @@ impl ImageResponse {
 
 pub async fn upload_image(
     State(deployment): State<DeploymentImpl>,
-    mut multipart: Multipart,
+    multipart: Multipart,
 ) -> Result<ResponseJson<ApiResponse<ImageResponse>>, ApiError> {
+    let image_response = process_image_upload(&deployment, multipart, None).await?;
+    Ok(ResponseJson(ApiResponse::success(image_response)))
+}
+
+pub(crate) async fn process_image_upload(
+    deployment: &DeploymentImpl,
+    mut multipart: Multipart,
+    link_task_id: Option<Uuid>,
+) -> Result<ImageResponse, ApiError> {
     let image_service = deployment.image();
+
     while let Some(field) = multipart.next_field().await? {
         if field.name() == Some("image") {
             let filename = field
@@ -63,6 +77,15 @@ pub async fn upload_image(
             let data = field.bytes().await?;
             let image = image_service.store_image(&data, &filename).await?;
 
+            if let Some(task_id) = link_task_id {
+                TaskImage::associate_many_dedup(
+                    &deployment.db().pool,
+                    task_id,
+                    std::slice::from_ref(&image.id),
+                )
+                .await?;
+            }
+
             deployment
                 .track_if_analytics_allowed(
                     "image_uploaded",
@@ -70,16 +93,29 @@ pub async fn upload_image(
                         "image_id": image.id.to_string(),
                         "size_bytes": image.size_bytes,
                         "mime_type": image.mime_type,
+                        "task_id": link_task_id.map(|id| id.to_string()),
                     }),
                 )
                 .await;
 
-            let image_response = ImageResponse::from_image(image);
-            return Ok(ResponseJson(ApiResponse::success(image_response)));
+            return Ok(ImageResponse::from_image(image));
         }
     }
 
     Err(ApiError::Image(ImageError::NotFound))
+}
+
+pub async fn upload_task_image(
+    Path(task_id): Path<Uuid>,
+    State(deployment): State<DeploymentImpl>,
+    multipart: Multipart,
+) -> Result<ResponseJson<ApiResponse<ImageResponse>>, ApiError> {
+    Task::find_by_id(&deployment.db().pool, task_id)
+        .await?
+        .ok_or(ApiError::Database(SqlxError::RowNotFound))?;
+
+    let image_response = process_image_upload(&deployment, multipart, Some(task_id)).await?;
+    Ok(ResponseJson(ApiResponse::success(image_response)))
 }
 
 /// Serve an image file by ID
@@ -143,4 +179,8 @@ pub fn routes() -> Router<DeploymentImpl> {
         .route("/{id}/file", get(serve_image))
         .route("/{id}", delete(delete_image))
         .route("/task/{task_id}", get(get_task_images))
+        .route(
+            "/task/{task_id}/upload",
+            post(upload_task_image).layer(DefaultBodyLimit::max(20 * 1024 * 1024)),
+        )
 }

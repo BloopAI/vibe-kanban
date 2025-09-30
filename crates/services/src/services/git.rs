@@ -89,6 +89,36 @@ impl std::fmt::Display for Commit {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct WorktreeResetOptions {
+    pub perform_reset: bool,
+    pub force_when_dirty: bool,
+    pub is_dirty: bool,
+    pub log_skip_when_dirty: bool,
+}
+
+impl WorktreeResetOptions {
+    pub fn new(
+        perform_reset: bool,
+        force_when_dirty: bool,
+        is_dirty: bool,
+        log_skip_when_dirty: bool,
+    ) -> Self {
+        Self {
+            perform_reset,
+            force_when_dirty,
+            is_dirty,
+            log_skip_when_dirty,
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+pub struct WorktreeResetOutcome {
+    pub needed: bool,
+    pub applied: bool,
+}
+
 /// Target for diff generation
 pub enum DiffTarget<'p> {
     /// Work-in-progress branch checked out in this worktree
@@ -1072,6 +1102,47 @@ impl GitService {
         let cli = super::git_cli::GitCli::new();
         cli.get_worktree_status(worktree_path)
             .map_err(|e| GitServiceError::InvalidRepository(format!("git status failed: {e}")))
+    }
+
+    /// Evaluate whether any action is needed to reset to `target_commit_oid` and
+    /// optionally perform the actions.
+    pub fn reconcile_worktree_to_commit(
+        &self,
+        worktree_path: &Path,
+        target_commit_oid: &str,
+        options: WorktreeResetOptions,
+    ) -> WorktreeResetOutcome {
+        let WorktreeResetOptions {
+            perform_reset,
+            force_when_dirty,
+            is_dirty,
+            log_skip_when_dirty,
+        } = options;
+
+        let head_oid = self.get_head_info(worktree_path).ok().map(|h| h.oid);
+        let mut outcome = WorktreeResetOutcome::default();
+
+        if head_oid.as_deref() != Some(target_commit_oid) || is_dirty {
+            outcome.needed = true;
+
+            if perform_reset {
+                if is_dirty && !force_when_dirty {
+                    if log_skip_when_dirty {
+                        tracing::warn!("Worktree dirty; skipping reset as not forced");
+                    }
+                } else if let Err(e) = self.reset_worktree_to_commit(
+                    worktree_path,
+                    target_commit_oid,
+                    force_when_dirty,
+                ) {
+                    tracing::error!("Failed to reset worktree: {}", e);
+                } else {
+                    outcome.applied = true;
+                }
+            }
+        }
+
+        outcome
     }
 
     /// Reset the given worktree to the specified commit SHA.

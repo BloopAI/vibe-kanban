@@ -1,202 +1,29 @@
 use std::{str::FromStr, sync::Arc};
 
-use anyhow::Error as AnyhowError;
 use db::{
     DBService,
     models::{
+        draft::{Draft, DraftType},
         execution_process::ExecutionProcess,
-        task::{Task, TaskWithAttemptStatus},
+        task::Task,
         task_attempt::TaskAttempt,
     },
 };
-use futures::StreamExt;
-use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation, ReplaceOperation};
-use serde::{Deserialize, Serialize};
 use serde_json::json;
-use sqlx::{Error as SqlxError, SqlitePool, ValueRef, sqlite::SqliteOperation};
-use strum_macros::{Display, EnumString};
-use thiserror::Error;
+use sqlx::{Error as SqlxError, Sqlite, SqlitePool, decode::Decode, sqlite::SqliteOperation};
 use tokio::sync::RwLock;
-use tokio_stream::wrappers::BroadcastStream;
-use ts_rs::TS;
-use utils::{log_msg::LogMsg, msg_store::MsgStore};
+use utils::msg_store::MsgStore;
 use uuid::Uuid;
 
-#[derive(Debug, Error)]
-pub enum EventError {
-    #[error(transparent)]
-    Sqlx(#[from] SqlxError),
-    #[error(transparent)]
-    Parse(#[from] serde_json::Error),
-    #[error(transparent)]
-    Other(#[from] AnyhowError), // Catches any unclassified errors
-}
+#[path = "events/patches.rs"]
+pub mod patches;
+#[path = "events/streams.rs"]
+mod streams;
+#[path = "events/types.rs"]
+pub mod types;
 
-/// Trait for types that can be used in JSON patch operations
-pub trait Patchable: serde::Serialize {
-    const PATH_PREFIX: &'static str;
-    type Id: ToString + Copy;
-    fn id(&self) -> Self::Id;
-}
-
-/// Implementations of Patchable for all supported types
-impl Patchable for TaskWithAttemptStatus {
-    const PATH_PREFIX: &'static str = "/tasks";
-    type Id = Uuid;
-    fn id(&self) -> Self::Id {
-        self.id
-    }
-}
-
-impl Patchable for ExecutionProcess {
-    const PATH_PREFIX: &'static str = "/execution_processes";
-    type Id = Uuid;
-    fn id(&self) -> Self::Id {
-        self.id
-    }
-}
-
-impl Patchable for TaskAttempt {
-    const PATH_PREFIX: &'static str = "/task_attempts";
-    type Id = Uuid;
-    fn id(&self) -> Self::Id {
-        self.id
-    }
-}
-
-impl Patchable for db::models::follow_up_draft::FollowUpDraft {
-    const PATH_PREFIX: &'static str = "/follow_up_drafts";
-    type Id = Uuid;
-    fn id(&self) -> Self::Id {
-        self.id
-    }
-}
-
-/// Generic patch operations that work with any Patchable type
-pub mod patch_ops {
-    use super::*;
-
-    /// Escape JSON Pointer special characters
-    pub(crate) fn escape_pointer_segment(s: &str) -> String {
-        s.replace('~', "~0").replace('/', "~1")
-    }
-
-    /// Create path for operation
-    fn path_for<T: Patchable>(id: T::Id) -> String {
-        format!(
-            "{}/{}",
-            T::PATH_PREFIX,
-            escape_pointer_segment(&id.to_string())
-        )
-    }
-
-    /// Create patch for adding a new record
-    pub fn add<T: Patchable>(value: &T) -> Patch {
-        Patch(vec![PatchOperation::Add(AddOperation {
-            path: path_for::<T>(value.id())
-                .try_into()
-                .expect("Path should be valid"),
-            value: serde_json::to_value(value).expect("Serialization should not fail"),
-        })])
-    }
-
-    /// Create patch for updating an existing record
-    pub fn replace<T: Patchable>(value: &T) -> Patch {
-        Patch(vec![PatchOperation::Replace(ReplaceOperation {
-            path: path_for::<T>(value.id())
-                .try_into()
-                .expect("Path should be valid"),
-            value: serde_json::to_value(value).expect("Serialization should not fail"),
-        })])
-    }
-
-    /// Create patch for removing a record
-    pub fn remove<T: Patchable>(id: T::Id) -> Patch {
-        Patch(vec![PatchOperation::Remove(RemoveOperation {
-            path: path_for::<T>(id).try_into().expect("Path should be valid"),
-        })])
-    }
-}
-
-/// Helper functions for creating task-specific patches
-pub mod task_patch {
-    use super::*;
-
-    /// Create patch for adding a new task
-    pub fn add(task: &TaskWithAttemptStatus) -> Patch {
-        patch_ops::add(task)
-    }
-
-    /// Create patch for updating an existing task
-    pub fn replace(task: &TaskWithAttemptStatus) -> Patch {
-        patch_ops::replace(task)
-    }
-
-    /// Create patch for removing a task
-    pub fn remove(task_id: Uuid) -> Patch {
-        patch_ops::remove::<TaskWithAttemptStatus>(task_id)
-    }
-}
-
-/// Helper functions for creating execution process-specific patches
-pub mod execution_process_patch {
-    use super::*;
-
-    /// Create patch for adding a new execution process
-    pub fn add(process: &ExecutionProcess) -> Patch {
-        patch_ops::add(process)
-    }
-
-    /// Create patch for updating an existing execution process
-    pub fn replace(process: &ExecutionProcess) -> Patch {
-        patch_ops::replace(process)
-    }
-
-    /// Create patch for removing an execution process
-    pub fn remove(process_id: Uuid) -> Patch {
-        patch_ops::remove::<ExecutionProcess>(process_id)
-    }
-}
-
-/// Helper functions for creating task attempt-specific patches
-pub mod task_attempt_patch {
-    use super::*;
-
-    /// Create patch for adding a new task attempt
-    pub fn add(attempt: &TaskAttempt) -> Patch {
-        patch_ops::add(attempt)
-    }
-
-    /// Create patch for updating an existing task attempt
-    pub fn replace(attempt: &TaskAttempt) -> Patch {
-        patch_ops::replace(attempt)
-    }
-
-    /// Create patch for removing a task attempt
-    pub fn remove(attempt_id: Uuid) -> Patch {
-        patch_ops::remove::<TaskAttempt>(attempt_id)
-    }
-}
-
-/// Helper functions for creating follow up draft-specific patches
-pub mod follow_up_draft_patch {
-    use super::*;
-
-    /// Create patch for adding a new follow up draft
-    pub fn add(draft: &db::models::follow_up_draft::FollowUpDraft) -> Patch {
-        patch_ops::add(draft)
-    }
-
-    /// Create patch for updating an existing follow up draft
-    pub fn replace(draft: &db::models::follow_up_draft::FollowUpDraft) -> Patch {
-        patch_ops::replace(draft)
-    }
-
-    /// Create patch for removing a follow up draft
-    pub fn remove(draft_id: Uuid) -> Patch {
-        patch_ops::remove::<db::models::follow_up_draft::FollowUpDraft>(draft_id)
-    }
-}
+pub use patches::{draft_patch, execution_process_patch, task_attempt_patch, task_patch};
+pub use types::{EventError, EventPatch, EventPatchInner, HookTables, RecordTypes};
 
 #[derive(Clone)]
 pub struct EventService {
@@ -204,40 +31,6 @@ pub struct EventService {
     db: DBService,
     #[allow(dead_code)]
     entry_count: Arc<RwLock<usize>>,
-}
-
-#[derive(EnumString, Display)]
-enum HookTables {
-    #[strum(to_string = "tasks")]
-    Tasks,
-    #[strum(to_string = "task_attempts")]
-    TaskAttempts,
-    #[strum(to_string = "execution_processes")]
-    ExecutionProcesses,
-    #[strum(to_string = "follow_up_drafts")]
-    FollowUpDrafts,
-}
-
-#[derive(Serialize, Deserialize, TS)]
-#[serde(tag = "type", content = "data", rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum RecordTypes {
-    Task(Task),
-    TaskAttempt(TaskAttempt),
-    ExecutionProcess(ExecutionProcess),
-    FollowUpDraft(db::models::follow_up_draft::FollowUpDraft),
-}
-
-#[derive(Serialize, Deserialize, TS)]
-pub struct EventPatchInner {
-    db_op: String,
-    record: RecordTypes,
-}
-
-#[derive(Serialize, Deserialize, TS)]
-pub struct EventPatch {
-    op: String,
-    path: String,
-    value: EventPatchInner,
 }
 
 impl EventService {
@@ -297,85 +90,67 @@ impl EventService {
             let msg_store_for_hook = msg_store.clone();
             let entry_count_for_hook = entry_count.clone();
             let db_for_hook = db_service.clone();
-
             Box::pin(async move {
                 let mut handle = conn.lock_handle().await?;
                 let runtime_handle = tokio::runtime::Handle::current();
-
-                // Set up preupdate hook to capture task data before deletion
                 handle.set_preupdate_hook({
                     let msg_store_for_preupdate = msg_store_for_hook.clone();
                     move |preupdate: sqlx::sqlite::PreupdateHookResult<'_>| {
-                        if preupdate.operation == sqlx::sqlite::SqliteOperation::Delete {
-                            match preupdate.table {
-                                "tasks" => {
-                                    // Extract task ID from old column values before deletion
-                                    if let Ok(id_value) = preupdate.get_old_column_value(0)
-                                        && !id_value.is_null()
-                                    {
-                                        // Decode UUID from SQLite value
-                                        if let Ok(task_id) =
-                                            <uuid::Uuid as sqlx::Decode<'_, sqlx::Sqlite>>::decode(
-                                                id_value,
-                                            )
-                                        {
-                                            let patch = task_patch::remove(task_id);
-                                            msg_store_for_preupdate.push_patch(patch);
-                                        }
-                                    }
-                                }
-                                "execution_processes" => {
-                                    // Extract process ID from old column values before deletion
-                                    if let Ok(id_value) = preupdate.get_old_column_value(0)
-                                        && !id_value.is_null()
-                                    {
-                                        // Decode UUID from SQLite value
-                                        if let Ok(process_id) =
-                                            <uuid::Uuid as sqlx::Decode<'_, sqlx::Sqlite>>::decode(
-                                                id_value,
-                                            )
-                                        {
-                                            let patch = execution_process_patch::remove(process_id);
-                                            msg_store_for_preupdate.push_patch(patch);
-                                        }
-                                    }
-                                }
-                                "task_attempts" => {
-                                    // Extract attempt ID from old column values before deletion
-                                    if let Ok(id_value) = preupdate.get_old_column_value(0)
-                                        && !id_value.is_null()
-                                    {
-                                        // Decode UUID from SQLite value
-                                        if let Ok(attempt_id) =
-                                            <uuid::Uuid as sqlx::Decode<'_, sqlx::Sqlite>>::decode(
-                                                id_value,
-                                            )
-                                        {
-                                            let patch = task_attempt_patch::remove(attempt_id);
-                                            msg_store_for_preupdate.push_patch(patch);
-                                        }
-                                    }
-                                }
-                                "follow_up_drafts" => {
-                                    // Extract draft ID from old column values before deletion
-                                    if let Ok(id_value) = preupdate.get_old_column_value(0)
-                                        && !id_value.is_null()
-                                    {
-                                        // Decode UUID from SQLite value
-                                        if let Ok(draft_id) =
-                                            <uuid::Uuid as sqlx::Decode<'_, sqlx::Sqlite>>::decode(
-                                                id_value,
-                                            )
-                                        {
-                                            let patch = follow_up_draft_patch::remove(draft_id);
-                                            msg_store_for_preupdate.push_patch(patch);
-                                        }
-                                    }
-                                }
-                                _ => {
-                                    // Ignore other tables
+                        if preupdate.operation != SqliteOperation::Delete {
+                            return;
+                        }
+
+                        match preupdate.table {
+                            "tasks" => {
+                                if let Ok(value) = preupdate.get_old_column_value(0)
+                                    && let Ok(task_id) = <Uuid as Decode<Sqlite>>::decode(value)
+                                {
+                                    let patch = task_patch::remove(task_id);
+                                    msg_store_for_preupdate.push_patch(patch);
                                 }
                             }
+                            "task_attempts" => {
+                                if let Ok(value) = preupdate.get_old_column_value(0)
+                                    && let Ok(attempt_id) = <Uuid as Decode<Sqlite>>::decode(value)
+                                {
+                                    let patch = task_attempt_patch::remove(attempt_id);
+                                    msg_store_for_preupdate.push_patch(patch);
+                                }
+                            }
+                            "execution_processes" => {
+                                if let Ok(value) = preupdate.get_old_column_value(0)
+                                    && let Ok(process_id) = <Uuid as Decode<Sqlite>>::decode(value)
+                                {
+                                    let patch = execution_process_patch::remove(process_id);
+                                    msg_store_for_preupdate.push_patch(patch);
+                                }
+                            }
+                            "drafts" => {
+                                let draft_type = preupdate
+                                    .get_old_column_value(2)
+                                    .ok()
+                                    .and_then(|val| <String as Decode<Sqlite>>::decode(val).ok())
+                                    .and_then(|s| DraftType::from_str(&s).ok());
+                                let task_attempt_id = preupdate
+                                    .get_old_column_value(1)
+                                    .ok()
+                                    .and_then(|val| <Uuid as Decode<Sqlite>>::decode(val).ok());
+
+                                if let (Some(draft_type), Some(task_attempt_id)) =
+                                    (draft_type, task_attempt_id)
+                                {
+                                    let patch = match draft_type {
+                                        DraftType::FollowUp => {
+                                            draft_patch::follow_up_clear(task_attempt_id)
+                                        }
+                                        DraftType::Retry => {
+                                            draft_patch::retry_clear(task_attempt_id)
+                                        }
+                                    };
+                                    msg_store_for_preupdate.push_patch(patch);
+                                }
+                            }
+                            _ => {}
                         }
                     }
                 });
@@ -390,28 +165,20 @@ impl EventService {
                         let rowid = hook.rowid;
                         runtime_handle.spawn(async move {
                             let record_type: RecordTypes = match (table, hook.operation.clone()) {
-                                (HookTables::Tasks, SqliteOperation::Delete) => {
-                                    // Task deletion is now handled by preupdate hook
-                                    // Skip post-update processing to avoid duplicate patches
-                                    return;
-                                }
-                                (HookTables::ExecutionProcesses, SqliteOperation::Delete) => {
-                                    // Execution process deletion is now handled by preupdate hook  
-                                    // Skip post-update processing to avoid duplicate patches
-                                    return;
-                                }
-                                (HookTables::TaskAttempts, SqliteOperation::Delete) => {
-                                    // Task attempt deletion is now handled by preupdate hook
-                                    // Skip post-update processing to avoid duplicate patches
+                                (HookTables::Tasks, SqliteOperation::Delete)
+                                | (HookTables::TaskAttempts, SqliteOperation::Delete)
+                                | (HookTables::ExecutionProcesses, SqliteOperation::Delete)
+                                | (HookTables::Drafts, SqliteOperation::Delete) => {
+                                    // Deletions handled in preupdate hook for reliable data capture
                                     return;
                                 }
                                 (HookTables::Tasks, _) => {
                                     match Task::find_by_rowid(&db.pool, rowid).await {
                                         Ok(Some(task)) => RecordTypes::Task(task),
-                                        Ok(None) => {
-                                            // Row not found - likely already deleted, skip processing
-                                            tracing::debug!("Task rowid {} not found, skipping", rowid);
-                                            return;
+                                        Ok(None) => RecordTypes::DeletedTask {
+                                            rowid,
+                                            project_id: None,
+                                            task_id: None,
                                         },
                                         Err(e) => {
                                             tracing::error!("Failed to fetch task: {:?}", e);
@@ -422,10 +189,9 @@ impl EventService {
                                 (HookTables::TaskAttempts, _) => {
                                     match TaskAttempt::find_by_rowid(&db.pool, rowid).await {
                                         Ok(Some(attempt)) => RecordTypes::TaskAttempt(attempt),
-                                        Ok(None) => {
-                                            // Row not found - likely already deleted, skip processing
-                                            tracing::debug!("TaskAttempt rowid {} not found, skipping", rowid);
-                                            return;
+                                        Ok(None) => RecordTypes::DeletedTaskAttempt {
+                                            rowid,
+                                            task_id: None,
                                         },
                                         Err(e) => {
                                             tracing::error!(
@@ -439,10 +205,10 @@ impl EventService {
                                 (HookTables::ExecutionProcesses, _) => {
                                     match ExecutionProcess::find_by_rowid(&db.pool, rowid).await {
                                         Ok(Some(process)) => RecordTypes::ExecutionProcess(process),
-                                        Ok(None) => {
-                                            // Row not found - likely already deleted, skip processing
-                                            tracing::debug!("ExecutionProcess rowid {} not found, skipping", rowid);
-                                            return;
+                                        Ok(None) => RecordTypes::DeletedExecutionProcess {
+                                            rowid,
+                                            task_attempt_id: None,
+                                            process_id: None,
                                         },
                                         Err(e) => {
                                             tracing::error!(
@@ -453,28 +219,19 @@ impl EventService {
                                         }
                                     }
                                 }
-                                (HookTables::FollowUpDrafts, SqliteOperation::Delete) => {
-                                    // Follow up draft deletion is now handled by preupdate hook
-                                    // Skip post-update processing to avoid duplicate patches
-                                    return;
-                                }
-                                (HookTables::FollowUpDrafts, _) => {
-                                    match db::models::follow_up_draft::FollowUpDraft::find_by_rowid(
-                                        &db.pool, rowid,
-                                    )
-                                    .await
-                                    {
-                                        Ok(Some(draft)) => RecordTypes::FollowUpDraft(draft),
-                                        Ok(None) => {
-                                            // Row not found - likely already deleted, skip processing
-                                            tracing::debug!("FollowUpDraft rowid {} not found, skipping", rowid);
-                                            return;
+                                (HookTables::Drafts, _) => {
+                                    match Draft::find_by_rowid(&db.pool, rowid).await {
+                                        Ok(Some(draft)) => match draft.draft_type {
+                                            DraftType::FollowUp => RecordTypes::Draft(draft),
+                                            DraftType::Retry => RecordTypes::RetryDraft(draft),
+                                        },
+                                        Ok(None) => RecordTypes::DeletedDraft {
+                                            rowid,
+                                            draft_type: DraftType::Retry,
+                                            task_attempt_id: None,
                                         },
                                         Err(e) => {
-                                            tracing::error!(
-                                                "Failed to fetch follow_up_draft: {:?}",
-                                                e
-                                            );
+                                            tracing::error!("Failed to fetch draft: {:?}", e);
                                             return;
                                         }
                                     }
@@ -514,6 +271,33 @@ impl EventService {
                                         return;
                                     }
                                 }
+                                // Draft updates: emit direct patches used by the follow-up draft stream
+                                RecordTypes::Draft(draft) => {
+                                    let patch = draft_patch::follow_up_replace(draft);
+                                    msg_store_for_hook.push_patch(patch);
+                                    return;
+                                }
+                                RecordTypes::RetryDraft(draft) => {
+                                    let patch = draft_patch::retry_replace(draft);
+                                    msg_store_for_hook.push_patch(patch);
+                                    return;
+                                }
+                                RecordTypes::DeletedDraft { draft_type, task_attempt_id: Some(id), .. } => {
+                                    let patch = match draft_type {
+                                        DraftType::FollowUp => draft_patch::follow_up_clear(*id),
+                                        DraftType::Retry => draft_patch::retry_clear(*id),
+                                    };
+                                    msg_store_for_hook.push_patch(patch);
+                                    return;
+                                }
+                                RecordTypes::DeletedTask {
+                                    task_id: Some(task_id),
+                                    ..
+                                } => {
+                                    let patch = task_patch::remove(*task_id);
+                                    msg_store_for_hook.push_patch(patch);
+                                    return;
+                                }
                                 RecordTypes::TaskAttempt(attempt) => {
                                     // Task attempts should update the parent task with fresh data
                                     if let Ok(Some(task)) =
@@ -526,6 +310,27 @@ impl EventService {
                                             .await
                                         && let Some(task_with_status) =
                                             task_list.into_iter().find(|t| t.id == attempt.task_id)
+                                    {
+                                        let patch = task_patch::replace(&task_with_status);
+                                        msg_store_for_hook.push_patch(patch);
+                                        return;
+                                    }
+                                }
+                                RecordTypes::DeletedTaskAttempt {
+                                    task_id: Some(task_id),
+                                    ..
+                                } => {
+                                    // Task attempt deletion should update the parent task with fresh data
+                                    if let Ok(Some(task)) =
+                                        Task::find_by_id(&db.pool, *task_id).await
+                                        && let Ok(task_list) =
+                                            Task::find_by_project_id_with_attempt_status(
+                                                &db.pool,
+                                                task.project_id,
+                                            )
+                                            .await
+                                        && let Some(task_with_status) =
+                                            task_list.into_iter().find(|t| t.id == *task_id)
                                     {
                                         let patch = task_patch::replace(&task_with_status);
                                         msg_store_for_hook.push_patch(patch);
@@ -556,6 +361,31 @@ impl EventService {
                                             err
                                         );
                                     }
+
+                                    return;
+                                }
+                                RecordTypes::DeletedExecutionProcess {
+                                    process_id: Some(process_id),
+                                    task_attempt_id,
+                                    ..
+                                } => {
+                                    let patch = execution_process_patch::remove(*process_id);
+                                    msg_store_for_hook.push_patch(patch);
+
+                                    if let Some(task_attempt_id) = task_attempt_id
+                                        && let Err(err) =
+                                            EventService::push_task_update_for_attempt(
+                                                &db.pool,
+                                                msg_store_for_hook.clone(),
+                                                *task_attempt_id,
+                                            )
+                                            .await
+                                        {
+                                            tracing::error!(
+                                                "Failed to push task update after execution process removal: {:?}",
+                                                err
+                                            );
+                                        }
 
                                     return;
                                 }
@@ -596,294 +426,5 @@ impl EventService {
 
     pub fn msg_store(&self) -> &Arc<MsgStore> {
         &self.msg_store
-    }
-
-    /// Stream raw task messages for a specific project with initial snapshot
-    pub async fn stream_tasks_raw(
-        &self,
-        project_id: Uuid,
-    ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
-    {
-        // Get initial snapshot of tasks
-        let tasks = Task::find_by_project_id_with_attempt_status(&self.db.pool, project_id).await?;
-
-        // Convert task array to object keyed by task ID
-        let tasks_map: serde_json::Map<String, serde_json::Value> = tasks
-            .into_iter()
-            .map(|task| (task.id.to_string(), serde_json::to_value(task).unwrap()))
-            .collect();
-
-        let initial_patch = json!([{
-            "op": "replace",
-            "path": "/tasks",
-            "value": tasks_map
-        }]);
-        let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
-
-        // Clone necessary data for the async filter
-        let db_pool = self.db.pool.clone();
-
-        // Get filtered event stream
-        let filtered_stream =
-            BroadcastStream::new(self.msg_store.get_receiver()).filter_map(move |msg_result| {
-                let db_pool = db_pool.clone();
-                async move {
-                    match msg_result {
-                        Ok(LogMsg::JsonPatch(patch)) => {
-                            // Filter events based on project_id
-                            if let Some(patch_op) = patch.0.first() {
-                                // Check if this is a direct task patch (new format)
-                                if patch_op.path().starts_with("/tasks/") {
-                                    match patch_op {
-                                        json_patch::PatchOperation::Add(op) => {
-                                            // Parse task data directly from value
-                                            if let Ok(task) =
-                                                serde_json::from_value::<TaskWithAttemptStatus>(
-                                                    op.value.clone(),
-                                                )
-                                                && task.project_id == project_id
-                                            {
-                                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                                            }
-                                        }
-                                        json_patch::PatchOperation::Replace(op) => {
-                                            // Parse task data directly from value
-                                            if let Ok(task) =
-                                                serde_json::from_value::<TaskWithAttemptStatus>(
-                                                    op.value.clone(),
-                                                )
-                                                && task.project_id == project_id
-                                            {
-                                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                                            }
-                                        }
-                                        json_patch::PatchOperation::Remove(_) => {
-                                            // For remove operations, we need to check project membership differently
-                                            // We could cache this information or let it pass through for now
-                                            // Since we don't have the task data, we'll allow all removals
-                                            // and let the client handle filtering
-                                            return Some(Ok(LogMsg::JsonPatch(patch)));
-                                        }
-                                        _ => {}
-                                    }
-                                } else if let Ok(event_patch_value) = serde_json::to_value(patch_op)
-                                    && let Ok(event_patch) =
-                                        serde_json::from_value::<EventPatch>(event_patch_value)
-                                {
-                                    // Handle old EventPatch format for non-task records
-                                    match &event_patch.value.record {
-                                        RecordTypes::Task(task) => {
-                                            if task.project_id == project_id {
-                                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                                            }
-                                        }
-                                        RecordTypes::TaskAttempt(attempt) => {
-                                            // Check if this task_attempt belongs to a task in our project
-                                            if let Ok(Some(task)) =
-                                                Task::find_by_id(&db_pool, attempt.task_id).await
-                                                && task.project_id == project_id
-                                            {
-                                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                                            }
-                                        }
-                                        _ => {}
-                                    }
-                                }
-                            }
-                            None
-                        }
-                        Ok(other) => Some(Ok(other)), // Pass through non-patch messages
-                        Err(_) => None,               // Filter out broadcast errors
-                    }
-                }
-            });
-
-        // Start with initial snapshot, then live updates
-        let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
-        let combined_stream = initial_stream.chain(filtered_stream).boxed();
-
-        Ok(combined_stream)
-    }
-
-    /// Stream execution processes for a specific task attempt with initial snapshot (raw LogMsg format for WebSocket)
-    pub async fn stream_execution_processes_for_attempt_raw(
-        &self,
-        task_attempt_id: Uuid,
-        show_soft_deleted: bool,
-    ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
-    {
-        // Get initial snapshot of execution processes (filtering at SQL level)
-        let processes = ExecutionProcess::find_by_task_attempt_id(
-            &self.db.pool,
-            task_attempt_id,
-            show_soft_deleted,
-        )
-        .await?;
-
-        // Convert processes array to object keyed by process ID
-        let processes_map: serde_json::Map<String, serde_json::Value> = processes
-            .into_iter()
-            .map(|process| {
-                (
-                    process.id.to_string(),
-                    serde_json::to_value(process).unwrap(),
-                )
-            })
-            .collect();
-
-        let initial_patch = json!([{
-            "op": "replace",
-            "path": "/execution_processes",
-            "value": processes_map
-        }]);
-        let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
-
-        // Get filtered event stream
-        let filtered_stream = BroadcastStream::new(self.msg_store.get_receiver()).filter_map(
-            move |msg_result| async move {
-                match msg_result {
-                    Ok(LogMsg::JsonPatch(patch)) => {
-                        // Filter events based on task_attempt_id
-                        if let Some(patch_op) = patch.0.first() {
-                            // Check if this is a modern execution process patch
-                            if patch_op.path().starts_with("/execution_processes/") {
-                                match patch_op {
-                                    json_patch::PatchOperation::Add(op) => {
-                                        // Parse execution process data directly from value
-                                        if let Ok(process) =
-                                            serde_json::from_value::<ExecutionProcess>(
-                                                op.value.clone(),
-                                            )
-                                            && process.task_attempt_id == task_attempt_id
-                                        {
-                                            if !show_soft_deleted && process.dropped {
-                                                return None;
-                                            }
-                                            return Some(Ok(LogMsg::JsonPatch(patch)));
-                                        }
-                                    }
-                                    json_patch::PatchOperation::Replace(op) => {
-                                        // Parse execution process data directly from value
-                                        if let Ok(process) =
-                                            serde_json::from_value::<ExecutionProcess>(
-                                                op.value.clone(),
-                                            )
-                                            && process.task_attempt_id == task_attempt_id
-                                        {
-                                            if !show_soft_deleted && process.dropped {
-                                                let remove_patch =
-                                                    execution_process_patch::remove(process.id);
-                                                return Some(Ok(LogMsg::JsonPatch(remove_patch)));
-                                            }
-                                            return Some(Ok(LogMsg::JsonPatch(patch)));
-                                        }
-                                    }
-                                    json_patch::PatchOperation::Remove(_) => {
-                                        // For remove operations, we can't verify task_attempt_id
-                                        // so we allow all removals and let the client handle filtering
-                                        return Some(Ok(LogMsg::JsonPatch(patch)));
-                                    }
-                                    _ => {}
-                                }
-                            }
-                            // Fallback to legacy EventPatch format for backward compatibility
-                            else if let Ok(event_patch_value) = serde_json::to_value(patch_op)
-                                && let Ok(event_patch) =
-                                    serde_json::from_value::<EventPatch>(event_patch_value)
-                                && let RecordTypes::ExecutionProcess(process) =
-                                    &event_patch.value.record
-                                && process.task_attempt_id == task_attempt_id
-                            {
-                                if !show_soft_deleted && process.dropped {
-                                    let remove_patch = execution_process_patch::remove(process.id);
-                                    return Some(Ok(LogMsg::JsonPatch(remove_patch)));
-                                }
-                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                            }
-                        }
-                        None
-                    }
-                    Ok(other) => Some(Ok(other)), // Pass through non-patch messages
-                    Err(_) => None,               // Filter out broadcast errors
-                }
-            },
-        );
-
-        // Start with initial snapshot, then live updates
-        let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
-        let combined_stream = initial_stream.chain(filtered_stream).boxed();
-
-        Ok(combined_stream)
-    }
-
-    /// Stream follow-up draft for a specific task attempt (raw LogMsg format for WebSocket)
-    pub async fn stream_follow_up_draft_for_attempt_raw(
-        &self,
-        task_attempt_id: Uuid,
-    ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
-    {
-        // Get initial snapshot of follow-up draft
-        let draft = db::models::follow_up_draft::FollowUpDraft::find_by_task_attempt_id(
-            &self.db.pool,
-            task_attempt_id,
-        )
-        .await?
-        .unwrap_or(db::models::follow_up_draft::FollowUpDraft {
-            id: uuid::Uuid::new_v4(),
-            task_attempt_id,
-            prompt: String::new(),
-            queued: false,
-            sending: false,
-            variant: None,
-            image_ids: None,
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
-            version: 0,
-        });
-
-        let initial_patch = json!([
-            {
-                "op": "replace",
-                "path": "/",
-                "value": { "follow_up_draft": draft }
-            }
-        ]);
-        let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
-
-        // Filtered live stream, mapped into direct JSON patches that update /follow_up_draft
-        let filtered_stream = BroadcastStream::new(self.msg_store.get_receiver()).filter_map(
-            move |msg_result| async move {
-                match msg_result {
-                    Ok(LogMsg::JsonPatch(patch)) => {
-                        if let Some(event_patch_op) = patch.0.first()
-                            && let Ok(event_patch_value) = serde_json::to_value(event_patch_op)
-                            && let Ok(event_patch) =
-                                serde_json::from_value::<EventPatch>(event_patch_value)
-                            && let RecordTypes::FollowUpDraft(draft) = &event_patch.value.record
-                            && draft.task_attempt_id == task_attempt_id
-                        {
-                            // Build a direct patch to replace /follow_up_draft
-                            let direct = json!([
-                                {
-                                    "op": "replace",
-                                    "path": "/follow_up_draft",
-                                    "value": draft
-                                }
-                            ]);
-                            let direct_patch = serde_json::from_value(direct).unwrap();
-                            return Some(Ok(LogMsg::JsonPatch(direct_patch)));
-                        }
-                        None
-                    }
-                    Ok(other) => Some(Ok(other)),
-                    Err(_) => None,
-                }
-            },
-        );
-
-        let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
-        let combined_stream = initial_stream.chain(filtered_stream).boxed();
-
-        Ok(combined_stream)
     }
 }

@@ -15,6 +15,7 @@ import ProcessLogsViewer from './ProcessLogsViewer';
 import type { ExecutionProcessStatus, ExecutionProcess } from 'shared/types';
 
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
+import { useRetryUi } from '@/contexts/RetryUiContext';
 
 interface ProcessesTabProps {
   attemptId?: string;
@@ -127,6 +128,7 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
     ? localProcessDetails[selectedProcessId] ||
       executionProcessesById[selectedProcessId]
     : null;
+  const { isProcessGreyed } = useRetryUi();
 
   if (!attemptId) {
     return (
@@ -168,7 +170,9 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
                   className={`border rounded-lg p-4 hover:bg-muted/30 cursor-pointer transition-colors ${
                     loadingProcessId === process.id
                       ? 'opacity-50 cursor-wait'
-                      : ''
+                      : isProcessGreyed(process.id)
+                        ? 'opacity-50'
+                        : ''
                   }`}
                   onClick={() => handleProcessClick(process)}
                 >

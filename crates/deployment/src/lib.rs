@@ -22,6 +22,7 @@ use services::services::{
     auth::{AuthError, AuthService},
     config::{Config, ConfigError},
     container::{ContainerError, ContainerService},
+    drafts::DraftsService,
     events::{EventError, EventService},
     file_search_cache::FileSearchCache,
     filesystem::{FilesystemError, FilesystemService},
@@ -104,6 +105,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn file_search_cache(&self) -> &Arc<FileSearchCache>;
 
     fn approvals(&self) -> &Approvals;
+
+    fn drafts(&self) -> &DraftsService;
 
     async fn update_sentry_scope(&self) -> Result<(), DeploymentError> {
         let user_id = self.user_id();

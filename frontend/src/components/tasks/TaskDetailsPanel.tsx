@@ -20,6 +20,7 @@ import { TabNavContext } from '@/contexts/TabNavigationContext';
 import { ProcessSelectionProvider } from '@/contexts/ProcessSelectionContext';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
 import { EntriesProvider } from '@/contexts/EntriesContext';
+import { RetryUiProvider } from '@/contexts/RetryUiContext';
 import { AttemptHeaderCard } from './AttemptHeaderCard';
 import { inIframe } from '@/vscode/bridge';
 import { TaskRelationshipViewer } from './TaskRelationshipViewer';
@@ -165,31 +166,37 @@ export function TaskDetailsPanel({
                         {/* Main content */}
                         <main className="flex-1 min-h-0 min-w-0 flex flex-col">
                           {selectedAttempt && (
-                            <>
-                              <TabNavigation
-                                activeTab={activeTab}
-                                setActiveTab={setActiveTab}
-                                selectedAttempt={selectedAttempt}
-                              />
+                            <RetryUiProvider attemptId={selectedAttempt.id}>
+                              <>
+                                <TabNavigation
+                                  activeTab={activeTab}
+                                  setActiveTab={setActiveTab}
+                                  selectedAttempt={selectedAttempt}
+                                />
 
-                              <div className="flex-1 flex flex-col min-h-0">
-                                {activeTab === 'diffs' ? (
-                                  <DiffTab selectedAttempt={selectedAttempt} />
-                                ) : activeTab === 'processes' ? (
-                                  <ProcessesTab
-                                    attemptId={selectedAttempt?.id}
-                                  />
-                                ) : (
-                                  <LogsTab selectedAttempt={selectedAttempt} />
-                                )}
-                              </div>
+                                <div className="flex-1 flex flex-col min-h-0">
+                                  {activeTab === 'diffs' ? (
+                                    <DiffTab
+                                      selectedAttempt={selectedAttempt}
+                                    />
+                                  ) : activeTab === 'processes' ? (
+                                    <ProcessesTab
+                                      attemptId={selectedAttempt?.id}
+                                    />
+                                  ) : (
+                                    <LogsTab
+                                      selectedAttempt={selectedAttempt}
+                                    />
+                                  )}
+                                </div>
 
-                              <TaskFollowUpSection
-                                task={task}
-                                selectedAttemptId={selectedAttempt?.id}
-                                jumpToLogsTab={jumpToLogsTab}
-                              />
-                            </>
+                                <TaskFollowUpSection
+                                  task={task}
+                                  selectedAttemptId={selectedAttempt?.id}
+                                  jumpToLogsTab={jumpToLogsTab}
+                                />
+                              </>
+                            </RetryUiProvider>
                           )}
                         </main>
                       </div>
@@ -225,14 +232,15 @@ export function TaskDetailsPanel({
                             />
 
                             {selectedAttempt && (
-                              <LogsTab selectedAttempt={selectedAttempt} />
+                              <RetryUiProvider attemptId={selectedAttempt.id}>
+                                <LogsTab selectedAttempt={selectedAttempt} />
+                                <TaskFollowUpSection
+                                  task={task}
+                                  selectedAttemptId={selectedAttempt?.id}
+                                  jumpToLogsTab={jumpToLogsTab}
+                                />
+                              </RetryUiProvider>
                             )}
-
-                            <TaskFollowUpSection
-                              task={task}
-                              selectedAttemptId={selectedAttempt?.id}
-                              jumpToLogsTab={jumpToLogsTab}
-                            />
                           </>
                         )}
                       </>

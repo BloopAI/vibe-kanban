@@ -11,8 +11,9 @@ use deployment::DeploymentError;
 use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
 use services::services::{
-    auth::AuthError, config::ConfigError, container::ContainerError, git::GitServiceError,
-    github_service::GitHubServiceError, image::ImageError, worktree_manager::WorktreeError,
+    auth::AuthError, config::ConfigError, container::ContainerError, drafts::DraftsServiceError,
+    git::GitServiceError, github_service::GitHubServiceError, image::ImageError,
+    worktree_manager::WorktreeError,
 };
 use thiserror::Error;
 use utils::response::ApiResponse;
@@ -46,6 +47,8 @@ pub enum ApiError {
     Config(#[from] ConfigError),
     #[error(transparent)]
     Image(#[from] ImageError),
+    #[error(transparent)]
+    Drafts(#[from] DraftsServiceError),
     #[error("Multipart error: {0}")]
     Multipart(#[from] MultipartError),
     #[error("IO error: {0}")]
@@ -95,6 +98,19 @@ impl IntoResponse for ApiError {
                 ImageError::NotFound => (StatusCode::NOT_FOUND, "ImageNotFound"),
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, "ImageError"),
             },
+            ApiError::Drafts(drafts_err) => match drafts_err {
+                DraftsServiceError::Conflict(_) => (StatusCode::CONFLICT, "ConflictError"),
+                DraftsServiceError::Database(_) => {
+                    (StatusCode::INTERNAL_SERVER_ERROR, "DatabaseError")
+                }
+                DraftsServiceError::Container(_) => {
+                    (StatusCode::INTERNAL_SERVER_ERROR, "ContainerError")
+                }
+                DraftsServiceError::Image(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ImageError"),
+                DraftsServiceError::ExecutionProcess(_) => {
+                    (StatusCode::INTERNAL_SERVER_ERROR, "ExecutionProcessError")
+                }
+            },
             ApiError::Io(_) => (StatusCode::INTERNAL_SERVER_ERROR, "IoError"),
             ApiError::Multipart(_) => (StatusCode::BAD_REQUEST, "MultipartError"),
             ApiError::Conflict(_) => (StatusCode::CONFLICT, "ConflictError"),
@@ -122,6 +138,15 @@ impl IntoResponse for ApiError {
             },
             ApiError::Multipart(_) => "Failed to upload file. Please ensure the file is valid and try again.".to_string(),
             ApiError::Conflict(msg) => msg.clone(),
+            ApiError::Drafts(drafts_err) => match drafts_err {
+                DraftsServiceError::Conflict(msg) => msg.clone(),
+                DraftsServiceError::Database(_) => format!("{}: {}", error_type, drafts_err),
+                DraftsServiceError::Container(_) => format!("{}: {}", error_type, drafts_err),
+                DraftsServiceError::Image(_) => format!("{}: {}", error_type, drafts_err),
+                DraftsServiceError::ExecutionProcess(_) => {
+                    format!("{}: {}", error_type, drafts_err)
+                }
+            },
             _ => format!("{}: {}", error_type, self),
         };
         let response = ApiResponse::<()>::error(&error_message);

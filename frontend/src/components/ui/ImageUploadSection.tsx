@@ -126,7 +126,7 @@ export function ImageUploadSection({
         }
       }
     },
-    [images, onImagesChange, onUpload, disabled]
+    [images, onImagesChange, onImageUploaded, onUpload, disabled]
   );
 
   const handleDrop = useCallback(

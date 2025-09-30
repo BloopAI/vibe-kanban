@@ -1,143 +1,121 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useJsonPatchWsStream } from '@/hooks/useJsonPatchWsStream';
-import { attemptsApi } from '@/lib/api';
-import type { FollowUpDraft } from 'shared/types';
-import { inIframe } from '@/vscode/bridge';
+import { useCallback, useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { applyPatch } from 'rfc6902';
+import type { Operation } from 'rfc6902';
+import useWebSocket from 'react-use-websocket';
+import type { Draft, DraftResponse } from 'shared/types';
+import { useProject } from '@/contexts/project-context';
 
-type DraftStreamState = { follow_up_draft: FollowUpDraft };
+interface Drafts {
+  [attemptId: string]: { follow_up: Draft; retry: DraftResponse | null };
+}
+
+type DraftsContainer = {
+  drafts: Drafts;
+};
+
+type WsJsonPatchMsg = { JsonPatch: Operation[] };
+type WsFinishedMsg = { finished: boolean };
+type WsMsg = WsJsonPatchMsg | WsFinishedMsg;
 
 export function useDraftStream(attemptId?: string) {
-  const [draft, setDraft] = useState<FollowUpDraft | null>(null);
-  const [isDraftLoaded, setIsDraftLoaded] = useState(false);
-  const lastServerVersionRef = useRef<number>(-1);
-  const suppressNextSaveRef = useRef<boolean>(false);
-  const forceNextApplyRef = useRef<boolean>(false);
+  const { projectId } = useProject();
+  const drafts = useDraftsStreamState(projectId);
 
-  const endpoint = attemptId
-    ? `/api/task-attempts/${attemptId}/follow-up-draft/stream/ws`
-    : undefined;
-
-  const makeInitial = useCallback(
-    (): DraftStreamState => ({
-      follow_up_draft: {
-        id: '',
-        task_attempt_id: attemptId || '',
-        prompt: '',
-        queued: false,
-        sending: false,
-        variant: null,
-        image_ids: [],
-        version: 0n,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-    }),
-    [attemptId]
-  );
-
-  const { data, isConnected, error } = useJsonPatchWsStream<DraftStreamState>(
-    endpoint,
-    !!endpoint,
-    makeInitial
-  );
-
-  // Quick initial draft loading from REST
-  useEffect(() => {
-    let cancelled = false;
-    const hydrate = async () => {
-      if (!attemptId) return;
-      try {
-        const d = await attemptsApi.getFollowUpDraft(attemptId);
-        if (cancelled) return;
-        suppressNextSaveRef.current = true;
-        setDraft({
-          id: 'rest',
-          task_attempt_id: d.task_attempt_id,
-          prompt: d.prompt || '',
-          queued: !!d.queued,
-          sending: false,
-          variant: (d.variant ?? null) as string | null,
-          image_ids: (d.image_ids ?? []) as string[],
-          version: (d.version ?? 0n) as unknown as bigint,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-        if (!isDraftLoaded) setIsDraftLoaded(true);
-      } catch {
-        // ignore, rely on stream
-      }
-    };
-    hydrate();
-    return () => {
-      cancelled = true;
-    };
-  }, [attemptId, isDraftLoaded]);
-
-  // Handle stream updates
-  useEffect(() => {
-    if (!data) return;
-    const d = data.follow_up_draft;
-    if (d.id === '') return;
-    const incomingVersion = Number(d.version ?? 0n);
-    if (incomingVersion === lastServerVersionRef.current) {
-      if (!isDraftLoaded) setIsDraftLoaded(true);
-      return;
-    }
-    suppressNextSaveRef.current = true;
-    // Let consumers decide whether to apply or ignore based on local dirty/forceApply.
-    setDraft(d);
-    if (!isDraftLoaded) setIsDraftLoaded(true);
-  }, [data, isDraftLoaded]);
-
-  // VSCode iframe poll fallback
-  const pollTimerRef = useRef<number | undefined>(undefined);
-  useEffect(() => {
-    if (!attemptId) return;
-    const shouldPoll = inIframe() && (!isConnected || !!error);
-    if (!shouldPoll) {
-      if (pollTimerRef.current) window.clearInterval(pollTimerRef.current);
-      pollTimerRef.current = undefined;
-      return;
-    }
-    const pollOnce = async () => {
-      try {
-        const d = await attemptsApi.getFollowUpDraft(attemptId);
-        const incomingVersion = Number((d as FollowUpDraft).version ?? 0n);
-        if (incomingVersion !== lastServerVersionRef.current) {
-          suppressNextSaveRef.current = true;
-          setDraft({
-            id: 'rest',
-            task_attempt_id: d.task_attempt_id,
-            prompt: d.prompt || '',
-            queued: !!d.queued,
-            sending: false,
-            variant: (d.variant ?? null) as string | null,
-            image_ids: (d.image_ids ?? []) as string[],
-            version: (d.version ?? 0n) as unknown as bigint,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          });
-          if (!isDraftLoaded) setIsDraftLoaded(true);
-        }
-      } catch {
-        // ignore
-      }
-    };
-    pollOnce();
-    pollTimerRef.current = window.setInterval(pollOnce, 1000);
-    return () => {
-      if (pollTimerRef.current) window.clearInterval(pollTimerRef.current);
-      pollTimerRef.current = undefined;
-    };
-  }, [attemptId, isConnected, error, isDraftLoaded]);
+  const attemptDrafts = useMemo(() => {
+    if (!attemptId || !drafts) return null;
+    return drafts[attemptId] ?? null;
+  }, [drafts, attemptId]);
 
   return {
-    draft,
-    isDraftLoaded,
-    isConnected,
-    error,
-    lastServerVersionRef,
-    suppressNextSaveRef,
-    forceNextApplyRef,
+    draft: attemptDrafts?.follow_up ?? null,
+    retryDraft: attemptDrafts?.retry ?? null,
+    isRetryLoaded: !!attemptDrafts,
+    isDraftLoaded: !!attemptDrafts,
   } as const;
+}
+
+function useDraftsStreamState(projectId?: string): Drafts | undefined {
+  const endpoint = useMemo(
+    () =>
+      projectId
+        ? `/api/drafts/stream/ws?project_id=${encodeURIComponent(projectId)}`
+        : undefined,
+    [projectId]
+  );
+  const wsUrl = useMemo(() => toWsUrl(endpoint), [endpoint]);
+  const isStreamEnabled = !!endpoint && !!wsUrl;
+
+  const queryClient = useQueryClient();
+  const initialData = useCallback((): DraftsContainer => ({ drafts: {} }), []);
+  const queryKey = useMemo(() => ['ws-json-patch', wsUrl], [wsUrl]);
+
+  const { data } = useQuery<DraftsContainer | undefined>({
+    queryKey,
+    enabled: isStreamEnabled,
+    staleTime: Infinity,
+    gcTime: 0,
+    initialData: undefined,
+  });
+
+  useEffect(() => {
+    if (!isStreamEnabled) return;
+    const current = queryClient.getQueryData<DraftsContainer | undefined>(
+      queryKey
+    );
+    if (current === undefined) {
+      queryClient.setQueryData<DraftsContainer>(queryKey, initialData());
+    }
+  }, [isStreamEnabled, queryClient, queryKey, initialData]);
+
+  const { getWebSocket } = useWebSocket(
+    wsUrl ?? 'ws://invalid',
+    {
+      share: true,
+      shouldReconnect: () => true,
+      reconnectInterval: (attempt) =>
+        Math.min(8000, 1000 * Math.pow(2, attempt)),
+      retryOnError: true,
+      onMessage: (event) => {
+        try {
+          const msg: WsMsg = JSON.parse(event.data);
+          if ('JsonPatch' in msg) {
+            const patches = msg.JsonPatch;
+            if (!patches.length) return;
+            queryClient.setQueryData<DraftsContainer | undefined>(
+              queryKey,
+              (prev) => {
+                const base = prev ?? initialData();
+                const next = structuredClone(base) as DraftsContainer;
+                applyPatch(next, patches);
+                return next;
+              }
+            );
+          } else if ('finished' in msg) {
+            try {
+              getWebSocket()?.close();
+            } catch {
+              /* noop */
+            }
+          }
+        } catch (e) {
+          console.error('Failed to process WebSocket message:', e);
+        }
+      },
+    },
+    isStreamEnabled
+  );
+
+  return isStreamEnabled ? data?.drafts : undefined;
+}
+
+function toWsUrl(endpoint?: string): string | undefined {
+  if (!endpoint) return undefined;
+  try {
+    const url = new URL(endpoint, window.location.origin);
+    url.protocol = url.protocol.replace('http', 'ws');
+    return url.toString();
+  } catch {
+    return undefined;
+  }
 }

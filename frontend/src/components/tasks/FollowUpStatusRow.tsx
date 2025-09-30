@@ -10,9 +10,9 @@ type Status = {
   queue: { isUnqueuing: boolean; isQueued: boolean };
 };
 
-type Props = { status: Status };
+type Props = { status: Status; pillBgClass?: string };
 
-function FollowUpStatusRowImpl({ status }: Props) {
+function FollowUpStatusRowImpl({ status, pillBgClass = 'bg-muted' }: Props) {
   const { save, draft, queue } = status;
 
   // Nonce keys to retrigger CSS animation; no JS timers.
@@ -39,21 +39,28 @@ function FollowUpStatusRowImpl({ status }: Props) {
         {save.state === 'saving' && save.isSaving ? (
           <span
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 bg-muted animate-in fade-in-0',
-              'italic'
+              'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 animate-in fade-in-0',
+              'italic',
+              pillBgClass
             )}
           >
             <Loader2 className="animate-spin h-3 w-3" /> Saving…
           </span>
         ) : save.state === 'offline' ? (
-          <span className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 bg-muted text-amber-700 animate-in fade-in-0">
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-amber-700 animate-in fade-in-0',
+              pillBgClass
+            )}
+          >
             <WifiOff className="h-3 w-3" /> Offline — changes pending
           </span>
         ) : sentNonce ? (
           <span
             key={sentNonce}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 bg-muted text-emerald-700 animate-pill'
+              'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-emerald-700 animate-pill',
+              pillBgClass
             )}
             onAnimationEnd={() => setSentNonce(null)}
           >
@@ -63,7 +70,8 @@ function FollowUpStatusRowImpl({ status }: Props) {
           <span
             key={savedNonce}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 bg-muted text-emerald-700 animate-pill'
+              'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-emerald-700 animate-pill',
+              pillBgClass
             )}
             onAnimationEnd={() => setSavedNonce(null)}
           >
@@ -73,19 +81,39 @@ function FollowUpStatusRowImpl({ status }: Props) {
       </div>
       <div className="text-muted-foreground">
         {queue.isUnqueuing ? (
-          <span className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 bg-muted animate-in fade-in-0">
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 animate-in fade-in-0',
+              pillBgClass
+            )}
+          >
             <Loader2 className="animate-spin h-3 w-3" /> Unlocking…
           </span>
         ) : !draft.isLoaded ? (
-          <span className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 bg-muted animate-in fade-in-0">
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 animate-in fade-in-0',
+              pillBgClass
+            )}
+          >
             <Loader2 className="animate-spin h-3 w-3" /> Loading draft…
           </span>
         ) : draft.isSending ? (
-          <span className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 bg-muted animate-in fade-in-0">
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 animate-in fade-in-0',
+              pillBgClass
+            )}
+          >
             <Loader2 className="animate-spin h-3 w-3" /> Sending follow-up…
           </span>
         ) : queue.isQueued ? (
-          <span className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 bg-muted animate-in fade-in-0">
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 animate-in fade-in-0',
+              pillBgClass
+            )}
+          >
             <Clock className="h-3 w-3" /> Queued for next turn. Edits are
             locked.
           </span>
