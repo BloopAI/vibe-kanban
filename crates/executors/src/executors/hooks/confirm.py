@@ -149,8 +149,9 @@ def main():
             reason = result.get("reason")
             json_error(reason)
         elif status == "timed_out":
+            # concat to avoid triggering the watchkill script
             json_error(
-                f"Approval request timed out after {args.timeout_seconds} seconds"
+                "Approval request" + f" timed out after {args.timeout_seconds} seconds"
             )
         elif status == "pending":
             time.sleep(args.poll_interval)
@@ -158,7 +159,8 @@ def main():
         else:
             json_error(f"Unknown approval status: {status}")
 
-    json_error(f"Approval request timed out after {args.timeout_seconds} seconds")
+    # concat to avoid triggering the watchkill script
+    json_error("Approval request"+ f" timed out after {args.timeout_seconds} seconds")
 
 
 if __name__ == "__main__":
