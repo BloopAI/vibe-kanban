@@ -113,6 +113,7 @@ export default function PreviewTab({
       runningDevServer
     ) {
       setShowHelp(true);
+      setShowLogs(true);
       setLoadingTimeFinished(false);
     }
   }, [
@@ -121,13 +122,6 @@ export default function PreviewTab({
     latestDevServerProcess?.id,
     runningDevServer,
   ]);
-
-  // Auto-show logs when help is displayed
-  useEffect(() => {
-    if (showHelp && !showLogs) {
-      setShowLogs(true);
-    }
-  }, [showHelp, showLogs]);
 
   // Compute mode and unified logs handling
   const mode = !runningDevServer ? 'noServer' : iframeError ? 'error' : 'ready';
