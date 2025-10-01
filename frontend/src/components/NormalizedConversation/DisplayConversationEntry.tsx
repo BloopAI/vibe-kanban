@@ -401,12 +401,7 @@ const PlanPresentationCard: React.FC<{
         </button>
 
         {expanded && (
-          <div
-            className={cn(
-              'px-3 py-2',
-              tone.contentBg
-            )}
-          >
+          <div className={cn('px-3 py-2', tone.contentBg)}>
             <div className={cn('text-sm', tone.contentText)}>
               <MarkdownRenderer
                 content={plan}
