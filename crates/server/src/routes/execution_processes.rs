@@ -9,7 +9,9 @@ use axum::{
     response::{IntoResponse, Json as ResponseJson},
     routing::{get, post},
 };
-use db::models::execution_process::{ExecutionProcess, ExecutionProcessError};
+use db::models::execution_process::{
+    ExecutionProcess, ExecutionProcessError, ExecutionProcessStatus,
+};
 use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::Deserialize;
@@ -184,7 +186,7 @@ pub async fn stop_execution_process(
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     deployment
         .container()
-        .stop_execution(&execution_process)
+        .stop_execution(&execution_process, ExecutionProcessStatus::Killed)
         .await?;
 
     Ok(ResponseJson(ApiResponse::success(())))

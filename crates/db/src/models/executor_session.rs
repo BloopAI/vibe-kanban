@@ -120,7 +120,9 @@ impl ExecutorSession {
                 created_at as "created_at!: DateTime<Utc>",
                 updated_at as "updated_at!: DateTime<Utc>"
                FROM executor_sessions
-               WHERE session_id = ?"#,
+               WHERE session_id = ?
+               ORDER BY updated_at DESC
+               LIMIT 1"#,
             session_id
         )
         .fetch_optional(pool)

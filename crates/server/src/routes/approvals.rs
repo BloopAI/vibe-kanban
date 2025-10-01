@@ -19,9 +19,11 @@ pub async fn create_approval(
     Json(request): Json<CreateApprovalRequest>,
 ) -> Result<Json<ApprovalRequest>, StatusCode> {
     let service = deployment.approvals();
-    let approval_request = ApprovalRequest::from_create(request);
 
-    match service.create(approval_request).await {
+    match service
+        .create_from_session(&deployment.db().pool, request)
+        .await
+    {
         Ok(approval) => Ok(Json(approval)),
         Err(e) => {
             tracing::error!("Failed to create approval: {:?}", e);
@@ -66,6 +68,7 @@ pub async fn respond_to_approval(
                     return Err(StatusCode::INTERNAL_SERVER_ERROR);
                 }
             }
+
             Ok(Json(status))
         }
         Err(e) => {

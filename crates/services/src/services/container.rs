@@ -168,14 +168,16 @@ pub trait ContainerService {
         {
             for process in processes {
                 if process.status == ExecutionProcessStatus::Running {
-                    self.stop_execution(&process).await.unwrap_or_else(|e| {
-                        tracing::debug!(
-                            "Failed to stop execution process {} for task attempt {}: {}",
-                            process.id,
-                            task_attempt.id,
-                            e
-                        );
-                    });
+                    self.stop_execution(&process, ExecutionProcessStatus::Killed)
+                        .await
+                        .unwrap_or_else(|e| {
+                            tracing::debug!(
+                                "Failed to stop execution process {} for task attempt {}: {}",
+                                process.id,
+                                task_attempt.id,
+                                e
+                            );
+                        });
                 }
             }
         }
@@ -199,6 +201,7 @@ pub trait ContainerService {
     async fn stop_execution(
         &self,
         execution_process: &ExecutionProcess,
+        status: ExecutionProcessStatus,
     ) -> Result<(), ContainerError>;
 
     async fn try_commit_changes(&self, ctx: &ExecutionContext) -> Result<bool, ContainerError>;
@@ -708,17 +711,13 @@ pub trait ContainerService {
     async fn exit_plan_mode_tool(&self, ctx: ExecutionContext) -> Result<(), ContainerError> {
         let execution_id = ctx.execution_process.id;
 
-        if let Err(err) = self.stop_execution(&ctx.execution_process).await {
+        if let Err(err) = self
+            .stop_execution(&ctx.execution_process, ExecutionProcessStatus::Completed)
+            .await
+        {
             tracing::error!("Failed to stop execution process {}: {}", execution_id, err);
             return Err(err);
         }
-        let _ = ExecutionProcess::update_completion(
-            &self.db().pool,
-            execution_id,
-            ExecutionProcessStatus::Completed,
-            Some(0),
-        )
-        .await;
 
         let action = ctx.execution_process.executor_action()?;
         let executor_profile_id = match action.typ() {
@@ -736,6 +735,7 @@ pub trait ContainerService {
             ExecutorSession::find_by_execution_process_id(&self.db().pool, execution_id)
                 .await?
                 .and_then(|s| s.session_id);
+
         if session_id.is_none() {
             tracing::warn!(
                 "No executor session found for execution process {}",

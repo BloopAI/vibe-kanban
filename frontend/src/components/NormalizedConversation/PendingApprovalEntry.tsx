@@ -15,7 +15,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { CircularProgress } from '@/components/ui/circular-progress';
 import { approvalsApi } from '@/lib/api';
 import { Check, X } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,21 +30,6 @@ interface PendingApprovalEntryProps {
   pendingStatus: Extract<ToolStatus, { status: 'pending_approval' }>;
   executionProcessId?: string;
   children: ReactNode;
-}
-
-// ---------- Utils ----------
-function formatSeconds(s: number) {
-  if (s <= 0) return '0s';
-  const m = Math.floor(s / 60);
-  const rem = s % 60;
-  return m > 0 ? `${m}m ${rem}s` : `${rem}s`;
-}
-
-// ---------- Hooks ----------
-function useAbortController() {
-  const ref = useRef<AbortController | null>(null);
-  useEffect(() => () => ref.current?.abort(), []);
-  return ref;
 }
 
 function useApprovalCountdown(
@@ -84,31 +68,6 @@ function useApprovalCountdown(
   );
 
   return { timeLeft, percent };
-}
-
-// ---------- Subcomponents ----------
-function ProgressWithTooltip({
-  visible,
-  timeLeft,
-  percent,
-}: {
-  visible: boolean;
-  timeLeft: number;
-  percent: number;
-}) {
-  if (!visible) return null;
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div className="flex items-center pr-8">
-          <CircularProgress percent={percent} />
-        </div>
-      </TooltipTrigger>
-      <TooltipContent>
-        <p>{formatSeconds(timeLeft)} remaining</p>
-      </TooltipContent>
-    </Tooltip>
-  );
 }
 
 function ActionButtons({
@@ -165,8 +124,6 @@ function ActionButtons({
 
 function DenyReasonForm({
   isResponding,
-  timeLeft,
-  percent,
   value,
   onChange,
   onCancel,
@@ -174,8 +131,6 @@ function DenyReasonForm({
   inputRef,
 }: {
   isResponding: boolean;
-  timeLeft: number;
-  percent: number;
   value: string;
   onChange: (v: string) => void;
   onCancel: () => void;
@@ -193,11 +148,6 @@ function DenyReasonForm({
         className="text-sm"
       />
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-        <ProgressWithTooltip
-          visible={timeLeft > 0}
-          timeLeft={timeLeft}
-          percent={percent}
-        />
         <div className="flex items-center gap-2 text-sm">
           <Button
             variant="ghost"
@@ -228,7 +178,6 @@ const PendingApprovalEntry = ({
   const [isEnteringReason, setIsEnteringReason] = useState(false);
   const [denyReason, setDenyReason] = useState('');
 
-  const abortRef = useAbortController();
   const denyReasonRef = useRef<HTMLTextAreaElement | null>(null);
 
   const { enableScope, disableScope, activeScopes } = useHotkeysContext();
@@ -243,7 +192,7 @@ const PendingApprovalEntry = ({
     dialogScopeActiveRef.current = dialogScopeActive;
   }, [dialogScopeActive]);
 
-  const { timeLeft, percent } = useApprovalCountdown(
+  const { timeLeft } = useApprovalCountdown(
     pendingStatus.requested_at,
     pendingStatus.timeout_at,
     hasResponded
@@ -294,19 +243,16 @@ const PendingApprovalEntry = ({
 
       setIsResponding(true);
       setError(null);
-      const controller = new AbortController();
-      abortRef.current = controller;
 
       const status: ApprovalStatus = approved
         ? { status: 'approved' }
         : { status: 'denied', reason };
 
       try {
-        await approvalsApi.respond(
-          pendingStatus.approval_id,
-          { execution_process_id: executionProcessId, status },
-          controller.signal
-        );
+        await approvalsApi.respond(pendingStatus.approval_id, {
+          execution_process_id: executionProcessId,
+          status,
+        });
         setHasResponded(true);
         setIsEnteringReason(false);
         setDenyReason('');
@@ -317,7 +263,7 @@ const PendingApprovalEntry = ({
         setIsResponding(false);
       }
     },
-    [abortRef, disabled, executionProcessId, pendingStatus.approval_id]
+    [disabled, executionProcessId, pendingStatus.approval_id]
   );
 
   const handleApprove = useCallback(() => respond(true), [respond]);
@@ -368,23 +314,19 @@ const PendingApprovalEntry = ({
 
   return (
     <div className="relative mt-3">
-      <div className="absolute -top-3 left-4 rounded-full border bg-background px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide shadow-sm">
-        Awaiting approval
-      </div>
-
       <div className="overflow-hidden border">
         {children}
 
         <div className="border-t bg-background px-2 py-1.5 text-xs sm:text-sm">
           <TooltipProvider>
             <div className="flex items-center justify-between gap-1.5 pl-4">
-              {!isEnteringReason && !hasResponded && (
-                <ProgressWithTooltip
-                  visible={timeLeft > 0}
-                  timeLeft={timeLeft}
-                  percent={percent}
-                />
-              )}
+              <div className="flex items-center gap-1.5">
+                {!isEnteringReason && (
+                  <span className="text-muted-foreground">
+                    Would you like to approve this?
+                  </span>
+                )}
+              </div>
               {!isEnteringReason && (
                 <ActionButtons
                   disabled={disabled}
@@ -408,8 +350,6 @@ const PendingApprovalEntry = ({
             {isEnteringReason && !hasResponded && (
               <DenyReasonForm
                 isResponding={isResponding}
-                timeLeft={timeLeft}
-                percent={percent}
                 value={denyReason}
                 onChange={setDenyReason}
                 onCancel={handleCancelDeny}

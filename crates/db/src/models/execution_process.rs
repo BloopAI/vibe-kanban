@@ -349,9 +349,13 @@ impl ExecutionProcess {
         .fetch_one(pool)
         .await
     }
-    pub async fn was_killed(pool: &SqlitePool, id: Uuid) -> bool {
+
+    pub async fn was_stopped(pool: &SqlitePool, id: Uuid) -> bool {
         if let Ok(exp_process) = Self::find_by_id(pool, id).await
-            && exp_process.is_some_and(|ep| ep.status == ExecutionProcessStatus::Killed)
+            && exp_process.is_some_and(|ep| {
+                ep.status == ExecutionProcessStatus::Killed
+                    || ep.status == ExecutionProcessStatus::Completed
+            })
         {
             return true;
         }

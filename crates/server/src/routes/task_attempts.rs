@@ -14,7 +14,7 @@ use axum::{
 };
 use db::models::{
     draft::{Draft, DraftType},
-    execution_process::{ExecutionProcess, ExecutionProcessRunReason},
+    execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
     project::{Project, ProjectError},
     task::{Task, TaskRelationships, TaskStatus},
@@ -1215,7 +1215,11 @@ pub async fn start_dev_server(
             project.id
         );
 
-        if let Err(e) = deployment.container().stop_execution(&dev_server).await {
+        if let Err(e) = deployment
+            .container()
+            .stop_execution(&dev_server, ExecutionProcessStatus::Killed)
+            .await
+        {
             tracing::error!("Failed to stop dev server {}: {}", dev_server.id, e);
         }
     }

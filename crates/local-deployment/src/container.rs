@@ -399,7 +399,7 @@ impl LocalContainerService {
                 Err(_) => (None, ExecutionProcessStatus::Failed),
             };
 
-            if !ExecutionProcess::was_killed(&db.pool, exec_id).await
+            if !ExecutionProcess::was_stopped(&db.pool, exec_id).await
                 && let Err(e) =
                     ExecutionProcess::update_completion(&db.pool, exec_id, status, exit_code).await
             {
@@ -1026,6 +1026,7 @@ impl ContainerService for LocalContainerService {
     async fn stop_execution(
         &self,
         execution_process: &ExecutionProcess,
+        status: ExecutionProcessStatus,
     ) -> Result<(), ContainerError> {
         let child = self
             .get_child_from_store(&execution_process.id)
@@ -1033,13 +1034,14 @@ impl ContainerService for LocalContainerService {
             .ok_or_else(|| {
                 ContainerError::Other(anyhow!("Child process not found for execution"))
             })?;
-        ExecutionProcess::update_completion(
-            &self.db.pool,
-            execution_process.id,
-            ExecutionProcessStatus::Killed,
-            None,
-        )
-        .await?;
+        let exit_code = if status == ExecutionProcessStatus::Completed {
+            Some(0)
+        } else {
+            None
+        };
+
+        ExecutionProcess::update_completion(&self.db.pool, execution_process.id, status, exit_code)
+            .await?;
 
         // Kill the child process and remove from the store
         {

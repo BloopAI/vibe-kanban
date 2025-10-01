@@ -12,18 +12,20 @@ pub struct ApprovalRequest {
     pub tool_name: String,
     pub tool_input: serde_json::Value,
     pub session_id: String,
+    pub execution_process_id: Uuid,
     pub created_at: DateTime<Utc>,
     pub timeout_at: DateTime<Utc>,
 }
 
 impl ApprovalRequest {
-    pub fn from_create(request: CreateApprovalRequest) -> Self {
+    pub fn from_create(request: CreateApprovalRequest, execution_process_id: Uuid) -> Self {
         let now = Utc::now();
         Self {
             id: Uuid::new_v4().to_string(),
             tool_name: request.tool_name,
             tool_input: request.tool_input,
             session_id: request.session_id,
+            execution_process_id,
             created_at: now,
             timeout_at: now + Duration::seconds(APPROVAL_TIMEOUT_SECONDS),
         }
