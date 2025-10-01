@@ -210,10 +210,6 @@ pub async fn follow_up(
     // Ensure worktree exists (recreate if needed for cold task support)
     let _ = ensure_worktree_path(&deployment, &task_attempt).await?;
 
-    // Get latest session id (ignoring dropped)
-    let session_id =
-        ExecutionProcess::require_latest_session_id(&deployment.db().pool, task_attempt.id).await?;
-
     // Get executor profile data from the latest CodingAgent process
     let initial_executor_profile_id = ExecutionProcess::latest_executor_profile_for_attempt(
         &deployment.db().pool,
@@ -297,6 +293,12 @@ pub async fn follow_up(
         let _ = Draft::clear_after_send(pool, task_attempt.id, DraftType::Retry).await;
     }
 
+    let latest_session_id = ExecutionProcess::find_latest_session_id_by_task_attempt(
+        &deployment.db().pool,
+        task_attempt.id,
+    )
+    .await?;
+
     let mut prompt = payload.prompt;
     if let Some(image_ids) = &payload.image_ids {
         prompt = handle_images_for_prompt(&deployment, &task_attempt, task.id, image_ids, &prompt)
@@ -307,22 +309,28 @@ pub async fn follow_up(
         .container()
         .cleanup_action(project.cleanup_script);
 
-    let follow_up_request = CodingAgentFollowUpRequest {
-        prompt,
-        session_id,
-        executor_profile_id,
+    let action_type = if let Some(session_id) = latest_session_id {
+        ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
+            prompt: prompt.clone(),
+            session_id,
+            executor_profile_id: executor_profile_id.clone(),
+        })
+    } else {
+        ExecutorActionType::CodingAgentInitialRequest(
+            executors::actions::coding_agent_initial::CodingAgentInitialRequest {
+                prompt,
+                executor_profile_id: executor_profile_id.clone(),
+            },
+        )
     };
 
-    let follow_up_action = ExecutorAction::new(
-        ExecutorActionType::CodingAgentFollowUpRequest(follow_up_request),
-        cleanup_action,
-    );
+    let action = ExecutorAction::new(action_type, cleanup_action);
 
     let execution_process = deployment
         .container()
         .start_execution(
             &task_attempt,
-            &follow_up_action,
+            &action,
             &ExecutionProcessRunReason::CodingAgent,
         )
         .await?;

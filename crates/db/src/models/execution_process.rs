@@ -538,21 +538,6 @@ impl ExecutionProcess {
         })
     }
 
-    /// Require latest session_id for a task attempt; error if none exists
-    pub async fn require_latest_session_id(
-        pool: &SqlitePool,
-        attempt_id: Uuid,
-    ) -> Result<String, ExecutionProcessError> {
-        Self::find_latest_session_id_by_task_attempt(pool, attempt_id)
-            .await?
-            .ok_or_else(|| {
-                ExecutionProcessError::ValidationError(
-                    "Couldn't find a prior session_id, please create a new task attempt"
-                        .to_string(),
-                )
-            })
-    }
-
     /// Fetch the latest CodingAgent executor profile for a task attempt
     pub async fn latest_executor_profile_for_attempt(
         pool: &SqlitePool,

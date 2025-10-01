@@ -215,9 +215,6 @@ impl DraftsService {
     ) -> Result<ExecutionProcess, DraftsServiceError> {
         let worktree_ref = container.ensure_container_exists(task_attempt).await?;
         let worktree_path = PathBuf::from(worktree_ref);
-        let session_id =
-            ExecutionProcess::require_latest_session_id(self.pool(), task_attempt.id).await?;
-
         let base_profile =
             ExecutionProcess::latest_executor_profile_for_attempt(self.pool(), task_attempt.id)
                 .await?;
@@ -246,16 +243,26 @@ impl DraftsService {
                 .await?;
         }
 
-        let follow_up_request = CodingAgentFollowUpRequest {
-            prompt,
-            session_id,
-            executor_profile_id,
+        let latest_session_id =
+            ExecutionProcess::find_latest_session_id_by_task_attempt(self.pool(), task_attempt.id)
+                .await?;
+
+        let action_type = if let Some(session_id) = latest_session_id {
+            ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
+                prompt: prompt.clone(),
+                session_id,
+                executor_profile_id,
+            })
+        } else {
+            ExecutorActionType::CodingAgentInitialRequest(
+                executors::actions::coding_agent_initial::CodingAgentInitialRequest {
+                    prompt,
+                    executor_profile_id,
+                },
+            )
         };
 
-        let follow_up_action = ExecutorAction::new(
-            ExecutorActionType::CodingAgentFollowUpRequest(follow_up_request),
-            cleanup_action,
-        );
+        let follow_up_action = ExecutorAction::new(action_type, cleanup_action);
 
         let execution_process = container
             .start_execution(
