@@ -9,12 +9,15 @@ use ts_rs::TS;
 use crate::{
     actions::{
         coding_agent_follow_up::CodingAgentFollowUpRequest,
-        coding_agent_initial::CodingAgentInitialRequest, script::ScriptRequest,
+        coding_agent_initial::CodingAgentInitialRequest,
+        commit_message_generation::CommitMessageGenerationRequest,
+        script::ScriptRequest,
     },
     executors::ExecutorError,
 };
 pub mod coding_agent_follow_up;
 pub mod coding_agent_initial;
+pub mod commit_message_generation;
 pub mod script;
 
 #[enum_dispatch]
@@ -23,6 +26,7 @@ pub mod script;
 pub enum ExecutorActionType {
     CodingAgentInitialRequest,
     CodingAgentFollowUpRequest,
+    CommitMessageGenerationRequest,
     ScriptRequest,
 }
 

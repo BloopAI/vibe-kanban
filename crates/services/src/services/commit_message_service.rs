@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{path::Path, time::Duration};
 
 use reqwest;
 use serde::{Deserialize, Serialize};
@@ -7,6 +7,8 @@ use thiserror::Error;
 
 use crate::services::git::GitService;
 use utils::diff::Diff;
+use db::models::{executor_session::ExecutorSession, task_attempt::TaskAttempt};
+use sqlx::SqlitePool;
 
 #[derive(Debug, Error)]
 pub enum CommitMessageError {
@@ -139,6 +141,64 @@ impl CommitMessageService {
 
     pub fn is_available(&self) -> bool {
         self.config.is_some()
+    }
+
+    /// Generate commit message using the task's agent session if available, fallback to LLM API
+    pub async fn generate_commit_message_with_agent(
+        &self,
+        pool: &SqlitePool,
+        task_attempt: &TaskAttempt,
+        task_title: &str,
+        task_description: Option<&str>,
+    ) -> Result<String, CommitMessageError> {
+        // First try to get the latest executor session for this task attempt
+        if let Ok(Some(executor_session)) = ExecutorSession::find_latest_by_task_attempt_id(pool, task_attempt.id).await {
+            if let Some(session_id) = &executor_session.session_id {
+                tracing::info!("Found executor session {} for task attempt {}, trying agent-based commit message generation", session_id, task_attempt.id);
+
+                // Try to generate commit message using the agent with full context
+                match self.generate_with_agent(task_attempt, task_title, task_description, session_id).await {
+                    Ok(message) => {
+                        tracing::info!("Successfully generated commit message using agent: {}", message);
+                        return Ok(message);
+                    }
+                    Err(err) => {
+                        tracing::warn!("Agent-based generation failed: {}, falling back to LLM API", err);
+                    }
+                }
+            }
+        }
+
+        // Fallback to the original LLM API approach
+        tracing::info!("Falling back to LLM API for commit message generation");
+
+        // We need diffs for the API approach - get them here
+        let git_service = GitService::new();
+        let container_ref = task_attempt.container_ref.as_ref().ok_or_else(|| {
+            CommitMessageError::GitError("No container reference found for task attempt".to_string())
+        })?;
+        let worktree_path = Path::new(container_ref);
+
+        // Get branch name
+        let branch_name = task_attempt.branch.as_ref().ok_or_else(|| {
+            CommitMessageError::GitError("No branch found for task attempt".to_string())
+        })?;
+
+        let base_commit = git_service.get_base_commit(
+            worktree_path,
+            branch_name,
+            &task_attempt.base_branch,
+        ).map_err(|e| CommitMessageError::GitError(e.to_string()))?;
+
+        let diff_target = crate::services::git::DiffTarget::Worktree {
+            worktree_path,
+            base_commit: &base_commit,
+        };
+
+        let diffs = git_service.get_diffs(diff_target, None)
+            .map_err(|e| CommitMessageError::GitError(e.to_string()))?;
+
+        self.generate_commit_message(&diffs, task_title, task_description).await
     }
 
     pub async fn generate_commit_message(
@@ -307,6 +367,61 @@ impl CommitMessageService {
         }
 
         commit_message
+    }
+
+    /// Generate commit message using the existing agent session
+    async fn generate_with_agent(
+        &self,
+        task_attempt: &TaskAttempt,
+        task_title: &str,
+        task_description: Option<&str>,
+        session_id: &str,
+    ) -> Result<String, CommitMessageError> {
+        // Build the prompt for the agent
+        let prompt = self.build_agent_prompt(task_title, task_description, &task_attempt.base_branch);
+
+        // Get the container path for execution
+        let container_ref = task_attempt.container_ref.as_ref().ok_or_else(|| {
+            CommitMessageError::GitError("No container reference found for task attempt".to_string())
+        })?;
+        let worktree_path = Path::new(container_ref);
+
+        // Execute the commit message generation using the existing agent infrastructure
+        // For now, return an error to trigger fallback - this would need full executor integration
+        Err(CommitMessageError::LlmApiError(
+            "Agent-based generation not yet fully implemented - falling back to API".to_string()
+        ))
+    }
+
+    /// Build a prompt specifically for agent-based commit message generation
+    fn build_agent_prompt(&self, task_title: &str, task_description: Option<&str>, base_branch: &str) -> String {
+        let mut prompt = String::new();
+
+        prompt.push_str("Please generate a conventional commit message for the changes you just made.\n\n");
+
+        prompt.push_str("TASK CONTEXT:\n");
+        prompt.push_str(&format!("Title: {}\n", task_title));
+
+        if let Some(description) = task_description {
+            prompt.push_str(&format!("Description: {}\n", description));
+        }
+
+        prompt.push_str(&format!("Base branch: {}\n", base_branch));
+
+        prompt.push_str("\nINSTRUCTIONS:\n");
+        prompt.push_str("1. Look at the git diff to understand what changes you made\n");
+        prompt.push_str("2. Based on our conversation history and the actual changes, create a conventional commit message\n");
+        prompt.push_str("3. Use conventional commit format: <type>[optional scope]: <description>\n");
+        prompt.push_str("4. Types: feat, fix, docs, style, refactor, perf, test, chore\n");
+        prompt.push_str("5. Keep the first line under 72 characters\n");
+        prompt.push_str("6. Use imperative mood (\"add\" not \"adds\" or \"added\")\n");
+        prompt.push_str("7. Focus on WHAT was changed and WHY, based on our conversation\n");
+        prompt.push_str("8. You have full context of what we discussed and implemented\n\n");
+
+        prompt.push_str("Respond with ONLY the commit message, nothing else.\n");
+        prompt.push_str("Example: feat(auth): implement JWT-based user authentication");
+
+        prompt
     }
 }
 

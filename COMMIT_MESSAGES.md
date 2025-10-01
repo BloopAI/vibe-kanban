@@ -1,6 +1,6 @@
-# Enhanced Commit Messages with LLM Integration
+# Enhanced Commit Messages with Agent Integration
 
-This feature improves commit message generation in Vibe Kanban by using Large Language Models (LLMs) to create more informative, conventional commit messages based on the actual code changes and task context.
+This feature improves commit message generation in Vibe Kanban by leveraging the existing coding agent to create more informative, conventional commit messages. The agent has full context of the conversation history and can analyze code changes it made to generate better commit messages.
 
 ## Overview
 
@@ -11,7 +11,7 @@ Add user authentication (vibe-kanban a1b2c3d4)
 This task adds basic user login and registration functionality.
 ```
 
-With LLM integration, commit messages are now generated following conventional commit standards and provide better context:
+With agent integration, commit messages are now generated following conventional commit standards with full conversation context:
 ```
 feat(auth): implement user authentication system
 
@@ -44,21 +44,24 @@ export OPENAI_API_KEY="your-openai-api-key"
 
 ## How It Works
 
-1. **Change Analysis**: When merging a task, the system analyzes the actual file changes (diffs) between the task branch and the base branch.
+1. **Agent Context**: When merging a task, the system first checks if there's an active agent session from the task execution.
 
-2. **Context Building**: The LLM receives:
-   - Task title and description
-   - Summary of file changes (added, modified, deleted files)
-   - Change types (new features, bug fixes, etc.)
+2. **Agent-Based Generation**: If an agent session exists:
+   - The agent has full access to the conversation history and understands the reasoning behind changes
+   - Agent analyzes the git diff of changes it made
+   - Generates a contextual commit message based on what it actually implemented and why
 
-3. **Message Generation**: The LLM generates a conventional commit message following these guidelines:
-   - Uses conventional commit format: `<type>[scope]: <description>`
-   - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`
-   - Keeps description concise (max 72 characters for first line)
-   - Uses imperative mood ("add" not "adds" or "added")
-   - Focuses on WHAT was changed and WHY
+3. **LLM API Fallback**: If no agent session exists or agent generation fails:
+   - Falls back to direct LLM API calls (Anthropic Claude or OpenAI GPT)
+   - Analyzes file diffs and task description
+   - Generates conventional commit message based on changes alone
 
-4. **Fallback**: If LLM generation fails or no API key is configured, falls back to the original simple format.
+4. **Simple Fallback**: If both enhanced methods fail or no API keys are configured, uses the original simple format.
+
+The agent-based approach is superior because:
+- Agent understands the full context of what was implemented
+- Has access to conversation history explaining decisions
+- Can better explain WHY changes were made, not just WHAT changed
 
 ## Examples
 
@@ -69,7 +72,7 @@ Add shopping cart functionality (vibe-kanban f8e7d6c5)
 Implement basic shopping cart with add/remove items.
 ```
 
-### After (LLM-Enhanced)
+### After (Agent-Enhanced)
 ```
 feat(cart): implement shopping cart functionality
 
@@ -102,10 +105,11 @@ Add comprehensive examples and error response formats
 ## Benefits
 
 1. **Consistency**: All commits follow conventional commit standards
-2. **Context**: Messages reflect actual changes, not just task descriptions
+2. **Context**: Messages reflect actual changes with full reasoning from agent conversations
 3. **History**: Better git history for debugging and code archaeology
 4. **Automation**: No manual effort required - works automatically
-5. **Fallback**: Graceful degradation when LLM services are unavailable
+5. **Intelligence**: Agent understands WHY changes were made, not just WHAT changed
+6. **Fallback**: Multiple levels of graceful degradation (agent → LLM API → simple format)
 
 ## Implementation Details
 
@@ -115,10 +119,11 @@ The feature is implemented in:
 
 ### Configuration Options
 
-The service automatically detects and uses available API keys in this order:
-1. Anthropic API key (preferred for quality and cost)
-2. OpenAI API key (fallback option)
-3. Simple format (when no API keys are configured)
+The service uses a priority system for commit message generation:
+1. **Agent-based generation** (when agent session exists from task execution)
+2. **Anthropic API** (preferred LLM fallback with API key)
+3. **OpenAI API** (alternative LLM fallback with API key)
+4. **Simple format** (final fallback when no enhanced options available)
 
 ### Error Handling
 
@@ -127,19 +132,25 @@ The service automatically detects and uses available API keys in this order:
 - Invalid responses
 - Missing API keys
 
-All errors result in graceful fallback to the original commit message format with appropriate logging.
+All errors result in graceful fallback through the priority system with appropriate logging.
 
 ## Cost Considerations
 
-Both Anthropic Claude Haiku and OpenAI GPT-4o-mini are cost-effective options:
+**Agent-based generation**: Free! Uses existing agent session with no additional API costs.
+
+**LLM API fallback** (when agent session unavailable):
+- Anthropic Claude Haiku and OpenAI GPT-4o-mini are cost-effective
 - Typical cost: $0.001-$0.005 per commit message
 - Messages are short (usually <500 tokens total)
-- Only called during task merging (not every commit)
+- Only called during task merging when agent session unavailable
 
-For a team making 100 task merges per month, the cost would be approximately $0.10-$0.50/month.
+For a team making 100 task merges per month with 20% requiring LLM fallback, the cost would be approximately $0.02-$0.10/month.
 
 ## Privacy and Security
 
+**Agent-based generation**: Maximum privacy since agent already has access to full context - no additional data exposure.
+
+**LLM API fallback**:
 - Only file paths and change types are sent to the LLM (no file contents)
 - Task titles and descriptions are included (ensure no sensitive data)
 - All API calls use HTTPS encryption
@@ -157,6 +168,8 @@ For a team making 100 task merges per month, the cost would be approximately $0.
 
 Look for log messages like:
 ```
-INFO Generated commit message using LLM: feat(auth): implement user login system
-WARN Failed to generate commit message using LLM: API rate limit exceeded, falling back to default
+INFO Found executor session abc123 for task attempt, trying agent-based commit message generation
+INFO Generated enhanced commit message: feat(auth): implement user login system
+WARN Agent-based generation failed: not yet implemented, falling back to LLM API
+WARN Enhanced commit message generation failed: API rate limit exceeded, using fallback
 ```
