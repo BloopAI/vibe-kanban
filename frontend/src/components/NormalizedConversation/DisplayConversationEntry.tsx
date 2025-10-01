@@ -403,7 +403,7 @@ const PlanPresentationCard: React.FC<{
         {expanded && (
           <div
             className={cn(
-              'px-3 py-2 max-h-[65vh] overflow-y-auto overscroll-contain',
+              'px-3 py-2',
               tone.contentBg
             )}
           >
