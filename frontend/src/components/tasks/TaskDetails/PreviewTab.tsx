@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDevserverPreview } from '@/hooks/useDevserverPreview';
 import { useDevServer } from '@/hooks/useDevServer';
@@ -137,10 +137,6 @@ export default function PreviewTab({
     setIsReady(false);
   };
 
-  const copyPrompt = () => {
-    navigator.clipboard.writeText(t('preview.troubleAlert.tipCommand'));
-  };
-
   const handleStopAndEdit = () => {
     stopDevServer(undefined, {
       onSuccess: () => {
@@ -199,22 +195,6 @@ export default function PreviewTab({
                 .
               </li>
             </ol>
-            <p className="border-2 p-2">
-              <p>
-                {t('preview.troubleAlert.tipPrompt')}{' '}
-                <code className="font-bold">
-                  {t('preview.troubleAlert.tipCommand')}
-                </code>{' '}
-                <Button
-                  variant="ghost"
-                  className="p-0 h-0"
-                  onClick={copyPrompt}
-                >
-                  <Copy className="w-3 h-3" />
-                </Button>
-              </p>
-            </p>
-            <p>{t('preview.troubleAlert.resolve')}</p>
             <Button
               variant="destructive"
               onClick={handleStopAndEdit}

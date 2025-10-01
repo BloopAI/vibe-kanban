@@ -95,10 +95,7 @@
       "item2": "開発サーバーがターミナルにURLとポートを次の形式で出力しましたか",
       "item2Suffix": "？（これにより実行中であることを認識します）",
       "item3": "Web Companion（クリックして編集機能に必要）をインストールしましたか？インストールしていない場合は、",
-      "item3Link": "こちらのインストール手順に従ってください",
-      "tipPrompt": "ヒント：次のプロンプトでコーディングエージェントにWeb Companionのインストールを依頼できます：",
-      "tipCommand": "Please install https://github.com/BloopAI/vibe-kanban-web-companion and add the VibeKanbanWebCompanion component",
-      "resolve": "問題を解決して開発サーバーを再起動してください。"
+      "item3Link": "こちらのインストール手順に従ってください"
     },
     "noServer": {
       "title": "開発サーバーが実行されていません",
@@ -108,7 +105,7 @@
       "companionLink": "インストールガイドを表示",
       "startButton": "開発サーバーを開始",
       "editButton": "開発スクリプトを編集",
-      "stopAndEditButton": "開発サーバーを停止してスクリプトを編集"
+      "stopAndEditButton": "開発サーバーを停止して問題を解決"
     },
     "devScript": {
       "saveAndStart": "保存して開始",

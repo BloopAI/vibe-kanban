@@ -95,10 +95,7 @@
       "item2": "¿Tu servidor de desarrollo imprimió la URL y el puerto en la terminal en el formato",
       "item2Suffix": "? (así es como sabemos que está funcionando)",
       "item3": "¿Has instalado el Web Companion (requerido para hacer clic y editar)? Si no, por favor",
-      "item3Link": "sigue las instrucciones de instalación aquí",
-      "tipPrompt": "Consejo: puedes pedirle a tu agente de codificación que instale el Web Companion con el prompt:",
-      "tipCommand": "Please install https://github.com/BloopAI/vibe-kanban-web-companion and add the VibeKanbanWebCompanion component",
-      "resolve": "Por favor resuelve cualquier problema y reinicia el servidor de desarrollo."
+      "item3Link": "sigue las instrucciones de instalación aquí"
     },
     "noServer": {
       "title": "No hay servidor de desarrollo en ejecución",
@@ -108,7 +105,7 @@
       "companionLink": "Ver guía de instalación",
       "startButton": "Iniciar Servidor de Desarrollo",
       "editButton": "Editar Script de Desarrollo",
-      "stopAndEditButton": "Detener Servidor de Desarrollo y Editar Script"
+      "stopAndEditButton": "Detener Servidor de Desarrollo y Resolver Problemas"
     },
     "devScript": {
       "saveAndStart": "Guardar e Iniciar",
