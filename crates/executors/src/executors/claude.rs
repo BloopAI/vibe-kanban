@@ -166,8 +166,11 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         let (shell_cmd, shell_arg) = get_shell_command();
         let command_builder = self.build_command_builder().await;
         // Build follow-up command with --resume {session_id}
-        let mut base_command =
-            command_builder.build_follow_up(&["--resume".to_string(), session_id.to_string()]);
+        let mut base_command = command_builder.build_follow_up(&[
+            "--fork-session".to_string(),
+            "--resume".to_string(),
+            session_id.to_string(),
+        ]);
 
         if self.plan.unwrap_or(false) {
             base_command = create_watchkill_script(&base_command);
