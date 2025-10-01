@@ -1828,7 +1828,7 @@ impl GitService {
             .name()
             .ok_or_else(|| GitServiceError::InvalidRepository("Invalid branch ref".into()))?;
         let remote_prefix = format!("refs/remotes/{remote_name}/");
-        let src_ref = dest_ref.replace(&remote_prefix, "refs/heads/");
+        let src_ref = dest_ref.replacen(&remote_prefix, "refs/heads/", 1);
         let refspec = format!("+{src_ref}:{dest_ref}");
         self.fetch_from_remote(repo, github_token, &remote, &refspec)
     }
