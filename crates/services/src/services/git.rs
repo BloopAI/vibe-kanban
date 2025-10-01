@@ -769,21 +769,6 @@ impl GitService {
         base_branch_name: &str,
         commit_message: &str,
     ) -> Result<String, GitServiceError> {
-        // Open the repositories
-        let task_repo = self.open_repo(task_worktree_path)?;
-        let base_repo = self.open_repo(base_worktree_path)?;
-
-        // Check if base branch is ahead of task branch - this indicates the base has moved
-        // ahead since the task was created, which should block the merge
-        let (_, task_behind) =
-            self.get_branch_status(base_worktree_path, task_branch_name, base_branch_name)?;
-
-        if task_behind > 0 {
-            return Err(GitServiceError::BranchesDiverged(format!(
-                "Cannot merge: base branch '{base_branch_name}' is {task_behind} commits ahead of task branch '{task_branch_name}'. The base branch has moved forward since the task was created.",
-            )));
-        }
-
         // Check where base branch is checked out (if anywhere)
         match self.find_checkout_path_for_branch(base_worktree_path, base_branch_name)? {
             Some(base_checkout_path) => {
@@ -805,28 +790,21 @@ impl GitService {
 
                 // Use CLI merge in base context
                 self.ensure_cli_commit_identity(&base_checkout_path)?;
-                let sha = git_cli
-                    .merge_squash_commit(
-                        &base_checkout_path,
-                        base_branch_name,
-                        task_branch_name,
-                        commit_message,
-                    )
+                git_cli.squash_branch_commits(
+                    &base_checkout_path,
+                    base_branch_name,
+                    task_branch_name,
+                    commit_message,
+                )?;
+                let merge_sha = git_cli
+                    .merge_no_squash(&base_checkout_path, base_branch_name, task_branch_name)
                     .map_err(|e| {
                         GitServiceError::InvalidRepository(format!("CLI merge failed: {e}"))
                     })?;
-
-                // Update task branch ref for continuity
-                let task_refname = format!("refs/heads/{task_branch_name}");
-                git_cli
-                    .update_ref(base_worktree_path, &task_refname, &sha)
-                    .map_err(|e| {
-                        GitServiceError::InvalidRepository(format!("git update-ref failed: {e}"))
-                    })?;
-
-                Ok(sha)
+                Ok(merge_sha)
             }
             None => {
+                let task_repo = self.open_repo(task_worktree_path)?;
                 // base branch not checked out anywhere - use libgit2 pure ref operations
                 let task_branch = Self::find_branch(&task_repo, task_branch_name)?;
                 let base_branch = Self::find_branch(&task_repo, base_branch_name)?;
@@ -837,29 +815,65 @@ impl GitService {
 
                 // Create the squash commit in-memory (no checkout) and update the base branch ref
                 let signature = self.signature_with_fallback(&task_repo)?;
-                let squash_commit_id = self.perform_squash_merge(
+                let squash_commit_id = self.squash_task_commits(
                     &task_repo,
                     &base_commit,
                     &task_commit,
                     &signature,
                     commit_message,
+                    task_branch_name,
+                )?;
+                let squash_commit = task_repo.find_commit(squash_commit_id)?;
+                let merge_commit = self.perform_merge(
+                    &task_repo,
+                    &base_commit,
+                    &squash_commit,
+                    &signature,
+                    commit_message,
                     base_branch_name,
                 )?;
 
-                // Update the task branch to the new squash commit so follow-up
-                // work can continue from the merged state without conflicts.
-                let task_refname = format!("refs/heads/{task_branch_name}");
-                base_repo.reference(
-                    &task_refname,
-                    squash_commit_id,
-                    true,
-                    "Reset task branch after squash merge",
-                )?;
-
-                Ok(squash_commit_id.to_string())
+                Ok(merge_commit.to_string())
             }
         }
     }
+
+    fn squash_task_commits(
+        &self,
+        repo: &Repository,
+        base_commit: &git2::Commit,
+        task_commit: &git2::Commit,
+        signature: &git2::Signature,
+        commit_message: &str,
+        task_branch_name: &str,
+    ) -> Result<git2::Oid, GitServiceError> {
+        // Find the fork point (merge base) where task and base diverged
+        let fork_point_oid = repo.merge_base(base_commit.id(), task_commit.id())?;
+        let fork_point_commit = repo.find_commit(fork_point_oid)?;
+
+        // Get the tree from task commit (contains all changes)
+        let task_tree = task_commit.tree()?;
+
+        // Create the squash commit with fork point as the sole parent
+        let squash_commit_id = repo.commit(
+            None, // No ref update here
+            signature,
+            signature,
+            commit_message,
+            &task_tree,
+            &[&fork_point_commit], // Single parent: fork point
+        )?;
+        let task_refname = format!("refs/heads/{task_branch_name}");
+        repo.reference(
+            &task_refname,
+            squash_commit_id,
+            true,
+            "Reset task branch after squash merge",
+        )?;
+
+        Ok(squash_commit_id)
+    }
+
     fn get_branch_status_inner(
         &self,
         repo: &Repository,
@@ -1333,7 +1347,7 @@ impl GitService {
     }
 
     /// Perform a squash merge of task branch into base branch, but fail on conflicts
-    fn perform_squash_merge(
+    fn perform_merge(
         &self,
         repo: &Repository,
         base_commit: &git2::Commit,
@@ -1360,21 +1374,21 @@ impl GitService {
         let tree_id = index.write_tree_to(repo)?;
         let tree = repo.find_tree(tree_id)?;
 
-        // Create a squash commit: use merged tree with base_commit as sole parent
-        let squash_commit_id = repo.commit(
-            None,           // Don't update any reference yet
-            signature,      // Author
-            signature,      // Committer
-            commit_message, // Custom message
-            &tree,          // Merged tree content
-            &[base_commit], // Single parent: base branch commit
+        // Create a merge commit: use merged tree with base_commit and task_commit as parents
+        let commit_id = repo.commit(
+            None,                        // Don't update any reference yet
+            signature,                   // Author
+            signature,                   // Committer
+            commit_message,              // Custom message
+            &tree,                       // Merged tree content
+            &[base_commit, task_commit], // Two parents: base and task
         )?;
 
         // Update the base branch reference to point to the new commit
         let refname = format!("refs/heads/{base_branch_name}");
-        repo.reference(&refname, squash_commit_id, true, "Squash merge")?;
+        repo.reference(&refname, commit_id, true, "Squash merge")?;
 
-        Ok(squash_commit_id)
+        Ok(commit_id)
     }
 
     /// Rebase a worktree branch onto a new base

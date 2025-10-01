@@ -442,7 +442,6 @@ function GitOperations({
               mergeInfo.hasOpenPR ||
               merging ||
               hasConflictsCalculated ||
-              Boolean((branchStatus.commits_behind ?? 0) > 0) ||
               isAttemptRunning ||
               ((branchStatus.commits_ahead ?? 0) === 0 &&
                 !pushSuccess &&

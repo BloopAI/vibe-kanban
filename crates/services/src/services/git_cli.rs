@@ -519,18 +519,39 @@ impl GitCli {
         self.git(repo_path, ["reset"]).map(|_| ())
     }
 
-    /// Checkout base branch, squash-merge from_branch, and commit with message. Returns new HEAD sha.
-    pub fn merge_squash_commit(
+    pub fn squash_branch_commits(
         &self,
         repo_path: &Path,
         base_branch: &str,
         from_branch: &str,
         message: &str,
     ) -> Result<String, GitCliError> {
+        let fp = self.merge_base(repo_path, base_branch, from_branch)?;
+        let task_tree = self
+            .git(repo_path, ["rev-parse", &format!("{from_branch}^{{tree}}")])?
+            .trim()
+            .to_string();
+        let squash_sha = self
+            .git(
+                repo_path,
+                ["commit-tree", &task_tree, "-p", &fp, "-m", message],
+            )?
+            .trim()
+            .to_string();
+        // Update from_branch to point to the new squash commit
+        self.update_ref(repo_path, &format!("refs/heads/{from_branch}"), &squash_sha)?;
+
+        Ok(squash_sha)
+    }
+
+    pub fn merge_no_squash(
+        &self,
+        repo_path: &Path,
+        base_branch: &str,
+        from_branch: &str,
+    ) -> Result<String, GitCliError> {
         self.git(repo_path, ["checkout", base_branch]).map(|_| ())?;
-        self.git(repo_path, ["merge", "--squash", "--no-commit", from_branch])
-            .map(|_| ())?;
-        self.git(repo_path, ["commit", "-m", message]).map(|_| ())?;
+        self.git(repo_path, ["merge", from_branch]).map(|_| ())?;
         let sha = self
             .git(repo_path, ["rev-parse", "HEAD"])?
             .trim()
