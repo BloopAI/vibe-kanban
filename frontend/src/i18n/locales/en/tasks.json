@@ -105,7 +105,7 @@
       "companionLink": "View installation guide",
       "startButton": "Start Dev Server",
       "editButton": "Edit Dev Script",
-      "stopAndEditButton": "Stop Dev Server & Edit Dev Script"
+      "stopAndEditButton": "Stop Dev Server & Resolve Issues"
     },
     "devScript": {
       "saveAndStart": "Save & Start",
