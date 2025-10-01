@@ -1407,9 +1407,7 @@ impl GitService {
         // If the target base is remote, update it first so CLI sees latest
         if nbr.is_remote() {
             let github_token = github_token.ok_or(GitServiceError::TokenUnavailable)?;
-            let remote = self.get_remote_from_branch_ref(&main_repo, &nbr)?;
-            // First, fetch the latest changes from remote
-            self.fetch_branch_from_remote(&main_repo, &github_token, &remote, new_base_branch)?;
+            self.fetch_branch_from_remote(&main_repo, &github_token, &nbr)?;
         }
 
         // Ensure identity for any commits produced by rebase
@@ -1806,7 +1804,6 @@ impl GitService {
             .ok_or_else(|| GitServiceError::InvalidRepository("Remote has no URL".to_string()))?;
 
         let https_url = self.convert_to_https_url(remote_url);
-        // Create temporary HTTPS remote
         let git_cli = GitCli::new();
         if let Err(e) =
             git_cli.fetch_with_token_and_refspec(repo.path(), &https_url, refspec, github_token)
@@ -1822,13 +1819,18 @@ impl GitService {
         &self,
         repo: &Repository,
         github_token: &str,
-        remote: &Remote,
-        branch_name: &str,
+        branch: &Reference,
     ) -> Result<(), GitServiceError> {
+        let remote = self.get_remote_from_branch_ref(repo, branch)?;
         let default_remote_name = self.default_remote_name(repo);
         let remote_name = remote.name().unwrap_or(&default_remote_name);
-        let refspec = format!("+refs/heads/{branch_name}:refs/remotes/{remote_name}/{branch_name}");
-        self.fetch_from_remote(repo, github_token, remote, &refspec)
+        let dest_ref = branch
+            .name()
+            .ok_or_else(|| GitServiceError::InvalidRepository("Invalid branch ref".into()))?;
+        let remote_prefix = format!("refs/remotes/{remote_name}/");
+        let src_ref = dest_ref.replace(&remote_prefix, "refs/heads/");
+        let refspec = format!("+{src_ref}:{dest_ref}");
+        self.fetch_from_remote(repo, github_token, &remote, &refspec)
     }
 
     /// Fetch from remote repository using GitHub token authentication

@@ -917,70 +917,72 @@ pub async fn get_task_attempt_branch_status(
         .git()
         .find_branch_type(&ctx.project.git_repo_path, &task_attempt.target_branch)?;
 
-    let (commits_ahead, commits_behind) = if matches!(target_branch_type, BranchType::Local) {
-        let (a, b) = deployment.git().get_branch_status(
-            &ctx.project.git_repo_path,
-            &task_attempt.branch,
-            &task_attempt.target_branch,
-        )?;
-        (Some(a), Some(b))
-    } else {
-        (None, None)
+    let (commits_ahead, commits_behind) = match target_branch_type {
+        BranchType::Local => {
+            let (a, b) = deployment.git().get_branch_status(
+                &ctx.project.git_repo_path,
+                &task_attempt.branch,
+                &task_attempt.target_branch,
+            )?;
+            (Some(a), Some(b))
+        }
+        BranchType::Remote => {
+            let github_config = deployment.config().read().await.github.clone();
+            let token = github_config
+                .token()
+                .ok_or(ApiError::GitHubService(GitHubServiceError::TokenInvalid))?;
+            let (remote_commits_ahead, remote_commits_behind) =
+                deployment.git().get_remote_branch_status(
+                    &ctx.project.git_repo_path,
+                    &task_attempt.branch,
+                    Some(&task_attempt.target_branch),
+                    token,
+                )?;
+            (Some(remote_commits_ahead), Some(remote_commits_behind))
+        }
     };
     // Fetch merges for this task attempt and add to branch status
     let merges = Merge::find_by_task_attempt_id(pool, task_attempt.id).await?;
-    let mut branch_status = BranchStatus {
+    let (remote_ahead, remote_behind) = if let Some(Merge::Pr(PrMerge {
+        pr_info: PullRequestInfo {
+            status: MergeStatus::Open,
+            ..
+        },
+        ..
+    })) = merges.first()
+    {
+        // check remote status if the attempt has an open PR
+        let github_config = deployment.config().read().await.github.clone();
+        let token = github_config
+            .token()
+            .ok_or(ApiError::GitHubService(GitHubServiceError::TokenInvalid))?;
+        let (remote_commits_ahead, remote_commits_behind) =
+            deployment.git().get_remote_branch_status(
+                &ctx.project.git_repo_path,
+                &task_attempt.branch,
+                None,
+                token,
+            )?;
+        (Some(remote_commits_ahead), Some(remote_commits_behind))
+    } else {
+        (None, None)
+    };
+
+    let branch_status = BranchStatus {
         commits_ahead,
         commits_behind,
         has_uncommitted_changes,
         head_oid,
         uncommitted_count,
         untracked_count,
-        remote_commits_ahead: None,
-        remote_commits_behind: None,
+        remote_commits_ahead: remote_ahead,
+        remote_commits_behind: remote_behind,
         merges,
-        target_branch_name: task_attempt.target_branch.clone(),
+        target_branch_name: task_attempt.target_branch,
         is_rebase_in_progress,
         conflict_op,
         conflicted_files,
     };
-    let has_open_pr = branch_status.merges.first().is_some_and(|m| {
-        matches!(
-            m,
-            Merge::Pr(PrMerge {
-                pr_info: PullRequestInfo {
-                    status: MergeStatus::Open,
-                    ..
-                },
-                ..
-            })
-        )
-    });
-
-    // check remote status if the attempt has an open PR or the target_branch is a remote branch
-    if has_open_pr || target_branch_type == BranchType::Remote {
-        let github_config = deployment.config().read().await.github.clone();
-        let token = github_config
-            .token()
-            .ok_or(ApiError::GitHubService(GitHubServiceError::TokenInvalid))?;
-
-        // For an attempt with a remote target branch, we compare against that
-        // After opening a PR, the attempt has a remote branch itself, so we use that
-        let remote_target_branch = if target_branch_type == BranchType::Remote && !has_open_pr {
-            Some(task_attempt.target_branch)
-        } else {
-            None
-        };
-        let (remote_commits_ahead, remote_commits_behind) =
-            deployment.git().get_remote_branch_status(
-                &ctx.project.git_repo_path,
-                &task_attempt.branch,
-                remote_target_branch.as_deref(),
-                token,
-            )?;
-        branch_status.remote_commits_ahead = Some(remote_commits_ahead);
-        branch_status.remote_commits_behind = Some(remote_commits_behind);
-    }
     Ok(ResponseJson(ApiResponse::success(branch_status)))
 }
 
