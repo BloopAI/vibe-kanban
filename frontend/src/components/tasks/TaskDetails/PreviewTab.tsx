@@ -140,6 +140,7 @@ export default function PreviewTab({
     startDevServer();
     startTimer();
     setShowHelp(false);
+    setIsReady(false);
   };
 
   const copyPrompt = () => {

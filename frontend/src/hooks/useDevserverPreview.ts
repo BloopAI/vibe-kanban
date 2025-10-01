@@ -50,8 +50,8 @@ export function useDevserverPreview(
   // URL detection patterns (in order of priority)
   const urlPatterns = useMemo(
     () => [
-      // Full URLs with protocol
-      /(https?:\/\/(?:\[[0-9a-f:]+\]|[a-z0-9.-]+|\d{1,3}(?:\.\d{1,3}){3})(?::\d{2,5})?(?:\/\S*)?)/i,
+      // Full URLs with protocol (localhost and IP addresses only)
+      /(https?:\/\/(?:\[[0-9a-f:]+\]|localhost|127\.0\.0\.1|0\.0\.0\.0|\d{1,3}(?:\.\d{1,3}){3})(?::\d{2,5})?(?:\/\S*)?)/i,
       // Host:port patterns
       /(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[[0-9a-f:]+\]|(?:\d{1,3}\.){3}\d{1,3}):(\d{2,5})/i,
       // Port mentions
