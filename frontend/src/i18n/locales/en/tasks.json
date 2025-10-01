@@ -126,6 +126,11 @@
     },
     "iframe": {
       "title": "Dev server preview"
+    },
+    "toolbar": {
+      "refresh": "Refresh preview",
+      "copyUrl": "Copy URL",
+      "openInTab": "Open in new tab"
     }
   }
 }

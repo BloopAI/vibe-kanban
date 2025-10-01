@@ -1,4 +1,5 @@
 import { ExternalLink, RefreshCw, Copy, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -20,6 +21,7 @@ export function PreviewToolbar({
   onRefresh,
   onCopyUrl,
 }: PreviewToolbarProps) {
+  const { t } = useTranslation('tasks');
   return (
     <div className="flex items-center gap-2 p-3 border-b bg-muted/50 shrink-0">
       <span className="text-sm text-muted-foreground font-mono truncate flex-1">
@@ -35,7 +37,7 @@ export function PreviewToolbar({
                   <RefreshCw className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Refresh preview</TooltipContent>
+              <TooltipContent>{t('preview.toolbar.refresh')}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
           <TooltipProvider>
@@ -50,7 +52,7 @@ export function PreviewToolbar({
                   <Copy className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Copy URL</TooltipContent>
+              <TooltipContent>{t('preview.toolbar.copyUrl')}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
           <TooltipProvider>
@@ -67,7 +69,7 @@ export function PreviewToolbar({
                   </a>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Open in new tab</TooltipContent>
+              <TooltipContent>{t('preview.toolbar.openInTab')}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </>

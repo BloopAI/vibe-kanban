@@ -126,6 +126,11 @@
     },
     "iframe": {
       "title": "Vista previa del servidor de desarrollo"
+    },
+    "toolbar": {
+      "refresh": "Actualizar vista previa",
+      "copyUrl": "Copiar URL",
+      "openInTab": "Abrir en nueva pestaña"
     }
   }
 }

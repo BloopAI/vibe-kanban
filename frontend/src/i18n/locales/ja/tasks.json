@@ -126,6 +126,11 @@
     },
     "iframe": {
       "title": "開発サーバープレビュー"
+    },
+    "toolbar": {
+      "refresh": "プレビューを更新",
+      "copyUrl": "URLをコピー",
+      "openInTab": "新しいタブで開く"
     }
   }
 }
