@@ -18,6 +18,11 @@ import {
 } from '@/utils/script-placeholders';
 import { useUserSystem } from '@/components/config-provider';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
+import { useTaskMutations } from '@/hooks/useTaskMutations';
+import {
+  COMPANION_INSTALL_TASK_TITLE,
+  COMPANION_INSTALL_TASK_DESCRIPTION,
+} from '@/utils/companion-install-task';
 
 interface NoServerContentProps {
   projectHasDevScript: boolean;
@@ -40,7 +45,7 @@ export function NoServerContent({
   const [devScriptInput, setDevScriptInput] = useState('');
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isEditingExistingScript, setIsEditingExistingScript] = useState(false);
-  const { system } = useUserSystem();
+  const { system, config } = useUserSystem();
 
   const { updateProject } = useProjectMutations({
     onUpdateSuccess: () => {
@@ -50,6 +55,8 @@ export function NoServerContent({
       setSaveError((err as Error)?.message || 'Failed to save dev script');
     },
   });
+
+  const { createAndStart } = useTaskMutations(project?.id);
 
   // Create strategy-based placeholders
   const placeholders = system.environment
@@ -112,24 +119,43 @@ export function NoServerContent({
     setSaveError(null);
   };
 
+  const handleInstallCompanion = () => {
+    if (!project || !config) return;
+
+    createAndStart.mutate({
+      task: {
+        project_id: project.id,
+        title: COMPANION_INSTALL_TASK_TITLE,
+        description: COMPANION_INSTALL_TASK_DESCRIPTION,
+        parent_task_attempt: null,
+        image_ids: null,
+      },
+      executor_profile_id: config.executor_profile,
+      base_branch: 'main',
+    });
+  };
+
   return (
     <div className="flex-1 flex items-center justify-center">
-      <div className="text-center space-y-4 max-w-md mx-auto p-6">
+      <div className="text-center space-y-6 max-w-md mx-auto p-6">
         <div className="flex items-center justify-center">
           <SquareTerminal className="h-8 w-8 text-muted-foreground" />
         </div>
-        <div>
-          <h3 className="text-lg font-medium text-foreground mb-2">
-            {t('preview.noServer.title')}
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            {projectHasDevScript
-              ? t('preview.noServer.startPrompt')
-              : t('preview.noServer.setupPrompt')}
-          </p>
+
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-medium text-foreground mb-2">
+              {t('preview.noServer.title')}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {projectHasDevScript
+                ? t('preview.noServer.startPrompt')
+                : t('preview.noServer.setupPrompt')}
+            </p>
+          </div>
 
           {!isEditingExistingScript ? (
-            <div className="mt-4 flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-2">
               <Button
                 variant={runningDevServer ? 'destructive' : 'default'}
                 size="sm"
@@ -160,8 +186,8 @@ export function NoServerContent({
               )}
             </div>
           ) : (
-            <div className="mt-6 text-left">
-              <div className="space-y-3">
+            <div className="text-left">
+              <div className="space-y-4">
                 <Textarea
                   id="devScript"
                   placeholder={placeholders.dev}
@@ -228,19 +254,34 @@ export function NoServerContent({
             </div>
           )}
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-muted-foreground mb-2">
+          <div className="space-y-4 pt-6 border-t border-border">
+            <p className="text-sm text-muted-foreground">
               {t('preview.noServer.companionPrompt')}
             </p>
-            <a
-              href="https://github.com/BloopAI/vibe-kanban-web-companion"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-            >
-              <ExternalLink className="h-3 w-3" />
-              {t('preview.noServer.companionLink')}
-            </a>
+            <div className="space-y-2">
+              <Button
+                size="sm"
+                onClick={handleInstallCompanion}
+                disabled={!project || !config || createAndStart.isPending}
+                className="gap-1"
+                variant="outline"
+              >
+                {createAndStart.isPending
+                  ? 'Creating task…'
+                  : 'Install companion automatically'}
+              </Button>
+              <div>
+                <a
+                  href="https://github.com/BloopAI/vibe-kanban-web-companion"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  {t('preview.noServer.companionLink')}
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </div>

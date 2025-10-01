@@ -107,7 +107,8 @@
       "companionPrompt": "クリック編集機能のために、プロジェクトにブラウザコンパニオンを追加してください。",
       "companionLink": "インストールガイドを表示",
       "startButton": "開発サーバーを開始",
-      "editButton": "開発スクリプトを編集"
+      "editButton": "開発スクリプトを編集",
+      "stopAndEditButton": "開発サーバーを停止してスクリプトを編集"
     },
     "devScript": {
       "saveAndStart": "保存して開始",

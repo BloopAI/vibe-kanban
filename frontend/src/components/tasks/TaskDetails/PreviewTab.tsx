@@ -221,7 +221,7 @@ export default function PreviewTab({
               disabled={isStoppingDevServer}
             >
               {isStoppingDevServer && <Loader2 className="mr-2 animate-spin" />}
-              Stop Dev Server & Edit Dev Script
+              {t('preview.noServer.stopAndEditButton')}
             </Button>
           </Alert>
         )}

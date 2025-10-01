@@ -107,7 +107,8 @@
       "companionPrompt": "Para la funcionalidad de clic y editar, agrega el complemento del navegador a tu proyecto.",
       "companionLink": "Ver guía de instalación",
       "startButton": "Iniciar Servidor de Desarrollo",
-      "editButton": "Editar Script de Desarrollo"
+      "editButton": "Editar Script de Desarrollo",
+      "stopAndEditButton": "Detener Servidor de Desarrollo y Editar Script"
     },
     "devScript": {
       "saveAndStart": "Guardar e Iniciar",
