@@ -147,20 +147,18 @@ function DenyReasonForm({
         disabled={isResponding}
         className="text-sm"
       />
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-sm">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onCancel}
-            disabled={isResponding}
-          >
-            Cancel
-          </Button>
-          <Button size="sm" onClick={onSubmit} disabled={isResponding}>
-            Deny
-          </Button>
-        </div>
+      <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onCancel}
+          disabled={isResponding}
+        >
+          Cancel
+        </Button>
+        <Button size="sm" onClick={onSubmit} disabled={isResponding}>
+          Deny
+        </Button>
       </div>
     </div>
   );

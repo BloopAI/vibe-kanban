@@ -255,10 +255,22 @@ export const useConversationHistory = ({
               e.type !== 'NORMALIZED_ENTRY' ||
               e.content.entry_type.type !== 'user_message'
           );
+
+          const hasPendingApprovalEntry = entriesExcludingUser.some((entry) => {
+            if (entry.type !== 'NORMALIZED_ENTRY') return false;
+            const entryType = entry.content.entry_type;
+            return (
+              entryType.type === 'tool_use' &&
+              entryType.status.status === 'pending_approval'
+            );
+          });
+
           entries.push(...entriesExcludingUser);
-          if (
-            getLiveExecutionProcess(p.executionProcess.id)?.status === 'running'
-          ) {
+          const isProcessRunning =
+            getLiveExecutionProcess(p.executionProcess.id)?.status ===
+            'running';
+
+          if (isProcessRunning && !hasPendingApprovalEntry) {
             entries.push(loadingPatch);
           }
         } else if (
