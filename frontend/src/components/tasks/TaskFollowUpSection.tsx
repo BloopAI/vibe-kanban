@@ -237,7 +237,8 @@ export function TaskFollowUpSection({
 
   const isDraftLocked =
     displayQueued || isQueuing || isUnqueuing || !!draft?.sending;
-  const isEditable = isDraftLoaded && !isDraftLocked && !isRetryActive && !hasPendingApproval;
+  const isEditable =
+    isDraftLoaded && !isDraftLocked && !isRetryActive && !hasPendingApproval;
 
   // When a process completes (e.g., agent resolved conflicts), refresh branch status promptly
   const prevRunningRef = useRef<boolean>(isAttemptRunning);
