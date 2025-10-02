@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import TaskAttemptPanel from './TaskAttemptPanel';
 import TaskPanel from './TaskPanel';
-import { NewCard, NewCardHeader } from '../ui/new-card';
+import { NewCard, NewCardContent, NewCardHeader } from '../ui/new-card';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -19,7 +19,7 @@ const KanbanSidebar = () => {
 
   return (
     <ResponsiveSidebar>
-      <NewCard>
+      <NewCard className="bg-background h-full">
         <NewCardHeader>
           <Breadcrumb>
             <BreadcrumbList>
@@ -33,8 +33,10 @@ const KanbanSidebar = () => {
             </BreadcrumbList>
           </Breadcrumb>
         </NewCardHeader>
+        <NewCardContent>
+          {panel === 'task' ? <TaskPanel /> : <TaskAttemptPanel />}
+        </NewCardContent>
       </NewCard>
-      {panel === 'task' ? <TaskPanel /> : <TaskAttemptPanel />}
     </ResponsiveSidebar>
   );
 };
