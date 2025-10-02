@@ -224,12 +224,12 @@ function TaskDetailsToolbar({
         )}
 
         {/* Independent Git Operations Section */}
-        {selectedAttempt && branchStatus && (
+        {selectedAttempt && (
           <GitOperations
             selectedAttempt={selectedAttempt}
             task={task}
             projectId={projectId}
-            branchStatus={branchStatus}
+            branchStatus={branchStatus ?? null}
             branches={branches}
             isAttemptRunning={isAttemptRunning}
             setError={setError}

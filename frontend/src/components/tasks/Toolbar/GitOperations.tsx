@@ -250,7 +250,8 @@ function GitOperations({
     });
   };
 
-  if (!branchStatus || mergeInfo.hasMergedPR) {
+  // Hide entire panel only if PR is merged
+  if (mergeInfo.hasMergedPR) {
     return null;
   }
 
@@ -434,72 +435,74 @@ function GitOperations({
           </div>
         </div>
 
-        {/* Git Operations */}
-        <div className="flex gap-2">
-          <Button
-            onClick={handleMergeClick}
-            disabled={
-              mergeInfo.hasOpenPR ||
-              merging ||
-              hasConflictsCalculated ||
-              Boolean((branchStatus.commits_behind ?? 0) > 0) ||
-              isAttemptRunning ||
-              ((branchStatus.commits_ahead ?? 0) === 0 &&
-                !pushSuccess &&
-                !mergeSuccess)
-            }
-            variant="outline"
-            size="xs"
-            className="border-success text-success hover:bg-success gap-1 flex-1"
-          >
-            <GitBranchIcon className="h-3 w-3" />
-            {mergeButtonLabel}
-          </Button>
-          <Button
-            onClick={handlePRButtonClick}
-            disabled={
-              pushing ||
-              Boolean((branchStatus.commits_behind ?? 0) > 0) ||
-              isAttemptRunning ||
-              hasConflictsCalculated ||
-              (mergeInfo.hasOpenPR &&
-                branchStatus.remote_commits_ahead === 0) ||
-              ((branchStatus.commits_ahead ?? 0) === 0 &&
-                (branchStatus.remote_commits_ahead ?? 0) === 0 &&
-                !pushSuccess &&
-                !mergeSuccess)
-            }
-            variant="outline"
-            size="xs"
-            className="border-info text-info hover:bg-info gap-1 flex-1"
-          >
-            <GitPullRequest className="h-3 w-3" />
-            {mergeInfo.hasOpenPR
-              ? pushSuccess
-                ? t('git.states.pushed')
-                : pushing
-                  ? t('git.states.pushing')
-                  : t('git.states.push')
-              : t('git.states.createPr')}
-          </Button>
-          <Button
-            onClick={handleRebaseDialogOpen}
-            disabled={
-              rebasing ||
-              isAttemptRunning ||
-              hasConflictsCalculated ||
-              (branchStatus.commits_behind ?? 0) === 0
-            }
-            variant="outline"
-            size="xs"
-            className="border-warning text-warning hover:bg-warning gap-1 flex-1"
-          >
-            <RefreshCw
-              className={`h-3 w-3 ${rebasing ? 'animate-spin' : ''}`}
-            />
-            {rebaseButtonLabel}
-          </Button>
-        </div>
+        {/* Git Operations - only show when branchStatus is available */}
+        {branchStatus && (
+          <div className="flex gap-2">
+            <Button
+              onClick={handleMergeClick}
+              disabled={
+                mergeInfo.hasOpenPR ||
+                merging ||
+                hasConflictsCalculated ||
+                Boolean((branchStatus.commits_behind ?? 0) > 0) ||
+                isAttemptRunning ||
+                ((branchStatus.commits_ahead ?? 0) === 0 &&
+                  !pushSuccess &&
+                  !mergeSuccess)
+              }
+              variant="outline"
+              size="xs"
+              className="border-success text-success hover:bg-success gap-1 flex-1"
+            >
+              <GitBranchIcon className="h-3 w-3" />
+              {mergeButtonLabel}
+            </Button>
+            <Button
+              onClick={handlePRButtonClick}
+              disabled={
+                pushing ||
+                Boolean((branchStatus.commits_behind ?? 0) > 0) ||
+                isAttemptRunning ||
+                hasConflictsCalculated ||
+                (mergeInfo.hasOpenPR &&
+                  branchStatus.remote_commits_ahead === 0) ||
+                ((branchStatus.commits_ahead ?? 0) === 0 &&
+                  (branchStatus.remote_commits_ahead ?? 0) === 0 &&
+                  !pushSuccess &&
+                  !mergeSuccess)
+              }
+              variant="outline"
+              size="xs"
+              className="border-info text-info hover:bg-info gap-1 flex-1"
+            >
+              <GitPullRequest className="h-3 w-3" />
+              {mergeInfo.hasOpenPR
+                ? pushSuccess
+                  ? t('git.states.pushed')
+                  : pushing
+                    ? t('git.states.pushing')
+                    : t('git.states.push')
+                : t('git.states.createPr')}
+            </Button>
+            <Button
+              onClick={handleRebaseDialogOpen}
+              disabled={
+                rebasing ||
+                isAttemptRunning ||
+                hasConflictsCalculated ||
+                (branchStatus.commits_behind ?? 0) === 0
+              }
+              variant="outline"
+              size="xs"
+              className="border-warning text-warning hover:bg-warning gap-1 flex-1"
+            >
+              <RefreshCw
+                className={`h-3 w-3 ${rebasing ? 'animate-spin' : ''}`}
+              />
+              {rebaseButtonLabel}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
