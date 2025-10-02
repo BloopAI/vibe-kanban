@@ -249,12 +249,27 @@ fn adapt_opencode(servers: ServerMap, meta: Option<Value>) -> Value {
     attach_meta(servers, meta)
 }
 
+fn adapt_copilot(mut servers: ServerMap, meta: Option<Value>) -> Value {
+    for (_, value) in servers.iter_mut() {
+        if let Value::Object(s) = value
+            && !s.contains_key("tools")
+        {
+            s.insert(
+                "tools".to_string(),
+                Value::Array(vec![Value::String("*".to_string())]),
+            );
+        }
+    }
+    attach_meta(servers, meta)
+}
+
 enum Adapter {
     Passthrough,
     Gemini,
     Cursor,
     Codex,
     Opencode,
+    Copilot,
 }
 
 fn apply_adapter(adapter: Adapter, canonical: Value) -> Value {
@@ -269,6 +284,7 @@ fn apply_adapter(adapter: Adapter, canonical: Value) -> Value {
         Adapter::Cursor => adapt_cursor(servers_only, meta),
         Adapter::Codex => adapt_codex(servers_only, meta),
         Adapter::Opencode => adapt_opencode(servers_only, meta),
+        Adapter::Copilot => adapt_copilot(servers_only, meta),
     }
 }
 
@@ -282,6 +298,7 @@ impl CodingAgent {
             CodingAgent::Cursor(_) => Cursor,
             CodingAgent::Codex(_) => Codex,
             CodingAgent::Opencode(_) => Opencode,
+            CodingAgent::Copilot(..) => Copilot,
         };
 
         let canonical = PRECONFIGURED_MCP_SERVERS.clone();

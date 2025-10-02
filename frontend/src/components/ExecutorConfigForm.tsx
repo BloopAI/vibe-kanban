@@ -16,6 +16,7 @@ type ExecutorType =
   | 'GEMINI'
   | 'CODEX'
   | 'CURSOR'
+  | 'COPILOT'
   | 'OPENCODE'
   | 'QWEN_CODE';
 

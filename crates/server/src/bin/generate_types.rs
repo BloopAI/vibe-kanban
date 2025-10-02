@@ -81,6 +81,7 @@ fn generate_types_content() -> String {
         executors::executors::codex::ReasoningSummary::decl(),
         executors::executors::codex::ReasoningSummaryFormat::decl(),
         executors::executors::cursor::Cursor::decl(),
+        executors::executors::copilot::Copilot::decl(),
         executors::executors::opencode::Opencode::decl(),
         executors::executors::qwen::QwenCode::decl(),
         executors::executors::AppendPrompt::decl(),
@@ -186,6 +187,10 @@ fn generate_schemas() -> Result<HashMap<&'static str, String>, serde_json::Error
         (
             "qwen_code",
             generate_json_schema::<executors::executors::qwen::QwenCode>()?,
+        ),
+        (
+            "copilot",
+            generate_json_schema::<executors::executors::copilot::Copilot>()?,
         ),
     ]);
     println!(

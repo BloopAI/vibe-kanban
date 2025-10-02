@@ -119,6 +119,31 @@
           "model": "grok"
         }
       }
+    },
+    "COPILOT": {
+      "DEFAULT": {
+        "COPILOT": {
+          "allow_all_tools": true
+        }
+      },
+      "GPT_5": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "gpt-5"
+        }
+      },
+      "CLAUDE_SONNET_4_5": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "claude-sonnet-4.5"
+        }
+      },
+      "CLAUDE_SONNET_4": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "claude-sonnet-4"
+        }
+      }
     }
   }
 }
