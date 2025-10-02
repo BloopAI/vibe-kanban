@@ -521,9 +521,11 @@ async fn handle_task_attempt_diff_ws(
                             break;
                         }
                     }
-                    _ => {
+                    Some(Err(e)) => {
+                        tracing::error!("stream error: {}", e);
                         break;
                     }
+                    None => break,
                 }
             }
             // Detect client disconnection

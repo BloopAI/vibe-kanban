@@ -40,8 +40,8 @@ use executors::{
     },
 };
 use futures::{FutureExt, StreamExt, TryStreamExt, stream::select};
-use notify::FsEventWatcher;
-use notify_debouncer_full::{DebouncedEvent, Debouncer, FileIdMap};
+use notify::RecommendedWatcher;
+use notify_debouncer_full::{DebouncedEvent, Debouncer, RecommendedCache};
 use serde_json::json;
 use services::services::{
     analytics::AnalyticsContext,
@@ -68,7 +68,7 @@ use crate::command;
 /// When this stream is dropped, the watcher is automatically cleaned up
 struct DiffStreamWithWatcher {
     stream: futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>,
-    _watcher: Option<Debouncer<FsEventWatcher, FileIdMap>>,
+    _watcher: Option<Debouncer<RecommendedWatcher, RecommendedCache>>,
 }
 
 impl futures::Stream for DiffStreamWithWatcher {
