@@ -9,9 +9,12 @@ use agent_client_protocol::Agent as _;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use futures::StreamExt;
 use tokio::{io::AsyncWriteExt, process::Command, sync::mpsc};
-use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
+use tokio_util::{
+    compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt},
+    io::ReaderStream,
+};
 use tracing::error;
-use workspace_utils::shell::get_shell_command;
+use workspace_utils::{shell::get_shell_command, stream_lines::LinesStreamExt};
 
 use super::{AcpClient, SessionManager};
 use crate::executors::{ExecutorError, SpawnedChild, acp::AcpEvent};
@@ -160,10 +163,11 @@ impl AcpAgentHarness {
         let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
 
         // Process stdout -> ACP
+        let stdout_shutdown_rx = shutdown_rx.clone();
         tokio::spawn(async move {
-            let mut stdout_stream = tokio_util::io::ReaderStream::new(orig_stdout);
+            let mut stdout_stream = ReaderStream::new(orig_stdout);
             while let Some(res) = stdout_stream.next().await {
-                if *shutdown_rx.borrow() {
+                if *stdout_shutdown_rx.borrow() {
                     break;
                 }
                 match res {
@@ -176,8 +180,39 @@ impl AcpAgentHarness {
         });
 
         // ACP crate expects futures::AsyncRead + AsyncWrite, use tokio compat to adapt tokio::io::AsyncRead + Write
-        let outgoing = orig_stdin.compat_write();
+        let (acp_out_writer, acp_out_reader) = tokio::io::duplex(64 * 1024);
+        let outgoing = acp_out_writer.compat_write();
         let incoming = acp_incoming_reader.compat();
+
+        // Process ACP -> stdin
+        let stdin_shutdown_rx = shutdown_rx.clone();
+        tokio::spawn(async move {
+            let mut child_stdin = orig_stdin;
+            let mut lines = ReaderStream::new(acp_out_reader)
+                .map(|res| res.map(|bytes| String::from_utf8_lossy(&bytes).into_owned()))
+                .lines();
+            while let Some(result) = lines.next().await {
+                if *stdin_shutdown_rx.borrow() {
+                    break;
+                }
+                match result {
+                    Ok(line) => {
+                        // Use \r\n on Windows for compatibility with buggy ACP implementations
+                        const LINE_ENDING: &str = if cfg!(windows) { "\r\n" } else { "\n" };
+                        let line = line + LINE_ENDING;
+                        if let Err(err) = child_stdin.write_all(line.as_bytes()).await {
+                            tracing::debug!("Failed to write to child stdin {err}");
+                            break;
+                        }
+                        let _ = child_stdin.flush().await;
+                    }
+                    Err(err) => {
+                        tracing::debug!("ACP stdin line error {err}");
+                        break;
+                    }
+                }
+            }
+        });
 
         let mut exit_signal_tx = exit_signal;
 
