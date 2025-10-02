@@ -1,5 +1,11 @@
+import TitleDescriptionEditor from '../ui/TitleDescriptionEditor';
+
 const TaskPanel = () => {
-  return <div>Task Panel</div>;
+  return (
+    <div>
+      <TitleDescriptionEditor />
+    </div>
+  );
 };
 
 export default TaskPanel;
