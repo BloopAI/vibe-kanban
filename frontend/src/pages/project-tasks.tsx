@@ -32,13 +32,13 @@ import {
 } from '@/lib/responsive-config';
 
 import TaskKanbanBoard from '@/components/tasks/TaskKanbanBoard';
-import { TaskDetailsPanel } from '@/components/tasks/TaskDetailsPanel';
 import type { TaskWithAttemptStatus, TaskAttempt } from 'shared/types';
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 import { useProjectTasks } from '@/hooks/useProjectTasks';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import NiceModal from '@ebay/nice-modal-react';
 import { useHotkeysContext } from 'react-hotkeys-hook';
+import KanbanSidebar from '@/components/panels/KanbanSidebar';
 
 type Task = TaskWithAttemptStatus;
 
@@ -537,29 +537,7 @@ export function ProjectTasks() {
             </div>
           )}
         </div>
-
-        {/* Right Column - Task Details Panel */}
-        {isPanelOpen && !projectLoading && (
-          <TaskDetailsPanel
-            task={selectedTask}
-            projectHasDevScript={!!project?.dev_script}
-            projectId={projectId!}
-            onClose={handleClosePanel}
-            onEditTask={handleEditTaskCallback}
-            onDeleteTask={handleDeleteTask}
-            onNavigateToTask={(taskId) => {
-              const task = tasksById[taskId];
-              if (task) {
-                handleViewTaskDetails(task, undefined, true);
-              }
-            }}
-            isFullScreen={isFullscreen}
-            selectedAttempt={selectedAttempt}
-            attempts={attempts}
-            setSelectedAttempt={setSelectedAttempt}
-            tasksById={tasksById}
-          />
-        )}
+        {isPanelOpen && !projectLoading && <KanbanSidebar />}
       </div>
     </div>
   );
