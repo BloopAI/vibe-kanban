@@ -264,3 +264,29 @@
     @apply underline;
   }
 }
+
+/* BASIC STYLES (mainly for rendering markdown) */
+
+@layer base {
+  .wysiwyg {
+    h1 {
+      @apply text-lg leading-tight font-medium;
+    }
+
+    h2 {
+      @apply leading-tight font-medium;
+    }
+
+    ul {
+      @apply list-disc list-outside space-y-1 ps-6;
+    }
+
+    ol {
+      @apply list-decimal list-outside space-y-1 ps-6;
+    }
+
+    li {
+      @apply leading-tight;
+    }
+  }
+}
