@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 //
 import { useReview } from '@/contexts/ReviewProvider';
 import { useClickedElements } from '@/contexts/ClickedElementsProvider';
+import { useEntries } from '@/contexts/EntriesContext';
 //
 import { VariantSelector } from '@/components/tasks/VariantSelector';
 import { FollowUpStatusRow } from '@/components/tasks/FollowUpStatusRow';
@@ -38,7 +39,6 @@ import { useFollowUpSend } from '@/hooks/follow-up/useFollowUpSend';
 import { useDefaultVariant } from '@/hooks/follow-up/useDefaultVariant';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 import { appendImageMarkdown } from '@/utils/markdownImages';
-import { usePendingApproval } from '@/hooks/usePendingApproval';
 
 interface TaskFollowUpSectionProps {
   task: TaskWithAttemptStatus;
@@ -149,7 +149,17 @@ export function TaskFollowUpSection({
   const isRetryActive = !!activeRetryProcessId;
 
   // Check if there's a pending approval - users shouldn't be able to type during approvals
-  const hasPendingApproval = usePendingApproval();
+  const { entries } = useEntries();
+  const hasPendingApproval = useMemo(() => {
+    return entries.some((entry) => {
+      if (entry.type !== 'NORMALIZED_ENTRY') return false;
+      const entryType = entry.content.entry_type;
+      return (
+        entryType.type === 'tool_use' &&
+        entryType.status.status === 'pending_approval'
+      );
+    });
+  }, [entries]);
 
   // Autosave draft when editing
   const { isSaving, saveStatus } = useDraftAutosave({
