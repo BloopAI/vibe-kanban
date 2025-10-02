@@ -299,6 +299,7 @@ function GitOperations({
               <GitBranchIcon className="h-3 w-3 text-muted-foreground" />
               <span className="text-sm font-medium truncate">
                 {branchStatus?.target_branch_name ||
+                  selectedAttempt.target_branch ||
                   selectedBranch ||
                   t('git.branch.current')}
               </span>
