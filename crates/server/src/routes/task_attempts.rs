@@ -502,25 +502,35 @@ async fn handle_task_attempt_diff_ws(
     use futures_util::{SinkExt, StreamExt, TryStreamExt};
     use utils::log_msg::LogMsg;
 
-    let mut stream = deployment
+    let stream = deployment
         .container()
         .stream_diff(&task_attempt, stats_only)
-        .await?
-        .map_ok(|msg: LogMsg| msg.to_ws_message_unchecked());
+        .await?;
+
+    let mut stream = stream.map_ok(|msg: LogMsg| msg.to_ws_message_unchecked());
 
     let (mut sender, mut receiver) = socket.split();
-    tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
 
-    while let Some(item) = stream.next().await {
-        match item {
-            Ok(msg) => {
-                if sender.send(msg).await.is_err() {
-                    break;
+    loop {
+        tokio::select! {
+            // Wait for next stream item
+            item = stream.next() => {
+                match item {
+                    Some(Ok(msg)) => {
+                        if sender.send(msg).await.is_err() {
+                            break;
+                        }
+                    }
+                    _ => {
+                        break;
+                    }
                 }
             }
-            Err(e) => {
-                tracing::error!("stream error: {}", e);
-                break;
+            // Detect client disconnection
+            msg = receiver.next() => {
+                if msg.is_none() {
+                    break;
+                }
             }
         }
     }

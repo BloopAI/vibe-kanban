@@ -154,7 +154,16 @@ export const useJsonPatchWsStream = <T>(
 
     return () => {
       if (wsRef.current) {
-        wsRef.current.close();
+        const ws = wsRef.current;
+
+        // Clear all event handlers first to prevent callbacks after cleanup
+        ws.onopen = null;
+        ws.onmessage = null;
+        ws.onerror = null;
+        ws.onclose = null;
+
+        // Close regardless of state
+        ws.close();
         wsRef.current = null;
       }
       if (retryTimerRef.current) {
