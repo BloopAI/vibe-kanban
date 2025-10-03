@@ -31,14 +31,6 @@ const GitHubLoginDialog = NiceModal.create(() => {
     !!(config?.github?.username && config?.github?.oauth_token) &&
     !githubTokenInvalid;
 
-  // Auto-close dialog when user becomes authenticated
-  useEffect(() => {
-    if (isAuthenticated && modal.visible) {
-      modal.resolve(true);
-      modal.hide();
-    }
-  }, [isAuthenticated, modal.visible, modal]);
-
   const handleLogin = async () => {
     setFetching(true);
     setError(null);
@@ -67,6 +59,8 @@ const GitHubLoginDialog = NiceModal.create(() => {
               setPolling(false);
               setError(null);
               await reloadSystem();
+              modal.resolve(true);
+              modal.hide();
               setDeviceState(null);
               break;
             case DevicePollStatus.AUTHORIZATION_PENDING:
