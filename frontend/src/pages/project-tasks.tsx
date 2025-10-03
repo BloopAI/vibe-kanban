@@ -537,7 +537,9 @@ export function ProjectTasks() {
             </div>
           )}
         </div>
-        {isPanelOpen && !projectLoading && <KanbanSidebar />}
+        {isPanelOpen && !projectLoading && (
+          <KanbanSidebar selectedTask={selectedTask} />
+        )}
       </div>
     </div>
   );

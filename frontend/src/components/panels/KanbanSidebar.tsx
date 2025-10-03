@@ -10,11 +10,15 @@ import {
   BreadcrumbSeparator,
 } from '../ui/breadcrumb';
 import ResponsiveSidebar from './ResponsiveSidebar';
+import type { TaskWithAttemptStatus } from 'shared/types';
 
 type Panels = 'task' | 'task-attempt';
 
-// Kanban sidebar state is managed internally
-const KanbanSidebar = () => {
+interface KanbanSidebarProps {
+  selectedTask: TaskWithAttemptStatus | null;
+}
+
+const KanbanSidebar = ({ selectedTask }: KanbanSidebarProps) => {
   const [panel, setPanel] = useState<Panels>('task');
 
   return (
@@ -34,7 +38,11 @@ const KanbanSidebar = () => {
           </Breadcrumb>
         </NewCardHeader>
         <NewCardContent>
-          {panel === 'task' ? <TaskPanel /> : <TaskAttemptPanel />}
+          {panel === 'task' ? (
+            <TaskPanel task={selectedTask} />
+          ) : (
+            <TaskAttemptPanel />
+          )}
         </NewCardContent>
       </NewCard>
     </ResponsiveSidebar>
