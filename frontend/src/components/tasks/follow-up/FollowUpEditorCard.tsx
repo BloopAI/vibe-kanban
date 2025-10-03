@@ -2,6 +2,7 @@ import { Loader2 } from 'lucide-react';
 import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
 import { cn } from '@/lib/utils';
 import { useProject } from '@/contexts/project-context';
+import { useCallback } from 'react';
 
 type Props = {
   placeholder: string;
@@ -11,10 +12,9 @@ type Props = {
   disabled: boolean;
   // Loading overlay
   showLoadingOverlay: boolean;
-  onCommandEnter?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
-  onCommandShiftEnter?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   onPasteFiles?: (files: File[]) => void;
   textareaClassName?: string;
+  onFocusChange?: (isFocused: boolean) => void;
 };
 
 export function FollowUpEditorCard({
@@ -24,12 +24,20 @@ export function FollowUpEditorCard({
   onKeyDown,
   disabled,
   showLoadingOverlay,
-  onCommandEnter,
-  onCommandShiftEnter,
   onPasteFiles,
   textareaClassName,
+  onFocusChange,
 }: Props) {
   const { projectId } = useProject();
+
+  const handleFocus = useCallback(() => {
+    onFocusChange?.(true);
+  }, [onFocusChange]);
+
+  const handleBlur = useCallback(() => {
+    onFocusChange?.(false);
+  }, [onFocusChange]);
+
   return (
     <div className="relative">
       <FileSearchTextarea
@@ -37,13 +45,13 @@ export function FollowUpEditorCard({
         value={value}
         onChange={onChange}
         onKeyDown={onKeyDown}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         className={cn('flex-1 min-h-[40px] resize-none', textareaClassName)}
         disabled={disabled}
         projectId={projectId}
         rows={1}
         maxRows={6}
-        onCommandEnter={onCommandEnter}
-        onCommandShiftEnter={onCommandShiftEnter}
         onPasteFiles={onPasteFiles}
       />
       {showLoadingOverlay && (
