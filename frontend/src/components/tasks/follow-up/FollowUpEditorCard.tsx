@@ -12,8 +12,6 @@ type Props = {
   disabled: boolean;
   // Loading overlay
   showLoadingOverlay: boolean;
-  onCommandEnter?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
-  onCommandShiftEnter?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   onPasteFiles?: (files: File[]) => void;
   textareaClassName?: string;
   onFocusChange?: (isFocused: boolean) => void;
@@ -26,8 +24,6 @@ export function FollowUpEditorCard({
   onKeyDown,
   disabled,
   showLoadingOverlay,
-  onCommandEnter,
-  onCommandShiftEnter,
   onPasteFiles,
   textareaClassName,
   onFocusChange,
@@ -56,8 +52,6 @@ export function FollowUpEditorCard({
         projectId={projectId}
         rows={1}
         maxRows={6}
-        onCommandEnter={onCommandEnter}
-        onCommandShiftEnter={onCommandShiftEnter}
         onPasteFiles={onPasteFiles}
       />
       {showLoadingOverlay && (

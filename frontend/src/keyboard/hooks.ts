@@ -116,3 +116,12 @@ export const useKeyDenyApproval = createSemanticHook(Action.DENY_APPROVAL);
  * useKeyCycleVariant(() => cycleToNextVariant(), { scope: Scope.FOLLOW_UP });
  */
 export const useKeyCycleVariant = createSemanticHook(Action.CYCLE_VARIANT);
+
+/**
+ * Submit follow-up action - typically Cmd+Enter
+ * Intelligently sends or queues based on current state (running vs idle)
+ *
+ * @example
+ * useKeySubmitFollowUp(() => handleSubmit(), { scope: Scope.FOLLOW_UP_READY });
+ */
+export const useKeySubmitFollowUp = createSemanticHook(Action.SUBMIT_FOLLOW_UP);

@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 import { useReview } from '@/contexts/ReviewProvider';
 import { useClickedElements } from '@/contexts/ClickedElementsProvider';
 import { useEntries } from '@/contexts/EntriesContext';
-import { useKeyCycleVariant, Scope } from '@/keyboard';
+import { useKeyCycleVariant, useKeySubmitFollowUp, Scope } from '@/keyboard';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 //
 import { VariantSelector } from '@/components/tasks/VariantSelector';
@@ -273,14 +273,52 @@ export function TaskFollowUpSection({
   const isEditable =
     isDraftLoaded && !isDraftLocked && !isRetryActive && !hasPendingApproval;
 
-  // Register keyboard shortcut for cycling variants
+  // Keyboard shortcut handler - unified submit (send or queue depending on state)
+  const handleSubmitShortcut = useCallback(
+    async (e?: KeyboardEvent) => {
+      e?.preventDefault();
+
+      // When attempt is running, queue or unqueue
+      if (isAttemptRunning) {
+        if (displayQueued) {
+          setIsUnqueuing(true);
+          try {
+            const ok = await onUnqueue();
+            if (ok) setQueuedOptimistic(false);
+          } finally {
+            setIsUnqueuing(false);
+          }
+        } else {
+          setIsQueuing(true);
+          try {
+            const ok = await onQueue();
+            if (ok) setQueuedOptimistic(true);
+          } finally {
+            setIsQueuing(false);
+          }
+        }
+      } else {
+        // When attempt is idle, send immediately
+        onSendFollowUp();
+      }
+    },
+    [isAttemptRunning, displayQueued, onQueue, onUnqueue, onSendFollowUp]
+  );
+
+  // Register keyboard shortcuts
   useKeyCycleVariant(cycleVariant, {
     scope: Scope.FOLLOW_UP,
     enableOnFormTags: ['textarea', 'TEXTAREA'],
     preventDefault: true,
   });
 
-  // Enable FOLLOW_UP scope only when textarea is focused AND editable
+  useKeySubmitFollowUp(handleSubmitShortcut, {
+    scope: Scope.FOLLOW_UP_READY,
+    enableOnFormTags: ['textarea', 'TEXTAREA'],
+    when: canSendFollowUp && !isDraftLocked && !isQueuing && !isUnqueuing,
+  });
+
+  // Enable FOLLOW_UP scope when textarea is focused AND editable
   useEffect(() => {
     if (isEditable && isTextareaFocused) {
       enableScope(Scope.FOLLOW_UP);
@@ -291,6 +329,33 @@ export function TaskFollowUpSection({
       disableScope(Scope.FOLLOW_UP);
     };
   }, [isEditable, isTextareaFocused, enableScope, disableScope]);
+
+  // Enable FOLLOW_UP_READY scope when ready to send/queue
+  useEffect(() => {
+    const isReady =
+      isTextareaFocused &&
+      isEditable &&
+      isDraftLoaded &&
+      !isSendingFollowUp &&
+      !isRetryActive;
+
+    if (isReady) {
+      enableScope(Scope.FOLLOW_UP_READY);
+    } else {
+      disableScope(Scope.FOLLOW_UP_READY);
+    }
+    return () => {
+      disableScope(Scope.FOLLOW_UP_READY);
+    };
+  }, [
+    isTextareaFocused,
+    isEditable,
+    isDraftLoaded,
+    isSendingFollowUp,
+    isRetryActive,
+    enableScope,
+    disableScope,
+  ]);
 
   // When a process completes (e.g., agent resolved conflicts), refresh branch status promptly
   const prevRunningRef = useRef<boolean>(isAttemptRunning);
@@ -423,8 +488,6 @@ export function TaskFollowUpSection({
                 }}
                 disabled={!isEditable}
                 showLoadingOverlay={isUnqueuing || !isDraftLoaded}
-                onCommandEnter={onSendFollowUp}
-                onCommandShiftEnter={onSendFollowUp}
                 onPasteFiles={handlePasteImages}
                 onFocusChange={setIsTextareaFocused}
               />

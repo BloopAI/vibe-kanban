@@ -6,6 +6,7 @@ export enum Scope {
   EDIT_COMMENT = 'edit-comment',
   APPROVALS = 'approvals',
   FOLLOW_UP = 'follow-up',
+  FOLLOW_UP_READY = 'follow-up-ready',
 }
 
 export enum Action {
@@ -24,6 +25,7 @@ export enum Action {
   APPROVE_REQUEST = 'approve_request',
   DENY_APPROVAL = 'deny_approval',
   CYCLE_VARIANT = 'cycle_variant',
+  SUBMIT_FOLLOW_UP = 'submit_follow_up',
 }
 
 export interface KeyBinding {
@@ -176,6 +178,13 @@ export const keyBindings: KeyBinding[] = [
     keys: 'shift+tab',
     scopes: [Scope.FOLLOW_UP],
     description: 'Cycle between agent configurations',
+    group: 'Follow-up',
+  },
+  {
+    action: Action.SUBMIT_FOLLOW_UP,
+    keys: 'meta+enter',
+    scopes: [Scope.FOLLOW_UP_READY],
+    description: 'Send or queue follow-up (depending on state)',
     group: 'Follow-up',
   },
 ];
