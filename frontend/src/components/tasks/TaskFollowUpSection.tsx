@@ -125,25 +125,18 @@ export function TaskFollowUpSection({
   // Cycle to the next variant when Shift+Tab is pressed
   const cycleVariant = useCallback(() => {
     if (!currentProfile) return;
-    const variants = Object.keys(currentProfile);
+    const variants = Object.keys(currentProfile); // Include DEFAULT
     if (variants.length === 0) return;
 
-    // Find current index: if selectedVariant is null or not found, treat as if we're at the last variant
-    // so the next cycle brings us to index 0
-    let currentIndex = -1;
-    if (selectedVariant) {
-      currentIndex = variants.indexOf(selectedVariant);
-      if (currentIndex === -1) {
-        // Selected variant not found in list, start from beginning
-        currentIndex = variants.length - 1;
-      }
-    } else {
-      // No variant selected, so cycling should select the first one explicitly
-      currentIndex = -1;
-    }
-
+    // Treat null as "DEFAULT" for finding current position
+    const currentVariantForLookup = selectedVariant ?? 'DEFAULT';
+    const currentIndex = variants.indexOf(currentVariantForLookup);
     const nextIndex = (currentIndex + 1) % variants.length;
-    setSelectedVariant(variants[nextIndex]);
+    const nextVariant = variants[nextIndex];
+
+    // Keep using null to represent DEFAULT (backend expects it)
+    // But for display/cycling purposes, treat DEFAULT as a real option
+    setSelectedVariant(nextVariant === 'DEFAULT' ? null : nextVariant);
   }, [currentProfile, selectedVariant, setSelectedVariant]);
 
   // Queue management (including derived lock flag)
