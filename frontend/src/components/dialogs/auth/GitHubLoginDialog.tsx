@@ -34,6 +34,7 @@ const GitHubLoginDialog = NiceModal.create(() => {
   // Auto-close dialog when user becomes authenticated
   useEffect(() => {
     if (isAuthenticated && modal.visible) {
+      modal.resolve(true);
       modal.hide();
     }
   }, [isAuthenticated, modal.visible, modal]);

@@ -487,11 +487,7 @@ export function GeneralSettings() {
                 {t('settings.general.github.helper')}
               </p>
               <Button
-                onClick={() =>
-                  NiceModal.show('github-login').finally(() =>
-                    NiceModal.hide('github-login')
-                  )
-                }
+                onClick={() => NiceModal.show('github-login')}
               >
                 {t('settings.general.github.connectButton')}
               </Button>
