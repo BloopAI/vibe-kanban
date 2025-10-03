@@ -486,9 +486,7 @@ export function GeneralSettings() {
               <p className="text-sm text-muted-foreground">
                 {t('settings.general.github.helper')}
               </p>
-              <Button
-                onClick={() => NiceModal.show('github-login')}
-              >
+              <Button onClick={() => NiceModal.show('github-login')}>
                 {t('settings.general.github.connectButton')}
               </Button>
             </div>
