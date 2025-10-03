@@ -134,12 +134,12 @@ export function Navbar() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Join our Discord"
-              className="hidden sm:block ml-2 mr-1"
+              className="hidden sm:flex items-center ml-2 mr-1"
             >
               <img
                 src="https://img.shields.io/discord/1423630976524877857?style=flat-square&logo=discord&logoColor=FFF"
                 alt="Join us on Discord"
-                className="h-5"
+                className="h-5 dark:brightness-90 dark:contrast-125"
               />
             </a>
             <DropdownMenu>
