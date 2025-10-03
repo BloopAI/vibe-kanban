@@ -126,9 +126,9 @@ export function Navbar() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Join our Discord"
-              className="hidden sm:inline-flex items-center ml-3 text-xs font-medium rounded-md overflow-hidden"
+              className="hidden sm:inline-flex items-center ml-3 text-xs font-medium overflow-hidden border h-6"
             >
-              <span className="bg-background text-foreground px-2 py-1 border-r border-muted flex items-center">
+              <span className="bg-muted text-foreground flex items-center p-2 border-r">
                 <svg
                   className="h-4 w-4"
                   viewBox="0 0 24 24"
@@ -139,7 +139,7 @@ export function Navbar() {
                 </svg>
               </span>
               <span
-                className="bg-success text-success-foreground px-2 py-1"
+                className=" h-full items-center flex p-2"
                 aria-live="polite"
               >
                 {onlineCount !== null
