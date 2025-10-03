@@ -128,9 +128,20 @@ export function TaskFollowUpSection({
     const variants = Object.keys(currentProfile);
     if (variants.length === 0) return;
 
-    const currentIndex = selectedVariant
-      ? variants.indexOf(selectedVariant)
-      : -1;
+    // Find current index: if selectedVariant is null or not found, treat as if we're at the last variant
+    // so the next cycle brings us to index 0
+    let currentIndex = -1;
+    if (selectedVariant) {
+      currentIndex = variants.indexOf(selectedVariant);
+      if (currentIndex === -1) {
+        // Selected variant not found in list, start from beginning
+        currentIndex = variants.length - 1;
+      }
+    } else {
+      // No variant selected, so cycling should select the first one explicitly
+      currentIndex = -1;
+    }
+
     const nextIndex = (currentIndex + 1) % variants.length;
     setSelectedVariant(variants[nextIndex]);
   }, [currentProfile, selectedVariant, setSelectedVariant]);
