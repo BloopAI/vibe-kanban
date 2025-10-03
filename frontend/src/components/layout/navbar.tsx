@@ -130,8 +130,13 @@ export function Navbar() {
               <span className="bg-background text-foreground px-2 py-1 border-r border-muted">
                 discord
               </span>
-              <span className="bg-success text-success-foreground px-2 py-1" aria-live="polite">
-                {onlineCount !== null ? `${onlineCount.toLocaleString()} online` : 'online'}
+              <span
+                className="bg-success text-success-foreground px-2 py-1"
+                aria-live="polite"
+              >
+                {onlineCount !== null
+                  ? `${onlineCount.toLocaleString()} online`
+                  : 'online'}
               </span>
             </a>
           </div>
