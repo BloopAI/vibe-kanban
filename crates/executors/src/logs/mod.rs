@@ -52,6 +52,9 @@ pub struct NormalizedConversation {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum NormalizedEntryType {
     UserMessage,
+    UserFeedback {
+        denied_tool: String,
+    },
     AssistantMessage,
     ToolUse {
         tool_name: String,

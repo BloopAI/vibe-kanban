@@ -49,7 +49,7 @@ const renderJson = (v: JsonValue) => (
 
 const getEntryIcon = (entryType: NormalizedEntryType) => {
   const iconSize = 'h-3 w-3';
-  if (entryType.type === 'user_message') {
+  if (entryType.type === 'user_message' || entryType.type === 'user_feedback') {
     return <User className={iconSize} />;
   }
   if (entryType.type === 'assistant_message') {
@@ -600,6 +600,7 @@ function DisplayConversationEntry({
   executionProcessId,
   taskAttempt,
 }: Props) {
+  const { t } = useTranslation('common');
   const isNormalizedEntry = (
     entry: NormalizedEntry | ProcessStartPayload
   ): entry is NormalizedEntry => 'entry_type' in entry;
@@ -630,6 +631,7 @@ function DisplayConversationEntry({
   const isError = entryType.type === 'error_message';
   const isToolUse = entryType.type === 'tool_use';
   const isUserMessage = entryType.type === 'user_message';
+  const isUserFeedback = entryType.type === 'user_feedback';
   const isLoading = entryType.type === 'loading';
   const isFileEdit = (a: ActionType): a is FileEditAction =>
     a.action === 'file_edit';
@@ -641,6 +643,31 @@ function DisplayConversationEntry({
         executionProcessId={executionProcessId}
         taskAttempt={taskAttempt}
       />
+    );
+  }
+
+  if (isUserFeedback) {
+    const feedbackEntry = entryType as Extract<
+      NormalizedEntryType,
+      { type: 'user_feedback' }
+    >;
+    return (
+      <div className="py-2">
+        <div className="bg-background px-4 py-2 text-sm border-y border-dashed">
+          <div
+            className="text-xs mb-1 opacity-70"
+            style={{ color: 'hsl(var(--destructive))' }}
+          >
+            {t('conversation.deniedByUser', {
+              toolName: feedbackEntry.denied_tool,
+            })}
+          </div>
+          <MarkdownRenderer
+            content={entry.content}
+            className="whitespace-pre-wrap break-words flex flex-col gap-1 font-light py-3"
+          />
+        </div>
+      </div>
     );
   }
   const renderToolUse = () => {

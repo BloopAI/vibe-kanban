@@ -21,5 +21,8 @@
   },
   "language": {
     "browserDefault": "Predeterminado del navegador"
+  },
+  "conversation": {
+    "deniedByUser": "{{toolName}} denegado por el usuario"
   }
 }

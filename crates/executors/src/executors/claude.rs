@@ -39,6 +39,10 @@ async fn get_backend_port() -> std::io::Result<u16> {
 
 const CONFIRM_HOOK_SCRIPT: &str = include_str!("./hooks/confirm.py");
 
+/// Natural language marker we add in our Python hook to denote user feedback
+/// This marker is added by our confirm.py hook script and is robust to Claude Code format changes
+const USER_FEEDBACK_MARKER: &str = "User feedback: ";
+
 fn base_command(claude_code_router: bool) -> &'static str {
     if claude_code_router {
         "npx -y @musistudio/claude-code-router@1.0.49 code"
@@ -229,12 +233,12 @@ async fn write_python_hook(current_dir: &Path) -> Result<(), ExecutorError> {
     tokio::fs::create_dir_all(&hooks_dir).await?;
     let hook_path = hooks_dir.join("confirm.py");
 
-    if tokio::fs::try_exists(&hook_path).await? {
-        return Ok(());
-    }
+    // Replace placeholder with actual marker value (single source of truth)
+    let script_content =
+        CONFIRM_HOOK_SCRIPT.replace("{{USER_FEEDBACK_MARKER}}", USER_FEEDBACK_MARKER);
 
     let mut file = tokio::fs::File::create(&hook_path).await?;
-    file.write_all(CONFIRM_HOOK_SCRIPT.as_bytes()).await?;
+    file.write_all(script_content.as_bytes()).await?;
     file.flush().await?;
 
     // TODO: Handle Windows permissioning
@@ -311,6 +315,39 @@ exit_code=${{PIPESTATUS[0]}}
 exit "$exit_code"
 "#
     )
+}
+
+/// Extract user denial reason from tool result error messages
+/// Our confirm.py hook prefixes user feedback with "User feedback: " for easy extraction
+/// Supports both string content and Claude's array format: [{"type":"text","text":"..."}]
+fn extract_denial_reason(content: &serde_json::Value) -> Option<String> {
+    // First try to parse as string
+    let content_str = if let Some(s) = content.as_str() {
+        s.to_string()
+    } else if let Ok(items) =
+        serde_json::from_value::<Vec<ClaudeToolResultTextItem>>(content.clone())
+    {
+        // Handle array format: [{"type":"text","text":"..."}]
+        items
+            .into_iter()
+            .map(|item| item.text)
+            .collect::<Vec<_>>()
+            .join("\n")
+    } else {
+        // Try to serialize the value as a string
+        content.to_string()
+    };
+
+    // Look for our natural language marker and extract everything after it
+    if let Some(pos) = content_str.find(USER_FEEDBACK_MARKER) {
+        let after_marker = &content_str[pos + USER_FEEDBACK_MARKER.len()..];
+        let feedback = after_marker.trim();
+        if !feedback.is_empty() {
+            return Some(feedback.to_string());
+        }
+    }
+
+    None
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -539,6 +576,27 @@ impl ClaudeLogProcessor {
                                                 info.tool_data,
                                                 ClaudeToolData::Bash { .. }
                                             );
+
+                                            // Capture the display name for user feedback
+                                            let display_tool_name = if is_command {
+                                                info.tool_name.clone()
+                                            } else {
+                                                // For non-command tools, use the same label logic as below
+                                                let raw_name =
+                                                    info.tool_data.get_name().to_string();
+                                                if raw_name.starts_with("mcp__") {
+                                                    let parts: Vec<&str> =
+                                                        raw_name.split("__").collect();
+                                                    if parts.len() >= 3 {
+                                                        format!("mcp:{}:{}", parts[1], parts[2])
+                                                    } else {
+                                                        raw_name
+                                                    }
+                                                } else {
+                                                    raw_name
+                                                }
+                                            };
+
                                             if is_command {
                                                 // For bash commands, attach result as CommandRun output where possible
                                                 // Prefer parsing Amp's claude-compatible Bash format: {"output":"...","exitCode":0}
@@ -673,6 +731,27 @@ impl ClaudeLogProcessor {
                                                         ),
                                                     );
                                                 }
+                                            }
+
+                                            // Check if this is a denial with user feedback (for both command and non-command tools)
+                                            if is_error.unwrap_or(false)
+                                                && let Some(denial_reason) =
+                                                    extract_denial_reason(content)
+                                            {
+                                                let user_feedback = NormalizedEntry {
+                                                    timestamp: None,
+                                                    entry_type: NormalizedEntryType::UserFeedback {
+                                                        denied_tool: display_tool_name.clone(),
+                                                    },
+                                                    content: denial_reason,
+                                                    metadata: None,
+                                                };
+                                                msg_store.push_patch(
+                                                    ConversationPatch::add_normalized_entry(
+                                                        entry_index_provider.next(),
+                                                        user_feedback,
+                                                    ),
+                                                );
                                             }
                                         }
                                     }

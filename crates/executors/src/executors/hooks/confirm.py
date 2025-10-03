@@ -147,7 +147,10 @@ def main():
             json_success()
         elif status == "denied":
             reason = result.get("reason")
-            json_error(reason)
+            # Prefix user feedback with marker for extraction by Rust code
+            USER_FEEDBACK_MARKER = "{{USER_FEEDBACK_MARKER}}"
+            formatted_reason = f"{USER_FEEDBACK_MARKER}{reason}" if reason else None
+            json_error(formatted_reason)
         elif status == "timed_out":
             # concat to avoid triggering the watchkill script
             json_error(
