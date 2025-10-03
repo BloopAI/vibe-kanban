@@ -122,6 +122,19 @@ export function TaskFollowUpSection({
   const { selectedVariant, setSelectedVariant, currentProfile } =
     useDefaultVariant({ processes, profiles: profiles ?? null });
 
+  // Cycle to the next variant when Shift+Tab is pressed
+  const cycleVariant = useCallback(() => {
+    if (!currentProfile) return;
+    const variants = Object.keys(currentProfile);
+    if (variants.length === 0) return;
+
+    const currentIndex = selectedVariant
+      ? variants.indexOf(selectedVariant)
+      : -1;
+    const nextIndex = (currentIndex + 1) % variants.length;
+    setSelectedVariant(variants[nextIndex]);
+  }, [currentProfile, selectedVariant, setSelectedVariant]);
+
   // Queue management (including derived lock flag)
   const { onQueue, onUnqueue } = useDraftQueue({
     attemptId: selectedAttemptId,
@@ -384,6 +397,7 @@ export function TaskFollowUpSection({
                 onCommandEnter={onSendFollowUp}
                 onCommandShiftEnter={onSendFollowUp}
                 onPasteFiles={handlePasteImages}
+                onShiftTab={cycleVariant}
               />
               <FollowUpStatusRow
                 status={{

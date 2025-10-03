@@ -22,6 +22,7 @@ interface FileSearchTextareaProps {
   onCommandEnter?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   onCommandShiftEnter?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   onPasteFiles?: (files: File[]) => void;
+  onShiftTab?: () => void;
 }
 
 export function FileSearchTextarea({
@@ -36,6 +37,7 @@ export function FileSearchTextarea({
   onCommandShiftEnter,
   maxRows = 10,
   onPasteFiles,
+  onShiftTab,
 }: FileSearchTextareaProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FileSearchResult[]>([]);
@@ -289,6 +291,7 @@ export function FileSearchTextarea({
         onCommandEnter={onCommandEnter}
         onCommandShiftEnter={onCommandShiftEnter}
         onPaste={handlePaste}
+        onShiftTab={onShiftTab}
       />
 
       {showDropdown &&

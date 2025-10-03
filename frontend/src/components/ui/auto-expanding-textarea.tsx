@@ -5,6 +5,7 @@ interface AutoExpandingTextareaProps extends React.ComponentProps<'textarea'> {
   maxRows?: number;
   onCommandEnter?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   onCommandShiftEnter?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onShiftTab?: () => void;
 }
 
 const AutoExpandingTextarea = React.forwardRef<
@@ -12,7 +13,14 @@ const AutoExpandingTextarea = React.forwardRef<
   AutoExpandingTextareaProps
 >(
   (
-    { className, maxRows = 10, onCommandEnter, onCommandShiftEnter, ...props },
+    {
+      className,
+      maxRows = 10,
+      onCommandEnter,
+      onCommandShiftEnter,
+      onShiftTab,
+      ...props
+    },
     ref
   ) => {
     const internalRef = React.useRef<HTMLTextAreaElement>(null);
@@ -50,6 +58,13 @@ const AutoExpandingTextarea = React.forwardRef<
     // Handle keyboard shortcuts
     const handleKeyDown = React.useCallback(
       (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        // Handle Shift+Tab for variant cycling
+        if (e.key === 'Tab' && e.shiftKey && !e.metaKey && !e.ctrlKey) {
+          e.preventDefault();
+          onShiftTab?.();
+          return;
+        }
+
         if (e.key === 'Enter') {
           if (e.metaKey && e.shiftKey) {
             onCommandShiftEnter?.(e);
@@ -59,7 +74,7 @@ const AutoExpandingTextarea = React.forwardRef<
         }
         props.onKeyDown?.(e);
       },
-      [onCommandEnter, onCommandShiftEnter, props.onKeyDown]
+      [onCommandEnter, onCommandShiftEnter, onShiftTab, props.onKeyDown]
     );
 
     // Adjust height on input
