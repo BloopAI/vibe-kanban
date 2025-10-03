@@ -13,6 +13,7 @@ import {
   Settings,
   BookOpen,
   MessageCircleQuestion,
+  MessageCircle,
   Menu,
   Plus,
 } from 'lucide-react';
@@ -39,6 +40,11 @@ const EXTERNAL_LINKS = [
     label: 'Support',
     icon: MessageCircleQuestion,
     href: 'https://github.com/BloopAI/vibe-kanban/issues',
+  },
+  {
+    label: 'Discord',
+    icon: MessageCircle,
+    href: 'https://discord.gg/AC4nwVtJM3',
   },
 ];
 
@@ -123,6 +129,19 @@ export function Navbar() {
                 </Button>
               </>
             )}
+            <a
+              href="https://discord.gg/AC4nwVtJM3"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Join our Discord"
+              className="hidden sm:block ml-2 mr-1"
+            >
+              <img
+                src="https://img.shields.io/discord/1423630976524877857?style=flat-square&logo=discord&logoColor=FFF"
+                alt="Join us on Discord"
+                className="h-5"
+              />
+            </a>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
